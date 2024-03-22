@@ -1221,6 +1221,7 @@ class MediaExporter(object):
             outpath = fos.normalize_path(outpath)
 
         if etau.is_str(media_or_path):
+            seen = False
             media_path = fos.normalize_path(media_or_path)
 
             if outpath is not None:
@@ -1229,17 +1230,19 @@ class MediaExporter(object):
                 outpath = media_or_path
                 uuid = self._get_uuid(media_path)
             else:
+                seen = self._filename_maker.seen_input_path(media_path)
                 outpath = self._filename_maker.get_output_path(media_path)
                 uuid = self._get_uuid(outpath)
 
-            if self.export_mode is True:
-                etau.copy_file(media_path, outpath)
-            elif self.export_mode == "move":
-                etau.move_file(media_path, outpath)
-            elif self.export_mode == "symlink":
-                etau.symlink_file(media_path, outpath)
-            elif self.export_mode == "manifest":
-                self._manifest[uuid] = media_path
+            if not seen:
+                if self.export_mode is True:
+                    etau.copy_file(media_path, outpath)
+                elif self.export_mode == "move":
+                    etau.move_file(media_path, outpath)
+                elif self.export_mode == "symlink":
+                    etau.symlink_file(media_path, outpath)
+                elif self.export_mode == "manifest":
+                    self._manifest[uuid] = media_path
         else:
             media = media_or_path
 
