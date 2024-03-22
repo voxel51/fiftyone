@@ -4336,13 +4336,13 @@ To get started exploring video datasets, try loading the
 .. _three-d-datasets:
 
 3D datasets
-____________________
+___________
 
 Any |Sample| whose `filepath` is a file with extension `.fo3d` is
 recognized as a 3D sample, and datasets composed of 3D
 samples have media type `3d`.
 
-A fo3d file encapsulates a Fiftyone 3D scene constructed using the 
+A fo3d file encapsulates a FiftyOne 3D scene constructed using the
 :class:`fiftyone.core.threed.Scene` class, which provides methods
 to add, remove, and manipulate 3D objects in the scene. A scene is 
 internally represented as a n-ary tree of 3D objects, where each 
@@ -4390,12 +4390,12 @@ serializes the scene into a fo3d file.
 .. _3d-meshes:
 
 3D meshes
---------------------
+---------
 
 A 3D mesh is a collection of vertices, edges, and faces that define the shape
 of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
 others also store the material properties and textures of the mesh. If a
-mesh file contains material properties and textures, Fiftyone will
+mesh file contains material properties and textures, FiftyOne will
 automatically load and display them. You may also
 assign default material for your meshes by setting the
 :attr:`fiftyone.core.threed.Mesh.default_material`
@@ -4404,7 +4404,7 @@ meshes are assigned a :class:`fiftyone.core.threed.MeshStandardMaterial`
 with reasonable defaults that can also be dynamically configured from the app.
 Please refer to :class:`fiftyone.core.threed.material_3d` for more details.
 
-Fiftyone supports :class:`GLTF <fiftyone.core.threed.GLTFMesh>`,
+FiftyOne supports :class:`GLTF <fiftyone.core.threed.GLTFMesh>`,
 :class:`OBJ <fiftyone.core.threed.OBJMesh>`,
 :class:`PLY <fiftyone.core.threed.PLYMesh>`,
 :class:`STL <fiftyone.core.threed.STLMesh>`, and
@@ -4417,12 +4417,12 @@ transmitting 3D models.
 .. _3d-point-clouds:
 
 3D point clouds
---------------------
+---------------
 
-Fiftyone currently only has support for the
+FiftyOne currently only has support for the
 `PCD <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 point cloud format. A code snippet to create a PCD object that can be added
-to a Fiftyone 3D scene is shown below:
+to a FiftyOne 3D scene is shown below:
 
 .. code-block:: python
     :linenos:
@@ -4456,9 +4456,9 @@ point cloud.
 .. _3d-shapes:
 
 3D shapes
---------------------
+---------
 
-Fiftyone provides a set of primitive 3D shape geometries that can be added to
+FiftyOne provides a set of primitive 3D shape geometries that can be added to
 a 3D scene. The following 3D shape geometries are supported:
 
 - Box: :class:`fiftyone.core.threed.BoxGeometry`
