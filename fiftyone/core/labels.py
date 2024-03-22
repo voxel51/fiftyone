@@ -1181,7 +1181,6 @@ class Segmentation(_HasID, _HasMedia, Label):
 
         Returns:
             a :class:`Polylines`
-
         """
         polylines = _segmentation_to_polylines(
             self, mask_targets, mask_types, tolerance
