@@ -23,7 +23,7 @@ const IndexPageQueryNode = graphql`
 
 const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   const queryRef = usePreloadedQuery(IndexPageQueryNode, prepared);
-  const totalDatasets = queryRef?.allDatasets ?? 0;
+  const totalDatasets = queryRef.allDatasets;
 
   return (
     <>
