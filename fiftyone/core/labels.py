@@ -5,16 +5,16 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from functools import partial
 import itertools
 import warnings
-from functools import partial
 
 from bson import ObjectId
 import cv2
 import numpy as np
-from scipy.ndimage import find_objects
-from skimage.segmentation import relabel_sequential
-from skimage.measure import label
+import scipy.ndimage as spn
+import skimage.measure as skm
+import skimage.segmentation as sks
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
@@ -1671,20 +1671,18 @@ def _render_polyline(mask, polyline, target, thickness):
 
 def _find_slices(mask):
     """Return slices that tightly bound each unique object in `mask`."""
-    relabeled, forward, backward = relabel_sequential(mask)
-    slices = find_objects(relabeled)
-    result = dict((backward[idx + 1], slc) for idx, slc in enumerate(slices))
-    return result
+    relabeled, forward, backward = sks.relabel_sequential(mask)
+    slices = spn.find_objects(relabeled)
+    return dict((backward[idx + 1], slc) for idx, slc in enumerate(slices))
 
 
 def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
-    """convert segmentation to a collection of detections, polylines, etc.
+    """Convert segmentation to a collection of detections, polylines, etc.
 
     `converter(label_mask, label, label_type, offset, frame_size)` is
     a function that returns a list of detections, polylines, etc. It
     gets called for each value in `mask_targets`, or for all values in
     the mask if `mask_targets` is `None`.
-
     """
     if isinstance(mask_types, dict):
         default = None
@@ -1737,12 +1735,6 @@ def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
 
 
 def _mask_to_detections(label_mask, label, label_type, offset, frame_size):
-    """convert a mask to a detection
-
-    offset: (width, height)
-    frame_sizes: (width_height)
-
-    """
     if label_type == "stuff":
         instances = [_parse_stuff_instance(label_mask, offset, frame_size)]
     elif label_type == "thing":
@@ -1753,11 +1745,10 @@ def _mask_to_detections(label_mask, label, label_type, offset, frame_size):
             "('stuff', 'thing')"
         )
 
-    results = list(
+    return list(
         Detection(label=label, bounding_box=bbox, mask=instance_mask)
         for bbox, instance_mask in instances
     )
-    return results
 
 
 def _mask_to_polylines(
@@ -1780,12 +1771,10 @@ def _mask_to_polylines(
             "('stuff', 'thing')"
         )
 
-    polylines = list(
+    return list(
         Polyline(label=label, points=points, filled=True, closed=True)
         for points in polygons
     )
-
-    return polylines
 
 
 def _segmentation_to_detections(segmentation, mask_targets, mask_types):
@@ -1845,11 +1834,6 @@ def _int_array_to_rgb(mask):
 
 
 def _parse_stuff_instance(mask, offset=None, frame_size=None):
-    """
-    offset: (width, height)
-    frame_size: (width, height)
-
-    """
     cols = np.any(mask, axis=0)
     rows = np.any(mask, axis=1)
     xmin, xmax = np.where(cols)[0][[0, -1]]
@@ -1877,11 +1861,6 @@ def _parse_stuff_instance(mask, offset=None, frame_size=None):
 
 
 def _parse_thing_instances(mask, offset=None, frame_size=None):
-    """
-    offset: (width, height)
-    frame_size: (width, height)
-
-    """
     if offset is None:
         x_offset, y_offset = (0, 0)
     else:
@@ -1892,7 +1871,7 @@ def _parse_thing_instances(mask, offset=None, frame_size=None):
     else:
         width, height = frame_size
 
-    labeled = label(mask)
+    labeled = skm.label(mask)
     objects = _find_slices(labeled)
 
     instances = []
