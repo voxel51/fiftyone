@@ -1786,6 +1786,8 @@ class FiftyOneUnlabeledVideoSampleParser(
             if :meth:`get_video_metadata` is called and no metadata is
             available
         local_media (False): whether to return local paths for cloud media
+        write_clips (True): whether to write clips when :meth:`get_video_path`
+            is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1796,6 +1798,7 @@ class FiftyOneUnlabeledVideoSampleParser(
         self,
         compute_metadata=False,
         local_media=False,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1803,6 +1806,7 @@ class FiftyOneUnlabeledVideoSampleParser(
             self,
             compute_metadata=compute_metadata,
             local_media=local_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
@@ -1863,6 +1867,8 @@ class FiftyOneLabeledVideoSampleParser(
             if :meth:`get_video_metadata` is called and no metadata is
             available
         local_media (False): whether to return local paths for cloud media
+        write_clips (True): whether to write clips when :meth:`get_video_path`
+            is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1877,6 +1883,7 @@ class FiftyOneLabeledVideoSampleParser(
         frame_labels_fcn=None,
         compute_metadata=False,
         local_media=False,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1888,6 +1895,7 @@ class FiftyOneLabeledVideoSampleParser(
             self,
             compute_metadata=compute_metadata,
             local_media=local_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
