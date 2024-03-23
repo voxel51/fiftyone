@@ -285,7 +285,9 @@ def export_samples(
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
-            compute_metadata=True, export_media=_export_media, **clips_kwargs
+            compute_metadata=True,
+            write_clips=_export_media,
+            **clips_kwargs,
         )
 
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
@@ -350,7 +352,7 @@ def export_samples(
             label_fcn=label_fcn,
             frame_labels_fcn=frame_labels_fcn,
             compute_metadata=True,
-            export_media=_export_media,
+            write_clips=_export_media,
             **clips_kwargs,
         )
 
