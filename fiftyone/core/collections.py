@@ -122,6 +122,9 @@ class DownloadContext(object):
         if batch_size is None and target_size_bytes is None:
             target_size_bytes = fo.media_cache_config.download_size_bytes
 
+        if target_size_bytes is not None and target_size_bytes < 0:
+            target_size_bytes = None
+
         self.sample_collection = sample_collection
         self.batch_size = batch_size
         self.target_size_bytes = target_size_bytes
