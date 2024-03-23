@@ -164,7 +164,6 @@ def apply_model(
 
     with contextlib.ExitStack() as context:
         if output_dir is not None:
-            # pylint: disable=no-member
             local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
             filename_maker = fou.UniqueFilenameMaker(
                 output_dir=output_dir,
@@ -325,7 +324,6 @@ def _apply_image_model_single(
     needs_samples = isinstance(model, SamplesMixin)
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -333,7 +331,6 @@ def _apply_image_model_single(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(progress=progress))
 
         for sample in pb(samples):
@@ -374,7 +371,6 @@ def _apply_image_model_batch(
     needs_samples = isinstance(model, SamplesMixin)
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -382,7 +378,6 @@ def _apply_image_model_batch(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
 
         for sample_batch in fou.iter_batches(samples, batch_size):
@@ -441,7 +436,6 @@ def _apply_image_model_data_loader(
     )
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -449,7 +443,6 @@ def _apply_image_model_data_loader(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
 
         for sample_batch, imgs in zip(
@@ -506,7 +499,6 @@ def _apply_image_model_to_frames_single(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -514,7 +506,6 @@ def _apply_image_model_to_frames_single(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -575,7 +566,6 @@ def _apply_image_model_to_frames_batch(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -583,7 +573,6 @@ def _apply_image_model_to_frames_batch(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -648,7 +637,6 @@ def _apply_video_model(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -656,7 +644,6 @@ def _apply_video_model(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(progress=progress))
 
         for sample in pb(samples):
@@ -1019,7 +1006,6 @@ def _compute_image_embeddings_single(
     errors = False
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1027,7 +1013,6 @@ def _compute_image_embeddings_single(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(progress=progress))
 
         for sample in pb(samples):
@@ -1065,7 +1050,6 @@ def _compute_image_embeddings_batch(
     errors = False
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1073,7 +1057,6 @@ def _compute_image_embeddings_batch(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
 
         for sample_batch in fou.iter_batches(samples, batch_size):
@@ -1133,7 +1116,6 @@ def _compute_image_embeddings_data_loader(
     with contextlib.ExitStack() as context:
         # @todo do we need to add additional pre-download overhead to ensure
         # data loader workers don't encounter undownloaded images?
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1141,7 +1123,6 @@ def _compute_image_embeddings_data_loader(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
 
         for sample_batch, imgs in zip(
@@ -1194,7 +1175,6 @@ def _compute_frame_embeddings_single(
     embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1202,7 +1182,6 @@ def _compute_frame_embeddings_single(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -1265,7 +1244,6 @@ def _compute_frame_embeddings_batch(
     embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1273,7 +1251,6 @@ def _compute_frame_embeddings_batch(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -1341,7 +1318,6 @@ def _compute_video_embeddings(
     errors = False
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1349,7 +1325,6 @@ def _compute_video_embeddings(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(progress=progress))
 
         for sample in pb(samples):
@@ -1619,7 +1594,6 @@ def _embed_patches(
         embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1627,7 +1601,6 @@ def _embed_patches(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(progress=progress))
 
         for sample in pb(samples):
@@ -1738,7 +1711,6 @@ def _embed_patches_data_loader(
     with contextlib.ExitStack() as context:
         # @todo do we need to add additional pre-download overhead to ensure
         # data loader workers don't encounter undownloaded images?
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1746,7 +1718,6 @@ def _embed_patches_data_loader(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
 
         for sample, patches in pb(zip(samples, data_loader)):
@@ -1808,7 +1779,6 @@ def _embed_frame_patches(
         embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
-        # pylint: disable=no-member
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
@@ -1816,7 +1786,6 @@ def _embed_frame_patches(
             )
         )
 
-        # pylint: disable=no-member
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
