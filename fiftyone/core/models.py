@@ -373,10 +373,9 @@ def _apply_image_model_batch(
     progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
-    samples_loader = fou.iter_batches(samples, batch_size)
 
     with fou.ProgressBar(samples, progress=progress) as pb:
-        for sample_batch in samples_loader:
+        for sample_batch in fou.iter_batches(samples, batch_size):
             try:
                 imgs = [
                     foui.read(sample.local_path) for sample in sample_batch
@@ -426,13 +425,16 @@ def _apply_image_model_data_loader(
     progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
-    samples_loader = fou.iter_batches(samples, batch_size)
+
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
 
     with fou.ProgressBar(samples, progress=progress) as pb:
-        for sample_batch, imgs in zip(samples_loader, data_loader):
+        for sample_batch, imgs in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
             try:
                 if isinstance(imgs, Exception):
                     raise imgs
@@ -912,6 +914,8 @@ def compute_embeddings(
         # pylint: disable=no-member
         context.enter_context(model)
 
+        samples = samples.select_fields()
+
         if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _compute_video_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
@@ -963,9 +967,7 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    samples = samples.select_fields()
     embeddings = []
-
     errors = False
 
     with fou.ProgressBar(progress=progress) as pb:
@@ -1000,14 +1002,11 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
-    samples = samples.select_fields()
-    samples_loader = fou.iter_batches(samples, batch_size)
-
     embeddings = []
     errors = False
 
     with fou.ProgressBar(samples, progress=progress) as pb:
-        for sample_batch in samples_loader:
+        for sample_batch in fou.iter_batches(samples, batch_size):
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -1054,8 +1053,6 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
 ):
-    samples = samples.select_fields()
-    samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
@@ -1064,7 +1061,10 @@ def _compute_image_embeddings_data_loader(
     errors = False
 
     with fou.ProgressBar(samples, progress=progress) as pb:
-        for sample_batch, imgs in zip(samples_loader, data_loader):
+        for sample_batch, imgs in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -1105,7 +1105,6 @@ def _compute_image_embeddings_data_loader(
 def _compute_frame_embeddings_single(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -1164,7 +1163,6 @@ def _compute_frame_embeddings_single(
 def _compute_frame_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
-    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -1228,7 +1226,6 @@ def _compute_frame_embeddings_batch(
 def _compute_video_embeddings(
     samples, model, embeddings_field, skip_failures, progress
 ):
-    samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
     embeddings = []
@@ -1443,6 +1440,12 @@ def compute_patch_embeddings(
         # pylint: disable=no-member
         context.enter_context(model)
 
+        if samples.media_type == fom.VIDEO:
+            _patches_field = samples._FRAMES_PREFIX + patches_field
+            samples = samples.select_fields(_patches_field)
+        else:
+            samples = samples.select_fields()
+
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if samples.media_type == fom.VIDEO:
@@ -1500,8 +1503,6 @@ def _embed_patches(
     skip_failures,
     progress,
 ):
-    samples = samples.select_fields(patches_field)
-
     if embeddings_field is not None:
         label_parser = _make_label_parser(samples, patches_field)
     else:
@@ -1597,8 +1598,6 @@ def _embed_patches_data_loader(
     skip_failures,
     progress,
 ):
-    samples = samples.select_fields(patches_field)
-
     data_loader = _make_patch_data_loader(
         samples,
         model,
@@ -1665,12 +1664,11 @@ def _embed_frame_patches(
     skip_failures,
     progress,
 ):
-    _patches_field = samples._FRAMES_PREFIX + patches_field
-    samples = samples.select_fields(_patches_field)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
     if embeddings_field is not None:
+        _patches_field = samples._FRAMES_PREFIX + patches_field
         label_parser = _make_label_parser(samples, _patches_field)
     else:
         embeddings_dict = {}
