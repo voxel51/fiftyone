@@ -181,7 +181,6 @@ def apply_model(
             else:
                 cthresh = model.config.confidence_thresh
 
-            # pylint: disable=no-member
             context.enter_context(
                 fou.SetAttributes(model.config, confidence_thresh=cthresh)
             )
@@ -189,20 +188,16 @@ def apply_model(
             pass
 
         if store_logits:
-            # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, store_logits=True))
 
         if use_data_loader:
-            # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
         if needs_samples:
-            # pylint: disable=no-member
             context.enter_context(
                 fou.SetAttributes(model, needs_fields=kwargs)
             )
 
-        # pylint: disable=no-member
         context.enter_context(model)
 
         if needs_samples:
@@ -963,10 +958,8 @@ def compute_embeddings(
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
-            # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
-        # pylint: disable=no-member
         context.enter_context(model)
 
         samples = samples.select_fields()
@@ -1553,10 +1546,8 @@ def compute_patch_embeddings(
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
-            # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
-        # pylint: disable=no-member
         context.enter_context(model)
 
         if samples.media_type == fom.VIDEO:
