@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 from packaging.requirements import Requirement
@@ -37,6 +38,14 @@ SUPPORTED_DTYPES = (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_cache():
+    g = globals()
+    if "_files_to_download" not in g:
+        g["_files_to_download"] = []
+
+    return g["_files_to_download"]
 
 
 def load_from_hub(
@@ -456,6 +465,27 @@ def _get_rows(
     return response.json()["rows"]
 
 
+def _download_image(url_and_filepath):
+    url, filepath = url_and_filepath
+    try:
+        if not os.path.exists(filepath):
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+                with open(filepath, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                # Optionally, open and save the image to ensure it's valid
+                Image.open(filepath).save(filepath)
+    except Exception as e:
+        logger.warning(f"Failed to download image from {url}: {e}")
+
+
+def _download_images_in_batch(urls_and_filepaths):
+    max_workers = fo.config.max_thread_pool_workers or os.cpu_count()
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor.map(_download_image, urls_and_filepaths)
+
+
 def _build_media_field_converter(
     media_field_key, media_field_name, feature, download_dir
 ):
@@ -472,12 +502,9 @@ def _build_media_field_converter(
             url = row_content[media_field_name]
 
         sample_dict[media_field_key] = filepath
-        try:
-            ## create the file if it doesn't exist
-            if not os.path.exists(filepath):
-                Image.open(requests.get(url, stream=True).raw).save(filepath)
-        except:
-            logger.warning(f"Failed to download image from {url}")
+
+        # cache the file info to download later
+        get_cache().append((url, filepath))
 
     return convert_media_field
 
@@ -712,6 +739,11 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
             sample = Sample(**sample_dict)
             samples.append(sample)
         dataset.add_samples(samples)
+
+        ## Download images in batch
+        urls_and_filepaths = get_cache()
+        _download_images_in_batch(urls_and_filepaths)
+        get_cache().clear()
 
 
 def _configure_dataset_media_fields(dataset, config):
