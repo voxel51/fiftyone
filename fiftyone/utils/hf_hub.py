@@ -60,6 +60,7 @@ def load_from_hub(
     overwrite=False,
     persistent=False,
     name=None,
+    token=None,
     config_file=None,
     **kwargs,
 ):
@@ -78,6 +79,7 @@ def load_from_hub(
         overwrite (True): whether to overwrite an existing dataset with the same name
         persistent (False): whether the dataset should be persistent
         name (None): the name of the dataset to create
+        token (None): the Hugging Face API token to use to download the dataset
         config_file (None): the path to a config file to use to load the dataset,
             if the repo does not have a fiftyone.yml file
         **kwargs: optional keyword arguments — for future compatibility
@@ -94,6 +96,7 @@ def load_from_hub(
     kwargs["overwrite"] = overwrite
     kwargs["persistent"] = persistent
     kwargs["name"] = name
+    kwargs["token"] = token
     kwargs["config_file"] = config_file
 
     config = _get_dataset_metadata(repo_id, revision=revision, **kwargs)
@@ -277,6 +280,22 @@ def _build_config(config_dict):
         return HFHubDatasetConfig(**config_dict)
 
 
+def _instantiate_api(**kwargs):
+    token = kwargs.get("token", None) or os.getenv("HF_TOKEN")
+    if token is not None:
+        api = hfh.HfApi(token=token)
+    else:
+        api = hfh.HfApi()
+    return api
+
+
+def _get_headers(**kwargs):
+    token = kwargs.get("token", None) or os.getenv("HF_TOKEN")
+    if token is not None:
+        return {"Authorization": f"Bearer {token}"}
+    return None
+
+
 def _get_dataset_metadata(repo_id, revision=None, **kwargs):
     """
     Checks if a huggingface dataset can be converted to fiftyone. If it is,
@@ -292,7 +311,7 @@ def _get_dataset_metadata(repo_id, revision=None, **kwargs):
         filename = os.path.basename(config_file)
         all_kwargs = dict(repo_id=repo_id, filename=filename, **common_kwargs)
     else:
-        api = hfh.HfApi()
+        api = _instantiate_api(**kwargs)
         for filename in DATASET_METADATA_FILENAMES:
             if api.file_exists(repo_id, filename, **common_kwargs):
                 all_kwargs = dict(
@@ -356,11 +375,12 @@ def _get_download_dir(repo_id, split=None, subset=None, **kwargs):
     return download_dir
 
 
-def _get_split_subset_pairs(config):
+def _get_split_subset_pairs(config, **kwargs):
     repo_id = config._repo_id
     revision = config._revision
     api_url = f"{DATASETS_SERVER_URL}/splits?dataset={repo_id.replace('/', '%2F')}&revision={revision}"
-    response = requests.get(api_url).json()["splits"]
+    headers = _get_headers(**kwargs)
+    response = requests.get(api_url, headers=headers).json()["splits"]
     return [(ss["split"], ss["config"]) for ss in response]
 
 
@@ -420,22 +440,26 @@ def _get_label_field_names_and_types(config):
     return label_field_names, label_types
 
 
-def _get_parquet_dataset_features(repo_id, split, subset, revision=None):
+def _get_parquet_dataset_features(
+    repo_id, split, subset, revision=None, **kwargs
+):
     api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
     if revision is not None:
         api_url += f"&revision={revision}"
 
-    response = requests.get(api_url)
+    headers = _get_headers(**kwargs)
+    response = requests.get(api_url, headers=headers)
     features = response.json()["dataset_info"]["features"]
     return features
 
 
-def _get_num_rows(repo_id, split, subset, revision=None):
+def _get_num_rows(repo_id, split, subset, revision=None, **kwargs):
     api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
     if revision is not None:
         api_url += f"&revision={revision}"
 
-    response = requests.get(api_url)
+    headers = _get_headers(**kwargs)
+    response = requests.get(api_url, headers=headers)
     splits = response.json()["dataset_info"]["splits"]
     return splits[split]["num_examples"]
 
@@ -455,13 +479,20 @@ def _build_rows_request_url(
 
 
 def _get_rows(
-    repo_id, split, subset, start_index=0, end_index=100, revision=None
+    repo_id,
+    split,
+    subset,
+    start_index=0,
+    end_index=100,
+    revision=None,
+    **kwargs,
 ):
     length = end_index - start_index
     url = _build_rows_request_url(
         repo_id, split, subset, revision, offset=start_index, length=length
     )
-    response = requests.get(url)
+    headers = _get_headers(**kwargs)
+    response = requests.get(url, headers=headers)
     return response.json()["rows"]
 
 
@@ -648,7 +679,7 @@ def _build_parquet_to_fiftyone_conversion(config, split, subset, **kwargs):
     feature_converters = {}
 
     features = _get_parquet_dataset_features(
-        config._repo_id, split, subset, revision=config._revision
+        config._repo_id, split, subset, revision=config._revision, **kwargs
     )
 
     media_field_names = list(set(config.media_fields.values()))
@@ -690,7 +721,7 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
     )
 
     num_rows = _get_num_rows(
-        config._repo_id, split, subset, revision=config._revision
+        config._repo_id, split, subset, revision=config._revision, **kwargs
     )
     max_samples = kwargs.get("max_samples", None)
     if max_samples is not None:
@@ -783,7 +814,7 @@ def _load_parquet_files_dataset_from_config(config, **kwargs):
     overwrite = kwargs.get("overwrite", False)
     persistent = kwargs.get("persistent", False)
 
-    split_subset_pairs = _get_split_subset_pairs(config)
+    split_subset_pairs = _get_split_subset_pairs(config, **kwargs)
 
     name_kwarg = kwargs.get("name", None)
     if name_kwarg is not None:
