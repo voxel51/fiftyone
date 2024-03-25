@@ -640,14 +640,12 @@ const filterFieldsCommon = selectorFamily<string[], string>({
   get:
     (path) =>
     ({ get }) => {
-      const keys = path.split(".");
-      const parentPath = keys.slice(0, -1).join(".") || path;
-      const parent = get(field(parentPath));
+      const parent = get(field(path));
 
       const label = LABELS.includes(parent?.embeddedDocType);
       const excluded = EXCLUDED[parent?.embeddedDocType] || [];
 
-      return get(fields({ path: parentPath }))
+      return get(fields({ path }))
         .filter(({ name, ftype, subfield }) => {
           if (ftype === LIST_FIELD) {
             ftype = subfield;
@@ -662,7 +660,7 @@ const filterFieldsCommon = selectorFamily<string[], string>({
             (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
           );
         })
-        .map(({ name }) => [parentPath, name].join("."));
+        .map(({ name }) => [path, name].join("."));
     },
 });
 
@@ -700,10 +698,13 @@ export const filterFields = selectorFamily({
       }
 
       const keys = path.split(".");
-      const parentPath =
-        keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
 
-      return get(filterFieldsCommon(path)).filter((p) => p !== parentPath);
+      if (keys.length > 1) {
+        const parent = keys.slice(0, -1).join(".");
+        return get(filterFieldsCommon(parent));
+      }
+
+      return [keys[0]];
     },
 });
 
