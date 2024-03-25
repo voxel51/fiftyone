@@ -39,28 +39,54 @@ SUPPORTED_DTYPES = (
 logger = logging.getLogger(__name__)
 
 
-def load_from_hub(repo_id, revision=None, **kwargs):
+def load_from_hub(
+    repo_id,
+    revision=None,
+    split=None,
+    splits=None,
+    subset=None,
+    subsets=None,
+    max_samples=None,
+    batch_size=None,
+    overwrite=False,
+    persistent=False,
+    name=None,
+    config_file=None,
+    **kwargs,
+):
     """
     Load a dataset from the Hugging Face Hub into FiftyOne.
 
     Args:
         repo_id: the Hugging Face Hub identifier of the dataset
-        revision: the revision of the dataset to load
-        **kwargs: optional keyword arguments
-            split: the split of the dataset to load
-            splits: the splits of the dataset to load
-            subset: the subset of the dataset to load
-            subsets: the subsets of the dataset to load
-            max_samples: the maximum number of samples to load
-            batch_size: the batch size to use when loading samples
-            overwrite (True): whether to overwrite an existing dataset with the same name
-            persistent (False): whether the dataset should be persistent
-            name: the name of the dataset to create
-            config_file: the path to a config file to use to load the dataset,
-                if the repo does not have a fiftyone.yml file
+        revision (None): the revision of the dataset to load
+        split (None): the split of the dataset to load
+        splits (None): the splits of the dataset to load
+        subset (None): the subset of the dataset to load
+        subsets (None): the subsets of the dataset to load
+        max_samples (None): the maximum number of samples to load
+        batch_size (None): the batch size to use when loading samples
+        overwrite (True): whether to overwrite an existing dataset with the same name
+        persistent (False): whether the dataset should be persistent
+        name (None): the name of the dataset to create
+        config_file (None): the path to a config file to use to load the dataset,
+            if the repo does not have a fiftyone.yml file
+        **kwargs: optional keyword arguments — for future compatibility
     Returns:
         a FiftyOne Dataset
     """
+
+    kwargs["splits"] = splits
+    kwargs["split"] = split
+    kwargs["subsets"] = subsets
+    kwargs["subset"] = subset
+    kwargs["max_samples"] = max_samples
+    kwargs["batch_size"] = batch_size
+    kwargs["overwrite"] = overwrite
+    kwargs["persistent"] = persistent
+    kwargs["name"] = name
+    kwargs["config_file"] = config_file
+
     config = _get_dataset_metadata(repo_id, revision=revision, **kwargs)
     if config is None:
         raise ValueError(f"Could not find fiftyone metadata for {repo_id}")
