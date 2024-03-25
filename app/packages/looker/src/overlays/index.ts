@@ -29,7 +29,7 @@ const fromLabel = (overlayType) => (field, label) =>
   [new overlayType(field, label)];
 
 const fromLabelList = (overlayType, list_key) => (field, labels) =>
-  labels[list_key].map((label) => new overlayType(field, label));
+  labels[list_key].map((label) => new overlayType(field, label)) ?? [];
 
 export { ClassificationsOverlay };
 
@@ -46,12 +46,12 @@ export const FROM_FO = {
 
 export const POINTS_FROM_FO = {
   Detection: (label) => getDetectionPoints([label]),
-  Detections: (label) => getDetectionPoints(label.detections),
+  Detections: (label) => getDetectionPoints(label?.detections ?? []),
   Heatmap: (label) => getHeatmapPoints([label]),
   Keypoint: (label) => getKeypointPoints([label]),
-  Keypoints: (label) => getKeypointPoints(label.keypoints),
+  Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
   Polyline: (label) => getPolylinePoints([label]),
-  Poylines: (label) => getPolylinePoints(label.polylines),
+  Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
   Segmentation: (label) => getSegmentationPoints([label]),
 };
 
