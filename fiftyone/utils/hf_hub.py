@@ -1,10 +1,11 @@
-import json
 from concurrent.futures import ThreadPoolExecutor
+import json
 import logging
 import os
 from packaging.requirements import Requirement
 from PIL import Image
 import requests
+import shutil
 
 import huggingface_hub as hfh
 import yaml
@@ -17,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
 
 DATASETS_SERVER_URL = "https://datasets-server.huggingface.co"
 DEFAULT_MEDIA_TYPE = "image"
@@ -46,6 +48,113 @@ def get_cache():
         g["_files_to_download"] = []
 
     return g["_files_to_download"]
+
+
+def push_to_hub(
+    dataset,
+    repo_name,
+    description=None,
+    license=None,
+    tags=None,
+    private=True,
+    exist_ok=False,
+    dataset_type=None,
+    label_field=None,
+    frame_labels_field=None,
+    **data_card_kwargs,
+):
+    """Push a FiftyOne dataset to the Hugging Face Hub.
+
+    Args:
+        dataset: a FiftyOne dataset
+        repo_name: the name of the dataset repo to create
+        description (None): a description of the dataset
+        license (None): the license of the dataset
+        tags (None): a list of tags for the dataset
+        private (True): whether the repo should be private
+        exist_ok (False): if True, do not raise an error if repo already exists.
+        dataset_type (None): the type of the dataset to create
+        label_field (None): controls the label field(s) to export. Only
+            applicable to labeled datasets. Can be any of the following:
+            - the name of a label field to export
+            - a glob pattern of label field(s) to export
+            - a list or tuple of label field(s) to export
+            - a dictionary mapping label field names to keys to use when
+              constructing the label dictionaries to pass to the exporter
+        frame_labels_field (None): controls the frame label field(s) to export.
+            The "frames." prefix is optional. Only applicable to labeled video
+            datasets. Can be any of the following:
+            - the name of a frame label field to export
+            - a glob pattern of frame label field(s) to export
+            - a list or tuple of frame label field(s) to export
+            - a dictionary mapping frame label field names to keys to use when
+              constructing the frame label dictionaries to pass to the exporter
+        data_card_kwargs: additional keyword arguments to pass to the
+            `DatasetCard` constructor
+    """
+    if dataset_type is None:
+        dataset_type = fot.FiftyOneDataset
+
+    ### export the dataset to a temp local dir
+    tmp_dir = f"/tmp/{repo_name}"
+
+    config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
+
+    dataset.export(
+        export_dir=tmp_dir,
+        dataset_type=dataset_type,
+        label_field=label_field,
+        frame_labels_field=frame_labels_field,
+        export_media=True,
+    )
+
+    if tags is not None:
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",")]
+        tags.extend(_get_dataset_tags(dataset))
+        tags = sorted(tags)
+    else:
+        tags = _get_dataset_tags(dataset)
+
+    _populate_config_file(
+        config_filepath,
+        dataset,
+        dataset_type=dataset_type,
+        description=description,
+        license=license,
+        tags=tags,
+    )
+
+    hf_username = hfh.whoami()["name"]
+
+    ## Create the dataset repo
+    repo_id = os.path.join(hf_username, repo_name)
+    hfh.create_repo(
+        repo_id, repo_type="dataset", private=private, exist_ok=exist_ok
+    )
+
+    ## Upload the dataset to the repo
+    api = hfh.HfApi()
+
+    api.upload_folder(
+        folder_path=tmp_dir,
+        repo_id=repo_id,
+        repo_type="dataset",
+    )
+
+    ## Create the dataset card
+    card = _create_dataset_card(
+        repo_id,
+        dataset,
+        description=description,
+        license=license,
+        tags=tags,
+        **data_card_kwargs,
+    )
+    card.push_to_hub(repo_id)
+
+    ## Clean up
+    shutil.rmtree(tmp_dir)
 
 
 def load_from_hub(
@@ -148,6 +257,127 @@ class HFHubDatasetConfig(Config):
                 self.version = None
             else:
                 self.version = f"fiftyone{version}"
+
+
+DATASET_CONTENT_TEMPLATE = """
+
+This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samples} samples.
+
+```plaintext
+{dataset_printout}
+```
+
+## Installation
+If you haven't already, install FiftyOne:
+
+```bash
+pip install fiftyone
+```
+
+## Usage
+
+```python
+import fiftyone as fo
+import fiftyone.utils.huggingface_hub as fouh
+
+# Load the dataset
+dataset = fouh.load_from_hub("{repo_id}")
+## can also pass in any other dataset kwargs, like `name`, `persistent`, etc.
+
+# Launch the App
+session = fo.launch_app(dataset)
+```
+"""
+
+
+def _populate_config_file(
+    config_filepath,
+    dataset,
+    dataset_type=None,
+    description=None,
+    license=None,
+    tags=None,
+):
+
+    config_dict = {
+        "name": dataset.name,
+        "format": dataset_type.__name__,
+        "fiftyone": {
+            "version": f">={foc.VERSION}",
+        },
+        "tags": tags,
+    }
+
+    if description is not None:
+        config_dict["description"] = description
+    if license is not None:
+        config_dict["license"] = license
+
+    with open(config_filepath, "w") as f:
+        yaml.dump(config_dict, f)
+
+
+def _get_dataset_tasks(dataset):
+    """Get the tasks that can be performed on the given dataset."""
+
+    def _has_label(ftype):
+        return (
+            len(list(dataset.get_field_schema(embedded_doc_type=ftype).keys()))
+            > 0
+        )
+
+    tasks = []
+    if _has_label(fol.Classification) or _has_label(fol.Classifications):
+        tasks.append("image-classification")
+    if _has_label(fol.Detections):
+        tasks.append("object-detection")
+    if _has_label(fol.Segmentation):
+        tasks.append("semantic-segmentation")
+    return tasks
+
+
+def _get_dataset_tags(dataset):
+    """Get the tags of the given dataset."""
+    tags = ["fiftyone"]
+    tags.append(dataset.media_type)
+    tags.extend(_get_dataset_tasks(dataset))
+    tags.extend(dataset.tags)
+    return sorted(list(set(tags)))
+
+
+def _generate_dataset_summary(repo_id, dataset):
+    """Generate a summary of the given dataset."""
+    return DATASET_CONTENT_TEMPLATE.format(
+        dataset_printout=dataset.__repr__(),
+        num_samples=len(dataset),
+        repo_id=repo_id,
+    )
+
+
+def _create_dataset_card(
+    repo_id, dataset, tags=None, license=None, **dataset_card_kwargs
+):
+    """Create a `DatasetCard` for the given dataset."""
+
+    card_inputs = {
+        "language": "en",
+        "annotations_creators": [],
+        "task_categories": _get_dataset_tasks(dataset),
+        "task_ids": [],
+        "pretty_name": dataset.name,
+        "license": license,
+        "tags": tags,
+    }
+
+    for key, value in dataset_card_kwargs.items():
+        card_inputs[key] = value
+
+    dataset_summary = _generate_dataset_summary(repo_id, dataset)
+    if dataset_summary is not None:
+        card_inputs["dataset_summary"] = dataset_summary
+
+    card_data = hfh.DatasetCardData(**card_inputs)
+    return hfh.DatasetCard.from_template(card_data)
 
 
 def _parse_split_kwargs(**kwargs):
@@ -298,7 +528,7 @@ def _get_headers(**kwargs):
 
 def _get_dataset_metadata(repo_id, revision=None, **kwargs):
     """
-    Checks if a huggingface dataset can be converted to fiftyone. If it is,
+    Checks if a Hugging Face dataset can be converted to fiftyone. If it is,
     it returns the metadata config loaded from the dataset's metadata file.
 
     If config_file kwargs is provided, it will use that file to load the config
