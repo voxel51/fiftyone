@@ -263,10 +263,6 @@ DATASET_CONTENT_TEMPLATE = """
 
 This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samples} samples.
 
-```plaintext
-{dataset_printout}
-```
-
 ## Installation
 If you haven't already, install FiftyOne:
 
@@ -348,7 +344,6 @@ def _get_dataset_tags(dataset):
 def _generate_dataset_summary(repo_id, dataset):
     """Generate a summary of the given dataset."""
     return DATASET_CONTENT_TEMPLATE.format(
-        dataset_printout=dataset.__repr__(),
         num_samples=len(dataset),
         repo_id=repo_id,
     )
@@ -591,7 +586,7 @@ def _get_download_dir(repo_id, split=None, subset=None, **kwargs):
 
     path_walk = [fo.config.default_dataset_dir, "huggingface", "hub", repo_id]
 
-    ## Note: for now don't support multiple revisions storage..
+    ## Note: for now don't support multiple revisions storage
     if subset is not None:
         path_walk.append(subset)
     if split is not None:
@@ -608,7 +603,11 @@ def _get_download_dir(repo_id, split=None, subset=None, **kwargs):
 def _get_split_subset_pairs(config, **kwargs):
     repo_id = config._repo_id
     revision = config._revision
-    api_url = f"{DATASETS_SERVER_URL}/splits?dataset={repo_id.replace('/', '%2F')}&revision={revision}"
+    api_url = (
+        f"{DATASETS_SERVER_URL}/splits?dataset={repo_id.replace('/', '%2F')}"
+    )
+    if revision is not None:
+        api_url += f"&revision={revision}"
     headers = _get_headers(**kwargs)
     response = requests.get(api_url, headers=headers).json()["splits"]
     return [(ss["split"], ss["config"]) for ss in response]
