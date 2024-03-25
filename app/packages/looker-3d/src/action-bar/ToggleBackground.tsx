@@ -5,7 +5,7 @@ import { ActionItem } from "../containers";
 import { isFo3dBackgroundOnAtom } from "../state";
 
 export const ToggleFo3dBackground = () => {
-  const [isBackgrounOn, setIsBackgrounOn] = recoil.useRecoilState(
+  const [isBackgroundOn, setIsBackgroundOn] = recoil.useRecoilState(
     isFo3dBackgroundOnAtom
   );
   const { primary } = useTheme();
@@ -15,10 +15,10 @@ export const ToggleFo3dBackground = () => {
       <WallpaperIcon
         sx={{ fontSize: 24 }}
         style={{
-          color: isBackgrounOn ? primary.main : "inherit",
+          color: isBackgroundOn ? primary.main : "inherit",
         }}
         onClick={(e) => {
-          setIsBackgrounOn((prev) => !prev);
+          setIsBackgroundOn((prev) => !prev);
           e.stopPropagation();
           e.preventDefault();
         }}
