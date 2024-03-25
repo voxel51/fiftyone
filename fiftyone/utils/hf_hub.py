@@ -411,11 +411,11 @@ def _build_media_field_converter(
         else:
             url = row_content[media_field_name]
 
+        sample_dict[media_field_key] = filepath
         try:
             ## create the file if it doesn't exist
             if not os.path.exists(filepath):
                 Image.open(requests.get(url, stream=True).raw).save(filepath)
-            sample_dict[media_field_key] = filepath
         except:
             logger.warning(f"Failed to download image from {url}")
 
