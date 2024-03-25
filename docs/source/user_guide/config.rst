@@ -123,10 +123,10 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
-|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                 |
+|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
 |                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
 |                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+

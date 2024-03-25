@@ -299,7 +299,7 @@ customize your similarity queries. These parameters include:
     create. If none is provided, a new collection will be created
 -   **metric** (*"dotproduct"*): the embedding distance metric to use when
     creating a new index. The supported values are
-    ``("dotproduct", "euclidean")``
+    ``("cosine", "dotproduct", "euclidean")``
 -   **consistency_level** (*"Session"*):  the consistency level to use.
     Supported values are ``("Strong", "Session", "Bounded", "Eventually")``
 

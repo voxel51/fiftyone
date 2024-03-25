@@ -80,6 +80,7 @@ def get_view(
     extended_stages=None,
     sample_filter=None,
     reload=True,
+    awaitable=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -96,78 +97,86 @@ def get_view(
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        reload (None): whether to reload the dataset
+        reload (True): whether to reload the dataset
+        awaitable (False): whether to return an awaitable coroutine
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    if isinstance(dataset, str):
-        dataset = fod.load_dataset(dataset)
 
-    if reload:
-        dataset.reload()
+    def run(dataset, stages):
+        if isinstance(dataset, str):
+            dataset = fod.load_dataset(dataset)
 
-    if view_name is not None:
-        return dataset.load_saved_view(view_name)
+        if reload:
+            dataset.reload()
 
-    if stages:
-        view = fov.DatasetView._build(dataset, stages)
-    else:
-        view = dataset.view()
+        if view_name is not None:
+            return dataset.load_saved_view(view_name)
 
-    if sample_filter is not None:
-        if sample_filter.group:
-            unselected = all(
-                not isinstance(stage, fosg.SelectGroupSlices)
-                for stage in view._stages
-            )
-            group_field = dataset.group_field
-            if unselected and sample_filter.group.slice:
-                stages = view._stages
-                view = dataset.select_group_slices(_force_mixed=True)
+        if stages:
+            view = fov.DatasetView._build(dataset, stages)
+        else:
+            view = dataset.view()
 
-                if sample_filter.group.id:
+        if sample_filter is not None:
+            if sample_filter.group:
+                unselected = all(
+                    not isinstance(stage, fosg.SelectGroupSlices)
+                    for stage in view._stages
+                )
+                group_field = dataset.group_field
+                if unselected and sample_filter.group.slice:
+                    stages = view._stages
+                    view = dataset.select_group_slices(_force_mixed=True)
+
+                    if sample_filter.group.id:
+                        view = view.match(
+                            {
+                                group_field
+                                + "._id": {
+                                    "$in": [ObjectId(sample_filter.group.id)]
+                                }
+                            }
+                        )
+
+                    for stage in stages:
+                        view = view._add_view_stage(stage, validate=False)
+
+                else:
+                    if sample_filter.group.slice:
+                        view.group_slice = sample_filter.group.slice
+
+                    if sample_filter.group.id:
+                        view = fov.make_optimized_select_view(
+                            view, sample_filter.group.id, groups=True
+                        )
+
+                if sample_filter.group.slices:
                     view = view.match(
                         {
                             group_field
-                            + "._id": {
-                                "$in": [ObjectId(sample_filter.group.id)]
-                            }
+                            + ".name": {"$in": sample_filter.group.slices}
                         }
                     )
 
-                for stage in stages:
-                    view = view._add_view_stage(stage, validate=False)
+            elif sample_filter.id:
+                view = fov.make_optimized_select_view(view, sample_filter.id)
 
-            else:
-                if sample_filter.group.slice:
-                    view.group_slice = sample_filter.group.slice
+        if filters or extended_stages or pagination_data:
+            view = get_extended_view(
+                view,
+                filters,
+                pagination_data=pagination_data,
+                extended_stages=extended_stages,
+            )
 
-                if sample_filter.group.id:
-                    view = fov.make_optimized_select_view(
-                        view, sample_filter.group.id, groups=True
-                    )
+        return view
 
-            if sample_filter.group.slices:
-                view = view.match(
-                    {
-                        group_field
-                        + ".name": {"$in": sample_filter.group.slices}
-                    }
-                )
+    if awaitable:
+        return fou.run_sync_task(run, dataset, stages)
 
-        elif sample_filter.id:
-            view = fov.make_optimized_select_view(view, sample_filter.id)
-
-    if filters or extended_stages or pagination_data:
-        view = get_extended_view(
-            view,
-            filters,
-            pagination_data=pagination_data,
-            extended_stages=extended_stages,
-        )
-
-    return view
+    return run(dataset, stages)
 
 
 def get_extended_view(

@@ -1,6 +1,6 @@
 """
 Utilities for working with
-`Hugging Face Transformers <hhttps://huggingface.co/docs/transformers>`_.
+`Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -774,11 +774,6 @@ class FiftyOneZeroShotTransformerForObjectDetection(
     def predict(self, arg):
         target_sizes = [arg.shape[:-1][::-1]]
         inputs = self._process_inputs(arg)
-        return self._predict(inputs, target_sizes)
-
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self._process_inputs(args)
         return self._predict(inputs, target_sizes)
 
 

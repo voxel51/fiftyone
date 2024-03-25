@@ -6,16 +6,21 @@ Utilities for working with
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 
 import numpy as np
 from PIL import Image
+
+import eta.core.utils as etau
 
 from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
+import fiftyone.zoo as foz
+import fiftyone.zoo.models as fozm
 
 ultralytics = fou.lazy_import("ultralytics")
 
@@ -282,26 +287,28 @@ def _to_keypoints(result, confidence_thresh=None):
     return fol.Keypoints(keypoints=keypoints)
 
 
-class FiftyOneYOLOConfig(Config):
+class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
     """Configuration for a :class:`FiftyOneYOLOModel`.
 
     Args:
         model (None): an ``ultralytics.YOLO`` model to use
-        checkpoint_path (None): the path to a checkpoint file to load
+        model_name (None): the name of an ``ultralytics.YOLO`` model to load
+        model_path (None): the path to an ``ultralytics.YOLO`` model checkpoint
+        classes (None): an optional list of classes
     """
 
     def __init__(self, d):
         self.model = self.parse_raw(d, "model", default=None)
-        self.checkpoint_path = self.parse_string(
-            d, "checkpoint_path", default=None
-        )
+        self.model_name = self.parse_raw(d, "model_name", default=None)
+        self.model_path = self.parse_raw(d, "model_path", default=None)
+        self.classes = self.parse_array(d, "classes", default=None)
 
 
 class FiftyOneYOLOModel(Model):
     """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
 
     Args:
-        config: a `FiftyOneYOLOConfig`
+        config: a `FiftyOneYOLOModelConfig`
     """
 
     def __init__(self, config):
@@ -312,7 +319,17 @@ class FiftyOneYOLOModel(Model):
         if config.model is not None:
             return config.model
 
-        return ultralytics.YOLO(config.checkpoint_path)
+        if config.model_path is not None:
+            model = ultralytics.YOLO(config.model_path)
+        elif config.model_name is not None:
+            model = ultralytics.YOLO(config.model_name)
+        else:
+            model = ultralytics.YOLO()
+
+        if config.classes is not None:
+            model.set_classes(config.classes)
+
+        return model
 
     @property
     def media_type(self):
@@ -341,12 +358,19 @@ class FiftyOneYOLOModel(Model):
         return self._format_predictions(predictions[0])
 
 
+class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
 class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO detection model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLODetectionModelConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
 
     def _format_predictions(self, predictions):
         return to_detections(predictions)
@@ -357,11 +381,15 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         return self._format_predictions(predictions)
 
 
+class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLOSegmentationModelConfig`
     """
 
     @property
@@ -373,11 +401,15 @@ class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
         return to_instances(predictions)
 
 
+class FiftyOneYOLOPoseModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
 class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO pose model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLOPoseModelConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -390,17 +422,17 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
 
 
 def _convert_yolo_detection_model(model):
-    config = FiftyOneYOLOConfig({"model": model})
+    config = FiftyOneYOLODetectionModelConfig({"model": model})
     return FiftyOneYOLODetectionModel(config)
 
 
 def _convert_yolo_segmentation_model(model):
-    config = FiftyOneYOLOConfig({"model": model})
+    config = FiftyOneYOLOSegmentationModelConfig({"model": model})
     return FiftyOneYOLOSegmentationModel(config)
 
 
 def _convert_yolo_pose_model(model):
-    config = FiftyOneYOLOConfig({"model": model})
+    config = FiftyOneYOLOPoseModelConfig({"model": model})
     return FiftyOneYOLOPoseModel(config)
 
 

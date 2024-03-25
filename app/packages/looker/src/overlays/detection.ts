@@ -11,7 +11,6 @@ import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
-  _cls: "Detection";
   mask?: {
     data: OverlayMask;
     image: ArrayBuffer;

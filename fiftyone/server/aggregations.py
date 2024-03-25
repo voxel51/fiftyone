@@ -114,7 +114,7 @@ async def aggregate_resolver(
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
-    view = fosv.get_view(
+    view = await fosv.get_view(
         form.dataset,
         view_name=form.view_name or None,
         stages=form.view,
@@ -129,6 +129,7 @@ async def aggregate_resolver(
                 else None
             )
         ),
+        awaitable=True,
     )
 
     slice_view = (

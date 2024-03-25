@@ -756,7 +756,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_sample_fields(
                 include_private=True
             )
@@ -788,7 +788,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter, frames=True
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_frame_fields(
                 include_private=True
             )
@@ -7027,11 +7027,11 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts a collection by similiarity to a specified query.
+    """Sorts a collection by similarity to a specified query.
 
     In order to use this stage, you must first use
     :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-    similiarity.
+    similarity.
 
     Examples::
 
@@ -7128,7 +7128,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def reverse(self):
-        """Whether to sort by least similiarity."""
+        """Whether to sort by least similarity."""
         return self._reverse
 
     @property

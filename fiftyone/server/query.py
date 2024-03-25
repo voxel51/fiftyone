@@ -5,6 +5,7 @@ FiftyOne Server queries.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
@@ -335,6 +336,7 @@ class Dataset:
             serialized_view=view,
             saved_view_slug=saved_view_slug,
             dicts=False,
+            update_last_loaded_at=True,
         )
 
 
@@ -409,6 +411,10 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
+    @gql.field
+    async def estimated_dataset_count(self, info: Info = None) -> int:
+        return await info.context.db.datasets.estimated_document_count()
+
     dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
@@ -461,16 +467,6 @@ class Query(fosa.AggregateQuery):
         return None
 
     stage_definitions = gql.field(stage_definitions)
-
-    @gql.field
-    def teams_submission(self) -> bool:
-        isfile = os.path.isfile(foc.TEAMS_PATH)
-        if isfile:
-            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
-        else:
-            submitted = False
-
-        return submitted
 
     @gql.field
     def uid(self) -> str:
@@ -573,12 +569,17 @@ async def serialize_dataset(
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
     dicts=True,
+    update_last_loaded_at=False,
 ) -> Dataset:
     def run():
         if not fod.dataset_exists(dataset_name):
             return None
 
         dataset = fod.load_dataset(dataset_name)
+
+        if update_last_loaded_at:
+            dataset._update_last_loaded_at(force=True)
+
         dataset.reload()
         view_name = None
         try:
@@ -676,9 +677,11 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
     setattr(
         dataset,
         "estimated_frame_count",
-        fo_dataset._frame_collection.estimated_document_count()
-        if fo_dataset._frame_collection_name
-        else None,
+        (
+            fo_dataset._frame_collection.estimated_document_count()
+            if fo_dataset._frame_collection_name
+            else None
+        ),
     )
 
 

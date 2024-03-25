@@ -84,7 +84,7 @@ You can download plugins using any of the methods described below:
 Your plugins directory
 ______________________
 
-All plugins must be stored (and are automatically
+All plugins must be stored and are automatically
 :ref:`downloaded to <plugins-download>` your plugins directory in order for
 FiftyOne to find them.
 
@@ -183,8 +183,8 @@ downloaded or created locally:
 
 .. code-block:: text
 
-    uri                                          enabled   builtin   unlisted   on_startup
-    -------------------------------------------  --------  --------  ---------  -----------
+    uri                                          enabled   builtin   unlisted
+    -------------------------------------------  --------  --------  ---------
     @voxel51/annotation/request_annotations      ✓
     @voxel51/annotation/load_annotations         ✓
     @voxel51/annotation/get_annotation_info      ✓
@@ -274,7 +274,7 @@ available metadata about a plugin:
     url                     https://github.com/voxel51/fiftyone-plugins/.../annotation/README.md
     license                 Apache 2.0
     description             Utilities for integrating FiftyOne with annotation tools
-    fiftyone_compatibility  *
+    fiftyone_compatibility  >=0.22
     operators               request_annotations
                             load_annotations
                             get_annotation_info
@@ -309,20 +309,25 @@ view the available metadata about an individual operator within a plugin:
 
 .. code-block:: text
 
-    key                        value
-    -------------------------  ----------------------
-    name                       import_samples
-    label                      Import samples
+    key                                  value
+    -----------------------------------  ----------------------
+    name                                 import_samples
+    label                                Import samples
     description
-    execute_as_generator       True
-    unlisted                   False
-    dynamic                    True
-    on_startup                 False
-    disable_schema_validation  False
+    execute_as_generator                 True
+    unlisted                             False
+    dynamic                              True
+    on_startup                           False
+    on_dataset_open                      False
+    disable_schema_validation            False
     delegation_target
     icon
-    dark_icon                  /assets/icon-dark.svg
-    light_icon                 /assets/icon-light.svg
+    dark_icon                            /assets/icon-dark.svg
+    light_icon                           /assets/icon-light.svg
+    allow_immediate_execution            True
+    allow_delegated_execution            False
+    default_choice_to_delegated          False
+    resolve_execution_options_on_change  True
 
 Installing plugin requirements
 ------------------------------
@@ -618,6 +623,32 @@ for the operator's `ctx.params` and then passes them to
 :func:`execute_operator() <fiftyone.operators.execute_operator>`, which
 performs the execution.
 
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    op = foo.get_operator("@an-operator/with-results")
+
+    result = op(...)
+    print(result.result) # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        op = foo.get_operator("@an-operator/with-results")
+
+        result = await op(...)
+        print(result.result) # {...}
+
 .. _delegating-function-calls:
 
 Delegating function calls
@@ -705,7 +736,7 @@ You can also programmatically execute any operator by directly calling
         )
     }
 
-    result = foo.execute_operator("@voxel51/io/export_samples", ctx)
+    foo.execute_operator("@voxel51/io/export_samples", ctx)
 
 In the above example, the `delegate=True/False` parameter controls whether
 execution happens immediately or is
@@ -727,6 +758,28 @@ as follows:
     inspect the operator's
     :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
     implementation to understand what parameters are required.
+
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    result = foo.execute_operator("@an-operator/with-results", ctx)
+    print(result.result)  # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        result = await foo.execute_operator("@an-operator/with-results", ctx)
+        print(result.result)  # {...}
 
 .. _requesting-operator-delegation:
 
@@ -811,7 +864,7 @@ Managing delegated operations
 _____________________________
 
 The :ref:`fiftyone delegated <cli-fiftyone-delegated>` CLI command contains a
-number of useful utilties for viewing the status of your delegated operations.
+number of useful utilities for viewing the status of your delegated operations.
 
 Listing delegated operations
 ----------------------------
