@@ -721,17 +721,14 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
     if max_samples is not None:
         num_rows = min(num_rows, max_samples)
 
-    batch_size = min(
-        kwargs.get("batch_size", DATASETS_MAX_BATCH_SIZE),
-        DATASETS_MAX_BATCH_SIZE,
-    )
-    if (
-        kwargs.get("batch_size", None) is not None
-        and batch_size != kwargs["batch_size"]
-    ):
+    batch_size = kwargs.get("batch_size", DATASETS_MAX_BATCH_SIZE)
+    if batch_size is not None and batch_size > DATASETS_MAX_BATCH_SIZE:
         logger.debug(
-            f"Batch size {kwargs['batch_size']} is larger than the maximum batch size {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
+            f"Batch size {batch_size} is larger than the maximum batch size {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
         )
+        batch_size = DATASETS_MAX_BATCH_SIZE
+    elif batch_size is None:
+        batch_size = DATASETS_MAX_BATCH_SIZE
 
     logger.info(
         f"Adding {num_rows} samples to dataset {dataset.name} from {config.name} ({split}, {subset}) in batch sizes of {batch_size}..."
