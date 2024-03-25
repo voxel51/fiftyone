@@ -188,7 +188,10 @@ export const modalAggregationPaths = selectorFamily({
             (path) => get(schemaAtoms.expandPath(path))
           );
 
-      paths = paths.map((p) => get(schemaAtoms.modalFilterFields(p))).flat();
+      paths = paths
+        .sort()
+        .map((p) => get(schemaAtoms.modalFilterFields(p)))
+        .flat();
 
       const numeric = get(schemaAtoms.isNumericField(params.path));
       if (params.mixed || get(groupId)) {

@@ -30,7 +30,7 @@ import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
-import { isLabelPath } from "./labels";
+import { labelPathsSetExpanded } from "./labels";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -641,18 +641,11 @@ const filterFieldsCommon = selectorFamily<string[], string>({
     (path) =>
     ({ get }) => {
       const keys = path.split(".");
-      const parentPath =
-        keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
+      const parentPath = keys.slice(0, -1).join(".") || path;
       const parent = get(field(parentPath));
-      let topParentPath = parentPath;
-      if (parent.ftype === LIST_FIELD) {
-        topParentPath = parentPath.split(".").slice(0, -1).join(".");
-      }
 
-      const topParent = get(field(topParentPath));
-
-      const label = LABELS.includes(topParent?.embeddedDocType);
-      const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
+      const label = LABELS.includes(parent?.embeddedDocType);
+      const excluded = EXCLUDED[parent?.embeddedDocType] || [];
 
       return get(fields({ path: parentPath }))
         .filter(({ name, ftype, subfield }) => {
@@ -678,18 +671,16 @@ export const modalFilterFields = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let labelPath;
+      const labelPaths = get(labelPathsSetExpanded);
 
-      if (get(isLabelPath(path))) {
-        labelPath = expandPath(path);
-      } else {
-        const keys = path.split(".");
-        labelPath = keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
+      if (!labelPaths.has(path)) {
+        path = path.split(".").slice(0, -1).join(".");
+        if (labelPaths.has(path)) {
+          throw new Error(`unexpected modalFilterField path '${path}'`);
+        }
       }
 
-      return Array.from(
-        new Set([...get(filterFieldsCommon(path)), labelPath])
-      ).sort();
+      return [path, ...get(filterFieldsCommon(path)).flat()].sort();
     },
 });
 
@@ -701,12 +692,18 @@ export const filterFields = selectorFamily({
       const f = get(field(path));
 
       if (
-        f.ftype === EMBEDDED_DOCUMENT_FIELD ||
-        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
+        !f ||
+        f?.ftype === EMBEDDED_DOCUMENT_FIELD ||
+        (f?.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
       ) {
         return [path];
       }
-      return get(filterFieldsCommon(path));
+
+      const keys = path.split(".");
+      const parentPath =
+        keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
+
+      return get(filterFieldsCommon(path)).filter((p) => p !== parentPath);
     },
 });
 
