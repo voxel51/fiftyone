@@ -141,6 +141,10 @@ export const aggregation = selectorFamily({
         ? get(modalAggregationPaths({ path, mixed: params.mixed }))
         : get(schemaAtoms.filterFields(path));
 
+      if (!paths.length) {
+        throw new Error(JSON.stringify(paths));
+      }
+
       return get(
         aggregations({
           ...params,
