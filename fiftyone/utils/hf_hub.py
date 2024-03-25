@@ -184,13 +184,13 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
             default_media_fields: the default media fields of the dataset
             additional_media_fields: the additional media fields of the dataset
         """
-        self.label_fields = kwargs.get("label_fields", None)
         self.media_type = kwargs.get("media_type", DEFAULT_MEDIA_TYPE)
         # self.detection_format = kwargs.get("detection_format", None)
 
         self._build_name(kwargs)
         # self._build_mask_targets(kwargs)
         self._build_media_fields_dict(kwargs)
+        self._build_label_fields_dict(kwargs)
         self._build_allowed_splits(kwargs)
         self._build_allowed_subsets(kwargs)
         super().__init__(**kwargs)
@@ -216,6 +216,14 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
         additional_media_fields = kwargs.get("additional_media_fields", {})
         media_fields_dict.update(additional_media_fields)
         self.media_fields = media_fields_dict
+
+    def _build_label_fields_dict(self, kwargs):
+        self.label_fields = kwargs.get("label_fields", {})
+        label_types = ("classification", "detection", "mask")
+        for label_type in label_types:
+            label_fields = kwargs.get(f"{label_type}_fields", None)
+            if label_fields is not None:
+                self.label_fields[label_type] = label_fields.split(",")
 
     # def _build_mask_targets(self, kwargs):
     #     self.mask_targets = kwargs.get("mask_targets", None)
@@ -710,10 +718,10 @@ def _load_parquet_files_dataset_from_config(config, **kwargs):
     logger.info("Loading parquet files dataset from config")
     allowed_splits = _get_allowed_splits(config, **kwargs)
     allowed_subsets = _get_allowed_subsets(config, **kwargs)
-    if "splits" in kwargs:
-        kwargs.pop("splits")
-    if "split" in kwargs:
-        kwargs.pop("split")
+
+    for key in ["splits", "split", "subsets", "subset"]:
+        if key in kwargs:
+            kwargs.pop(key)
 
     overwrite = kwargs.get("overwrite", False)
     persistent = kwargs.get("persistent", False)
