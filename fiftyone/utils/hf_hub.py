@@ -619,9 +619,8 @@ def _load_dataset_from_config(config, **kwargs):
     if isinstance(config, HFHubParquetFilesDatasetConfig):
         return _load_parquet_files_dataset_from_config(config, **kwargs)
     else:
-        ## TODO: Implement this
-        pass
-        # return _load_fiftyone_dataset_from_config(config, **kwargs)
+        return _load_fiftyone_dataset_from_config(config, **kwargs)
+        #
 
 
 def _get_allowed_splits(config, **kwargs):
@@ -1021,6 +1020,48 @@ def _add_dataset_metadata(dataset, config):
     if config._revision is not None:
         dataset.info["revision"] = config._revision
     dataset.save()
+
+
+def _resolve_dataset_name(config, **kwargs):
+    name = kwargs.get("name", None)
+    if name is None:
+        name = config.name
+    return name
+
+
+def _load_fiftyone_dataset_from_config(config, **kwargs):
+    logger.info("Loading parquet files dataset from config")
+    overwrite = kwargs.get("overwrite", False)
+    persistent = kwargs.get("persistent", False)
+    max_samples = kwargs.get("max_samples", None)
+    splits = _parse_split_kwargs(**kwargs)
+
+    download_dir = _get_download_dir(config._repo_id, **kwargs)
+    hfh.snapshot_download(
+        repo_id=config._repo_id, repo_type="dataset", local_dir=download_dir
+    )
+
+    dataset_type_name = config._format.strip()
+
+    dataset_type = getattr(
+        __import__("fiftyone.types", fromlist=[dataset_type_name]),
+        dataset_type_name,
+    )
+
+    dataset_kwargs = {
+        "persistent": persistent,
+        "overwrite": overwrite,
+        "max_samples": max_samples,
+        "splits": splits,
+        "dataset_type": dataset_type,
+    }
+
+    name = _resolve_dataset_name(config, **kwargs)
+    if name is not None:
+        dataset_kwargs["name"] = name
+
+    dataset = fod.Dataset.from_dir(download_dir, **dataset_kwargs)
+    return dataset
 
 
 def _load_parquet_files_dataset_from_config(config, **kwargs):
