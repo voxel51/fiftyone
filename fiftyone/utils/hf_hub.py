@@ -625,14 +625,8 @@ def _build_label_field_converter(
         else:
             url = row_content[field_name]
 
-        try:
-            ## create the file if it doesn't exist
-            if not os.path.exists(filepath):
-                Image.open(requests.get(url, stream=True).raw).save(filepath)
-
-            sample_dict[field_name] = fol.Segmentation(mask_path=filepath)
-        except:
-            logger.warning(f"Failed to download mask from {url}")
+        sample_dict[field_name] = fol.Segmentation(mask_path=filepath)
+        get_cache().append((url, filepath))
 
     def convert_label_field(sample_dict, row):
         pass
