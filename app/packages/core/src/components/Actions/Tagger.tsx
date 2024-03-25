@@ -368,6 +368,9 @@ const useTagCallback = (
             selectedSamples: await snapshot.getPromise(fos.selectedSamples),
             targetLabels,
             view: await snapshot.getPromise(fos.view),
+            extended: !modal
+              ? await snapshot.getPromise(fos.extendedStages)
+              : null,
           }),
           current_frame: lookerRef?.current?.frameNumber,
           changes,
@@ -418,7 +421,9 @@ const useLabelPlaceHolder = (
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
-    const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
+    const selectedLabelCount = useRecoilValue(
+      numItemsInSelection({ labels: true, modal })
+    );
     const totalLabelCount = useRecoilValue(
       fos.labelCount({ modal, extended: true })
     );
