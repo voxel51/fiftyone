@@ -13,6 +13,7 @@ import fiftyone.constants as foc
 from fiftyone.core.config import Config
 import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
+import fiftyone.core.metadata as fom
 from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 
@@ -423,8 +424,8 @@ def _build_media_field_converter(
 
 
 def _get_image_shape(image_path):
-    with Image.open(image_path) as img:
-        return img.size
+    metadata = fom.ImageMetadata.build_for(image_path)
+    return (metadata.width, metadata.height)
 
 
 def _get_detection_label_field_name(feature):
