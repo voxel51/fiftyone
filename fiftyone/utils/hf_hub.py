@@ -211,7 +211,14 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
     def _build_media_fields_dict(self, kwargs):
         media_fields_dict = kwargs.get("default_media_fields", {})
         if media_fields_dict.get("filepath", None) is None:
-            media_fields_dict["filepath"] = DEFAULT_IMAGE_FILEPATH_FEATURE
+            media_fields_dict["filepath"] = kwargs.get(
+                "filepath", DEFAULT_IMAGE_FILEPATH_FEATURE
+            )
+        if (
+            media_fields_dict.get("thumbnail_path", None) is None
+            and kwargs.get("thumbnail_path", None) is not None
+        ):
+            media_fields_dict["thumbnail_path"] = kwargs["thumbnail_path"]
 
         additional_media_fields = kwargs.get("additional_media_fields", {})
         media_fields_dict.update(additional_media_fields)
@@ -223,7 +230,10 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
         for label_type in label_types:
             label_fields = kwargs.get(f"{label_type}_fields", None)
             if label_fields is not None:
-                self.label_fields[label_type] = label_fields.split(",")
+                if isinstance(label_fields, str):
+                    self.label_fields[label_type] = label_fields.split(",")
+                elif isinstance(label_fields, list):
+                    self.label_fields[label_type] = label_fields
 
     # def _build_mask_targets(self, kwargs):
     #     self.mask_targets = kwargs.get("mask_targets", None)
@@ -239,8 +249,19 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
     #             self.mask_targets = json.load(f)
 
 
+def _parse_format_string(format_str):
+    if "parquet" in format_str.lower():
+        return "ParquetFilesDataset"
+    else:
+        return format_str
+
+
 def _build_config(config_dict):
     format = config_dict.get("format", None)
+    if format is None:
+        raise ValueError("Dataset config must have a format key")
+
+    format = _parse_format_string(format)
     if format == "ParquetFilesDataset":
         return HFHubParquetFilesDatasetConfig(**config_dict)
     else:
@@ -274,11 +295,15 @@ def _get_dataset_metadata(repo_id, revision=None, **kwargs):
                 config_file = hfh.hf_hub_download(**all_kwargs)
                 break
 
-    if config_file is None:
+    if config_file is None and "format" not in kwargs:
         return None
-
-    with open(config_file, "r") as f:
-        config_dict = yaml.safe_load(f)
+    elif config_file is None:
+        config_dict = kwargs
+        config_dict.update(**common_kwargs)
+        config_dict["repo_id"] = repo_id
+    else:
+        with open(config_file, "r") as f:
+            config_dict = yaml.safe_load(f)
         config_dict.update(**all_kwargs)
     return _build_config(config_dict)
 
