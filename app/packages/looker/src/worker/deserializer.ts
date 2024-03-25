@@ -14,7 +14,7 @@ export const DeserializerFactory = {
     }
   },
   Detections: (labels, buffers) => {
-    labels.detections.forEach((label) =>
+    labels?.detections?.forEach((label) =>
       DeserializerFactory.Detection(label, buffers)
     );
   },

@@ -135,6 +135,10 @@ export const PainterFactory = (requestColor) => ({
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
+    if (!labels?.detections) {
+      return;
+    }
+
     const promises = labels.detections.map((label) =>
       PainterFactory(requestColor).Detection(
         field,
