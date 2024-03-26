@@ -97,6 +97,11 @@ export const isPointcloudDataset = selector({
   get: ({ get }) => get(atoms.mediaType) === "point_cloud",
 });
 
+export const is3DDataset = selector({
+  key: "is3DDataset",
+  get: ({ get }) => get(atoms.mediaType) === "three_d",
+});
+
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {

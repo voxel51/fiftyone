@@ -4,9 +4,9 @@ import { Checkbox, FormControlLabel } from "@mui/material";
 import Slider from "@mui/material/Slider";
 import { useCallback, useMemo, useState } from "react";
 import * as recoil from "recoil";
+import { ACTION_SET_POINT_SIZE } from "../constants";
 import { ActionItem } from "../containers";
 import {
-  ACTION_SET_POINT_SIZE,
   currentActionAtom,
   currentPointSizeAtom,
   isPointSizeAttenuatedAtom,

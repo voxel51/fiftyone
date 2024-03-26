@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc6825cddd839cb49f62c044dd1b6e44>>
+ * @generated SignedSource<<2bfaeff6556c1054f23aba005470ba3b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
+export type MediaType = "group" | "image" | "point_cloud" | "three_d" | "video" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type mediaTypeFragment$data = {
   readonly mediaType: MediaType | null;

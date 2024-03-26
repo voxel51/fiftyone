@@ -178,7 +178,7 @@ export const process3DLabels = async (schema: Schema, sample: Sample) => {
     .find(([_, d]) =>
       d.embeddedDocType?.endsWith(".OrthographicProjectionMetadata")
     )
-    ?.at(0)[0];
+    ?.at(0) as string;
 
   const painterFactory = PainterFactory3D(
     orthographicProjectionField

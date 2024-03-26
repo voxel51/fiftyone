@@ -29,9 +29,7 @@ const GroupMediaVisibilityPopout = ({
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
     fos.groupMedia3dVisibleSetting
   );
-  const pointCloudSliceExists = useRecoilValue(fos.groupMediaTypesSet).has(
-    "point_cloud"
-  );
+  const threeDSliceExists = useRecoilValue(fos.has3dSlice);
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
@@ -53,7 +51,7 @@ const GroupMediaVisibilityPopout = ({
   const checkboxes = useMemo(() => {
     const toReturn: React.ReactNode[] = [];
 
-    if (pointCloudSliceExists) {
+    if (threeDSliceExists) {
       toReturn.push(
         <Checkbox
           key="checkbox-3d-viewer"
@@ -75,7 +73,7 @@ const GroupMediaVisibilityPopout = ({
           value={isCarouselVisible}
           muted={
             isImavidInNestedGroup ||
-            (!(isSlotVisible && pointCloudSliceExists) && !isMainVisible)
+            (!(isSlotVisible && threeDSliceExists) && !isMainVisible)
           }
           setValue={(value) => setIsCarouselVisible(value)}
         />
@@ -90,7 +88,7 @@ const GroupMediaVisibilityPopout = ({
         muted={
           isImavidInNestedGroup ||
           toReturn.length === 0 ||
-          (!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible)
+          (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
         }
         setValue={(value) => setIsMainVisible(value)}
       />
@@ -98,7 +96,7 @@ const GroupMediaVisibilityPopout = ({
 
     return toReturn;
   }, [
-    pointCloudSliceExists,
+    threeDSliceExists,
     isSequentialAccessAllowed,
     isCarouselVisible,
     isMainVisible,

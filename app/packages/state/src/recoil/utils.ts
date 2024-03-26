@@ -14,7 +14,7 @@ import { Nullable } from "vitest";
 export const getSampleSrc = (url: string) => {
   try {
     const { protocol } = new URL(url);
-    if (["http:", "https:"].includes(protocol)) {
+    if (["http:", "https:", "data:"].includes(protocol)) {
       return url;
     }
   } catch {}

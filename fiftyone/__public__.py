@@ -157,6 +157,33 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .core.threed import (
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
+    FBXMesh,
+    GLTFMesh,
+    ObjMesh,
+    PlyMesh,
+    StlMesh,
+    PerspectiveCamera,
+    PointLight,
+    DirectionalLight,
+    AmbientLight,
+    SpotLight,
+    Pointcloud,
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointcloudMaterial,
+    Scene,
+    SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
+)
 from .core.spaces import (
     Space,
     Panel,

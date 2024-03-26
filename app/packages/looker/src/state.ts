@@ -87,7 +87,7 @@ export type Sample = {
   filepath: string;
   tags: string[];
   _label_tags: string[];
-  _media_type: "image" | "video" | "point-cloud";
+  _media_type: "image" | "video" | "point-cloud" | "3d";
 } & GenericLabel;
 
 export interface LabelData {
@@ -233,7 +233,16 @@ export interface ImaVidConfig extends BaseConfig {
   firstFrameNumber: number;
 }
 
-export type PcdConfig = BaseConfig;
+export interface ThreeDConfig extends BaseConfig {
+  /**
+   * whether or not orthographic projection metada is available for this 3D sample
+   */
+  isOpmAvailable: boolean;
+  /**
+   * whether or not the 3D sample is a fo3d sample
+   */
+  isFo3d: boolean;
+}
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -257,7 +266,7 @@ export interface ImaVidOptions extends BaseOptions {
   playbackRate: number;
 }
 
-export type PcdOptions = BaseOptions;
+export type ThreeDOptions = BaseOptions;
 
 export interface TooltipOverlay {
   color: string;
@@ -388,10 +397,10 @@ export interface ImaVidState extends BaseState {
   seekBarHovering: boolean;
 }
 
-export interface PcdState extends BaseState {
-  config: PcdConfig;
-  options: PcdOptions;
-  SHORTCUTS: Readonly<ControlMap<PcdState>>;
+export interface ThreeDState extends BaseState {
+  config: ThreeDConfig;
+  options: ThreeDOptions;
+  SHORTCUTS: Readonly<ControlMap<ThreeDState>>;
 }
 
 export interface Point {
@@ -473,7 +482,7 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   volume: 0,
 };
 
-export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+export const DEFAULT_3D_OPTIONS: ThreeDOptions = {
   ...DEFAULT_BASE_OPTIONS,
 };
 
