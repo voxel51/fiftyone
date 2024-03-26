@@ -5,6 +5,7 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import collections
 import inspect
@@ -503,6 +504,7 @@ class ExecutionContext(object):
 
         # Always derive the view from the context's dataset
         dataset = self.dataset
+        view_name = self.request_params.get("view_name", None)
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
@@ -510,13 +512,16 @@ class ExecutionContext(object):
         if dataset is None:
             return None
 
-        self._view = fosv.get_view(
-            dataset,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended,
-            reload=False,
-        )
+        if view_name is None:
+            self._view = fosv.get_view(
+                dataset,
+                stages=stages,
+                filters=filters,
+                extended_stages=extended,
+                reload=False,
+            )
+        else:
+            self._view = dataset.load_saved_view(view_name)
 
         return self._view
 
@@ -797,9 +802,9 @@ class ExecutionResult(object):
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
             "delegated": self.delegated,
-            "validation_ctx": self.validation_ctx.to_json()
-            if self.validation_ctx
-            else None,
+            "validation_ctx": (
+                self.validation_ctx.to_json() if self.validation_ctx else None
+            ),
         }
 
 
