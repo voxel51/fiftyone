@@ -92,17 +92,21 @@ export const tagStatistics = selectorFamily<
           selectedLabels: get(fos.selectedLabels),
           targetLabels: countLabels,
           view: get(fos.view),
+          extended: !modal ? get(fos.extendedStages) : null,
         })
       );
     },
 });
 
-export const numItemsInSelection = selectorFamily<number, boolean>({
+export const numItemsInSelection = selectorFamily<
+  number,
+  { modal: boolean; labels: boolean }
+>({
   key: "numLabelsInSelectedSamples",
   get:
-    (labels) =>
+    ({ modal = false, labels }) =>
     ({ get }) => {
-      return get(tagStatistics({ modal: false, labels })).count;
+      return get(tagStatistics({ modal, labels })).count;
     },
 });
 
