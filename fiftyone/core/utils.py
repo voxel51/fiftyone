@@ -1961,10 +1961,20 @@ def iter_slices(sliceable, batch_size):
         yield sliceable
         return
 
+    try:
+        end = len(sliceable)
+    except:
+        end = None
+
     start = 0
     while True:
+        if end is not None and start >= end:
+            return
+
         chunk = sliceable[start : (start + batch_size)]
-        if len(chunk) == 0:  # works for numpy arrays, Torch tensors, etc
+
+        # works for numpy arrays, Torch tensors, etc
+        if end is None and len(chunk) == 0:
             return
 
         start += batch_size
