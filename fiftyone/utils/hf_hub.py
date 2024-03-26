@@ -806,7 +806,9 @@ def _build_label_field_converter(
     def convert_classification_field(sample_dict, row):
         row_content = row["row"]
         label_index = row_content[field_name]
-        label = (feature["names"][label_index],)
+        if label_index == -1:
+            return
+        label = feature["names"][label_index]
         if isinstance(label, tuple):
             label = label[0]
         sample_dict[field_name] = fol.Classification(label=str(label))
