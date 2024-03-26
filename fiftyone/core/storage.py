@@ -1248,12 +1248,11 @@ class FileWriter(object):
             self.register_path(inpath, outpath)
 
 
-@contextmanager
 def open_file(path, mode="r"):
     """Opens the given file for reading or writing.
 
-    This function *must* be used as a context manager, and it assumes that any
-    cloud files being read/written can fit into RAM.
+    This function assumes that any cloud files being read/written can fit into
+    RAM.
 
     Example usage::
 
@@ -1274,49 +1273,30 @@ def open_file(path, mode="r"):
     Args:
         path: the path
         mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
+
+    Returns:
+        an open file-like object
     """
-    if is_local(path):
-        f = open(path, mode)
+    return _open_file(path, mode)
 
-        try:
-            yield f
-        finally:
-            f.close()
 
-        return
+def open_files(paths, mode="r", skip_failures=False, progress=None):
+    """Opens the given files for reading or writing.
 
-    client = get_client(path=path)
-    is_writing = mode in ("w", "wb")
+    Args:
+        paths: a list of paths
+        mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an operation fails
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
-    if mode == "r":
-        b = client.download_bytes(path)
-        f = io.StringIO(b.decode())
-    elif mode == "rb":
-        f = io.BytesIO()
-        client.download_stream(path, f)
-    elif is_writing:
-        f = _BytesIO()
-    else:
-        raise ValueError("Unsupported mode '%s'" % mode)
-
-    f.seek(0)
-
-    try:
-        yield f
-    finally:
-        if not is_writing:
-            f.close()
-
-    if not is_writing:
-        return
-
-    f.seek(0)
-    content_type = etau.guess_mime_type(path)
-
-    try:
-        client.upload_stream(f, path, content_type=content_type)
-    finally:
-        f.close()
+    Returns:
+        a list of open file-like objects
+    """
+    tasks = [(p, mode, skip_failures) for p in paths]
+    return _run(_do_open_file, tasks, progress=progress)
 
 
 def read_file(path, binary=False):
@@ -1329,9 +1309,26 @@ def read_file(path, binary=False):
     Returns:
         the file contents
     """
-    mode = "rb" if binary else "r"
-    with open_file(path, mode) as f:
-        return f.read()
+    return _read_file(path, binary=binary)
+
+
+def read_files(paths, binary=False, skip_failures=False, progress=None):
+    """Reads the specified files into memory.
+
+    Args:
+        paths: a list of filepaths
+        binary (False): whether to read the files in binary mode
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an operation fails
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+
+    Returns:
+        a list of file contents
+    """
+    tasks = [(p, binary, skip_failures) for p in paths]
+    return _run(_do_read_file, tasks, progress=progress)
 
 
 def write_file(str_or_bytes, path):
@@ -1350,10 +1347,6 @@ def write_file(str_or_bytes, path):
 
 def sep(path):
     """Returns the path separator for the given path.
-
-    For local paths, ``os.path.sep`` is returned.
-
-    For remote paths, ``"/"`` is returned.
 
     Args:
         path: the filepath
@@ -2093,8 +2086,7 @@ def move_files(inpaths, outpaths, skip_failures=False, progress=None):
             progress callback function to invoke instead
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
-    if tasks:
-        _run(_do_move_file, tasks, progress=progress)
+    _run(_do_move_file, tasks, progress=progress)
 
 
 def move_dir(
@@ -2159,8 +2151,7 @@ def delete_files(paths, skip_failures=False, progress=None):
             progress callback function to invoke instead
     """
     tasks = [(p, skip_failures) for p in paths]
-    if tasks:
-        _run(_do_delete_file, tasks, progress=progress)
+    _run(_do_delete_file, tasks, progress=progress)
 
 
 def delete_dir(dirpath):
@@ -2631,29 +2622,31 @@ def _copy_files(inpaths, outpaths, skip_failures, cache, progress):
         cache = "copy"
 
     tasks = [(i, o, skip_failures, cache) for i, o in zip(inpaths, outpaths)]
-    if tasks:
-        _run(_do_copy_file, tasks, progress=progress)
+    _run(_do_copy_file, tasks, progress=progress)
 
 
 def _run(fcn, tasks, num_workers=None, progress=None):
-    num_workers = fou.recommend_thread_pool_workers(num_workers)
+    num_tasks = len(tasks)
+    if num_tasks == 0:
+        return []
 
-    try:
-        num_tasks = len(tasks)
-    except:
-        num_tasks = None
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
+    results = []
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             for task in pb(tasks):
-                fcn(task)
+                result = fcn(task)
+                results.append(result)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(**kwargs) as pb:
-                for _ in pb(pool.imap_unordered(fcn, tasks)):
-                    pass
+                for result in pb(pool.imap_unordered(fcn, tasks)):
+                    results.append(result)
+
+    return results
 
 
 def _do_copy_file(arg):
@@ -2698,6 +2691,42 @@ def _do_delete_file(arg):
 
         if skip_failures != "ignore":
             logger.warning(e)
+
+
+def _do_open_file(arg):
+    filepath, mode, skip_failures = arg
+
+    try:
+        return _open_file(filepath, mode)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _open_file(path, mode):
+    return open(path, mode)
+
+
+def _do_read_file(arg):
+    filepath, binary, skip_failures = arg
+
+    try:
+        return _read_file(filepath, binary=binary)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _read_file(filepath, binary=False):
+    mode = "rb" if binary else "r"
+    with open(filepath, mode) as f:
+        return f.read()
 
 
 def _copy_file(inpath, outpath, cleanup=False):
