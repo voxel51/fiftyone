@@ -4535,6 +4535,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             config.label_schema = label_schema
             save_config = True
 
+        samples.compute_metadata()
+
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
         num_batches = math.ceil(num_samples / batch_size)
@@ -4547,8 +4549,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         media_fields = samples._get_media_fields(whitelist=label_schema)
         if media_fields:
             samples.download_media(media_fields=list(media_fields.keys()))
-
-        samples.compute_metadata()
 
         if is_video:
             # The current implementation requires frame IDs for all frames that
@@ -5442,6 +5442,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_samples = len(samples)
 
         if task_size is None:
+            required_bytes = samples.sum("metadata.size_bytes")
+            if required_bytes > 2 * 1024**3:
+                logger.warning(
+                    "By default, all images are uploaded to CVAT in a single "
+                    "task, but this requires loading all images "
+                    "simultaneously into RAM, which will take at least %s. "
+                    "Consider specifying a `task_size` to break the data into "
+                    "smaller chunks, or upgrade to FiftyOne Teams so that you "
+                    "can provide a cloud manifest",
+                    etau.to_human_bytes_str(required_bytes),
+                )
+
             # Put all image samples in one task
             return num_samples
 
