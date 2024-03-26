@@ -49,9 +49,7 @@ import { getMediaUrlForFo3dSample } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-type MediaTypeFo3dComponentProps = {};
-
-export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
+export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
@@ -398,9 +396,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
           </Suspense>
         </Fo3dSceneContext.Provider>
       </Canvas>
-      {/* <NodeInfoRootContainer>
-        <NodeInfo />
-      </NodeInfoRootContainer> */}
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>

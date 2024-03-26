@@ -2,18 +2,18 @@ import { getSampleSrc } from "@fiftyone/state";
 import { useLoader, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Color, CubeTexture, CubeTextureLoader, TextureLoader } from "three";
-import { FoScene } from "../hooks";
+import { FoSceneBackground } from "../utils";
 
 interface Fo3dBackgroundProps {
-  background: FoScene["background"];
+  background: FoSceneBackground;
 }
 
 const CubeBackground = ({
   cube,
   intensity,
 }: {
-  cube: Fo3dBackgroundProps["background"]["cube"];
-  intensity: Fo3dBackgroundProps["background"]["intensity"];
+  cube: FoSceneBackground["cube"];
+  intensity: FoSceneBackground["intensity"];
 }) => {
   const { scene } = useThree();
   // images are assumed to correspond to px, nx, py, ny, pz, and nz
@@ -39,8 +39,8 @@ const ImageBackground = ({
   image,
   intensity,
 }: {
-  image: Fo3dBackgroundProps["background"]["image"];
-  intensity: Fo3dBackgroundProps["background"]["intensity"];
+  image: FoSceneBackground["image"];
+  intensity: FoSceneBackground["intensity"];
 }) => {
   const { scene } = useThree();
   const imageUrl = useMemo(() => getSampleSrc(image), [image]);
@@ -58,11 +58,7 @@ const ImageBackground = ({
   return null;
 };
 
-const ColorBackground = ({
-  color,
-}: {
-  color: Fo3dBackgroundProps["background"]["color"];
-}) => {
+const ColorBackground = ({ color }: { color: FoSceneBackground["color"] }) => {
   const { scene } = useThree();
 
   useEffect(() => {

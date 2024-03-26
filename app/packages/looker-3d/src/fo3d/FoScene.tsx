@@ -1,5 +1,7 @@
 import { useControls } from "leva";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -14,25 +16,22 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
+import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { AssetWrapper } from "./AssetWrapper";
-import { Stl } from "./Stl";
+import { Fo3dBackground } from "./Background";
+import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
 import { Pcd } from "./point-cloud/Pcd";
-import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
-
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
-import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
-import { Fo3dBackground } from "./Background";
-import { useFo3dContext } from "./context";
 import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
 import { Sphere } from "./shape/Sphere";
+import { Stl } from "./Stl";
+import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
   scene: FoScene;
@@ -273,7 +272,7 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
         ...items,
       ]);
     }
-  }, [scene, isSceneInitialized]);
+  }, [scene, isSceneInitialized, setActionBarItems]);
 
   return (
     <>
