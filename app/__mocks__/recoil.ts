@@ -20,10 +20,6 @@ export const getValue = (atom) => {
     }
   }
 
-  if (!mockValues[atom.key]) {
-    throw new Error(`no mock value for '${atom.key}'`);
-  }
-
   if (atom.params !== undefined) {
     return mockValues[atom.key](atom.params);
   }
