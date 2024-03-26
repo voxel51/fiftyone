@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import itertools
 import logging
 import warnings
@@ -523,25 +524,24 @@ def compute_orthographic_projection_images(
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-        point_cloud_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(point_cloud_view, media_type=fom.POINT_CLOUD)
-
-        filepaths, groups = point_cloud_view.values(["filepath", group_field])
+        view = samples.select_group_slices(in_group_slice).select_fields(
+            group_field
+        )
     else:
-        fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
-        point_cloud_view = samples
+        view = samples.select_fields()
 
-        filepaths = point_cloud_view.values("filepath")
-        groups = itertools.repeat(None)
-
-    local_paths = point_cloud_view.get_local_paths()
+    fov.validate_collection(view, media_type=fom.POINT_CLOUD)
 
     if out_group_slice is not None:
         out_samples = []
 
-    all_metadata = []
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            view.download_context(media_fields="filepath", progress=progress)
+        )
 
-    with fos.LocalDir(output_dir, "w") as local_dir:
+        local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+
         filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=rel_dir,
@@ -549,40 +549,35 @@ def compute_orthographic_projection_images(
             idempotent=False,
         )
 
-        with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
-            for filepath, local_path, group in pb(
-                zip(filepaths, local_paths, groups)
-            ):
-                image_path = filename_maker.get_output_path(
-                    filepath, output_ext=".png"
-                )
-                local_image_path = filename_maker.get_alt_path(image_path)
+        for sample in view.iter_samples(autosave=True, progress=progress):
+            image_path = filename_maker.get_output_path(
+                sample.filepath, output_ext=".png"
+            )
+            local_image_path = filename_maker.get_alt_path(image_path)
 
-                img, metadata = compute_orthographic_projection_image(
-                    local_path,
-                    size,
-                    shading_mode=shading_mode,
-                    colormap=colormap,
-                    subsampling_rate=subsampling_rate,
-                    projection_normal=projection_normal,
-                    bounds=bounds,
-                )
+            img, metadata = compute_orthographic_projection_image(
+                sample.local_path,
+                size,
+                shading_mode=shading_mode,
+                colormap=colormap,
+                subsampling_rate=subsampling_rate,
+                projection_normal=projection_normal,
+                bounds=bounds,
+            )
 
-                foui.write(img, local_image_path)
-                metadata.filepath = image_path
+            foui.write(img, local_image_path)
+            metadata.filepath = image_path
 
-                if out_group_slice is not None:
-                    sample = Sample(filepath=image_path)
-                    sample[group_field] = group.element(out_group_slice)
-                    sample[metadata_field] = metadata
-                    out_samples.append(sample)
+            sample[metadata_field] = metadata
 
-                all_metadata.append(metadata)
+            if out_group_slice is not None:
+                s = Sample(filepath=image_path)
+                s[group_field] = sample[group_field].element(out_group_slice)
+                s[metadata_field] = metadata
+                out_samples.append(s)
 
     if out_group_slice is not None:
-        samples.add_samples(out_samples)
-
-    point_cloud_view.set_values(metadata_field, all_metadata)
+        samples._root_dataset.add_samples(out_samples)
 
 
 def compute_orthographic_projection_image(
