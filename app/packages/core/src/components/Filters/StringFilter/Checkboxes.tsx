@@ -140,6 +140,25 @@ const useValues = ({
   };
 };
 
+const useGetCount = (modal: boolean, path: string) => {
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const keypoints = useRecoilValue(isInKeypointsField(path));
+  const lightning = useRecoilValue(fos.isLightningPath(path));
+  return (count: number | null, value: string | null) => {
+    // show no count for the 'points' field of a Keypoint, and visibility mode
+    if (!isFilterMode || keypoints) {
+      return undefined;
+    }
+
+    // request subcount for non-lightning paths
+    if (typeof count !== "number" && !lightning) {
+      return pathSearchCount({ modal, path, value: value as string });
+    }
+
+    return count ?? undefined;
+  };
+};
+
 const Checkboxes = ({
   results,
   selectedAtom,
@@ -150,7 +169,6 @@ const Checkboxes = ({
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
@@ -160,8 +178,7 @@ const Checkboxes = ({
   });
 
   const show = useRecoilValue(showSearchSelector({ modal, path }));
-  const keypoints = useRecoilValue(isInKeypointsField(path));
-  const lightning = useRecoilValue(fos.isLightningPath(path));
+  const getCount = useGetCount(modal, path);
 
   if (loading) {
     return <LoadingDots text={"Loading"} />;
@@ -186,13 +203,7 @@ const Checkboxes = ({
             forceColor={value === null}
             name={value === null ? "None" : value}
             loading={loading}
-            count={
-              (typeof count !== "number" || !isFilterMode || keypoints) &&
-              !lightning
-                ? // only string and id fields use pathSearchCount
-                  pathSearchCount({ modal, path, value: value as string })
-                : count
-            }
+            count={getCount(count, value)}
             setValue={(checked: boolean) => {
               if (checked) {
                 selectedSet.add(value);
