@@ -361,15 +361,13 @@ def transform_segmentations(
     samples = sample_collection.select_fields(in_field)
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
+        )
+
         if output_dir is not None:
             if overwrite:
                 fos.delete_dir(output_dir)
-
-            context.enter_context(
-                samples.download_context(
-                    media_fields=in_field, progress=progress
-                )
-            )
 
             local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
             filename_maker = fou.UniqueFilenameMaker(
@@ -381,7 +379,9 @@ def transform_segmentations(
         else:
             mask_field = in_field + ".mask_path"
             mask_paths = sample_collection.values(mask_field, unwind=True)
-            local_paths = sample_collection.get_local_paths(in_field)
+            local_paths = sample_collection.get_local_paths(
+                in_field, download=False
+            )
             local_map = dict(zip(mask_paths, local_paths))
 
             writer = context.enter_context(fos.FileWriter())

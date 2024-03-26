@@ -4542,13 +4542,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_batches = math.ceil(num_samples / batch_size)
         is_video = samples.media_type == fom.VIDEO
 
-        if cloud_manifest == False:
-            # Media will be uploaded to CVAT from local cache
-            samples.download_media(media_fields=media_field)
-
-        media_fields = samples._get_media_fields(whitelist=label_schema)
-        if media_fields:
-            samples.download_media(media_fields=list(media_fields.keys()))
+        label_fields = samples._get_media_fields(whitelist=label_schema)
+        label_fields = list(label_fields.keys())
 
         if is_video:
             # The current implementation requires frame IDs for all frames that
@@ -4581,6 +4576,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # users view, since they may have intentionally sorted it in a
                     # particular way that they want to preserve in CVAT.
                     samples_batch = samples_batch.sort_by(media_field)
+                else:
+                    samples.download_media(
+                        media_fields=media_field, progress=False
+                    )
+
+                if label_fields:
+                    samples_batch.download_media(
+                        media_fields=label_fields, progress=False
+                    )
 
                 anno_tags = []
                 anno_shapes = []
@@ -5449,8 +5453,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "task, but this requires loading all images "
                     "simultaneously into RAM, which will take at least %s. "
                     "Consider specifying a `task_size` to break the data into "
-                    "smaller chunks, or upgrade to FiftyOne Teams so that you "
-                    "can provide a cloud manifest",
+                    "smaller chunks, or use the `cloud_manifest=True` option",
                     etau.to_human_bytes_str(required_bytes),
                 )
 

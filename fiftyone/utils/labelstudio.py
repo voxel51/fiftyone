@@ -240,11 +240,14 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         ids, mime_types, filepaths = samples.values(
             ["id", "metadata.mime_type", media_field]
         )
+
         filepaths = foc.media_cache.get_local_paths(filepaths)
 
-        media_fields = samples._get_media_fields(whitelist=label_schema)
-        if media_fields:
-            samples.download_media(media_fields=list(media_fields.keys()))
+        label_fields = samples._get_media_fields(whitelist=label_schema)
+        label_fields = list(label_fields.keys())
+
+        if label_fields:
+            samples.download_media(media_fields=label_fields)
 
         tasks = [
             {

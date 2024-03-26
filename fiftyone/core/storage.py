@@ -1283,6 +1283,9 @@ def open_file(path, mode="r"):
 def open_files(paths, mode="r", skip_failures=False, progress=None):
     """Opens the given files for reading or writing.
 
+    This function assumes that all cloud files being read/written can fit into
+    RAM simultaneously.
+
     Args:
         paths: a list of paths
         mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
@@ -1300,7 +1303,7 @@ def open_files(paths, mode="r", skip_failures=False, progress=None):
 
 
 def read_file(path, binary=False):
-    """Reads the file.
+    """Reads the file into memory.
 
     Args:
         path: the filepath
@@ -2026,7 +2029,7 @@ def copy_files(inpaths, outpaths, skip_failures=False, progress=None):
         inpaths: a list of input paths
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2045,7 +2048,7 @@ def copy_dir(
         overwrite (True): whether to delete an existing output directory (True)
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2080,7 +2083,7 @@ def move_files(inpaths, outpaths, skip_failures=False, progress=None):
         inpaths: a list of input paths
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2101,7 +2104,7 @@ def move_dir(
         overwrite (True): whether to delete an existing output directory (True)
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2145,7 +2148,7 @@ def delete_files(paths, skip_failures=False, progress=None):
     Args:
         paths: a list of paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2206,7 +2209,7 @@ def upload_media(
         overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2707,7 +2710,66 @@ def _do_open_file(arg):
 
 
 def _open_file(path, mode):
-    return open(path, mode)
+    if is_local(path):
+        return open(path, mode)
+
+    return _OpenFile(path, mode)
+
+
+class _OpenFile(object):
+    def __init__(self, path, mode):
+        self.path = path
+        self.mode = mode
+        self._is_writing = None
+        self._client = None
+        self._f = None
+        self._open()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __getattr__(self, *args, **kwargs):
+        return getattr(self._f, *args, **kwargs)
+
+    def _open(self):
+        client = get_client(path=self.path)
+        is_writing = self.mode in ("w", "wb")
+
+        if self.mode == "r":
+            b = client.download_bytes(self.path)
+            f = io.StringIO(b.decode())
+        elif self.mode == "rb":
+            f = io.BytesIO()
+            client.download_stream(self.path, f)
+        elif is_writing:
+            f = _BytesIO()
+        else:
+            raise ValueError("Unsupported mode '%s'" % self.mode)
+
+        f.seek(0)
+
+        self._is_writing = is_writing
+        self._client = client
+        self._f = f
+
+    def close(self):
+        """Flush and close the IO object.
+
+        This method has no effect if the file is already closed.
+        """
+        try:
+            if self._is_writing and not self._f.closed:
+                self._f.seek(0)
+                self._client.upload_stream(
+                    self._f,
+                    self.path,
+                    content_type=etau.guess_mime_type(self.path),
+                )
+        finally:
+            self._f.close()
 
 
 def _do_read_file(arg):
@@ -2725,7 +2787,7 @@ def _do_read_file(arg):
 
 def _read_file(filepath, binary=False):
     mode = "rb" if binary else "r"
-    with open(filepath, mode) as f:
+    with open_file(filepath, mode) as f:
         return f.read()
 
 
