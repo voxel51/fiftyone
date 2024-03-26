@@ -2,7 +2,7 @@ import * as recoil from "recoil";
 export * from "recoil";
 
 export let mockValues = {};
-export let mockValuesStore = {};
+export const mockValuesStore = {};
 export let mockDefaults = {};
 export function setMockAtoms(newMockValues: { [key: string]: any }) {
   mockValues = {
@@ -15,9 +15,13 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
 export const getValue = (atom) => {
   if (mockValuesStore[atom.key]) {
     const str = JSON.stringify(atom.params);
-    if (mockValuesStore[atom.key].hasOwnProperty(str)) {
+    if (mockValuesStore[atom.key].hasOwn(str)) {
       return mockValuesStore[atom.key][JSON.stringify[str]];
     }
+  }
+
+  if (!mockValues[atom.key]) {
+    throw new Error(`no mock value for '${atom.key}'`);
   }
 
   if (atom.params !== undefined) {
