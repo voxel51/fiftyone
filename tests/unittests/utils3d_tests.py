@@ -239,6 +239,46 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
 
 
+class ParsePointCloudTests(BaseOrthographicProjectionTests):
+    def test_rotation_matrix_from_projection_normal(self):
+
+        # By default, the projection normal is set to (0, 0, 1)
+        test_cases = [
+            (0, 1, 0),  # 90º rotation
+            (0, 0, 1),  # 0º rotation
+            (0, 0, 1),  # 180º rotation
+            (1, 2, 3),  # arbitrary rotation
+        ]
+
+        for projection_normal in test_cases:
+            with self.subTest(projection_normal=projection_normal):
+
+                # because the rotation is ambiguous, we can't compare original and rotated arbitrary points
+                # we can only ensure that points along the user specified projection normal vector
+                # will invariably be aligned with the z-axis after rotation
+                points = np.array([projection_normal])
+
+                pc = o3d.geometry.PointCloud()
+                pc.points = o3d.utility.Vector3dVector(points)
+                o3d.io.write_point_cloud(
+                    self.test_pcd_path, pc, write_ascii=True
+                )
+
+                points_rotated = fou3d._parse_point_cloud(
+                    self.test_pcd_path,
+                    bounds=[(-1, -1, 0), (1, 1, 10)],
+                    projection_normal=projection_normal,
+                )[0]
+
+                # After the point is rotated, it's translated so that the minimum bound lies at the origin
+                # this is why we add 1 to the x and y coordinates
+                np.testing.assert_allclose(
+                    (1, 1, np.linalg.norm(projection_normal)),
+                    points_rotated[0],
+                    atol=1e-15,
+                )
+
+
 class DataModelTests(unittest.TestCase):
     @drop_datasets
     def test_orthographic_projection_metadata_field(self):
@@ -279,31 +319,6 @@ class HelperMethodTests(unittest.TestCase):
         )
         actual = fou3d._clamp_to_discrete(arr, discrete)
         self.assertTrue(np.array_equal(expected, actual))
-
-
-class RotationMatrixFromVectorsTests(unittest.TestCase):
-    def test_rotation_matrix_from_vectors(self):
-        """Validates the returned rotation matrix rotates `vec1` to `vec2`."""
-        test_cases = [
-            ((0, 1, 0), (0, 0, 1)),  # normal 90º rotation
-            ((0, 0, 1), (0, 0, 1)),  # singular case of 0º rotation
-            ((0, 0, -1), (0, 0, 1)),  # singular case of 180º rotation
-            ((0.5, 0, 2), (2, 1, 0)),  # random vector
-        ]
-
-        for vec1, vec2 in test_cases:
-            with self.subTest(vec1=vec1, vec2=vec2):
-                R = fou3d._rotation_matrix_from_vectors(vec1, vec2)
-
-                vec1_rot = np.dot(R, vec1)
-                vec1_rn = vec1_rot / np.linalg.norm(vec1_rot)
-                vec2_n = vec2 / np.linalg.norm(vec2)
-
-                # The returned matrix is a rotation matrix
-                np.testing.assert_allclose(np.eye(3), R.T @ R, atol=1e-15)
-                np.testing.assert_allclose(1, np.linalg.det(R))
-
-                np.testing.assert_allclose(vec2_n, vec1_rn, atol=1e-15)
 
 
 if __name__ == "__main__":
