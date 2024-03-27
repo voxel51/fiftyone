@@ -568,11 +568,14 @@ def compute_orthographic_projection_images(
                     projection_normal=projection_normal,
                     bounds=bounds,
                 )
-            except:
-                if skip_failures:
-                    continue
+            except Exception as e:
+                if not skip_failures:
+                    raise
 
-                raise
+                if skip_failures != "ignore":
+                    logger.warning(e)
+
+                continue
 
             foui.write(img, local_image_path)
             metadata.filepath = image_path
