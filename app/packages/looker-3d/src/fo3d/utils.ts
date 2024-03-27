@@ -129,7 +129,11 @@ export const getFo3dRoot = (fo3dUrl: string) => {
     try {
       // might be a URL, if not, following will throw
       new URL(decodedUrl);
-      return resolveParent(fo3dUrl);
+      const parent = resolveParent(fo3dUrl);
+      if (parent.endsWith("/")) {
+        return parent;
+      }
+      return parent + "/";
     } catch {
       throw new Error("Filepath not found in URL");
     }
