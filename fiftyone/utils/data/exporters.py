@@ -27,6 +27,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.storage as fos
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
@@ -1158,7 +1159,7 @@ class MediaExporter(object):
         if export_mode in (False, "manifest"):
             return
 
-        scene = fo.Scene.from_fo3d(fo3d_path)
+        scene = fo3d.Scene.from_fo3d(fo3d_path)
         asset_paths = scene.get_asset_paths()
 
         for asset_path in asset_paths:
@@ -1185,23 +1186,13 @@ class MediaExporter(object):
             elif export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
-        potential_path_attributes = [
-            "pcd_path",
-            "ply_path",
-            "obj_path",
-            "mtl_path",
-            "fbx_path",
-            "stl_path",
-            "gltf_path",
-        ]
-
         is_scene_modified = False
 
         for node in scene.traverse():
             path_attribute = next(
                 (
                     attr
-                    for attr in potential_path_attributes
+                    for attr in fo3d.fo3d_path_attributes
                     if hasattr(node, attr)
                 ),
                 None,
@@ -1336,7 +1327,9 @@ class MediaExporter(object):
                     self._manifest[uuid] = media_path
 
                 if is_fo3d_file:
-                    self._handle_fo3d_file(media_path, outpath, self.export_mode)
+                    self._handle_fo3d_file(
+                        media_path, outpath, self.export_mode
+                    )
         else:
             media = media_or_path
 
@@ -1920,17 +1913,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         if sample_collection.default_mask_targets:
-            info["default_mask_targets"] = (
-                sample_collection._serialize_default_mask_targets()
-            )
+            info[
+                "default_mask_targets"
+            ] = sample_collection._serialize_default_mask_targets()
 
         if sample_collection.skeletons:
             info["skeletons"] = sample_collection._serialize_skeletons()
 
         if sample_collection.default_skeleton:
-            info["default_skeleton"] = (
-                sample_collection._serialize_default_skeleton()
-            )
+            info[
+                "default_skeleton"
+            ] = sample_collection._serialize_default_skeleton()
 
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(
