@@ -15,6 +15,7 @@ import {
   FoScene,
   FoSceneNode,
 } from "../hooks";
+import { resolveParent } from "@fiftyone/utilities";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -125,7 +126,13 @@ export const getFo3dRoot = (fo3dUrl: string) => {
   // extract the filepath from the URL
   const filepathMatch = decodedUrl.match(/filepath=([^&]+)/);
   if (!filepathMatch) {
-    throw new Error("Filepath not found in URL");
+    try {
+      // might be a URL, if not, following will throw
+      new URL(decodedUrl);
+      return resolveParent(fo3dUrl);
+    } catch {
+      throw new Error("Filepath not found in URL");
+    }
   }
   let filepath = filepathMatch[1];
 
