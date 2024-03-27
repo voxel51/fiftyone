@@ -1,5 +1,4 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
 import { getFo3dRoot, getResolvedUrlForFo3dAsset } from "../fo3d/utils";
@@ -8,6 +7,7 @@ import {
   FoSceneBackground,
   FoSceneRawNode,
 } from "../utils";
+import useFo3dFetcher from "./use-fo3d-fetcher";
 
 export class BoxGeometryAsset {
   constructor(
@@ -188,20 +188,18 @@ type UseFo3dReturnType = {
 /**
  * This hook parses the fo3d file into a FiftyOne scene graph.
  */
-export const useFo3d = (url: string): UseFo3dReturnType => {
+export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
   const [isLoading, setIsLoading] = useState(true);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
 
+  const fetchFo3d = useFo3dFetcher();
+
   useEffect(() => {
-    (async () => {
-      const response: FiftyoneSceneRawJson = await getFetchFunction()(
-        "GET",
-        url
-      );
+    fetchFo3d(url, filepath).then((response) => {
       setRawData(response);
       setIsLoading(false);
-    })();
-  }, [url]);
+    });
+  }, [url, filepath, fetchFo3d]);
 
   const mediaRoot = useMemo(() => getFo3dRoot(url), [url]);
 

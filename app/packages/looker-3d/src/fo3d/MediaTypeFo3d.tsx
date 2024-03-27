@@ -68,7 +68,10 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     [mediaField, sample]
   );
 
-  const { foScene, isLoading: isParsingFo3d } = useFo3d(mediaUrl);
+  const { foScene, isLoading: isParsingFo3d } = useFo3d(
+    mediaUrl,
+    sample.sample.filepath
+  );
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
 
