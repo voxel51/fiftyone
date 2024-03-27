@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import warnings
@@ -774,16 +775,38 @@ def _clamp_to_discrete(arr, discrete):
     return clamp_list[np.clip(idx, 0, len(clamp_list) - 1)]
 
 
-# Reference: https://math.stackexchange.com/q/180418
+def _skew_symmetric_matrix(vec):
+    """Returns the skew-symmetric matrix of a 3D vector."""
+    return np.array(
+        [[0, -vec[2], vec[1]], [vec[2], 0, -vec[0]], [-vec[1], vec[0], 0]]
+    )
+
+
+# References:
+# 1. https://math.stackexchange.com/q/180418
+# 2. https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Matrix_notation
 def _rotation_matrix_from_vectors(vec1, vec2):
     """Returns the rotation matrix that aligns vec1 to vec2."""
     a = (np.asarray(vec1) / np.linalg.norm(vec1)).reshape(3)
     b = (np.asarray(vec2) / np.linalg.norm(vec2)).reshape(3)
     v = np.cross(a, b)
     c = np.dot(a, b)
-    s = np.linalg.norm(v)
-    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    return np.eye(3) + K + K.dot(K) * ((1 - c) / (s**2))
+
+    if abs(c + 1) > np.finfo(c.dtype).eps:
+        K = _skew_symmetric_matrix(v)
+        return np.eye(3) + K + K.dot(K) / (1 + c)
+
+    # 180º rotation singular case
+    # we need to pick a random perpendicular vector to `a`
+    for axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
+        # `v` will be perpendicular to `a`, thus rotating `a` 180º along `v`
+        # will bring it to the opposite direction
+        v = np.cross(a, axis)
+        if np.linalg.norm(v) > np.finfo(v.dtype).eps:
+            break
+
+    K = _skew_symmetric_matrix(v)
+    return np.eye(3) + 2 * K.dot(K)
 
 
 def _parse_size(size, bounds):
