@@ -9,11 +9,6 @@ describe("getFo3dRoot", () => {
     expect(getFo3dRoot(url)).toBe(expectedRoot);
   });
 
-  it("should throw an error if the URL does not contain a filepath", () => {
-    const url = "http://localhost:5151/media";
-    expect(() => getFo3dRoot(url)).toThrow("Filepath not found in URL");
-  });
-
   it("should handle URLs with different file structures", () => {
     const url =
       "http://example.com/media?filepath=%2Fpath%2Fto%2Ffile%2Fexample.fo3d";
@@ -21,9 +16,15 @@ describe("getFo3dRoot", () => {
     expect(getFo3dRoot(url)).toBe(expectedRoot);
   });
 
-  it("should work with s3 urls", () => {
+  it("should work with s3 urls with filepath", () => {
     const url =
       "http://example.com/media?filepath=s3%3A%2F%2Fbucket%2Fpath%2Fto%2Ffile%2Fexample.fo3d";
+    const expectedRoot = "s3://bucket/path/to/file/";
+    expect(getFo3dRoot(url)).toBe(expectedRoot);
+  });
+
+  it("should work with s3 urls with no filepath", () => {
+    const url = "s3://bucket/path/to/file/example.fo3d";
     const expectedRoot = "s3://bucket/path/to/file/";
     expect(getFo3dRoot(url)).toBe(expectedRoot);
   });
