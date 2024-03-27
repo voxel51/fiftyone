@@ -14,7 +14,7 @@ import os
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+from mongoengine import connect, disconnect
 import mongoengine.errors as moe
 import motor.motor_asyncio as mtr
 
@@ -210,15 +210,7 @@ def establish_db_conn(config):
                 "own MongoDB instance or cluster "
             )
 
-    _client = pymongo.MongoClient(
-        **_connection_kwargs, appname=foc.DATABASE_APPNAME
-    )
-    _validate_db_version(config, _client)
-
-    # Register cleanup method
-    atexit.register(_delete_non_persistent_datasets_if_allowed)
-
-    connect(config.database_name, **_connection_kwargs)
+    _connect(config)
 
     config = get_db_config()
     if foc.CLIENT_TYPE != config.type:
@@ -227,20 +219,35 @@ def establish_db_conn(config):
             % (config.type, foc.CLIENT_TYPE)
         )
 
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-def _connect():
+
+def disconnect_db():
+    """Disconnects from the database, if necessary."""
+    _disconnect()
+
+
+def _connect(config=None):
     global _client
+
     if _client is None:
         global _connection_kwargs
+
+        if config is None:
+            config = fo.config
 
         _client = pymongo.MongoClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
-        connect(fo.config.database_name, **_connection_kwargs)
+        _validate_db_version(config, _client)
+
+        connect(config.database_name, **_connection_kwargs)
 
 
 def _async_connect(use_global=False):
     global _async_client
+
     if not use_global or _async_client is None:
         global _connection_kwargs
         client = mtr.AsyncIOMotorClient(
@@ -253,6 +260,16 @@ def _async_connect(use_global=False):
         client = _async_client
 
     return client
+
+
+def _disconnect():
+    global _client
+
+    if _client is not None:
+        _client.close()
+        _client = None
+
+        disconnect()
 
 
 def _delete_non_persistent_datasets_if_allowed():
