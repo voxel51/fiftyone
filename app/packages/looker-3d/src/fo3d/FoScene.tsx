@@ -18,8 +18,8 @@ import {
 } from "../hooks";
 import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
-import { AssetWrapper } from "./AssetWrapper";
 import { Fo3dBackground } from "./Background";
+import { Stl } from "./Stl";
 import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
@@ -30,7 +30,6 @@ import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
 import { Sphere } from "./shape/Sphere";
-import { Stl } from "./Stl";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
@@ -183,11 +182,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
     return null;
   }
 
-  return (
-    <AssetWrapper key={jsx.key} node={node}>
-      <AssetErrorBoundary>{jsx}</AssetErrorBoundary>
-    </AssetWrapper>
-  );
+  return <AssetErrorBoundary>{jsx}</AssetErrorBoundary>;
 };
 
 const R3fNode = ({
@@ -213,7 +208,7 @@ const R3fNode = ({
 
   const isNodeVisible = useMemo(
     () => Boolean(visibilityMap[label]),
-    [visibilityMap, node]
+    [label, visibilityMap]
   );
 
   const memoizedAsset = useMemo(

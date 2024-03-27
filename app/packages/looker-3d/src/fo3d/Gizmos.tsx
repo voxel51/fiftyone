@@ -81,41 +81,20 @@ export const Gizmos = () => {
 
     let maxInOrthoNormalPlane: number;
 
-    // account for the possibility that the scene is not centered at the origin
-    let offset: number;
-
     if (upVector.x === 1) {
       maxInOrthoNormalPlane = Math.max(
         sceneBoundingBox.max.y - sceneBoundingBox.min.y,
         sceneBoundingBox.max.z - sceneBoundingBox.min.z
-      );
-      offset = Math.max(
-        sceneBoundingBox.max.y,
-        Math.abs(sceneBoundingBox.min.y),
-        sceneBoundingBox.max.z,
-        Math.abs(sceneBoundingBox.min.z)
       );
     } else if (upVector.y === 1) {
       maxInOrthoNormalPlane = Math.max(
         sceneBoundingBox.max.x - sceneBoundingBox.min.x,
         sceneBoundingBox.max.z - sceneBoundingBox.min.z
       );
-      offset = Math.max(
-        sceneBoundingBox.max.x,
-        Math.abs(sceneBoundingBox.min.x),
-        sceneBoundingBox.max.z,
-        Math.abs(sceneBoundingBox.min.z)
-      );
     } else {
       maxInOrthoNormalPlane = Math.max(
         sceneBoundingBox.max.x - sceneBoundingBox.min.x,
         sceneBoundingBox.max.y - sceneBoundingBox.min.y
-      );
-      offset = Math.max(
-        sceneBoundingBox.max.x,
-        Math.abs(sceneBoundingBox.min.x),
-        sceneBoundingBox.max.y,
-        Math.abs(sceneBoundingBox.min.y)
       );
     }
 

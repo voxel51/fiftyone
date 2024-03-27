@@ -4429,9 +4429,9 @@ to a FiftyOne 3D scene is shown below:
 
     import fiftyone as fo
 
-    fo_pcd = fo.Pointcloud("my-pcd",
-                            "/path/to/point-cloud.pcd",
-                            flag_for_projection=True)
+    fo_pcd = fo.Pointcloud(
+        "my-pcd", "/path/to/point-cloud.pcd", flag_for_projection=True
+    )
 
     fo_pcd.default_material.shading_mode = "custom"
     fo_pcd.default_material.custom_color = "red"
