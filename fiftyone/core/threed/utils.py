@@ -11,9 +11,9 @@ FO3D_VERSION_KEY = "__FO3D_VERSION"
 
 def camel_to_snake(name):
     """Convert camelCase to snake_case.
-    
+
     Args:
-        name: a camelCase string
+        name: the camelCase string
 
     Returns:
         a snake_case string
@@ -24,18 +24,18 @@ def camel_to_snake(name):
 
 def convert_keys_to_snake_case(d):
     """Convert all keys in a dictionary from camelCase to snake_case.
-    
+
     Args:
-        d: a dictionary
-    
+        d: the dictionary
+
     Returns:
         a dictionary with snake case keys
     """
     if isinstance(d, dict):
         return {
-            camel_to_snake(k)
-            if k != FO3D_VERSION_KEY
-            else k: convert_keys_to_snake_case(v)
+            (
+                camel_to_snake(k) if k != FO3D_VERSION_KEY else k
+            ): convert_keys_to_snake_case(v)
             for k, v in d.items()
         }
     elif isinstance(d, list):

@@ -20,7 +20,7 @@ class Light(Object3D):
 
     Args:
         color ("#ffffff"): the color of the light
-        intensity (1.0): the intensity of the light in the range [0, 1]
+        intensity (1.0): the intensity of the light in the range ``[0, 1]``
     """
 
     def __init__(
@@ -51,10 +51,9 @@ class AmbientLight(Light):
     This light globally illuminates all objects in the scene equally.
 
     Args:
-        intensity (0.1): the intensity of the light in the range [0, 1]
+        intensity (0.1): the intensity of the light in the range ``[0, 1]``
         color ("#ffffff"): the color of the light
-        kwargs: arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class
+        kwargs: keyword arguments for the :class:`Light` parent class
     """
 
     def __init__(
@@ -79,16 +78,15 @@ class AmbientLight(Light):
 class DirectionalLight(Light):
     """Represents a directional light.
 
-    A light that gets emitted in a specific direction.
-    This light will behave as though it is infinitely
-    far away and the rays produced from it are all parallel.
+    A light that gets emitted in a specific direction. This light will behave
+    as though it is infinitely far away and the rays produced from it are all
+    parallel.
 
     Args:
         target ([0,0,0]): the target of the light
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for :class:`fiftyone.core.threed.Object3D`
-            base class
+        **kwargs: keyword arguments for the :class:`Light` parent class
     """
 
     target: Vec3UnionType = Vector3(0, 0, 0)
@@ -129,8 +127,7 @@ class PointLight(Light):
         decay (2.0): the amount the light dims along the distance of the light
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for :class:`fiftyone.core.threed.Object3D`
-            base class
+        **kwargs: keyword arguments for the :class:`Light` parent class
     """
 
     def __init__(
@@ -178,8 +175,7 @@ class SpotLight(Light):
         penumbra (0.0): the angle of the penumbra of the light's spotlight, in radians
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for :class:`fiftyone.core.threed.Object3D`
-            base class
+        **kwargs: keyword arguments for the :class:`Light` parent class
     """
 
     def __init__(

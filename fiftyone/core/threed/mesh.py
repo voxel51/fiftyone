@@ -19,8 +19,9 @@ class Mesh(Object3D):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshLambertMaterial`
-            if not provided.
-        **kwargs: keyword arguments for :class:`fiftyone.core.threed.Object3D`
+            if not provided
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.core.threed.Object3D` parent class
     """
 
     def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
@@ -35,7 +36,7 @@ class Mesh(Object3D):
         """Sets the material of the mesh.
 
         Args:
-            material (MeshMaterial): the material to set as the default.
+            material (MeshMaterial): the material to set as the default
         """
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)
@@ -50,22 +51,22 @@ class ObjMesh(Mesh):
     """Represents an OBJ mesh.
 
     Args:
-        name (str): Name of the mesh.
-        obj_path (str): Path to the .obj file. Path may be either absolute or
-            relative to the directory containing the .fo3d file.
-        mtl_path (str, optional): Path to the .mtl file. Defaults to None.
-            Path may be either absolute or relative to the directory
-            containing the .fo3d file.
+        name (str): the name of the mesh
+        obj_path (str): the path to the ``.obj`` file. The path may be either
+            absolute or relative to the directory containing the ``.fo3d``
+            file
+        mtl_path (str, optional): the path to the ``.mtl`` file. Defaults to
+            ``None``. The path may be either absolute or relative to the
+            directory containing the ``.fo3d`` file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh if `mtl_path` is not provided
-            or if material in `mtl_path` is not found. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            the default material for the mesh if ``mtl_path`` is not provided
+            or if material in ``mtl_path`` is not found. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
-        ValueError: If `obj_path` does not end with '.obj'.
-        ValueError: If `mtl_path` does not end with '.mtl'.
+        ValueError: if ``obj_path`` does not end with ``.obj``
+        ValueError: if ``mtl_path`` does not end with ``.mtl``
     """
 
     def __init__(
@@ -98,22 +99,22 @@ class ObjMesh(Mesh):
         }
 
 
-class FBXMesh(Mesh):
+class FbxMesh(Mesh):
     """Represents an FBX mesh.
 
     Args:
-        name (str): Name of the mesh.
-        fbx_path (str): Path to the .fbx file. Path may be either absolute
-            or relative to the directory containing the .fo3d file.
+        name (str): the name of the mesh
+        fbx_path (str): the path to the ``.fbx`` file. Path may be either
+            absolute or relative to the directory containing the ``.fo3d``
+            file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh if fbx file does not contain
+            the default material for the mesh if FBX file does not contain
             material information. Defaults to
-            :class:`fiftyone.core.threed.MeshStandardMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
+        **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
-        ValueError: If `fbx_path` does not end with '.fbx'.
+        ValueError: If ``fbx_path`` does not end with ``.fbx``
     """
 
     def __init__(
@@ -134,23 +135,23 @@ class FBXMesh(Mesh):
         return {**super()._to_dict_extra(), **{"fbxPath": self.gltf_path}}
 
 
-class GLTFMesh(Mesh):
+class GltfMesh(Mesh):
     """
     Represents a gLTF mesh.
 
     Args:
-        name (str): Name of the mesh.
-        gltf_path (str): Path to the .gltf or .glb file. Path may be either
-            absolute or relative to the directory containing the .fo3d file.
+        name (str): the name of the mesh
+        gltf_path (str): the path to the ``.gltf`` or ``.glb`` file. The path
+            may be either absolute or relative to the directory containing the
+            ``.fo3d`` file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh if gLTF file does not contain
+            the default material for the mesh if gLTF file does not contain
             material information. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
-        ValueError: If `gltf_path` does not end with '.gltf' or '.glb'.
+        ValueError: if ``gltf_path`` does not end with '.gltf' or ``.glb``
     """
 
     def __init__(
@@ -179,20 +180,19 @@ class PlyMesh(Mesh):
     Represents a PLY mesh. A PLY mesh can be a point cloud or a mesh.
 
     Args:
-        name (str): Name of the mesh.
-        ply_path (str): Path to the .ply file. Path may be either absolute or
-            relative to the directory containing the .fo3d file.
-        is_point_cloud (bool): Whether the PLY file is a point cloud. Defaults
-            to `False`.
+        name (str): the name of the mesh
+        ply_path (str): the path to the ``.ply`` file. The path may be either
+            absolute or relative to the directory containing the ``.fo3d`` file
+        is_point_cloud (bool): whether the PLY file is a point cloud. Defaults
+            to ``False``
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh if PLY file does not contain
+            default material for the mesh if PLY file does not contain
             vertex colors. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
-        ValueError: If `ply_path` does not end with '.ply'.
+        ValueError: if ``ply_path`` does not end with ``.ply``
     """
 
     def __init__(
@@ -220,17 +220,17 @@ class StlMesh(Mesh):
     Represents an STL mesh.
 
     Args:
-        name (str): Name of the mesh.
-        stl_path (str): Path to the .stl file. Path may be either absolute or
-            relative to the directory containing the .fo3d file.
+        name (str): the name of the mesh
+        stl_path (str): the path to the ``.stl`` file. The path may be either
+            absolute or relative to the directory containing the ``.fo3d``
+            file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            default material for the mesh. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
-        ValueError: If `stl_path` does not end with '.stl'.
+        ValueError: if ``stl_path`` does not end with ``.stl``
     """
 
     def __init__(

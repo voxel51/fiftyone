@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import json
 import os
 from typing import List, Optional
@@ -13,7 +14,7 @@ from pydantic.dataclasses import dataclass
 
 from .camera import PerspectiveCamera
 from .lights import Light
-from .mesh import FBXMesh, GLTFMesh, ObjMesh, PlyMesh, StlMesh
+from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import Pointcloud
 from .shape_3d import Shape3D
@@ -73,22 +74,24 @@ class Scene(Object3D):
     """Represents a scene graph which contains a hierarchy of 3D objects.
 
     Args:
-        camera (None): the default camera of the scene. If `None`, a default
+        camera (None): the default camera of the scene. If ``None``, a default
             :class:`fiftyone.core.threed.PerspectiveCamera` is created with
             reasonable defaults
-        lights (None): a list of lights in the scene. If `None`, a default set
+        lights (None): a list of lights in the scene. If``None``, a default set
             of lights is used, which includes an ambient light and six
             directional lights placed at different angles around the scene
-        background (None): background for the scene. May be a color, image, or
-            a skybox.
+        background (None): the background for the scene. May be a color, image,
+            or a skybox
 
     Usage::
 
             scene = Scene()
 
-            obj_mesh = ObjMesh(obj_url="/path/to/obj", mtl_url="/path/to/mtl")
-            gltf_mesh = GLTFMesh(gltf_url="/path/to/gltf")
-            pcd = Pointcloud(pcd_url="/path/to/pcd")
+            obj_mesh = ObjMesh(
+                "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
+            )
+            gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
+            pcd = Pointcloud("pcd_name", "/path/to/pcd")
 
             scene.add(mesh)
             scene.add(gltf_mesh)
@@ -120,7 +123,7 @@ class Scene(Object3D):
     def __repr__(self):
         """Return a string representation of the scene."""
         nodes_summary = self.get_scene_summary()
-        repr_str = "Fo3d scene with "
+        repr_str = "fo3d scene with "
         asset_detected = False
         for asset_name, asset_count in nodes_summary.items():
             if asset_count > 0:
@@ -142,7 +145,7 @@ class Scene(Object3D):
         return Scene._from_fo3d_dict(self.as_dict())
 
     def write(self, fo3d_path: str, resolve_relative_paths=False):
-        """Export the scene to a .fo3d file.
+        """Export the scene to a ``.fo3d`` file.
 
         Args:
             fo3d_path: the path to write the scene to
@@ -225,9 +228,9 @@ class Scene(Object3D):
         for node in self.traverse():
             if isinstance(node, Pointcloud):
                 total_point_clouds += 1
-            elif isinstance(node, GLTFMesh):
+            elif isinstance(node, GltfMesh):
                 total_gltfs += 1
-            elif isinstance(node, FBXMesh):
+            elif isinstance(node, FbxMesh):
                 total_fbxs += 1
             elif isinstance(node, StlMesh):
                 total_stls += 1
@@ -249,17 +252,17 @@ class Scene(Object3D):
         }
 
     def get_asset_paths(self):
-        """Collect all asset paths in the scene.
-        Asset paths aren't resolved to absolute paths.
+        """Collect all asset paths in the scene. Asset paths aren't resolved to
+        absolute paths.
         """
         asset_paths = []
 
         for node in self.traverse():
             if isinstance(node, Pointcloud):
                 asset_paths.append(node.pcd_path)
-            elif isinstance(node, GLTFMesh):
+            elif isinstance(node, GltfMesh):
                 asset_paths.append(node.gltf_path)
-            elif isinstance(node, FBXMesh):
+            elif isinstance(node, FbxMesh):
                 asset_paths.append(node.fbx_path)
             elif isinstance(node, StlMesh):
                 asset_paths.append(node.stl_path)
@@ -292,12 +295,14 @@ class Scene(Object3D):
             FO3D_VERSION_KEY: "1.0",
             "uuid": self.uuid,
             "camera": self.camera.as_dict(),
-            "lights": [light.as_dict() for light in self.lights]
-            if self.lights
-            else None,
-            "background": self.background.as_dict()
-            if self.background
-            else None,
+            "lights": (
+                [light.as_dict() for light in self.lights]
+                if self.lights
+                else None
+            ),
+            "background": (
+                self.background.as_dict() if self.background else None
+            ),
         }
 
     @staticmethod
@@ -325,7 +330,7 @@ class Scene(Object3D):
 
     @staticmethod
     def from_fo3d(path: str):
-        """Load a scene from a .fo3d file."""
+        """Load a scene from a ``.fo3d`` file."""
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
 

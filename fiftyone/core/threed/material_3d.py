@@ -61,7 +61,7 @@ class PointcloudMaterial(Material3D):
         point_size (1.0): the size of the points in the point cloud
         attenuate_by_distance (False): whether to attenuate the point size
             based on distance from the camera
-        **kwargs: keyword arguments for :class:`Material3D`
+        **kwargs: keyword arguments forn the :class:`Material3D` parent class
     """
 
     shading_mode: Literal["height", "intensity", "rgb", "custom"] = "height"
@@ -87,7 +87,7 @@ class MeshMaterial(Material3D):
 
     Args:
         wireframe (False): whether to render the mesh as a wireframe
-        **kwargs: keyword arguments for :class:`Material3D`
+        **kwargs: keyword arguments for the :class:`Material3D` parent class
     """
 
     wireframe: bool = False
@@ -104,7 +104,7 @@ class MeshBasicMaterial(MeshMaterial):
 
     Args:
         color ("#ffffff"): the color of the material
-        **kwargs: keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for the :class:`MeshMaterial` parent class
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -128,7 +128,7 @@ class MeshStandardMaterial(MeshMaterial):
         emissive_intensity (0.0): the intensity of the emissive color
         metalness (0.0): the metalness of the material
         roughness (1.0): the roughness of the material
-        **kwargs: keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for the :class:`MeshMaterial` parent class
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -162,11 +162,11 @@ class MeshLambertMaterial(MeshMaterial):
         color ("#ffffff"): the color of the material
         emissive_color ("#000000"): the emissive color of the material.
             This is the color emitted by the material itself independent of
-            the light.
+            the light
         emissive_intensity (0.0): the intensity of the emissive color
         reflectivity (1.0): the reflectivity of the material
         refraction_ratio (0.98): the refraction ratio (IOR) of the material
-        **kwargs: keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for the :class:`MeshMaterial` parent class
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -199,7 +199,8 @@ class MeshPhongMaterial(MeshLambertMaterial):
     Args:
         shininess (30): the shininess of the material
         specular_color ("#111111"): the specular color of the material
-        **kwargs: keyword arguments for :class:`MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`MeshLambertMaterial` parent
+            class
     """
 
     shininess: float = 30.0
@@ -223,7 +224,7 @@ class MeshDepthMaterial(MeshMaterial):
     off of the camera near and far plane. White is nearest, black is farthest.
 
     Args:
-        **kwargs: keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for the :class:`MeshMaterial` parent class
     """
 
     pass

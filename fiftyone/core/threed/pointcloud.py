@@ -16,22 +16,23 @@ class Pointcloud(Object3D):
     """Represents a point cloud.
 
     Args:
-        name (str): Name of the point cloud.
-        pcd_path (str): Path to the .pcd file. Path may be either absolute or
-            relative to the directory containing the .fo3d file
+        name (str): the name of the point cloud
+        pcd_path (str): the path to the ``.pcd`` file. The path may be either
+            absolute or relative to the directory containing the ``.fo3d`` file
         material (:class:`fiftyone.core.threed.PointcloudMaterial`, optional):
-            Material of the point cloud. If not specified, defaults to a
+            the material of the point cloud. If not specified, defaults to a
             new instance of :class:`fiftyone.core.threed.PointcloudMaterial`
             with its default parameters
-        flag_for_projection (bool): Whether to flag the point cloud for
-            usage in orthographic projection. Each FO Scene can have at most
-            one asset flagged for orthographic projection. Defaults to
-            ``False``. If multiple assets are flagged, the first one will be
-            chosen
-        **kwargs: keyword arguments for base class
+        flag_for_projection (bool): whether to flag the point cloud for
+            usage in orthographic projection. Each
+            :class:`fiftyone.core.threed.Scene` can have at most one asset
+            flagged for orthographic projection. Defaults to ``False``. If
+            multiple assets are flagged, the first one will be chosen
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.core.threed.Object3D` parent class
 
     Raises:
-        ValueError: If `pcd_path` does not end with '.pcd'
+        ValueError: if ``pcd_path`` does not end with ``.pcd``
     """
 
     def __init__(

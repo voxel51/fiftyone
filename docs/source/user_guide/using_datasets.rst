@@ -4375,7 +4375,7 @@ serializes the scene into a fo3d file.
     sphere2.position = [-1, 0, 0]
     sphere2.default_material.color = "blue"
 
-    mesh = fo.GLTFMesh("mesh", "mesh.glb")
+    mesh = fo.GltfMesh("mesh", "mesh.glb")
     mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
 
     scene.add(sphere1, sphere2, mesh)
@@ -4400,15 +4400,17 @@ automatically load and display them. You may also
 assign default material for your meshes by setting the
 :attr:`default_material <fiftyone.core.threed.Mesh.default_material>`
 attribute of the mesh. In the absence of any material information,
-meshes are assigned a :class:`MeshStandardMaterial <fiftyone.core.threed.MeshStandardMaterial>`
+meshes are assigned a
+:class:`MeshStandardMaterial <fiftyone.core.threed.MeshStandardMaterial>`
 with reasonable defaults that can also be dynamically configured from the app.
-Please refer to :mod:`fiftyone.core.threed.material_3d` for more details.
+Please refer to :mod:`material_3d <fiftyone.core.threed.material_3d>` for more
+details.
 
-FiftyOne supports :class:`GLTF <fiftyone.core.threed.GLTFMesh>`,
-:class:`OBJ <fiftyone.core.threed.OBJMesh>`,
-:class:`PLY <fiftyone.core.threed.PLYMesh>`,
-:class:`STL <fiftyone.core.threed.STLMesh>`, and
-:class:`FBX 7.x+ <fiftyone.core.threed.FBXMesh>` mesh formats.
+FiftyOne supports :class:`GLTF <fiftyone.core.threed.GltfFMesh>`,
+:class:`OBJ <fiftyone.core.threed.ObjMesh>`,
+:class:`PLY <fiftyone.core.threed.PlyMesh>`,
+:class:`STL <fiftyone.core.threed.StlMesh>`, and
+:class:`FBX 7.x+ <fiftyone.core.threed.FbxMesh>` mesh formats.
 
 We recommend you use the `GLTF` format for 3D meshes where possible, as it
 is the most compact, efficient, and web-friendly format for storing and
