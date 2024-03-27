@@ -706,6 +706,8 @@ def _parse_point_cloud(
         # as opposed to the default XY plane
         normal = np.asarray(projection_normal).reshape((1, 3))
         with warnings.catch_warnings():
+            # There are multiple rotations that can align two vectors. This is known
+            # and accepted, so we suppress the warning.
             warnings.filterwarnings(
                 "ignore",
                 message="Optimal rotation is not uniquely or poorly defined for the given sets of vectors\.",
