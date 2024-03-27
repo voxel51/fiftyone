@@ -449,6 +449,7 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    skip_failures=False,
     progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
@@ -513,6 +514,8 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a projection fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -555,15 +558,21 @@ def compute_orthographic_projection_images(
             )
             local_image_path = filename_maker.get_alt_path(image_path)
 
-            img, metadata = compute_orthographic_projection_image(
-                sample.local_path,
-                size,
-                shading_mode=shading_mode,
-                colormap=colormap,
-                subsampling_rate=subsampling_rate,
-                projection_normal=projection_normal,
-                bounds=bounds,
-            )
+            try:
+                img, metadata = compute_orthographic_projection_image(
+                    sample.local_path,
+                    size,
+                    shading_mode=shading_mode,
+                    colormap=colormap,
+                    subsampling_rate=subsampling_rate,
+                    projection_normal=projection_normal,
+                    bounds=bounds,
+                )
+            except:
+                if skip_failures:
+                    continue
+
+                raise
 
             foui.write(img, local_image_path)
             metadata.filepath = image_path
