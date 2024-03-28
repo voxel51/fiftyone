@@ -274,7 +274,7 @@ pip install fiftyone
 
 ```python
 import fiftyone as fo
-import fiftyone.utils.huggingface_hub as fouh
+import fiftyone.utils.huggingface as fouh
 
 # Load the dataset
 dataset = fouh.load_from_hub("{repo_id}")
