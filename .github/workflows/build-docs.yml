@@ -23,6 +23,7 @@ on:
   pull_request:
     branches:
       - develop
+      - feat/*
       - main
       - rel-*
       - release-*

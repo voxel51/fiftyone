@@ -81,15 +81,10 @@ export const Container = styled.div`
 
 export const LevaContainer = styled.div`
   position: absolute;
-  bottom: 2em;
-  margin-bottom: 2vh;
-  right: 0.5vw;
+  bottom: 30vh;
+  left: 2.5vw;
   z-index: 1000;
-  text-select: none;
-
-  & * {
-    text-select: none;
-  }
+  height: 0;
 `;
 
 export const StatusBarRootContainer = styled.div`

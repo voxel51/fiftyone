@@ -10,9 +10,11 @@ import { useHotkey } from "./hooks";
 import { currentActionAtom, isGridOnAtom } from "./state";
 
 /**
- * This component is responsible for rendering both "3d" as well as "point_cloud" media types.
+ * This component is responsible for rendering both "3d" as well as
+ * "point_cloud" media types.
  *
- * While "point_cloud" media type is subsumed by "3d" media type, we still need to support it for backwards compatibility.
+ * While "point_cloud" media type is subsumed by "3d" media type, we still
+ * need to support it for backwards compatibility.
  */
 export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
@@ -22,7 +24,7 @@ export const Looker3d = () => {
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
 
   const [isHovering, setIsHovering] = useState(false);
-  const timeout = useRef<NodeJS.Timeout>(null);
+  const timeout = useRef<ReturnType<typeof setTimeout>>(null);
   const hoveringRef = useRef(false);
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
@@ -48,6 +50,14 @@ export const Looker3d = () => {
     "KeyG",
     async ({ set }) => {
       set(isGridOnAtom, (prev) => !prev);
+    },
+    []
+  );
+
+  useHotkey(
+    "KeyF",
+    async ({ set }) => {
+      set(fos.fullscreen, (f) => !f);
     },
     []
   );
@@ -80,6 +90,12 @@ export const Looker3d = () => {
         !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
 
       if (isHoveredSampleNotInLooker3d) {
+        return;
+      }
+
+      const fullscreen = await snapshot.getPromise(fos.fullscreen);
+      if (fullscreen) {
+        set(fos.fullscreen, false);
         return;
       }
 
@@ -116,37 +132,34 @@ export const Looker3d = () => {
   if (mediaType === "group" && hasFo3dSlice && hasPcdSlices) {
     return (
       <div>
-        Only allowed to have either one fo3d slice or one or more pcd slices in
-        a group.
+        Only one fo3d slice or one or more pcd slices is allowed in a group.
       </div>
     );
   }
 
-  if (shouldRenderPcdComponent || shouldRenderFo3dComponent) {
-    return (
-      <ErrorBoundary>
-        <Container
-          onMouseOver={update}
-          onMouseMove={update}
-          data-cy={"looker3d"}
-        >
-          {shouldRenderPcdComponent ? (
-            <MediaTypePcdComponent isHovering={isHovering} />
-          ) : (
-            <MediaTypeFo3dComponent />
-          )}
-          <ActionBar
-            onMouseEnter={() => {
-              hoveringRef.current = true;
-            }}
-            onMouseLeave={() => {
-              hoveringRef.current = false;
-            }}
-          />
-        </Container>
-      </ErrorBoundary>
-    );
+  if (!shouldRenderPcdComponent && !shouldRenderFo3dComponent) {
+    return <div>Unsupported media type: {mediaType}</div>;
   }
 
-  return <div>Unsupported media type: {mediaType}</div>;
+  const component = shouldRenderFo3dComponent ? (
+    <MediaTypeFo3dComponent />
+  ) : (
+    <MediaTypePcdComponent />
+  );
+
+  return (
+    <ErrorBoundary>
+      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
+        {component}
+        <ActionBar
+          onMouseEnter={() => {
+            hoveringRef.current = true;
+          }}
+          onMouseLeave={() => {
+            hoveringRef.current = false;
+          }}
+        />
+      </Container>
+    </ErrorBoundary>
+  );
 };

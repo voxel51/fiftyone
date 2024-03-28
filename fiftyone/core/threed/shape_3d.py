@@ -6,6 +6,7 @@ Mesh definitions for 3D visualization.
 |
 """
 
+import math
 from typing import Optional
 
 from .material_3d import MeshMaterial
@@ -17,11 +18,10 @@ class Shape3D(Mesh):
 
     Args:
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the shape mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
-            if not provided.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D`base class.
+            default material for the shape mesh. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial` if not provided
+        **kwargs: keyword arguments for the :class:`fiftyone.core.threed.Mesh`
+            parent class
     """
 
     pass
@@ -31,15 +31,14 @@ class BoxGeometry(Shape3D):
     """Represents a 3D box.
 
     Args:
-        name (str): Name of the box.
-        width (float): The width of the box. Defaults to 1.
-        height (float): The height of the box. Defaults to 1.
-        depth (float): The depth of the box. Defaults to 1.
+        name (str): name of the box
+        width (float): the width of the box. Defaults to 1
+        height (float): the height of the box. Defaults to 1
+        depth (float): the depth of the box. Defaults to 1
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the box. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            default material for the box. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
     def __init__(
@@ -71,27 +70,26 @@ class CylinderGeometry(Shape3D):
     """Represents a 3D cylinder.
 
     Args:
-        name (str): Name of the cylinder.
-        radius_top (float): The radius of the top of the cylinder.
-            Defaults to 1.
-        radius_bottom (float): The radius of the bottom of the cylinder.
-            Defaults to 1.
-        height (float): The height of the cylinder. Defaults to 1.
-        radial_segments (int): Number of segmented faces around the
-            circumference of the cylinder. Defaults to 32.
-        height_segments (int): Number of rows of faces around the
-            circumference of the cylinder. Defaults to 1.
-        open_ended (bool): Whether the cylinder is open-ended. Defaults to
-            False.
-        theta_start (float): The start angle for the vertical sweep. Defaults
-            to 0.
-        theta_length (float): The angle for the vertical sweep. Defaults
-            to 2*Math.PI, which makes for a complete cylinder.
+        name (str): name of the cylinder
+        radius_top (float): the radius of the top of the cylinder.
+            Defaults to 1
+        radius_bottom (float): the radius of the bottom of the cylinder.
+            Defaults to 1
+        height (float): the height of the cylinder. Defaults to 1
+        radial_segments (int): number of segmented faces around the
+            circumference of the cylinder. Defaults to 32
+        height_segments (int): number of rows of faces around the
+            circumference of the cylinder. Defaults to 1
+        open_ended (bool): whether the cylinder is open-ended. Defaults to
+            ``False``
+        theta_start (float): the start angle for the vertical sweep. Defaults
+            to 0
+        theta_length (float): the angle for the vertical sweep. Defaults
+            to 2*Math.PI, which makes for a complete cylinder
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the cylinder. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            default material for the cylinder. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
     def __init__(
@@ -104,7 +102,7 @@ class CylinderGeometry(Shape3D):
         height_segments: int = 1,
         open_ended: bool = False,
         theta_start: float = 0,
-        theta_length: float = 6.283185307179586,
+        theta_length: float = 2 * math.pi,
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
@@ -138,25 +136,24 @@ class SphereGeometry(Shape3D):
     """Represents a 3D sphere.
 
     Args:
-        name (str): Name of the sphere.
-        radius (float): The radius of the sphere. Defaults to 1.
-        width_segments (int): Number of segmented faces around the circumference
-            of the sphere. Defaults to 32.
-        height_segments (int): Number of rows of faces around the circumference
-            of the sphere. Defaults to 16.
-        phi_start (float): The start angle for the horizontal sweep. Defaults
-            to 0.
-        phi_length (float): The angle for the horizontal sweep. Defaults to
-            2*Math.PI, which makes for a complete sphere.
-        theta_start (float): The start angle for the vertical sweep. Defaults
-            to 0.
-        theta_length (float): The angle for the vertical sweep. Defaults to
-            Math.PI, which makes for a complete sphere.
+        name (str): the name of the sphere
+        radius (float): the radius of the sphere. Defaults to 1
+        width_segments (int): the number of segmented faces around the
+            circumference of the sphere. Defaults to 32
+        height_segments (int): the number of rows of faces around the
+            circumference of the sphere. Defaults to 16
+        phi_start (float): the start angle for the horizontal sweep. Defaults
+            to 0
+        phi_length (float): the angle for the horizontal sweep. Defaults to
+            ``2*math.pi``, which makes for a complete sphere
+        theta_start (float): the start angle for the vertical sweep. Defaults
+            to 0
+        theta_length (float): the angle for the vertical sweep. Defaults to
+            ``math.pi``, which makes for a complete sphere
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the sphere. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            the default material for the sphere. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
     def __init__(
@@ -166,9 +163,9 @@ class SphereGeometry(Shape3D):
         width_segments: int = 32,
         height_segments: int = 16,
         phi_start: float = 0,
-        phi_length: float = 6.283185307179586,
+        phi_length: float = 2 * math.pi,
         theta_start: float = 0,
-        theta_length: float = 3.141592653589793,
+        theta_length: float = math.pi,
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
@@ -200,14 +197,13 @@ class PlaneGeometry(Shape3D):
     """Represents a 3D plane.
 
     Args:
-        name (str): Name of the plane.
-        width (float): The width of the plane. Defaults to 1.
-        height (float): The height of the plane. Defaults to 1.
+        name (str): name of the plane
+        width (float): the width of the plane. Defaults to 1
+        height (float): the height of the plane. Defaults to 1
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the plane. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D` base class.
+            the default material for the plane. Defaults to
+            :class:`fiftyone.core.threed.MeshLambertMaterial`
+        **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
     def __init__(

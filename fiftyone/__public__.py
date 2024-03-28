@@ -5,6 +5,7 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone.core.config as _foc
 import fiftyone.core.odm as _foo
 
@@ -162,8 +163,8 @@ from .core.threed import (
     CylinderGeometry,
     PlaneGeometry,
     SphereGeometry,
-    FBXMesh,
-    GLTFMesh,
+    FbxMesh,
+    GltfMesh,
     ObjMesh,
     PlyMesh,
     StlMesh,

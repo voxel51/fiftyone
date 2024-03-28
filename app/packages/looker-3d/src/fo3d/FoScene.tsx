@@ -1,5 +1,7 @@
 import { useControls } from "leva";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -14,25 +16,21 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
+import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
-import { AssetWrapper } from "./AssetWrapper";
+import { Fo3dBackground } from "./Background";
 import { Stl } from "./Stl";
+import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
 import { Pcd } from "./point-cloud/Pcd";
-import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
-
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
-import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
-import { Fo3dBackground } from "./Background";
-import { useFo3dContext } from "./context";
 import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
 import { Sphere } from "./shape/Sphere";
+import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
   scene: FoScene;
@@ -184,11 +182,7 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
     return null;
   }
 
-  return (
-    <AssetWrapper key={jsx.key} node={node}>
-      <AssetErrorBoundary>{jsx}</AssetErrorBoundary>
-    </AssetWrapper>
-  );
+  return <AssetErrorBoundary>{jsx}</AssetErrorBoundary>;
 };
 
 const R3fNode = ({
@@ -214,7 +208,7 @@ const R3fNode = ({
 
   const isNodeVisible = useMemo(
     () => Boolean(visibilityMap[label]),
-    [visibilityMap, node]
+    [label, visibilityMap]
   );
 
   const memoizedAsset = useMemo(
@@ -273,7 +267,7 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
         ...items,
       ]);
     }
-  }, [scene, isSceneInitialized]);
+  }, [scene, isSceneInitialized, setActionBarItems]);
 
   return (
     <>

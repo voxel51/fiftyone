@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
-import { ShadeBy } from "./types";
 import { Gradients } from "./renderables/pcd/shaders";
+import { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
 export const ACTION_SHADE_BY = "shadeBy";
@@ -34,10 +34,6 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
   { label: "Custom", value: SHADE_BY_CUSTOM },
   { label: "None", value: SHADE_BY_NONE },
 ];
-
-export const VOXEL51_THEME_COLOR = "#ff6f00";
-export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
-export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";
 
 export const PANEL_ORDER_VISIBILITY = 9;
 export const PANEL_ORDER_PCD_CONTROLS = 1;

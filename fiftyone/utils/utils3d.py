@@ -5,14 +5,16 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import os
 import warnings
 
-import eta.core.numutils as etan
 import numpy as np
 import scipy.spatial as sp
+
+import eta.core.numutils as etan
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -542,8 +544,9 @@ def compute_orthographic_projection_images(
         group_field = samples.group_field
 
         three_d_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(three_d_view, media_type=fom.POINT_CLOUD)
-
+        fov.validate_collection(
+            three_d_view, media_type={fom.POINT_CLOUD, fom.THREE_D}
+        )
         filepaths, groups = three_d_view.values(["filepath", group_field])
     else:
         try:

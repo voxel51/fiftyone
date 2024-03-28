@@ -26,7 +26,7 @@ class Object3D:
     Args:
         name: the name of the object
         visible (True): default visibility of the object in the scene
-        position (None): the position of the object in object space. If
+        position (None): the position of the object in object space
         quaternion (None): the quaternion of the object in object space
         scale (None): the scale of the object in object space
     """
@@ -139,8 +139,8 @@ class Object3D:
 
         Setting this property also decomposes the matrix into
         its constituent position, quaternion, and scale components.
-        However, decomposition of matrices with skew / shear components (non-uniform scaling)
-        might have unexpected results.
+        However, decomposition of matrices with skew / shear components
+        (non-uniform scaling) might have unexpected results.
         """
         return self._local_transform_matrix
 

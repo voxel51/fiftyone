@@ -44,16 +44,10 @@ type View = "pov" | "top";
 const DEFAULT_GREEN = "#00ff00";
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-type MediaTypePcdComponentProps = {
-  isHovering: boolean;
-};
-
 /**
  * This component renders the legacy point_cloud media type.
  */
-export const MediaTypePcdComponent = ({
-  isHovering,
-}: MediaTypePcdComponentProps) => {
+export const MediaTypePcdComponent = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings

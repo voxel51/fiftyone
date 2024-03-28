@@ -15,7 +15,7 @@ from .material_3d import (
     MeshPhongMaterial,
     PointcloudMaterial,
 )
-from .mesh import FBXMesh, GLTFMesh, ObjMesh, PlyMesh, StlMesh
+from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import *
 from .scene_3d import *

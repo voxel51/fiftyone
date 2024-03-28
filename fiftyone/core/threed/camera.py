@@ -5,6 +5,7 @@ Camera definition for 3D visualization.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from typing import Literal, Optional
 
 from pydantic.dataclasses import dataclass
@@ -18,18 +19,18 @@ class PerspectiveCamera:
     """Represents the configuration of a 3D perspective camera.
 
     Args:
-        position (None): the position of the camera. If `None`, the camera
+        position (None): the position of the camera. If ``None``, the camera
             position is calculated based on the bounding box of the scene
-        look_at (None): the point the camera is looking at. If `None`, the
+        look_at (None): the point the camera is looking at. If ``None``, the
             camera looks at the center of the scene
         up (None): the orthonormal axis that is considered up. Must be one of
-            "X", "Y", or "Z". If `None`, it'll fallback to the global `up` as
-            defined in 3D plugin settings. If that too is not defined, it'll
-            fallback to "Y"
-        aspect (None): the aspect ratio of the camera. If `None`, the aspect
-            ratio is calculated based on the width and height of the canvas.
+            "X", "Y", or "Z". If ``None``, it will fallback to the global
+            ``up`` as defined in 3D plugin settings. If that too is not
+            defined, it will fallback to "Y"
+        aspect (None): the aspect ratio of the camera. If ``None``, the aspect
+            ratio is calculated based on the width and height of the canvas
         fov (50): camera frustum vertical field of view in degrees. If
-            `None`, the field of view is 50 degrees
+            ``None``, the field of view is 50 degrees
         near (0.1): the near clipping plane of the camera
         far (2000): the far clipping plane of the camera
     """
@@ -48,9 +49,9 @@ class PerspectiveCamera:
 
     def as_dict(self):
         return {
-            "position": self.position.to_arr().tolist()
-            if self.position
-            else None,
+            "position": (
+                self.position.to_arr().tolist() if self.position else None
+            ),
             "lookAt": self.look_at.to_arr().tolist() if self.look_at else None,
             "aspect": self.aspect,
             "up": self.up,

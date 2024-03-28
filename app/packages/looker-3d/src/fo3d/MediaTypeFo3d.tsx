@@ -2,7 +2,6 @@ import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, OrbitControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
-import { Leva } from "leva";
 import {
   Suspense,
   useCallback,
@@ -28,11 +27,8 @@ import {
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
   DEFAULT_CAMERA_POSITION,
-  VOXEL51_COMPLEMENTARY_COLOR,
-  VOXEL51_THEME_COLOR,
-  VOXEL51_THEME_COLOR_MUTED,
 } from "../constants";
-import { LevaContainer, StatusBarRootContainer } from "../containers";
+import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
@@ -43,15 +39,14 @@ import {
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
+import Leva from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
 import { getMediaUrlForFo3dSample } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-type MediaTypeFo3dComponentProps = {};
-
-export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
+export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
@@ -345,20 +340,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   return (
     <>
-      <LevaContainer>
-        <Leva
-          theme={{
-            colors: {
-              accent1: VOXEL51_THEME_COLOR_MUTED,
-              accent2: VOXEL51_THEME_COLOR,
-              accent3: VOXEL51_COMPLEMENTARY_COLOR,
-            },
-          }}
-          fill
-          hideCopyButton
-          flat
-        />
-      </LevaContainer>
+      <Leva />
 
       <Canvas
         id={CANVAS_WRAPPER_ID}
@@ -398,9 +380,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
           </Suspense>
         </Fo3dSceneContext.Provider>
       </Canvas>
-      {/* <NodeInfoRootContainer>
-        <NodeInfo />
-      </NodeInfoRootContainer> */}
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>

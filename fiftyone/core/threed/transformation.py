@@ -14,7 +14,7 @@ class Vector3:
     z: float = 0.0
 
     def to_arr(self):
-        """Convert the vector to a numpy array."""
+        """Converts the vector to a numpy array."""
         return np.array([self.x, self.y, self.z])
 
 
@@ -30,14 +30,14 @@ class Euler:
     sequence: Literal["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"] = "XYZ"
 
     def to_quaternion(self):
-        """Convert euler angles to a quaternion."""
+        """Converts the euler angles to a quaternion."""
         q = Rotation.from_euler(
             self.sequence, [self.x, self.y, self.z], degrees=self.degrees
         )
         return Quaternion(*q.as_quat())
 
     def to_arr(self):
-        """Convert the euler angles to a numpy array."""
+        """Converts the euler angles to a numpy array."""
         return np.array([self.x, self.y, self.z])
 
 
@@ -51,12 +51,12 @@ class Quaternion:
     w: float = 1.0
 
     def to_euler(self, degrees=False, sequence="XYZ"):
-        """Convert a quaternion into euler angles."""
+        """Converts the quaternion into euler angles."""
         q = Rotation.from_quat([self.x, self.y, self.z, self.w])
         return Euler(*q.as_euler(sequence, degrees=degrees))
 
     def to_arr(self):
-        """Convert the quaternion to a numpy array."""
+        """Converts the quaternion to a numpy array."""
         return np.array([self.x, self.y, self.z, self.w])
 
 
