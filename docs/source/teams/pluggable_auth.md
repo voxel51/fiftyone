@@ -1,0 +1,628 @@
+# Pluggable Authentication
+
+The Pluggable Auth feature (sometimes referred to as CAS or Central
+Authentication Service) added in FiftyOne Teams v1.6.0 introduces a
+self-contained authentication system, eliminating the need for external
+dependencies like Auth0. This update is particularly advantageous for setups
+requiring an air-gapped or internal network environment, allowing FiftyOne
+Teams to operate in "internal mode." Key steps for setting up include
+configuring environmental variables for authentication, selecting
+authentication providers, and mapping users appropriately.
+
+For organizations upgrading from earlier versions, the transition involves
+creating a new database dedicated to user and directory data. This process
+includes defining necessary permissions and adjusting settings to align with
+the **internal mode**'s requirements. The internal mode offers benefits such as
+support for multiple organizations and eliminates the reliance on external
+authentication services (Auth0).
+
+The migration guide also covers the integration of authentication providers
+using the CAS REST API and details the process for migrating user data from
+Auth0. With the addition of JavaScript hooks, FiftyOne Teams can synchronize
+with corporate directories, offering customizable authentication and
+authorization solutions. This flexibility allows FiftyOne Teams to handle
+complex authentication scenarios.
+
+## Using the Super Admin UI
+
+This is where you configure the deployment wide configuration of FiftyOne
+Teams. When logging into Fiftyone Teams itself as an admin you are in the
+context of an organization, and settings there only apply to that organization.
+On the other hand, the Super Admin UI allows you to administer all
+organizations, and global configuration such as Identity Providers, Session
+timeouts, and JS hooks.
+
+To login to this application navigate to
+**$YOUR_FIFTYONE_TEAMS_URL/cas/configurations** and provide the
+`FIFTYONE_AUTH_SECRET` in the top right of the screen to login. **NOTE: you
+should have provided the value to `FIFTYONE_AUTH_SECRET` during installation or
+upgrade.**
+
+## Fiftyone Auth Mode
+
+With pluggable authentication comes a new setting called
+**FIFTYONE_AUTH_MODE**. This setting allows running Fiftyone Teams in two
+different modes: `legacy` and `internal`.
+
+**Legacy Mode Overview**
+
+In Legacy Mode, FiftyOne Teams uses Auth0 for user authentication and
+authorization, supporting only a single organization structure. This mode
+requires an external connection to Auth0 and follows an eventually consistent
+model. The configuration for identity providers and the persistence of user
+data in this mode is handled through Auth0, which includes support for SAML.
+
+**Introduction to Internal Mode**
+
+Internal Mode eliminates the need for Auth0, thereby removing FiftyOne Team's
+dependency on any external services. This mode is capable of supporting
+multiple organizations and does not require external connectivity, making it
+suitable for environments where security is paramount or internet access is
+limited or not allowed. Unlike Legacy Mode, Internal Mode operates on an
+immediate consistency basis, ensuring that changes are reflected across
+FiftyOne Teams instantly. Directory data is immediately written to MongoDB, and
+organizations have the autonomy to manage their Identity Provider
+Configuration. **NOTE: SAML support is not available in Internal Mode.**
+
+**Migrating from Legacy to Internal Mode**
+
+The migration from Legacy to Internal Mode begins with configuring an
+authentication provider through CAS (UI or REST). Following this, all existing
+user data must be migrated from Auth0, utilizing the management SDK or Auth0
+API to ensure a comprehensive transfer of information.
+
+For each user, the migration involves several steps:
+
+1. Creating a FiftyOne Teams user profile via `POST /cas/api/users`.
+2. Assigning the user to the default organization through a membership entry.
+3. Linking the user's account to the new authentication provider by creating an
+   account reference via `POST /cas/api/accounts`.
+
+The final step in the migration involves changing the `FIFTYONE_AUTH_MODE`
+setting from legacy to internal. This change officially activates Internal
+Mode, completing the migration process.
+
+## Getting started with Internal Mode
+
+This section describes how to get up and running with the auth features added
+in v1.6.0, including “air gapped” support (also called “internal mode”),
+removing dependencies on Auth0, and sourcing users and directory metadata
+within FiftyOne Teams. These steps are only required to run FiftyOne Teams in
+“internal mode” and can be skipped if using Auth0 (legacy mode).
+
+1. Login to the SuperUser UI to configure your Authentication Provider /
+   Identity Provider
+2. Click on the “Admins” tab.
+3. Click “Add admin” in the bottom left.
+4. Specify your name email address as it appears in the Identity Provider that
+   you will be configuring and then click “Add”.
+5. Click on the “Identity Providers” tab at the top of the screen and then
+   click “Add provider”.
+6. Fill out the “Add identity provider”
+    1. You can also click “Switch to advanced editor” to provide the full
+       configuration as a JSON object.
+7. In the “Profile callback” field, ensure that the mapping matches what is
+   expected for your Identity Provider.
+8. In the “Sign-in button style” specify how you would like users to see this
+   login option in the UI. 2. “Logo” is an optional field which allows you to
+   provide a URL to a logo. 3. “Background” and “Text color” allows you to
+   define colors that will appear in the UI. 4. Note that the text will be
+   populated by the “Identity Provider Name” field at the top of the form.
+9. Navigate to `$YOUR_FIFTYONE_TEAMS/datasets`
+10. You should see the login choice for your newly configured authentication
+    provider.
+11. Before you login, make sure you have set your admin user in step 4.
+    Otherwise you will need to remove this user from the database and try
+    again.
+12. Click the login button and provide the credentials that match the user
+    defined as an admin in step 4
+13. Once logged in, click on the icon in the top right corner then click
+    “Settings”.
+14. Click “Users” on the left side.
+15. You should see yourself listed as an admin.
+
+## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
+
+Below is an example of how to use JavaScript hooks to sync FiftyOne teams with
+a corporate directory such as Open Directory, LDAP, or Active Directory via an
+intermediary REST API or Identity Provider. Note that the recommended setup is
+to do this via OAuth/OIDC claims, however the example below illustrates a more
+intricate integration.
+
+This example specifically addresses a scenario in which additional actions are
+performed during the **signIn** trigger, demonstrating how hooks can extend
+beyond simple authentication to interact with external APIs and internal
+services for complex user management and group assignment tasks. Here's a
+breakdown of the example:
+
+```typescript
+// Example JavaScript hook implementation
+async function Hook(context) {
+    const { params, services, trigger } = context;
+    const { user } = params;
+
+    switch (trigger) {
+        // Callback: user is trying to sign in
+        case "signIn":
+            // returning false will prevent user from signing in
+            try {
+                const groups = await getGroups();
+                for (const group of groups) {
+                    await addUserToGroup(group.name);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+            return true;
+    }
+
+    async function getGroups() {
+        const { account } = params;
+        const response = await services.util.http.get(
+            `https://fiftyone.ai/list_groups/${user.id}`,
+            { headers: { Authorization: `Bearer ${account?.access_token}` } }
+        );
+        return response.json();
+    }
+
+    async function addUserToGroup(groupName) {
+        const orgId = "my_org_id";
+        // Retrieve all existing groups
+        const groups = await services.directory.groups.listGroups(orgId);
+        // Find an existing group by name
+        let group = groups.find((group) => {
+            return group.name === groupName;
+        });
+        // If group does not exist, create a new group
+        if (!group) {
+            group = await services.directory.groups.createGroup(
+                orgId,
+                groupName
+            );
+        }
+        // Add signed-in user to the group and update the group
+        group.userIds.push(user.id);
+        const updatedGroupName = undefined;
+        const updatedGroupDescription = undefined;
+        const updatedGroupUserIds = [...group.userIds, user.id];
+        await services.directory.groups.updateGroup(
+            orgId,
+            group.id,
+            updatedGroupName,
+            updatedGroupDescription,
+            updatedGroupUserIds
+        );
+    }
+}
+```
+
+### **Context Object**
+
+The context object provides information about the current operation, including
+parameters like the user's details, and services (services) that offer utility
+functions and access to directory operations.
+
+### **External API Integration**
+
+-   **getGroups**: This function calls an external API to retrieve a list of
+    groups to which the signing-in user should be added. It utilizes the
+    services.util.http.get method for making the HTTP request, demonstrating
+    how external services can be queried within the hook.
+-   **addUserToGroup**: For each group retrieved from the external API, this
+    function checks if the group exists in the organization's directory. If a
+    group does not exist, it is created, and then the user is added to it. This
+    process involves querying and modifying the organization's group directory,
+    illustrating the hook's capability to perform complex operations like
+    dynamic group management based on external data.
+
+### **Error Handling**
+
+-   The try-catch block around the external API call and group manipulation
+    logic ensures that errors do not prevent the user from signing in but are
+    properly logged
+
+### **Summary**
+
+This hook example demonstrates a pattern for extending authentication flows in
+CAS with custom logic. By integrating with an external API to fetch group
+information and manipulating the organization's group memberships accordingly,
+it showcases the flexibility and extensibility of hooks in supporting complex,
+real-world authentication and authorization scenarios.
+
+## REST API
+
+You can view the REST API Documentation by logging into the Super Admin UI (see
+above) or by directly visiting **$YOUR_FIFTYONE_TEAMS_URL/cas/api-doc**
+
+## Configuration
+
+<table>
+  <tr>
+   <td><strong>Setting</strong>
+   </td>
+   <td>Type
+   </td>
+   <td>Default
+   </td>
+   <td>Description
+   </td>
+  </tr>
+  <tr>
+   <td><code>authentication_providers</code>
+   </td>
+   <td><code>Array</code>
+   </td>
+   <td><code>[]</code>
+   </td>
+   <td>A list of definitions of OIDC and/or OAuth providers.
+   </td>
+  </tr>
+  <tr>
+   <td><code>authentication_provider.profile</code>
+   </td>
+   <td><code>String</code> (parseable to JS function)
+   </td>
+   <td><code>null</code>
+   </td>
+   <td>When provided this function is called to map the external user_info to the internal fiftyone user/account. NOTE: function calls, the while keyword and other JS-specific syntax is not allowed in these functions.
+   </td>
+  </tr>
+  <tr>
+   <td><code>session_ttl</code>
+   </td>
+   <td><code>Number</code>
+   </td>
+   <td><code>300</code>
+   </td>
+   <td>Time in seconds for sessions to live after which users will be forced to log out. Must be greater than 120 seconds to support refreshing of user session using refresh token.
+   </td>
+  </tr>
+  <tr>
+   <td><code>js_hook_enabled</code>
+   </td>
+   <td><code>Boolean</code>
+   </td>
+   <td><code>true</code>
+   </td>
+   <td>When set to False, configured JavaScript hooks will not be invoked.
+   </td>
+  </tr>
+  <tr>
+   <td><code>js_hook</code>
+   </td>
+   <td><code>String</code> (parseable to a single JS function)
+   </td>
+   <td><code>null</code>
+   </td>
+   <td>JavaScript hook which is invoked on several CAS events described in JS Hooks section below
+   </td>
+  </tr>
+</table>
+
+## JavaScript Hooks
+
+This documentation outlines the JavaScript hook implementation for the Central
+Authentication Service (CAS). As a CAS superuser, you are able to define
+JavaScript functions that integrate with various authentication flows within
+CAS, customizing the authentication processes.
+
+**Overview**
+
+JavaScript hooks allow superusers to programmatically influence authentication
+flows, including sign-in, sign-up, JWT handling and customization, redirection,
+and session management. This document describes the available hooks, their
+triggers, expected return types, and contextual information provided to each
+hook.
+
+**Example JavaScript Hook**
+
+```typescript
+// Example JavaScript hook implementation
+async function Hook(context) {
+    const { params, services, trigger } = context;
+
+    switch (trigger) {
+        // user is trying to sign in
+        case "signIn":
+            // returning false will prevent user from signing in
+            return true;
+
+        // JWT token is created for user session
+        case "jwt":
+            // custom payload returned will be merged with default payload
+            return {};
+
+        // user has logged out
+        case "logout":
+            // returning or throwing here does not affect the sign out flow
+            break;
+
+        // user is being redirected on sign in our sign out
+        case "redirect":
+            // user will be redirected to this URL on sign in our sign out
+            return "/settings/accounts";
+    }
+}
+```
+
+**Actionable Triggers**
+
+<table>
+  <tr>
+   <td><strong>Trigger</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+   <td><strong>Return Type</strong>
+   </td>
+  </tr>
+  <tr>
+   <td><code>signIn</code>
+   </td>
+   <td>Invoked when a user signs in. If the hook returns false or error is thrown, sign-in will be prevented.
+   </td>
+   <td>Boolean
+   </td>
+  </tr>
+  <tr>
+   <td><code>signUp</code>
+   </td>
+   <td>Invoked when a new user signs in for the very first time. If the hook returns false or an error is thrown, sign-in will be prevented and a user/account will not be created.
+   </td>
+   <td>
+   </td>
+  </tr>
+  <tr>
+   <td><code>jwt</code>
+   </td>
+   <td>Invoked when JWT is created (on signIn, signUp, refresh token). The returned object will override payload of default JWT payload. If an error is thrown, the session will be expired and user will be redirected to sign-in
+   </td>
+   <td>Object | undefined
+   </td>
+  </tr>
+  <tr>
+   <td><code>redirect</code>
+   </td>
+   <td>Invoked post signIn or signOut. The user will be redirected to the URL/Path returned from the hook.
+   </td>
+   <td>String (URL)
+   </td>
+  </tr>
+  <tr>
+   <td><code>session</code>
+   </td>
+   <td>Invoked when a request for a session (on signIn, signUp, refresh token) is received.
+   </td>
+   <td>
+   </td>
+  </tr>
+</table>
+
+**Event-Only Triggers**
+
+<table>
+  <tr>
+   <td><strong>Trigger</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td><code>signOut</code>
+   </td>
+   <td>Invoked when a user signs out.
+   </td>
+  </tr>
+  <tr>
+   <td><code>createUser</code>
+   </td>
+   <td>Invoked when the adapter is asked to create a user.
+   </td>
+  </tr>
+  <tr>
+   <td><code>linkAccount</code>
+   </td>
+   <td>Invoked when an account is linked to a user.
+   </td>
+  </tr>
+</table>
+
+**JavaScript Hooks Contextual Parameters**
+
+<table>
+  <tr>
+   <td>
+    <strong>Parameter</strong>
+
+   </td>
+   <td>
+    <strong>Description</strong>
+
+   </td>
+   <td>
+    <strong>Available in Triggers</strong>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>token</code>
+
+   </td>
+   <td>
+    The payload of a JWT token.
+
+   </td>
+   <td>
+    <code>signIn<strong>, </strong>signUp<strong>, </strong>jwt<strong>, </strong>session<strong>, </strong>signOut<strong>, </strong>linkAccount<strong>, </strong>createUser</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>user</code>
+
+   </td>
+   <td>
+    The signed-in user object.
+
+   </td>
+   <td>
+    <code>signIn<strong>, </strong>signUp<strong>, </strong>jwt<strong>, </strong>linkAccount</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>account</code>
+
+   </td>
+   <td>
+    The account from an identity provider.
+
+   </td>
+   <td>
+    <code>signIn<strong>, </strong>signUp<strong>, </strong>jwt<strong>, </strong>linkAccount</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>profile</code>
+
+   </td>
+   <td>
+    The profile from an identity provider.
+
+   </td>
+   <td>
+    <code>signIn<strong>, </strong>signUp<strong>, </strong>jwt<strong>, </strong>linkAccount</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>isNewUser</code>
+
+   </td>
+   <td>
+    True if a user is signing in for the first time.
+
+   </td>
+   <td>
+    <code>jwt</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>trigger</code>
+
+   </td>
+   <td>
+    Specifies the current trigger event.
+
+   </td>
+   <td>
+    <code>jwt</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>Session</code>
+
+   </td>
+   <td>
+    The session object.
+
+   </td>
+   <td>
+    <code>session</code>
+
+   </td>
+  </tr>
+  <tr>
+   <td>
+    <code>services</code>
+
+   </td>
+   <td>
+    Provides access to various services.
+
+   </td>
+   <td><strong>all</strong>
+   </td>
+  </tr>
+</table>
+
+**Services**
+
+<table>
+  <tr>
+   <td><strong>Service</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.util.http</code>
+   </td>
+   <td>Provides <code>get</code>, <code>post</code>, <code>put</code>, and <code>delete</code> functions for making <code>HTTP</code> requests from a JS Hook.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.userContext</code>
+   </td>
+   <td>Object containing information about the user performing the current action.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.directory</code>
+   </td>
+   <td>
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.directory.users</code>
+   </td>
+   <td>The <code>UserService</code> - providing methods for interacting with the directory of users.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.directory.groups</code>
+   </td>
+   <td>The <code>GroupsService </code>- providing methods for interacting with the directory of groups.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.config</code>
+   </td>
+   <td>The <code>ConfigService </code>- providing methods for reading and writing the <code>AuthenticationConfig</code>.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.util</code>
+   </td>
+   <td>
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.directory.orgs</code>
+   </td>
+   <td>The <code>OrgsService </code>- providing methods for interacting with the directory of organizations.
+   </td>
+  </tr>
+  <tr>
+   <td><code>services.webhookService</code>
+   </td>
+   <td>Experimental
+   </td>
+  </tr>
+  <tr>
+   <td><code>process.env['MY_ENV_VAR']</code>
+   </td>
+   <td>Syntax for reading environment variables in a JS Hook.
+   </td>
+  </tr>
+</table>

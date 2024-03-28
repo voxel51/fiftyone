@@ -3,6 +3,22 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.6.0
+--------------------
+*Released March 29, 2024*
+
+What's New
+
+- Removed Auth0 as a hard dependency for Teams deployments
+- Added support for directly authenticating with Identity Providers
+- New super admin UI for administering FiftyOne Teams deployments
+- Added support for customizing the login page
+- Introduced a "Central Auth Service" for managing user authentication
+- New "Pluggable Auth" system for customizing FiftyOne Teams authentication and integrations
+- Added "Groups" for managing and dataset access for groups of users
+- Added the ability to search for users on the admin's user page
+
+
 FiftyOne Teams 1.5.8
 --------------------
 *Released March 21, 2024*
