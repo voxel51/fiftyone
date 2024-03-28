@@ -6,7 +6,6 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 |
 """
 from concurrent.futures import ThreadPoolExecutor
-import json
 import logging
 import os
 from packaging.requirements import Requirement
