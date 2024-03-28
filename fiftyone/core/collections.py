@@ -76,8 +76,12 @@ aggregation = _make_registrar()
 
 
 class DownloadContext(object):
-    """Context that can be used to pre-download media while iterating over a
-    collection.
+    """Context that can be used to pre-download media in baches while iterating
+    over a collection.
+
+    By default, all media will be downloaded when the context is entered, but
+    you can configure a batching strategy via the `batch_size` or
+    `target_size_bytes` parameters.
 
     Args:
         sample_collection: a
@@ -1146,8 +1150,12 @@ class SampleCollection(object):
         clear=False,
         progress=None,
     ):
-        """Returns a context that can be used to automatically pre-download
-        media when iterating over samples in this collection.
+        """Returns a context that can be used to pre-download media in batches
+        when iterating over samples in this collection.
+
+        By default, all media will be downloaded when the context is entered,
+        but you can configure a batching strategy via the `batch_size` or
+        `target_size_bytes` parameters.
 
         Examples::
 
