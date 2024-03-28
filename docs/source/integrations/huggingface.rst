@@ -1245,3 +1245,36 @@ For a comprehensive list of the supported fields in the yaml config file, see
 here **TODO**.
 
 
+.. _huggingface-hub-load-dataset-from-kwargs:
+
+Loading datasets with config kwargs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to loading datasets from repo configs and local configs, you can
+also load datasets from the Hub by passing the necessary config arguments
+directly to :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`.
+This is useful when you want to load a dataset from the Hub that does not have
+a `fiftyone.yml` or `fiftyone.yaml` file, and the structure of the dataset is
+simple enough that you can specify the necessary arguments directly.
+
+For example, to load the `mnist` dataset from the Hub, you can pass the `format`
+and `classification_fields` arguments directly:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "mnist",
+        format="ParquetFilesDataset",
+        classification_fields="label"
+    )
+
+
+This will tell FiftyOne that the data is stored in Parquet files, and that the
+`label` field should be treated as a classification field, to be converted into
+a |Classification| field in the dataset.
+
+
+
