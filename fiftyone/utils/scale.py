@@ -432,7 +432,6 @@ def export_to_scale(
                 "when exporting labels for video datasets"
             )
 
-    # Compute metadata if necessary
     sample_collection.compute_metadata()
 
     # Export the labels

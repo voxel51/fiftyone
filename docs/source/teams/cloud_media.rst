@@ -387,6 +387,7 @@ _____________
     fo.Dataset.download_media(
         self,
         media_fields=None,
+        group_slices=None,
         update=False,
         skip_failures=True,
         progress=None,
@@ -402,6 +403,9 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices for which
+                to download media. Only applicable when the collection contains
+                groups
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -416,17 +420,35 @@ _____________
 
     fo.Dataset.download_context(
         self,
-        batch_size=100,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        group_slices=None,
+        update=False,
+        skip_failures=True,
         clear=False,
         progress=None,
-        **kwargs,
     ):
-        """Returns a context that can be used to automatically pre-download
-        media when iterating over samples in this collection.
+        """Returns a context that can be used to pre-download media in batches
+        when iterating over samples in this collection.
+
+        By default, all media will be downloaded when the context is entered,
+        but you can configure a batching strategy via the `batch_size` or
+        `target_size_bytes` parameters.
 
         Args:
-            batch_size (100): the sample batch size to use when downloading
-                media
+            batch_size (None): a sample batch size to use for each download
+            target_size_bytes (None): a target content size, in bytes, for each
+                download batch
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices to download
+                media for. Only applicable when the collection contains groups
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
             clear (False): whether to clear the media from the cache when the
                 context exits
             progress (None): whether to render a progress bar tracking the
@@ -468,7 +490,7 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.cache_stats(self, media_fields=None):
+    fo.Dataset.cache_stats(self, media_fields=None, group_slices=None):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
@@ -478,6 +500,8 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 paths. By default, all media fields in the collection's
                 :meth:`app_config` are included
+            group_slices (None): an optional subset of group slices to include.
+                Only applicable when the collection contains groups
 
         Returns:
             a stats dict
@@ -485,7 +509,7 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.clear_media(self, media_fields=None):
+    fo.Dataset.clear_media(self, media_fields=None, group_slices=None):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
@@ -495,6 +519,9 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 paths to clear from the cache. By default, all media fields
                 in the collection's :meth:`app_config` are cleared
+            group_slices (None): an optional subset of group slices for which
+                to clear media. Only applicable when the collection contains
+                groups
         """
 
 `fiftyone.core.storage`

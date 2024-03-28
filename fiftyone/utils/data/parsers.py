@@ -1678,8 +1678,8 @@ class ExtractClipsMixin(object):
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             when no pre-computed metadata is available
-        export_media (True): whether to actually write clips when their paths
-            are requested
+        write_clips (True): whether to write clips when their paths are
+            requested
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1689,7 +1689,7 @@ class ExtractClipsMixin(object):
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1697,7 +1697,7 @@ class ExtractClipsMixin(object):
             video_format = fo.config.default_video_ext
 
         self.compute_metadata = compute_metadata
-        self.export_media = export_media
+        self.write_clips = write_clips
         self.clip_dir = clip_dir
         self.video_format = video_format
 
@@ -1707,7 +1707,7 @@ class ExtractClipsMixin(object):
         video_path = sample.filepath
         basename, ext = os.path.splitext(os.path.basename(video_path))
 
-        if self.export_media:
+        if self.write_clips:
             if self.clip_dir is None:
                 self.clip_dir = etau.make_temp_dir()
 
@@ -1724,7 +1724,7 @@ class ExtractClipsMixin(object):
         )
         clip_path = os.path.join(dirname, clip_name)
 
-        if self.export_media:
+        if self.write_clips:
             self._curr_clip_path = clip_path
             fouv.extract_clip(
                 video_path,
@@ -1757,7 +1757,7 @@ class FiftyOneUnlabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether to write clips when :meth:`get_video_path`
+        write_clips (True): whether to write clips when :meth:`get_video_path`
             is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
@@ -1768,14 +1768,14 @@ class FiftyOneUnlabeledVideoSampleParser(
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
@@ -1830,7 +1830,7 @@ class FiftyOneLabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether to write clips when :meth:`get_video_path`
+        write_clips (True): whether to write clips when :meth:`get_video_path`
             is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
@@ -1845,7 +1845,7 @@ class FiftyOneLabeledVideoSampleParser(
         label_fcn=None,
         frame_labels_fcn=None,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1856,7 +1856,7 @@ class FiftyOneLabeledVideoSampleParser(
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )

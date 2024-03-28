@@ -52,6 +52,8 @@ class ImagePatchesExtractor(object):
         force_square=False,
         alpha=None,
     ):
+        fov.validate_image_collection(samples)
+
         if patches_field is None:
             if samples._is_patches:
                 patches_field = samples._label_fields[0]
@@ -79,7 +81,6 @@ class ImagePatchesExtractor(object):
             )
 
             if patches is not None:
-                fov.validate_image_sample(sample)
                 img = _load_image(sample.filepath, force_rgb=self.force_rgb)
                 for detection in patches.detections:
                     patch = extract_patch(
