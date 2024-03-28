@@ -86,19 +86,19 @@ def push_to_hub(
         dataset_type (None): the type of the dataset to create
         label_field (None): controls the label field(s) to export. Only
             applicable to labeled datasets. Can be any of the following:
-            - the name of a label field to export
-            - a glob pattern of label field(s) to export
-            - a list or tuple of label field(s) to export
-            - a dictionary mapping label field names to keys to use when
-              constructing the label dictionaries to pass to the exporter
+        - the name of a label field to export
+        - a glob pattern of label field(s) to export
+        - a list or tuple of label field(s) to export
+        - a dictionary mapping label field names to keys to use when
+            constructing the label dictionaries to pass to the exporter
         frame_labels_field (None): controls the frame label field(s) to export.
             The "frames." prefix is optional. Only applicable to labeled video
             datasets. Can be any of the following:
-            - the name of a frame label field to export
-            - a glob pattern of frame label field(s) to export
-            - a list or tuple of frame label field(s) to export
-            - a dictionary mapping frame label field names to keys to use when
-              constructing the frame label dictionaries to pass to the exporter
+        - the name of a frame label field to export
+        - a glob pattern of frame label field(s) to export
+        - a list or tuple of frame label field(s) to export
+        - a dictionary mapping frame label field names to keys to use when
+            constructing the frame label dictionaries to pass to the exporter
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -178,8 +178,7 @@ def load_from_hub(
     config_file=None,
     **kwargs,
 ):
-    """
-    Load a dataset from the Hugging Face Hub into FiftyOne.
+    """Load a dataset from the Hugging Face Hub into FiftyOne.
 
     Args:
         repo_id: the Hugging Face Hub identifier of the dataset
