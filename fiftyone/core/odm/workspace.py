@@ -26,6 +26,9 @@ from .embedded_document import EmbeddedDocument
 
 def _validate_children(children):
     if children is not None:
+        if not isinstance(children, list):
+            raise ValidationError("`children'` must be a list")
+
         if not all(isinstance(c, AppComponent) for c in children):
             raise ValidationError("All children must be %s" % AppComponent)
 

@@ -1484,7 +1484,6 @@ You can reset your spaces to their default state by setting
 Saving workspaces in Python
 ---------------------------
 
-
 If you find yourself frequently using/recreating a certain spaces layout, you
 can save it as a workspace with a name of your choice, using
 :meth:`save_workspace() <fiftyone.core.dataset.Dataset.save_workspace>`.
@@ -1531,7 +1530,7 @@ For example, to save the workspace defined in the
     dataset.save_workspace(
         workspace_name,
         workspace,
-        description=description
+        description=description,
         color=color
     )
 
