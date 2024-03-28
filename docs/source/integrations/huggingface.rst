@@ -1274,7 +1274,40 @@ and `classification_fields` arguments directly:
 
 This will tell FiftyOne that the data is stored in Parquet files, and that the
 `label` field should be treated as a classification field, to be converted into
-a |Classification| field in the dataset.
+a |Classification| label field in the dataset.
 
 
+.. _huggingface-hub-load-dataset-config-kwargs:
+
+Supported config fields
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Whether you are loading a dataset from a repo config, a local config file, or
+passing the config arguments directly, you can specify the following fields:
+
+- `format` (str): The format of the dataset. This can be any of the
+  :ref:`common formats <supported-import-formats>` supported by FiftyOne — just
+  pass the name of the format as a string. For example, to load a dataset in the
+  :ref:`COCO <COCODetectionDataset-import>` format, you can pass 
+  `format="COCODetectionDataset"`. To specify that the dataset is stored in
+  Parquet files, you can pass `format="ParquetFilesDataset"` (or simply 
+  `format="parquet"` for short). This is the only required field.
+- `name` (str): The name of the FiftyOne |Dataset| to be created. If the 
+  `repo_id` is cumbersome, this can be used to specify a simpler default name.
+  For example, for this `sheep dataset <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
+  rather than using the `repo_id` `keremberke/aerial-sheep-object-detection`, you
+  can specify `name="sheep-detection"`.
+- `filepath` (str): In FiftyOne, `filepath` is 
+  `a default field <https://docs.voxel51.com/user_guide/using_datasets.html#fields>`_
+  that is used to store the path to the primary media file for each sample in
+  the dataset. For Hugging Face parquet datasets, primary media fields for image
+  datasets are typically stored in the `image` columns, so this is where
+  FiftyOne's :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
+  looks by default. If the primary media field is stored in a different column,
+  you can specify the column name with the key `filepath`. For example, the 
+  `COYO-700M dataset <https://huggingface.co/datasets/kakaobrain/coyo-700m>`_
+  has the primary media field referenced in the `url` column. Specifying
+  `filepath="url"` will tell FiftyOne to look in the `url` column for the 
+  primary media file path. Images will be downloaded from the corresponding URLs
+  and saved to disk.
 
