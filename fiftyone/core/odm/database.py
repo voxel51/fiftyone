@@ -866,8 +866,9 @@ def _patch_referenced_docs(
     num_bad_ids = len(bad_ids)
     if num_bad_ids > 0:
         _logger.info(
-            "Purging %d bad saved view ID(s) %s from dataset",
+            "Purging %d bad %s view ID(s) %s from dataset",
             num_bad_ids,
+            field_name,
             bad_ids,
         )
         ids_from_dataset_list = [
@@ -880,8 +881,9 @@ def _patch_referenced_docs(
     if num_missing_docs > 0:
         missing_docs = [(_id, doc_id_to_name[_id]) for _id in missing_ids]
         _logger.info(
-            "Adding %d misplaced saved view(s) %s back to dataset",
+            "Adding %d misplaced %s(s) %s back to dataset",
             num_missing_docs,
+            field_name,
             missing_docs,
         )
         ids_from_dataset_list.extend(missing_ids)
