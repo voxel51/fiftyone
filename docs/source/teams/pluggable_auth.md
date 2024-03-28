@@ -1,32 +1,15 @@
 # Pluggable Authentication
 
-The Pluggable Auth feature (sometimes referred to as CAS or Central
-Authentication Service) added in FiftyOne Teams v1.6.0 introduces a
-self-contained authentication system, eliminating the need for external
-dependencies like Auth0. This update is particularly advantageous for setups
-requiring an air-gapped or internal network environment, allowing FiftyOne
-Teams to operate in "internal mode." Key steps for setting up include
-configuring environmental variables for authentication, selecting
-authentication providers, and mapping users appropriately.
+Pluggable Authentication (sometimes referred to as CAS or Central
+Authentication Service) introduces a self-contained authentication system,
+eliminating the need for external dependencies like Auth0. This is particularly
+advantageous for setups requiring an air-gapped or internal network
+environment, allowing FiftyOne Teams to operate in "internal mode."
 
-For organizations upgrading from earlier versions, the transition involves
-creating a new database dedicated to user and directory data. This process
-includes defining necessary permissions and adjusting settings to align with
-the **internal mode**'s requirements. The internal mode offers benefits such as
-support for multiple organizations and eliminates the reliance on external
-authentication services (Auth0).
-
-The migration guide also covers the integration of authentication providers
-using the CAS REST API and details the process for migrating user data from
-Auth0. With the addition of JavaScript hooks, FiftyOne Teams can synchronize
-with corporate directories, offering customizable authentication and
-authorization solutions. This flexibility allows FiftyOne Teams to handle
-complex authentication scenarios.
-
-## Using the Super Admin UI
+## Super Admin UI
 
 This is where you configure the deployment wide configuration of FiftyOne
-Teams. When logging into Fiftyone Teams itself as an admin you are in the
+Teams. When logging into FiftyOne Teams itself as an admin you are in the
 context of an organization, and settings there only apply to that organization.
 On the other hand, the Super Admin UI allows you to administer all
 organizations, and global configuration such as Identity Providers, Session
@@ -38,19 +21,19 @@ To login to this application navigate to
 should have provided the value to `FIFTYONE_AUTH_SECRET` during installation or
 upgrade.**
 
-## Fiftyone Auth Mode
+## FiftyOne Auth Mode
 
 With pluggable authentication comes a new setting called
-**FIFTYONE_AUTH_MODE**. This setting allows running Fiftyone Teams in two
+**FIFTYONE_AUTH_MODE**. This setting allows running FiftyOne Teams in two
 different modes: `legacy` and `internal`.
 
 **Legacy Mode Overview**
 
 In Legacy Mode, FiftyOne Teams uses Auth0 for user authentication and
-authorization, supporting only a single organization structure. This mode
-requires an external connection to Auth0 and follows an eventually consistent
-model. The configuration for identity providers and the persistence of user
-data in this mode is handled through Auth0, which includes support for SAML.
+authorization. This mode requires an external connection to Auth0 and follows
+an eventually consistent model for user data. The configuration for identity
+providers and the persistence of user data in this mode is handled through
+Auth0, which includes support for SAML.
 
 **Introduction to Internal Mode**
 
@@ -64,6 +47,7 @@ FiftyOne Teams instantly. Directory data is immediately written to MongoDB, and
 organizations have the autonomy to manage their Identity Provider
 Configuration. **NOTE: SAML support is not available in Internal Mode.**
 
+<!--
 **Migrating from Legacy to Internal Mode**
 
 The migration from Legacy to Internal Mode begins with configuring an
@@ -81,6 +65,7 @@ For each user, the migration involves several steps:
 The final step in the migration involves changing the `FIFTYONE_AUTH_MODE`
 setting from legacy to internal. This change officially activates Internal
 Mode, completing the migration process.
+-->
 
 ## Getting started with Internal Mode
 
