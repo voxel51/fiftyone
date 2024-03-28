@@ -10,7 +10,7 @@ FiftyOne Teams 1.6.0
 What's New
 
 
-- New :ref:`Pluggable Auth <pluggable-auth>` system for customizing FiftyOne Teams authentication and integrations
+- New :ref:`Pluggable Auth <pluggable-auth>` system for customizing FiftyOne Teams authentication
 - Introduced a :ref:`Central Auth Service <central-auth-service>` for managing user authentication
 - Removed Auth0 as a hard dependency for Teams deployments with the introduction of :ref:`Internal Mode <internal-mode>`
 - Added support for directly authenticating with :ref:`Identity Providers <identity-providers>`

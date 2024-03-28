@@ -21,12 +21,16 @@ data in FiftyOne teams.
 
 ## Super Admin UI
 
+![Super Admin UI](/images/teams/cas/cas_api_docs.png)
+
 This is where you configure the deployment wide configuration of FiftyOne
 Teams. When logging into FiftyOne Teams itself as an admin you are in the
 context of an organization, and settings there only apply to that organization.
 On the other hand, the Super Admin UI allows you to administer all
 organizations, and global configuration such as Identity Providers, Session
 timeouts, and JS hooks.
+
+![Sign In to CAS](/images/teams/cas/cas_sign_in.png)
 
 To login to this application navigate to
 **$YOUR_FIFTYONE_TEAMS_URL/cas/configurations** and provide the
@@ -142,23 +146,18 @@ can be skipped if using Auth0 (legacy mode).
        configuration as a JSON object.
 7. In the “Profile callback” field, ensure that the mapping matches what is
    expected for your Identity Provider.
-8. In the “Sign-in button style” specify how you would like users to see this
-   login option in the UI. 2. “Logo” is an optional field which allows you to
-   provide a URL to a logo. 3. “Background” and “Text color” allows you to
-   define colors that will appear in the UI. 4. Note that the text will be
-   populated by the “Identity Provider Name” field at the top of the form.
-9. Navigate to `$YOUR_FIFTYONE_TEAMS/datasets`
-10. You should see the login choice for your newly configured authentication
-    provider.
-11. Before you login, make sure you have set your admin user in step 4.
+8. Navigate to `$YOUR_FIFTYONE_TEAMS/datasets`
+9. You should see the login screen for your newly configured authentication
+   provider.
+10. Before you login, make sure you have set your admin user in step 4.
     Otherwise you will need to remove this user from the database and try
     again.
-12. Click the login button and provide the credentials that match the user
+11. Click the login button and provide the credentials that match the user
     defined as an admin in step 4
-13. Once logged in, click on the icon in the top right corner then click
+12. Once logged in, click on the icon in the top right corner then click
     “Settings”.
-14. Click “Users” on the left side.
-15. You should see yourself listed as an admin.
+13. Click “Users” on the left side.
+14. You should see yourself listed as an admin.
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
