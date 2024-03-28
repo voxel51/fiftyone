@@ -30,6 +30,7 @@ import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
+import { labelPathsSetExpanded } from "./labels";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -634,34 +635,17 @@ export const fieldType = selectorFamily<
     },
 });
 
-export const filterFields = selectorFamily<string[], string>({
-  key: "filterFields",
+const filterFieldsCommon = selectorFamily<string[], string>({
+  key: "filterFieldsCommon",
   get:
     (path) =>
     ({ get }) => {
-      const keys = path.split(".");
-      const f = get(field(path));
+      const parent = get(field(path));
 
-      if (
-        keys.length === 1 ||
-        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
-      ) {
-        return [path];
-      }
+      const label = LABELS.includes(parent?.embeddedDocType);
+      const excluded = EXCLUDED[parent?.embeddedDocType] || [];
 
-      const parentPath = keys.slice(0, -1).join(".");
-      const parent = get(field(parentPath));
-      let topParentPath = parentPath;
-      if (parent.ftype === LIST_FIELD) {
-        topParentPath = parentPath.split(".").slice(0, -1).join(".");
-      }
-
-      const topParent = get(field(topParentPath));
-
-      const label = LABELS.includes(topParent?.embeddedDocType);
-      const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
-
-      return get(fields({ path: parentPath }))
+      return get(fields({ path }))
         .filter(({ name, ftype, subfield }) => {
           if (ftype === LIST_FIELD) {
             ftype = subfield;
@@ -676,7 +660,51 @@ export const filterFields = selectorFamily<string[], string>({
             (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
           );
         })
-        .map(({ name }) => [parentPath, name].join("."));
+        .map(({ name }) => [path, name].join("."));
+    },
+});
+
+export const modalFilterFields = selectorFamily({
+  key: "modalFilterFields",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const labelPaths = get(labelPathsSetExpanded);
+
+      if (!labelPaths.has(path)) {
+        path = path.split(".").slice(0, -1).join(".");
+        if (labelPaths.has(path)) {
+          throw new Error(`unexpected modalFilterField path '${path}'`);
+        }
+      }
+
+      return [path, ...get(filterFieldsCommon(path)).flat()].sort();
+    },
+});
+
+export const filterFields = selectorFamily({
+  key: "filterFields",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+
+      if (
+        !f ||
+        f?.ftype === EMBEDDED_DOCUMENT_FIELD ||
+        (f?.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
+      ) {
+        return [path];
+      }
+
+      const keys = path.split(".");
+
+      if (keys.length > 1) {
+        const parent = keys.slice(0, -1).join(".");
+        return get(filterFieldsCommon(parent));
+      }
+
+      return [keys[0]];
     },
 });
 

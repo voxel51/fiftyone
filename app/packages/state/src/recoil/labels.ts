@@ -1,9 +1,14 @@
 import { selector, selectorFamily } from "recoil";
 import { labelPaths } from "./schema";
 
-const labelPathsSet = selector({
+export const labelPathsSet = selector({
   key: "labelPathsSet",
   get: ({ get }) => new Set(get(labelPaths({ expanded: false }))),
+});
+
+export const labelPathsSetExpanded = selector({
+  key: "labelPathsSetExpanded",
+  get: ({ get }) => new Set(get(labelPaths({ expanded: true }))),
 });
 
 export const isLabelPath = selectorFamily({
