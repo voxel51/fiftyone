@@ -9,13 +9,13 @@ FiftyOne Teams 1.6.0
 
 What's New
 
-- Removed Auth0 as a hard dependency for Teams deployments
-- Added support for directly authenticating with Identity Providers
-- New super admin UI for administering FiftyOne Teams deployments
-- Added support for customizing the login page
-- Introduced a "Central Auth Service" for managing user authentication
-- New "Pluggable Auth" system for customizing FiftyOne Teams authentication and integrations
-- Added "Groups" for managing and dataset access for groups of users
+
+- New :ref:`Pluggable Auth <pluggable-auth>` system for customizing FiftyOne Teams authentication and integrations
+- Introduced a :ref:`Central Auth Service <central-auth-service>` for managing user authentication
+- Removed Auth0 as a hard dependency for Teams deployments with the introduction of :ref:`Internal Mode <internal-mode>`
+- Added support for directly authenticating with :ref:`Identity Providers <identity-providers>`
+- New :ref:`super admin <super-admin-ui>` UI for administering FiftyOne Teams deployments
+- Added :ref:`Groups <teams-groups>` for managing and dataset access for groups of users
 - Added the ability to search for users on the admin's user page
 
 

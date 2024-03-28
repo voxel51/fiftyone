@@ -1,10 +1,23 @@
+(pluggable-auth)=
+
 # Pluggable Authentication
 
 Pluggable Authentication (sometimes referred to as CAS or Central
 Authentication Service) introduces a self-contained authentication system,
 eliminating the need for external dependencies like Auth0. This is particularly
 advantageous for setups requiring an air-gapped or internal network
-environment, allowing FiftyOne Teams to operate in "internal mode."
+environment, allowing FiftyOne Teams to operate in
+:ref:`internal mode <internal-mode>`.
+
+(central-auth-service)=
+
+## CAS
+
+The Central Auth Service (CAS), introduced in v1.6.0, provides a UI, REST API,
+and JS Hook mechanism to manage and customize authentication and user related
+data in FiftyOne teams.
+
+(super-admin-ui)=
 
 ## Super Admin UI
 
@@ -35,17 +48,57 @@ an eventually consistent model for user data. The configuration for identity
 providers and the persistence of user data in this mode is handled through
 Auth0, which includes support for SAML.
 
-**Introduction to Internal Mode**
+(internal-mode)= **Introduction to Internal Mode**
 
 Internal Mode eliminates the need for Auth0, thereby removing FiftyOne Team's
-dependency on any external services. This mode is capable of supporting
-multiple organizations and does not require external connectivity, making it
-suitable for environments where security is paramount or internet access is
-limited or not allowed. Unlike Legacy Mode, Internal Mode operates on an
-immediate consistency basis, ensuring that changes are reflected across
-FiftyOne Teams instantly. Directory data is immediately written to MongoDB, and
-organizations have the autonomy to manage their Identity Provider
+dependency on any external services. This mode does not require external
+connectivity, making it suitable for environments where security is paramount
+or internet access is limited or not allowed. Unlike Legacy Mode, Internal Mode
+operates on an immediate consistency basis, ensuring that changes are reflected
+across FiftyOne Teams instantly. Directory data is immediately written to
+MongoDB, and organizations have the autonomy to manage their Identity Provider
 Configuration. **NOTE: SAML support is not available in Internal Mode.**
+
+(identity-providers)=
+
+## Identity Providers
+
+In Internal Mode you can use either the CAS REST API or Super Admin UI to
+configure FiftyOne teams to authenticate users directly against OIDC or OAuth
+compatible Identity Providers. Below is an example configuration for KeyCloak
+as an Identity Provider.
+
+```json
+{
+    "id": "keycloak-example",
+    "wellKnown": "https://keycloak.dev.acme.ai/auth/realms/acme/.well-known/openid-configuration",
+    "name": "KeyCloak",
+    "type": "oauth",
+    "authorization": {
+        "url": "https://keycloak.acme.ai/auth/realms/acme/protocol/openid-connect/auth",
+        "params": {
+            "scope": "openid email profile"
+        }
+    },
+    "clientId": "...",
+    "clientSecret": "...",
+    "issuer": "https://keycloak.dev.acme.ai/auth/realms/acme",
+    "token": {
+        "url": "https://keycloak.dev.acme.ai/auth/realms/acme/protocol/openid-connect/token"
+    },
+    "userinfo": {
+        "url": "https://keycloak.dev.acme.ai/auth/realms/acme/protocol/openid-connect/userinfo"
+    },
+    "idToken": true,
+    "style": {
+        "logoDark": "https://images.com/keycloak.svg",
+        "bg": "#47abc6",
+        "text": "#fff"
+    },
+    "profile": "(e,l)=>(console.log({profile:e,tokens:l}),{id:e.sub,name:e.name,email:e.email,image:null})",
+    "allowDangerousEmailAccountLinking": true
+}
+```
 
 <!--
 **Migrating from Legacy to Internal Mode**
@@ -70,10 +123,11 @@ Mode, completing the migration process.
 ## Getting started with Internal Mode
 
 This section describes how to get up and running with the auth features added
-in v1.6.0, including “air gapped” support (also called “internal mode”),
-removing dependencies on Auth0, and sourcing users and directory metadata
-within FiftyOne Teams. These steps are only required to run FiftyOne Teams in
-“internal mode” and can be skipped if using Auth0 (legacy mode).
+in v1.6.0, including “air gapped” support (also called
+:ref:`internal mode <internal-mode>`), removing dependencies on Auth0, and
+sourcing users and directory metadata within FiftyOne Teams. These steps are
+only required to run FiftyOne Teams in :ref:`internal mode <internal-mode>` and
+can be skipped if using Auth0 (legacy mode).
 
 1. Login to the SuperUser UI to configure your Authentication Provider /
    Identity Provider
