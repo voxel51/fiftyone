@@ -55,6 +55,14 @@ export const Looker3d = () => {
   );
 
   useHotkey(
+    "KeyF",
+    async ({ set }) => {
+      set(fos.fullscreen, (f) => !f);
+    },
+    []
+  );
+
+  useHotkey(
     "Escape",
     async ({ snapshot, set }) => {
       const panels = await snapshot.getPromise(fos.lookerPanels);
@@ -82,6 +90,12 @@ export const Looker3d = () => {
         !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
 
       if (isHoveredSampleNotInLooker3d) {
+        return;
+      }
+
+      const fullscreen = await snapshot.getPromise(fos.fullscreen);
+      if (fullscreen) {
+        set(fos.fullscreen, false);
         return;
       }
 
