@@ -11,9 +11,10 @@ import os
 from packaging.requirements import Requirement
 from PIL import Image
 import requests
-import shutil
 
 import yaml
+
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -104,19 +105,6 @@ def push_to_hub(
     if dataset_type is None:
         dataset_type = fot.FiftyOneDataset
 
-    ### export the dataset to a temp local dir
-    tmp_dir = f"/tmp/{repo_name}"
-
-    config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
-
-    dataset.export(
-        export_dir=tmp_dir,
-        dataset_type=dataset_type,
-        label_field=label_field,
-        frame_labels_field=frame_labels_field,
-        export_media=True,
-    )
-
     if tags is not None:
         if isinstance(tags, str):
             tags = [t.strip() for t in tags.split(",")]
@@ -125,31 +113,42 @@ def push_to_hub(
     else:
         tags = _get_dataset_tags(dataset)
 
-    _populate_config_file(
-        config_filepath,
-        dataset,
-        dataset_type=dataset_type,
-        description=description,
-        license=license,
-        tags=tags,
-    )
+    with etau.TempDir() as tmp_dir:
+        config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
 
-    hf_username = hfh.whoami()["name"]
+        dataset.export(
+            export_dir=tmp_dir,
+            dataset_type=dataset_type,
+            label_field=label_field,
+            frame_labels_field=frame_labels_field,
+            export_media=True,
+        )
 
-    ## Create the dataset repo
-    repo_id = os.path.join(hf_username, repo_name)
-    hfh.create_repo(
-        repo_id, repo_type="dataset", private=private, exist_ok=exist_ok
-    )
+        _populate_config_file(
+            config_filepath,
+            dataset,
+            dataset_type=dataset_type,
+            description=description,
+            license=license,
+            tags=tags,
+        )
 
-    ## Upload the dataset to the repo
-    api = hfh.HfApi()
+        hf_username = hfh.whoami()["name"]
 
-    api.upload_folder(
-        folder_path=tmp_dir,
-        repo_id=repo_id,
-        repo_type="dataset",
-    )
+        ## Create the dataset repo
+        repo_id = os.path.join(hf_username, repo_name)
+        hfh.create_repo(
+            repo_id, repo_type="dataset", private=private, exist_ok=exist_ok
+        )
+
+        ## Upload the dataset to the repo
+        api = hfh.HfApi()
+
+        api.upload_folder(
+            folder_path=tmp_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+        )
 
     ## Create the dataset card
     card = _create_dataset_card(
@@ -161,9 +160,6 @@ def push_to_hub(
         **data_card_kwargs,
     )
     card.push_to_hub(repo_id)
-
-    ## Clean up
-    shutil.rmtree(tmp_dir)
 
 
 def load_from_hub(
