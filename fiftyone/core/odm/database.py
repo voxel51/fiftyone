@@ -845,7 +845,7 @@ def _patch_referenced_docs(
         return
 
     dataset_id = dataset_dict["_id"]
-    ids_from_dataset_list = dataset_dict.get("saved_views", [])
+    ids_from_dataset_list = dataset_dict.get(field_name, [])
 
     # {id: name} in collection_name
     doc_id_to_name = {}
