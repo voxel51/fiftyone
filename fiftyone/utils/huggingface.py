@@ -429,10 +429,8 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
             additional_media_fields: the additional media fields of the dataset
         """
         self.media_type = kwargs.get("media_type", DEFAULT_MEDIA_TYPE)
-        # self.detection_format = kwargs.get("detection_format", None)
 
         self._build_name(kwargs)
-        # self._build_mask_targets(kwargs)
         self._build_media_fields_dict(kwargs)
         self._build_label_fields_dict(kwargs)
         self._build_allowed_splits(kwargs)
@@ -478,19 +476,6 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
                     self.label_fields[label_type] = label_fields.split(",")
                 elif isinstance(label_fields, list):
                     self.label_fields[label_type] = label_fields
-
-    # def _build_mask_targets(self, kwargs):
-    #     self.mask_targets = kwargs.get("mask_targets", None)
-    #     if self.mask_targets is not None and isinstance(self.mask_targets, str):
-    #         kwargs = {
-    #             "repo_type": self._repo_type,
-    #             "repo_id": self._repo_id,
-    #             "revision": self._revision,
-    #             "filename": self.mask_targets,
-    #         }
-    #         mask_targets_fp = hf_hub_download(**all_kwargs)
-    #         with open(mask_targets_fp, "r") as f:
-    #             self.mask_targets = json.load(f)
 
 
 def _parse_format_string(format_str):
