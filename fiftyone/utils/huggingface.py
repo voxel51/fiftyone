@@ -58,7 +58,7 @@ def push_to_hub(
     description=None,
     license=None,
     tags=None,
-    private=True,
+    private=False,
     exist_ok=False,
     dataset_type=None,
     label_field=None,
