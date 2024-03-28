@@ -1091,3 +1091,54 @@ like this:
 .. image:: /images/integrations/hf_push_advanced_example.jpg
    :alt: Pushing a dataset to the Hugging Face Hub with advanced options
    :align: center
+
+
+.. note::
+
+    The `tags` argument can be a string or a list of strings. The tag `fiftyone`
+    is automatically added to all datasets pushed with FiftyOne, communicating
+    that the dataset was created with FiftyOne and can be loaded with the
+    :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function.
+
+
+The license is specified as a string. For a list of supported licenses, see the
+`Hugging Face Hub documentation <https://huggingface.co/docs/hub/en/repositories-licenses>`_.
+
+The `description` argument can be used for whatever you like. When the dataset
+is loaded from the Hub, this description will be accessible via the dataset's
+:meth:`description <fiftyone.core.dataset.Dataset.description>` property.
+
+Additionally, you can specify the "format" of the uploaded dataset. By default,
+the format is the standard :ref:`FiftyOneDataset <FiftyOneDataset-import>` format,
+but you can also specify the data is uploaded in any of these
+:ref:`common formats <supported-import-formats>`. For example, to push the
+quickstart dataset in :ref:`COCO <COCODetectionDataset-import>` format, with a
+Creative Commons Attribution 4.0 license, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.huggingface as fouh
+    import fiftyone.types as fot
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset_type = fot.dataset_types.COCODetectionDataset
+
+    fouh.push_to_hub(
+        dataset,
+        "quickstart-coco",
+        dataset_type=dataset_type,
+        license="cc-by-4.0",
+        label_fields="*" ### convert all label fields, not just ground truth
+    )
+
+
+.. note::
+
+    The `label_fields` argument is used to specify which label fields to convert
+    to the specified dataset type. By default when using some dataset formats,
+    only the `ground_truth` label field is converted. If you want to convert all
+    label fields, you can set `label_fields="*"`. If you want to convert specific
+    label fields, you can pass a list of field names.
