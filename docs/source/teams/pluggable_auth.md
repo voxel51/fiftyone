@@ -7,7 +7,7 @@ Authentication Service) introduces a self-contained authentication system,
 eliminating the need for external dependencies like Auth0. This is particularly
 advantageous for setups requiring an air-gapped or internal network
 environment, allowing FiftyOne Teams to operate in
-:ref:`internal mode <internal-mode>`.
+[internal mode](#internal-mode).
 
 (central-auth-service)=
 
@@ -52,7 +52,9 @@ an eventually consistent model for user data. The configuration for identity
 providers and the persistence of user data in this mode is handled through
 Auth0, which includes support for SAML.
 
-(internal-mode)= **Introduction to Internal Mode**
+(internal-mode)=
+
+**Introduction to Internal Mode**
 
 Internal Mode eliminates the need for Auth0, thereby removing FiftyOne Team's
 dependency on any external services. This mode does not require external
@@ -128,10 +130,10 @@ Mode, completing the migration process.
 
 This section describes how to get up and running with the auth features added
 in v1.6.0, including “air gapped” support (also called
-:ref:`internal mode <internal-mode>`), removing dependencies on Auth0, and
-sourcing users and directory metadata within FiftyOne Teams. These steps are
-only required to run FiftyOne Teams in :ref:`internal mode <internal-mode>` and
-can be skipped if using Auth0 (legacy mode).
+[internal mode](#internal-mode), removing dependencies on Auth0, and sourcing
+users and directory metadata within FiftyOne Teams. These steps are only
+required to run FiftyOne Teams in [internal mode](#internal-mode) and can be
+skipped if using Auth0 (legacy mode).
 
 1. Login to the SuperUser UI to configure your Authentication Provider /
    Identity Provider
