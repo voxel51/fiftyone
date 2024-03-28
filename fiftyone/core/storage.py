@@ -2222,6 +2222,7 @@ def upload_media(
             _allow_mixed=True
         )
 
+    media_field = sample_collection._resolve_media_field(media_field)
     filepaths = sample_collection.values(media_field)
 
     filename_maker = fou.UniqueFilenameMaker(
