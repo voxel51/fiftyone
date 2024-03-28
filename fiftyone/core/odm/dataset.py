@@ -31,17 +31,19 @@ from fiftyone.core.fields import (
 import fiftyone.core.utils as fou
 
 from .database import (
-    patch_saved_views,
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
     patch_runs,
+    patch_saved_views,
+    patch_workspaces,
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
 from .utils import create_field
 from .views import SavedViewDocument
+from .workspace import WorkspaceDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -633,6 +635,7 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
+    workspaces = ListField(ReferenceField(WorkspaceDocument))
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
@@ -652,6 +655,21 @@ class DatasetDocument(Document):
                 )
 
         return saved_views
+
+    def get_workspaces(self):
+        workspaces = []
+        for workspace_doc in self.workspaces:
+            if not isinstance(workspace_doc, DBRef):
+                workspaces.append(workspace_doc)
+            else:
+                logger.warning(
+                    "This dataset's workspace references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_workspaces),
+                    self.name,
+                )
+
+        return workspaces
 
     def get_annotation_runs(self):
         annotation_runs = {}

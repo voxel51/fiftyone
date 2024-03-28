@@ -11,7 +11,6 @@ from fiftyone.core.fields import (
     ListField,
     ObjectIdField,
     StringField,
-    ObjectId,
 )
 
 from .document import Document

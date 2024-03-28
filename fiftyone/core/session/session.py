@@ -31,13 +31,13 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.core.odm.dataset as food
+from fiftyone.core.odm.workspace import default_workspace_factory, Space
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
-from fiftyone.core.spaces import default_spaces, Space
 from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -161,7 +161,7 @@ def launch_app(
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
             defining a space configuration to load
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
@@ -308,7 +308,7 @@ class Session(object):
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        spaces (None): an optional :class:`fiftyone.core.spaces.Space` instance
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
             defining a space configuration to load
         color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
             defining a custom color scheme to use
@@ -408,7 +408,7 @@ class Session(object):
             final_view_name = view.name
 
         if spaces is None:
-            spaces = default_spaces.copy()
+            spaces = default_workspace_factory()
 
         self._state = StateDescription(
             config=config,
@@ -607,7 +607,7 @@ class Session(object):
     @spaces.setter  # type: ignore
     def spaces(self, spaces: t.Optional[Space]) -> None:
         if spaces is None:
-            spaces = default_spaces.copy()
+            spaces = default_workspace_factory()
 
         if not isinstance(spaces, Space):
             raise ValueError(
@@ -617,6 +617,10 @@ class Session(object):
 
         self._state.spaces = spaces
         self._client.send_event(SetSpaces(spaces=spaces.to_dict()))
+
+    def load_workspace(self, workspace: str) -> None:
+        spaces = self.dataset.load_workspace(workspace)
+        self.spaces = spaces
 
     @property
     def color_scheme(self) -> food.ColorScheme:
@@ -676,7 +680,7 @@ class Session(object):
 
         self._state.dataset = dataset
         self._state.view = None
-        self._state.spaces = default_spaces.copy()
+        self._state.spaces = default_workspace_factory()
         self._state.color_scheme = build_color_scheme(
             None, dataset, self.config
         )

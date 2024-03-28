@@ -325,7 +325,7 @@ class AppInitializer:
 
 @dataclass
 class ListenPayload:
-    """A an initialization payload for an event listener request"""
+    """An initialization payload for an event listener request"""
 
     initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]

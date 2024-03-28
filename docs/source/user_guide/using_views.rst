@@ -152,7 +152,7 @@ Saved views have certain editable metadata such as a description that you can
 view via
 :meth:`get_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`
 and update via
-:meth:`update_saved_view_info() <fiftyone.core.dataset.Dataset.get_saved_view_info>`:
+:meth:`update_saved_view_info() <fiftyone.core.dataset.Dataset.update_saved_view_info>`:
 
 .. code-block:: python
     :linenos:
