@@ -3679,14 +3679,307 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 continue
 
             if name == view_doc.name or slug == view_doc.slug:
-                dup_name = view_doc.name
+                clashing_name = view_doc.name
 
                 if not overwrite:
-                    raise ValueError(
-                        "Saved view with name '%s' already exists" % dup_name
-                    )
+                    if clashing_name == name:
+                        raise ValueError(f"Saved view '{name}' already exists")
+                    else:
+                        raise ValueError(
+                            f"Saved view name '{name}' is not available: slug "
+                            f"'{slug}' in use by saved view '{clashing_name}'"
+                        )
 
-                self.delete_saved_view(dup_name)
+                self.delete_saved_view(clashing_name)
+
+        return slug
+
+    @property
+    def has_workspaces(self):
+        """Whether this dataset has any saved workspaces."""
+        return bool(self.list_workspaces())
+
+    def has_workspace(self, name):
+        """Whether this dataset has a saved workspace with the given name.
+
+        Args:
+            name: a saved workspace name
+
+        Returns:
+            True/False
+        """
+        return name in self.list_workspaces()
+
+    def list_workspaces(self):
+        """Returns the names of saved workspaces on this dataset.
+
+        Returns:
+            a list of saved workspace names
+        """
+        return [
+            workspace_doc.name for workspace_doc in self._doc.get_workspaces()
+        ]
+
+    def save_workspace(
+        self,
+        name,
+        workspace,
+        description=None,
+        color=None,
+        overwrite=False,
+    ):
+        """Saves a workspace into this dataset under the given name so it
+        can be loaded later via :meth:`load_workspace`.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            embeddings_panel = fo.Panel(
+                type="Embeddings",
+                state=dict(
+                    brainResult="img_viz",
+                    colorByField="metadata.size_bytes"
+                ),
+            )
+            workspace = fo.Space(children=[embeddings_panel])
+
+            workspace_name = "embeddings-workspace"
+            description = "Show embeddings only"
+            dataset.save_workspace(
+                workspace_name,
+                workspace,
+                description=description
+            )
+            assert dataset.has_workspace(workspace_name)
+
+            also_workspace = dataset.load_workspace(workspace_name)
+            assert workspace == also_workspace
+
+        Args:
+            name: a name for the saved workspace
+            workspace: a :class:`fiftyone.core.odm.workspace.Space`
+            description (None): an optional string description
+            color (None): an optional RGB hex string like ``'#FF6D04'``
+            overwrite (False): whether to overwrite an existing workspace with
+                the same name
+
+        Raises:
+            ValueError: if ``overwrite==False`` and workspace with ``name``
+                already exists
+        """
+        slug = self._validate_workspace_name(name, overwrite=overwrite)
+
+        now = datetime.utcnow()
+
+        workspace_doc = foo.WorkspaceDocument(
+            child=workspace,
+            color=color,
+            created_at=now,
+            dataset_id=self._doc.id,
+            description=description,
+            last_modified_at=now,
+            name=name,
+            slug=slug,
+        )
+
+        workspace_doc.save(upsert=True)
+
+        self._doc.workspaces.append(workspace_doc)
+        self.save()
+
+    def load_workspace(self, name):
+        """Loads the saved workspace with the given name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            embeddings_panel = fo.Panel(
+                type="Embeddings",
+                state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+            )
+            workspace = fo.Space(children=[embeddings_panel])
+            workspace_name = "embeddings-workspace"
+            dataset.save_workspace(workspace_name, workspace)
+
+            # Some time later ... load the workspace
+            loaded_workspace = dataset.load_workspace(workspace_name)
+            assert workspace == loaded_workspace
+
+            # Launch app with the loaded workspace!
+            session = fo.launch_app(dataset, spaces=loaded_workspace)
+
+            # Or set via session later on
+            session.spaces = loaded_workspace
+
+        Args:
+            name: the name of a saved workspace
+
+        Returns:
+            a :class:`fiftyone.core.odm.workspace.Space`
+
+        Raises:
+            ValueError: if ``name`` is not a saved workspace
+        """
+        workspace_doc = self._get_workspace_doc(name)
+        workspace = workspace_doc.child
+
+        workspace_doc.last_loaded_at = datetime.utcnow()
+        workspace_doc.save()
+
+        return workspace
+
+    def get_workspace_info(self, name):
+        """Gets the information about the workspace with the given name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            workspace = fo.Space()
+            description = "A really cool (apparently empty?) workspace"
+            dataset.save_workspace("test", workspace, description=description)
+
+            print(dataset.get_workspace_info("test"))
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a dict of editable info
+        """
+        workspace_doc = self._get_workspace_doc(name)
+        return {f: workspace_doc[f] for f in workspace_doc._EDITABLE_FIELDS}
+
+    def update_workspace_info(self, name, info):
+        """Updates the editable information for the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            workspace = fo.Space()
+            dataset.save_workspace("test", view)
+
+            # Update the workspace's name and add a description, color
+            info = dict(
+                name="a new name",
+                color="#FF6D04",
+                description="a description",
+            )
+            dataset.update_workspace_info("test", info)
+
+        Args:
+            name: the name of a saved workspace
+            info: a dict whose keys are a subset of the keys returned by
+                :meth:`get_workspace_info`
+        """
+        workspace_doc = self._get_workspace_doc(name)
+
+        invalid_fields = set(info.keys()) - set(workspace_doc._EDITABLE_FIELDS)
+        if invalid_fields:
+            raise ValueError("Cannot edit fields %s" % invalid_fields)
+
+        edited = False
+        for key, value in info.items():
+            if value != workspace_doc[key]:
+                if key == "name":
+                    slug = self._validate_workspace_name(
+                        value, skip=workspace_doc
+                    )
+                    workspace_doc.slug = slug
+
+                workspace_doc[key] = value
+                edited = True
+
+        if edited:
+            workspace_doc.last_modified_at = datetime.utcnow()
+            workspace_doc.save()
+
+    def delete_workspace(self, name):
+        """Deletes the saved workspace with the given name.
+
+        Args:
+            name: the name of a saved workspace
+
+        Raises:
+            ValueError: if ``name`` is not a saved workspace
+        """
+        self._delete_workspace(name)
+
+    def delete_workspaces(self):
+        """Deletes all saved workspaces from this dataset."""
+        for workspace_doc in self._doc.workspaces:
+            if isinstance(workspace_doc, DBRef):
+                continue
+
+            workspace_doc.delete()
+
+        self._doc.workspaces = []
+        self.save()
+
+    def _delete_workspace(self, name):
+        workspace_doc = self._get_workspace_doc(name, pop=True)
+        if not isinstance(workspace_doc, DBRef):
+            workspace_id = str(workspace_doc.id)
+            workspace_doc.delete()
+        else:
+            workspace_id = None
+
+        self.save()
+
+        return workspace_id
+
+    def _get_workspace_doc(self, name, pop=False, slug=False):
+        idx = None
+        key = "slug" if slug else "name"
+
+        for i, workspace_doc in enumerate(self._doc.get_workspaces()):
+            if name == getattr(workspace_doc, key):
+                idx = i
+                break
+
+        if idx is None:
+            raise ValueError("Dataset has no saved workspace '%s'" % name)
+
+        if pop:
+            return self._doc.workspaces.pop(idx)
+
+        return self._doc.workspaces[idx]
+
+    def _validate_workspace_name(self, name, skip=None, overwrite=False):
+        slug = fou.to_slug(name)
+        for workspace_doc in self._doc.get_workspaces():
+            if workspace_doc is skip:
+                continue
+
+            if name == workspace_doc.name or slug == workspace_doc.slug:
+                clashing_name = workspace_doc.name
+
+                if not overwrite:
+                    if clashing_name == name:
+                        raise ValueError(f"Workspace '{name}' already exists")
+                    else:
+                        raise ValueError(
+                            f"Workspace name '{name}' is not available: slug "
+                            f"'{slug}' in use by workspace '{clashing_name}'"
+                        )
+
+                self.delete_workspace(clashing_name)
 
         return slug
 
@@ -7188,6 +7481,12 @@ def _delete_dataset_doc(dataset_doc):
 
         view_doc.delete()
 
+    for workspace_doc in dataset_doc.workspaces:
+        if isinstance(workspace_doc, DBRef):
+            continue
+
+        workspace_doc.delete()
+
     for run_doc in dataset_doc.annotation_runs.values():
         if isinstance(run_doc, DBRef):
             continue
@@ -7281,6 +7580,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         dataset_doc.default_group_slice = None
 
     # Runs/views get special treatment at the end
+    dataset_doc.workspaces.clear()
     dataset_doc.saved_views.clear()
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
@@ -7328,6 +7628,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     # Clone extras (full datasets only)
     if view is None and (
         dataset.has_saved_views
+        or dataset.has_workspaces
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
@@ -7675,11 +7976,19 @@ def _clone_extras(src_dataset, dst_dataset):
 
     # Clone saved views
     for _view_doc in src_doc.get_saved_views():
-        view_doc = _clone_view_doc(_view_doc)
+        view_doc = _clone_reference_doc(_view_doc)
         view_doc.dataset_id = dst_doc.id
         view_doc.save(upsert=True)
 
         dst_doc.saved_views.append(view_doc)
+
+    # Clone workspaces
+    for _workspace_doc in src_doc.get_workspaces():
+        workspace_doc = _clone_reference_doc(_workspace_doc)
+        workspace_doc.dataset_id = dst_doc.id
+        workspace_doc.save(upsert=True)
+
+        dst_doc.workspaces.append(workspace_doc)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.get_annotation_runs().items():
@@ -7716,10 +8025,10 @@ def _clone_extras(src_dataset, dst_dataset):
     dst_doc.save()
 
 
-def _clone_view_doc(view_doc):
-    _view_doc = view_doc.copy()
-    _view_doc.id = ObjectId()
-    return _view_doc
+def _clone_reference_doc(ref_doc):
+    _ref_doc = ref_doc.copy()
+    _ref_doc.id = ObjectId()
+    return _ref_doc
 
 
 def _clone_run(run_doc):

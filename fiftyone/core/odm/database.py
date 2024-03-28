@@ -830,14 +830,11 @@ def list_datasets():
     return conn.datasets.distinct("name")
 
 
-def patch_saved_views(dataset_name, dry_run=False):
-    """Ensures that the saved view documents in the ``views`` collection for
+def _patch_referenced_docs(
+    dataset_name, collection_name, field_name, dry_run=False
+):
+    """Ensures that the referenced documents in the collection for
     the given dataset exactly match the IDs in its dataset document.
-
-    Args:
-        dataset_name: the name of the dataset
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
     """
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
@@ -848,22 +845,24 @@ def patch_saved_views(dataset_name, dry_run=False):
         return
 
     dataset_id = dataset_dict["_id"]
-    saved_views = dataset_dict.get("saved_views", [])
+    ids_from_dataset_list = dataset_dict.get("saved_views", [])
 
-    # {id: name} in `views` collection
-    sd = {}
-    for saved_view_dict in conn.views.find({"_dataset_id": dataset_id}):
+    # {id: name} in collection_name
+    doc_id_to_name = {}
+    for ref_doc_dict in conn[collection_name].find(
+        {"_dataset_id": dataset_id}
+    ):
         try:
-            sd[saved_view_dict["_id"]] = saved_view_dict["name"]
+            doc_id_to_name[ref_doc_dict["_id"]] = ref_doc_dict["name"]
         except:
             pass
 
     # Make sure docs in `views` collection match IDs in `dataset_dict`
-    saved_view_ids = set(saved_views)
-    saved_view_doc_ids = set(sd)
+    ids_from_dataset_set = set(ids_from_dataset_list)
+    ids_from_collection = set(doc_id_to_name)
     made_changes = False
 
-    bad_ids = saved_view_ids - saved_view_doc_ids
+    bad_ids = ids_from_dataset_set - ids_from_collection
     num_bad_ids = len(bad_ids)
     if num_bad_ids > 0:
         _logger.info(
@@ -871,26 +870,52 @@ def patch_saved_views(dataset_name, dry_run=False):
             num_bad_ids,
             bad_ids,
         )
-        saved_views = [_id for _id in saved_views if _id not in bad_ids]
+        ids_from_dataset_list = [
+            _id for _id in ids_from_dataset_list if _id not in bad_ids
+        ]
         made_changes = True
 
-    missing_ids = saved_view_doc_ids - saved_view_ids
-    num_missing_views = len(missing_ids)
-    if num_missing_views > 0:
-        missing_views = [(_id, sd[_id]) for _id in missing_ids]
+    missing_ids = ids_from_collection - ids_from_dataset_set
+    num_missing_docs = len(missing_ids)
+    if num_missing_docs > 0:
+        missing_docs = [(_id, doc_id_to_name[_id]) for _id in missing_ids]
         _logger.info(
             "Adding %d misplaced saved view(s) %s back to dataset",
-            num_missing_views,
-            missing_views,
+            num_missing_docs,
+            missing_docs,
         )
-        saved_views.extend(missing_ids)
+        ids_from_dataset_list.extend(missing_ids)
         made_changes = True
 
     if made_changes and not dry_run:
         conn.datasets.update_one(
             {"name": dataset_name},
-            {"$set": {"saved_views": saved_views}},
+            {"$set": {field_name: ids_from_dataset_list}},
         )
+
+
+def patch_saved_views(dataset_name, dry_run=False):
+    """Ensures that the saved view documents in the ``views`` collection for
+    the given dataset exactly match the IDs in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_referenced_docs(dataset_name, "views", "saved_views", dry_run)
+
+
+def patch_workspaces(dataset_name, dry_run=False):
+    """Ensures that the workspace documents in the ``workspaces`` collection for
+    the given dataset exactly match the IDs in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_referenced_docs(dataset_name, "workspaces", "workspaces", dry_run)
 
 
 def patch_annotation_runs(dataset_name, dry_run=False):

@@ -157,7 +157,8 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-from .core.spaces import (
+
+from .core.odm.workspace import (
     Space,
     Panel,
 )
