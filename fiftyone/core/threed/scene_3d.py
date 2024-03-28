@@ -93,7 +93,7 @@ class Scene(Object3D):
             gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
             pcd = Pointcloud("pcd_name", "/path/to/pcd")
 
-            scene.add(mesh)
+            scene.add(obj_mesh)
             scene.add(gltf_mesh)
             scene.add(pcd)
 
