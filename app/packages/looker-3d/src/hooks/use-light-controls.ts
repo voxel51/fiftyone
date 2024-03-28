@@ -1,3 +1,4 @@
+import { useTheme } from "@fiftyone/components";
 import { useHelper } from "@react-three/drei";
 import { folder, useControls } from "leva";
 import { useCallback, useMemo, useState } from "react";
@@ -7,7 +8,7 @@ import {
   PointLightHelper,
   SpotLightHelper,
 } from "three";
-import { PANEL_ORDER_LIGHTS, VOXEL51_THEME_COLOR } from "../constants";
+import { PANEL_ORDER_LIGHTS } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { FoScene } from "./use-fo3d";
 
@@ -118,6 +119,7 @@ export const useLightControls = (
     return diagonal / 10;
   }, [sceneBoundingBox]);
 
+  const theme = useTheme();
   const helperConfig = useMemo(() => {
     if (!lightHelperConfig) {
       return null;
@@ -127,11 +129,11 @@ export const useLightControls = (
 
     switch (type) {
       case "DirectionalLight":
-        return [DirectionalLightHelper, lightHelperSize, VOXEL51_THEME_COLOR];
+        return [DirectionalLightHelper, lightHelperSize, theme.primary.main];
       case "SpotLight":
-        return [SpotLightHelper, VOXEL51_THEME_COLOR];
+        return [SpotLightHelper, theme.primary.main];
       case "PointLight":
-        return [PointLightHelper, lightHelperSize, VOXEL51_THEME_COLOR];
+        return [PointLightHelper, lightHelperSize, theme.primary.main];
       default:
         return null;
     }
