@@ -1040,3 +1040,54 @@ The :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` function
 provides a number of optional arguments that allow you to customize how your
 dataset is pushed to the Hub, including whether the dataset is public or private,
 what license it is released under, and more.
+
+FiftyOne's :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`
+function supports the Hugging Face Hub API arguments `private` and `exist_ok`.
+
+- `private` (bool): Whether the dataset should be private. If `True`, the
+  dataset will be private and only accessible to you. If `False`, the dataset
+  will be public and accessible to anyone with the link. Defaults to `False`.
+- `exist_ok` (bool): Whether to overwrite an existing dataset with the same
+    `repo_name`. If `True`, the existing dataset will be overwritten. If `False`,
+    an error will be raised if a dataset with the same `repo_name` already exists.
+    Defaults to `False`.
+
+For example, to push a dataset to the Hub as private, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    fouh.push_to_hub(dataset, "my-private-dataset", private=True)
+
+
+You can also specify the `tags`, `license`, and `description` of the dataset,
+all of which will propagate to the `fiftyone.yml` config file and the Hugging
+Face Dataset Card. For example, to push a video action recognition dataset with
+an MIT license and a description, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    fouh.push_to_hub(
+        dataset,
+        "my-action-recognition-dataset",
+        tags=["video", "action-recognition"],
+        license="mit",
+        description="A dataset of videos for action recognition tasks",
+    )
+
+
+The pushed dataset will be available on the Hub and the dataset page will look
+like this:
+
+.. image:: /images/integrations/hf_push_advanced_example.jpg
+   :alt: Pushing a dataset to the Hugging Face Hub with advanced options
+   :align: center
