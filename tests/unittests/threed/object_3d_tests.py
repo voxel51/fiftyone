@@ -1,10 +1,11 @@
 """
-FiftyOne sample-related unit tests.
+FiftyOne Object3D unit tests.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 
 import numpy as np

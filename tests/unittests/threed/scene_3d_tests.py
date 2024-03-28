@@ -1,15 +1,23 @@
+"""
+FiftyOne Scene3D unit tests.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import json
 import unittest
 from unittest.mock import mock_open, patch
 
-from fiftyone.core.threed import GLTFMesh, Pointcloud, Scene
+from fiftyone.core.threed import GltfMesh, Pointcloud, Scene
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 class TestScene(unittest.TestCase):
     def setUp(self):
         self.scene = Scene()
-        self.scene.add(GLTFMesh("gltf", gltf_path="/path/to/gltf.gltf"))
+        self.scene.add(GltfMesh("gltf", gltf_path="/path/to/gltf.gltf"))
         self.scene.add(Pointcloud("pcd", pcd_path="/path/to/pcd.pcd"))
 
     def test_export_invalid_extension(self):
