@@ -74,7 +74,7 @@ export const NonNestedDynamicGroup = ({
           )}
           {isBigLookerVisible && (
             <GroupSuspense>
-              {parent !== "point_cloud" ? (
+              {parent !== "point_cloud" && parent !== "three_d" ? (
                 <Sample
                   lookerRefCallback={lookerRefCallback}
                   lookerRef={lookerRef}

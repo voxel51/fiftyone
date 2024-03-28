@@ -10,9 +10,13 @@ export const labelCount = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      let sum = 0;
-
       const paths = get(activeLabelPaths({ modal: params.modal }));
+
+      if (!paths.length) {
+        return 0;
+      }
+
+      let sum = 0;
       const results = get(aggregations({ ...params, paths }));
       for (const data of results) {
         sum += data.count;

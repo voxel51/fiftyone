@@ -67,7 +67,7 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 test("grid media field", async ({ eventUtils, fiftyoneLoader, grid, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   const wait = eventUtils.getEventReceivedPromiseForPredicate(
-    "sample-loaded",
+    "canvas-loaded",
     ({ detail }) => detail.sampleFilepath === "/tmp/empty.png"
   );
   await wait;

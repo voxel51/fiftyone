@@ -2,7 +2,12 @@ import { CustomizeColorInput } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
-  export type MediaType = "image" | "group" | "point_cloud" | "video";
+  export type MediaType =
+    | "image"
+    | "group"
+    | "point_cloud"
+    | "three_d"
+    | "video";
 
   export enum SPACE {
     FRAME = "FRAME",

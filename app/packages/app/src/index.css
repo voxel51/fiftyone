@@ -27,6 +27,7 @@ body,
   z-index: 1000;
   display: block;
   visibility: hidden;
+  overflow: hidden;
 }
 
 #modal.modalon {

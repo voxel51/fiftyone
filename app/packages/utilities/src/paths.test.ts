@@ -91,6 +91,9 @@ describe("paths", () => {
       expect(paths.resolveParent("/")).toBe(null);
       expect(paths.resolveParent("/my-path")).toBe("/");
       expect(paths.resolveParent("s3://")).toBe(null);
+      expect(paths.resolveParent("s3://foo/bar/baz.txt?q1=1&q2=2")).toBe(
+        "s3://foo/bar"
+      );
     });
   });
 

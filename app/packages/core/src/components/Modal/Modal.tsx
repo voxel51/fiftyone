@@ -65,6 +65,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
+  const is3D = useRecoilValue(fos.is3DDataset);
   const sampleId = useRecoilValue(fos.currentSampleId);
 
   const clearModal = fos.useClearModal();
@@ -253,7 +254,7 @@ const SampleModal = () => {
                   <GroupContextProvider lookerRefCallback={lookerRefCallback}>
                     <Group />
                   </GroupContextProvider>
-                ) : isPcd ? (
+                ) : isPcd || is3D ? (
                   <Sample3d />
                 ) : (
                   <Sample lookerRefCallback={lookerRefCallback} />

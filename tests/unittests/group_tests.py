@@ -254,6 +254,23 @@ class GroupTests(unittest.TestCase):
         self.assertIn("right", group)
 
     @drop_datasets
+    def test_one_fo3d_group_slice(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        one = fo.Sample(filepath="one.fo3d", group=group.element("one"))
+        two = fo.Sample(filepath="two.fo3d", group=group.element("two"))
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples([one, two])
+
+        dataset = fo.Dataset()
+        dataset.add_sample(one)
+
+        with self.assertRaises(ValueError):
+            dataset.add_group_slice("two", "3d")
+
+    @drop_datasets
     def test_field_operations(self):
         dataset = _make_group_dataset()
 
