@@ -1,7 +1,6 @@
 import { IconButton } from "@fiftyone/components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Typography } from "@mui/material";
-import { useCreateStore } from "leva";
 import { useSetRecoilState } from "recoil";
 import { FoSceneNode } from "../../hooks";
 import { activeNodeAtom } from "../../state";
@@ -17,8 +16,6 @@ interface PcdNodeInfoProps {
 
 export const PcdNodeInfo = ({ node }: PcdNodeInfoProps) => {
   const setActiveNode = useSetRecoilState(activeNodeAtom);
-
-  const levaStore = useCreateStore();
 
   return (
     <NodeInfoContainer>
