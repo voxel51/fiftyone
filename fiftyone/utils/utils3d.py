@@ -544,7 +544,7 @@ def compute_orthographic_projection_images(
         group_field = samples.group_field
 
         three_d_view = samples.select_group_slices(in_group_slice)
-        media_type = samples.group_media_type[in_group_slice]
+        media_type = samples.group_media_types[in_group_slice]
         fov.validate_collection(three_d_view, media_type=media_type)
 
         filepaths, groups = three_d_view.values(["filepath", group_field])
