@@ -14,7 +14,6 @@ from PIL import Image
 import requests
 import shutil
 
-import huggingface_hub as hfh
 import yaml
 
 import fiftyone as fo
@@ -26,6 +25,10 @@ import fiftyone.core.metadata as fom
 from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
+
+hfh = fou.lazy_import(
+    "huggingface_hub", callback=lambda: fou.ensure_package("huggingface_hub")
+)
 
 DATASETS_SERVER_URL = "https://datasets-server.huggingface.co"
 DEFAULT_MEDIA_TYPE = "image"
