@@ -940,7 +940,7 @@ to the Hub. Once you have your token, you can set it as an environment variable:
 
 .. code-block:: shell
 
-    export HF_TOKEN=<your-token-here>
+    export HF_TOKEN="<your-token-here>"
 
 
 .. _huggingface-hub-push-dataset:
@@ -948,3 +948,95 @@ to the Hub. Once you have your token, you can set it as an environment variable:
 Pushing datasets to the Hub
 ---------------------------
 
+If you are working with a dataset in FiftyOne and you want to quickly share it 
+with others, you can do so via the :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`
+function, which takes two positional arguments: 
+
+- the FiftyOne sample collection (a |Dataset| or |DatasetView|)
+- the `repo_name`, which will be combined with your Hugging Face username or
+  organization name to construct the `repo_id` where the sample collection
+  will be uploaded.
+
+
+As you will see, this simple function allows you to push datasets and filtered
+views containing images, videos, point clouds, and other multimodal data to the
+Hugging Face Hub, providing you with incredible flexibility in the process.
+
+.. _huggingface-hub-push-dataset-basic:
+
+Basic usage
+^^^^^^^^^^^
+
+The basic recipe for pushing a FiftyOne dataset to the Hub is just two lines of
+code. As a starting point, let's use the example 
+:ref:`Quickstart dataset <dataset-zoo-quickstart>` dataset from the 
+:ref:`FiftyOne Dataset Zoo <dataset-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+
+To push the dataset to the Hugging Face Hub, all you need to do is call
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` with the dataset
+and the desired `repo_name`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    fouh.push_to_hub(dataset, "my-quickstart-dataset")
+
+
+When you run this code, a few things happen:
+
+- The dataset and its media files are exported to a temporary directory and
+  uploaded to the specified Hugging Face repo.
+- A `fiftyone.yml` config file for the dataset is generated and uploaded to
+  the repo, which contains all of the necessary information so that the dataset
+  can be loaded with :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`.
+- A Hugging Face `Dataset Card <https://huggingface.co/docs/hub/en/datasets-cards>`_
+  for the dataset is auto-generated, providing tags, metadata, license info, and
+  a code snippet illustrating how to load the dataset from the hub.
+
+
+Your dataset will be available on the Hub at the following URL:
+
+.. code-block:: shell
+
+    https://huggingface.co/datasets/<your-username-or-org-name>/my-quickstart-dataset
+
+
+Pushing a |DatasetView| to the Hub works in exactly the same way. For example,
+if you want to push a filtered view of the `quickstart` dataset containing only
+predictions with high confidence, you can do so by creating the view as usual,
+and then passing that in to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    # create view with high confidence predictions
+    view = dataset.filter_labels("predictions", F("confidence") > 0.95)
+
+    # push view to the Hub as a new dataset
+    fouh.push_to_hub(view, "my-quickstart-high-conf")
+
+When you do so, note that the view is exported as a new dataset, and other 
+details from the original dataset are not included.
+
+.. _huggingface-hub-push-dataset-advanced:
+
+Advanced usage
+^^^^^^^^^^^^^^
+
+The :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` function
+provides a number of optional arguments that allow you to customize how your
+dataset is pushed to the Hub, including whether the dataset is public or private,
+what license it is released under, and more.
