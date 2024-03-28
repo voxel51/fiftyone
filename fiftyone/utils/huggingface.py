@@ -52,14 +52,6 @@ SUPPORTED_DTYPES = (
 logger = logging.getLogger(__name__)
 
 
-def get_cache():
-    g = globals()
-    if "_files_to_download" not in g:
-        g["_files_to_download"] = []
-
-    return g["_files_to_download"]
-
-
 def push_to_hub(
     dataset,
     repo_name,
@@ -86,19 +78,23 @@ def push_to_hub(
         dataset_type (None): the type of the dataset to create
         label_field (None): controls the label field(s) to export. Only
             applicable to labeled datasets. Can be any of the following:
-        - the name of a label field to export
-        - a glob pattern of label field(s) to export
-        - a list or tuple of label field(s) to export
-        - a dictionary mapping label field names to keys to use when
-            constructing the label dictionaries to pass to the exporter
+
+            - the name of a label field to export
+            - a glob pattern of label field(s) to export
+            - a list or tuple of label field(s) to export
+            - a dictionary mapping label field names to keys to use when
+              constructing the label dictionaries to pass to the exporter
+
         frame_labels_field (None): controls the frame label field(s) to export.
             The "frames." prefix is optional. Only applicable to labeled video
             datasets. Can be any of the following:
-        - the name of a frame label field to export
-        - a glob pattern of frame label field(s) to export
-        - a list or tuple of frame label field(s) to export
-        - a dictionary mapping frame label field names to keys to use when
-            constructing the frame label dictionaries to pass to the exporter
+
+            - the name of a frame label field to export
+            - a glob pattern of frame label field(s) to export
+            - a list or tuple of frame label field(s) to export
+            - a dictionary mapping frame label field names to keys to use when
+              constructing the frame label dictionaries to pass to the exporter
+
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -288,6 +284,14 @@ dataset = fouh.load_from_hub("{repo_id}")
 session = fo.launch_app(dataset)
 ```
 """
+
+
+def _get_cache():
+    g = globals()
+    if "_files_to_download" not in g:
+        g["_files_to_download"] = []
+
+    return g["_files_to_download"]
 
 
 def _populate_config_file(
@@ -752,7 +756,7 @@ def _build_media_field_converter(
         sample_dict[media_field_key] = filepath
 
         # cache the file info to download later
-        get_cache().append((url, filepath))
+        _get_cache().append((url, filepath))
 
     return convert_media_field
 
@@ -845,7 +849,7 @@ def _build_label_field_converter(
             url = row_content[field_name]
 
         sample_dict[field_name] = fol.Segmentation(mask_path=filepath)
-        get_cache().append((url, filepath))
+        _get_cache().append((url, filepath))
 
     def convert_label_field(sample_dict, row):
         pass
@@ -982,9 +986,9 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
         dataset.add_samples(samples)
 
         ## Download images in batch
-        urls_and_filepaths = get_cache()
+        urls_and_filepaths = _get_cache()
         _download_images_in_batch(urls_and_filepaths)
-        get_cache().clear()
+        _get_cache().clear()
 
 
 def _configure_dataset_media_fields(dataset, config):
