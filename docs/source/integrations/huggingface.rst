@@ -1142,3 +1142,106 @@ Creative Commons Attribution 4.0 license, you can do the following:
     only the `ground_truth` label field is converted. If you want to convert all
     label fields, you can set `label_fields="*"`. If you want to convert specific
     label fields, you can pass a list of field names.
+
+
+.. _huggingface-hub-load-dataset:
+
+Loading datasets from the Hub
+-----------------------------
+
+To load a dataset from the Hugging Face Hub, you can use the
+:func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function.
+This function supports loading datasets in any of the 
+:ref:`common formats <supported-import-formats>` supported by FiftyOne, as well
+as image-based datasets stored via `Parquet <https://parquet.apache.org/>`_ files,
+as is common with datasets from the
+`datasets <https://huggingface.co/docs/datasets/en/index>`_ library which have
+been uploaded to the Hugging Face Hub. Below, we will walk through all of the
+ways you can load datasets from the Hub.
+
+In its simplest usage, the :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
+function only requires the `repo_id` of the dataset you want to load. For example,
+to load the :ref:`private dataset <huggingface-hub-push-dataset-advanced>` that
+we pushed to the Hub earlier, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub("<username-or-org>/my-private-dataset")
+
+
+.. note::
+
+    As long as you have an environment variable `HF_TOKEN` set with your Hugging
+    Face token (with read access), you can load gated datasets that you have
+    access to from the Hub.
+
+
+.. _huggingface-hub-load-dataset-from-repo-config:
+
+Loading datasets from repo configs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When you push a dataset to the Hub using 
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`, a `fiftyone.yml`
+config file is generated and uploaded to the repo. This file contains all of the
+information necessary to load the dataset from the Hugging Face Hub. More
+generally, any repo on the Hugging Face Hub that contains a `fiftyone.yml` or
+`fiftyone.yaml` file (assuming the file is correctly formatted) can be loaded
+using the :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
+function by passing the `repo_id` of the dataset, without needing to specify any
+additional arguments.
+
+For example, to load the `quickstart` dataset that we pushed to the Hub earlier,
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub("my-quickstart-dataset")
+
+
+.. _huggingface-hub-load-dataset-from-local-config:
+
+Loading datasets from local configs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the repo was uploaded to the Hugging Face Hub via FiftyOne's
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` function, then
+the `fiftyone.yml` config file will be generated and uploaded to the repo.
+However, some common datasets like `mnist <https://huggingface.co/datasets/mnist>`_
+were uploaded to the Hub using the `datasets` library and do not contain a
+`fiftyone.yml` or `fiftyone.yaml` file. If you know how the dataset is structured,
+you can load the dataset by passing the path to a local yaml config file that
+describes the dataset via the `config_file` keyword argument.
+
+For example, to load the `mnist` dataset from the Hub, you might have a local
+yaml config file like this:
+
+.. code-block:: yaml
+
+    format: ParquetFilesDataset
+    classification_fields: label
+
+
+To load the dataset from the Hub, you can pass the `repo_id` of the dataset and
+the path to the local yaml config file:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "mnist",
+        config_file="/path/to/mnist.yml"
+    )
+
+
+For a comprehensive list of the supported fields in the yaml config file, see
+here **TODO**.
+
+
