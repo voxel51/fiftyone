@@ -10563,8 +10563,11 @@ class SampleCollection(object):
             schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
-        if not include_filepath:
-            app_media_fields.discard("filepath")
+            if include_filepath:
+                # 'filepath' should already be in set, but add it just in case
+                app_media_fields.add("filepath")
+            else:
+                app_media_fields.discard("filepath")
 
         for field_name, field in schema.items():
             if field_name in app_media_fields:
@@ -10585,6 +10588,19 @@ class SampleCollection(object):
             }
 
         return media_fields
+
+    def _resolve_media_field(self, media_field):
+        _media_field, is_frame_field = self._handle_frame_field(media_field)
+
+        media_fields = self._get_media_fields(frames=is_frame_field)
+        for root, leaf in media_fields.items():
+            if leaf is not None:
+                leaf = root + "." + leaf
+
+            if _media_field in (root, leaf):
+                return leaf if leaf is not None else root
+
+        raise ValueError("'%s' is not a valid media field" % media_field)
 
     def _get_label_fields(self):
         return [path for path, _ in _iter_label_fields(self)]
