@@ -4398,7 +4398,7 @@ others also store the material properties and textures of the mesh. If a
 mesh file contains material properties and textures, FiftyOne will
 automatically load and display them. You may also
 assign default material for your meshes by setting the
-:attr:`default_material <fiftyone.core.threed.Mesh.default_material>`
+:attr:`default_material <fiftyone.core.threed.mesh.Mesh.default_material>`
 attribute of the mesh. In the absence of any material information,
 meshes are assigned a
 :class:`MeshStandardMaterial <fiftyone.core.threed.MeshStandardMaterial>`
@@ -4406,7 +4406,7 @@ with reasonable defaults that can also be dynamically configured from the app.
 Please refer to :mod:`material_3d <fiftyone.core.threed.material_3d>` for more
 details.
 
-FiftyOne supports :class:`GLTF <fiftyone.core.threed.GltfFMesh>`,
+FiftyOne supports :class:`GLTF <fiftyone.core.threed.GltfMesh>`,
 :class:`OBJ <fiftyone.core.threed.ObjMesh>`,
 :class:`PLY <fiftyone.core.threed.PlyMesh>`,
 :class:`STL <fiftyone.core.threed.StlMesh>`, and
