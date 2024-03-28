@@ -104,7 +104,7 @@ def get_view(
         a :class:`fiftyone.core.view.DatasetView`
     """
 
-    def run(dataset):
+    def run(dataset, stages):
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset)
 
@@ -121,18 +121,43 @@ def get_view(
 
         if sample_filter is not None:
             if sample_filter.group:
-                if sample_filter.group.slice:
-                    view.group_slice = sample_filter.group.slice
+                unselected = all(
+                    not isinstance(stage, fosg.SelectGroupSlices)
+                    for stage in view._stages
+                )
+                group_field = dataset.group_field
+                if unselected and sample_filter.group.slice:
+                    stages = view._stages
+                    view = dataset.select_group_slices(_force_mixed=True)
 
-                if sample_filter.group.id:
-                    view = fov.make_optimized_select_view(
-                        view, sample_filter.group.id, groups=True
-                    )
+                    if sample_filter.group.id:
+                        view = view.match(
+                            {
+                                group_field
+                                + "._id": {
+                                    "$in": [ObjectId(sample_filter.group.id)]
+                                }
+                            }
+                        )
+
+                    for stage in stages:
+                        view = view._add_view_stage(stage, validate=False)
+
+                else:
+                    if sample_filter.group.slice:
+                        view.group_slice = sample_filter.group.slice
+
+                    if sample_filter.group.id:
+                        view = fov.make_optimized_select_view(
+                            view, sample_filter.group.id, groups=True
+                        )
 
                 if sample_filter.group.slices:
-                    view = view.select_group_slices(
-                        sample_filter.group.slices,
-                        _force_mixed=True,
+                    view = view.match(
+                        {
+                            group_field
+                            + ".name": {"$in": sample_filter.group.slices}
+                        }
                     )
 
             elif sample_filter.id:
@@ -149,9 +174,9 @@ def get_view(
         return view
 
     if awaitable:
-        return fou.run_sync_task(run, dataset)
+        return fou.run_sync_task(run, dataset, stages)
 
-    return run(dataset)
+    return run(dataset, stages)
 
 
 def get_extended_view(
