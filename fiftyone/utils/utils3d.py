@@ -10,9 +10,10 @@ import logging
 import os
 import warnings
 
-import eta.core.numutils as etan
 import numpy as np
 import scipy.spatial as sp
+
+import eta.core.numutils as etan
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
