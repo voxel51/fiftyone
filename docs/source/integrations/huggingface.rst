@@ -1666,8 +1666,9 @@ as `ADE 20K Tiny <https://huggingface.co/datasets/nateraw/ade20k-tiny>`_:
         "nateraw/ade20k-tiny",
         format="parquet",
         mask_fields="label",
-        max_samples=1000
     )
+
+    # only 20 samples in the dataset
 
     session = fo.launch_app(dataset)
 
