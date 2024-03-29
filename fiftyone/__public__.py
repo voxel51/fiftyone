@@ -5,6 +5,7 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone.core.config as _foc
 import fiftyone.core.odm as _foo
 
@@ -157,6 +158,33 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .core.threed import (
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
+    FbxMesh,
+    GltfMesh,
+    ObjMesh,
+    PlyMesh,
+    StlMesh,
+    PerspectiveCamera,
+    PointLight,
+    DirectionalLight,
+    AmbientLight,
+    SpotLight,
+    Pointcloud,
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointcloudMaterial,
+    Scene,
+    SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
+)
 from .core.spaces import (
     Space,
     Panel,
