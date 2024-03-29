@@ -5,6 +5,9 @@ export type Looker3dPluginSettings = {
   useLegacyCoordinates: boolean;
   defaultUp: THREE.Vector3Tuple;
   defaultCameraPosition: THREE.Vector3;
+  pointCloud?: {
+    minZ?: number;
+  };
 };
 
 export const defaultPluginSettings: Partial<Looker3dPluginSettings> = {
@@ -19,6 +22,8 @@ typeof window !== "undefined" &&
     type: PluginComponentType.Visualizer,
     activator: ({ dataset }) =>
       dataset.mediaType ??
-      dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-        undefined,
+      dataset.groupMediaTypes.find(
+        (g) => g.mediaType === "point_cloud" || g.mediaType === "three_d"
+      ) !== undefined,
+    label: "",
   });

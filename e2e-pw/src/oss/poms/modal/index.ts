@@ -223,7 +223,7 @@ export class ModalPom {
         return (
           document
             .querySelector(`[data-cy=modal-looker-container] canvas`)
-            ?.getAttribute("sample-loaded") === "true"
+            ?.getAttribute("canvas-loaded") === "true"
         );
       },
       allowErrorInfo,

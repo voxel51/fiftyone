@@ -12,7 +12,8 @@ import eta.core.video as etav
 VIDEO = "video"
 IMAGE = "image"
 POINT_CLOUD = "point-cloud"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD}
+THREE_D = "3d"
+MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D}
 
 # Special media types
 GROUP = "group"
@@ -33,6 +34,9 @@ def get_media_type(filepath):
 
     if filepath.endswith(".pcd"):
         return POINT_CLOUD
+
+    if filepath.endswith(".fo3d"):
+        return THREE_D
 
     return IMAGE
 
