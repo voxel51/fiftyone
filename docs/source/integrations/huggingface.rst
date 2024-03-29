@@ -1629,3 +1629,73 @@ specify the `detection_fields` as `"digits"`:
     `Fashionpedia <https://huggingface.co/datasets/detection-datasets/fashionpedia>`_
     dataset has detections stored in Pascal VOC format, which is not the `standard
     Hugging Face format <https://huggingface.co/docs/transformers/en/tasks/object_detection>`_.
+
+
+**Segmentation Datasets**:
+
+Loading segmentation datasets from the Hub is also a breeze. For example, to
+load the "instance_segmentation" subset from
+`SceneParse150 <https://huggingface.co/datasets/scene_parse150>`_, all you
+need to do is specify the `mask_fields` as `"annotation"`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "scene_parse150",
+        format="parquet",
+        subsets="instance_segmentation",
+        mask_fields="annotation",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+Many other segmentation datasets on the Hub can be loaded in the same way, such
+as `ADE 20K Tiny <https://huggingface.co/datasets/nateraw/ade20k-tiny>`_:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "nateraw/ade20k-tiny",
+        format="parquet",
+        mask_fields="label",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+In other cases, because there are now *multiple* image columns — one for the
+sample image and one for the mask — the naming convention for the dataset might
+be different, and you may need to explicitly specify the `filepath`. For example,
+to load the
+`Sidewalk Semantic <https://huggingface.co/datasets/segments/sidewalk-semantic>`_
+dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "segments/sidewalk-semantic",
+        format="parquet",
+        filepath="pixel_values",
+        mask_fields="label",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+.. note::
+    Once you have the dataset loaded into FiftyOne, you may want to set the dataset's
+    `mask targets <storing-mask-targets>`_ to specify the names of the classes
+    represented in the segmentation masks.
