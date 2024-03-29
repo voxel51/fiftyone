@@ -1410,3 +1410,41 @@ Configuring the download process
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When loading datasets from the Hugging Face Hub, FiftyOne will download the
+*all* of the data specified by the `repo_id` and the config. If no splits or
+subsets are listed in the config, this means that all samples across all splits
+and subsets will be downloaded. This can be a time-consuming process, especially
+for large datasets, and sometimes you may only want to download a fixed number
+of samples to get started exploring the dataset.
+
+FiftyOne's :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
+function supports a variety of arguments that allow you to control the download
+process, from the maximum number of samples to be downloaded to the batch size
+to use when making requests to the Datasets Server. Here are the supported
+arguments:
+
+- `max_samples` (int): The number of samples to download from the dataset. If
+  not specified, all samples will be downloaded.
+- `batch_size` (int): The batch size to use when making requests to the Datasets
+  Server. Defaults to 100, which is the max batch size allowed by the Datasets
+  Server.
+- `num_workers` (int): The number of worker to use when downloading
+  media files. If not specified, the number of workers will be resolved by
+  looking at your :ref:`FiftyOne Config <configuring-fiftyone>`.
+- `splits` (str or list): The split or splits of the Hugging Face dataset that
+  you want to download. This overrides the `splits` field in the config.
+- `subsets` (str or list): The subset or subsets of the Hugging Face dataset
+  that you want to download. This overrides the `subsets` field in the config.
+- `overwrite` (bool): Whether to overwrite existing an existing dataset with the
+  same name. If `True`, the existing dataset will be overwritten. If `False`,
+  an error will be raised if a dataset with the same name already exists. Defaults
+  to `False`.
+- `persistent` (bool): Whether to persist the dataset to the underlying database
+  after it is loaded. If `True`, the dataset will be available for loading in
+  future FiftyOne sessions by passing the dataset's name into FiftyOne's
+  :func:`load_dataset() <fiftyone.core.dataset.Dataset.load_dataset>` function.
+  Defaults to `False`.
+- `revision` (str): The revision (specified by a commit hash to the Hugging Face
+  repo) of the dataset to load. If not specified, the latest revision will be
+  loaded.
+
+
