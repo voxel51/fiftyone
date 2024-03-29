@@ -1448,3 +1448,100 @@ arguments:
   loaded.
 
 
+.. _huggingface-hub-load-dataset-basic-examples:
+
+Basic examples
+^^^^^^^^^^^^^^
+
+Okay, so :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` is
+*very* powerful, and can be used in a *ton* of ways. All of this flexibility
+can be a bit overwhelming, so let's walk through a few examples to show you how
+easy it is in practice to load datasets from the Hugging Face Hub.
+
+.. note::
+
+    To make these downloads as fast as possible, we recommend setting the
+    `max_samples` argument to a reasonable number, like 1000, to get a feel for
+    the dataset. If you like what you see, you can always download more samples!
+
+
+**Classification Datasets**:
+
+Let's start by loading the
+`MNIST <https://huggingface.co/datasets/mnist>`_ dataset into FiftyOne. All you
+need to do is pass the `repo_id` of the dataset — in this case `"mnist"` — to
+:func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`, specify the
+format as `"parquet"`, and specify the `classification_fields` as `"label"`:
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "mnist",
+        format="parquet",
+        classification_fields="label",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+The same exact syntax works for the `CIFAR-10 <https://huggingface.co/datasets/cifar10>`_
+and `FashionMNIST <https://huggingface.co/datasets/fashion_mnist>`_ datasets,
+which are also available on the Hub. In fact, you can load any of the following
+classification datasets from the Hub using the same syntax, just by changing the
+`repo_id`:
+
+- `CIFAR-10 <https://huggingface.co/datasets/cifar10>`_ (use `"cifar10"`)
+- `ImageNet <https://huggingface.co/datasets/imagenet-1k>`_ (use `"imagenet-1k"`)
+- `FashionMNIST <https://huggingface.co/datasets/fashion_mnist>`_ (use `"fashion_mnist"`)
+- `Tiny ImageNet <https://huggingface.co/datasets/zh-plus/tiny-imagenet>`_ (use `"zh-plus/tiny-imagenet"`)
+- `Food-101 <https://huggingface.co/datasets/food101>`_ (use `"food101"`)
+- `Dog Food <https://huggingface.co/datasets/sasha/dogfood>`_ (use `"sasha/dog-food"`)
+- `ImageNet-Sketch <https://huggingface.co/datasets/imagenet_sketch>`_ (use `"imagenet_sketch"`)
+- `Oxford Flowers <https://huggingface.co/datasets/nelorth/oxford-flowers>`_ (use `"nelorth/oxford-flowers"`)
+- `Cats vs. Dogs <https://huggingface.co/datasets/cats_vs_dogs>`_ (use `"cats_vs_dogs"`)
+- `ObjectNet-1.0 <https://huggingface.co/datasets/timm/objectnet>`_ (use `"timm/objectnet"`)
+
+A very similar syntax can be used to load classification datasets that contain
+*multiple* classification fields, such as
+`CIFAR-100 <https://huggingface.co/datasets/cifar100>`_ and the
+`WikiArt <https://huggingface.co/datasets/huggan/wikiart>`_ dataset. For example,
+to load the CIFAR-100 dataset, you can specify the `classification_fields` as
+`["coarse_label", "fine_label"]`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "cifar100",
+        format="parquet",
+        classification_fields=["coarse_label", "fine_label"],
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+To load the `WikiArt <https://huggingface.co/datasets/huggan/wikiart>`_ dataset,
+you can specify the `classification_fields` as `["artist", "genre", "style"]`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "huggan/wikiart",
+        format="parquet",
+        classification_fields=["artist", "genre", "style"],
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
