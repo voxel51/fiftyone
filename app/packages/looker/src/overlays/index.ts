@@ -45,14 +45,14 @@ export const FROM_FO = {
 };
 
 export const POINTS_FROM_FO = {
-  Detection: (label) => getDetectionPoints([label]),
+  Detection: (label) => getDetectionPoints(label ? [label] : []),
   Detections: (label) => getDetectionPoints(label?.detections ?? []),
-  Heatmap: (label) => getHeatmapPoints([label]),
-  Keypoint: (label) => getKeypointPoints([label]),
+  Heatmap: (label) => getHeatmapPoints(label ? [label] : []),
+  Keypoint: (label) => getKeypointPoints(label ? [label] : []),
   Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
-  Polyline: (label) => getPolylinePoints([label]),
+  Polyline: (label) => getPolylinePoints(label ? [label] : []),
   Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
-  Segmentation: (label) => getSegmentationPoints([label]),
+  Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
 };
 
 const LABEL_LISTS = LABEL_LISTS_MAP;

@@ -19,7 +19,7 @@ export const DeserializerFactory = {
     );
   },
   Heatmap: (label, buffers) => {
-    if (typeof label.map === "string") {
+    if (typeof label?.map === "string") {
       const data = deserialize(label.map);
       const [height, width] = data.shape;
 
@@ -33,7 +33,7 @@ export const DeserializerFactory = {
     }
   },
   Segmentation: (label, buffers) => {
-    if (typeof label.mask === "string") {
+    if (typeof label?.mask === "string") {
       const data = deserialize(label.mask);
       const [height, width] = data.shape;
 
