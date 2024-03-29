@@ -5,7 +5,6 @@ export {
   registerOperator,
   Operator,
   OperatorConfig,
-  executeStartupOperators,
   executeOperator,
   abortOperationsByExpression,
   abortOperationsByURI,

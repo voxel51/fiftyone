@@ -59,6 +59,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
+    "pydantic>=2",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
@@ -66,6 +67,7 @@ INSTALL_REQUIRES = [
     "retrying",
     "scikit-learn",
     "scikit-image",
+    "scipy",
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
@@ -77,7 +79,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.16.1,<0.17",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.12.5,<0.13",
+    "voxel51-eta>=0.12.6,<0.13",
 ]
 
 
@@ -165,6 +167,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

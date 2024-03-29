@@ -166,36 +166,6 @@ instructions for configuring each supported cloud provider for local SDK use
 or directly to the Teams containers. An admin can also :ref:`configure
 credentials for use by all app users <teams-cloud-storage-page>`.
 
-.. note::
-
-    Configuring credentials following below instructions is almost always
-    sufficient for FiftyOne Teams to properly utilize them. In rare cases
-    where the cloud provider client needs non-default configuration,
-    you can add extra client kwargs via the
-    :ref:`media cache config <teams-media-cache-config>`:
-
-    .. code-block:: json
-
-        {
-            "extra_client_kwargs": {
-                "azure": {"extra_kwarg": "value"},
-                "gcs": {"extra_kwarg": "value"},
-                "minio": {"extra_kwarg": "value"},
-                "s3": {"extra_kwarg": "value"}
-            }
-        }
-
-    Provider names and the class that extra kwargs are passed to:
-
-    .. raw:: html
-
-        <ul class="simple">
-            <li> <strong>azure</strong>: <code class="docutils literal notranslate> <span class="pre">azure.identity.DefaultAzureCredential</span></code> </li>
-            <li> <strong>gcs</strong>: <code class="docutils literal notranslate> <span class="pre">google.cloud.storage.Client</span></code> </li>
-            <li> <strong>minio</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
-            <li> <strong>s3</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
-        </ul>
-
 .. _teams-cors:
 
 Cross-Origin Resource Sharing (CORS)
@@ -219,57 +189,46 @@ to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
-1. Configure/provide AWS credentials in accordance with the
-`boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_
-python library.
+1. Configure/provide AWS credentials in any format supported by the
+`boto3 library <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_.
+For example, here are two of the supported methods:
 
-For convenience, below are the environment variables that can be set to
-use some of the AWS-supported credentialing methods. This list is subject to
-change; please see the `boto3` link above for the up-to-date reference.
+.. code-block:: shell
 
-.. code-block:: bash
-
-    # Access Key
+    # Access key
     export AWS_ACCESS_KEY_ID=...
     export AWS_SECRET_ACCESS_KEY=...
     export AWS_SESSION_TOKEN=... # if applicable
     export AWS_DEFAULT_REGION=...
 
-    # Web Identity Provider
+.. code-block:: shell
+
+    # Web identity provider
     export AWS_ROLE_ARN=...
     export AWS_WEB_IDENTITY_TOKEN_FILE=...
     export AWS_ROLE_SESSION_NAME... #if applicable
     export AWS_DEFAULT_REGION=...
 
-    # Shared Credentials File
-    export AWS_SHARED_CREDENTIALS_FILE="/path/to/aws-credentials.ini"
-    export AWS_PROFILE=default  # optional
+2. Provide AWS credentials on a per-session basis by setting one of the
+following sets of environment variables to point to your AWS credentials on
+disk:
 
-    # AWS Config File
+.. code-block:: shell
+
+    # AWS config file
     export AWS_CONFIG_FILE="/path/to/aws-config.ini"
     export AWS_PROFILE=default  # optional
 
-2. Permanently register AWS credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+.. code-block:: shell
 
-.. code-block:: json
+    # Shared credentials file
+    export AWS_SHARED_CREDENTIALS_FILE="/path/to/aws-credentials.ini"
+    export AWS_PROFILE=default  # optional
 
-    {
-        "aws_config_file": "/path/to/aws-config.ini",
-        "aws_profile": "default"  # optional
-    }
-
-3. Provide AWS credentials on a per-session basis by setting the following
-environment variables to point to your AWS credentials on disk:
-
-    .. code-block:: shell
-
-        export AWS_CONFIG_FILE="/path/to/aws-config.ini"
-        export AWS_PROFILE=default  # optional
-
-
-In the above, the `.ini` file should use the syntax of the
-`boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
+In the above, the config file should use
+`this syntax <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
+and the shared credentials file should use
+`this syntax <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#shared-credentials-file>`_.
 
 .. note::
 
@@ -279,6 +238,16 @@ In the above, the `.ini` file should use the syntax of the
     If you wish to use multi-account credentials, your credentials must have
     the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
     this.
+
+3. Permanently register AWS credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "aws_config_file": "/path/to/aws-config.ini",
+        "aws_profile": "default"  # optional
+    }
 
 If you need to `configure CORS on your AWS buckets <https://docs.aws.amazon.com/AmazonS3/latest/userguide/enabling-cors-examples.html>`_,
 here is an example configuration:
@@ -306,14 +275,12 @@ to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
-1. Permanently register GCS credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+1. Configure/provide
+`application default credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`_
+in another manner supported by Google Cloud, such as:
 
-.. code-block:: json
-
-    {
-        "google_application_credentials": "/path/to/gcp-service-account.json"
-    }
+- `Using the gcloud CLI <https://cloud.google.com/docs/authentication/application-default-credentials#personal>`_
+- `Attaching a service account to your Google Cloud resource <https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa>`_
 
 2. Provide GCS credentials on a per-session basis by setting the following
 environment variables to point to your GCS credentials on disk:
@@ -322,12 +289,14 @@ environment variables to point to your GCS credentials on disk:
 
     export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-service-account.json"
 
-3. Configure/provide
-`application default credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`_
-in another manner supported by Google Cloud, such as:
+3. Permanently register GCS credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
-- `Using the gcloud CLI <https://cloud.google.com/docs/authentication/application-default-credentials#personal>`_
-- `Attaching a service account to your Google Cloud resource <https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa>`_
+.. code-block:: json
+
+    {
+        "google_application_credentials": "/path/to/gcp-service-account.json"
+    }
 
 In the above, the credentials `.json` file can be a service account key, a
 configuration file for workforce identity federation, or a configuration file
@@ -371,25 +340,10 @@ to your Teams client with read access to the relevant objects and containers.
 
 You can do this in any of the following ways:
 
-1. Permanently register Azure credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+1. Provide your Azure credentials in any manner recognized by
+`azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
 
-.. code-block:: json
-
-    {
-        "azure_credentials_file": "/path/to/azure-credentials.ini",
-        "azure_profile": "default"  # optional
-    }
-
-2. Provide Azure credentials on a per-session basis by setting the following
-environment variables to point to your Azure credentials on disk:
-
-.. code-block:: shell
-
-    export AZURE_CREDENTIALS_FILE=/path/to/azure-credentials.ini
-    export AZURE_PROFILE=default  # optional
-
-3. Provide your Azure credentials on a per-session basis by setting any group
+2. Provide your Azure credentials on a per-session basis by setting any group
 of environment variables shown below:
 
 .. code-block:: shell
@@ -414,8 +368,23 @@ of environment variables shown below:
     export AZURE_TENANT_ID=...
     export AZURE_ALIAS=...  # optional
 
-4. Provide your Azure credentials in any manner recognized by
-`azure.identity.DefaultAzureCredential <https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential?view=azure-python>`_
+3. Provide Azure credentials on a per-session basis by setting the following
+environment variables to point to your Azure credentials on disk:
+
+.. code-block:: shell
+
+    export AZURE_CREDENTIALS_FILE=/path/to/azure-credentials.ini
+    export AZURE_PROFILE=default  # optional
+
+4. Permanently register Azure credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "azure_credentials_file": "/path/to/azure-credentials.ini",
+        "azure_profile": "default"  # optional
+    }
 
 In the options above, the `.ini` file should have syntax similar to one of
 the following:
@@ -481,25 +450,7 @@ Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
-1. Permanently register MinIO credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
-
-.. code-block:: json
-
-    {
-        "minio_config_file": "/path/to/minio-config.ini",
-        "minio_profile": "default"  # optional
-    }
-
-2. Provide MinIO credentials on a per-session basis by setting the following
-environment variables to point to your MinIO credentials on disk:
-
-.. code-block:: shell
-
-    export MINIO_CONFIG_FILE=/path/to/minio-config.ini
-    export MINIO_PROFILE=default  # optional
-
-3. Provide your MinIO credentials on a per-session basis by setting the
+1. Provide your MinIO credentials on a per-session basis by setting the
 individual environment variables shown below:
 
 .. code-block:: shell
@@ -509,6 +460,24 @@ individual environment variables shown below:
     export MINIO_ENDPOINT_URL=...
     export MINIO_ALIAS=...  # optional
     export MINIO_REGION=...  # if applicable
+
+2. Provide MinIO credentials on a per-session basis by setting the following
+environment variables to point to your MinIO credentials on disk:
+
+.. code-block:: shell
+
+    export MINIO_CONFIG_FILE=/path/to/minio-config.ini
+    export MINIO_PROFILE=default  # optional
+
+3. Permanently register MinIO credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "minio_config_file": "/path/to/minio-config.ini",
+        "minio_profile": "default"  # optional
+    }
 
 In the options above, the `.ini` file should have syntax similar the following:
 
@@ -540,6 +509,38 @@ alias:
 
     # For example
     filepath = "minio://test-bucket/image.jpg"
+
+.. _teams-extra-kwargs:
+
+Extra client arguments
+______________________
+
+Configuring credentials following the instructions above is almost always
+sufficient for FiftyOne Teams to properly utilize them. In rare cases where the
+cloud provider client needs non-default configuration, you can add extra client
+kwargs via the :ref:`media cache config <teams-media-cache-config>`:
+
+.. code-block:: json
+
+    {
+        "extra_client_kwargs": {
+            "azure": {"extra_kwarg": "value"},
+            "gcs": {"extra_kwarg": "value"},
+            "minio": {"extra_kwarg": "value"},
+            "s3": {"extra_kwarg": "value"}
+        }
+    }
+
+Provider names and the class that extra kwargs are passed to:
+
+.. raw:: html
+
+    <ul class="simple">
+        <li> <strong>azure</strong>: <code class="docutils literal notranslate> <span class="pre">azure.identity.DefaultAzureCredential</span></code> </li>
+        <li> <strong>gcs</strong>: <code class="docutils literal notranslate> <span class="pre">google.cloud.storage.Client</span></code> </li>
+        <li> <strong>minio</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
+        <li> <strong>s3</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
+    </ul>
 
 .. _teams-cloud-storage-page:
 

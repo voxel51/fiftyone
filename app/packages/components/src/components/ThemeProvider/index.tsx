@@ -210,6 +210,15 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          "&:hover": {
+            backgroundColor: "unset",
+          },
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
@@ -221,6 +230,10 @@ let theme = extendMuiTheme({
 
 export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
+};
+
+export const useFont = () => {
+  return theme.typography.fontFamily;
 };
 
 const ThemeProvider: React.FC<

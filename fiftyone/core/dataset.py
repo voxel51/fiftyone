@@ -106,8 +106,19 @@ def _validate_dataset_name(name, skip=None):
         query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
 
     conn = foo.get_db_conn()
-    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
-        raise ValueError("Dataset name '%s' is not available" % name)
+
+    clashing_name_doc = conn.datasets.find_one(
+        query, {"name": True, "_id": False}
+    )
+    if clashing_name_doc is not None:
+        clashing_name = clashing_name_doc["name"]
+        if clashing_name == name:
+            raise ValueError(f"Dataset name '{name}' is not available")
+        else:
+            raise ValueError(
+                f"Dataset name '{name}' is not available: slug '{slug}' "
+                f"in use by dataset '{clashing_name}'"
+            )
 
     return slug
 
@@ -2061,6 +2072,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError("Invalid media type '%s'" % media_type)
+
+        rev_media_types = {
+            v: k for k, v in self._doc.group_media_types.items()
+        }
+        if (
+            fom.THREE_D in rev_media_types
+            and rev_media_types[fom.THREE_D] != name
+        ):
+            raise ValueError(
+                "Only one 'fo3d' group slice is allowed, '%s' already exists"
+                % rev_media_types[fom.THREE_D]
+            )
 
         # If this is the first video slice, we need to initialize frames
         if media_type == fom.VIDEO and not any(
@@ -6809,7 +6832,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
-    def _update_last_loaded_at(self):
+    def _update_last_loaded_at(self, force=False):
+        if os.environ.get("FIFTYONE_SERVER", False) and not force:
+            return
+
         self._doc.last_loaded_at = datetime.utcnow()
         self._save()
 

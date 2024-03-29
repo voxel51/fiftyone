@@ -15,7 +15,9 @@ export const lightningBooleanResults = selectorFamily<
       const [data] = get(lightningQuery([{ path: params.path }]));
 
       if (data.__typename !== "BooleanLightningResult") {
-        throw new Error("unexpected");
+        throw new Error(
+          `unexpected ${data.__typename} for path '${params.path}' in lightningBooleanResults`
+        );
       }
 
       return {

@@ -2771,13 +2771,7 @@ def _print_operators_list(enabled, names_only):
 
         return
 
-    headers = [
-        "uri",
-        "enabled",
-        "builtin",
-        "unlisted",
-        "on_startup",
-    ]
+    headers = ["uri", "enabled", "builtin", "unlisted"]
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
@@ -2789,7 +2783,6 @@ def _print_operators_list(enabled, names_only):
                 "enabled": op.builtin or op.plugin_name in enabled_plugins,
                 "builtin": op.builtin,
                 "unlisted": op.config.unlisted,
-                "on_startup": op.config.on_startup,
             }
         )
 

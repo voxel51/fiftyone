@@ -2591,6 +2591,33 @@ def _set_map_type_to_figure(
         warnings.warn(msg)
 
 
+def _set_map_type_to_figure(
+    figure,
+    map_type,
+):
+    if map_type == "satellite":
+        figure.update_layout(
+            mapbox_style="white-bg",
+            mapbox_layers=[
+                {
+                    "below": "traces",
+                    "sourcetype": "raster",
+                    "sourceattribution": "United States Geological Survey",
+                    "source": [
+                        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
+                    ],
+                }
+            ],
+            margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        )
+    elif map_type == "roadmap":
+        figure.update_layout(mapbox_style="carto-positron")
+    else:
+        figure.update_layout(mapbox_style="carto-positron")
+        msg = "Unsupported map type '%s'; defaulted to 'roadmap'" % map_type
+        warnings.warn(msg)
+
+
 def _plot_scatter_mapbox_categorical(
     coords,
     labels,
