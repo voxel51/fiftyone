@@ -26,7 +26,7 @@ export const PainterFactory = (requestColor) => ({
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
-    if (!label.mask) {
+    if (!label?.mask) {
       return;
     }
 
@@ -162,7 +162,7 @@ export const PainterFactory = (requestColor) => ({
     selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
-    if (!label.map) {
+    if (!label?.map) {
       return;
     }
 

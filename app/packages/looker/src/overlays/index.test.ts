@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import DetectionOverlay from "./detection";
 import * as index from "./index";
 
-describe("filter resolves correctly", () => {
+describe("label overlay processing", () => {
   it("omits undefined labels", () => {
     expect(index.fromLabel(DetectionOverlay)("field", undefined)).toStrictEqual(
       []
