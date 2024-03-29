@@ -1545,3 +1545,78 @@ you can specify the `classification_fields` as `["artist", "genre", "style"]`:
 
     session = fo.launch_app(dataset)
 
+
+As touched upon earlier, you can also load a classification *subset* of a
+dataset. For example, to load the `cropped_digits` subset of the
+`Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "svhn",
+        format="parquet",
+        classification_fields="label",
+        subsets="cropped_digits",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+
+**Detection Datasets**:
+
+Loading detection datasets from the Hub is just as easy. For example, to load
+the `MS COCO <https://huggingface.co/datasets/detection-datasets/coco>`_ dataset,
+you can specify the `detection_fields` as `"objects"`, which is the standard
+column name for detection features in Hugging Face datasets:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "detection-datasets/coco",
+        format="parquet",
+        detection_fields="objects",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+The same syntax works for many other popular detection datasets on the Hub,
+including:
+
+- `CPPE - 5 <https://huggingface.co/datasets/cppe-5>`_ (use `"cppe-5"`)
+- `WIDER FACE <https://huggingface.co/datasets/wider_face>`_ (use `"wider_face"`)
+- `License Plate Object Detection <https://huggingface.co/datasets/keremberke/license-plate-object-detection>`_
+  (use `"keremberke/license-plate-object-detection"`)
+- `Aerial Sheep Object Detection <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
+  (use `"keremberke/aerial-sheep-object-detection"`)
+
+
+Some detection datasets have their detections stored under a column with a
+different name. For example, the `full_numbers` subset of the
+`Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset
+stores its detections under the column `digits`. To load this subset, you can
+specify the `detection_fields` as `"digits"`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "svhn",
+        format="parquet",
+        detection_fields="digits",
+        subsets="full_numbers",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
