@@ -1620,3 +1620,12 @@ specify the `detection_fields` as `"digits"`:
     )
 
     session = fo.launch_app(dataset)
+
+
+.. note::
+
+    Not *all* detection datasets on the Hub are stored in a format that is
+    currently supported by FiftyOne. For instance, the
+    `Fashionpedia <https://huggingface.co/datasets/detection-datasets/fashionpedia>`_
+    dataset has detections stored in Pascal VOC format, which is not the `standard
+    Hugging Face format <https://huggingface.co/docs/transformers/en/tasks/object_detection>`_.
