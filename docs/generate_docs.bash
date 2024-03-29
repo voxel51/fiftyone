@@ -75,9 +75,9 @@ fi
 echo "**** Generating documentation ****"
 
 # Symlink to fiftyone-teams
-if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+if [[ -n "${PATH_TO_TEAMS}" ]]; then
     # macOS users may need to run `brew install coreutils` to get `realpath``
-    PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
+    PATH_TO_TEAMS="$(realpath "$PATH_TO_TEAMS")"
 
     cd "${THIS_DIR}"
     PATH_TO_FIFTYONE_DIR=$(
@@ -125,10 +125,10 @@ fi
 
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build $SPHINXOPTS
+sphinx-build -M html source build "$SPHINXOPTS"
 
 # Remove symlink to fiftyone-teams
-if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+if [[ -n "${PATH_TO_TEAMS}" ]]; then
     unlink "$PATH_TO_FIFTYONE_DIR/management"
     unlink "$PATH_TO_FIFTYONE_DIR/api"
 fi
