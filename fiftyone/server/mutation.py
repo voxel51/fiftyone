@@ -293,19 +293,11 @@ class Mutation(SetColorScheme):
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
-            sample_filter=(
-                SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
-                    )
-                )
-                if form.slice
-                else None
-            ),
             awaitable=True,
         )
 
         result_view = _build_result_view(dataset_view, form)
+        print(result_view)
 
         dataset.save_view(
             view_name, result_view, description=description, color=color
