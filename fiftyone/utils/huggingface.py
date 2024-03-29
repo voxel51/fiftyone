@@ -167,6 +167,7 @@ def load_from_hub(
     subsets=None,
     max_samples=None,
     batch_size=None,
+    num_workers=None,
     overwrite=False,
     persistent=False,
     name=None,
@@ -202,6 +203,7 @@ def load_from_hub(
     kwargs["subset"] = subset
     kwargs["max_samples"] = max_samples
     kwargs["batch_size"] = batch_size
+    kwargs["num_workers"] = num_workers
     kwargs["overwrite"] = overwrite
     kwargs["persistent"] = persistent
     kwargs["name"] = name
@@ -732,10 +734,13 @@ def _download_image(url_and_filepath):
         logger.warning(f"Failed to download image from {url}: {e}")
 
 
-def _download_images_in_batch(urls_and_filepaths):
-    max_workers = fo.config.max_thread_pool_workers or os.cpu_count()
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        executor.map(_download_image, urls_and_filepaths)
+def _download_images_in_batch(urls_and_filepaths, num_workers):
+    if num_workers <= 1:
+        for url_and_filepath in urls_and_filepaths:
+            _download_image(url_and_filepath)
+    else:
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            executor.map(_download_image, urls_and_filepaths)
 
 
 def _build_media_field_converter(
@@ -944,6 +949,10 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
     if max_samples is not None:
         num_rows = min(num_rows, max_samples)
 
+    num_workers = fou.recommend_thread_pool_workers(
+        kwargs.get("num_workers", None)
+    )
+
     batch_size = kwargs.get("batch_size", DATASETS_MAX_BATCH_SIZE)
     if batch_size is not None and batch_size > DATASETS_MAX_BATCH_SIZE:
         logger.debug(
@@ -987,7 +996,7 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
 
         ## Download images in batch
         urls_and_filepaths = _get_cache()
-        _download_images_in_batch(urls_and_filepaths)
+        _download_images_in_batch(urls_and_filepaths, num_workers)
         _get_cache().clear()
 
 
