@@ -1897,3 +1897,26 @@ workers, you can do the following:
     )
 
     session = fo.launch_app(dataset)
+
+
+**Loading Gated Datasets**:
+
+Like public datasets, you can also load gated datasets from the Hub, as long as
+you have the necessary permissions. If your Hugging Face token is set as an
+environment variable `HF_TOKEN`, this is as simple as specifying the `repo_id`
+of the dataset. If you don't have your token set, or you need to use a specific
+token for a specific dataset, you can specify the `token` argument. You can do
+so following this recipe:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "my-private-dataset-repo-id",
+        token="<my-secret-token>",
+        ...
+    )
+
+    session = fo.launch_app(dataset)
