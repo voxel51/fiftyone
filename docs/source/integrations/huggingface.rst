@@ -1801,3 +1801,99 @@ Expert AGI), we use `"image_1"` as the `filepath`:
 
     session = fo.launch_app(dataset)
 
+
+
+.. _huggingface-hub-load-dataset-advanced-examples:
+
+Advanced examples
+^^^^^^^^^^^^^^^^^
+
+The :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function
+also allows us to load datasets in much more complex formats, as well as with
+more advanced configurations. Let's walk through a few examples to show you how
+to leverage the full power of FiftyOne's Hugging Face Hub integration.
+
+
+**Loading Datasets from Revisions**:
+
+When you load a dataset from the Hugging Face Hub, you are loading the latest
+revision of the dataset. However, you can also load a specific revision of the
+dataset by specifying the `revision` argument. For example, to load the last
+revision of DiffusionDB before NSFW scores were added, you can specify this via:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "poloclub/diffusiondb",
+        format="parquet",
+        subset="2m_random_1k", ## just one of the subsets
+        max_samples=1000,
+        revision="5fa48ba66a44822d82d024d195fbe918e6c42ca6"
+    )
+
+    session = fo.launch_app(dataset)
+
+
+**Loading Datasets with Multiple Media Fields**:
+
+Some datasets on the Hub contain multiple media fields for each sample. Take
+`MagicBrush <https://huggingface.co/datasets/magicbrush>`_ for example, which
+contains a `"source_img"` and a `"target_img"` for each sample, in addition
+to a segmentation mask denoting the area of the source image to be modified. To
+load this dataset, you can specify the `filepath` as `"source_img"` and the
+target image via `additional_media_fields`. Because this is getting a bit more
+complex, we'll create a local yaml config file to specify the dataset format:
+
+.. code-block:: yaml
+
+    format: ParquetFilesDataset
+    name: magicbrush
+    filepath: source_img
+    additional_media_fields:
+        target_img: target_img
+    mask_fields: mask_img
+
+
+Now, you can load the dataset using the local yaml config file:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "osunlp/MagicBrush",
+        config_file="/path/to/magicbrush.yml",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+**Customizing the Download Process**:
+
+When loading datasets from the Hub, you can customize the download process by
+specifying the `batch_size`, `num_workers`, and `overwrite` arguments. For
+example, to download the `full_numbers` subset of the `Street View House Numbers
+<https://huggingface.co/datasets/svhn>`_ dataset with a batch size of 50 and 4
+workers, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "svhn",
+        format="parquet",
+        detection_fields="digits",
+        subsets="full_numbers",
+        max_samples=1000,
+        batch_size=50,
+        num_workers=4
+    )
+
+    session = fo.launch_app(dataset)
