@@ -83,6 +83,8 @@ _GRAPHQL_NEEDS_EDITOR = {
     "update_saved_view": lambda v: v["datasetName"],
 }
 
+_SNAPSHOT_PATTERN = re.compile(r"_snapshot__([a-z0-9]{24})_(.*)$")
+
 
 class IsAuthenticated(gqlp.BasePermission):
     message = "Unauthenticated request"
@@ -208,12 +210,17 @@ def _get_dataset_name(variables):
 
 
 async def _has_dataset_permission(token: str, dataset_name: str, edit=False):
+    dataset_identifier = (
+        re.search(_SNAPSHOT_PATTERN, dataset_name).group(1)
+        if re.search(_SNAPSHOT_PATTERN, dataset_name)
+        else to_slug(dataset_name)
+    )
     try:
         data = await make_request(
             f"{_API_URL}/graphql/v1",
             token,
             _DATASET_PERMISSION_QUERY,
-            variables={"identifier": to_slug(dataset_name)},
+            variables={"identifier": dataset_identifier},
         )
         permission = data["data"]["dataset"]["viewer"]["activePermission"]
 
