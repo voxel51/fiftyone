@@ -1283,7 +1283,16 @@ Supported config fields
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 Whether you are loading a dataset from a repo config, a local config file, or
-passing the config arguments directly, you can specify the following fields:
+passing the config arguments directly, you can specify a number of fields.
+
+Broadly speaking, these fields fall into three categories: format specification,
+media field specification, and label field specification. 
+
+
+Let's look at these categories in more detail:
+
+
+**Format specification**:
 
 - `format` (str): The format of the dataset. This can be any of the
   :ref:`common formats <supported-import-formats>` supported by FiftyOne — just
@@ -1297,6 +1306,15 @@ passing the config arguments directly, you can specify the following fields:
   For example, for this `sheep dataset <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
   rather than using the `repo_id` `keremberke/aerial-sheep-object-detection`, you
   can specify `name="sheep-detection"`.
+
+
+**Media field specification**:
+
+While not all Parquet datasets contain media fields, all FiftyOne |Sample| objects
+must be connected to at least one media file. The following fields can be used
+to configure the media fields in the Hugging Face dataset that should be converted
+to FiftyOne media fields:
+
 - `filepath` (str): In FiftyOne, `filepath` is 
   `a default field <https://docs.voxel51.com/user_guide/using_datasets.html#fields>`_
   that is used to store the path to the primary media file for each sample in
@@ -1310,4 +1328,50 @@ passing the config arguments directly, you can specify the following fields:
   `filepath="url"` will tell FiftyOne to look in the `url` column for the 
   primary media file path. Images will be downloaded from the corresponding URLs
   and saved to disk.
+- `thumbnail_path` (str): The field containing the path to a thumbnail image 
+  for each sample in the dataset, if such a field exists. If a `thumbnail_path`
+  is specified, this media file will be shown in the sample grid in the FiftyOne
+  App. This can be useful for quickly visualizing the dataset when the primary
+  media field contains large (e.g., high-resolution) images. For more information
+  on thumbnail images, see :ref:`this section <app-multiple-media-fields>`.
+- `additional_media_fields` (dict): If each sample has multiple associated media
+  files that you may want to visualize in the FiftyOne App, you can specify 
+  these non-default media fields in the `additional_media_fields` dictionary,
+  where the keys are the column names in the Hugging Face dataset and the values
+  are the names of the fields in the FiftyOne |Dataset| that will store the
+  paths. Note that this is *not* the same as :ref:`grouped datasets <groups>`.
 
+
+**Label field specification**:
+
+FiftyOne's Hugging Face Hub integration currently supports converting labels of
+type |Classification|, |Detections|, and |Segmentation| from Hugging Face
+Parquet datasets to FiftyOne label fields. The following fields can be used to
+specify the label fields in the Hugging Face dataset that should be converted to
+FiftyOne label fields:
+
+- `classification_fields` (str or list): The column or columns in the Hugging
+  Face dataset that should be converted to FiftyOne |Classification| label fields.
+  contain classification labels. For example, if the dataset contains a `label`
+  field that contains classification labels, you can specify
+  `classification_fields="label"`. If the dataset contains multiple
+  classification fields, you can specify them as a list, e.g.,
+  `classification_fields=["label1", "label2"]`. This is not a required field,
+  and if the dataset does not contain classification labels, you can omit it.
+- `detection_fields` (str or list): The column or columns in the Hugging Face
+  dataset that should be converted to FiftyOne |Detections| label fields. If the
+  dataset contains detection labels, you can specify the column name or names
+  here. For example, if the dataset contains a `detections` field that contains
+  detection labels, you can specify `detection_fields="detections"`. If the
+  dataset contains multiple detection fields, you can specify them as a list,
+  e.g., `detection_fields=["detections1", "detections2"]`. This is not a required
+  field, and if the dataset does not contain detection labels, you can omit it.
+- `mask_fields` (str or list): The column or columns in the Hugging Face dataset
+  that should be converted to FiftyOne |Segmentation| label fields. The column
+  in the Hugging Face dataset must contain an image or the URL for an image that
+  can be used as a segmentation mask. If necessary, the images will be downloaded
+  and saved to disk. If the dataset contains mask labels, you can specify the
+  column name or names here. For example, if the dataset contains a `masks` field
+  that contains mask labels, you can specify `mask_fields="masks"`. This is not
+  a required field, and if the dataset does not contain mask labels, you can
+  omit it.
