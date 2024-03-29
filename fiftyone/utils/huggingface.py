@@ -288,14 +288,6 @@ session = fo.launch_app(dataset)
 """
 
 
-def _get_cache():
-    g = globals()
-    if "_files_to_download" not in g:
-        g["_files_to_download"] = []
-
-    return g["_files_to_download"]
-
-
 def _populate_config_file(
     config_filepath,
     dataset,
@@ -760,8 +752,7 @@ def _build_media_field_converter(
 
         sample_dict[media_field_key] = filepath
 
-        # cache the file info to download later
-        _get_cache().append((url, filepath))
+        return (url, filepath)
 
     return convert_media_field
 
@@ -854,7 +845,8 @@ def _build_label_field_converter(
             url = row_content[field_name]
 
         sample_dict[field_name] = fol.Segmentation(mask_path=filepath)
-        _get_cache().append((url, filepath))
+
+        return (url, filepath)
 
     def convert_label_field(sample_dict, row):
         pass
@@ -971,6 +963,8 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
         tags.append(subset)
 
     for start_idx in range(0, num_rows, batch_size):
+        urls_and_filepaths = []
+
         end_idx = min(start_idx + batch_size, num_rows)
 
         rows = _get_rows(
@@ -986,7 +980,9 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
         for row in rows:
             sample_dict = {}
             for convert in feature_converters.values():
-                convert(sample_dict, row)
+                res = convert(sample_dict, row)
+                if res is not None:
+                    urls_and_filepaths.append(res)
 
             sample_dict["row_idx"] = row["row_idx"]
             sample_dict["tags"] = tags
@@ -995,9 +991,7 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
         dataset.add_samples(samples)
 
         ## Download images in batch
-        urls_and_filepaths = _get_cache()
         _download_images_in_batch(urls_and_filepaths, num_workers)
-        _get_cache().clear()
 
 
 def _configure_dataset_media_fields(dataset, config):
