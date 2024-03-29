@@ -95,7 +95,7 @@ fi
 cd "${THIS_DIR}/.."
 
 # Symlink to fiftyone-brain
-ln -sfn $FIFTYONE_BRAIN_DIR fiftyone/brain
+ln -sfn "$FIFTYONE_BRAIN_DIR" fiftyone/brain
 
 echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
