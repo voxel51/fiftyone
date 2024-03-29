@@ -1699,3 +1699,105 @@ dataset:
     Once you have the dataset loaded into FiftyOne, you may want to set the dataset's
     `mask targets <storing-mask-targets>`_ to specify the names of the classes
     represented in the segmentation masks.
+
+
+**Unlabelled Image Datasets**:
+
+Some datasets on the Hub contain images and metadata in the form of features,
+but do not explicitly contain classification, detection, or segmentation labels.
+This is common for text-to-image tasks, as well as captioning and visual question
+answering tasks. These datasets can also be converted and loaded into FiftyOne! 
+Once the dataset is loaded into FiftyOne, you can process the data and generate
+labels for whatever tasks you are interested in.
+
+Let's look at a few examples:
+
+For `DiffusionDB <https://huggingface.co/datasets/poloclub/diffusiondb>`_, you
+can load the dataset as follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "poloclub/diffusiondb",
+        format="parquet",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+Here are some other popular datasets on the Hub that can be loaded following the
+same syntax:
+
+- `Nouns <https://huggingface.co/datasets/m1guelpf/nouns>`_: (use `"m1guelpf/nouns"`)
+- `New Yorker Caption Contest <https://huggingface.co/datasets/jmhessel/newyorker_caption_contest>`_:
+  (use `"jmhessel/newyorker_caption_contest"`)
+- `Captcha Dataset <https://huggingface.co/datasets/project-sloth/captcha-images>`_:
+  (use `"project-sloth/captcha-images"`)
+- `MathVista <https://huggingface.co/datasets/AI4Math/MathVista>`_: (use `"AI4Math/MathVista"`)
+- `TextVQA <https://huggingface.co/datasets/TextVQA>`_: (use `"textvqa"`)
+- `VQA-RAD <https://huggingface.co/datasets/flaviagiammarino/vqa-rad>`_: (use `"flaviagiammarino/vqa-rad"`)
+- `ScienceQA <https://huggingface.co/datasets/derek-thomas/ScienceQA>`_: (use `"derek-thomas/ScienceQA"`)
+- `PathVQA <https://huggingface.co/datasets/flaviagiammarino/path-vqa>`_: (use `"flaviagiammarino/path-vqa"`)
+
+
+Many other popular datasets on the Hub can be loaded in the same way, with slight
+modifications to `filepath` or other arguments as needed. Here are a few examples:
+
+For `COYO-700M <https://huggingface.co/datasets/kakaobrain/coyo-700m>`_, we just
+need to specify the `filepath` as `"url"`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "kakaobrain/coyo-700m",
+        format="parquet",
+        filepath="url",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
+`"image_url"` as the `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "red_caps",
+        format="parquet",
+        filepath="image_url",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
+
+For `MMMU <https://huggingface.co/datasets/MMMU/MMMU>`_ 
+(A Massive Multi-discipline Multimodal Understanding and Reasoning Benchmark for
+Expert AGI), we use `"image_1"` as the `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = fouh.load_from_hub(
+        "MMMU/MMMU",
+        format="parquet",
+        filepath="image_1",
+        max_samples=1000
+    )
+
+    session = fo.launch_app(dataset)
+
