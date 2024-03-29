@@ -1685,6 +1685,8 @@ dataset:
 
     import fiftyone.utils.huggingface as fouh
 
+    # Note: you need access to the dataset to load it!
+
     dataset = fouh.load_from_hub(
         "segments/sidewalk-semantic",
         format="parquet",
