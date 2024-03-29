@@ -52,6 +52,8 @@ export function resolveParent(path: string): string {
     } else {
       return protocol + "://";
     }
+    // remove search params
+    url.search = "";
     return url.toString();
   }
   const parsed =

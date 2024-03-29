@@ -4,9 +4,10 @@
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { MutableRefObject, useEffect, useMemo } from "react";
-import { Box3, Camera, Quaternion, Vector3 } from "three";
+import { Box3, Camera, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Looker3dPluginSettings } from "./Looker3dPlugin";
+import { getGridQuaternionFromUpVector } from "./utils";
 
 export const CAMERA_POSITION_KEY = "fiftyone-camera-position";
 
@@ -34,18 +35,10 @@ export const Environment = ({
     [settings]
   );
 
-  const gridHelperQuarternion = useMemo(() => {
-    // calculate angle between custom up direction and default up direction (y-axis in three-js)
-    const angle = Math.acos(upNormalized.dot(new Vector3(0, 1, 0)));
-
-    // calculate axis perpendicular to both the default up direction and the custom up direction
-    const axis = new Vector3()
-      .crossVectors(new Vector3(0, 1, 0), upNormalized)
-      .normalize();
-
-    // quaternion to represent the rotation around an axis perpendicular to both the default up direction and the custom up direction
-    return new Quaternion().setFromAxisAngle(axis, angle);
-  }, [upNormalized]);
+  const gridHelperQuarternion = useMemo(
+    () => getGridQuaternionFromUpVector(upNormalized),
+    [upNormalized]
+  );
 
   useEffect(() => {
     cameraRef.current = camera;

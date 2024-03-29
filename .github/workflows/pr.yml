@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize]
     branches:
       - develop
+      - feat/*
       - main
       - release/v[0-9]+.[0-9]+.[0-9]+
 

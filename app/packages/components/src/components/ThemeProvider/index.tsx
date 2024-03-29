@@ -232,6 +232,10 @@ export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
 };
 
+export const useFont = () => {
+  return theme.typography.fontFamily;
+};
+
 const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: Theme }>
 > = ({ children, customTheme }) => {
