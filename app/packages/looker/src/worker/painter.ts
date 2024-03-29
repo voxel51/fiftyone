@@ -234,7 +234,7 @@ export const PainterFactory = (requestColor) => ({
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {
-    if (!label.mask) {
+    if (!label?.mask) {
       return;
     }
 

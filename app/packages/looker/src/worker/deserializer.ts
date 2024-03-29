@@ -2,7 +2,7 @@ import { deserialize } from "../numpy";
 
 export const DeserializerFactory = {
   Detection: (label, buffers) => {
-    if (typeof label.mask === "string") {
+    if (typeof label?.mask === "string") {
       const data = deserialize(label.mask);
       const [height, width] = data.shape;
       label.mask = {
