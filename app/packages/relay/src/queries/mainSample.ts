@@ -40,6 +40,15 @@ export default r(graphql`
           url
         }
       }
+      ... on ThreeDSample {
+        aspectRatio
+        id
+        sample
+        urls {
+          field
+          url
+        }
+      }
     }
   }
 `);
