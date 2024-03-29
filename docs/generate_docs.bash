@@ -125,7 +125,7 @@ fi
 
 echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build "$SPHINXOPTS"
+sphinx-build -M html source build $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
