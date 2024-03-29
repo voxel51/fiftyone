@@ -1242,7 +1242,7 @@ the path to the local yaml config file:
 
 
 For a comprehensive list of the supported fields in the yaml config file, see
-here **TODO**.
+:ref:`Supported config fields <huggingface-hub-load-dataset-config-kwargs>`.
 
 
 .. _huggingface-hub-load-dataset-from-kwargs:
