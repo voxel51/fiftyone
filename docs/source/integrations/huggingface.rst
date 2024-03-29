@@ -1306,7 +1306,34 @@ Let's look at these categories in more detail:
   For example, for this `sheep dataset <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
   rather than using the `repo_id` `keremberke/aerial-sheep-object-detection`, you
   can specify `name="sheep-detection"`.
-
+- `subsets` (str or list): The subset or subsets of the Hugging Face dataset that
+  are *compatible* with this config, and are *available* to be loaded. In
+  Hugging Face, the "dataset" in a repo can contain multiple "subsets", which
+  may or may not have the same schema. Take the
+  `Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset for
+  example. This dataset has two subsets: `"cropped_digits"` and `"full_numbers"`.
+  The `cropped_digits` subset contains classification labels, while the
+  `full_numbers` subset contains detection labels. A single config would not be
+  able to specify the schema for both subsets, so you can specify the subset you
+  want to load (or if you are the dataset author, which subset you want to *allow*
+  people to load in this way) with the `subsets` field. For example, to load the
+  `cropped_digits` subset of the SVHN dataset, you can pass
+  `subsets="cropped_digits"`. Note that this is not a required field, and by
+  default all subsets are loaded. Also note that subsets are distinct from splits
+  in the dataset, which are handled by the `splits` field (see below).
+- `splits` (str or list): The split or splits of the Hugging Face dataset that
+  are *compatible* with this config, and are *available* to be loaded. As is
+  standard for machine learning, many datasets are split into training, validation,
+  and test sets. The specific names of these splits may vary from dataset to
+  dataset, but :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
+  identifies the names of all splits and by default, will assume that all of
+  these splits are to be loaded. If you only want to load a specific split or
+  splits, you can specify them with the `splits` field. For example, to load the
+  training split of the `CIFAR10 <https://huggingface.co/datasets/cifar10>`_
+  dataset, you can pass `splits="train"`. If you want to load multiple splits,
+  you can pass them as a list, e.g., `splits=["train", "test"]`. Note that this
+  is not a required field, and by default all splits are loaded.
+    
 
 **Media field specification**:
 
@@ -1375,3 +1402,11 @@ FiftyOne label fields:
   that contains mask labels, you can specify `mask_fields="masks"`. This is not
   a required field, and if the dataset does not contain mask labels, you can
   omit it.
+
+
+.. _huggingface-hub-load-dataset-download:
+
+Configuring the download process
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When loading datasets from the Hugging Face Hub, FiftyOne will download the
