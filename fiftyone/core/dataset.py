@@ -3859,7 +3859,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dict of editable info
         """
         workspace_doc = self._get_workspace_doc(name)
-        return {f: workspace_doc[f] for f in workspace_doc._EDITABLE_FIELDS}
+        return {
+            f: getattr(workspace_doc, f)
+            for f in workspace_doc._EDITABLE_FIELDS
+        }
 
     def update_workspace_info(self, name, info):
         """Updates the editable information for the saved view with the given
@@ -3896,14 +3899,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         edited = False
         for key, value in info.items():
-            if value != workspace_doc[key]:
+            if value != getattr(workspace_doc, key):
                 if key == "name":
                     slug = self._validate_workspace_name(
                         value, skip=workspace_doc
                     )
                     workspace_doc.slug = slug
 
-                workspace_doc[key] = value
+                setattr(workspace_doc, key, value)
                 edited = True
 
         if edited:
@@ -3927,6 +3930,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if isinstance(workspace_doc, DBRef):
                 continue
 
+            # Detach child from workspace
+            if workspace_doc.child is not None:
+                workspace_doc.child._name = None
             workspace_doc.delete()
 
         self._doc.workspaces = []
@@ -3936,6 +3942,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         workspace_doc = self._get_workspace_doc(name, pop=True)
         if not isinstance(workspace_doc, DBRef):
             workspace_id = str(workspace_doc.id)
+
+            # Detach child from workspace
+            if workspace_doc.child is not None:
+                workspace_doc.child._name = None
             workspace_doc.delete()
         else:
             workspace_id = None

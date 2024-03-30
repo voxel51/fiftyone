@@ -2892,10 +2892,13 @@ class DatasetExtrasTests(unittest.TestCase):
             orientation="vertical",
         )
 
+        self.assertIsNone(spaces.name)
+
         workspace_name = "test__workspace"
         now = datetime.utcnow()
         description = "a description of the workspace, yo"
         color = "#FF6D04"
+
         dataset.save_workspace(
             workspace_name, spaces, description=description, color=color
         )
@@ -2904,6 +2907,7 @@ class DatasetExtrasTests(unittest.TestCase):
         last_modified_at1 = dataset._doc.workspaces[0].last_modified_at
         created_at = dataset._doc.workspaces[0].created_at
 
+        self.assertEqual(spaces.name, workspace_name)
         self.assertTrue(dataset.has_workspaces)
         self.assertTrue(dataset.has_workspace(workspace_name))
         self.assertListEqual(dataset.list_workspaces(), [workspace_name])
@@ -2914,11 +2918,19 @@ class DatasetExtrasTests(unittest.TestCase):
         )
         self.assertEqual(last_modified_at1, created_at)
 
+        still_spaces = deepcopy(spaces)
+        self.assertEqual(still_spaces.name, workspace_name)
+        self.assertEqual(still_spaces, spaces)
+
+        # Reload to ensure we actually saved the doc properly, now load
+        #   the workspace back.
+        dataset.reload()
         also_spaces = dataset.load_workspace(workspace_name)
         last_loaded_at2 = dataset._doc.workspaces[0].last_loaded_at
         now = datetime.utcnow()
 
         self.assertEqual(spaces, also_spaces)
+        self.assertEqual(also_spaces.name, workspace_name)
         self.assertAlmostEqual(
             last_loaded_at2, now, delta=timedelta(milliseconds=100)
         )
@@ -2945,6 +2957,8 @@ class DatasetExtrasTests(unittest.TestCase):
             new_description,
         )
 
+        updated_spaces = dataset.load_workspace(new_workspace_name)
+        self.assertEqual(updated_spaces.name, new_workspace_name)
         dataset.update_workspace_info(
             new_workspace_name, {"name": workspace_name}
         )

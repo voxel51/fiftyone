@@ -84,6 +84,14 @@ class Space(AppComponent):
     active_child = StringField(default=None)
     sizes = ListField(FloatField(), default=None)
 
+    # Private name field and read-only 'name' property.
+    #   Only the top-level child of a WorkspaceDocument should have a name.
+    _name = StringField(default=None)
+
+    @property
+    def name(self):
+        return self._name
+
 
 class WorkspaceDocument(Document):
     """Document for configuration of a saved workspace in the App.
@@ -103,15 +111,33 @@ class WorkspaceDocument(Document):
         "name",
     }
 
-    child = EmbeddedDocumentField(Space)
-    color = ColorField()
-    created_at = DateTimeField()
+    def __init__(self, *args, **kwargs):
+        # Accept name or _name in construction, then use our own setter
+        #   method afterwards, to ensure child name also set.
+        name = kwargs.pop("name", None)
+        name = name or kwargs.pop("_name", None)
+        super().__init__(*args, **kwargs)
+        self.name = name
+
+    child = EmbeddedDocumentField(Space, required=True)
+    color = ColorField(default=None)
+    created_at = DateTimeField(default=None)
     dataset_id = ObjectIdField(db_field="_dataset_id")
     description = StringField(default=None)
-    last_loaded_at = DateTimeField()
-    last_modified_at = DateTimeField()
-    name = StringField()
-    slug = StringField()
+    last_loaded_at = DateTimeField(default=None)
+    last_modified_at = DateTimeField(default=None)
+    _name = StringField(required=True, db_field="name")
+    slug = StringField(required=True)
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        if self.child is not None:
+            self.child._name = value
 
 
 def default_workspace_factory():
