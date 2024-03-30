@@ -1,7 +1,7 @@
 import { HelpIcon } from "@fiftyone/components";
 import { useHelpPanel } from "@fiftyone/state";
 import { ActionItem } from "../containers";
-import { ACTION_VIEW_HELP } from "../state";
+import { ACTION_VIEW_HELP } from "../constants";
 
 const LOOKER3D_HELP_ITEMS = [
   { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },

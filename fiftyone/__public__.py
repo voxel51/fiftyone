@@ -5,6 +5,7 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone.core.config as _foc
 import fiftyone.core.odm as _foo
 
@@ -133,7 +134,9 @@ from .core.odm import (
     DynamicEmbeddedDocument,
     EmbeddedDocument,
     KeypointSkeleton,
+    Panel,
     SidebarGroupDocument,
+    Space,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -157,10 +160,32 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-
-from .core.odm.workspace import (
-    Space,
-    Panel,
+from .core.threed import (
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
+    FbxMesh,
+    GltfMesh,
+    ObjMesh,
+    PlyMesh,
+    StlMesh,
+    PerspectiveCamera,
+    PointLight,
+    DirectionalLight,
+    AmbientLight,
+    SpotLight,
+    Pointcloud,
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointcloudMaterial,
+    Scene,
+    SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
 )
 from .core.stages import (
     Concat,
