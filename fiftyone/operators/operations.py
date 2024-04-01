@@ -134,6 +134,49 @@ class Operations(object):
         """Set the view in the App from JSON present in clipboard."""
         return self._ctx.trigger("view_from_clipboard")
 
+    def _create_panel_params(self, panel_id, state=None):
+        params = {"panel_id": panel_id}
+        if panel_id is None:
+            params["panel_id"] = self._ctx.current_panel.id
+        if state is not None:
+            params["state"] = state
+        return params
+
+    def clear_panel_state(self, panel_id=None):
+        """Clear the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "clear_panel_state", params=self._create_panel_params(panel_id)
+        )
+
+    def set_panel_state(self, panel_id=None, state=None):
+        """Set the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "set_panel_state",
+            params=self._create_panel_params(panel_id, state=state),
+        )
+
+    def patch_panel_state(self, panel_id=None, state=None):
+        """Patch the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "patch_panel_state",
+            params=self._create_panel_params(panel_id, state=state),
+        )
+
     def open_panel(self, name, is_active=True, layout=None):
         """Open a panel with the given name and layout options in the App.
 

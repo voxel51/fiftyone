@@ -50,6 +50,13 @@ export class Executor {
   }
 }
 
+class Panel {
+  constructor(public id: string) {}
+  static fromJSON(json: any) {
+    return new Panel(json.id);
+  }
+}
+
 export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
@@ -62,6 +69,10 @@ export class ExecutionContext {
   }
   public delegationTarget: string = null;
   public requestDelegation: boolean = false;
+  public currentPanel?: Panel = null;
+  getCurrentPanelId(): string | null {
+    return this.params.panel_id || this.currentPanel?.id || null;
+  }
   trigger(operatorURI: string, params: any = {}) {
     if (!this.executor) {
       throw new Error(
