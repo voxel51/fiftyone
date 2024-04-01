@@ -766,6 +766,10 @@ class SetSpaces extends Operator {
   }
 }
 
+function usePanelStateForContext(ctx: ExecutionContext) {
+  return usePanelState(ctx.getCurrentPanelId());
+}
+
 class ClearPanelState extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -775,7 +779,7 @@ class ClearPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelState();
+    const [panelState, setPanelState] = usePanelStateForContext(ctx);
     return {
       setPanelState,
     };
@@ -794,7 +798,7 @@ class SetPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelState();
+    const [panelState, setPanelState] = usePanelStateForContext(ctx);
     return {
       setPanelState,
     };
@@ -813,7 +817,7 @@ class PatchPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelState();
+    const [panelState, setPanelState] = usePanelStateForContext(ctx);
     return {
       panelState,
       setPanelState,
