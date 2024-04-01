@@ -23,7 +23,6 @@
         "color-string": "^1.9.1",
         "framer-motion": "^6.2.8",
         "history": "^5.3.0",
-        "html2canvas": "1.0.0-rc.7",
         "lodash": "^4.17.21",
         "lru-cache": "^6.0.0",
         "numeral": "^2.0.6",
