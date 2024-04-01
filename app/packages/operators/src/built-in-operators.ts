@@ -24,6 +24,8 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import { merge } from "lodash";
+import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import CustomPanel, { defineCustomPanel } from "./CustomPanel";
 
 //
 // BUILT-IN OPERATORS
@@ -829,6 +831,43 @@ class PatchPanelState extends Operator {
   }
 }
 
+class RegisterPanel extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "register_panel",
+      label: "Register panel",
+      // unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("panel_name", { label: "Panel name", required: true });
+    inputs.str("panel_label", { label: "Panel label", required: true });
+    inputs.str("on_load", {
+      label: "On load operator",
+      required: true,
+    });
+    inputs.bool("allow_duplicates", {
+      label: "Allow duplicates",
+      default: false,
+    });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    registerComponent({
+      type: PluginComponentType.Panel,
+      name: ctx.params.panel_name,
+      component: defineCustomPanel(ctx.params.on_load),
+      label: ctx.params.panel_label,
+      activator: () => true,
+      panelOptions: {
+        allowDuplicates: ctx.params.allow_duplicates,
+      },
+    });
+    ctx.hooks.registerPanel(ctx.params.panel);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -862,6 +901,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetPanelState);
     _registerBuiltInOperator(ClearPanelState);
     _registerBuiltInOperator(PatchPanelState);
+    _registerBuiltInOperator(RegisterPanel);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
