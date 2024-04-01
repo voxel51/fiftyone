@@ -297,7 +297,6 @@ class Mutation(SetColorScheme):
         )
 
         result_view = _build_result_view(dataset_view, form)
-        print(result_view)
 
         dataset.save_view(
             view_name, result_view, description=description, color=color
