@@ -42,7 +42,7 @@
         "react-syntax-highlighter": "^15.5.0",
         "react-use-measure": "^2.0.1",
         "react-uuid": "^1.0.2",
-        "recharts": "2.0.9",
+        "recharts": "^2.12.3",
         "recoil": "0.7.7",
         "recoil-relay": "^0.1.0",
         "remark-gfm": "^3.0.1",
