@@ -2197,6 +2197,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError("Invalid media type '%s'" % media_type)
 
+        rev_media_types = {
+            v: k for k, v in self._doc.group_media_types.items()
+        }
+        if (
+            fom.THREE_D in rev_media_types
+            and rev_media_types[fom.THREE_D] != name
+        ):
+            raise ValueError(
+                "Only one 'fo3d' group slice is allowed, '%s' already exists"
+                % rev_media_types[fom.THREE_D]
+            )
+
         # If this is the first video slice, we need to initialize frames
         if media_type == fom.VIDEO and not any(
             slice_media_type == fom.VIDEO
@@ -7003,7 +7015,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
-    def _update_last_loaded_at(self):
+    def _update_last_loaded_at(self, force=False):
+        if os.environ.get("FIFTYONE_SERVER", False) and not force:
+            return
+
         self._doc.last_loaded_at = datetime.utcnow()
         self._save()
 

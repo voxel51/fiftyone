@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import typing as t
 
@@ -113,19 +114,22 @@ async def aggregate_resolver(
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
-    view = fosv.get_view(
+    view = await fosv.get_view(
         form.dataset,
         view_name=form.view_name or None,
         stages=form.view,
         filters=form.filters,
         extended_stages=form.extended_stages,
         sample_filter=SampleFilter(
-            group=GroupElementFilter(
-                id=form.group_id, slice=form.slice, slices=form.slices
+            group=(
+                GroupElementFilter(
+                    id=form.group_id, slice=form.slice, slices=form.slices
+                )
+                if not form.sample_ids
+                else None
             )
-            if not form.sample_ids
-            else None
         ),
+        awaitable=True,
     )
 
     slice_view = view if form.mixed and "" in form.paths else None
