@@ -79,5 +79,4 @@ def get_session_cookie_name():
         if _SECURE_COOKIE
         else "next-auth.session-token"
     )
-
     return COOKIE_NAME
