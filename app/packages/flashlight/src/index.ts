@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
@@ -10,14 +10,13 @@ import {
   OnItemClick,
   OnItemResize,
   OnResize,
-  Optional,
   Options,
   Render,
   RowData,
   State,
 } from "./state";
 import { createScrollReader } from "./zooming";
-export type { Render, Render, Response, Response } from "./state";
+export type { Render, Response } from "./state";
 
 import {
   flashlight,
@@ -27,7 +26,7 @@ import {
 import tile from "./tile";
 import { argMin, getDims } from "./util";
 
-export type FlashlightOptions = Optional<Options>;
+export type FlashlightOptions = Partial<Options>;
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
@@ -221,7 +220,7 @@ export default class Flashlight<K> {
     }
   }
 
-  updateOptions(options: Optional<Options>, newWidth?: boolean) {
+  updateOptions(options: Partial<Options>, newWidth?: boolean) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );

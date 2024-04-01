@@ -48,6 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
+  lightningThreshold: Int
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -83,6 +84,12 @@ type BooleanAggregation implements Aggregation {
   exists: Int!
   false: Int!
   true: Int!
+}
+
+type BooleanLightningResult implements LightningResult {
+  path: String!
+  false: Boolean!
+  true: Boolean!
 }
 
 type BrainRun implements Run {
@@ -124,16 +131,46 @@ type ColorScheme {
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
+  defaultMaskTargetsColors: [MaskColor!]
+  colorscales: [Colorscale!]
+  defaultColorscale: DefaultColorscale
 }
 
 input ColorSchemeInput {
   colorPool: [String!]!
+  id: ID = null
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
   labelTags: LabelTagColorInput = null
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
+  defaultMaskTargetsColors: [MaskColorInput!] = null
+  colorscales: [ColorscaleInput!] = null
+  defaultColorscale: DefaultColorscaleInput = null
+}
+
+type Colorscale {
+  path: String!
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input ColorscaleInput {
+  path: String!
+  name: String = null
+  list: [ColorscaleListInput!] = null
+}
+
+type ColorscaleList {
+  color: String!
+  value: Float!
+}
+
+input ColorscaleListInput {
+  color: String!
+  value: Float
 }
 
 input Count {
@@ -153,6 +190,7 @@ type CustomizeColor {
   valueColors: [ValueColor!]
   colorByAttribute: String
   fieldColor: String
+  maskTargetsColors: [MaskColor!]
 }
 
 input CustomizeColorInput {
@@ -160,6 +198,7 @@ input CustomizeColorInput {
   valueColors: [ValueColorInput!] = null
   colorByAttribute: String = null
   fieldColor: String = null
+  maskTargetsColors: [MaskColorInput!] = null
 }
 
 type DataAggregation implements Aggregation {
@@ -195,6 +234,10 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  estimatedFrameCount: Int
+  estimatedSampleCount: Int!
+  frameIndexes: [Index!]
+  sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
 }
 
@@ -227,10 +270,33 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
+type DateLightningResult implements LightningResult {
+  path: String!
+  max: date
+  min: date
+}
+
+type DateTimeLightningResult implements LightningResult {
+  path: String!
+  max: datetime
+  min: datetime
+}
+
 type DatetimeHistogramValuesResponse {
   counts: [Int!]!
   edges: [datetime!]!
   other: Int!
+}
+
+type DefaultColorscale {
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input DefaultColorscaleInput {
+  name: String = null
+  list: [ColorscaleListInput!] = null
 }
 
 type EvaluationRun implements Run {
@@ -272,6 +338,15 @@ type FloatHistogramValuesResponse {
   other: Int!
 }
 
+type FloatLightningResult implements LightningResult {
+  path: String!
+  inf: Boolean!
+  max: Float
+  min: Float
+  nan: Boolean!
+  ninf: Boolean!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -294,6 +369,23 @@ type ImageSample implements Sample {
   aspectRatio: Float!
 }
 
+type Index {
+  name: String!
+  key: [IndexFields!]!
+  unique: Boolean
+  wildcardProjection: WildcardProjection
+}
+
+type IndexFields {
+  field: String!
+  type: IndexType!
+}
+
+enum IndexType {
+  asc
+  desc
+}
+
 type IntAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -310,6 +402,12 @@ type IntHistogramValuesResponse {
   counts: [Int!]!
   edges: [Float!]!
   other: Int!
+}
+
+type IntLightningResult implements LightningResult {
+  path: String!
+  max: Float
+  min: Float
 }
 
 type IntValueCount {
@@ -334,10 +432,49 @@ input LabelTagColorInput {
   valueColors: [ValueColorInput!] = null
 }
 
+input LightningInput {
+  dataset: String!
+  paths: [LightningPathInput!]!
+}
+
+input LightningPathInput {
+  path: String!
+
+  """
+  exclude these values from results
+  """
+  exclude: [String!] = null
+  first: Int = 200
+  search: String = null
+}
+
+interface LightningResult {
+  path: String!
+}
+
+union LightningResults =
+    BooleanLightningResult
+  | DateLightningResult
+  | DateTimeLightningResult
+  | FloatLightningResult
+  | IntLightningResult
+  | StringLightningResult
+
+type MaskColor {
+  color: String!
+  intTarget: Int!
+}
+
+input MaskColorInput {
+  color: String!
+  intTarget: Int!
+}
+
 enum MediaType {
   image
   group
   point_cloud
+  three_d
   video
 }
 
@@ -350,12 +487,12 @@ type Mutation {
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!
-  ): Boolean!
+  ): ColorScheme!
   setDatasetColorScheme(
     subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
-  ): Void
+  ): ColorScheme
   setFieldVisibilityStage(
     subscription: String!
     session: String
@@ -397,7 +534,6 @@ type Mutation {
     savedViewSlug: String = null
     form: StateForm = null
   ): BSONArray
-  storeTeamsSubmission: Boolean!
   createSavedView(
     subscription: String!
     session: String
@@ -458,11 +594,13 @@ type Query {
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
+  lightning(input: LightningInput!): [LightningResults!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
+  estimatedDatasetCount: Int!
   samples(
     dataset: String!
     view: BSONArray!
@@ -480,7 +618,6 @@ type Query {
     filters: JSON = null
   ): SampleItem
   stageDefinitions: [StageDefinition!]!
-  teamsSubmission: Boolean!
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]
@@ -533,7 +670,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -646,6 +783,11 @@ type StringAggregationValue {
   value: String!
 }
 
+type StringLightningResult implements LightningResult {
+  path: String!
+  values: [String]
+}
+
 type Target {
   target: String!
   value: String!
@@ -655,6 +797,13 @@ enum Theme {
   browser
   dark
   light
+}
+
+type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type ValueColor {
@@ -676,10 +825,10 @@ type VideoSample implements Sample {
   frameRate: Float!
 }
 
-"""
-Represents NULL values
-"""
-scalar Void
+type WildcardProjection {
+  fields: [String!]!
+  inclusion: Boolean!
+}
 
 scalar date
 

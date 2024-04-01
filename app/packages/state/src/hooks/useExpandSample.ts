@@ -10,7 +10,6 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import { getSanitizedGroupByExpression } from "../recoil/utils";
-import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
 
@@ -115,16 +114,18 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
         const dynamicGroupParameters = await snapshot.getPromise(
-          viewAtoms.dynamicGroupParameters
+          groupAtoms.dynamicGroupParameters
         );
 
-        const getIndex = async (index: number) => {
+        const getItemAtIndex = async (index: number) => {
           if (!store.indices.has(index)) await next();
 
           const id = store.indices.get(index);
 
           if (!id) {
-            throw new Error("unable to paginate to next sample");
+            throw new Error(
+              `unable to paginate to next sample, index = ${index}`
+            );
           }
 
           const sample = store.samples.get(id);
@@ -147,7 +148,9 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           return { id, groupId, groupByFieldValue };
         };
 
-        setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
+        setModalState(getItemAtIndex).then(() =>
+          setExpandedSample(clickedIndex)
+        );
       },
     [setExpandedSample, setModalState, store]
   );

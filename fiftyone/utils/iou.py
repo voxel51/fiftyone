@@ -1,11 +1,12 @@
 """
 Intersection over union (IoU) utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import contextlib
+import itertools
 import logging
 
 import numpy as np
@@ -18,7 +19,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
+from .utils3d import compute_cuboid_iou
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
@@ -37,8 +38,10 @@ def compute_ious(
     """Computes the pairwise IoUs between the predicted and ground truth
     objects.
 
-    For polylines, IoUs are computed assuming the shapes are solid (filled),
-    regardless of their ``filled`` attributes.
+    For polylines, IoUs are computed as solid shapes when ``filled=True` and
+    "IoUs" are computed using
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
+    when ``filled=False``.
 
     For keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
@@ -87,17 +90,20 @@ def compute_ious(
     if etau.is_str(iscrowd):
         iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
 
-    if isinstance(preds[0], fol.Polyline):
+    if isinstance(gts[0], fol.Polyline):
         if use_boxes:
             return _compute_bbox_ious(
                 preds, gts, iscrowd=iscrowd, classwise=classwise
             )
 
-        return _compute_polyline_ious(
-            preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
-        )
+        if any(gt.filled for gt in gts):
+            return _compute_polygon_ious(
+                preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
+            )
 
-    if isinstance(preds[0], fol.Keypoint):
+        return _compute_polyline_similarities(preds, gts, classwise=classwise)
+
+    if isinstance(gts[0], fol.Keypoint):
         return _compute_keypoint_similarities(preds, gts, classwise=classwise)
 
     if use_masks:
@@ -143,6 +149,7 @@ def compute_max_ious(
     other_field=None,
     iou_attr="max_iou",
     id_attr=None,
+    progress=None,
     **kwargs,
 ):
     """Populates an attribute on each label in the given spatial field(s) that
@@ -169,6 +176,9 @@ def compute_max_ious(
         iou_attr ("max_iou"): the label attribute in which to store the max IoU
         id_attr (None): an optional attribute in which to store the label ID of
             the maximum overlapping label
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for :func:`compute_ious`
     """
     if other_field is None:
@@ -196,7 +206,7 @@ def compute_max_ious(
     label_ids1 = []
     label_ids2 = []
 
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         if is_frame_field:
             _max_ious1 = []
             _max_ious2 = []
@@ -253,7 +263,12 @@ def compute_max_ious(
 
 
 def find_duplicates(
-    sample_collection, label_field, iou_thresh=0.999, method="simple", **kwargs
+    sample_collection,
+    label_field,
+    iou_thresh=0.999,
+    method="simple",
+    progress=None,
+    **kwargs,
 ):
     """Returns IDs of duplicate labels in the given field of the collection, as
     defined as labels with an IoU greater than a chosen threshold with another
@@ -281,6 +296,9 @@ def find_duplicates(
             labels are duplicates
         method ("simple"): the duplicate removal method to use. The supported
             values are ``("simple", "greedy")``
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for :func:`compute_ious`
 
     Returns:
@@ -300,7 +318,7 @@ def find_duplicates(
 
     dup_ids = []
 
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         if is_frame_field:
             for frame in sample.frames.values():
                 _dup_ids = _find_duplicates(
@@ -429,7 +447,18 @@ def _get_bbox_dim(detection):
     return 2
 
 
-def _compute_bbox_iou(gt, pred, gt_crowd=False):
+def compute_bbox_iou(gt, pred, gt_crowd=False):
+    """Computes the IoU between the given ground truth and predicted
+    detections.
+
+    Args:
+        gt: a :class:`fiftyone.core.labels.Detection`
+        pred: a :class:`fiftyone.core.labels.Detection`
+        gt_crowd (False): whether the ground truth object is a crowd
+
+    Returns:
+        the IoU, in ``[0, 1]``
+    """
     gx, gy, gw, gh = gt.bounding_box
     gt_area = gh * gw
 
@@ -473,9 +502,9 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
             gts = _polylines_to_detections(gts)
 
     if _get_bbox_dim(gts[0]) == 3:
-        bbox_iou_fcn = _compute_cuboid_iou
+        bbox_iou_fcn = compute_cuboid_iou
     else:
-        bbox_iou_fcn = _compute_bbox_iou
+        bbox_iou_fcn = compute_bbox_iou
 
     ious = np.zeros((len(preds), len(gts)))
 
@@ -496,8 +525,13 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     return ious
 
 
-def _compute_polyline_ious(
-    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
+def _compute_polygon_ious(
+    preds,
+    gts,
+    error_level,
+    iscrowd=None,
+    classwise=False,
+    gt_crowds=None,
 ):
     is_symmetric = preds is gts
 
@@ -569,7 +603,21 @@ def _compute_polyline_ious(
 
                 ious[i, j] = iou
 
-        return ious
+    return ious
+
+
+def _compute_polyline_similarities(preds, gts, classwise=False):
+    sims = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        for i, pred in enumerate(preds):
+            if classwise and pred.label != gt.label:
+                continue
+
+            gtp = list(itertools.chain.from_iterable(gt.points))
+            predp = list(itertools.chain.from_iterable(pred.points))
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
+
+    return sims
 
 
 def _compute_mask_ious(
@@ -598,7 +646,7 @@ def _compute_mask_ious(
     else:
         gt_crowds = [False] * len(gts)
 
-    return _compute_polyline_ious(
+    return _compute_polygon_ious(
         pred_polys,
         gt_polys,
         error_level,
@@ -647,14 +695,16 @@ def _compute_keypoint_similarities(preds, gts, classwise=False):
             if classwise and pred.label != gt.label:
                 continue
 
-            sims[i, j] = _compute_object_keypoint_similarity(gt, pred)
+            gtp = gt.points
+            predp = pred.points
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
 
     return sims
 
 
-def _compute_object_keypoint_similarity(gt, pred):
-    gtp = np.array(gt.points, dtype=float)
-    predp = np.array(pred.points, dtype=float)
+def _compute_object_keypoint_similarity(gtp, predp):
+    gtp = np.asarray(gtp, dtype=float)
+    predp = np.asarray(predp, dtype=float)
 
     # Use extent of GT points as proxy for box area
     scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))

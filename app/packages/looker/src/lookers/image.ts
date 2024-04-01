@@ -1,7 +1,7 @@
 import { getImageElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
 import { Overlay } from "../overlays/base";
-import { DEFAULT_IMAGE_OPTIONS, ImageState, Optional } from "../state";
+import { DEFAULT_IMAGE_OPTIONS, ImageState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
@@ -71,9 +71,9 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     return super.postProcess();
   }
 
-  updateOptions(options: Optional<ImageState["options"]>) {
+  updateOptions(options: Partial<ImageState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Optional<ImageState> = { options };
+    const state: Partial<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom =
         this.state.options.zoom !== options.zoom || this.state.config.thumbnail;

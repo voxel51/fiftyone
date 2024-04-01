@@ -1,7 +1,7 @@
 """
 Session plot manager.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -151,7 +151,7 @@ class PlotManager(object):
         """Returns an iterator over the names of plots in this manager.
 
         Returns:
-            an interator over plot names
+            an iterator over plot names
         """
         return self._plots.keys()
 

@@ -1,4 +1,3 @@
-import { Button } from "@fiftyone/components";
 import {
   PropsWithChildren,
   ReactElement,
@@ -6,17 +5,21 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { BaseStylesProvider } from "./styled-components";
+import SplitButton from "./SplitButton";
 import { PALETTE_CONTROL_KEYS } from "./constants";
+import { BaseStylesProvider } from "./styled-components";
 
-import { scrollable } from "@fiftyone/components";
+import { Button, scrollable } from "@fiftyone/components";
 import {
+  Alert,
+  AlertTitle,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   DialogProps,
+  DialogTitle,
+  Button as MUIButton,
 } from "@mui/material";
 import { onEnter } from "./utils";
 
@@ -36,6 +39,12 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     disableSubmit,
     disabledReason,
     loading,
+    submitButtonOptions,
+    submitOptionsLoading,
+    hasSubmitButtonOptions,
+    showWarning,
+    warningMessage,
+    warningTitle,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -47,7 +56,6 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       }
       switch (key) {
         case "Escape":
-        case "`":
           if (onClose) onClose();
           if (onCancel) onCancel();
           break;
@@ -90,6 +98,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
         "& .MuiDialog-container": {
           alignItems: "flex-start",
         },
+        zIndex: (theme) => theme.zIndex.operatorPalette,
       }}
     >
       {title && (
@@ -106,9 +115,29 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
           ...(title ? {} : { borderTop: "none" }),
         }}
       >
-        <BaseStylesProvider>{children}</BaseStylesProvider>
+        <BaseStylesProvider>
+          {showWarning ? (
+            <Alert severity="warning">
+              <AlertTitle>{warningTitle}</AlertTitle>
+              {warningMessage}
+            </Alert>
+          ) : (
+            children
+          )}
+        </BaseStylesProvider>
       </DialogContent>
-      {!hideActions && (
+      {!hideActions && showWarning && (
+        <DialogActions sx={{ p: 1 }}>
+          <MUIButton
+            sx={{ textTransform: "none" }}
+            onClick={onCancel}
+            onKeyDown={onEnter(onCancel)}
+          >
+            OK
+          </MUIButton>
+        </DialogActions>
+      )}
+      {!hideActions && !showWarning && (
         <DialogActions sx={{ p: 1 }}>
           {loading && (
             <CircularProgress
@@ -123,7 +152,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               </Button>
             </BaseStylesProvider>
           )}
-          {onSubmit && (
+          {onSubmit && !hasSubmitButtonOptions && !submitOptionsLoading && (
             <BaseStylesProvider>
               <Button
                 onClick={handleSubmit}
@@ -135,11 +164,27 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
               </Button>
             </BaseStylesProvider>
           )}
+          {onSubmit && hasSubmitButtonOptions && !submitOptionsLoading && (
+            <BaseStylesProvider>
+              <SplitButton
+                disabled={disableSubmit}
+                disabledReason={disabledReason}
+                options={submitButtonOptions}
+                submitOnEnter
+                onSubmit={onSubmit}
+              />
+            </BaseStylesProvider>
+          )}
         </DialogActions>
       )}
     </Dialog>
   );
 }
+
+type SubmitButtonOption = {
+  id: string;
+  label: string;
+};
 
 export type OperatorPaletteProps = PropsWithChildren & {
   onSubmit?: () => void;
@@ -155,4 +200,10 @@ export type OperatorPaletteProps = PropsWithChildren & {
   disableSubmit?: boolean;
   disabledReason?: string;
   loading?: boolean;
+  submitButtonOptions: SubmitButtonOption[];
+  hasSubmitButtonOptions: boolean;
+  submitOptionsLoading: boolean;
+  showWarning?: boolean;
+  warningTitle: string;
+  warningMessage?: string;
 };

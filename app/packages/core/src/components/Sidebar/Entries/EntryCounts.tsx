@@ -1,12 +1,7 @@
-import { useCallback } from "react";
-import { selectorFamily, useRecoilValueLoadable } from "recoil";
-
 import * as fos from "@fiftyone/state";
-
+import React, { useCallback } from "react";
+import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
-
-import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
-import { pathIsExpanded } from "./utils";
 
 interface PathEntryCountsProps {
   path: string;
@@ -29,7 +24,7 @@ const showEntryCounts = selectorFamily<
         params.modal ||
         params.path === "" ||
         mode === "all" ||
-        get(pathIsExpanded(params))
+        get(fos.sidebarExpanded(params))
       ) {
         return true;
       }
@@ -44,26 +39,20 @@ export const PathEntryCounts = ({
   ignoreSidebarMode,
 }: PathEntryCountsProps) => {
   const getAtom = useCallback(
-    (extended: boolean) => {
-      return fos.count({
+    (extended: boolean) =>
+      fos.count({
         extended,
         modal,
         path,
-      });
-    },
+      }),
     [modal, path]
   );
 
-  const shown = useRecoilValueLoadable(
+  const shown = useRecoilValue(
     showEntryCounts({ path, modal, always: ignoreSidebarMode })
   );
-  if (shown.state === "hasError") {
-    throw shown.contents;
-  }
 
-  return shown.state === "loading" ? (
-    <LoadingDots text="" />
-  ) : shown.contents ? (
+  return shown ? (
     <SuspenseEntryCounts
       countAtom={getAtom(false)}
       subcountAtom={getAtom(true)}
@@ -89,13 +78,10 @@ const labelTagCount = selectorFamily<
     },
 });
 
-export const labelTagsCount = selectorFamily<
-  { count: number; results: [string, number][] },
-  { modal: boolean; extended: boolean }
->({
+export const labelTagsCount = selectorFamily({
   key: `labelTagsCount`,
   get:
-    ({ ...props }) =>
+    (props: { modal: boolean; extended: boolean }) =>
     ({ get }) => {
       const labelTagObj = get(
         fos.cumulativeCounts({
@@ -104,8 +90,11 @@ export const labelTagsCount = selectorFamily<
         })
       );
       if (!labelTagObj) return { count: 0, results: [] };
-      const labelTags = Object.entries(labelTagObj);
-      const count = labelTags.reduce((acc, [key, value]) => acc + value, 0);
+      const labelTags = Object.entries(labelTagObj).map(([value, count]) => ({
+        value,
+        count,
+      }));
+      const count = labelTags.reduce((acc, { count }) => acc + count, 0);
       return { count, results: labelTags };
     },
 });

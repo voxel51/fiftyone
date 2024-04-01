@@ -1,13 +1,13 @@
-import * as foo from "@fiftyone/operators";
+import { useOperators } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import { availableOperatorsRefreshCount } from "@fiftyone/operators/src/state";
+import { pluginsLoaderAtom } from "./state";
 
 declare global {
   interface Window {
@@ -96,6 +96,7 @@ class PluginDefinition {
 
 export async function loadPlugins() {
   const plugins = await fetchPluginsMetadata();
+  const { pathPrefix } = getFetchParameters();
   for (const plugin of plugins) {
     usingRegistry().registerPluginDefinition(plugin);
     if (plugin.hasJS) {
@@ -106,7 +107,7 @@ export async function loadPlugins() {
         continue;
       }
       try {
-        await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+        await loadScript(name, pathPrefix + scriptPath);
       } catch (e) {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
@@ -142,11 +143,9 @@ async function loadScript(name, url) {
  * A react hook for loading the plugin system.
  */
 export function usePlugins() {
-  const [state, setState] = useState("loading");
   const datasetName = recoil.useRecoilValue(fos.datasetName);
-  const setAvailableOperatorsRefreshCount = recoil.useSetRecoilState(
-    availableOperatorsRefreshCount
-  );
+  const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
+  const operatorsReady = useOperators(datasetName === null);
 
   useEffect(() => {
     loadPlugins()
@@ -156,21 +155,12 @@ export function usePlugins() {
       .then(() => {
         setState("ready");
       });
-  }, []);
-
-  useEffect(() => {
-    if (fou.isPrimitiveString(datasetName)) {
-      foo.loadOperators(datasetName).then(() => {
-        // trigger force refresh
-        setAvailableOperatorsRefreshCount((count) => count + 1);
-      });
-    }
-  }, [datasetName]);
+  }, [setState]);
 
   return {
-    isLoading: state === "loading",
+    isLoading: state === "loading" || !operatorsReady,
     hasError: state === "error",
-    ready: state === "ready",
+    ready: state === "ready" && operatorsReady,
   };
 }
 
@@ -360,11 +350,11 @@ export function usePluginSettings<T>(
   pluginName: string,
   defaults?: Partial<T>
 ): T {
-  const dataset = recoil.useRecoilValue(fos.dataset);
+  const datasetAppConfig = recoil.useRecoilValue(fos.datasetAppConfig);
   const appConfig = recoil.useRecoilValue(fos.config);
 
   const settings = useMemo(() => {
-    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const datasetPlugins = _.get(datasetAppConfig, "plugins", {});
     const appConfigPlugins = _.get(appConfig, "plugins", {});
 
     return _.merge<T | {}, Partial<T>, Partial<T>>(
@@ -372,7 +362,9 @@ export function usePluginSettings<T>(
       _.get(appConfigPlugins, pluginName, {}),
       _.get(datasetPlugins, pluginName, {})
     );
-  }, [dataset, appConfig, pluginName, defaults]);
+  }, [appConfig, pluginName, defaults, datasetAppConfig]);
 
   return settings as T;
 }
+
+export * from "./state";

@@ -4,15 +4,20 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
-  LIST_FIELD,
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -23,11 +28,12 @@ import { makePseudoField } from "./utils";
 
 const ScalarDiv = styled.div`
   & > div {
-    user-select: text;
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;
     text-overflow: ellipsis;
+    user-select: all;
+    white-space: nowrap;
   }
 `;
 
@@ -113,7 +119,7 @@ const ScalarValueEntry = ({
   );
 };
 
-const ListContainer = styled.div`
+const ListContainer = styled(ScalarDiv)`
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
@@ -167,7 +173,7 @@ const ListValueEntry = ({
       heading={
         <NameAndCountContainer>
           <span key="path">{OVERRIDE[path] ?? path}</span>
-          <span key="value">
+          <span key="value" data-cy={`sidebar-entry-${path}`}>
             <Suspense fallback={<LoadingDots text="" />}>
               {slices ? (
                 <SlicesLengthLoadable path={path} />
@@ -228,7 +234,9 @@ const ListLoadable = ({ path }: { path: string }) => {
   return (
     <ListContainer>
       {values.map((v, i) => (
-        <div key={i}>{v}</div>
+        <div key={i} title={typeof v === "string" ? v : undefined}>
+          {v}
+        </div>
       ))}
       {values.length == 0 && <>No results</>}
     </ListContainer>
@@ -288,7 +296,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
           >
             <div style={{ color: theme.text.secondary }}>{slice}</div>
             <div
-              data-cy={`sidebar-entry-${path}`}
+              data-cy={`sidebar-entry-${slice}-${path}`}
               style={{
                 ...add,
                 flex: 1,
@@ -325,16 +333,16 @@ const useSlicesData = <T extends unknown>(path: string) => {
 
   const data = { ...loadable.contents };
 
-  let field = useRecoilValue(fos.field(keys[0]));
+  const target = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {
     let sliceData = data[slice].sample;
+    let field = target;
 
     for (let index = 0; index < keys.length; index++) {
       if (!sliceData) {
         break;
       }
       const key = keys[index];
-
       sliceData = sliceData[field?.dbField || key];
 
       if (keys[index + 1]) {
@@ -356,15 +364,35 @@ const Loadable = ({ path }: { path: string }) => {
   const formatted = format({ ftype, value, timeZone });
 
   return (
-    <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
+    <div
+      data-cy={`sidebar-entry-${path}`}
+      title={typeof formatted === "string" ? formatted : undefined}
+      style={none ? { color } : {}}
+    >
       {none ? "None" : formatted}
     </div>
   );
 };
 
-const useData = <T extends unknown>(path: string): T => {
+const isOfDocumentFieldList = selectorFamily({
+  key: "isOfDocumentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const field = get(fos.field(path.split(".")[0]));
+
+      return [
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+        EMBEDDED_DOCUMENT_FIELD,
+      ].includes(field?.subfield || "");
+    },
+});
+
+const useData = <T,>(path: string): T => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.activeModalSample);
+  const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
+  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const sampleId = useRecoilValue(fos.currentSampleId);
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -381,26 +409,48 @@ const useData = <T extends unknown>(path: string): T => {
   let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
-  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
-    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]).join(", ");
+  if (useRecoilValue(isOfDocumentFieldList(path))) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
   } else {
     for (let index = 0; index < keys.length; index++) {
       if (!data) {
         break;
       }
-
       const key = keys[index];
-
       data = data[field?.dbField || key];
 
       if (keys[index + 1]) {
-        field = field?.fields[keys[index + 1]];
+        field = field?.fields?.[keys[index + 1]] || null;
       }
+    }
+  }
+
+  const noneValued = noneValuedPaths?.[sampleId];
+  if (
+    (data === undefined || data === null) &&
+    path &&
+    !noneValued?.has(path) &&
+    sampleId
+  ) {
+    const newNoneValued = noneValued
+      ? new Set([...noneValued]).add(path)
+      : new Set([path]);
+    if (newNoneValued) {
+      setNoneValued({ [sampleId]: new Set([...newNoneValued, path]) });
     }
   }
 
   return data as T;
 };
+
+const isScalarValue = selectorFamily({
+  key: "isScalarValue",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return !get(fos.isListField(path)) && !get(fos.isInListField(path));
+    },
+});
 
 const PathValueEntry = ({
   entryKey,
@@ -415,12 +465,12 @@ const PathValueEntry = ({
     cb: () => void
   ) => void;
 }) => {
-  const field = useRecoilValue(fos.field(path));
   const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
   const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
 
-  return field && field.ftype !== LIST_FIELD ? (
+  const isScalar = useRecoilValue(isScalarValue(path));
+  return isScalar ? (
     <ScalarValueEntry
       entryKey={entryKey}
       path={path}

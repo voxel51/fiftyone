@@ -1,9 +1,8 @@
+import { ImaVidLooker } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
-  datasetFragment$key,
   graphQLSyncFragmentAtom,
-  graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
@@ -12,21 +11,99 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
+  Stage,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { PreloadedQuery, VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { VariablesOf } from "react-relay";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-import { sessionAtom } from "../session";
+import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { dataset, mediaType } from "./atoms";
-import { ModalSample, modalSample } from "./modal";
+import {
+  mediaType,
+  selectedLabels,
+  selectedSamples,
+  similarityParameters,
+} from "./atoms";
+import { getBrowserStorageEffectForKey } from "./customEffects";
+import { dataset } from "./dataset";
+import { ModalSample, modalLooker, modalSample } from "./modal";
+import { dynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
-import { datasetName } from "./selectors";
+import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
-import { view } from "./view";
+import { GROUP_BY_VIEW_STAGE, dynamicGroupViewQuery, view } from "./view";
+
+export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
+  key: "groupMediaIsCarouselVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIsCarouselVisible = selector<boolean>({
+  key: "groupMediaIsCarouselVisible",
+  get: ({ get }) => {
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+
+    return get(groupMediaIsCarouselVisibleSetting) && !isImaVidInNestedGroup;
+  },
+});
+
+export const groupMedia3dVisibleSetting = atom<boolean>({
+  key: "groupMediaIs3dVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIs3dVisible = selector<boolean>({
+  key: "groupMedia3dVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const has3d = set.has("point_cloud") || set.has("three_d");
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+    return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
+  },
+});
+
+export const groupMediaIsMainVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMainVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIsMainVisible = selector<boolean>({
+  key: "groupMediaIsMainVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+  },
+});
 
 export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
@@ -40,7 +117,13 @@ export const pinned3d = atom<boolean>({
 
 export const pinned3DSample = selector({
   key: "pinned3DSample",
-  get: ({ get }) => get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)],
+  get: ({ get }) => {
+    if (get(hasFo3dSlice)) {
+      return get(fo3dSample);
+    }
+
+    return get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)];
+  },
 });
 
 export type SliceName = string | undefined | null;
@@ -62,7 +145,26 @@ export const groupSlice = selector<string>({
   get: ({ get }) => {
     return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
   },
-  set: ({ set }, slice) => set(sessionGroupSlice, slice),
+  set: ({ get, reset, set }, slice) => {
+    const defaultSlice = get(defaultGroupSlice);
+    if (get(similarityParameters)) {
+      // avoid this pattern
+      const unsubscribe = foq.subscribeBefore(() => {
+        const session = getSessionRef();
+        session.sessionGroupSlice =
+          slice instanceof DefaultValue ? defaultSlice : slice;
+        session.selectedSamples = new Set();
+        session.selectedLabels = [];
+
+        unsubscribe();
+      });
+      reset(similarityParameters);
+    } else {
+      set(sessionGroupSlice, slice);
+      set(selectedLabels, []);
+      set(selectedSamples, new Set());
+    }
+  },
 });
 
 export const defaultGroupSlice = graphQLSyncFragmentAtom<
@@ -102,14 +204,15 @@ export const groupMediaTypesMap = selector({
     ),
 });
 
-export const groupSlices = selector<string[]>({
+export const groupSlices = selector({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(isGroup)
-      ? get(groupMediaTypes)
-          .map(({ name }) => name)
-          .sort()
-      : [];
+    if (get(hasGroupSlices)) {
+      return get(groupMediaTypes)
+        .map(({ name }) => name)
+        .sort();
+    }
+    return [];
   },
 });
 
@@ -121,7 +224,32 @@ export const groupMediaTypesSet = selector<Set<string>>({
 
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
+  get: ({ get }) => {
+    return (
+      get(isGroup) &&
+      (!get(isDynamicGroup) || get(parentMediaTypeSelector) === "group")
+    );
+  },
+});
+
+export const has3dSlice = selector<boolean>({
+  key: "has3dSlice",
+  get: ({ get }) => {
+    return (
+      get(groupMediaTypesSet).has("three_d") ||
+      get(groupMediaTypesSet).has("point_cloud")
+    );
+  },
+});
+
+export const hasFo3dSlice = selector<boolean>({
+  key: "hasFo3dSlice",
+  get: ({ get }) => {
+    return (
+      get(groupMediaTypesSet).has("three_d") ||
+      get(groupMediaTypesSet).has("3d")
+    );
+  },
 });
 
 export const activePcdSlices = atom<string[]>({
@@ -219,10 +347,15 @@ export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
+    const activeFo3dSlice = get(fo3dSlice);
     const activePcdSlicesValue = get(activePcdSlices);
 
     if (!get(pinned3d)) {
       return currentSliceValue;
+    }
+
+    if (activeFo3dSlice) {
+      return activeFo3dSlice;
     }
 
     const numActivePcdSlices = activePcdSlicesValue?.length;
@@ -293,6 +426,39 @@ export const nonPcdSamples = selector({
     get(groupSamples({ slices: get(allNonPcdSlices), count: 1 })),
 });
 
+export const fo3dSlice = selector({
+  key: "fo3dSlice",
+  get: ({ get }) => {
+    const fo3dSlices = get(groupMediaTypes)
+      .filter(({ mediaType }) => mediaType === "three_d" || mediaType === "3d")
+      .map(({ name }) => name);
+
+    if (fo3dSlices?.length > 1)
+      throw new Error("can't have more than one fo3d slice");
+
+    return fo3dSlices[0];
+  },
+});
+
+export const fo3dSample = selector({
+  key: "fo3dSample",
+  get: ({ get }) => {
+    if (!get(isGroup)) return get(modalSample);
+
+    if (!get(hasFo3dSlice)) return null;
+
+    const sample = get(
+      groupSamples({
+        slices: [get(fo3dSlice)],
+        count: 1,
+        paginationData: false,
+      })
+    )[0];
+
+    return sample;
+  },
+});
+
 export const pcdSamples = selector({
   key: "pcdSamples",
   get: ({ get }) =>
@@ -316,25 +482,208 @@ export const dynamicGroupIndex = atom<number>({
   default: null,
 });
 
-export const dynamicGroupSamplesQueryRef = atom<
-  PreloadedQuery<foq.paginateSamplesQuery>
+export const dynamicGroupCurrentElementIndex = atom<number>({
+  key: "dynamicGroupCurrentElementIndex",
+  default: 1,
+});
+
+export const dynamicGroupParameters =
+  selector<State.DynamicGroupParameters | null>({
+    key: "dynamicGroupParameters",
+    get: ({ get }) => {
+      const viewArr = get(view);
+      if (!viewArr) return null;
+
+      const groupByViewStageNode = viewArr.find(
+        (view) => view._cls === GROUP_BY_VIEW_STAGE
+      );
+      if (!groupByViewStageNode) return null;
+
+      const isFlat = groupByViewStageNode.kwargs[2][1]; // third index is 'flat', we want it to be false for dynamic groups
+      if (isFlat) return null;
+
+      return {
+        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
+      };
+    },
+  });
+
+export const isDynamicGroup = selector<boolean>({
+  key: "isDynamicGroup",
+  get: ({ get }) => {
+    return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const isNonNestedDynamicGroup = selector<boolean>({
+  key: "isNonNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(parentMediaTypeSelector) !== "group";
+  },
+});
+
+export const isNestedDynamicGroup = selector<boolean>({
+  key: "isNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(hasGroupSlices);
+  },
+});
+
+export const imaVidStoreKey = selectorFamily<
+  string,
+  { modal: boolean; groupByFieldValue: string }
 >({
-  key: "dynamicGroupSamplesQueryRef",
-  default: null,
+  key: "imaVidStoreKey",
+  get:
+    ({ modal, groupByFieldValue }) =>
+    ({ get }) => {
+      const { groupBy, orderBy } = get(dynamicGroupParameters);
+      const slice = get(currentSlice(modal)) ?? "UNSLICED";
+
+      return `$${groupBy}-${orderBy}-${groupByFieldValue}-${slice}`;
+    },
+});
+
+export const shouldRenderImaVidLooker = selector<boolean>({
+  key: "shouldRenderImaVidLooker",
+  get: ({ get }) => {
+    return get(isOrderedDynamicGroup) && get(dynamicGroupsViewMode) === "video";
+  },
+});
+
+export const isOrderedDynamicGroup = selector<boolean>({
+  key: "isOrderedDynamicGroup",
+  get: ({ get }) => {
+    const params = get(dynamicGroupParameters);
+    if (!params) return false;
+
+    const { orderBy } = params;
+    return Boolean(orderBy?.length);
+  },
+});
+
+export const dynamicGroupPageSelector = selectorFamily<
+  (
+    cursor: number,
+    pageSize: number
+  ) => {
+    filter: Record<string, never>;
+    after: string;
+    count: number;
+    dataset: string;
+    view: Stage[];
+  },
+  string
+>({
+  key: "paginateDynamicGroupVariables",
+  get:
+    (groupByValue) =>
+    ({ get }) => {
+      const params = {
+        dataset: get(datasetName),
+        view: get(
+          dynamicGroupViewQuery({ groupByFieldValueExplicit: groupByValue })
+        ),
+      };
+
+      const filter = get(hasGroupSlices)
+        ? {
+            group: {
+              slice: get(groupSlice),
+            },
+          }
+        : {};
+
+      return (cursor: number, pageSize: number) => ({
+        ...params,
+        filter,
+        after: cursor ? String(cursor) : null,
+        count: pageSize,
+      });
+    },
 });
 
 export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(pinned3d)) {
-      return get(activePcdSlicesToSampleMap)[get(pinned3DSampleSlice)]?.sample;
+      if (get(hasFo3dSlice)) {
+        return get(fo3dSample).sample;
+      }
+
+      const slices = get(activePcdSlices);
+      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
+      return get(activePcdSlicesToSampleMap)[key]?.sample;
     }
 
     return get(modalSample).sample;
   },
 });
 
-export const groupStatistics = atomFamily<"group" | "slice">({
+export const activeModalSidebarSample = selector({
+  key: "activeModalSidebarSample",
+  get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+
+      if (!currentFrameNumber) {
+        return get(activeModalSample);
+      }
+
+      const currentModalLooker = get(modalLooker) as ImaVidLooker;
+
+      const sampleId =
+        currentModalLooker?.frameStoreController?.store.frameIndex.get(
+          currentFrameNumber
+        );
+      const sample =
+        currentModalLooker?.frameStoreController?.store.samples.get(sampleId);
+      return sample?.sample ?? get(activeModalSample);
+    }
+
+    return get(activeModalSample);
+  },
+});
+
+export const imaVidLookerState = atomFamily<any, string>({
+  key: "imaVidLookerState",
+  default: null,
+  effects: (key) => [
+    ({ setSelf, getPromise, onSet }) => {
+      let unsubscribe;
+
+      onSet((_newValue) => {
+        // note: resetRecoilState is not triggering `onSet` in effect,
+        // see https://github.com/facebookexperimental/Recoil/issues/2183
+        // replace with `useResetRecoileState` when fixed
+
+        // if (!isReset) {
+        //   throw new Error("cannot set ima-vid state directly");
+        // }
+        unsubscribe && unsubscribe();
+
+        getPromise(modalLooker)
+          .then((looker: ImaVidLooker) => {
+            if (looker) {
+              unsubscribe = looker.subscribeToState(key, (stateValue) => {
+                setSelf(stateValue);
+              });
+            }
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    },
+  ],
+});
+
+export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
 });

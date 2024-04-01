@@ -1,7 +1,7 @@
 """
 FiftyOne repository factory.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,9 +15,7 @@ from fiftyone.factory.repos.delegated_operation import (
     MongoDelegatedOperationRepo,
 )
 
-
-db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
-db: Database = db_client[fo.config.database_name]
+db: Database = foo.get_db_conn()
 
 
 class RepositoryFactory(object):

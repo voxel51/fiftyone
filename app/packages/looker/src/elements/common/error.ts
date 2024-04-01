@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import copy from "copy-to-clipboard";
 
@@ -15,10 +15,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
   private errorElement: HTMLDivElement = null;
   private reset: () => void;
 
-  createHTMLElement(
-    _: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
-  ) {
+  createHTMLElement(dispatchEvent: (eventType: string, details?: any) => void) {
     this.reset = () => {
       dispatchEvent("reset");
     };

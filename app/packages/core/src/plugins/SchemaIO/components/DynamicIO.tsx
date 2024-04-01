@@ -1,19 +1,40 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { isNullish } from "@fiftyone/utilities";
+import { get, isEqual } from "lodash";
 import React, { useEffect } from "react";
-import { getComponent, getErrorsForView } from "../utils";
+import { isPathUserChanged } from "../hooks";
+import { getComponent, getErrorsForView, isCompositeView } from "../utils";
 
 export default function DynamicIO(props) {
-  const { schema, onChange, path } = props;
+  const { data, schema, onChange, path, parentSchema, relativePath } = props;
   const customComponents = useCustomComponents();
   const Component = getComponent(schema, customComponents);
+  const computedSchema = schemaWithInheritedDefault(
+    schema,
+    parentSchema,
+    relativePath
+  );
+  const { default: defaultValue, type } = computedSchema;
 
   // todo: need to improve initializing default value in state
   useEffect(() => {
-    if (schema.default) onChange(path, schema.default);
-    else if (schema.type === "boolean") onChange(path, false);
-  }, []);
+    if (
+      !isCompositeView(schema) &&
+      !isEqual(data, defaultValue) &&
+      !isPathUserChanged(path) &&
+      !isNullish(defaultValue)
+    ) {
+      onChange(path, defaultValue);
+    }
+  }, [defaultValue]);
 
-  return <Component {...props} validationErrors={getErrorsForView(props)} />;
+  return (
+    <Component
+      {...props}
+      schema={computedSchema}
+      validationErrors={getErrorsForView(props)}
+    />
+  );
 }
 
 function useCustomComponents() {
@@ -24,4 +45,11 @@ function useCustomComponents() {
     componentsByName[component.name] = component.component;
     return componentsByName;
   }, {});
+}
+
+function schemaWithInheritedDefault(schema, parentSchema, path) {
+  const providedDefault = get(schema, "default");
+  const inheritedDefault = get(parentSchema, `default.${path}`);
+  const computedDefault = providedDefault ?? inheritedDefault;
+  return { ...schema, default: computedDefault };
 }

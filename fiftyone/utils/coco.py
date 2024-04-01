@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1037,13 +1037,23 @@ class COCOObject(object):
         width, height = frame_size
 
         points = []
+        visible = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
                 points.append((float("nan"), float("nan")))
             else:
                 points.append((x / width, y / height))
 
-        return fol.Keypoint(label=label, points=points, **attributes)
+            visible.append(v)
+        if "visible" in attributes:
+            logger.debug(
+                "Found a custom attribute named 'visible' which is a reserved name. Ignoring the custom attribute"
+            )
+            attributes.pop("visible")
+
+        return fol.Keypoint(
+            label=label, points=points, visible=visible, **attributes
+        )
 
     def to_detection(
         self,
@@ -1278,6 +1288,7 @@ class COCOObject(object):
         attributes.pop(id_attr, None)  # okay if `id_attr` is None
         attributes.pop(iscrowd, None)
         attributes.pop("area", None)
+        attributes.pop("visible", None)
 
         return cls(
             id=_id,
@@ -1694,7 +1705,7 @@ def download_coco_dataset_split(
     num_samples = len(downloaded_filenames)  # total downloaded
 
     #
-    # Write usable annotations file to `anno_path`, if necesary
+    # Write usable annotations file to `anno_path`, if necessary
     #
 
     if not os.path.isfile(anno_path):
@@ -1974,29 +1985,6 @@ def _load_image_ids_json(json_path):
     return [_id for _id in etas.load_json(json_path)]
 
 
-def _make_images_list(images_dir):
-    logger.info("Computing image metadata for '%s'", images_dir)
-
-    image_paths = foud.parse_images_dir(images_dir)
-
-    images = []
-    with fou.ProgressBar() as pb:
-        for idx, image_path in pb(enumerate(image_paths)):
-            metadata = fom.ImageMetadata.build_for(image_path)
-            images.append(
-                {
-                    "id": idx,
-                    "file_name": os.path.basename(image_path),
-                    "height": metadata.height,
-                    "width": metadata.width,
-                    "license": None,
-                    "coco_url": None,
-                }
-            )
-
-    return images
-
-
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
@@ -2232,15 +2220,37 @@ def _instance_to_coco_segmentation(
 def _make_coco_keypoints(keypoint, frame_size):
     width, height = frame_size
 
-    # @todo true COCO format would set v = 1/2 based on whether the keypoints
-    # lie within the object's segmentation, but we'll be lazy for now
-
     keypoints = []
-    for x, y in keypoint.points:
+    num_points = len(keypoint.points)
+    visibility = [None] * num_points
+    if "visible" in keypoint:
+        if isinstance(keypoint.visible, list):
+            if len(keypoint.visible) == num_points:
+                visibility = keypoint.visible
+            else:
+                logger.warning(
+                    "Ignoring 'visible' attribute of length %d for keypoint %s."
+                    " The length does not match the 'points' attribute of"
+                    " length %d."
+                    % (len(keypoint.visible), str(keypoint.id), num_points)
+                )
+        if isinstance(keypoint.visible, int):
+            visibility = [keypoint.visible] * num_points
+
+    for visible, (x, y) in zip(visibility, keypoint.points):
         if np.isnan(x) or np.isnan(y):
-            keypoints.extend((0, 0, 0))
+            _x = 0
+            _y = 0
+            _visible = 0
         else:
-            keypoints.extend((int(x * width), int(y * height), 2))
+            _x = int(x * width)
+            _y = int(y * height)
+            _visible = 2
+
+        if visible is not None:
+            _visible = visible
+
+        keypoints.extend((_x, _y, _visible))
 
     return keypoints
 

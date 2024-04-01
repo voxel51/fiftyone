@@ -22,24 +22,21 @@ const RightDiv = styled.div`
   white-space: nowrap;
 `;
 
-interface Props {
-  isGroup: boolean;
-}
-
-const ResourceCount = ({ isGroup }: Props) => {
-  return isGroup ? <GroupsCount /> : <Count />;
+const ResourceCount = () => {
+  const groupStats = useRecoilValue(fos.groupStatistics(false));
+  const lightning = useRecoilValue(fos.lightning);
+  return groupStats === "group" && !lightning ? <GroupsCount /> : <Count />;
 };
 
 const GroupsCount = () => {
   const element = useRecoilValue(fos.elementNames);
-  const total = useRecoilValue(
-    fos.count({ path: "_", extended: false, modal: false })
-  );
-
   const elementTotal = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
   const groupSlice = useRecoilValue(fos.groupSlice);
+  const total = useRecoilValue(
+    fos.count({ path: "_", extended: false, modal: false })
+  );
 
   return (
     <RightDiv data-cy="entry-counts">
@@ -67,10 +64,12 @@ const Count = () => {
   const slice = useRecoilValue(fos.groupSlice);
 
   const isGroup = useRecoilValue(isGroupAtom);
+  const lightning = useRecoilValue(fos.lightning);
   if (
-    (isGroup && !isDynamicGroupViewStageActive) ||
-    (isDynamicGroupViewStageActive && parent === "group") ||
-    (isDynamicGroupViewStageActive && element.singular === "sample")
+    !lightning &&
+    ((isGroup && !isDynamicGroupViewStageActive) ||
+      (isDynamicGroupViewStageActive && parent === "group") ||
+      (isDynamicGroupViewStageActive && element.singular === "sample"))
   ) {
     element = {
       plural: "groups",
@@ -87,7 +86,7 @@ const Count = () => {
           !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}
         {total === 1 ? element.singular : element.plural}
-        {slice && ` with slice`}
+        {!lightning && slice && ` with slice`}
       </div>
     </RightDiv>
   );

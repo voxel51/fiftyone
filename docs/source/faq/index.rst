@@ -110,14 +110,26 @@ Can I use FiftyOne in a notebook?
 ---------------------------------
 
 Yes! FiftyOne supports `Jupyter Notebooks <https://jupyter.org>`_,
-`Google Colab Notebooks <https://colab.research.google.com>`_, and
-`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
+`Google Colab Notebooks <https://colab.research.google.com>`_,
+`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_,
+and `SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_.
 
 All the usual FiftyOne commands can be run in notebook environments, and the
 App will launch/update in the output of your notebook cells!
 
 Check out the :ref:`notebook environment guide <notebooks>` for more
 information about running FiftyOne in notebooks.
+
+.. _faq-cloud-notebook-support:
+
+Why isn't the App loading in my cloud notebook?
+-----------------------------------------------
+
+Except for `Google Colab <https://colab.research.google.com>`_ and
+`Databricks <https://docs.databricks.com/en/notebooks/index.html>`_ which have
+built-in App configuration, when working in a cloud notebook a
+:ref:`proxy_url <configuring-proxy-url>` should be set in your
+:ref:`FiftyOne App config <configuring-fiftyone-app>`.
 
 .. _faq-remote-notebook-support:
 
@@ -173,11 +185,7 @@ you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
 Can I access data stored in the cloud?
 --------------------------------------
 
-Yes! The recommended best practice is to mount the cloud bucket to a cloud
-compute instance in your cloud environment and then use the
-:ref:`remote server workflow <remote-data>` to work with the data.
-
-Check out :ref:`this page <cloud-storage>` for more details.
+Yes! Check out :ref:`FiftyOne Teams <fiftyone-teams>`.
 
 .. _faq-supported-os:
 
@@ -185,7 +193,17 @@ What operating systems does FiftyOne support?
 ---------------------------------------------
 
 FiftyOne officially supports the latest versions of MacOS and Windows, as well
-as Debian 9+ (x86_64 only), Ubuntu 18.04+, and RHEL/CentOS 7+.
+as Amazon Linux 2 and 2023, Debian 9+ (x86_64 only), Ubuntu 18.04+, and
+RHEL/CentOS 7+.
+
+.. note::
+
+    If installing on Ubuntu 22.04+, Debian, or RHEL/CentOS,
+    ``fiftyone-db==0.4.3`` must be requested.
+
+    .. code-block:: shell
+
+        pip install fiftyone-db==0.4.3 fiftyone
 
 .. _faq-image-types:
 
@@ -223,7 +241,7 @@ The App can play any video codec that is supported by
 including MP4 (H.264), WebM, and Ogg. If you try to view a video with an
 unsupported codec in the App, you will be prompted to use the
 :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>` utility method
-to reencode the source video so it is viewable in the App.
+to re-encode the source video so it is viewable in the App.
 
 .. note::
 
@@ -688,10 +706,10 @@ instructions on using the various Brain methods.
 Does FiftyOne track me?
 -----------------------
 
-FiftyOne tracks anonymous UUID-based usage of the Python library and the App by
-default. We are a small team building an open source project, and basic
-knowledge of how users are engaging with the project is critical to informing
-the roadmap of the project.
+FiftyOne tracks anonymous UUID-based usage of the App by default. We are a
+small team building an open source project, and basic knowledge of how users
+are engaging with the project is critical to informing the roadmap of the
+project.
 
 .. note::
 

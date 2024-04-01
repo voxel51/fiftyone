@@ -1,7 +1,7 @@
 """
 Database utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -99,7 +99,7 @@ def get_db_config():
     if config.version is None:
         #
         # The database version was added to this config in v0.15.0, so if no
-        # version is available, assume the database is at the preceeding
+        # version is available, assume the database is at the preceding
         # release. It's okay if the database's version is actually older,
         # because there are no significant admin migrations prior to v0.14.4.
         #
@@ -204,7 +204,7 @@ def establish_db_conn(config):
 
         except fos.ServiceExecutableNotFound:
             raise FiftyOneConfigError(
-                "MongoDB is not supported on your system. Please "
+                "MongoDB could not be installed on your system. Please "
                 "define a `database_uri` in your "
                 "`fiftyone.core.config.FiftyOneConfig` to connect to your"
                 "own MongoDB instance or cluster "
@@ -239,13 +239,20 @@ def _connect():
         connect(fo.config.database_name, **_connection_kwargs)
 
 
-def _async_connect():
+def _async_connect(use_global=False):
     global _async_client
-    if _async_client is None:
+    if not use_global or _async_client is None:
         global _connection_kwargs
-        _async_client = mtr.AsyncIOMotorClient(
+        client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
+
+        if use_global:
+            _async_client = client
+    else:
+        client = _async_client
+
+    return client
 
 
 def _delete_non_persistent_datasets_if_allowed():
@@ -386,14 +393,16 @@ def get_db_conn():
     return _apply_options(db)
 
 
-def get_async_db_client():
+def get_async_db_client(use_global=False):
     """Returns an async database client.
+
+    Args:
+        use_global: whether to use the global client singleton
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
-    _async_connect()
-    return _async_client
+    return _async_connect(use_global)
 
 
 def get_async_db_conn():
@@ -622,6 +631,7 @@ def export_collection(
     key="documents",
     patt="{idx:06d}-{id}.json",
     num_docs=None,
+    progress=None,
 ):
     """Exports the collection to disk in JSON format.
 
@@ -638,22 +648,31 @@ def export_collection(
             to the document's ID
         num_docs (None): the total number of documents. If omitted, this must
             be computable via ``len(docs)``
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if num_docs is None:
         num_docs = len(docs)
 
     if json_dir_or_path.endswith(".json"):
-        _export_collection_single(docs, json_dir_or_path, key, num_docs)
+        _export_collection_single(
+            docs, json_dir_or_path, key, num_docs, progress=progress
+        )
     else:
-        _export_collection_multi(docs, json_dir_or_path, patt, num_docs)
+        _export_collection_multi(
+            docs, json_dir_or_path, patt, num_docs, progress=progress
+        )
 
 
-def _export_collection_single(docs, json_path, key, num_docs):
+def _export_collection_single(docs, json_path, key, num_docs, progress=None):
     etau.ensure_basedir(json_path)
 
     with open(json_path, "w") as f:
         f.write('{"%s": [' % key)
-        with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+        with fou.ProgressBar(
+            total=num_docs, iters_str="docs", progress=progress
+        ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
                 f.write(json_util.dumps(doc))
                 if idx < num_docs:
@@ -662,11 +681,13 @@ def _export_collection_single(docs, json_path, key, num_docs):
         f.write("]}")
 
 
-def _export_collection_multi(docs, json_dir, patt, num_docs):
+def _export_collection_multi(docs, json_dir, patt, num_docs, progress=None):
     etau.ensure_dir(json_dir)
 
     json_patt = os.path.join(json_dir, patt)
-    with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+    with fou.ProgressBar(
+        total=num_docs, iters_str="docs", progress=progress
+    ) as pb:
         for idx, doc in pb(enumerate(docs, 1)):
             json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
             export_document(doc, json_path)
@@ -726,7 +747,7 @@ def _import_collection_multi(json_dir):
     return docs, len(json_paths)
 
 
-def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
+def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     """Inserts documents into a collection.
 
     The ``_id`` field of the input documents will be populated if it is not
@@ -736,8 +757,9 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
         docs: an iterable of BSON document dicts
         coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
-        progress (False): whether to render a progress bar tracking the
-            insertion
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible
@@ -746,23 +768,18 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
         a list of IDs of the inserted documents
     """
     ids = []
+    batcher = fou.get_default_batcher(docs, progress=progress, total=num_docs)
 
     try:
-        batcher = fou.DynamicBatcher(
-            docs,
-            target_latency=0.2,
-            init_batch_size=1,
-            max_batch_beta=2.0,
-            max_batch_size=100000,  # mongodb limit
-            progress=progress,
-            total=num_docs,
-        )
-
         with batcher:
             for batch in batcher:
                 batch = list(batch)
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
+                if batcher.manual_backpressure:
+                    # @todo can we infer content size from insert_many() above?
+                    batcher.apply_backpressure(batch)
+
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
@@ -770,17 +787,30 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
     return ids
 
 
-def bulk_write(ops, coll, ordered=False):
+def bulk_write(ops, coll, ordered=False, progress=False):
     """Performs a batch of write operations on a collection.
 
     Args:
         ops: a list of pymongo operations
         coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
+        progress (False): whether to render a progress bar (True/False), use
+            the default value ``fiftyone.config.show_progress_bars`` (None), or
+            a progress callback function to invoke instead
     """
+    batcher = fou.get_default_batcher(ops, progress=progress)
+
     try:
-        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
-            coll.bulk_write(list(ops_batch), ordered=ordered)
+        with batcher:
+            for batch in batcher:
+                batch = list(batch)
+                coll.bulk_write(batch, ordered=ordered)
+                if batcher.manual_backpressure:
+                    # @todo can we infer content size from bulk_write() above?
+                    # @todo do we need a more accurate measure of size here?
+                    content_size = sum(len(str(b)) for b in batch)
+                    batcher.apply_backpressure(content_size)
+
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe

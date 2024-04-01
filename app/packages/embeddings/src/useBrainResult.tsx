@@ -1,6 +1,6 @@
-import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import { useColorByField } from "./useLabelSelector";
 
 // a react hook that fetches a list of brain results
@@ -16,10 +16,10 @@ export function useBrainResultsSelector() {
       setColorByField(null);
     },
     value: selected,
-    toKey: (item) => item.key,
     useSearch: (search) => ({
-      values: getBrainKeysFromDataset(dataset)
-        .filter((item) => item.toLowerCase().includes(search.toLowerCase())),
+      values: getBrainKeysFromDataset(dataset).filter((item) =>
+        item.toLowerCase().includes(search.toLowerCase())
+      ),
     }),
   };
 
@@ -32,12 +32,10 @@ export function useBrainResultsSelector() {
 }
 
 export function getBrainKeysFromDataset(dataset) {
-  return dataset.brainMethods
-    .filter(isVisualizationConfig)
-    .map((item) => {
-      return item.key;
-    })
-  }
+  return dataset.brainMethods.filter(isVisualizationConfig).map((item) => {
+    return item.key;
+  });
+}
 
 function countValidBrainMethods(dataset) {
   const methods = dataset?.brainMethods || [];

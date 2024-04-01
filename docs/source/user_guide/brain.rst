@@ -119,16 +119,34 @@ methods are:
 
 -   **umap** (*default*): Uniform Manifold Approximation and Projection
     (`UMAP <https://github.com/lmcinnes/umap>`_)
--   **t-sne**: t-distributed Stochastic Neighbor Embedding
+-   **tsne**: t-distributed Stochastic Neighbor Embedding
     (`t-SNE <https://lvdmaaten.github.io/tsne>`_)
 -   **pca**: Principal Component Analysis
     (`PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_)
+-   **manual**: provide a manually computed low-dimensional representation
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+
+    results = fob.compute_visualization(
+        dataset,
+        method="umap",  # "umap", "tsne", "pca", etc
+        brain_key="...",
+        ...
+    )
 
 .. note::
 
     When you use the default `UMAP <https://github.com/lmcinnes/umap>`_ method
     for the first time, you will be prompted to install the
     `umap-learn <https://github.com/lmcinnes/umap>`_ package.
+
+.. note::
+
+    Refer to :ref:`this section <brain-visualization-api>` for more information
+    about creating visualization runs.
 
 Applications
 ------------
@@ -273,6 +291,79 @@ As you can see, the coloring of the scatterpoints allows you to discover
 natural clusters of objects, such as visually similar carrots or kites in the
 air.
 
+.. _brain-visualization-api:
+
+Visualization API
+-----------------
+
+This section describes how to setup, create, and manage visualizations in
+detail.
+
+Changing your visualization method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use a specific dimensionality reduction method for a particular
+visualization run by passing the `method` parameter to
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`:
+
+.. code:: python
+    :linenos:
+
+    index = fob.compute_visualization(..., method="<method>", ...)
+
+Alternatively, you can change your default dimensionality reduction method for
+an entire session by setting the `FIFTYONE_BRAIN_DEFAULT_VISUALIZATION_METHOD`
+environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_DEFAULT_VISUALIZATION_METHOD=<method>
+
+Finally, you can permanently change your default dimensionality reduction
+method by updating the `default_visualization_method` key of your
+:ref:`brain config <brain-config>` at `~/.fiftyone/brain_config.json`:
+
+.. code-block:: text
+
+    {
+        "default_visualization_method": "<method>",
+        "visualization_methods": {
+            "<method>": {...},
+            ...
+        }
+    }
+
+Configuring your visualization method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dimensionality reduction methods may be configured in a variety of
+method-specific ways, which you can see by inspecting the parameters of a
+method's associated |VisualizationConfig| class.
+
+The relevant classes for the builtin dimensionality reduction methods are:
+
+-   **umap**: :class:`fiftyone.brain.visualization.UMAPVisualizationConfig`
+-   **tsne**: :class:`fiftyone.brain.visualization.TSNEVisualizationConfig`
+-   **pca**: :class:`fiftyone.brain.visualization.PCAVisualizationConfig`
+-   **manual**: :class:`fiftyone.brain.visualization.ManualVisualizationConfig`
+
+You can configure a dimensionality reduction method's parameters for a specific
+run by simply passing supported config parameters as keyword arguments each
+time you call
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`:
+
+.. code:: python
+    :linenos:
+
+    index = fob.compute_visualization(
+        ...
+        method="umap",
+        min_dist=0.2,
+    )
+
+Alternatively, you can more permanently configure your dimensionality reduction
+method(s) via your :ref:`brain config <brain-config>`.
+
 .. _brain-similarity:
 
 Similarity
@@ -327,9 +418,23 @@ another supported backend:
 -   **sklearn** (*default*): a `scikit-learn <https://scikit-learn.org>`_
     backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
+-   **redis**: a :ref:`Redis backend <redis-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+
+    results = fob.compute_similarity(
+        dataset,
+        backend="sklearn",  # "sklearn", "qdrant", "redis", etc
+        brain_key="...",
+        ...
+    )
 
 .. note::
 
@@ -714,7 +819,9 @@ The relevant classes for the builtin similarity backends are:
 
 -   **sklearn**: :class:`fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig`
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
+-   **redis**: :class:`fiftyone.brain.internal.core.redis.RedisSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
@@ -1721,11 +1828,32 @@ and the CLI:
                 "qdrant": {
                     "config_cls": "fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig"
                 },
+                "redis": {
+                    "config_cls": "fiftyone.brain.internal.core.redis.RedisSimilarityConfig"
+                },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
                 },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
+                },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
+                }
+            },
+            "default_visualization_method": "umap",
+            "visualization_methods": {
+                "umap": {
+                    "config_cls": "fiftyone.brain.visualization.UMAPVisualizationConfig"
+                },
+                "tsne": {
+                    "config_cls": "fiftyone.brain.visualization.TSNEVisualizationConfig"
+                },
+                "pca": {
+                    "config_cls": "fiftyone.brain.visualization.PCAVisualizationConfig"
+                },
+                "manual": {
+                    "config_cls": "fiftyone.brain.visualization.ManualVisualizationConfig"
                 }
             }
         }
@@ -1751,11 +1879,32 @@ and the CLI:
                 "qdrant": {
                     "config_cls": "fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig"
                 },
+                "redis": {
+                    "config_cls": "fiftyone.brain.internal.core.redis.RedisSimilarityConfig"
+                },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
                 },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
+                },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
+                }
+            },
+            "default_visualization_method": "umap",
+            "visualization_methods": {
+                "umap": {
+                    "config_cls": "fiftyone.brain.visualization.UMAPVisualizationConfig"
+                },
+                "tsne": {
+                    "config_cls": "fiftyone.brain.visualization.TSNEVisualizationConfig"
+                },
+                "pca": {
+                    "config_cls": "fiftyone.brain.visualization.PCAVisualizationConfig"
+                },
+                "manual": {
+                    "config_cls": "fiftyone.brain.visualization.ManualVisualizationConfig"
                 }
             }
         }
@@ -1806,7 +1955,7 @@ config settings:
     }
 
 When `fiftyone.brain` is imported, any options from your JSON config are merged
-into the default config, as per the order of precendence described above.
+into the default config, as per the order of precedence described above.
 
 .. note::
 
@@ -1820,25 +1969,75 @@ Brain config settings may be customized on a per-session basis by setting the
 `FIFTYONE_BRAIN_XXX` environment variable(s) for the desired config settings.
 
 The `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment variable allows you
-to configure your default similarity backend, and
-`FIFTYONE_BRAIN_SIMILARITY_BACKENDS` can be set to a `list,of,backends` that
-you want to expose in your session, which may exclude native backends and/or
-declare additional custom backends whose parameters are defined via additional
-config modifications of any kind.
+to configure your default similarity backend:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND=qdrant
+
+**Similarity backends**
 
 You can declare parameters for specific similarity backends by setting
 environment variables of the form
 `FIFTYONE_BRAIN_SIMILARITY_<BACKEND>_<PARAMETER>`. Any settings that you
 declare in this way will be passed as keyword arguments to methods like
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` whenever the
-corresponding backend is in use.
-
-For example, you can configure the URL of your
+corresponding backend is in use. For example, you can configure the URL of your
 :ref:`Qdrant server <qdrant-integration>` as follows:
 
 .. code-block:: shell
 
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL=http://localhost:8080
+
+The `FIFTYONE_BRAIN_SIMILARITY_BACKENDS` environment variable can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=custom,sklearn,qdrant
+
+When declaring new backends, you can include `*` to append new backend(s)
+without omitting or explicitly enumerating the builtin backends. For example,
+you can add a `custom` similarity backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=*,custom
+    export FIFTYONE_BRAIN_SIMILARITY_CUSTOM_CONFIG_CLS=your.custom.SimilarityConfig
+
+**Visualization methods**
+
+You can declare parameters for specific visualization methods by setting
+environment variables of the form
+`FIFTYONE_BRAIN_VISUALIZATION_<METHOD>_<PARAMETER>`. Any settings that you
+declare in this way will be passed as keyword arguments to methods like
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` whenever
+the corresponding method is in use. For example, you can suppress logging
+messages for the UMAP method as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_VISUALIZATION_UMAP_VERBOSE=false
+
+The `FIFTYONE_BRAIN_VISUALIZATION_METHODS` environment variable can be set to a
+`list,of,methods` that you want to expose in your session, which may exclude
+native methods and/or declare additional custom methods whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_VISUALIZATION_METHODS=custom,umap,tsne
+
+When declaring new methods, you can include `*` to append new method(s)
+without omitting or explicitly enumerating the builtin methods. For example,
+you can add a `custom` visualization method as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_VISUALIZATION_METHODS=*,custom
+    export FIFTYONE_BRAIN_VISUALIZATION_CUSTOM_CONFIG_CLS=your.custom.VisualzationConfig
 
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1855,4 +2054,5 @@ your current session.
 
     import fiftyone.brain as fob
 
-    fob.brain_config.default_similarity_backend = "<backend>"
+    fob.brain_config.default_similarity_backend = "qdrant"
+    fob.brain_config.default_visualization_method = "tsne"

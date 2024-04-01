@@ -1,25 +1,28 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import {
   BaseState,
   FrameState,
+  ImaVidState,
   ImageState,
-  PcdState,
+  ThreeDState,
   StateUpdate,
   VideoState,
 } from "../state";
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
-import * as pcd from "./pcd";
+import * as pcd from "./three-d";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
+import * as imavid from "./imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void
+  dispatchEvent: (eventType: string, details?: any) => void,
+  batchUpdate?: (cb: () => unknown) => void | undefined
 ) => common.LookerElement<State>;
 
 export const getFrameElements: GetElements<FrameState> = (
@@ -201,16 +204,17 @@ export const getVideoElements: GetElements<VideoState> = (
   );
 };
 
-export const getPcdElements: GetElements<PcdState> = (
+export const getImaVidElements: GetElements<ImaVidState> = (
   config,
   update,
-  dispatchEvent
+  dispatchEvent,
+  batchUpdate
 ) => {
   const elements = {
-    node: common.LookerElement,
+    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
     children: [
       {
-        node: pcd.PcdElement,
+        node: imavid.ImaVidElement,
       },
       {
         node: common.CanvasElement,
@@ -223,9 +227,16 @@ export const getPcdElements: GetElements<PcdState> = (
         node: common.ThumbnailSelectorElement,
       },
       {
+        node: imavid.LoaderBar,
+      },
+      {
         node: common.ControlsElement,
         children: [
-          { node: frame.FrameNumberElement },
+          { node: imavid.SeekBarElement },
+          { node: imavid.SeekBarThumbElement },
+          { node: imavid.PlayButtonElement },
+          { node: imavid.FrameCountElement },
+          imavid.IMAVID_PLAYBACK_RATE,
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
@@ -235,6 +246,50 @@ export const getPcdElements: GetElements<PcdState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.LoopVideoOptionElement },
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(
+    config,
+    elements,
+    update,
+    dispatchEvent,
+    batchUpdate
+  );
+};
+
+export const get3dElements: GetElements<ThreeDState> = (
+  config,
+  update,
+  dispatchEvent
+) => {
+  const elements = {
+    node: common.LookerElement,
+    children: [
+      {
+        node: pcd.ThreeDElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
       },
       {
         node: common.OptionsPanelElement,
@@ -249,7 +304,7 @@ export const getPcdElements: GetElements<PcdState> = (
     ],
   };
 
-  return createElementsTree<PcdState, common.LookerElement<PcdState>>(
+  return createElementsTree<ThreeDState, common.LookerElement<ThreeDState>>(
     config,
     elements,
     update,

@@ -1,5 +1,5 @@
 import { AtomEffect } from "recoil";
-import { dataset } from "./atoms";
+import { dataset } from "./dataset";
 
 // recoil effect that syncs state with local storage
 export const getBrowserStorageEffectForKey =

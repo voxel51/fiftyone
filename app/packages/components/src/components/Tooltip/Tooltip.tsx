@@ -2,14 +2,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import * as React from "react";
 import { Arrow, useHover, useLayer } from "react-laag";
 import { PlacementType } from "react-laag/dist/PlacementType";
-
 import { useTheme } from "../..";
 import style from "./Tooltip.module.css";
 
 const Tooltip: React.FC<{
-  children: React.ReactElement;
+  children: React.ReactNode;
   placement: PlacementType;
-  text: string;
+  text: string | React.ReactNode;
 }> = ({ children, text, placement = "top-center" }) => {
   const theme = useTheme();
   const [isOver, hoverProps] = useHover({ delayEnter: 100, delayLeave: 100 });
@@ -48,6 +47,7 @@ const Tooltip: React.FC<{
               transition={{ duration: 0.1 }}
               data-cy={`tooltip-${text}`}
               {...layerProps}
+              {...hoverProps}
             >
               {text}
               <Arrow

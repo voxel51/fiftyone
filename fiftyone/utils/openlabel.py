@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -990,7 +990,7 @@ class OpenLABELStreams(OpenLABELGroup):
         for a given media file identifier.
 
         Args:
-            uri: the unique media file identifer for which to get all stream
+            uri: the unique media file identifier for which to get all stream
                 infos
 
         Returns:
@@ -2028,7 +2028,7 @@ def _remove_ext(p):
 
 def _merge_frame_labels(sample_labels, frame_labels, seg_type):
     # Add frame labels to sample labels, if there is a key collision, merge the
-    # labels if they are a list field otherewise skip
+    # labels if they are a list field otherwise skip
     for labels in frame_labels.values():
         for name, value in labels.items():
             if name == "detections":

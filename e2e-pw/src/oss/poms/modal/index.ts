@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
+import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
@@ -12,6 +13,7 @@ export class ModalPom {
 
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
+  readonly tagger: ModalTaggerPom;
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
@@ -28,6 +30,7 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.sidebar = new ModalSidebarPom(page);
+    this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
   }
@@ -42,6 +45,10 @@ export class ModalPom {
     return this.locator.getByTestId("looker3d");
   }
 
+  get looker3dActionBar() {
+    return this.locator.getByTestId("looker3d-action-bar");
+  }
+
   get carousel() {
     return this.locator.getByTestId("group-carousel");
   }
@@ -54,6 +61,12 @@ export class ModalPom {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",
       () => true
+    );
+  }
+
+  getSampleNavigation(direction: "forward" | "backward") {
+    return this.locator.getByTestId(
+      `nav-${direction === "forward" ? "right" : "left"}-button`
     );
   }
 
@@ -128,6 +141,10 @@ export class ModalPom {
     await this.page.mouse.up();
   }
 
+  async toggleTagSampleOrLabels() {
+    await this.locator.getByTestId("action-tag-sample-labels").click();
+  }
+
   async waitForCarouselToLoad() {
     await this.groupCarousel
       .getByTestId("looker")
@@ -140,9 +157,7 @@ export class ModalPom {
     slice: string,
     allowErrorInfo = false
   ) {
-    const currentSlice = await this.sidebar.getSidebarEntryText(
-      `sidebar-entry-${groupField}`
-    );
+    const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
     await looker.click({ position: { x: 10, y: 60 } });
@@ -178,6 +193,17 @@ export class ModalPom {
     return this.looker3d.click();
   }
 
+  async toggleLooker3dSlice(slice: string) {
+    await this.looker3dActionBar.getByTestId("looker3d-select-slices").click();
+
+    await this.looker3dActionBar
+      .getByTestId("looker3d-slice-checkboxes")
+      .getByTestId(`checkbox-${slice}`)
+      .click();
+
+    await this.clickOnLooker3d();
+  }
+
   async clickOnLooker() {
     return this.looker.click();
   }
@@ -197,7 +223,7 @@ export class ModalPom {
         return (
           document
             .querySelector(`[data-cy=modal-looker-container] canvas`)
-            ?.getAttribute("sample-loaded") === "true"
+            ?.getAttribute("canvas-loaded") === "true"
         );
       },
       allowErrorInfo,
@@ -227,5 +253,10 @@ class ModalAsserter {
       .getByTestId("looker")
       .count();
     expect(actualLookerCount).toBe(expectedCount);
+  }
+
+  async verifySampleNavigation(direction: "forward" | "backward") {
+    const navigation = this.modalPom.getSampleNavigation(direction);
+    await expect(navigation).toBeVisible();
   }
 }

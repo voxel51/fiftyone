@@ -1,7 +1,8 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { getCls } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
 import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
@@ -14,7 +15,6 @@ export enum CONTAINS {
 
 export interface BaseLabel {
   id: string;
-  _cls: string;
   frame_number?: number;
   tags: string[];
   index?: number;
@@ -57,7 +57,7 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
-export interface Overlay<State extends BaseState> {
+export interface Overlay<State extends Partial<BaseState>> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
@@ -99,6 +99,7 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({
+    config,
     options: {
       coloring,
       customizeColorSetting,
@@ -113,6 +114,7 @@ export abstract class CoordinateOverlay<
       isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
+      embeddedDocType: getCls(this.field, config.fieldSchema),
     });
   }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
@@ -27,18 +27,36 @@ export abstract class BaseElement<
 > {
   children: BaseElement<State>[] = [];
   element: Element;
+
+  /**
+   * Update state.
+   * This triggers a re-render of this node as well as all its children.
+   */
+  update: StateUpdate<State>;
+
+  /**
+   * All calls to `update` are batched together and applied after the callback is executed.
+   * This minimizes the number of re-renders.
+   * Note: Updates are merged in the order they are called.
+   */
+  batchUpdate: (cb: () => unknown) => void;
+
   protected readonly events: LoadedEvents = {};
 
   boot(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
+    dispatchEvent: (eventType: string, details?: any) => void,
+    batchUpdate?: (cb: () => unknown) => void
   ) {
     if (!this.isShown(config)) {
       return;
     }
 
-    this.element = this.createHTMLElement(update, dispatchEvent, config);
+    this.update = update;
+    this.batchUpdate = batchUpdate;
+
+    this.element = this.createHTMLElement(dispatchEvent, config);
 
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
@@ -73,8 +91,7 @@ export abstract class BaseElement<
   }
 
   abstract createHTMLElement(
-    update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void,
+    dispatchEvent: DispatchEvent,
     config: Readonly<State["config"]>
   ): Element | null;
 

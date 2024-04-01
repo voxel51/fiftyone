@@ -1,7 +1,7 @@
 """
 FiftyOne Server events.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -58,7 +58,7 @@ _app_count = 0
 async def dispatch_event(
     subscription: t.Optional[str], event: EventType
 ) -> None:
-    """Dispatch an event to all listeners registed for the server process
+    """Dispatch an event to all listeners registered for the server process
 
     Args:
         subscription: the calling subscription id

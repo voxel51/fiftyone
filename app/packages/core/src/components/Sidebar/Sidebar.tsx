@@ -382,7 +382,7 @@ const SidebarColumn = styled.div`
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 0.25rem 0 1rem;
+  margin: 0 1rem;
 
   & > div {
     position: absolute;
@@ -402,7 +402,7 @@ type RenderEntry = (
     key: string,
     cb: () => void
   ) => void
-) => { children: React.ReactNode; disabled: boolean };
+) => { children: React.ReactNode; disabled?: boolean };
 
 const InteractiveSidebar = ({
   render,

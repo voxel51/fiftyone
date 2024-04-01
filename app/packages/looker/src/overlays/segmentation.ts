@@ -1,10 +1,10 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { getColor } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import { BaseState, Coordinates, MaskTargets, Optional } from "../state";
+import { BaseState, Coordinates, MaskTargets } from "../state";
 import {
   BaseLabel,
   CONTAINS,
@@ -147,7 +147,7 @@ export default class SegmentationOverlay<State extends BaseState>
     });
   }
 
-  getPointInfo(state: Readonly<State>): Optional<PointInfo<SegmentationInfo>> {
+  getPointInfo(state: Readonly<State>): Partial<PointInfo<SegmentationInfo>> {
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
     if (maskTargets) {

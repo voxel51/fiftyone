@@ -9,6 +9,7 @@ import {
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
+import { resolveURL } from "../utils";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
@@ -18,9 +19,14 @@ const onSetView: RegisteredSetter =
     if (view instanceof DefaultValue) {
       view = [];
     }
+    const dataset = get(datasetName);
+    if (!dataset) {
+      throw new Error("no dataset");
+    }
+
     const variables = {
       view,
-      datasetName: get(datasetName) as string,
+      datasetName: dataset,
       subscription: get(stateSubscription),
       form: get(viewStateForm_INTERNAL) || {},
     };
@@ -33,12 +39,20 @@ const onSetView: RegisteredSetter =
           rollbackViewBar();
           return;
         }
+
         sessionRef.current.selectedLabels = [];
         sessionRef.current.selectedSamples = new Set();
         sessionRef.current.fieldVisibilityStage = undefined;
-        router.history.push(`${router.get().pathname}`, {
-          view,
-        });
+        router.history.push(
+          resolveURL({
+            currentPathname: router.history.location.pathname,
+            currentSearch: router.history.location.search,
+            nextDataset: dataset,
+          }),
+          {
+            view,
+          }
+        );
       },
     });
   };

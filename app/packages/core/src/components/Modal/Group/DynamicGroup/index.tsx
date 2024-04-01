@@ -1,48 +1,43 @@
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useMemo } from "react";
-import { loadQuery, useRelayEnvironment } from "react-relay";
-import { useRecoilValue } from "recoil";
+import React, { useEffect } from "react";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
+import { useDynamicGroupSamples } from "./useDynamicGroupSamples";
 
 export const DynamicGroup = () => {
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
-  const environment = useRelayEnvironment();
-  const dataset = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.dynamicGroupViewQuery);
-  const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
-  const slice = useRecoilValue(fos.groupSlice);
+  const { queryRef } = useDynamicGroupSamples();
 
-  const loadDynamicGroupSamples = useCallback(
-    (cursor?: number) => {
-      if (!dataset) {
-        throw new Error("No dataset");
-      }
+  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
+    fos.dynamicGroupsViewMode
+  );
+  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
 
-      return loadQuery<foq.paginateSamplesQuery>(
-        environment,
-        foq.paginateSamples,
-        {
-          after: cursor ? String(cursor) : null,
-          dataset,
-          filter: {
-            group: {
-              slice,
-            },
-          },
-          view,
-        }
-      );
-    },
-    [dataset, environment, slice, view]
+  const setDynamicGroupCurrentElementIndex = useSetRecoilState(
+    fos.dynamicGroupCurrentElementIndex
+  );
+  const imaVidIndex = useRecoilValue(
+    fos.imaVidLookerState("currentFrameNumber")
   );
 
-  const queryRef = useMemo(
-    () => loadDynamicGroupSamples(dynamicGroupIndex),
-    [loadDynamicGroupSamples, dynamicGroupIndex]
-  );
+  useEffect(() => {
+    // checking for integer because it is initialized to a float random value
+    // in useInitializeImaVidSubscriptions
+    if (shouldRenderImaVid && Number.isInteger(imaVidIndex)) {
+      setDynamicGroupCurrentElementIndex(imaVidIndex);
+    }
+  }, [shouldRenderImaVid, imaVidIndex, setDynamicGroupCurrentElementIndex]);
+
+  useEffect(() => {
+    // if dynamic group view mode is video but dynamic group is not ordered,
+    // we want to set view mode back to pagination (default)
+    if (dynamicGroupsViewMode === "video" && !isOrderedDynamicGroup) {
+      setDynamicGroupsViewMode("pagination");
+    }
+  }, [dynamicGroupsViewMode, isOrderedDynamicGroup]);
 
   return (
     <>

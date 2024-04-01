@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { BaseState, StateUpdate } from "../state";
@@ -50,10 +50,11 @@ export function createElementsTree<
   config: Readonly<State["config"]>,
   root: ElementsTemplate<State, Element>,
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void
+  dispatchEvent: (eventType: string, details?: any) => void,
+  batchUpdate?: (cb: () => unknown) => void
 ): Element {
   const element = new root.node();
-  element.boot(config, update, dispatchEvent);
+  element.boot(config, update, dispatchEvent, batchUpdate);
 
   if (!element.isShown(config)) {
     return element;
@@ -62,7 +63,13 @@ export function createElementsTree<
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree<State>(config, child, update, dispatchEvent)
+        createElementsTree<State>(
+          config,
+          child,
+          update,
+          dispatchEvent,
+          batchUpdate
+        )
       )
     : children;
 
@@ -76,7 +83,7 @@ const stringifyNumber = function (
   pad: boolean = false
 ): string {
   let str = "";
-  if (pad && number <= 10) {
+  if (pad && number < 10) {
     str += "0" + number;
   } else if (number === 0) {
     str = "0";

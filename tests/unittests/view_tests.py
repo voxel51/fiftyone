@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3506,6 +3506,13 @@ class ViewStageTests(unittest.TestCase):
             set(view1.values("id") + view2.values("id")),
         )
 
+        # Test query syntax
+
+        view = dataset.match(
+            {"frames.test_clfs.classifications.label": "friend"}
+        )
+        self.assertEqual(len(view), 1)
+
     def test_match_tags(self):
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -4219,8 +4226,8 @@ class ViewStageTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertNotIn("field", dataset2.list_indexes())
-        self.assertNotIn("foo_1_field_1", dataset2.list_indexes())
+        self.assertIn("field", dataset2.list_indexes())
+        self.assertIn("foo_1_field_1", dataset2.list_indexes())
 
         view3 = dataset2.sort_by(F("field"))
 
@@ -4257,23 +4264,7 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(str(field), str(deepcopy(field)))
 
     def test_make_optimized_select_view_group_dataset(self):
-        dataset = fo.Dataset()
-        dataset.add_group_field("group", default="center")
-
-        groups = ["left", "center", "right"]
-        filepaths = [
-            [str(i) + str(j) + ".jpg" for i in groups] for j in range(3)
-        ]
-        filepaths = [dict(zip(groups, fps)) for fps in zip(*filepaths)]
-        group = fo.Group()
-        samples = []
-        for fps in filepaths:
-            for name, filepath in fps.items():
-                samples.append(
-                    fo.Sample(filepath=filepath, group=group.element(name))
-                )
-
-        sample_ids = dataset.add_samples(samples)
+        dataset, sample_ids = self._make_group_dataset()
 
         optimized_view = fov.make_optimized_select_view(
             dataset, sample_ids[0], flatten=True
@@ -4283,6 +4274,22 @@ class ViewStageTests(unittest.TestCase):
             fosg.Select(sample_ids[0]),
         ]
         self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def test_make_optimized_select_view_select_group_slices_before_sample_selection(
+        self,
+    ):
+        dataset, sample_ids = self._make_group_dataset()
+        view = dataset.select_group_slices(["left", "right"])
+
+        optimized_view = fov.make_optimized_select_view(
+            view,
+            sample_ids[1],
+        )
+
+        first_stage, second_stage = optimized_view._stages
+        # the order matters
+        self.assertEqual(type(first_stage), fosg.SelectGroupSlices)
+        self.assertEqual(type(second_stage), fosg.Select)
 
     def test_selected_samples_in_group_slices(self):
         (dataset, selected_ids) = self._make_group_by_group_dataset()
@@ -4306,6 +4313,22 @@ class ViewStageTests(unittest.TestCase):
             dataset, selected_ids[:2], groups=False, flatten=True
         )
         self.assertEqual(len(optimized_view), 2)
+
+    def _make_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="left")
+        groups = ["left", "right"]
+        filepaths = [str(i) + ".jpg" for i in groups]
+
+        filepaths = [dict(zip(groups, fps)) for fps in zip(*filepaths)]
+        group = fo.Group()
+        samples = []
+        for fps in filepaths:
+            for name, filepath in fps.items():
+                samples.append(
+                    fo.Sample(filepath=filepath, group=group.element(name))
+                )
+        return dataset, dataset.add_samples(samples)
 
     def _make_group_by_group_dataset(self):
         dataset = fo.Dataset()

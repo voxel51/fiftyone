@@ -11,6 +11,17 @@ export type Color =
   | "Orange"
   | "Purple";
 
+export type SaveViewParams = {
+  name: string;
+  description: string;
+  color: Color;
+  id?: number;
+  newColor?: Color;
+  slug?: string;
+};
+
+const defaultColor = "Gray";
+
 export class SavedViewsPom {
   readonly page: Page;
   readonly assert: SavedViewAsserter;
@@ -45,31 +56,33 @@ export class SavedViewsPom {
     return this.savedViewOption(slug).getByTestId("btn-edit-selection");
   }
 
-  async saveViewInputs({ name, description, color, newColor }) {
-    await this.nameInput().type(name);
-    await this.descriptionInput().type(description);
-    await this.colorInput(color).click();
+  async saveViewInputs({ name, description, color, newColor }: SaveViewParams) {
+    await this.nameInput().fill(name, { timeout: 2000 });
+    await this.descriptionInput().fill(description, { timeout: 2000 });
+    await this.colorInput(color).click({ timeout: 2000 });
     await this.colorOption(newColor).click();
   }
 
-  async saveView(view) {
+  async waitUntilModalHidden() {
+    await this.dialogLocator.waitFor({ state: "hidden" });
+  }
+
+  async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
     await this.saveButton().click();
-  }
-
-  async saveView2() {
-    await this.saveButton().click();
+    await this.waitUntilModalHidden();
   }
 
   async deleteView(name: string) {
     await this.savedViewOption(name).hover();
     await this.optionEdit(name).click();
-    await this.clickDeleteBtn();
+    await this.deleteViewClick();
   }
 
   async deleteViewClick() {
     await this.clickDeleteBtn();
+    await this.waitUntilModalHidden();
   }
 
   async editView(
@@ -79,29 +92,34 @@ export class SavedViewsPom {
     newColor: Color
   ) {
     await this.nameInput().clear();
-    await this.nameInput().type(name);
+    await this.nameInput().pressSequentially(name);
     await this.descriptionInput().clear();
-    await this.descriptionInput().type(description);
-    await this.colorInput(color).click();
+    await this.descriptionInput().pressSequentially(description);
+    // need to force click otherwise intercepted by material-ui
+    // eslint-disable-next-line playwright/no-force-option
+    await this.colorInputContainer().click({ force: true });
     await this.colorOption(newColor).click();
 
     await this.saveButton().click();
+    await this.waitUntilModalHidden();
   }
 
-  async clickColor(color: Color = "Gray") {
+  async clickColor(color: Color = defaultColor) {
     await this.colorInput(color).click();
   }
 
   async clearView() {
-    await this.clearViewBtn().click();
+    if (await this.canClearView()) {
+      const urlBeforeClear = this.page.url();
+      await this.clearViewBtn().click();
+      await this.page.waitForFunction((urlBeforeClear) => {
+        return window.location.href !== urlBeforeClear;
+      }, urlBeforeClear);
+    }
   }
 
   async clickCloseModal() {
     await this.closeModalBtn().click();
-  }
-
-  selectorContainer() {
-    return this.locator.getByTestId("saved-views-selection-container");
   }
 
   selector() {
@@ -109,9 +127,7 @@ export class SavedViewsPom {
   }
 
   clearViewBtn() {
-    return this.selector()
-      .getByTestId("saved-views-btn-selection-clear")
-      .first();
+    return this.locator.getByTestId("saved-views-btn-selection-clear").first();
   }
 
   closeModalBtn() {
@@ -119,7 +135,7 @@ export class SavedViewsPom {
   }
 
   saveNewViewBtn() {
-    return this.locator.getByTestId("saved-views-create-new");
+    return this.page.getByTestId("saved-views-create-new");
   }
 
   canClearView() {
@@ -127,12 +143,12 @@ export class SavedViewsPom {
   }
 
   async openSelect() {
-    await this.selector().click();
+    await this.selector().click({ timeout: 2000 });
   }
 
   async openCreateModal() {
     await this.openSelect();
-    await this.saveNewViewBtn().click();
+    await this.saveNewViewBtn().click({ timeout: 2000 });
   }
 
   async savedViewCount(name: string) {
@@ -140,7 +156,9 @@ export class SavedViewsPom {
   }
 
   savedViewOption(slug: string) {
-    return this.locator.getByTestId(`saved-views-${slug}-selection-option`);
+    return this.page
+      .getByTestId("selection-view")
+      .getByTestId(`saved-views-${slug}-selection-option`);
   }
 
   async savedViewOptionCount(slug: string) {
@@ -155,12 +173,21 @@ export class SavedViewsPom {
     return this.dialogLocator.getByTestId("saved-views-input-description");
   }
 
-  colorInput(c: Color = "Gray") {
-    return this.dialogLocator.getByRole("combobox").getByText(c);
+  colorInputContainer() {
+    return this.dialogLocator.getByTestId(
+      "saved-views-input-color-selection-selection"
+    );
+  }
+
+  colorInput(c: Color = defaultColor) {
+    return this.colorInputContainer().getByText(c);
   }
 
   colorOption(c: Color = "Purple") {
-    return this.dialogLocator.getByRole("option", { name: c });
+    return this.colorListContainer().getByRole("option", {
+      name: c,
+      exact: true,
+    });
   }
 
   saveButton() {
@@ -175,7 +202,9 @@ export class SavedViewsPom {
   }
 
   colorListContainer() {
-    return this.dialogLocator.getByRole("listbox");
+    return this.page
+      .getByTestId("selection-view")
+      .filter({ hasText: defaultColor });
   }
 
   nameError() {
@@ -183,7 +212,7 @@ export class SavedViewsPom {
   }
 
   searchInput() {
-    return this.locator
+    return this.page
       .getByTestId("saved-views-selection-search-container")
       .getByTestId("saved-views-selection-search-input");
   }
@@ -193,7 +222,8 @@ export class SavedViewsPom {
   }
 
   async clickDeleteBtn() {
-    return this.deleteBtn().click();
+    await this.deleteBtn().click();
+    await this.waitUntilModalHidden();
   }
 }
 
@@ -212,7 +242,7 @@ class SavedViewAsserter {
     await expect(desc).toBeEmpty();
   }
 
-  async verifyDefaultColor(color: Color = "Gray") {
+  async verifyDefaultColor(color: Color = defaultColor) {
     await expect(this.svp.colorInput(color)).toBeVisible();
   }
 
@@ -235,13 +265,14 @@ class SavedViewAsserter {
   async verifyAllInputClear() {
     await expect(this.svp.nameInput()).toBeEmpty();
     await expect(this.svp.descriptionInput()).toBeEmpty();
-    await expect(this.svp.colorInput("Gray")).toBeVisible();
+    await expect(this.svp.colorInput(defaultColor)).toBeVisible();
   }
 
   async verifyCancelBtnClearsAll() {
     const cancelBtn = this.svp.cancelButton();
     await cancelBtn.click();
 
+    await this.svp.openCreateModal();
     await this.verifyAllInputClear();
   }
 
@@ -263,7 +294,7 @@ class SavedViewAsserter {
     await expect(colorListBox).toBeVisible();
     // verify default
     await expect(
-      colorListBox.getByRole("option", { name: "Gray" })
+      colorListBox.getByRole("option", { name: defaultColor })
     ).toBeInViewport();
 
     colorList.forEach(async (color: string) => {
@@ -307,7 +338,7 @@ class SavedViewAsserter {
     excluded: string[]
   ) {
     await this.svp.searchInput().clear();
-    await this.svp.searchInput().type(term);
+    await this.svp.searchInput().pressSequentially(term);
 
     if (expectedResult.length) {
       await this.svp

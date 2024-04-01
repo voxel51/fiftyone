@@ -1,7 +1,7 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2431,6 +2431,30 @@ class DatasetTests(unittest.TestCase):
             frame.predictions.detections[0].field_copy
 
     @drop_datasets
+    def test_clear_cache(self):
+        samples = [fo.Sample(filepath=f"{i}.mp4") for i in range(10)]
+        sample1 = samples[0]
+        sample1.frames[1] = fo.Frame()
+        frame1 = sample1.frames[1]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        also_sample1 = dataset.first()
+        also_frame1 = also_sample1.frames[1]
+
+        self.assertTrue(also_sample1 is sample1)
+        self.assertTrue(also_frame1 is frame1)
+
+        dataset.clear_cache()
+
+        not_sample1 = dataset.first()
+        not_frame1 = not_sample1.frames[1]
+
+        self.assertFalse(not_sample1 is sample1)
+        self.assertFalse(not_frame1 is frame1)
+
+    @drop_datasets
     def test_classes(self):
         dataset = fo.Dataset()
 
@@ -3268,6 +3292,171 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(
             dataset5.distinct("frames.dataset_id"), [dataset_id5]
+        )
+
+    @drop_datasets
+    def test_clone_image(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "image"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_video(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        sample.frames[1] = fo.Frame(spam="eggs")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+        dataset.create_index("frames.spam")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertIn("frames.spam", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertIn("frames.spam", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertNotIn("frames.spam", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_group(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group")
+
+        self.assertEqual(dataset.media_type, "group")
+
+        default_indexes = dataset.list_indexes()
+
+        self.assertIn("group.id", default_indexes)
+        self.assertIn("group.name", default_indexes)
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            group=fo.Group().element("slice"),
+            foo="bar",
+        )
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
         )
 
 
@@ -4536,6 +4725,66 @@ class DynamicFieldTests(unittest.TestCase):
         field = schema["ground_truth.info.mixed"]
         self.assertIsInstance(field, fo.ListField)
         self.assertIsInstance(field.field, fo.Field)
+
+    @drop_datasets
+    def test_dynamic_fields_nested_lists(self):
+        dataset = fo.Dataset()
+
+        detection = fo.Detection(list_attr=["one", "two", "three"])
+        detections = fo.Detections(detections=[detection])
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=detections,
+            embedded_field=fo.DynamicEmbeddedDocument(detections=detections),
+        )
+
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "ground_truth.detections.list_attr",
+                "embedded_field.detections",
+                "embedded_field.detections.detections.list_attr",
+            },
+        )
+
+        list_field1 = dynamic_schema["ground_truth.detections.list_attr"]
+        self.assertIsInstance(list_field1, fo.ListField)
+        self.assertIsInstance(list_field1.field, fo.StringField)
+
+        list_field2 = dynamic_schema[
+            "embedded_field.detections.detections.list_attr"
+        ]
+        self.assertIsInstance(list_field2, fo.ListField)
+        self.assertIsInstance(list_field2.field, fo.StringField)
+
+        dataset.add_dynamic_sample_fields()
+
+        new_paths = [
+            "ground_truth.detections.list_attr",
+            "embedded_field.detections",
+            "embedded_field.detections.detections.list_attr",
+        ]
+        schema = dataset.get_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        list_field1 = dataset.get_field("ground_truth.detections.list_attr")
+        self.assertIsInstance(list_field1, fo.ListField)
+        self.assertIsInstance(list_field1.field, fo.StringField)
+
+        list_field2 = dataset.get_field(
+            "embedded_field.detections.detections.list_attr"
+        )
+        self.assertIsInstance(list_field2, fo.ListField)
+        self.assertIsInstance(list_field2.field, fo.StringField)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
 
     @drop_datasets
     def test_dynamic_frame_fields_nested(self):

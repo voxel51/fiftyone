@@ -1,7 +1,7 @@
 """
 Defines the shared state between the FiftyOne App and backend.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -125,7 +125,7 @@ class StateDescription(etas.Serializable):
                 d["spaces"] = self.spaces.to_json()
 
             if isinstance(self.color_scheme, ColorScheme):
-                d["color_scheme"] = self.color_scheme.to_dict(True)
+                d["color_scheme"] = self.color_scheme.to_dict(False)
 
             if self.field_visibility_stage:
                 d["field_visibility_stage"] = self.field_visibility_stage
@@ -161,7 +161,12 @@ class StateDescription(etas.Serializable):
         view_name = d.get("view_name", None)
         if dataset is not None:
             if view_name:
-                view = dataset.load_saved_view(view_name)
+                try:
+                    view = dataset.load_saved_view(view_name)
+                except Exception as e:
+                    dataset.reload()
+                    view = dataset.load_saved_view(view_name)
+
             elif stages:
                 try:
                     view = fov.DatasetView._build(dataset, stages)

@@ -8,6 +8,7 @@ import Button from "./Button";
 import DynamicIO from "./DynamicIO";
 import EmptyState from "./EmptyState";
 import HeaderView from "./HeaderView";
+import { NumberKeyObjectType } from "@fiftyone/utilities";
 
 export default function ListView(props) {
   const { schema, onChange, path, data, errors } = props;
@@ -52,6 +53,8 @@ export default function ListView(props) {
           </Grid>
         )}
         {Object.keys(state).map((id, index) => {
+          const fullPath = `${path}.${index}`;
+          const subPath = id.toString();
           const value = state[id];
           const ItemComponent = collapsible
             ? CollapsibleListItem
@@ -62,15 +65,20 @@ export default function ListView(props) {
               {...props}
               key={`${path}.${id}`}
               id={id}
-              path={id.toString()}
+              path={fullPath}
               index={index}
               data={value}
-              onChange={updateItem}
+              onChange={(path: string, value: unknown) => {
+                const relativePath = subPath + path.replace(fullPath, "");
+                updateItem(relativePath, value);
+              }}
               onDelete={deleteItem}
               errors={errors}
               schema={itemsSchema}
               readOnly={readOnly}
               hideIndexLabel={schema?.view?.hideIndexLabel}
+              parentSchema={schema}
+              relativePath={id}
             />
           );
         })}
@@ -154,27 +162,29 @@ function DeleteButton(props) {
 
 function useListState(initialState: Array<unknown>) {
   let initialNextId = 0;
-  const initialStateById = initialState.reduce((stateById, item) => {
-    stateById[initialNextId++] = item;
-    return stateById;
-  }, {});
 
-  const [state, setState] = useState(initialStateById);
+  const [state, setState] = useState<NumberKeyObjectType>(() => {
+    const initialStateById: NumberKeyObjectType = {};
+    for (const item of initialState) {
+      initialStateById[initialNextId++] = item;
+    }
+    return initialStateById;
+  });
   const [nextId, setNextId] = useState(initialNextId);
 
-  function addItem(item) {
+  function addItem(item: unknown) {
     setState((state) => ({ ...state, [nextId]: item }));
     setNextId((nextId) => nextId + 1);
   }
 
-  function deleteItem(id) {
+  function deleteItem(id: number) {
     setState((state) => {
       const updatedState = { ...state };
       delete updatedState[id];
       return updatedState;
     });
   }
-  function updateItem(path, value) {
+  function updateItem(path: string, value: unknown) {
     setState((state) => {
       const updatedState = { ...state };
       set(updatedState, path, value);

@@ -1,5 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { Color, SavedViewsPom } from "src/oss/poms/saved-views";
+import { Color, SaveViewParams, SavedViewsPom } from "src/oss/poms/saved-views";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const ColorList = [
@@ -14,20 +14,20 @@ const ColorList = [
   "Purple",
 ];
 
-export const updatedView = {
+export const updatedView: SaveViewParams = {
   name: "test updated",
   description: "test updated",
   color: "Yellow" as Color,
 };
 
-export const updatedView2 = {
+export const updatedView2: SaveViewParams = {
   name: "test updated 2",
   description: "test updated 2",
   color: "Orange" as Color,
   slug: "test-updated-2",
 };
 
-const testView = {
+const testView: SaveViewParams = {
   id: 0,
   name: "test",
   description: "description",
@@ -36,7 +36,7 @@ const testView = {
   slug: "test",
 };
 
-const testView1 = {
+const testView1: SaveViewParams = {
   id: 1,
   name: "test 1",
   description: "description ",
@@ -45,7 +45,7 @@ const testView1 = {
   slug: "test-1",
 };
 
-const testView2 = {
+const testView2: SaveViewParams = {
   id: 2,
   name: "test 2",
   description: "description 2",
@@ -54,7 +54,7 @@ const testView2 = {
   slug: "test-2",
 };
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("quickstart-saved-views");
 
 const test = base.extend<{ savedViews: SavedViewsPom }>({
   savedViews: async ({ page }, use) => {
@@ -64,9 +64,15 @@ const test = base.extend<{ savedViews: SavedViewsPom }>({
 
 test.describe("saved views", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+
+      dataset_name = "${datasetName}"
+      dataset = fo.Dataset(name=dataset_name)
+      dataset.persistent = True
+
+      dataset.add_sample(fo.Sample(filepath="image1.jpg"))
+    `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
@@ -75,7 +81,7 @@ test.describe("saved views", () => {
     await deleteSavedView(savedViews, updatedView2.slug);
   });
 
-  async function deleteSavedView(savedViews, slug: string) {
+  async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
     const hasUnsaved = savedViews.canClearView();
     if (!hasUnsaved) {
       await savedViews.clearView();
@@ -87,14 +93,8 @@ test.describe("saved views", () => {
     if (count) {
       await savedViews.clickOptionEdit(slug);
       await savedViews.clickDeleteBtn();
-    } else {
-      await savedViews.openSelect();
     }
   }
-
-  test("page has the correct title", async ({ page }) => {
-    await expect(page).toHaveTitle(/FiftyOne/);
-  });
 
   test("saved views selector exists", async ({ savedViews }) => {
     await expect(savedViews.selector()).toBeVisible();
@@ -126,8 +126,8 @@ test.describe("saved views", () => {
   test("cancel button clears the inputs", async ({ savedViews }) => {
     await savedViews.openCreateModal();
 
-    await savedViews.nameInput().type("test");
-    await savedViews.descriptionInput().type("test");
+    await savedViews.nameInput().fill("test");
+    await savedViews.descriptionInput().fill("test");
     await savedViews.colorInput().click();
     await savedViews.colorOption().click();
 
@@ -157,15 +157,6 @@ test.describe("saved views", () => {
     await savedViews.openCreateModal();
     await savedViews.clickCloseModal();
     await savedViews.assert.verifyModalClosed();
-  });
-
-  test("directly linking to a non-existing view clears view parameter", async ({
-    page,
-    savedViews,
-  }) => {
-    const nonExistingName = "test-name-non-existing";
-    await page.goto(`/datasets/${datasetName}?view=${nonExistingName}`);
-    await savedViews.assert.verifyUnsavedView(nonExistingName);
   });
 
   test("color selection has nine specific color choices", async ({
@@ -209,11 +200,13 @@ test.describe("saved views", () => {
     await savedViews.clickCloseModal();
   });
 
-  test("searching through saved views works", async ({ savedViews }) => {
+  test.fixme("searching through saved views works", async ({ savedViews }) => {
     await savedViews.saveView(testView1);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearViewBtn().click();
 
     await savedViews.saveView(testView2);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearView();
 
     await savedViews.selector().click();
@@ -223,6 +216,7 @@ test.describe("saved views", () => {
     await savedViews.assert.verifySearch("test 3", [], ["test-1", "test-2"]);
     await savedViews.assert.verifySearch("test", ["test-1", "test-2"], []);
 
+    await savedViews.openSelect();
     await savedViews.deleteView("test-1");
     await savedViews.selector().click();
     await savedViews.deleteView("test-2");

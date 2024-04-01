@@ -1,13 +1,7 @@
 import { Selection } from "@fiftyone/components";
-import {
-  savedViewsFragment,
-  savedViewsFragment$key,
-  savedViewsFragmentQuery,
-} from "@fiftyone/relay";
+import { useRefetchableSavedViews } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
-import { datasetQueryContext } from "@fiftyone/state";
-import React, { Suspense, useContext, useEffect, useMemo } from "react";
-import { useRefetchableFragment } from "react-relay";
+import React, { Suspense, useEffect, useMemo } from "react";
 import {
   atom,
   useRecoilState,
@@ -49,25 +43,18 @@ export default function ViewSelection() {
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-  const fragmentRef = useContext(datasetQueryContext);
   const isReadOnly = useRecoilValue(fos.readOnly);
   const canEdit = useMemo(
     () => canEditSavedViews && !isReadOnly,
     [canEditSavedViews, isReadOnly]
   );
 
-  if (!fragmentRef) throw new Error("ref not defined");
-
-  const [data, refetch] = useRefetchableFragment<
-    savedViewsFragmentQuery,
-    savedViewsFragment$key
-  >(savedViewsFragment, fragmentRef);
+  const [data, refetch] = useRefetchableSavedViews();
 
   const items = useMemo(() => data.savedViews || [], [data]);
 
   const viewOptions = useMemo(
     () => [
-      fos.DEFAULT_SELECTED,
       ...items.map(({ id, name, color, description, slug, viewStages }) => ({
         id,
         name,

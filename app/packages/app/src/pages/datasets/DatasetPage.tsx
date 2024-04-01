@@ -1,4 +1,4 @@
-import { Dataset, Snackbar } from "@fiftyone/core";
+import { Dataset, Snackbar, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -6,7 +6,6 @@ import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import { NotFoundError } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
@@ -29,10 +28,11 @@ const DatasetPageQueryNode = graphql`
     config {
       colorBy
       colorPool
+      colorscale
       multicolorKeypoints
       showSkeletons
     }
-
+    colorscale
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
@@ -44,6 +44,27 @@ const DatasetPageQueryNode = graphql`
           multicolorKeypoints
           opacity
           showSkeletons
+          defaultMaskTargetsColors {
+            intTarget
+            color
+          }
+          defaultColorscale {
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
+          colorscales {
+            path
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
           fields {
             colorByAttribute
             fieldColor
@@ -51,6 +72,10 @@ const DatasetPageQueryNode = graphql`
             valueColors {
               color
               value
+            }
+            maskTargetsColors {
+              intTarget
+              color
             }
           }
           labelTags {
@@ -75,6 +100,8 @@ const DatasetPageQueryNode = graphql`
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
   const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
+  const count = useRecoilValue(fos.datasetSampleCount);
+  const isEmpty = count === 0;
 
   useEffect(() => {
     document
@@ -82,20 +109,22 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
       ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
 
-  if (!data.dataset?.name) {
-    throw new NotFoundError({ path: `/datasets/${prepared.variables.name}` });
-  }
-
   return (
     <>
-      <OperatorCore />
-      <Nav fragment={data} hasDataset={true} />
-      <div className={style.page}>
-        <datasetQueryContext.Provider value={data}>
-          <Dataset />
-        </datasetQueryContext.Provider>
-      </div>
-      <Snackbar />
+      <Nav fragment={data} hasDataset={!isEmpty} />
+      {isEmpty ? (
+        <Starter mode="ADD_SAMPLE" />
+      ) : (
+        <>
+          <div className={style.page}>
+            <datasetQueryContext.Provider value={data}>
+              <OperatorCore />
+              <Dataset />
+            </datasetQueryContext.Provider>
+          </div>
+          <Snackbar />
+        </>
+      )}
     </>
   );
 };

@@ -85,9 +85,9 @@ used to add functionality to custom panels.
 
 FiftyOne comes with a number of builtin
 :mod:`Python <fiftyone.operators.builtin>` and
-`TypeScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-operators for common tasks that are intended for either user-facing or
-internal plugin use.
+`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+operators for common tasks that are intended for either user-facing or internal
+plugin use.
 
 .. image:: /images/plugins/operator-browser.gif
     :align: center
@@ -110,7 +110,7 @@ in the FiftyOne App.
 
 For example, FiftyOne comes with a wide variety of
 :mod:`builtin types <fiftyone.operators.types>` that you can leverage to build
-complex input and and output forms for your operators.
+complex input and output forms for your operators.
 
 .. image:: /images/plugins/file-explorer.gif
     :align: center
@@ -619,20 +619,30 @@ subsequent sections.
                 unlisted=True/False,  # default False
 
                 # Whether the operator should be executed every time a new App
-                # session starts (eg dataset is changed)
+                # session starts
                 on_startup=True/False,  # default False
+
+                # Whether the operator should be executed every time a new
+                # dataset is opened in the App
+                on_dataset_open=True/False,  # default False
 
                 # Custom icons to use
                 icon="/assets/icon.svg",
                 light_icon="/assets/icon-light.svg",  # light theme only
                 dark_icon="/assets/icon-dark.svg",  # dark theme only
+
+                # Whether the operator supports immediate and/or delegated execution
+                allow_immediate_execution=True/False,    # default True
+                allow_delegated_execution=True/False,    # default False
+                default_choice_to_delegated=True/False,  # default False
+                resolve_execution_options_on_change=None,
             )
 
         def resolve_placement(self, ctx):
             """You can optionally implement this method to configure a button
             or icon in the App that triggers this operator.
 
-            By default the operator only appears in the operator brower
+            By default the operator only appears in the operator browser
             (unless it is unlisted).
 
             Returns:
@@ -658,8 +668,8 @@ subsequent sections.
             )
 
         def resolve_input(self, ctx):
-            """Implement this method if your operator can render a form to
-            collect user inputs.
+            """Implement this method to collect user inputs as parameters
+            that are stored in `ctx.params`.
 
             Returns:
                 a `types.Property` defining the form's components
@@ -680,13 +690,30 @@ subsequent sections.
             return types.Property(inputs, view=types.View(label="Example operator"))
 
         def resolve_delegation(self, ctx):
-            """Implement this method if you want to programmatically determine
-            whether to delegate execution of this operation based on `ctx`.
+            """Implement this method if you want to programmatically *force*
+            this operation to be delegated or executed immediately.
 
             Returns:
-                True/False
+                whether the operation should be delegated (True), run
+                immediately (False), or None to defer to
+                `resolve_execution_options()` to specify the available options
             """
-            return len(ctx.view) > 1000  # delegated for larger views
+            return len(ctx.view) > 1000  # delegate for larger views
+
+        def resolve_execution_options(self, ctx):
+            """Implement this method if you want to dynamically configure the
+            execution options available to this operator based on the current
+            `ctx`.
+
+            Returns:
+                an `ExecutionOptions` instance
+            """
+            should_delegate = len(ctx.view) > 1000  # delegate for larger views
+            return foo.ExecutionOptions(
+                allow_immediate_execution=True,
+                allow_delegated_execution=True,
+                default_choice_to_delegated=should_delegate,
+            )
 
         def execute(self, ctx):
             """Executes the actual operation based on the hydrated `ctx`.
@@ -703,15 +730,20 @@ subsequent sections.
             view = ctx.view
             n = len(view)
 
-            # Use ctx.trigger() to call other operators as necessary
-            ctx.trigger("operator_name", params={"key": value})
+            # Use ctx.ops to trigger builtin operations
+            ctx.ops.clear_selected_samples()
+            ctx.ops.set_view(view=view)
+
+            # Use ctx.trigger to call other operators as necessary
+            ctx.trigger("operator_uri", params={"key": value})
 
             # If `execute_as_generator=True`, this method may yield multiple
             # messages
             for i, sample in enumerate(current_view, 1):
                 # do some computation
-                yield ctx.trigger("set_progress", {"progress": i / n})
-            yield ctx.trigger("reload_dataset")
+                yield ctx.ops.set_progress(progress=i/n)
+
+            yield ctx.ops.reload_dataset()
 
             return {"value": value, ...}
 
@@ -720,7 +752,7 @@ subsequent sections.
             to the user.
 
             Returns:
-                a Property defining the components of the output form
+                a `types.Property` defining the components of the output form
             """
             outputs = types.Object()
 
@@ -778,13 +810,23 @@ execution:
             unlisted=True/False,  # default False
 
             # Whether the operator should be executed every time a new App
-            # session starts (eg dataset is changed)
+            # session starts
             on_startup=True/False,  # default False
+
+            # Whether the operator should be executed every time a new dataset
+            # is opened in the App
+            on_dataset_open=True/False,  # default False
 
             # Custom icons to use
             icon="/assets/icon.svg",
             light_icon="/assets/icon-light.svg",  # light theme only
             dark_icon="/assets/icon-dark.svg",  # dark theme only
+
+            # Whether the operator supports immediate and/or delegated execution
+            allow_immediate_execution=True/False,    # default True
+            allow_delegated_execution=True/False,    # default False
+            default_choice_to_delegated=True/False,  # default False
+            resolve_execution_options_on_change=None,
         )
 
 .. _operator-execution-context:
@@ -805,13 +847,24 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
+-   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
+-   `ctx.delegated` - whether delegated execution has been forced for the
+    operation
+-   `ctx.requesting_delegated_execution` - whether delegated execution has been
+    requested for the operation
+-   `ctx.delegation_target` - the orchestrator to which the operation should be
+    delegated, if applicable
+-   `ctx.ops` - an
+    :class:`Operations <fiftyone.operators.operations.Operations>` instance
+    that you can use to trigger builtin operations on the current context
+-   `ctx.trigger` - a method that you can use to trigger arbitrary operations
+    on the current context
 -   `ctx.secrets` - a dict of :ref:`secrets <operator-secrets>` for the plugin,
     if any
--   `ctx.results` - a dict containing the outputs of the
-    :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method, if
+-   `ctx.results` - a dict containing the outputs of the `execute()` method, if
     it has been called
 -   `ctx.hooks` **(JS only)** - the return value of the operator's `useHooks()`
     method
@@ -906,7 +959,7 @@ Remember that properties automatically handle validation for you. So if you
 configure a property as `required=True` but the user has not provided a value,
 the property will automatically be marked as `invalid=True`. The operator's
 `Execute` button will be enabled if and only if all input properties are valid
-(recurisvely searching nested objects).
+(recursively searching nested objects).
 
 .. note::
 
@@ -931,7 +984,7 @@ programmatically.
 
 However, many interesting operations like model inference, embeddings
 computation, evaluation, and exports are computationally intensive and/or not
-suitable for immediate exeuction.
+suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
 rescue by allowing operators to schedule tasks that are executed on a connected
@@ -939,26 +992,130 @@ workflow orchestrator like :ref:`Apache Airflow <delegated-operations-airflow>`
 or run just :ref:`run locally <delegated-operations-local>` in a separate
 process.
 
-Operators can delegate any or all of its operations by implementing
+.. note::
+
+    Even though delegated operations are run in a separate process or physical
+    location, they are provided with the same `ctx` that was hydrated by the
+    operator's :ref:`input form <operator-inputs>`.
+
+    Refer to :ref:`this section <delegated-operations>` for more information
+    about how delegated operations are executed.
+
+There are a variety of options available for configuring whether a given
+operation should be delegated or executed immediately.
+
+.. _operator-delegation-configuration:
+
+Delegation configuration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can provide the optional properties described below in the
+:ref:`operator's config <operator-config>` to specify the available execution
+modes for the operator:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            # Other parameters...
+
+            # Whether to allow immediate execution
+            allow_immediate_execution=True/False,    # default True
+
+            # Whether to allow delegated execution
+            allow_delegated_execution=True/False,    # default False
+
+            # Whether the default execution mode should be delegated, if both
+            # options are available
+            default_choice_to_delegated=True/False,  # default False
+
+            # Whether to resolve execution options dynamically when the
+            # operator's inputs change. By default, this behavior will match
+            # the operator's ``dynamic`` setting
+            resolve_execution_options_on_change=True/False/None,  # default None
+        )
+
+When the operator's input form is rendered in the App, the `Execute|Schedule`
+button at the bottom of the modal will contextually show whether the operation
+will be executed immediately, scheduled for delegated execution, or allow the
+user to choose between the supported options if there are multiple:
+
+.. image:: /images/plugins/operators/operator-execute-button.png
+    :align: center
+
+.. _operator-execution-options:
+
+Execution options
+~~~~~~~~~~~~~~~~~
+
+Operators can implement
+:meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
+to dynamically configure the available execution options based on the current
+execution context:
+
+.. code-block:: python
+    :linenos:
+
+    # Option 1: recommend delegation for larger views
+    def resolve_execution_options(self, ctx):
+        should_delegate = len(ctx.view) > 1000
+        return foo.ExecutionOptions(
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
+            default_choice_to_delegated=should_delegate,
+        )
+
+    # Option 2: force delegation for larger views
+    def resolve_execution_options(self, ctx):
+        delegate = len(ctx.view) > 1000
+        return foo.ExecutionOptions(
+            allow_immediate_execution=not delegate,
+            allow_delegated_execution=delegate,
+        )
+
+If implemented, this method will override any static execution parameters
+included in the :ref:`operator's config <operator-config>` as described in the
+previous section.
+
+.. _operator-forced-delegation:
+
+Forced delegation
+~~~~~~~~~~~~~~~~~
+
+Operators can implement
 :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-as shown below:
+to force a particular operation to be delegated (by returning `True`) or
+executed immediately (by returning `False`) based on the current execution
+context.
+
+For example, you could decide whether to delegate execution based on the size
+of the current view:
 
 .. code-block:: python
     :linenos:
 
     def resolve_delegation(self, ctx):
-        return len(ctx.view) > 1000  # delegate for larger views
+        # Force delegation for large views and immediate execution for small views
+        return len(ctx.view) > 1000
 
-As demonstrated above, you can use the
-:ref:`execution context <operator-execution-context>` to conditionally decide
-whether a given operation should be delegated. For example, you could simply
-ask the user:
+.. note::
+
+    If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+    is not implemented or returns `None`, then the choice of execution mode is
+    deferred to
+    :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
+    to specify the available execution options as described in the previous
+    section.
+
+Alternatively, you could simply ask the user to decide:
 
 .. code-block:: python
     :linenos:
 
     def resolve_input(self, ctx):
-        delegate = ctx.params.get("delegate", False)
+        delegate = ctx.params.get("delegate", None)
 
         if delegate:
             description = "Uncheck this box to execute the operation immediately"
@@ -967,8 +1124,6 @@ ask the user:
 
         inputs.bool(
             "delegate",
-            default=False,
-            required=True,
             label="Delegate execution?",
             description=description,
             view=types.CheckboxView(),
@@ -989,16 +1144,96 @@ ask the user:
             )
 
     def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
+        return ctx.params.get("delegate", None)
+
+.. image:: /images/plugins/operators/operator-user-delegation.png
+    :align: center
+
+.. _operator-reporting-progress:
+
+Reporting progress
+~~~~~~~~~~~~~~~~~~
+
+Delegated operations can report their execution progress by calling
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+on their execution context from within
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.core.storage as fos
+    import fiftyone.core.utils as fou
+
+    def execute(self, ctx):
+        images_dir = ctx.params["images_dir"]
+
+        filepaths = fos.list_files(images_dir, abs_paths=True, recursive=True)
+
+        num_added = 0
+        num_total = len(filepaths)
+        for batch in fou.iter_batches(filepaths, 100):
+            samples = [fo.Sample(filepath=f) for f in batch]
+            ctx.dataset.add_samples(samples)
+
+            num_added += len(batch)
+            ctx.set_progress(progress=num_added / num_total)
 
 .. note::
 
-    Even though delegated operations are run in a separate process or physical
-    location, they are provided with the same `ctx` that was hydrated by the
-    operator's :ref:`input form <operator-inputs>`.
+    :ref:`FiftyOne Teams <fiftyone-teams>` users can view the current progress
+    of their delegated operations from the
+    :ref:`Runs page <teams-managing-delegated-operations>` of the Teams App!
 
-    Refer to :ref:`this section <delegated-operations>` for more information
-    about how delegated operations are executed.
+For your convenience, all builtin methods of the FiftyOne SDK that support
+rendering progress bars provide an optional `progress` method that you can use
+trigger calls to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+using the pattern show below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    def execute(self, ctx):
+        images_dir = ctx.params["images_dir"]
+
+        # Custom logic that controls how progress is reported
+        def set_progress(pb):
+            if pb.complete:
+                ctx.set_progress(progress=1, label="Operation complete")
+            else:
+                ctx.set_progress(progress=pb.progress)
+
+        # Option 1: report progress every five seconds
+        progress = fo.report_progress(set_progress, dt=5.0)
+
+        # Option 2: report progress at 10 equally-spaced increments
+        # progress = fo.report_progress(set_progress, n=10)
+
+        ctx.dataset.add_images_dir(images_dir, progress=progress)
+
+You can also use the builtin
+:class:`ProgressHandler <fiftyone.operators.ProgressHandler>` class to
+automatically forward logging messages to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+as `label` values using the pattern shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import logging
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+
+        # Automatically report all `fiftyone` logging messages
+        with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
+            foz.load_zoo_dataset(name, persistent=True)
 
 .. _operator-execution:
 
@@ -1070,18 +1305,49 @@ Operator composition
 ~~~~~~~~~~~~~~~~~~~~
 
 Many operators are designed to be composed with other operators to build up
-more complex behaviors. This can be achieved by simply calling
-:meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`
-from within the operator's
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method to
-invoke another operator with the appropriate parameters, if any.
+more complex behaviors. You can trigger other operations from within an
+operator's :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
+method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
+:meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`.
 
-For example, many operations involve updating the current state of the App.
-FiftyOne contains a number of
-`builtin operators <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-that you can trigger from within
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` to achieve
-this with ease!
+The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
+execution context exposes all builtin
+:mod:`Python <fiftyone.operators.builtin>` and
+`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+in a conveniently documented functional interface. For example, many operations
+involve updating the current state of the App:
+
+.. code-block:: python
+    :linenos:
+
+    def execute(self, ctx):
+        # Dataset
+        ctx.ops.open_dataset("...")
+        ctx.ops.reload_dataset()
+
+        # View/sidebar
+        ctx.ops.set_view(name="...")  # saved view by name
+        ctx.ops.set_view(view=view)  # arbitrary view
+        ctx.ops.clear_view()
+        ctx.ops.clear_sidebar_filters()
+
+        # Selected samples
+        ctx.ops.set_selected_samples([...]))
+        ctx.ops.clear_selected_samples()
+
+        # Selected labels
+        ctx.ops.set_selected_labels([...])
+        ctx.ops.clear_selected_labels()
+
+        # Panels
+        ctx.ops.open_panel("Embeddings")
+        ctx.ops.close_panel("Embeddings")
+
+The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
+property is a lower-level funtion that allows you to invoke arbitrary
+operations by providing their URI and parameters, including all builtin
+operations as well as any operations installed via custom plugins. For example,
+here's how to trigger the same App-related operations from above:
 
 .. code-block:: python
     :linenos:
@@ -1092,17 +1358,18 @@ this with ease!
         ctx.trigger("reload_dataset")  # refreshes the App
 
         # View/sidebar
+        ctx.trigger("set_view", params=dict(name="..."))  # saved view by name
+        ctx.trigger("set_view", params=dict(view=view._serialize()))  # arbitrary view
         ctx.trigger("clear_view")
         ctx.trigger("clear_sidebar_filters")
-        ctx.trigger("set_view", params=dict(view=view._serialize()))
 
         # Selected samples
-        ctx.trigger("clear_selected_samples")
         ctx.trigger("set_selected_samples", params=dict(samples=[...]))
+        ctx.trigger("clear_selected_samples")
 
         # Selected labels
-        ctx.trigger("clear_selected_labels")
         ctx.trigger("set_selected_labels", params=dict(labels=[...]))
+        ctx.trigger("clear_selected_labels")
 
         # Panels
         ctx.trigger("open_panel", params=dict(name="Embeddings"))
@@ -1115,15 +1382,14 @@ If your :ref:`operator's config <operator-config>` declares that it is a
 generator via `execute_as_generator=True`, then its
 :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method should
 `yield` calls to
+:meth:`ctx.ops <fiftyone.operators.operations.Operations>` methods or
 :meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`,
-which triggers another operator and returns a
+both of which trigger another operation and return a
 :class:`GeneratedMessage <fiftyone.operators.message.GeneratedMessage>`
-containing the result of the invocation.
+instance containing the result of the invocation.
 
-For example, a common generator pattern is to use the
-`builtin <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-`set_progress` operator to render a progress bar tracking the progress of an
-operation:
+For example, a common generator pattern is to use the builtin `set_progress`
+operator to render a progress bar tracking the progress of an operation:
 
 .. code-block:: python
     :linenos:
@@ -1132,9 +1398,14 @@ operation:
         # render a progress bar tracking the execution
         for i in range(n):
             # [process a chunk here]
+
+            # Option 1: ctx.ops
+            yield ctx.ops.set_progress(progress=i/n, label=f"Processed {i}/{n}")
+
+            # Option 2: ctx.trigger
             yield ctx.trigger(
                 "set_progress",
-                dict(progress=i / n, label=f"Processed {i}/{n}"),
+                dict(progress=i/n, label=f"Processed {i}/{n}"),
             )
 
 .. note::
@@ -1239,9 +1510,12 @@ Operator placement
 ------------------
 
 By default, operators are only accessible from the
-:ref:`operator browser <using-operators>`. However, you can optionally expose
-the operation by placing a custom button, icon, menu item, etc. in various
-places of the App:
+:ref:`operator browser <using-operators>`. However, you can place a custom
+button, icon, menu item, etc. in the App that will trigger the operator when
+clicked in any location supported by the
+:class:`types.Places <fiftyone.operators.types.Places>` enum.
+
+For example, you can use:
 
 -   `types.Places.SAMPLES_GRID_ACTIONS`
 
@@ -1299,10 +1573,7 @@ method as demonstrated below:
                 )
 
             def execute(self, ctx):
-                return ctx.trigger(
-                    "open_panel",
-                    params=dict(name="Histograms", isActive=True, layout="horizontal"),
-                )
+                return ctx.ops.open_panel("Histograms", layout="horizontal", is_active=True)
 
         def register(p):
             p.register(OpenHistogramsPanel)
@@ -2014,7 +2285,7 @@ to create a new custom run on a dataset:
 .. code:: python
     :linenos:
 
-    config = dataset.init_run(run_key)
+    config = dataset.init_run()
     config.foo = "bar"  # add as many key-value pairs as you need
 
     dataset.register_run(run_key, config)

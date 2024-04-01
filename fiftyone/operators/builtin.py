@@ -1,7 +1,7 @@
 """
 Builtin operators.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,46 +24,35 @@ class CloneSelectedSamples(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
-        sample_ids = ctx.selected
-        count = len(sample_ids)
-        header = "Clone sample"
+
+        count = len(ctx.selected)
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
-            header = f"Clone {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to clone {count} selected {sample_text}",
-                view=types.Notice(space=6),
-            )
-            inputs.str(
-                "btn",
-                label="Show selected samples",
-                view=types.Button(operator="show_selected_samples", space=3),
-            )
-        else:
-            header = "No selected samples"
-            inputs.str(
-                "msg",
-                label="You must select samples in the grid to clone",
+                label=f"Clone {count} selected {sample_text}?",
                 view=types.Warning(),
             )
+        else:
+            prop = inputs.str(
+                "msg",
+                label="You must select samples to clone",
+                view=types.Warning(),
+            )
+            prop.invalid = True
 
-        return types.Property(inputs, view=types.View(label=header))
+        view = types.View(label="Clone selected samples")
+        return types.Property(inputs, view=view)
 
     def execute(self, ctx):
-        sample_ids = ctx.selected
-        if len(sample_ids) > 0:
-            samples = ctx.dataset.select(sample_ids)
-            cloned_samples = [
-                fo.Sample.from_dict(dict(**sample.to_dict(), id=None))
-                for sample in samples
-            ]
-            ctx.dataset.add_samples(cloned_samples)
-            ctx.trigger("reload_samples")
-            ctx.trigger(
-                "show_samples",
-                {"samples": [sample.id for sample in cloned_samples]},
-            )
+        if not ctx.selected:
+            return
+
+        samples = ctx.dataset.select(ctx.selected)
+        sample_ids = ctx.dataset.add_collection(samples, new_ids=True)
+
+        ctx.trigger("clear_selected_samples")
+        ctx.trigger("reload_samples")
 
 
 class CloneSampleField(foo.Operator):
@@ -90,7 +79,10 @@ class CloneSampleField(foo.Operator):
             "field_name",
             field_keys,
             label="Choose a field",
-            description="The field to copy. You can use dot notation (embedded.field.name) to clone embedded fields",
+            description=(
+                "The field to copy. You can use dot notation "
+                "(embedded.field.name) to clone embedded fields"
+            ),
             view=field_selector,
             required=True,
         )
@@ -99,7 +91,10 @@ class CloneSampleField(foo.Operator):
                 "new_field_name",
                 required=True,
                 label="New field",
-                description="The new field to create. You can use dot notation (embedded.field.name) to create embedded fields",
+                description=(
+                    "The new field to create. You can use dot notation "
+                    "(embedded.field.name) to create embedded fields"
+                ),
                 default=f"{field_name}_copy",
             )
             if new_field_name and new_field_name in field_keys:
@@ -187,6 +182,40 @@ class RenameSampleField(foo.Operator):
         ctx.trigger("reload_dataset")
 
 
+class ClearSampleField(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="clear_sample_field",
+            label="Clear sample field",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        fields = ctx.dataset.get_field_schema(flat=True)
+        field_keys = list(fields.keys())
+        field_selector = types.AutocompleteView()
+        for key in field_keys:
+            field_selector.add_choice(key, label=key)
+
+        inputs.enum(
+            "field_name",
+            field_keys,
+            label="Field to clear",
+            view=field_selector,
+            required=True,
+        )
+
+        return types.Property(
+            inputs, view=types.View(label="Clear sample field")
+        )
+
+    def execute(self, ctx):
+        ctx.dataset.clear_sample_field(ctx.params.get("field_name", None))
+        ctx.trigger("reload_dataset")
+
+
 class DeleteSelectedSamples(foo.Operator):
     @property
     def config(self):
@@ -198,31 +227,25 @@ class DeleteSelectedSamples(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
-        sample_ids = ctx.selected
-        count = len(sample_ids)
-        header = "Delete samples"
+
+        count = len(ctx.selected)
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
-            header = f"Delete {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to delete {count} selected {sample_text}",
-                view=types.Notice(space=6),
-            )
-            inputs.str(
-                "btn",
-                label="Show selected samples",
-                view=types.Button(operator="show_selected_samples", space=3),
-            )
-        else:
-            header = "No selected samples"
-            inputs.str(
-                "msg",
-                label="You must select samples in the grid to delete",
+                label=f"Delete {count} selected {sample_text}?",
                 view=types.Warning(),
             )
+        else:
+            prop = inputs.str(
+                "msg",
+                label="You must select samples to delete",
+                view=types.Warning(),
+            )
+            prop.invalid = True
 
-        return types.Property(inputs, view=types.View(label=header))
+        view = types.View(label="Delete selected samples")
+        return types.Property(inputs, view=view)
 
     def execute(self, ctx):
         num_samples = len(ctx.selected)
@@ -230,8 +253,50 @@ class DeleteSelectedSamples(foo.Operator):
             return
 
         ctx.dataset.delete_samples(ctx.selected)
+
         ctx.trigger("clear_selected_samples")
         ctx.trigger("reload_samples")
+
+
+class DeleteSelectedLabels(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_selected_labels",
+            label="Delete selected labels",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        count = len(ctx.selected_labels)
+        if count > 0:
+            label_text = "label" if count == 1 else "labels"
+            inputs.str(
+                "msg",
+                label=f"Delete {count} selected {label_text}?",
+                view=types.Warning(),
+            )
+        else:
+            prop = inputs.str(
+                "msg",
+                label="You must select labels to delete",
+                view=types.Warning(),
+            )
+            prop.invalid = True
+
+        view = types.View(label="Delete selected labels")
+        return types.Property(inputs, view=view)
+
+    def execute(self, ctx):
+        if not ctx.selected_labels:
+            return
+
+        ctx.dataset.delete_labels(labels=ctx.selected_labels)
+
+        ctx.trigger("clear_selected_labels")
+        ctx.trigger("reload_dataset")
 
 
 class DeleteSampleField(foo.Operator):
@@ -300,7 +365,6 @@ class ListFiles(foo.Operator):
         path = ctx.params.get("path", None)
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
-            # this should
             return {"filesystems": list_fileystems()}
 
         if path:
@@ -314,10 +378,6 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
-    # elif fs == fos.FileSystem.GCS:
-    #     return "gs://"
-    # elif fs == fos.FileSystem.S3:
-    #     return "s3://"
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -362,7 +422,9 @@ BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
     RenameSampleField(_builtin=True),
+    ClearSampleField(_builtin=True),
     DeleteSelectedSamples(_builtin=True),
+    DeleteSelectedLabels(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
     ListFiles(_builtin=True),

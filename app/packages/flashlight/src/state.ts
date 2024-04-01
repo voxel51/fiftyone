@@ -1,10 +1,6 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
-
-export type Optional<T> = {
-  [P in keyof T]?: Optional<T[P]>;
-};
 
 export interface Section {
   getTop: () => number;
@@ -63,7 +59,7 @@ export interface Options {
   selectedMediaFieldName: string;
 }
 
-export type OnResize = (width: number) => Optional<Options>;
+export type OnResize = (width: number) => Partial<Options>;
 
 export interface State<K> {
   get: Get<K>;

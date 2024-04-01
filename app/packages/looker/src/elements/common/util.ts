@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import {
@@ -274,7 +274,11 @@ export function getAssignedColor({
     return getColor(
       coloring.pool,
       coloring.seed,
-      path === "tags" ? param : getHashLabel(param)
+      path === "tags"
+        ? (param as string)
+        : isPrimitive
+        ? value
+        : getHashLabel(param as RegularLabel)
     );
   }
 

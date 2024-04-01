@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d68c3a1a06fcb4ed1c0112f12fbe57a9>>
+ * @generated SignedSource<<95648d6c241faccb3eb27b24eb12b622>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,7 +25,7 @@ export type histogramValuesQuery$data = {
   readonly aggregate: ReadonlyArray<{
     readonly __typename: "DatetimeHistogramValuesResponse";
     readonly counts: ReadonlyArray<number>;
-    readonly datetimes: ReadonlyArray<any>;
+    readonly datetimes: ReadonlyArray<number>;
     readonly other: number;
   } | {
     readonly __typename: "FloatHistogramValuesResponse";

@@ -1,7 +1,7 @@
 """
 FiftyOne Label-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,13 +9,14 @@ import unittest
 
 from bson import Binary, ObjectId
 import numpy as np
+import numpy.testing as nptest
 
 import fiftyone as fo
+import fiftyone.core.labels as focl
+import fiftyone.utils.labels as foul
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets
-
-
-F = fo.ViewField
 
 
 class LabelTests(unittest.TestCase):
@@ -385,83 +386,179 @@ class LabelTests(unittest.TestCase):
         detection = detections.detections[0]
         polyline = polylines.polylines[0]
 
-        #
-        # Grayscale
-        #
+        # check both int and RGB
+        for target, ndim in ((128, 2), ("#ff6d04", 3)):
+            mask_targets = {target: label}
 
-        target = 128
-        mask_targets = {target: label}
+            seg1 = detections.to_segmentation(
+                frame_size=frame_size, mask_targets=mask_targets
+            )
+            seg2 = detection.to_segmentation(
+                frame_size=frame_size, target=target
+            )
+            seg3 = polylines.to_segmentation(
+                frame_size=frame_size, mask_targets=mask_targets
+            )
+            seg4 = polyline.to_segmentation(
+                frame_size=frame_size, target=target
+            )
 
-        seg1 = detections.to_segmentation(
-            frame_size=frame_size, mask_targets=mask_targets
-        )
-        seg2 = detection.to_segmentation(frame_size=frame_size, target=target)
-        seg3 = polylines.to_segmentation(
-            frame_size=frame_size, mask_targets=mask_targets
-        )
-        seg4 = polyline.to_segmentation(frame_size=frame_size, target=target)
+            self.assertEqual(seg1.mask.ndim, ndim)
+            self.assertEqual(seg2.mask.ndim, ndim)
+            self.assertEqual(seg3.mask.ndim, ndim)
+            self.assertEqual(seg4.mask.ndim, ndim)
 
-        self.assertEqual(seg1.mask.ndim, 2)
-        self.assertEqual(seg2.mask.ndim, 2)
-        self.assertEqual(seg3.mask.ndim, 2)
-        self.assertEqual(seg4.mask.ndim, 2)
+            dets1 = seg1.to_detections(
+                mask_targets=mask_targets, mask_types="thing"
+            )
+            dets2 = seg2.to_detections(
+                mask_targets=mask_targets, mask_types="stuff"
+            )
+            poly3 = seg3.to_polylines(
+                mask_targets=mask_targets,
+                mask_types="thing",
+                tolerance=2,
+            )
+            poly4 = seg4.to_polylines(
+                mask_targets=mask_targets,
+                mask_types="stuff",
+                tolerance=2,
+            )
 
-        dets1 = seg1.to_detections(
-            mask_targets=mask_targets, mask_types="thing"
-        )
-        dets2 = seg2.to_detections(
-            mask_targets=mask_targets, mask_types="stuff"
-        )
-        poly3 = seg3.to_polylines(
-            mask_targets=mask_targets, mask_types="thing"
-        )
-        poly4 = seg4.to_polylines(
-            mask_targets=mask_targets, mask_types="stuff"
+            self.assertEqual(len(dets1.detections), 2)
+            self.assertEqual(len(dets2.detections), 1)
+            self.assertEqual(len(poly3.polylines), 2)
+            self.assertEqual(len(poly4.polylines), 1)
+
+            # check bounding boxes
+            self.assertEqual(
+                dets1.detections[0].bounding_box, [0.1, 0.1, 0.3, 0.3]
+            )
+            self.assertEqual(
+                dets1.detections[1].bounding_box, [0.6, 0.6, 0.3, 0.3]
+            )
+
+            self.assertEqual(
+                dets2.detections[0].bounding_box, [0.1, 0.1, 0.3, 0.3]
+            )
+
+            # check polylines
+            #
+            # polyline -> detection -> polyline does not always return
+            # the exact same values because of interpolation, so it's
+            # not possible in general to check for exact
+            # equality.
+            def poly_bounds(p):
+                a = np.array(p["points"]).squeeze()
+                ymin, xmin = a.min(axis=0)
+                ymax, xmax = a.max(axis=0)
+                return (xmin, xmax, ymin, ymax)
+
+            nptest.assert_almost_equal(
+                poly_bounds(poly3.polylines[0]),
+                poly_bounds(polylines.polylines[0]),
+                decimal=1,
+            )
+            nptest.assert_almost_equal(
+                poly_bounds(poly3.polylines[1]),
+                poly_bounds(polylines.polylines[1]),
+                decimal=1,
+            )
+            nptest.assert_almost_equal(
+                poly_bounds(poly4.polylines[0]),
+                poly_bounds(polylines.polylines[0]),
+                decimal=1,
+            )
+
+    @drop_datasets
+    def test_transform_mask(self):
+        # int to int
+        mask = np.arange(9).reshape((3, 3))
+        targets_map = dict((i, i + 1) for i in range(1, 9))
+        int_to_int = focl._transform_mask(mask, targets_map)
+        nptest.assert_array_equal(
+            int_to_int[int_to_int != 0], mask[mask != 0] + 1
         )
 
-        self.assertEqual(len(dets1.detections), 2)
-        self.assertEqual(len(dets2.detections), 1)
-        self.assertEqual(len(poly3.polylines), 2)
-        self.assertEqual(len(poly4.polylines), 1)
+        # int to rgb
+        targets_map = dict((i, focl._int_to_hex(i)) for i in range(1, 9))
+        int_to_rgb = focl._transform_mask(mask, targets_map)
+        self.assertEqual(int_to_rgb.shape, (3, 3, 3))
+        nptest.assert_array_equal(int_to_rgb[:, :, 0], np.zeros_like(mask))
+        nptest.assert_array_equal(int_to_rgb[:, :, 1], np.zeros_like(mask))
+        nptest.assert_array_equal(int_to_rgb[:, :, 2], mask)
 
-        #
-        # Color
-        #
+        # rgb back to int
+        targets_map = dict((focl._int_to_hex(i), i) for i in range(1, 9))
+        rgb_to_int = focl._transform_mask(int_to_rgb, targets_map)
+        nptest.assert_array_equal(rgb_to_int, mask)
 
-        target = "#ff6d04"
-        mask_targets = {target: label}
+        # rgb to rgb
+        targets_map = dict(
+            (focl._int_to_hex(i), focl._int_to_hex(0)) for i in range(1, 9)
+        )
+        rgb_to_rgb = focl._transform_mask(int_to_rgb, targets_map)
+        nptest.assert_array_equal(rgb_to_rgb, np.zeros((3, 3, 3), dtype=int))
 
-        seg1 = detections.to_segmentation(
-            frame_size=frame_size, mask_targets=mask_targets
-        )
-        seg2 = detection.to_segmentation(frame_size=frame_size, target=target)
-        seg3 = polylines.to_segmentation(
-            frame_size=frame_size, mask_targets=mask_targets
-        )
-        seg4 = polyline.to_segmentation(frame_size=frame_size, target=target)
 
-        self.assertEqual(seg1.mask.ndim, 3)
-        self.assertEqual(seg2.mask.ndim, 3)
-        self.assertEqual(seg3.mask.ndim, 3)
-        self.assertEqual(seg4.mask.ndim, 3)
+class LabelUtilsTests(unittest.TestCase):
+    @drop_datasets
+    def test_perform_nms(self):
+        detections = [
+            fo.Detection(
+                label="cat", bounding_box=[0, 0, 0.30, 0.30], confidence=0.9
+            ),
+            fo.Detection(
+                label="cat", bounding_box=[0, 0, 0.29, 0.29], confidence=1
+            ),
+            fo.Detection(
+                label="dog", bounding_box=[0, 0, 0.30, 0.30], confidence=0.4
+            ),
+            fo.Detection(
+                label="dog", bounding_box=[0, 0, 0.29, 0.29], confidence=None
+            ),
+        ]
 
-        dets1 = seg1.to_detections(
-            mask_targets=mask_targets, mask_types="thing"
-        )
-        dets2 = seg2.to_detections(
-            mask_targets=mask_targets, mask_types="stuff"
-        )
-        poly3 = seg3.to_polylines(
-            mask_targets=mask_targets, mask_types="thing"
-        )
-        poly4 = seg4.to_polylines(
-            mask_targets=mask_targets, mask_types="stuff"
-        )
+        id1 = detections[0].id
+        id2 = detections[1].id
+        id3 = detections[2].id
+        id4 = detections[3].id
 
-        self.assertEqual(len(dets1.detections), 2)
-        self.assertEqual(len(dets2.detections), 1)
-        self.assertEqual(len(poly3.polylines), 2)
-        self.assertEqual(len(poly4.polylines), 1)
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            predictions=fo.Detections(detections=detections),
+        )
+        sample2 = fo.Sample(filepath="image2.jpg", predictions=fo.Detections())
+        sample3 = fo.Sample(filepath="image3.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        foul.perform_nms(
+            dataset, "predictions", out_field="nms1", iou_thresh=0.5
+        )
+        ids1 = dataset.values("nms1.detections.id", unwind=True)
+        self.assertListEqual(ids1, [id2, id3])
+
+        foul.perform_nms(
+            dataset,
+            "predictions",
+            out_field="nms2",
+            classwise=False,
+            iou_thresh=0.5,
+        )
+        ids2 = dataset.values("nms2.detections.id", unwind=True)
+        self.assertListEqual(ids2, [id2])
+
+        foul.perform_nms(
+            dataset,
+            "predictions",
+            out_field="nms3",
+            iou_thresh=0.5,
+            confidence_thresh=0.5,
+        )
+        ids3 = dataset.values("nms3.detections.id", unwind=True)
+        self.assertListEqual(ids3, [id2])
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 """
 App Space configuration.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from bson import ObjectId
 from mongoengine.errors import ValidationError
 import uuid
@@ -57,7 +58,9 @@ class Space(Component):
         orientation (["horizontal", "vertical"]): the orientation of this
             space's children
         active_child: the ``component_id`` of this space's currently active
-            chilld
+            child
+        sizes: the ordered list of relative sizes for children of a space in
+            ``[0, 1]``
     """
 
     meta = {"strict": False, "allow_inheritance": True}
@@ -70,6 +73,7 @@ class Space(Component):
         choices=["horizontal", "vertical"], default=None
     )
     active_child = fof.StringField(default=None)
+    sizes = fof.ListField(fof.FloatField(), default=None)
 
 
 samples_panel = Panel(type="Samples", pinned=True)

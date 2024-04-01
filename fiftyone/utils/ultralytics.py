@@ -2,16 +2,52 @@
 Utilities for working with
 `Ultralytics <https://github.com/ultralytics/ultralytics>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 
 import numpy as np
+from PIL import Image
 
+import eta.core.utils as etau
+
+from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
+from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
+import fiftyone.core.utils as fou
+import fiftyone.zoo as foz
+import fiftyone.zoo.models as fozm
+
+ultralytics = fou.lazy_import("ultralytics")
+
+
+def convert_ultralytics_model(model):
+    """Converts the given Ultralytics model into a FiftyOne model.
+
+    Args:
+        model: an ``ultralytics.YOLO`` model
+
+    Returns:
+         a :class:`fiftyone.core.models.Model`
+
+    Raises:
+        ValueError: if the model could not be converted
+    """
+    if isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
+        return _convert_yolo_segmentation_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
+        return _convert_yolo_pose_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
+        return _convert_yolo_detection_model(model)
+    else:
+        raise ValueError(
+            "Unsupported model type; cannot convert %s to a FiftyOne model"
+            % model
+        )
 
 
 def to_detections(results, confidence_thresh=None):
@@ -94,25 +130,35 @@ def _to_instances(result, confidence_thresh=None):
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
-    bounds = np.rint(result.boxes.xyxy.detach().cpu().numpy()).astype(int)
     masks = result.masks.data.detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
 
+    # convert from center coords to corner coords
+    boxes[:, 0] -= boxes[:, 2] / 2.0
+    boxes[:, 1] -= boxes[:, 3] / 2.0
+
     detections = []
-    for cls, box, bound, mask, conf in zip(
-        classes, boxes, bounds, masks, confs
-    ):
+    for cls, box, mask, conf in zip(classes, boxes, masks, confs):
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
         label = result.names[cls]
-        xc, yc, w, h = box
-        x1, y1, x2, y2 = bound
+        w, h = mask.shape
+        tmp = np.copy(box)
+        tmp[2] += tmp[0]
+        tmp[3] += tmp[1]
+        tmp[0] *= h
+        tmp[2] *= h
+        tmp[1] *= w
+        tmp[3] *= w
+        tmp = [int(b) for b in tmp]
+        y0, x0, y1, x1 = tmp
+        sub_mask = mask[x0:x1, y0:y1]
 
         detection = fol.Detection(
             label=label,
-            bounding_box=[xc - 0.5 * w, yc - 0.5 * h, w, h],
-            mask=mask[y1:y2, x1:x2],
+            bounding_box=list(box),
+            mask=sub_mask.astype(bool),
             confidence=conf,
         )
         detections.append(detection)
@@ -239,6 +285,155 @@ def _to_keypoints(result, confidence_thresh=None):
         keypoints.append(keypoint)
 
     return fol.Keypoints(keypoints=keypoints)
+
+
+class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
+    """Configuration for a :class:`FiftyOneYOLOModel`.
+
+    Args:
+        model (None): an ``ultralytics.YOLO`` model to use
+        model_name (None): the name of an ``ultralytics.YOLO`` model to load
+        model_path (None): the path to an ``ultralytics.YOLO`` model checkpoint
+        classes (None): an optional list of classes
+    """
+
+    def __init__(self, d):
+        self.model = self.parse_raw(d, "model", default=None)
+        self.model_name = self.parse_raw(d, "model_name", default=None)
+        self.model_path = self.parse_raw(d, "model_path", default=None)
+        self.classes = self.parse_array(d, "classes", default=None)
+
+
+class FiftyOneYOLOModel(Model):
+    """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
+
+    Args:
+        config: a `FiftyOneYOLOModelConfig`
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.model = self._load_model(config)
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        if config.model_path is not None:
+            model = ultralytics.YOLO(config.model_path)
+        elif config.model_name is not None:
+            model = ultralytics.YOLO(config.model_name)
+        else:
+            model = ultralytics.YOLO()
+
+        if config.classes is not None:
+            model.set_classes(config.classes)
+
+        return model
+
+    @property
+    def media_type(self):
+        return "image"
+
+    @property
+    def ragged_batches(self):
+        return False
+
+    @property
+    def transforms(self):
+        return None
+
+    @property
+    def preprocess(self):
+        return False
+
+    def _format_predictions(self, predictions):
+        raise NotImplementedError(
+            "Subclass must implement _format_predictions()"
+        )
+
+    def predict(self, arg):
+        image = Image.fromarray(arg)
+        predictions = self.model(image, verbose=False)
+        return self._format_predictions(predictions[0])
+
+
+class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
+class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an Ultralytics YOLO detection model.
+
+    Args:
+        config: a :class:`FiftyOneYOLODetectionModelConfig`
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+    def _format_predictions(self, predictions):
+        return to_detections(predictions)
+
+    def predict_all(self, args):
+        images = [Image.fromarray(arg) for arg in args]
+        predictions = self.model(images, verbose=False)
+        return self._format_predictions(predictions)
+
+
+class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
+class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
+
+    Args:
+        config: a :class:`FiftyOneYOLOSegmentationModelConfig`
+    """
+
+    @property
+    def ragged_batches(self):
+        # These models don't yet support batching due to padding issues
+        return True
+
+    def _format_predictions(self, predictions):
+        return to_instances(predictions)
+
+
+class FiftyOneYOLOPoseModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
+class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an Ultralytics YOLO pose model.
+
+    Args:
+        config: a :class:`FiftyOneYOLOPoseModelConfig`
+    """
+
+    def _format_predictions(self, predictions):
+        return to_keypoints(predictions)
+
+    def predict_all(self, args):
+        images = [Image.fromarray(arg) for arg in args]
+        predictions = self.model(images, verbose=False)
+        return self._format_predictions(predictions)
+
+
+def _convert_yolo_detection_model(model):
+    config = FiftyOneYOLODetectionModelConfig({"model": model})
+    return FiftyOneYOLODetectionModel(config)
+
+
+def _convert_yolo_segmentation_model(model):
+    config = FiftyOneYOLOSegmentationModelConfig({"model": model})
+    return FiftyOneYOLOSegmentationModel(config)
+
+
+def _convert_yolo_pose_model(model):
+    config = FiftyOneYOLOPoseModelConfig({"model": model})
+    return FiftyOneYOLOPoseModel(config)
 
 
 class UltralyticsOutputProcessor(fout.OutputProcessor):

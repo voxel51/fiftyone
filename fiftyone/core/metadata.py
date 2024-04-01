@@ -1,12 +1,14 @@
 """
 Metadata stored in dataset samples.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
+import multiprocessing.dummy
 import os
 import requests
 
@@ -228,8 +230,30 @@ def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
         sample.save()
 
 
+def get_metadata_cls(media_type):
+    """Get the ``metadata`` class for a media_type
+
+    Args:
+        media_type (str): a media type value
+
+    Returns:
+        a :class:`Metadata` class
+    """
+    if media_type == fom.IMAGE:
+        return ImageMetadata
+    elif media_type == fom.VIDEO:
+        return VideoMetadata
+
+    return Metadata
+
+
 def compute_metadata(
-    sample_collection, overwrite=False, num_workers=None, skip_failures=True
+    sample_collection,
+    overwrite=False,
+    num_workers=None,
+    skip_failures=True,
+    warn_failures=False,
+    progress=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -240,11 +264,16 @@ def compute_metadata(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         overwrite (False): whether to overwrite existing metadata
-        num_workers (None): a suggested number of processes to use
+        num_workers (None): a suggested number of threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
+        warn_failures (False): whether to log a warning if metadata cannot
+            be computed for a sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
-    num_workers = fou.recommend_process_pool_workers(num_workers)
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
@@ -252,13 +281,19 @@ def compute_metadata(
         )
 
     if num_workers <= 1:
-        _compute_metadata(sample_collection, overwrite=overwrite)
+        _compute_metadata(
+            sample_collection, overwrite=overwrite, progress=progress
+        )
     else:
         _compute_metadata_multi(
             sample_collection,
             num_workers,
             overwrite=overwrite,
+            progress=progress,
         )
+
+    if skip_failures and not warn_failures:
+        return
 
     num_missing = len(sample_collection.exists("metadata", False))
     if num_missing > 0:
@@ -273,6 +308,35 @@ def compute_metadata(
             raise ValueError(msg)
 
 
+def _image_has_flipped_dimensions(img):
+    """Returns True if image has flipped width/height dimensions
+
+    EXIF Orientation metadata can specify that an image be rotated or otherwise
+    transposed. ``PIL.Image`` does not handle this by default so we have to
+    inspect the EXIF info. See ``PIL.ImageOps.exif_transpose()`` for the basis
+    of this function, except we don't actually want to transpose the image
+    when we only need the dimensions.
+
+    Tag name reference: https://exiftool.org/TagNames/EXIF.html
+    PIL.ImageOps reference: https://github.com/python-pillow/Pillow/blob/main/src/PIL/ImageOps.py
+
+    Args:
+        img: a ``PIL.Image``
+
+    Returns:
+        True if image width/height should be flipped
+    """
+    # Value from PIL.ExifTags.Base.Orientation == 274
+    #   We hard-code the value directly here so we can support older Pillow
+    #   versions that don't have ExifTags.Base.
+    #   It's ok because this value will never change.
+    orientation_tag = 0x0112
+    exif_orientation = img.getexif().get(orientation_tag)
+    # 5, 6, 7, 8 --> TRANSPOSE, ROTATE_270, TRANSVERSE, ROTATE_90
+    is_rotated = exif_orientation in {5, 6, 7, 8}
+    return is_rotated
+
+
 def get_image_info(f):
     """Retrieves the dimensions and number of channels of the given image from
     a file-like object that is streaming its contents.
@@ -284,24 +348,20 @@ def get_image_info(f):
         ``(width, height, num_channels)``
     """
     img = Image.open(f)
-    return (img.width, img.height, len(img.getbands()))
+
+    # Flip the dimensions if image metadata requires us to. PIL.Image doesn't
+    #   handle by default.
+    if _image_has_flipped_dimensions(img):
+        width, height = img.height, img.width
+    else:
+        width, height = img.width, img.height
+
+    return width, height, len(img.getbands())
 
 
-def _compute_metadata(sample_collection, overwrite=False):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    num_samples = len(sample_collection)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-    with fou.ProgressBar(total=num_samples) as pb:
-        for sample in pb(sample_collection.select_fields()):
-            compute_sample_metadata(sample, skip_failures=True)
-
-
-def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
+def _compute_metadata(
+    sample_collection, overwrite=False, batch_size=1000, progress=None
+):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -310,25 +370,67 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
         _allow_missing=True,
     )
 
-    inputs = list(zip(ids, filepaths, media_types))
-    num_samples = len(inputs)
-
+    num_samples = len(ids)
     if num_samples == 0:
         return
 
     logger.info("Computing metadata...")
 
-    view = sample_collection.select_fields()
-    with fou.ProgressBar(total=num_samples) as pb:
-        with fou.get_multiprocessing_context().Pool(
-            processes=num_workers
-        ) as pool:
-            for sample_id, metadata in pb(
-                pool.imap_unordered(_do_compute_metadata, inputs)
-            ):
-                sample = view[sample_id]
-                sample.metadata = metadata
-                sample.save()
+    inputs = zip(ids, filepaths, media_types)
+    values = {}
+
+    try:
+        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
+            for args in pb(inputs):
+                sample_id, metadata = _do_compute_metadata(args)
+                values[sample_id] = metadata
+                if len(values) >= batch_size:
+                    sample_collection.set_values(
+                        "metadata", values, key_field="id"
+                    )
+                    values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
+
+
+def _compute_metadata_multi(
+    sample_collection,
+    num_workers,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
+):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    ids, filepaths, media_types = sample_collection.values(
+        ["id", "filepath", "_media_type"],
+        _allow_missing=True,
+    )
+
+    num_samples = len(ids)
+    if num_samples == 0:
+        return
+
+    logger.info("Computing metadata...")
+
+    inputs = zip(ids, filepaths, media_types)
+    values = {}
+
+    try:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
+                for sample_id, metadata in pb(
+                    pool.imap_unordered(_do_compute_metadata, inputs)
+                ):
+                    values[sample_id] = metadata
+                    if len(values) >= batch_size:
+                        sample_collection.set_values(
+                            "metadata", values, key_field="id"
+                        )
+                        values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
 
 
 def _do_compute_metadata(args):

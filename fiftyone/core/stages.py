@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -755,7 +755,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_sample_fields(
                 include_private=True
             )
@@ -787,7 +787,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter, frames=True
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_frame_fields(
                 include_private=True
             )
@@ -6669,7 +6669,7 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def seed(self):
@@ -7011,11 +7011,11 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts a collection by similiarity to a specified query.
+    """Sorts a collection by similarity to a specified query.
 
     In order to use this stage, you must first use
     :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-    similiarity.
+    similarity.
 
     Examples::
 
@@ -7112,7 +7112,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def reverse(self):
-        """Whether to sort by least similiarity."""
+        """Whether to sort by least similarity."""
         return self._reverse
 
     @property
@@ -7246,6 +7246,8 @@ def _parse_similarity_query(query):
             except:
                 # Query prompts
                 is_prompt = True
+        else:
+            is_prompt = False
 
         return query, query, is_prompt
 
@@ -7320,7 +7322,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def size(self):
@@ -8504,6 +8506,12 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     MatchTags,
     Select,
     SelectBy,
+    SelectGroupSlices,
     Skip,
     Take,
+}
+
+# Registry of select stages that should select first
+_STAGES_THAT_SELECT_FIRST = {
+    SelectGroupSlices,
 }

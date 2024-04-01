@@ -1,7 +1,7 @@
 """
 GeoJSON utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def load_location_data(
-    samples, geojson_or_path, location_field=None, skip_missing=True
+    samples,
+    geojson_or_path,
+    location_field=None,
+    skip_missing=True,
+    progress=None,
 ):
     """Loads geolocation data for the given samples from the given GeoJSON
     data.
@@ -86,6 +90,9 @@ def load_location_data(
             used, else a new "location" field is created
         skip_missing (True): whether to skip GeoJSON features with no
             ``filename`` properties (True) or raise an error (False)
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if location_field is None:
         try:
@@ -137,7 +144,7 @@ def load_location_data(
 
     logger.info("Loading location data for %d samples...", len(found_keys))
     _samples = samples.select_fields(location_field)
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for key in pb(found_keys):
             sample_id = lookup[key]
             geometry = geometries[key]

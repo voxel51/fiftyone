@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import DeleteIcon from "@material-ui/icons/Delete";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -215,4 +215,9 @@ export const ChromePickerWrapper = styled.div`
   top: 60px;
   left: 0;
   z-index: 10001;
+`;
+
+export const Guide = styled.div`
+  display: flex;
+  flex-direction: row;
 `;

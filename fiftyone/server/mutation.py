@@ -1,15 +1,17 @@
 """
 FiftyOne Server mutations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
@@ -31,8 +33,17 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
+
+
+_CONVERSION_STAGES = {
+    fos.ToClips,
+    fos.ToEvaluationPatches,
+    fos.ToFrames,
+    fos.ToPatches,
+    fos.ToTrajectories,
+}
 
 
 @gql.input
@@ -91,7 +102,9 @@ class Mutation(SetColorScheme):
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
-        state.group_slice = state.dataset.group_slice
+        if state.dataset is not None:
+            state.group_slice = state.dataset.group_slice
+
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -115,7 +128,7 @@ class Mutation(SetColorScheme):
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
         state = get_state()
-        view = get_view(dataset, stages=stages)
+        view = await get_view(dataset, stages=stages, awaitable=True)
 
         current = (
             {
@@ -201,19 +214,35 @@ class Mutation(SetColorScheme):
 
         # Otherwise, build the view using the params
         if result_view is None:
-            result_view = get_view(
+            result_view = await get_view(
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
-                sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
+                sample_filter=(
+                    SampleFilter(
+                        group=GroupElementFilter(
+                            slice=form.slice, slices=[form.slice]
+                        )
                     )
-                )
-                if form.slice
-                else None,
+                    if form.slice
+                    else None
+                ),
+                awaitable=True,
             )
+
+            # special case for group datasets where conversion stage is added
+            # `result_view` will output a `mixed` media type dataset but a real
+            # type, e.g. "image", is needed
+            is_in_conversion_stage = False
+            if form.add_stages:
+                is_in_conversion_stage = any(
+                    etau.get_class(stage.get("_cls")) in _CONVERSION_STAGES
+                    for stage in form.add_stages
+                )
+
+            if result_view.media_type == "mixed" and is_in_conversion_stage:
+                result_view._set_media_type(ds.group_media_types[form.slice])
 
             result_view = _build_result_view(result_view, form)
 
@@ -233,11 +262,6 @@ class Mutation(SetColorScheme):
         )
 
         return result_view._serialize() if result_view else []
-
-    @gql.mutation
-    async def store_teams_submission(self) -> bool:
-        etas.write_json({"submitted": True}, foc.TEAMS_PATH)
-        return True
 
     @gql.mutation
     async def create_saved_view(
@@ -264,16 +288,21 @@ class Mutation(SetColorScheme):
                 "{}".format(view_name)
             )
 
-        dataset_view = get_view(
+        dataset_view = await get_view(
             dataset_name,
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
-            sample_filter=SampleFilter(
-                group=GroupElementFilter(slice=form.slice, slices=[form.slice])
-            )
-            if form.slice
-            else None,
+            sample_filter=(
+                SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None
+            ),
+            awaitable=True,
         )
 
         result_view = _build_result_view(dataset_view, form)
@@ -339,7 +368,7 @@ class Mutation(SetColorScheme):
         return deleted_view_id
 
     @gql.mutation
-    async def update_saved_view(
+    def update_saved_view(
         self,
         view_name: str,
         subscription: t.Optional[str],
@@ -403,7 +432,7 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
-    async def search_select_fields(
+    def search_select_fields(
         self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[str]:
         if not meta_filter:

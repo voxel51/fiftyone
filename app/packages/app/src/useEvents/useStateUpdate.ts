@@ -1,5 +1,7 @@
+import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
+import { getDatasetName, getSavedViewName, resolveURL } from "../utils";
 import { AppReadyState, EventHandlerHook } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
@@ -13,27 +15,17 @@ const useStateUpdate: EventHandlerHook = ({
   return useCallback(
     (payload: any) => {
       const state = processState(session.current, payload.state);
-
-      const searchParams = new URLSearchParams(router.history.location.search);
-
-      if (payload.state.saved_view_slug) {
-        searchParams.set(
-          "view",
-          encodeURIComponent(payload.state.saved_view_slug)
-        );
-      } else {
-        searchParams.delete("view");
-      }
-
-      let search = searchParams.toString();
-      if (search.length) {
-        search = `?${search}`;
-      }
-
-      const path = payload.state.dataset
-        ? `/datasets/${encodeURIComponent(payload.state.dataset)}${search}`
-        : `/${search}`;
-
+      const stateless = env().VITE_NO_STATE;
+      const path = resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+        nextDataset: stateless
+          ? getDatasetName()
+          : payload.state.dataset ?? null,
+        nextView: stateless
+          ? getSavedViewName()
+          : payload.state.saved_view_slug,
+      });
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));

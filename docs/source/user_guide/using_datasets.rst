@@ -1,4 +1,4 @@
-.. _using-datasets:
+parameter.. _using-datasets:
 
 Using FiftyOne Datasets
 =======================
@@ -2943,7 +2943,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 .. note::
 
     Did you know? You customize your App config in various ways, from
-    environment varibables to directly editing a |Session| object's config.
+    environment variables to directly editing a |Session| object's config.
     See :ref:`this page <configuring-fiftyone-app>` for more details.
 
 .. _temporal-detection:
@@ -2951,7 +2951,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 Temporal detection
 ------------------
 
-The |TemporalDetection| class represents an event occuring during a specified
+The |TemporalDetection| class represents an event occurring during a specified
 range of frames in a video.
 
 The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
@@ -3198,7 +3198,7 @@ properties:
 
 If you have multiple geometries of each type that you wish to store on a single
 sample, then you can use the |GeoLocations| class and its appropriate
-properites to do so.
+properties to do so.
 
 .. code-block:: python
     :linenos:
@@ -3898,7 +3898,7 @@ The simplest way to define custom embedded documents on your datasets is to
 declare empty |DynamicEmbeddedDocument| field(s) and then incrementally
 populate new :ref:`dynamic attributes <dynamic-attributes>` as needed.
 
-To illusrate, let's start by defining an empty embedded document field:
+To illustrate, let's start by defining an empty embedded document field:
 
 .. code-block:: python
     :linenos:
@@ -4333,10 +4333,197 @@ To get started exploring video datasets, try loading the
         frame_number: fiftyone.core.fields.FrameNumberField
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
 
+.. _three-d-datasets:
+
+3D datasets
+___________
+
+Any |Sample| whose `filepath` is a file with extension `.fo3d` is
+recognized as a 3D sample, and datasets composed of 3D
+samples have media type `3d`.
+
+A fo3d file encapsulates a FiftyOne 3D scene constructed using the
+:class:`fiftyone.core.threed.Scene` class, which provides methods
+to add, remove, and manipulate 3D objects in the scene. A scene is 
+internally represented as a n-ary tree of 3D objects, where each 
+object is a node in the tree. A 3D object is either a
+:ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
+or a :ref:`3D shape geometry <3d-shapes>`.
+
+A scene may be explicitly initialized with additional attributes, such as
+:class:`camera <fiftyone.core.threed.camera>`,
+:class:`lights <fiftyone.core.threed.lights>`, and
+:class:`background <fiftyone.core.threed.SceneBackground>`. By default, a
+scene is created with neutral lighting, and a perspective camera whose
+`up` is set to `Y` axis in a right-handed coordinate system.
+
+After a scene is constructed, it should be written to the disk using the
+:meth:`scene.write() <fiftyone.core.threed.Scene.write>` method, which
+serializes the scene into a fo3d file.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+    sphere1 = fo.SphereGeometry("sphere1", radius=2.0)
+    sphere1.position = [-1, 0, 0]
+    sphere1.default_material.color = "red"
+
+    sphere2 = fo.SphereGeometry("sphere2", radius=2.0)
+    sphere2.position = [-1, 0, 0]
+    sphere2.default_material.color = "blue"
+
+    mesh = fo.GltfMesh("mesh", "mesh.glb")
+    mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    scene.add(sphere1, sphere2, mesh)
+
+    scene.write("/path/to/scene.fo3d")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(fo.Sample(filepath="/path/to/scene.fo3d"))
+
+    print(dataset.media_type)  # 3d
+
+.. _3d-meshes:
+
+3D meshes
+---------
+
+A 3D mesh is a collection of vertices, edges, and faces that define the shape
+of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
+others also store the material properties and textures of the mesh. If a
+mesh file contains material properties and textures, FiftyOne will
+automatically load and display them. You may also
+assign default material for your meshes by setting the
+:attr:`default_material <fiftyone.core.threed.mesh.Mesh.default_material>`
+attribute of the mesh. In the absence of any material information,
+meshes are assigned a
+:class:`MeshStandardMaterial <fiftyone.core.threed.MeshStandardMaterial>`
+with reasonable defaults that can also be dynamically configured from the app.
+Please refer to :mod:`material_3d <fiftyone.core.threed.material_3d>` for more
+details.
+
+FiftyOne supports :class:`GLTF <fiftyone.core.threed.GltfMesh>`,
+:class:`OBJ <fiftyone.core.threed.ObjMesh>`,
+:class:`PLY <fiftyone.core.threed.PlyMesh>`,
+:class:`STL <fiftyone.core.threed.StlMesh>`, and
+:class:`FBX 7.x+ <fiftyone.core.threed.FbxMesh>` mesh formats.
+
+We recommend you use the `GLTF` format for 3D meshes where possible, as it
+is the most compact, efficient, and web-friendly format for storing and
+transmitting 3D models.
+
+.. _3d-point-clouds:
+
+3D point clouds
+---------------
+
+FiftyOne currently only has support for the
+`PCD <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+point cloud format. A code snippet to create a PCD object that can be added
+to a FiftyOne 3D scene is shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    fo_pcd = fo.Pointcloud(
+        "my-pcd", "/path/to/point-cloud.pcd", flag_for_projection=True
+    )
+
+    fo_pcd.default_material.shading_mode = "custom"
+    fo_pcd.default_material.custom_color = "red"
+    fo_pcd.default_material.point_size = 2
+
+    scene = fo.Scene()
+    scene.add(fo_pcd)
+
+    scene.write("/path/to/scene.fo3d")
+
+You can customize the appearance of a point cloud by setting the
+`default_material` attribute of the point cloud object, or dynamically from
+the app. Please refer to the :class:`fiftyone.core.threed.PointcloudMaterial`
+class for more details.
+
+Initializing the point cloud with `flag_for_projection=True` allows 
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate
+:ref:`orthographic projection images <orthographic-projection-images>` of the
+point cloud.
+
+.. _3d-shapes:
+
+3D shapes
+---------
+
+FiftyOne provides a set of primitive 3D shape geometries that can be added to
+a 3D scene. The following 3D shape geometries are supported:
+
+- Box: :class:`fiftyone.core.threed.BoxGeometry`
+- Sphere: :class:`fiftyone.core.threed.SphereGeometry`
+- Cylinder: :class:`fiftyone.core.threed.CylinderGeometry`
+- Plane: :class:`fiftyone.core.threed.PlaneGeometry`
+
+Similar to meshes and point clouds, shapes can be manipulated by setting their
+position, rotation, and scale. Their appearance can be customized either by
+setting the `default_material` attribute of the shape object, or dynamically
+from the app.
+
+.. _orthographic-projection-images:
+
+Orthographic projection images
+------------------------------
+
+In order to visualize point cloud datasets in the App's grid view, you can use
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate orthographic projection images of each point cloud:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example point cloud dataset
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    session = fo.launch_app(dataset)
+
+The above method populates an |OrthographicProjectionMetadata| field on each
+sample that contains the path to its projection image and the necessary to
+properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
+
+.. note::
+
+    Refer to the
+    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+    documentation for available parameters to customize the projections.
+
 .. _point-cloud-datasets:
 
 Point cloud datasets
-____________________
+--------------------
+
+.. note::
+
+    Deprecation notice:
+
+    The `point-cloud` media type has been deprecated in favor of the
+    `3d` media type. While we'll keep supporting the `point-cloud` media type
+    for backward compatibility, we recommend using the `3d` media type for new
+    datasets.
 
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
@@ -4399,43 +4586,6 @@ Here's how a typical PCD file is structured:
     intensity values are automatically scaled to use the full dynamic range of
     the colorscale.
 
-.. _orthographic-projection-images:
-
-Orthographic projection images
-------------------------------
-
-In order to visualize point cloud datasets in the App's grid view, you can use
-:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-to generate orthographic projection images of each point cloud:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-    import fiftyone.zoo as foz
-
-    # Load an example point cloud dataset
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
-
-    # Populate orthographic projections
-    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
-
-    session = fo.launch_app(dataset)
-
-The above method populates an |OrthographicProjectionMetadata| field on each
-sample that contains the path to its projection image and the necessary to
-properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
-
-.. note::
-
-    Refer to the
-    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-    documentation for available parameters to customize the projections.
 
 Example point cloud dataset
 ---------------------------

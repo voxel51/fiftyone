@@ -1,16 +1,20 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from functools import partial
 import itertools
 import warnings
 
 from bson import ObjectId
 import cv2
 import numpy as np
+import scipy.ndimage as spn
+import skimage.measure as skm
+import skimage.segmentation as sks
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
@@ -775,7 +779,10 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         if mask.ndim > 2:
             mask = mask[:, :, 0]
 
-        points = _get_polygons(mask.astype(bool), tolerance)
+        points = _get_polygons(
+            mask.astype(bool),
+            tolerance=tolerance,
+        )
 
         return cls(
             label=label, points=points, filled=True, closed=True, **attributes
@@ -1141,7 +1148,12 @@ class Segmentation(_HasID, _HasMedia, Label):
         )
         return Detections(detections=detections)
 
-    def to_polylines(self, mask_targets=None, mask_types="stuff", tolerance=2):
+    def to_polylines(
+        self,
+        mask_targets=None,
+        mask_types="stuff",
+        tolerance=2,
+    ):
         """Returns a :class:`Polylines` representation of this instance.
 
         Each ``"stuff"`` class will be converted to a single :class:`Polyline`
@@ -1507,8 +1519,11 @@ def _transform_mask(in_mask, targets_map):
         dtype = np.uint8
 
     out_mask = np.zeros_like(in_mask, dtype=dtype)
+    objects = _find_slices(in_mask)
     for in_val, out_val in targets_map.items():
-        out_mask[in_mask == in_val] = out_val
+        slices = objects.get(in_val, None)
+        if slices is not None:
+            out_mask[slices][in_mask[slices] == in_val] = out_val
 
     if rgb_out:
         out_mask = _int_array_to_rgb(out_mask)
@@ -1568,7 +1583,7 @@ def _parse_segmentation_target(mask, frame_size, target):
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
         if target is not None and not is_rgb and target > 255:
-            dtype = np.int
+            dtype = int
         else:
             dtype = np.uint8
 
@@ -1595,7 +1610,7 @@ def _parse_segmentation_mask_targets(mask, frame_size, mask_targets):
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
         if mask_targets is not None and not is_rgb and max(mask_targets) > 255:
-            dtype = np.int
+            dtype = int
         else:
             dtype = np.uint8
 
@@ -1654,7 +1669,21 @@ def _render_polyline(mask, polyline, target, thickness):
         )
 
 
-def _segmentation_to_detections(segmentation, mask_targets, mask_types):
+def _find_slices(mask):
+    """Return slices that tightly bound each unique object in `mask`."""
+    relabeled, forward, backward = sks.relabel_sequential(mask)
+    slices = spn.find_objects(relabeled)
+    return dict((backward[idx + 1], slc) for idx, slc in enumerate(slices))
+
+
+def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
+    """Convert segmentation to a collection of detections, polylines, etc.
+
+    `converter(label_mask, label, label_type, offset, frame_size)` is
+    a function that returns a list of detections, polylines, etc. It
+    gets called for each value in `mask_targets`, or for all values in
+    the mask if `mask_targets` is `None`.
+    """
     if isinstance(mask_types, dict):
         default = None
     else:
@@ -1665,21 +1694,20 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
     is_rgb = mask.ndim == 3
 
     if is_rgb:
-        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
-        targets = [_rgb_to_hex(t) for t in array_targets]
-    else:
-        targets = np.unique(mask)
-        array_targets = itertools.repeat(None)
+        # convert to int, like in transform_mask
+        mask = _rgb_array_to_int(mask)
+        if mask_targets is not None:
+            mask_targets = {_hex_to_int(k): v for k, v in mask_targets.items()}
 
-    detections = []
-    for target, array_target in zip(targets, array_targets):
-        if target in (0, "#000000"):
-            continue  # skip background
+    mask = mask.squeeze()
+    if mask.ndim != 2:
+        raise ValueError(f"Unsupported mask dimensions: {mask.ndim}")
 
+    objects = _find_slices(mask)
+    results = []
+    for target, slices in objects.items():
         if mask_targets is not None:
             label = mask_targets.get(target, None)
-            if is_rgb and label is None:
-                label = mask_targets.get(target.upper(), None)
 
             if label is None:
                 continue  # skip unknown target
@@ -1687,8 +1715,6 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
             label = str(target)
 
         label_type = mask_types.get(target, None)
-        if is_rgb and label_type is None:
-            label_type = mask_types.get(target.upper(), None)
 
         if label_type is None:
             if default is None:
@@ -1696,97 +1722,74 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
 
             label_type = default
 
-        if is_rgb:
-            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
-        else:
-            label_mask = mask == target
+        label_mask = mask[slices] == target
+        offset = list(s.start for s in slices)[::-1]
+        frame_size = mask.shape[:2][::-1]
 
-        if label_type == "stuff":
-            instances = [_parse_stuff_instance(label_mask)]
-        elif label_type == "thing":
-            instances = _parse_thing_instances(label_mask)
-        else:
-            raise ValueError(
-                "Unsupported mask type '%s'. Supported values are "
-                "('stuff', 'thing')"
-            )
+        new_results = converter(
+            label_mask, label, label_type, offset, frame_size
+        )
+        results.extend(new_results)
 
-        for bbox, instance_mask in instances:
-            detections.append(
-                Detection(label=label, bounding_box=bbox, mask=instance_mask)
-            )
+    return results
 
-    return detections
+
+def _mask_to_detections(label_mask, label, label_type, offset, frame_size):
+    if label_type == "stuff":
+        instances = [_parse_stuff_instance(label_mask, offset, frame_size)]
+    elif label_type == "thing":
+        instances = _parse_thing_instances(label_mask, offset, frame_size)
+    else:
+        raise ValueError(
+            "Unsupported mask type '%s'. Supported values are "
+            "('stuff', 'thing')"
+        )
+
+    return list(
+        Detection(label=label, bounding_box=bbox, mask=instance_mask)
+        for bbox, instance_mask in instances
+    )
+
+
+def _mask_to_polylines(
+    label_mask, label, label_type, offset, frame_size, tolerance
+):
+    polygons = _get_polygons(
+        label_mask,
+        tolerance=tolerance,
+        offset=offset,
+        frame_size=frame_size,
+    )
+
+    if label_type == "stuff":
+        polygons = [polygons]
+    elif label_type == "thing":
+        polygons = [[p] for p in polygons]
+    else:
+        raise ValueError(
+            "Unsupported mask type '%s'. Supported values are "
+            "('stuff', 'thing')"
+        )
+
+    return list(
+        Polyline(label=label, points=points, filled=True, closed=True)
+        for points in polygons
+    )
+
+
+def _segmentation_to_detections(segmentation, mask_targets, mask_types):
+    return _convert_segmentation(
+        segmentation, mask_targets, mask_types, _mask_to_detections
+    )
 
 
 def _segmentation_to_polylines(
     segmentation, mask_targets, mask_types, tolerance
 ):
-    if isinstance(mask_types, dict):
-        default = None
-    else:
-        default = mask_types
-        mask_types = {}
-
-    mask = segmentation.get_mask()
-    is_rgb = mask.ndim == 3
-
-    if is_rgb:
-        array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
-        targets = [_rgb_to_hex(t) for t in array_targets]
-    else:
-        targets = np.unique(mask)
-        array_targets = itertools.repeat(None)
-
-    polylines = []
-    for target, array_target in zip(targets, array_targets):
-        if target in (0, "#000000"):
-            continue  # skip background
-
-        if mask_targets is not None:
-            label = mask_targets.get(target, None)
-            if is_rgb and label is None:
-                label = mask_targets.get(target.upper(), None)
-
-            if label is None:
-                continue  # skip unknown target
-        else:
-            label = str(target)
-
-        label_type = mask_types.get(target, None)
-        if is_rgb and label is None:
-            label_type = mask_types.get(target.upper(), None)
-
-        if label_type is None:
-            if default is None:
-                continue  # skip unknown type
-
-            label_type = default
-
-        if is_rgb:
-            label_mask = np.all(mask == array_target.reshape(1, 1, 3), axis=2)
-        else:
-            label_mask = mask == target
-
-        polygons = _get_polygons(label_mask, tolerance)
-
-        if label_type == "stuff":
-            polygons = [polygons]
-        elif label_type == "thing":
-            polygons = [[p] for p in polygons]
-        else:
-            raise ValueError(
-                "Unsupported mask type '%s'. Supported values are "
-                "('stuff', 'thing')"
-            )
-
-        for points in polygons:
-            polyline = Polyline(
-                label=label, points=points, filled=True, closed=True
-            )
-            polylines.append(polyline)
-
-    return polylines
+    converter = partial(_mask_to_polylines, tolerance=tolerance)
+    return _convert_segmentation(
+        segmentation, mask_targets, mask_types, converter
+    )
 
 
 def _hex_to_rgb(hex_str):
@@ -1830,15 +1833,24 @@ def _int_array_to_rgb(mask):
     return out_mask
 
 
-def _parse_stuff_instance(mask):
+def _parse_stuff_instance(mask, offset=None, frame_size=None):
     cols = np.any(mask, axis=0)
     rows = np.any(mask, axis=1)
     xmin, xmax = np.where(cols)[0][[0, -1]]
     ymin, ymax = np.where(rows)[0][[0, -1]]
 
-    height, width = mask.shape
-    x = xmin / width
-    y = ymin / height
+    if offset is None:
+        x_offset, y_offset = (0, 0)
+    else:
+        x_offset, y_offset = offset
+
+    if frame_size is None:
+        height, width = mask.shape
+    else:
+        width, height = frame_size
+
+    x = (xmin + x_offset) / width
+    y = (ymin + y_offset) / height
     w = (xmax - xmin + 1) / width
     h = (ymax - ymin + 1) / height
 
@@ -1848,21 +1860,29 @@ def _parse_stuff_instance(mask):
     return bbox, instance_mask
 
 
-def _parse_thing_instances(mask):
-    height, width = mask.shape
-    polygons = _get_polygons(mask, 2, abs_coords=True)
+def _parse_thing_instances(mask, offset=None, frame_size=None):
+    if offset is None:
+        x_offset, y_offset = (0, 0)
+    else:
+        x_offset, y_offset = offset
+
+    if frame_size is None:
+        height, width = mask.shape
+    else:
+        width, height = frame_size
+
+    labeled = skm.label(mask)
+    objects = _find_slices(labeled)
 
     instances = []
-    for p in polygons:
-        p = np.array(p)
-        xmin, ymin = np.floor(p.min(axis=0)).astype(int)
-        xmax, ymax = np.ceil(p.max(axis=0)).astype(int)
+    for idx, (yslice, xslice) in objects.items():
+        xmin = xslice.start
+        xmax = xslice.stop
+        ymin = yslice.start
+        ymax = yslice.stop
 
-        xmax = max(xmin + 1, xmax)
-        ymax = max(ymin + 1, ymax)
-
-        x = xmin / width
-        y = ymin / height
+        x = (xmin + x_offset) / width
+        y = (ymin + y_offset) / height
         w = (xmax - xmin) / width
         h = (ymax - ymin) / height
 
@@ -1874,13 +1894,38 @@ def _parse_thing_instances(mask):
     return instances
 
 
-def _get_polygons(mask, tolerance, abs_coords=False):
-    polygons = etai._mask_to_polygons(mask, tolerance=tolerance)
-    if abs_coords:
-        return polygons
+def _get_polygons(
+    mask,
+    tolerance,
+    offset=None,
+    frame_size=None,
+    abs_coords=False,
+):
+    if offset is None:
+        x_offset, y_offset = (0, 0)
+    else:
+        x_offset, y_offset = offset
 
-    height, width = mask.shape
-    return [[(x / width, y / height) for x, y in p] for p in polygons]
+    if abs_coords:
+        height, width = (1, 1)
+    else:
+        if frame_size is None:
+            height, width = mask.shape
+        else:
+            width, height = frame_size
+
+    polygons = etai._mask_to_polygons(mask, tolerance=tolerance)
+    polygons = list(
+        list(
+            (
+                (x + x_offset) / width,
+                (y + y_offset) / height,
+            )
+            for x, y in p
+        )
+        for p in polygons
+    )
+    return polygons
 
 
 def _from_geo_json_single(d):

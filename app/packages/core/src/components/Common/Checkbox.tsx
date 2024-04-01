@@ -1,8 +1,8 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
-import { constSelector, RecoilValueReadOnly } from "recoil";
+import { RecoilValueReadOnly, constSelector } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
@@ -14,9 +14,10 @@ import { SuspenseEntryCounts } from "./CountSubcount";
 interface CheckboxProps<T> {
   color?: string;
   name: T;
+  loading?: boolean;
   value: boolean;
-  setValue: (value: boolean) => void;
-  count?: number;
+  setValue?: (value: boolean) => void;
+  count?: number | RecoilValueReadOnly<number>;
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
   muted?: boolean;
@@ -36,9 +37,10 @@ const StyledCheckbox = animated(styled(ItemAction)`
   margin: 0;
 `);
 
-const Checkbox = <T extends unknown>({
+function Checkbox<T>({
   color,
   name,
+  loading,
   value,
   setValue,
   subcountAtom,
@@ -47,14 +49,14 @@ const Checkbox = <T extends unknown>({
   forceColor,
   muted,
   formatter,
-}: CheckboxProps<T>) => {
+}: CheckboxProps<T>) {
   const theme = useTheme();
   color = color ?? theme.primary.plainColor;
   const props = useHighlightHover(disabled);
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
   const countAtom = useMemo(
-    () => (typeof count === "number" ? constSelector(count) : null),
+    () => (typeof count === "number" ? constSelector(count) : count ?? null),
     [count]
   );
 
@@ -68,7 +70,7 @@ const Checkbox = <T extends unknown>({
           e.preventDefault();
           e.stopPropagation();
 
-          !disabled && !muted && setValue(!value);
+          !disabled && !muted && setValue && setValue(!value);
         }}
       >
         {!disabled && (
@@ -93,6 +95,7 @@ const Checkbox = <T extends unknown>({
           >
             {prettify(text)}
           </span>
+          {loading && <LoadingDots />}
           {countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}
@@ -103,6 +106,6 @@ const Checkbox = <T extends unknown>({
       </StyledCheckbox>
     </StyledCheckboxContainer>
   );
-};
+}
 
 export default Checkbox;

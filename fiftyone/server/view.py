@@ -1,10 +1,11 @@
 """
 FiftyOne Server view.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from typing import List, Optional
 
 from bson import ObjectId
@@ -54,9 +55,7 @@ async def load_view(
                 stages=serialized_view,
                 filters=form.filters,
                 sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slices=[form.slice] if form.slice else None
-                    )
+                    group=GroupElementFilter(slice=form.slice)
                 ),
             )
 
@@ -65,6 +64,7 @@ async def load_view(
 
             if form.mixed and view.media_type == fom.GROUP:
                 view = view.select_group_slices(_force_mixed=True)
+                view = get_extended_view(view, form.filters)
 
             return view
 
@@ -72,7 +72,7 @@ async def load_view(
 
 
 def get_view(
-    dataset_name,
+    dataset,
     view_name=None,
     stages=None,
     filters=None,
@@ -80,11 +80,13 @@ def get_view(
     extended_stages=None,
     sample_filter=None,
     reload=True,
+    awaitable=False,
 ):
     """Gets the view defined by the given request parameters.
 
     Args:
-        dataset_name: the dataset name
+        dataset: the dataset name or :class:`fiftyone.core.dataset.Dataset`
+            instance
         view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
@@ -92,60 +94,64 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        reload (None): whether to reload the dataset
+        reload (True): whether to reload the dataset
+        awaitable (False): whether to return an awaitable coroutine
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    dataset = fod.load_dataset(dataset_name)
 
-    if reload:
-        dataset.reload()
+    def run(dataset):
+        if isinstance(dataset, str):
+            dataset = fod.load_dataset(dataset)
 
-    if view_name is not None:
-        return dataset.load_saved_view(view_name)
+        if reload:
+            dataset.reload()
 
-    if stages:
-        view = fov.DatasetView._build(dataset, stages)
-    else:
-        view = dataset.view()
+        if view_name is not None:
+            return dataset.load_saved_view(view_name)
 
-    if sample_filter is not None:
-        if sample_filter.group:
-            if sample_filter.group.slice:
-                view.group_slice = sample_filter.group.slice
+        if stages:
+            view = fov.DatasetView._build(dataset, stages)
+        else:
+            view = dataset.view()
 
-            if sample_filter.group.id:
-                view = fov.make_optimized_select_view(
-                    view, sample_filter.group.id, groups=True
-                )
-            if sample_filter.group.slices:
-                view = view.select_group_slices(
-                    sample_filter.group.slices,
-                    _force_mixed=len(sample_filter.group.slices) > 1,
-                )
+        if sample_filter is not None:
+            if sample_filter.group:
+                if sample_filter.group.slice:
+                    view.group_slice = sample_filter.group.slice
 
-        elif sample_filter.id:
-            view = fov.make_optimized_select_view(view, sample_filter.id)
+                if sample_filter.group.id:
+                    view = fov.make_optimized_select_view(
+                        view, sample_filter.group.id, groups=True
+                    )
 
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view)
+                if sample_filter.group.slices:
+                    view = view.select_group_slices(
+                        sample_filter.group.slices,
+                        _force_mixed=True,
+                    )
 
-    if filters or extended_stages or pagination_data:
-        view = get_extended_view(
-            view,
-            filters,
-            pagination_data=pagination_data,
-            extended_stages=extended_stages,
-        )
+            elif sample_filter.id:
+                view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    return view
+        if filters or extended_stages or pagination_data:
+            view = get_extended_view(
+                view,
+                filters,
+                pagination_data=pagination_data,
+                extended_stages=extended_stages,
+            )
+
+        return view
+
+    if awaitable:
+        return fou.run_sync_task(run, dataset)
+
+    return run(dataset)
 
 
 def get_extended_view(
@@ -168,7 +174,12 @@ def get_extended_view(
     label_tags = None
 
     if extended_stages:
+        # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
+
+    if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view)
 
     if filters:
         if "tags" in filters:
@@ -369,7 +380,7 @@ def _is_label(field):
     )
 
 
-def _make_query(path, field, args):
+def _make_query(path: str, field: fof.Field, args):
     keys = path.split(".")
     path = ".".join(keys[:-1] + [field.db_field or field.name])
     if isinstance(field, fof.ListField) and field.field:
@@ -379,24 +390,7 @@ def _make_query(path, field, args):
         field,
         (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField),
     ):
-        mn, mx = args["range"]
-        if isinstance(field, (fof.DateField, fof.DateTimeField)):
-            mn, mx = [fou.timestamp_to_datetime(d) for d in args["range"]]
-
-        if args["exclude"]:
-            return {
-                "$or": [
-                    {path: {"$lt": mn}},
-                    {path: {"$gt": mx}},
-                ]
-            }
-
-        return {
-            "$and": [
-                {path: {"$gte": mn}},
-                {path: {"$lte": mx}},
-            ]
-        }
+        return _make_range_query(path, field, args)
 
     values = args.get("values", None)
     if isinstance(field, fof.ObjectIdField):
@@ -424,6 +418,58 @@ def _make_query(path, field, args):
             }
 
     raise ValueError("unexpected filter")
+
+
+_NONFINITES = {
+    "inf": float("inf"),
+    "nan": float("nan"),
+    "ninf": float("-inf"),
+    "none": None,
+}
+
+
+def _make_range_query(path: str, field: fof.Field, args):
+    range_ = args.get("range", None)
+    if range_:
+        mn, mx = range_
+        if isinstance(field, (fof.DateField, fof.DateTimeField)):
+            mn, mx = [fou.timestamp_to_datetime(d) for d in range_]
+    else:
+        mn, mx = None, None
+
+    exclude = args.get("exclude", False)
+    if not exclude and range_:
+        return {
+            "$and": [
+                {path: {"$gte": mn}},
+                {path: {"$lte": mx}},
+            ]
+        }
+
+    if range_:
+        return {
+            "$or": [
+                {path: {"$lt": mn}},
+                {path: {"$gt": mx}},
+            ]
+        }
+
+    if exclude:
+        return {
+            "$and": [
+                {path: {"$eq": v}}
+                for k, v in _NONFINITES.items()
+                if k in args and not args[k]
+            ]
+        }
+
+    return {
+        "$and": [
+            {path: {"$ne": v}}
+            for k, v in _NONFINITES.items()
+            if k in args and not args[k]
+        ]
+    }
 
 
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
@@ -669,10 +715,12 @@ def _count_list_items(path, view):
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):
     label_paths = [
-        f"{path}.{field.document_type._LABEL_LIST_FIELD}"
-        if isinstance(field, fof.EmbeddedDocumentField)
-        and issubclass(field.document_type, fol._HasLabelList)
-        else path
+        (
+            f"{path}.{field.document_type._LABEL_LIST_FIELD}"
+            if isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+            else path
+        )
         for path, field in foc._iter_label_fields(view)
     ]
     values = label_tags["values"]

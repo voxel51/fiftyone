@@ -1,7 +1,7 @@
 """
 Plugin definitions.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -66,7 +66,7 @@ class PluginDefinition(object):
 
     @property
     def fiftyone_compatibility(self):
-        """The FiftyOne compatibilty version."""
+        """The FiftyOne compatibility version."""
         return self._metadata.get("fiftyone", {}).get("version", None)
 
     @property

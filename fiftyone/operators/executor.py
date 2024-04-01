@@ -1,25 +1,32 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import asyncio
+import collections
+import inspect
+import logging
+import os
 import traceback
-import types as python_types
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import fiftyone.server.view as fosv
+from fiftyone.operators.decorators import coroutine_timeout
+from fiftyone.operators.message import GeneratedMessage, MessageType
+from fiftyone.operators.operations import Operations
+from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
-from fiftyone.plugins.secrets import PluginSecretsResolver
+from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
+import fiftyone.server.view as fosv
 
-from .decorators import coroutine_timeout
-from .registry import OperatorRegistry
-from .message import GeneratedMessage, MessageType
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionRunState(object):
@@ -50,16 +57,15 @@ class InvocationRequest(object):
         }
 
 
-class ExecutionProgress:
+class ExecutionProgress(object):
     """Represents the status of an operator execution.
 
-    at least one of progress or label must be provided
     Args:
         progress (None): an optional float between 0 and 1 (0% to 100%)
         label (None): an optional label to display
     """
 
-    def __init__(self, progress: float = None, label: str = None):
+    def __init__(self, progress=None, label=None):
         self.progress = progress
         self.label = label
         self.updated_at = None
@@ -86,7 +92,7 @@ class Executor(object):
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
-            the result of the invocation
+            instructions for the FiftyOne App to invoke the operator
         """
         inv_req = InvocationRequest(operator_name, params=params)
         self._requests.append(inv_req)
@@ -105,57 +111,73 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx, params=None):
+def execute_operator(operator_uri, ctx=None, **kwargs):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
-        ctx: a dictionary of parameters defining the execution context. The
-            supported keys are:
+        ctx (None): a dictionary of parameters defining the execution context.
+            The supported keys are:
 
             -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
                 name of a dataset to process. This is required unless a
                 ``view`` is provided
-            -   ``view``: an optional :class:`fiftyone.core.view.DatasetView`
-                to process
-            -   ``selected``: an optional list of selected sample IDs
-            -   ``selected_labels``: an optional list of selected labels in the
-                format returned by
+            -   ``view`` (None): an optional
+                :class:`fiftyone.core.view.DatasetView` to process
+            -   ``selected`` ([]): an optional list of selected sample IDs
+            -   ``selected_labels`` ([]): an optional list of selected labels
+                in the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
+            -   ``current_sample`` (None): an optional ID of the current sample
+                being processed
             -   ``params``: a dictionary of parameters for the operator.
                 Consult the operator's documentation for details
-        params (None): you can optionally provide the ``ctx.params`` dict as
-            a separate argument
+            -   ``request_delegation`` (False): whether to request delegated
+                execution, if supported by the operator
+            -   ``delegation_target`` (None): an optional orchestrator on which
+                to schedule the operation, if it is delegated
+        **kwargs: you can optionally provide any of the supported ``ctx`` keys
+            as keyword arguments rather than including them in ``ctx``
 
     Returns:
-        an :class:`ExecutionResult`
+        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+        method in a notebook context
+
+    Raises:
+        ExecutionError: if an error occurred while immediately executing an
+            operation or scheduling a delegated operation
     """
-    dataset_name, view_stages, selected, selected_labels, params = _parse_ctx(
-        ctx, params=params
+    request_params = _parse_ctx(ctx=ctx, **kwargs)
+    coroutine = execute_or_delegate_operator(
+        operator_uri, request_params, exhaust=True
     )
 
-    request_params = dict(
-        operator_uri=operator_uri,
-        dataset_name=dataset_name,
-        view=view_stages,
-        selected=selected,
-        selected_labels=selected_labels,
-        params=params,
-    )
+    try:
+        # Some contexts like notebooks already have event loops running, so we
+        # must use the existing loop
+        loop = asyncio.get_running_loop()
+    except:
+        loop = None
 
-    return asyncio.run(
-        execute_or_delegate_operator(operator_uri, request_params)
-    )
+    if loop is not None:
+        # @todo is it possible to await result here?
+        # Sadly, run_until_complete() is not allowed in Jupyter notebooks
+        # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
+        result = loop.create_task(coroutine)
+    else:
+        result = asyncio.run(coroutine)
+        result.raise_exceptions()
+
+    return result
 
 
-def _parse_ctx(ctx, params=None):
-    dataset = ctx.get("dataset", None)
-    view = ctx.get("view", None)
-    selected = ctx.get("selected", None)
-    selected_labels = ctx.get("selected_labels", None)
+def _parse_ctx(ctx=None, **kwargs):
+    if ctx is None:
+        ctx = {}
 
-    if params is None:
-        params = ctx.get("params", {})
+    ctx = {**ctx, **kwargs}  # don't modify input `ctx` in-place
+    dataset = ctx.pop("dataset", None)
+    view = ctx.pop("view", None)
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
@@ -164,25 +186,30 @@ def _parse_ctx(ctx, params=None):
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset)
 
-        view = dataset.view()
+        if dataset is not None:
+            view = dataset.view()
 
-    view_stages = view._serialize()
+    if view is not None:
+        view = view._serialize()
 
     if isinstance(dataset, fod.Dataset):
         dataset_name = dataset.name
     else:
         dataset_name = dataset
 
-    return dataset_name, view_stages, selected, selected_labels, params
+    return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_or_delegate_operator(operator_uri, request_params):
+async def execute_or_delegate_operator(
+    operator_uri, request_params, exhaust=False
+):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
+        exhaust (False): whether to immediately exhaust generator operators
 
     Returns:
         an :class:`ExecutionResult`
@@ -193,14 +220,41 @@ async def execute_or_delegate_operator(operator_uri, request_params):
     else:
         operator, executor, ctx = prepared
 
-    if operator.resolve_delegation(ctx):
+    execution_options = operator.resolve_execution_options(ctx)
+    if (
+        not execution_options.allow_immediate_execution
+        and not execution_options.allow_delegated_execution
+    ):
+        raise RuntimeError(
+            "This operation does not support immediate OR delegated execution"
+        )
+
+    should_delegate = (
+        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
+    )
+    if should_delegate:
+        if not execution_options.allow_delegated_execution:
+            logger.warning(
+                "This operation does not support delegated "
+                "execution; it will be executed immediately"
+            )
+            should_delegate = False
+    else:
+        if not execution_options.allow_immediate_execution:
+            logger.warning(
+                "This operation does not support immediate "
+                "execution; it will be delegated"
+            )
+            should_delegate = True
+
+    if should_delegate:
         try:
             from .delegated import DelegatedOperationService
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
-                delegation_target=operator.delegation_target,
+                delegation_target=ctx.delegation_target,
                 label=operator.name,
             )
 
@@ -213,24 +267,19 @@ async def execute_or_delegate_operator(operator_uri, request_params):
                 else None
             )
             return execution
-        except Exception as e:
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
     else:
         try:
-            raw_result = await (
-                operator.execute(ctx)
-                if asyncio.iscoroutinefunction(operator.execute)
-                else fou.run_sync_task(operator.execute, ctx)
-            )
-
-        except Exception as e:
+            result = await do_execute_operator(operator, ctx, exhaust=exhaust)
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
 
-        return ExecutionResult(result=raw_result, executor=executor)
+        return ExecutionResult(result=result, executor=executor)
 
 
 async def prepare_operator_executor(
@@ -250,7 +299,10 @@ async def prepare_operator_executor(
         executor=executor,
         set_progress=set_progress,
         delegated_operation_id=delegated_operation_id,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
     )
+
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
@@ -262,10 +314,25 @@ async def prepare_operator_executor(
     return operator, executor, ctx
 
 
-def _is_generator(value):
-    return isinstance(value, python_types.GeneratorType) or isinstance(
-        value, python_types.AsyncGeneratorType
+async def do_execute_operator(operator, ctx, exhaust=False):
+    result = await (
+        operator.execute(ctx)
+        if asyncio.iscoroutinefunction(operator.execute)
+        else fou.run_sync_task(operator.execute, ctx)
     )
+
+    if not exhaust:
+        return result
+
+    if inspect.isgenerator(result):
+        # Fastest way to exhaust sync generator, re: itertools consume()
+        #   https://docs.python.org/3/library/itertools.html
+        collections.deque(result, maxlen=0)
+    elif inspect.isasyncgen(result):
+        async for _ in result:
+            pass
+    else:
+        return result
 
 
 def resolve_type(registry, operator_uri, request_params):
@@ -284,11 +351,41 @@ def resolve_type(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
         )
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
+
+
+def resolve_execution_options(registry, operator_uri, request_params):
+    """Resolves the execution options of the operator with the given name.
+
+    Args:
+        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
+        operator_uri: the URI of the operator
+        request_params: a dictionary of request parameters
+
+    Returns:
+        a :class:`fiftyone.operators.executor.ExecutionOptions` or None
+    """
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
+
+    operator = registry.get_operator(operator_uri)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
+    try:
+        return operator.resolve_execution_options(ctx)
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
@@ -303,7 +400,11 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator.uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
@@ -319,8 +420,13 @@ class ExecutionContext(object):
     Args:
         request_params (None): a optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
-        set_progress (None): an optional function to set the progress of the current operation
-        delegated_operation_id (None): an optional ID of the delegated operation
+        set_progress (None): an optional function to set the progress of the
+            current operation
+        delegated_operation_id (None): an optional ID of the delegated
+            operation
+        operator_uri (None): the unique id of the operator
+        required_secrets (None): the list of required secrets from the
+            plugin's definition
     """
 
     def __init__(
@@ -329,6 +435,8 @@ class ExecutionContext(object):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
+        operator_uri=None,
+        required_secrets=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -336,22 +444,41 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
-        self._secrets = {}
-        self._secrets_client = PluginSecretsResolver()
+        self._ops = Operations(self)
+
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
+        self._operator_uri = operator_uri
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
+        self._required_secret_keys = required_secrets
+        if self._required_secret_keys:
+            self._secrets_client.register_operator(
+                operator_uri=self._operator_uri,
+                required_secrets=self._required_secret_keys,
+            )
 
     @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
             return self._dataset
-
-        dataset_name = self.request_params.get("dataset_name", None)
-
-        self._dataset = fod.load_dataset(dataset_name)
-        self._dataset.reload()
-
+        # Since dataset may have been renamed, always resolve the dataset by
+        # id if it is available
+        uid = self.request_params.get("dataset_id", None)
+        if uid:
+            self._dataset = focu.load_dataset(id=uid)
+            # Set the dataset_name using the dataset object in case the dataset
+            # has been renamed or changed since the context was created
+            self.request_params["dataset_name"] = self._dataset.name
+        else:
+            uid = self.request_params.get("dataset_name", None)
+            if uid:
+                self._dataset = focu.load_dataset(name=uid)
+        # TODO: refactor so that this additional reload post-load is not
+        #  required
+        if self._dataset is not None:
+            self._dataset.reload()
         return self._dataset
 
     @property
@@ -374,16 +501,17 @@ class ExecutionContext(object):
         if self._view is not None:
             return self._view
 
-        # Forces a dataset reload if necessary
-        _ = self.dataset
-
-        dataset_name = self.request_params.get("dataset_name", None)
+        # Always derive the view from the context's dataset
+        dataset = self.dataset
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
+        if dataset is None:
+            return None
+
         self._view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,
@@ -391,6 +519,30 @@ class ExecutionContext(object):
         )
 
         return self._view
+
+    def target_view(self, param_name="view_target"):
+        """The target :class:`fiftyone.core.view.DatasetView` for the operator
+        being executed.
+        """
+        target = self.params.get(param_name, None)
+        if target == "SELECTED_SAMPLES":
+            return self.view.select(self.selected)
+        if target == "DATASET":
+            return self.dataset
+        return self.view
+
+    @property
+    def has_custom_view(self):
+        """Whether the operator has a custom view."""
+        stages = self.request_params.get("view", None)
+        filters = self.request_params.get("filters", None)
+        extended = self.request_params.get("extended", None)
+        has_stages = stages is not None and stages != [] and stages != {}
+        has_filters = filters is not None and filters != [] and filters != {}
+        has_extended = (
+            extended is not None and extended != [] and extended != {}
+        )
+        return has_stages or has_filters or has_extended
 
     @property
     def selected(self):
@@ -412,27 +564,50 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
-    def delegated(self):
-        """Whether the operation's execution was delegated to an orchestrator.
+    def current_sample(self):
+        """The ID of the current sample being processed (if any).
 
-        This property is only available for methods that are invoked after an
-        operator is executed, e.g. :meth:`resolve_output`.
+        When executed via the FiftyOne App, this is set when the user opens a
+        sample in the modal.
         """
+        return self.request_params.get("current_sample", None)
+
+    @property
+    def delegated(self):
+        """Whether delegated execution has been forced for the operation."""
         return self.request_params.get("delegated", False)
 
     @property
-    def results(self):
-        """A ``dict`` of results for the current operation.
+    def requesting_delegated_execution(self):
+        """Whether delegated execution has been requested for the operation."""
+        return self.request_params.get("request_delegation", False)
 
-        This property is only available for methods that are invoked after an
-        operator is executed, e.g. :meth:`resolve_output`.
-        """
+    @property
+    def delegation_target(self):
+        """The orchestrator to which the operation was delegated (if any)."""
+        return self.request_params.get("delegation_target", None)
+
+    @property
+    def results(self):
+        """A ``dict`` of results for the current operation."""
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> dict:
-        """The dict of secrets available to the operation (if any)."""
-        return self._secrets
+    def secrets(self):
+        """A read-only mapping of keys to their resolved values."""
+        return SecretsDictionary(
+            self._secrets,
+            operator_uri=self._operator_uri,
+            resolver_fn=self._secrets_client.get_secret_sync,
+            required_keys=self._required_secret_keys,
+        )
+
+    @property
+    def ops(self):
+        """A :class:`fiftyone.operators.operations.Operations` instance that
+        you can use to trigger builtin operations on the current context.
+        """
+        return self._ops
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -443,6 +618,16 @@ class ExecutionContext(object):
         Returns:
             the secret value
         """
+        if key not in self._secrets:
+            try:
+                secret = self._secrets_client.get_secret_sync(
+                    key, self._operator_uri
+                )
+                if secret:
+                    self._secrets[secret.key] = secret.value
+
+            except KeyError:
+                logging.debug(f"Failed to resolve value for secret `{key}`")
         return self._secrets.get(key, None)
 
     async def resolve_secret_values(self, keys, **kwargs):
@@ -457,7 +642,9 @@ class ExecutionContext(object):
             return None
 
         for key in keys:
-            secret = await self._secrets_client.get_secret(key, **kwargs)
+            secret = await self._secrets_client.get_secret(
+                key, self._operator_uri, **kwargs
+            )
             if secret:
                 self._secrets[secret.key] = secret.value
 
@@ -467,13 +654,24 @@ class ExecutionContext(object):
         This method is only available when the operator is invoked via the
         FiftyOne App. You can check this via ``ctx.executor``.
 
+        Example::
+
+            def execute(self, ctx):
+                # Trigger the `reload_dataset` operator after this operator
+                # finishes executing
+                ctx.trigger("reload_dataset")
+
+                # Immediately trigger the `reload_dataset` operator while a
+                # generator operator is executing
+                yield ctx.trigger("reload_dataset")
+
         Args:
             operator_name: the name of the operator
             params (None): a dictionary of parameters for the operator
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
-            the result of the invocation
+            instructions for the FiftyOne App to invoke the operator
         """
         if self.executor is None:
             raise ValueError("No executor available")
@@ -483,10 +681,19 @@ class ExecutionContext(object):
     def log(self, message):
         """Logs a message to the browser console.
 
+        .. note::
+
+            This method is only available to non-delegated operators. You can
+            only use this method during the execution of an operator.
+
         Args:
             message: a message to log
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to invoke the operator
         """
-        self.trigger("console_log", {"message": message})
+        return self.trigger("console_log", {"message": message})
 
     def serialize(self):
         """Serializes the execution context.
@@ -505,7 +712,7 @@ class ExecutionContext(object):
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
-    def set_progress(self, progress: float = None, label: str = None):
+    def set_progress(self, progress=None, label=None):
         """Sets the progress of the current operation.
 
         Args:
@@ -529,6 +736,7 @@ class ExecutionResult(object):
         executor (None): an :class:`Executor`
         error (None): an error message
         validation_ctx (None): a :class:`ValidationContext`
+        delegated (False): whether execution was delegated
     """
 
     def __init__(
@@ -548,18 +756,29 @@ class ExecutionResult(object):
     @property
     def is_generator(self):
         """Whether the result is a generator or an async generator."""
-        return _is_generator(self.result)
+        return inspect.isgenerator(self.result) or inspect.isasyncgen(
+            self.result
+        )
+
+    def raise_exceptions(self):
+        """Raises an :class:`ExecutionError` (only) if the operation failed."""
+        exception = self.to_exception()
+        if exception is not None:
+            raise exception
 
     def to_exception(self):
         """Returns an :class:`ExecutionError` representing a failed execution
         result.
 
         Returns:
-            a :class:`ExecutionError`
+            a :class:`ExecutionError`, or None if the execution did not fail
         """
+        if not self.error:
+            return None
+
         msg = self.error
 
-        if self.validation_ctx.invalid:
+        if self.validation_ctx and self.validation_ctx.invalid:
             val_error = self.validation_ctx.errors[0]
             path = val_error.path.lstrip(".")
             reason = val_error.reason
@@ -813,3 +1032,66 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+class ExecutionOptions(object):
+    """Represents the execution options of an operation.
+
+    Args:
+        allow_immediate_execution (True): whether the operation can be executed
+            immediately
+        allow_delegated_execution (False): whether the operation can be
+            delegated to an orchestrator
+        default_choice_to_delegated (False): whether to default to delegated
+            execution, if allowed
+    """
+
+    def __init__(
+        self,
+        allow_immediate_execution=True,
+        allow_delegated_execution=False,
+        default_choice_to_delegated=False,
+    ):
+        self._allow_immediate_execution = allow_immediate_execution
+        self._allow_delegated_execution = allow_delegated_execution
+        self._default_choice_to_delegated = default_choice_to_delegated
+        self._available_orchestrators = []
+
+        if not allow_delegated_execution and not allow_immediate_execution:
+            self._allow_immediate_execution = True
+
+    @property
+    def allow_immediate_execution(self):
+        return self._allow_immediate_execution
+
+    @property
+    def allow_delegated_execution(self):
+        return self._allow_delegated_execution
+
+    @property
+    def default_choice_to_delegated(self):
+        return self._default_choice_to_delegated
+
+    @property
+    def available_orchestrators(self):
+        return self._available_orchestrators or []
+
+    @property
+    def orchestrator_registration_enabled(self):
+        return bool(
+            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
+        )
+
+    def update(self, available_orchestrators=None):
+        self._available_orchestrators = available_orchestrators
+
+    def to_dict(self):
+        return {
+            "allow_immediate_execution": self._allow_immediate_execution,
+            "allow_delegated_execution": self._allow_delegated_execution,
+            "default_choice_to_delegated": self._default_choice_to_delegated,
+            "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
+            "available_orchestrators": [
+                x.__dict__ for x in self.available_orchestrators
+            ],
+        }

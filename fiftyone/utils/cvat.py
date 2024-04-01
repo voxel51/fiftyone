@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -127,6 +127,16 @@ def import_annotations(
         **kwargs: CVAT authentication credentials to pass to
             :class:`CVATBackendConfig`
     """
+    if sample_collection.media_type == fom.GROUP:
+        if insert_new:
+            raise ValueError(
+                "insert_new=True is not supported for grouped collections"
+            )
+
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+
     if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
             "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
@@ -3522,7 +3532,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
 class CVATAnnotationAPI(foua.AnnotationAPI):
     """A class to facilitate connection to and management of tasks in CVAT.
 
-    On initializiation, this class constructs a session based on the provided
+    On initialization, this class constructs a session based on the provided
     server url and credentials.
 
     This API provides methods to easily get, put, post, patch, and delete tasks
@@ -3995,13 +4005,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if project_name is not None:
                 self._project_id_map.pop(project_name, None)
 
-    def delete_projects(self, project_ids):
+    def delete_projects(self, project_ids, progress=None):
         """Deletes the given projects from the CVAT server.
 
         Args:
             project_ids: an iterable of project IDs
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
 
@@ -4029,7 +4042,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tasks.append(task)
                 else:
                     # For v1 servers, project tasks are dictionaries we need to
-                    # exctract "id" from
+                    # extract "id" from
                     tasks.append(task["id"])
 
         return tasks
@@ -4152,13 +4165,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self.task_exists(task_id):
             self.delete(self.task_url(task_id))
 
-    def delete_tasks(self, task_ids):
+    def delete_tasks(self, task_ids, progress=None):
         """Deletes the given tasks from the CVAT server.
 
         Args:
             task_ids: an iterable of task IDs
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
 
@@ -4233,6 +4249,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         files, open_files = self._parse_local_files(paths)
 
+        if self._server_version >= Version("2.4.6"):
+            data["sorting_method"] = "predefined"
+
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
         except Exception as e:
@@ -4294,10 +4313,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             # Image task
             for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
+                filename = os.path.basename(path)
+                if self._server_version < Version("2.4.6"):
+                    # IMPORTANT: older versions of CVAT organizes media within
+                    # a task alphabetically by filename, so we must give CVAT
+                    # filenames whose alphabetical order matches the order of `paths`
+                    filename = "%06d_%s" % (idx, os.path.basename(path))
 
                 if self._server_version >= Version("2.3"):
                     with open(path, "rb") as f:
@@ -6915,9 +6936,9 @@ class CVATShape(CVATLabel):
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
             from its track
-        occluded_attrs (None): a dictonary mapping class names to the
+        occluded_attrs (None): a dictionary mapping class names to the
             corresponding attribute linked to the CVAT occlusion widget, if any
-        group_id_attrs (None): a dictonary mapping class names to the
+        group_id_attrs (None): a dictionary mapping class names to the
             corresponding attribute linked to the CVAT group id, if any
         group_id (None): an optional group id value for this shape when it
             cannot be parsed from the label dict

@@ -8,13 +8,14 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import { fieldVisibilityStage } from "@fiftyone/state";
+import { currentSlice, fieldVisibilityStage, isGroup } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
-import { currentModalSample, modalSample } from "./modal";
+import { dataset as datasetAtom } from "./dataset";
+import { currentModalSample, isModalActive, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -72,7 +73,7 @@ export const stateSubscription = selector<string>({
 
 export const mediaTypeSelector = selector({
   key: "mediaTypeSelector",
-  get: ({ get }) => get(atoms.dataset)?.mediaType,
+  get: ({ get }) => get(datasetAtom)?.mediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -80,15 +81,7 @@ export const mediaTypeSelector = selector({
 
 export const parentMediaTypeSelector = selector({
   key: "parentMediaTypeSelector",
-  get: ({ get }) => get(atoms.dataset)?.parentMediaType,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const savedViewsSelector = selector<State.SavedView[]>({
-  key: "datasetViews",
-  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
+  get: ({ get }) => get(datasetAtom)?.parentMediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -102,6 +95,11 @@ export const isVideoDataset = selector({
 export const isPointcloudDataset = selector({
   key: "isPointcloudDataset",
   get: ({ get }) => get(atoms.mediaType) === "point_cloud",
+});
+
+export const is3DDataset = selector({
+  key: "is3DDataset",
+  get: ({ get }) => get(atoms.mediaType) === "three_d",
 });
 
 export const timeZone = selector<string>({
@@ -152,7 +150,7 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return get(atoms.dataset)?.defaultMaskTargets || {};
+    return get(datasetAtom)?.defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -162,8 +160,8 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = get(atoms.dataset)?.defaultMaskTargets || {};
-    const labelTargets = get(atoms.dataset)?.maskTargets || {};
+    const defaults = get(datasetAtom)?.defaultMaskTargets || {};
+    const labelTargets = get(datasetAtom)?.maskTargets || {};
     return {
       defaults,
       fields: labelTargets,
@@ -178,7 +176,7 @@ export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
   {
     key: "getSkeleton",
     get: ({ get }) => {
-      const dataset = get(atoms.dataset);
+      const dataset = get(datasetAtom);
 
       const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
         acc[name] = rest;
@@ -383,7 +381,24 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    const methods = get(atoms.dataset)?.brainMethods || [];
+    let methods = get(datasetAtom)?.brainMethods || [];
+    const isGroupDataset = get(isGroup);
+    const activeSlice = get(currentSlice(get(isModalActive)));
+
+    if (isGroupDataset && activeSlice) {
+      methods = methods.filter(({ viewStages }) => {
+        return viewStages.some((vs) => {
+          const { _cls, kwargs } = JSON.parse(vs);
+          if (_cls === "fiftyone.core.stages.SelectGroupSlices") {
+            const sliceValue = kwargs.filter(
+              (kwarg: string[]) => kwarg[0] === "slices"
+            )?.[0]?.[1];
+            if (sliceValue && sliceValue !== activeSlice) return false;
+          }
+          return true;
+        });
+      });
+    }
 
     return methods
       .filter(

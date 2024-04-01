@@ -1,5 +1,5 @@
 import { useSpring } from "@react-spring/web";
-import React, { PropsWithChildren } from "react";
+import React, { ForwardedRef, PropsWithChildren } from "react";
 import PopoutDiv from "./PopoutDiv";
 
 export { PopoutDiv };
@@ -9,7 +9,10 @@ export type PopoutProps = PropsWithChildren<{
   modal?: boolean;
 }>;
 
-function Popout({ children, style = {}, modal }: PopoutProps) {
+function Popout(
+  { children, style = {}, modal }: PopoutProps,
+  ref: ForwardedRef<HTMLDivElement>
+) {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -22,6 +25,7 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
 
   return (
     <PopoutDiv
+      ref={ref}
       style={{ ...show, zIndex: 100001, right: modal ? 0 : "unset", ...style }}
     >
       {children}
@@ -29,4 +33,4 @@ function Popout({ children, style = {}, modal }: PopoutProps) {
   );
 }
 
-export default React.memo(Popout);
+export default React.memo(React.forwardRef(Popout));

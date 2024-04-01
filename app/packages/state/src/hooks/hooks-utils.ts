@@ -59,7 +59,8 @@ export const useKeydownHandler = (handler: React.KeyboardEventHandler) =>
 
 export const useOutsideClick = (
   ref: React.MutableRefObject<HTMLElement | null>,
-  handler: React.MouseEventHandler
+  handler: React.MouseEventHandler,
+  eventName = "mousedown"
 ) => {
   const handleOutsideClick = useCallback(
     (event) => {
@@ -70,7 +71,7 @@ export const useOutsideClick = (
     [handler, ref]
   );
 
-  useEventHandler(document, "mousedown", handleOutsideClick, true);
+  useEventHandler(document, eventName, handleOutsideClick, true);
 };
 
 export const useFollow = (leaderRef, followerRef, set) => {

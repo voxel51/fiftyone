@@ -1,7 +1,7 @@
 """
 The FiftyOne Model Zoo.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -171,12 +171,12 @@ def ensure_zoo_model_requirements(name, error_level=None, log_success=True):
             requirements, defined as:
 
             -   0: raise error if a requirement is not satisfied
-            -   1: log warning if a requirement is not satisifed
-            -   2: ignore unsatisifed requirements
+            -   1: log warning if a requirement is not satisfied
+            -   2: ignore unsatisfied requirements
 
             By default, ``fo.config.requirement_error_level`` is used
         log_success (True): whether to generate a log message when a
-            requirement is satisifed
+            requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -214,8 +214,8 @@ def load_zoo_model(
             requirements, defined as:
 
             -   0: raise error if a requirement is not satisfied
-            -   1: log warning if a requirement is not satisifed
-            -   2: ignore unsatisifed requirements
+            -   1: log warning if a requirement is not satisfied
+            -   2: ignore unsatisfied requirements
 
             By default, ``fo.config.requirement_error_level`` is used
         cache (True): whether to store a weak reference to the model so that
@@ -227,8 +227,10 @@ def load_zoo_model(
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
-    if cache and name in _MODELS:
-        return _MODELS[name]
+    if cache:
+        key = _get_cache_key(name, **kwargs)
+        if key is not None and key in _MODELS:
+            return _MODELS[key]
 
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -252,8 +254,8 @@ def load_zoo_model(
 
     model = fom.load_model(config_dict, model_path=model_path, **kwargs)
 
-    if cache:
-        _MODELS[name] = model
+    if cache and key is not None:
+        _MODELS[key] = model
 
     return model
 
@@ -428,3 +430,17 @@ def _get_latest_model(base_name):
         return manifest.get_latest_model_with_base_name(base_name)
     except etam.ModelError:
         raise ValueError("No models found with base name '%s'" % base_name)
+
+
+def _get_cache_key(name, **kwargs):
+    if not kwargs:
+        return name
+
+    try:
+        # convert to str because kwargs may contain unhashable types like lists
+        return str(
+            (("name", name),)
+            + tuple((k, kwargs[k]) for k in sorted(kwargs.keys()))
+        )
+    except:
+        return None

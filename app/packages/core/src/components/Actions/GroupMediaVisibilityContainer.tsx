@@ -29,28 +29,37 @@ const GroupMediaVisibilityPopout = ({
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
     fos.groupMedia3dVisibleSetting
   );
-  const pointCloudSliceExists = useRecoilValue(fos.groupMediaTypesSet).has(
-    "point_cloud"
-  );
+  const threeDSliceExists = useRecoilValue(fos.has3dSlice);
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
   const [isMainVisible, setIsMainVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
+  const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
+  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode);
+  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+
   const isSequentialAccessAllowed =
-    useRecoilValue(fos.nonNestedDynamicGroupsViewMode) === "carousel";
+    isNestedDynamicGroup ||
+    dynamicGroupsViewMode === "carousel" ||
+    hasGroupSlices;
+
+  const isImavidInNestedGroup = isNestedDynamicGroup && shouldRenderImaVid;
 
   const checkboxes = useMemo(() => {
     const toReturn: React.ReactNode[] = [];
 
-    if (pointCloudSliceExists) {
+    if (threeDSliceExists) {
       toReturn.push(
         <Checkbox
           key="checkbox-3d-viewer"
           name={"3D Viewer"}
           value={isSlotVisible}
-          muted={!isMainVisible && !isCarouselVisible}
+          muted={
+            isImavidInNestedGroup || (!isMainVisible && !isCarouselVisible)
+          }
           setValue={(value) => setIsSlotVisible(value)}
         />
       );
@@ -62,7 +71,10 @@ const GroupMediaVisibilityPopout = ({
           key="checkbox-carousel"
           name={"Carousel"}
           value={isCarouselVisible}
-          muted={!(isSlotVisible && pointCloudSliceExists) && !isMainVisible}
+          muted={
+            isImavidInNestedGroup ||
+            (!(isSlotVisible && threeDSliceExists) && !isMainVisible)
+          }
           setValue={(value) => setIsCarouselVisible(value)}
         />
       );
@@ -74,8 +86,9 @@ const GroupMediaVisibilityPopout = ({
         name={"Viewer"}
         value={isMainVisible}
         muted={
+          isImavidInNestedGroup ||
           toReturn.length === 0 ||
-          (!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible)
+          (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
         }
         setValue={(value) => setIsMainVisible(value)}
       />
@@ -83,7 +96,7 @@ const GroupMediaVisibilityPopout = ({
 
     return toReturn;
   }, [
-    pointCloudSliceExists,
+    threeDSliceExists,
     isSequentialAccessAllowed,
     isCarouselVisible,
     isMainVisible,

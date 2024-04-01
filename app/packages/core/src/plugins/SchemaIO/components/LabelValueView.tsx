@@ -4,7 +4,7 @@ import { getComponentProps } from "../utils";
 
 export default function LabelValueView(props) {
   const { data, schema } = props;
-  const { view = {} } = schema;
+  const { view = {}, default: defaultValue } = schema;
   const { label } = view;
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -17,7 +17,7 @@ export default function LabelValueView(props) {
           {label || schema?.id}:
         </Typography>
         <Typography {...getComponentProps(props, "value")}>
-          {data?.toString() || "No value provided"}
+          {(data || defaultValue)?.toString() || "No value provided"}
         </Typography>
       </Stack>
     </Box>

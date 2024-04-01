@@ -29,46 +29,52 @@ const ElementsContainer = styled.div`
 export const NonNestedDynamicGroup = ({
   queryRef,
 }: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery>;
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery> | null;
 }) => {
   const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
-  const [isMainVisible, setIsMainVisible] = useRecoilState(
+  const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
-  const viewMode = useRecoilValue(fos.nonNestedDynamicGroupsViewMode);
+  const viewMode = useRecoilValue(fos.dynamicGroupsViewMode);
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
 
-  const isViewModePagination = viewMode === "pagination";
-
   useEffect(() => {
-    if (!isMainVisible && isViewModePagination) {
-      setIsMainVisible(true);
+    if (!isBigLookerVisible && viewMode !== "carousel") {
+      setIsBigLookerVisible(true);
     }
-  }, [isMainVisible, isViewModePagination]);
+  }, [isBigLookerVisible, viewMode]);
 
   if (!groupByFieldValue) {
     return null;
   }
 
+  if (viewMode !== "video" && !queryRef) {
+    throw new Error("no queryRef provided");
+  }
+
   return (
     <RootContainer>
       {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
-      {!isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
+      {!isBigLookerVisible && (
+        <NonNestedDynamicGroupBar lookerRef={lookerRef} />
+      )}
       <ElementsContainer>
         <>
-          {isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
-          {isCarouselVisible && !isViewModePagination && (
+          {isBigLookerVisible && (
+            <NonNestedDynamicGroupBar lookerRef={lookerRef} />
+          )}
+          {isCarouselVisible && viewMode === "carousel" && (
             <DynamicGroupCarousel key={groupByFieldValue} />
           )}
-          {(isViewModePagination || isMainVisible) && (
+          {isBigLookerVisible && (
             <GroupSuspense>
-              {parent !== "point_cloud" ? (
+              {parent !== "point_cloud" && parent !== "three_d" ? (
                 <Sample
                   lookerRefCallback={lookerRefCallback}
                   lookerRef={lookerRef}
@@ -79,7 +85,9 @@ export const NonNestedDynamicGroup = ({
             </GroupSuspense>
           )}
         </>
-        {isViewModePagination && <GroupElementsLinkBar queryRef={queryRef} />}
+        {viewMode === "pagination" && queryRef && (
+          <GroupElementsLinkBar queryRef={queryRef} />
+        )}
       </ElementsContainer>
     </RootContainer>
   );

@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Labelbox format <https://labelbox.com/docs/exporting-data/export-format-detail>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -151,7 +151,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supports_video_sample_fields(self):
-        return False  # @todo resolve FiftyOne bug to allow this to be True
+        return True
 
     @property
     def requires_label_schema(self):
@@ -200,7 +200,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     """A class to facilitate connection to and management of projects in
     Labelbox.
 
-    On initializiation, this class constructs a client based on the provided
+    On initialization, this class constructs a client based on the provided
     server url and credentials.
 
     This API provides methods to easily upload, download, create, and delete
@@ -397,14 +397,17 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         datasets = self._client.get_datasets()
         return [d.uid for d in datasets]
 
-    def delete_datasets(self, dataset_ids):
+    def delete_datasets(self, dataset_ids, progress=None):
         """Deletes the given datasets from the Labelbox server.
 
         Args:
             dataset_ids: an iterable of dataset IDs
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         logger.info("Deleting datasets...")
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for dataset_id in pb(list(dataset_ids)):
                 dataset = self._client.get_dataset(dataset_id)
                 dataset.delete()
@@ -582,7 +585,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
-        is_video = samples.media_type == fomm.VIDEO
+        is_video = (samples.media_type == fomm.VIDEO) or (
+            samples.media_type == fomm.GROUP
+            and samples.group_media_types[samples.group_slice] == fomm.VIDEO
+        )
 
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
@@ -638,8 +644,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
-        is_video = results._samples.media_type == fomm.VIDEO
-
+        is_video = (results._samples.media_type == fomm.VIDEO) or (
+            results._samples.media_type == fomm.GROUP
+            and results._samples.group_media_types[
+                results._samples.group_slice
+            ]
+            == fomm.VIDEO
+        )
         annotations = {}
 
         if classes_as_attrs:
@@ -672,7 +683,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 video_d_list = self._get_video_labels(d["Label"])
                 frames = {}
                 for label_d in video_d_list:
-                    frame_number = label_d["frameNumber"]
+                    frame_number = int(label_d["frameNumber"])
                     frame_id = frame_id_map[sample_id][frame_number]
                     labels_dict = _parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
@@ -690,20 +701,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     label_schema,
                 )
 
-            else:
-                labels_dict = _parse_image_labels(
-                    d["Label"], frame_size, class_attr=class_attr
+            labels_dict = _parse_image_labels(
+                d["Label"], frame_size, class_attr=class_attr
+            )
+            if not classes_as_attrs:
+                labels_dict = self._process_label_fields(
+                    label_schema, labels_dict
                 )
-                if not classes_as_attrs:
-                    labels_dict = self._process_label_fields(
-                        label_schema, labels_dict
-                    )
-                annotations = self._add_labels_to_results(
-                    annotations,
-                    labels_dict,
-                    sample_id,
-                    label_schema,
-                )
+            annotations = self._add_labels_to_results(
+                annotations,
+                labels_dict,
+                sample_id,
+                label_schema,
+            )
 
         return annotations
 
@@ -1010,6 +1020,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return metadata
 
     def _get_video_labels(self, label_dict):
+        if "frames" not in label_dict:
+            return {}
+
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
@@ -1490,6 +1503,7 @@ def import_from_labelbox(
     label_prefix=None,
     download_dir=None,
     labelbox_id_field="labelbox_id",
+    progress=None,
 ):
     """Imports the labels from the Labelbox project into the FiftyOne dataset.
 
@@ -1546,6 +1560,9 @@ def import_from_labelbox(
             samples
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -1567,7 +1584,7 @@ def import_from_labelbox(
     d_list = etas.read_json(json_path)
 
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for d in pb(d_list):
             labelbox_id = d["DataRow ID"]
 
@@ -1634,6 +1651,7 @@ def export_to_labelbox(
     labelbox_id_field="labelbox_id",
     label_field=None,
     frame_labels_field=None,
+    progress=None,
 ):
     """Exports labels from the FiftyOne samples to Labelbox format.
 
@@ -1690,6 +1708,9 @@ def export_to_labelbox(
                 when constructing the exported frame labels
 
             By default, no frame labels are exported
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
@@ -1724,7 +1745,7 @@ def export_to_labelbox(
     etau.ensure_empty_file(ndjson_path)
 
     # Export the labels
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
             if labelbox_id is None:
@@ -1792,7 +1813,10 @@ def download_labels_from_labelbox(labelbox_project, outpath=None):
 
 
 def upload_media_to_labelbox(
-    labelbox_dataset, sample_collection, labelbox_id_field="labelbox_id"
+    labelbox_dataset,
+    sample_collection,
+    labelbox_id_field="labelbox_id",
+    progress=None,
 ):
     """Uploads the raw media for the FiftyOne samples to Labelbox.
 
@@ -1806,11 +1830,14 @@ def upload_media_to_labelbox(
             :class:`fiftyone.core.collections.SampleCollection`
         labelbox_id_field ("labelbox_id"): the sample field in which to store
             the IDs of the Labelbox DataRows
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     # @todo use `create_data_rows()` to optimize performance
     # @todo handle API rate limits
     # Reference: https://labelbox.com/docs/python-api/data-rows
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(sample_collection):
             try:
                 has_id = sample[labelbox_id_field] is not None
@@ -1859,15 +1886,11 @@ def upload_labels_to_labelbox(
     else:
         annos = annos_or_ndjson_path
 
-    requests = []
     count = 0
     for anno_batch in fou.iter_batches(annos, batch_size):
         count += 1
         name = "%s-upload-request-%d" % (labelbox_project.name, count)
-        request = labelbox_project.upload_annotations(name, anno_batch)
-        requests.append(request)
-
-    return requests
+        labelbox_project.upload_annotations(name, anno_batch)
 
 
 def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
@@ -2284,28 +2307,34 @@ def _parse_attributes(cd_list):
     attributes = {}
 
     for cd in cd_list:
-        name = cd["value"]
-        if "answer" in cd:
-            answer = cd["answer"]
-            if isinstance(answer, list):
-                # Dropdown
-                answers = [_parse_attribute(a["value"]) for a in answer]
-                if len(answers) == 1:
-                    answers = answers[0]
+        if isinstance(cd, list):
+            attributes.update(_parse_attributes(cd))
 
-                attributes[name] = answers
+        else:
+            name = cd["value"]
+            if "answer" in cd:
+                answer = cd["answer"]
+                if isinstance(answer, list):
+                    # Dropdown
+                    answers = [_parse_attribute(a["value"]) for a in answer]
+                    if len(answers) == 1:
+                        answers = answers[0]
 
-            elif isinstance(answer, dict):
-                # Radio question
-                attributes[name] = _parse_attribute(answer["value"])
-            else:
-                # Free text
-                attributes[name] = _parse_attribute(answer)
+                    attributes[name] = answers
 
-        if "answers" in cd:
-            # Checklist
-            answer = cd["answers"]
-            attributes[name] = [_parse_attribute(a["value"]) for a in answer]
+                elif isinstance(answer, dict):
+                    # Radio question
+                    attributes[name] = _parse_attribute(answer["value"])
+                else:
+                    # Free text
+                    attributes[name] = _parse_attribute(answer)
+
+            if "answers" in cd:
+                # Checklist
+                answer = cd["answers"]
+                attributes[name] = [
+                    _parse_attribute(a["value"]) for a in answer
+                ]
 
     return attributes
 

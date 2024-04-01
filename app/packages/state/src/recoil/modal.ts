@@ -1,4 +1,5 @@
-import type { Sample } from "@fiftyone/looker";
+import { AbstractLooker, type Sample } from "@fiftyone/looker";
+import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
@@ -6,27 +7,72 @@ import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
 import {
+  activeModalSidebarSample,
   groupId,
   groupSlice,
   hasGroupSlices,
+  imaVidLookerState,
   modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
+  shouldRenderImaVidLooker,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
+export const modalLooker = atom<AbstractLooker<BaseState> | null>({
+  key: "modalLooker",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+      const isPlaying = get(imaVidLookerState("playing"));
+      const isSeeking = get(imaVidLookerState("seeking"));
+
+      const sample = get(activeModalSidebarSample);
+
+      if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
+        // is the type incorrect? fix me
+        const id = sample?.id || sample?._id || sample?.sample?._id;
+        if (id) {
+          return id;
+        }
+      }
+
+      // if we are playing or seeking, we don't want to change the sidebar sample and fire agg query
+      return null;
+    }
+
     const override = get(pinned3DSampleSlice);
 
     return get(pinned3d) && override
       ? get(pinned3DSample).id
       : get(modalSampleId);
+  },
+});
+
+export const currentSampleId = selector({
+  key: "currentSampleId",
+  get: ({ get }) => {
+    const override = get(pinned3DSampleSlice);
+
+    const id =
+      get(pinned3d) && override
+        ? get(pinned3DSample).id
+        : get(nullableModalSampleId);
+
+    if (id && id.endsWith("-modal")) {
+      return id.replace("-modal", "");
+    }
+    return id;
   },
 });
 
@@ -76,7 +122,6 @@ export const modalSampleIndex = selector<number>({
   key: "modalSampleIndex",
   get: ({ get }) => {
     const current = get(currentModalSample);
-
     if (!current) {
       throw new Error("modal sample is not defined");
     }
@@ -92,6 +137,19 @@ export const modalSampleId = selector<string>({
 
     if (!current) {
       throw new Error("modal sample is not defined");
+    }
+
+    return current.id;
+  },
+});
+
+export const nullableModalSampleId = selector<string>({
+  key: "nullableModalSampleId",
+  get: ({ get }) => {
+    const current = get(currentModalSample);
+
+    if (!current) {
+      return null;
     }
 
     return current.id;
@@ -122,6 +180,7 @@ export const modalSample = graphQLSelector<
   },
   variables: ({ get }) => {
     const current = get(currentModalSample);
+
     if (current === null) return null;
 
     const slice = get(groupSlice);

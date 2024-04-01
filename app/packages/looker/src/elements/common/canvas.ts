@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { SCALE_FACTOR } from "../../constants";
-import { BaseState, Coordinates, Optional } from "../../state";
+import { BaseState, Coordinates } from "../../state";
 import { clampScale, getDPR } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
@@ -60,7 +60,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (state.config.thumbnail) {
             return {};
           }
-          const newState: Optional<State> = {
+          const newState: Partial<State> = {
             cursorCoordinates: [
               (<MouseEvent>event).pageX,
               (<MouseEvent>event).pageY,

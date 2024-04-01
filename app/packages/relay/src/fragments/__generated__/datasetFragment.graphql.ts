@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<29e6fc779d6a822bf9e7a7d115a93420>>
+ * @generated SignedSource<<a267b116905ec39254c306a1c05b32a9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type BrainRunType = "similarity" | "visualization" | "%future added value";
-export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
+export type MediaType = "group" | "image" | "point_cloud" | "three_d" | "video" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {
@@ -28,11 +28,11 @@ export type datasetFragment$data = {
       readonly type: BrainRunType | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
-  readonly createdAt: any | null;
+  readonly createdAt: number | null;
   readonly datasetId: string;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
@@ -49,7 +49,7 @@ export type datasetFragment$data = {
       readonly predField: string | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
@@ -60,7 +60,7 @@ export type datasetFragment$data = {
   }> | null;
   readonly id: string;
   readonly info: object | null;
-  readonly lastLoadedAt: any | null;
+  readonly lastLoadedAt: number | null;
   readonly maskTargets: ReadonlyArray<{
     readonly name: string;
     readonly targets: ReadonlyArray<{
@@ -70,13 +70,14 @@ export type datasetFragment$data = {
   }>;
   readonly mediaType: MediaType | null;
   readonly name: string;
+  readonly parentMediaType: MediaType | null;
   readonly skeletons: ReadonlyArray<{
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
     readonly labels: ReadonlyArray<string> | null;
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -214,6 +215,13 @@ return {
     },
     (v0/*: any*/),
     (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "parentMediaType",
+      "storageKey": null
+    },
     (v2/*: any*/),
     {
       "alias": null,
@@ -423,12 +431,22 @@ return {
     {
       "args": null,
       "kind": "FragmentSpread",
+      "name": "estimatedCountsFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
       "name": "frameFieldsFragment"
     },
     {
       "args": null,
       "kind": "FragmentSpread",
       "name": "groupSliceFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
+      "name": "indexesFragment"
     },
     {
       "args": null,
@@ -461,6 +479,6 @@ return {
 };
 })();
 
-(node as any).hash = "2ec789cd45082d3452d58dfd4a7288af";
+(node as any).hash = "866766401d421b021e8ff682461bb3c0";
 
 export default node;

@@ -1,7 +1,7 @@
 """
 Context utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -165,6 +165,9 @@ def get_url(
             kwargs["proxy"] = path
     else:
         _url = f"http://{address}:{port}/"
+
+    if "proxy" in kwargs:
+        kwargs["polling"] = "true"
 
     params = "&".join([f"{k}={v}" for k, v in kwargs.items()])
     if params:

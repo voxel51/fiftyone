@@ -5,13 +5,12 @@ export {
   registerOperator,
   Operator,
   OperatorConfig,
-  executeStartupOperators,
   executeOperator,
   abortOperationsByExpression,
   abortOperationsByURI,
 } from "./operators";
 export { useOperatorExecutor, useOperatorPlacements } from "./state";
-export { loadOperators } from "./built-in-operators";
+export { useOperators } from "./loader";
 export { default as OperatorPlacements } from "./OperatorPlacements";
 export * as types from "./types";
 export { default as OperatorCore } from "./OperatorCore";

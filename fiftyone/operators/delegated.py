@@ -1,26 +1,23 @@
 """
 FiftyOne delegated operations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import asyncio
-import collections
-import inspect
 import logging
 import traceback
-import types as python_types
-import fiftyone.core.utils as fou
 
 from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.operators.executor import (
     prepare_operator_executor,
+    do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +39,8 @@ class DelegatedOperationService(object):
         Args:
             operator: the operator name
             delegation_target (None): an optional delegation target
-            label (None): an optional label for the operation (will default to the operator if not supplied)
+            label (None): an optional label for the operation (will default to
+                the operator if not supplied)
             context (None): an
                 :class:`fiftyone.operators.executor.ExecutionContext`
 
@@ -56,27 +54,30 @@ class DelegatedOperationService(object):
             context=context,
         )
 
-    def set_progress(self, doc_id, progress: ExecutionProgress):
+    def set_progress(self, doc_id, progress):
         """Sets the progress of the given delegated operation.
 
         Args:
             doc_id: the ID of the delegated operation
-            progress: the progress of the operation
+            progress: the
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_progress(_id=doc_id, progress=progress)
 
-    def set_running(
-        self, doc_id, progress: ExecutionProgress = None, run_link: str = None
-    ):
+    def set_running(self, doc_id, progress=None, run_link=None):
         """Sets the given delegated operation to running state.
 
         Args:
             doc_id: the ID of the delegated operation
-            run_link (None): an optional run link to orchestrator specific run information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -92,8 +93,8 @@ class DelegatedOperationService(object):
         self,
         doc_id,
         result=None,
-        progress: ExecutionProgress = None,
-        run_link: str = None,
+        progress=None,
+        run_link=None,
     ):
         """Sets the given delegated operation to completed state.
 
@@ -102,8 +103,11 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            run_link (None): the optional run link to orchestrator specific run information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -120,8 +124,8 @@ class DelegatedOperationService(object):
         self,
         doc_id,
         result=None,
-        progress: ExecutionProgress = None,
-        run_link: str = None,
+        progress=None,
+        run_link=None,
     ):
         """Sets the given delegated operation to failed state.
 
@@ -130,8 +134,11 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            run_link (None): the optional run link to orchestrator specific run information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -324,36 +331,46 @@ class DelegatedOperationService(object):
         """Executes the given delegated operation.
 
         Args:
-            operation: the :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            operation: the
+                :class:`fiftyone.factory.repos.DelegatedOperationDocument`
             log (False): the optional boolean flag to log the execution of the
                 delegated operations
-            run_link (None): the optional run link to orchestrator specific run information
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
         """
         try:
+            self.set_running(doc_id=operation.id, run_link=run_link)
             if log:
                 logger.info(
                     "\nRunning operation %s (%s)",
                     operation.id,
                     operation.operator,
                 )
-            execution_result = asyncio.run(
-                self._execute_operator(operation, log, run_link=run_link)
-            )
-            self.set_completed(doc_id=operation.id, result=execution_result)
+
+            result = asyncio.run(self._execute_operator(operation))
+
+            self.set_completed(doc_id=operation.id, result=result)
             if log:
                 logger.info("Operation %s complete", operation.id)
-        except Exception as e:
+        except:
             result = ExecutionResult(error=traceback.format_exc())
+
             self.set_failed(doc_id=operation.id, result=result)
             if log:
                 logger.info(
                     "Operation %s failed\n%s", operation.id, result.error
                 )
 
-    async def _execute_operator(self, doc, log=False, run_link=None):
+    async def _execute_operator(self, doc):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
+
+        if not context.request_params.get("dataset_id", None):
+            # Pass the dataset_id so that the execution context can load the
+            # dataset by id in case a dataset has been renamed since the task
+            # was initially queued. However, don't overwrite it if it exists.
+            context.request_params["dataset_id"] = doc.dataset_id
 
         prepared = await prepare_operator_executor(
             operator_uri=operator_uri,
@@ -362,30 +379,8 @@ class DelegatedOperationService(object):
             set_progress=self.set_progress,
         )
 
-        # if a validation error happened during preparation,
-        # only an ExecutionResult with an error is returned.
-        # Raise it so the delegated operation is marked as a failure.
         if isinstance(prepared, ExecutionResult):
             raise prepared.to_exception()
-        else:
-            operator, _, ctx = prepared
 
-            if log:
-                logger.info("Running operator %s", operator_uri)
-            self.set_running(doc_id=doc.id, run_link=run_link)
-
-            raw_result = await (
-                operator.execute(ctx)
-                if asyncio.iscoroutinefunction(operator.execute)
-                else fou.run_sync_task(operator.execute, ctx)
-            )
-
-            if inspect.isgenerator(raw_result):
-                # Fastest way to exhaust sync generator, re: itertools consume()
-                #   https://docs.python.org/3/library/itertools.html
-                collections.deque(raw_result, maxlen=0)
-            elif inspect.isasyncgen(raw_result):
-                async for _ in raw_result:
-                    pass
-            else:
-                return raw_result
+        operator, _, ctx = prepared
+        return await do_execute_operator(operator, ctx, exhaust=True)

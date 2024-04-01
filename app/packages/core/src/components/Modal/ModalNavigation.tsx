@@ -69,6 +69,11 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
             return;
           }
         }
+
+        if (e.altKey || e.ctrlKey || e.metaKey) {
+          return;
+        }
+
         if (e.key === "x") {
           const current = await snapshot.getPromise(fos.currentModalSample);
           set(fos.selectedSamples, (selected) => {

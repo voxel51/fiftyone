@@ -76,7 +76,7 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Roles and permissions
-    :description: Learn how to configure roles and access permissions for users of your deployment.
+    :description: Learn how to configure roles, groups and access permissions for users of your deployment.
     :button_text: Learn more about permissions
     :button_link: roles_and_permissions.html
 
@@ -107,7 +107,7 @@ pages on this site apply to Teams deployments as well.
 .. customcalloutitem::
     :header: Secrets
     :description: Safely store and access secrets in your Teams deployment.
-    :button_text: Learn more about storing secrets in Teams
+    :button_text: Learn more about secrets
     :button_link: secrets.html
 
 .. customcalloutitem::

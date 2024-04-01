@@ -1,6 +1,15 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  colorSchemeFragment,
+  colorSchemeFragment$data,
+  colorSchemeFragment$key,
+  datasetAppConfigFragment,
+  datasetFragment,
+  datasetQuery$data,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -12,22 +21,40 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { cloneDeep } from "lodash";
+
+export const datasetColorScheme = graphQLSyncFragmentAtom<
+  colorSchemeFragment$key,
+  colorSchemeFragment$data
+>(
+  {
+    fragments: [datasetFragment, datasetAppConfigFragment, colorSchemeFragment],
+    keys: ["dataset", "appConfig", "colorScheme"],
+    default: null,
+  },
+  {
+    key: "datasetColorScheme",
+  }
+);
 
 export const coloring = selector<Coloring>({
   key: "coloring",
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
+
     return {
       seed,
       pool: colorScheme.colorPool,
-      scale: [],
+      scale: get(configData).colorscale as RGB[], // from config, used as fallback
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
+      defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors,
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
@@ -122,23 +149,54 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
+    id: colorScheme?.id,
     colorPool:
-      colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
-    colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
-    fields: (colorScheme.fields as ColorSchemeInput["fields"]) || [],
-    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) || {
+      colorScheme?.colorPool ?? appConfig?.colorPool ?? default_app_color,
+    colorBy: colorScheme?.colorBy ?? appConfig?.colorBy ?? "field",
+    colorscales:
+      (colorScheme?.colorscales as ColorSchemeInput["colorscales"]) ?? [],
+    defaultMaskTargetsColors: colorScheme?.defaultMaskTargetsColors ?? [],
+    defaultColorscale: colorScheme?.defaultColorscale ?? {
+      name: appConfig?.colorscale ?? "viridis",
+      list: null,
+    },
+    fields: (colorScheme?.fields as ColorSchemeInput["fields"]) ?? [],
+    labelTags: (colorScheme?.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
     },
     multicolorKeypoints:
-      typeof colorScheme.multicolorKeypoints == "boolean"
+      typeof colorScheme?.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
-        : appConfig?.multicolorKeypoints,
+        : appConfig?.multicolorKeypoints ?? false,
     opacity:
-      typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
+      typeof colorScheme?.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
-      typeof colorScheme.showSkeletons == "boolean"
+      typeof colorScheme?.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig?.showSkeletons,
+        : appConfig?.showSkeletons ?? true,
   };
 };
+
+export function removeRgbProperty(input) {
+  // Clone the input to avoid mutating the original object
+  const clonedInput = cloneDeep(input);
+
+  // Process the 'colorscales' array
+  if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
+    clonedInput.colorscales = clonedInput.colorscales.map(
+      ({ rgb, ...rest }) => rest
+    );
+  }
+
+  // Process the 'defaultColorscale' object
+  if (
+    clonedInput.defaultColorscale &&
+    typeof clonedInput.defaultColorscale === "object"
+  ) {
+    const { rgb, ...rest } = clonedInput.defaultColorscale;
+    clonedInput.defaultColorscale = rest;
+  }
+
+  return clonedInput;
+}

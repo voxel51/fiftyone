@@ -22,7 +22,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   selectorEffect?:
     | "write"
     | boolean
-    | ((newValue: Parameters<ReadWriteSelectorOptions<K>["set"]>[1]) => void);
+    | ((...params: Parameters<ReadWriteSelectorOptions<K>["set"]>) => K);
 };
 
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
@@ -32,7 +32,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  * If the fragment path cannot be read from given the parent fragment keys and
  * the optional final read function, the atom's default value will be used
  */
-export function graphQLSyncFragmentAtom<T extends KeyType, K>(
+export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>
 ) {
@@ -71,21 +71,35 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
         };
 
         const run = (
-          { data, preloadedQuery }: PageQuery<OperationType>,
+          page: PageQuery<OperationType>,
           transactionInterface?: TransactionInterface_UNSTABLE
         ): Disposable | undefined => {
+          const preloadedQuery = page.preloadedQuery;
+          let data = page.data;
           try {
-            fragmentOptions.fragments.forEach((fragment, i) => {
+            for (let i = 0; i < fragmentOptions.fragments.length; i++) {
+              const fragment = fragmentOptions.fragments[i];
+
               if (fragmentOptions.keys && fragmentOptions.keys[i]) {
                 // @ts-ignore
                 data = data[fragmentOptions.keys[i]];
+              }
+
+              if (!data) {
+                const unlisten = ctx.FragmentResource.subscribe(
+                  ctx.result,
+                  () => {
+                    run(page);
+                    unlisten();
+                  }
+                );
               }
 
               // @ts-ignore
               ctx = loadContext(fragment, preloadedQuery.environment, data);
               parent = data;
               data = ctx.result.data;
-            });
+            }
             setter(data, transactionInterface);
             disposable?.dispose();
 
@@ -96,6 +110,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
                 parent
               ).result.data;
               setter(update);
+              !update && run(page);
             });
           } catch (e) {
             setter(null, transactionInterface);

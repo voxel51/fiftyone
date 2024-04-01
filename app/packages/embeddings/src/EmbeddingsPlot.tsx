@@ -18,6 +18,13 @@ export function EmbeddingsPlot({
   const theme = useTheme();
   const getColor = useRecoilValue(fos.colorMap);
   const fields = useRecoilValue(fos.colorScheme).fields;
+  const colorscheme = useRecoilValue(fos.colorScheme);
+  const configColorscale = useRecoilValue(fos.coloring).scale;
+  const fieldColorscale =
+    colorscheme.colorscales.find((item) => item.path === labelField)?.rgb ??
+    colorscheme.defaultColorscale.rgb ??
+    configColorscale;
+
   const setting = useMemo(() => {
     return fields?.find((setting) => labelField?.includes(setting?.path ?? ""));
   }, [fields, labelField]);
@@ -50,7 +57,6 @@ export function EmbeddingsPlot({
     },
     [hasSelection]
   );
-  const colorscale = useRecoilValue(fos.coloring).scale;
 
   if (error) {
     return <Loading>{error.message}</Loading>;
@@ -63,7 +69,7 @@ export function EmbeddingsPlot({
     getColor,
     resolvedSelection,
     selectionStyle,
-    colorscale,
+    fieldColorscale,
     setting
   );
   const isCategorical = style === "categorical";

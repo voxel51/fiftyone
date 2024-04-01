@@ -167,7 +167,7 @@ Remote sessions
 _______________
 
 If your data is stored on a remote machine, you can forward a session from
-the remote machine to your local machine and seemlessly browse your remote
+the remote machine to your local machine and seamlessly browse your remote
 dataset from you web browser.
 
 Check out the :ref:`environments page <environments>` for more information on
@@ -298,6 +298,177 @@ attribute names in the App's sidebar:
 .. image:: /images/app/app-field-tooltips.gif
     :alt: app-field-tooltips
     :align: center
+
+.. _app-lightning-mode:
+
+Lightning mode
+--------------
+
+Lightning mode is a performant sidebar setting for larger datasets that can be
+enabled either by adding a `lightning_threshold` to your
+:ref:`App config <configuring-fiftyone-app>`, or for a particular dataset by
+clicking on the "Gear" icon above the sample grid in the App.
+
+.. note::
+
+    When lightning mode is enabled through the "Gear" icon in the App, the
+    setting is persisted in your browser for that dataset.
+
+The lightning threshold specifies a dataset/view size (sample count) above
+which filters can *only* be applied to fields that have been **indexed**. After
+applying filters that bring the current view size below the lightning
+threshold, all fields become available for filtering and additional information
+like value counts are presented.
+
+.. image:: /images/app/app-lightning-mode.gif
+    :alt: app-lightning-mode
+    :align: center
+
+The above GIF shows lightning mode in action on the train split of the
+:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
+`metadata.size_bytes` field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # The path to the source files that you manually downloaded
+    source_dir = "/path/to/dir-with-bdd100k-files"
+
+    dataset = foz.load_zoo_dataset(
+        "bdd100k",
+        split="train",
+        source_dir=source_dir,
+    )
+
+    dataset.create_index("metadata.size_bytes")
+
+    session = fo.launch_app(dataset)
+
+The SDK provides a number of useful utilities for managing indexes on your
+datasets:
+
+-   :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>` -
+    list all existing indexes
+-   :meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>` -
+    create a new index
+-   :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>` -
+    drop an existing index
+-   :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>` -
+    get information about the existing indexes
+
+.. note::
+
+    Did you know? You can manage dataset indexes via the App by installing the
+    `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
+    plugin!
+
+In general, we recommend indexing *only* the specific fields that you wish to
+perform initial filters on:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Index specific top-level fields
+    dataset.create_index("camera_id")
+    dataset.create_index("recorded_at")
+    dataset.create_index("annotated_at")
+    dataset.create_index("annotated_by")
+
+    # Index specific embedded document fields
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index("ground_truth.detections.confidence")
+
+    # Note: it is faster to declare indexes before adding samples
+    dataset.add_samples(...)
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+For :ref:`grouped datasets <groups>`, you should create two indexes for each
+field you wish to filter by in lightning mode: the field itself and a compound
+index that includes the group slice name:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Index a specific field
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+For datasets with a small number of fields, you can index all fields by adding
+a single
+`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.create_index("$**")
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+.. warning::
+
+    For large datasets with many fields, global wildcard indexes may require a
+    substantial amount of RAM and query performance may be degraded compared to
+    selectively indexing a smaller number of fields.
+
+You can also wildcard index all attributes of a specific embedded document
+field:
+
+.. code-block:: python
+    :linenos:
+
+    # Wildcard index for all attributes of ground truth detections
+    dataset.create_index("ground_truth.detections.$**")
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes.
+
+For video datasets with frame-level fields, a separate wildcard index for frame
+fields is also necessary:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    dataset.create_index("$**")
+    dataset.create_index("frames.$**")
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
 
 .. _app-sidebar-mode:
 
@@ -533,14 +704,17 @@ You can use the group action in the App's menu to
 In this mode, the App's grid shows the first sample from each group, and you
 can click on a sample to view all elements of the group in the modal.
 
-When viewing *unordered* groups, the modal will show a carousel at the
-top that you can use to navigate between different samples within a group.
-
-When viewing *ordered* groups, the modal will show a pagination UI at the
-bottom that you can use to navigate sequentially or via random access through
-the elements of the group.
+You may navigate through the elements of the group either sequentially using 
+the carousel, or randomly using the pagination UI at the bottom of the modal.
 
 .. image:: /images/groups/dynamic-groups.gif
+   :alt: dynamic-groups-pagination
+   :align: center
+
+When viewing *ordered* groups, you have an additional option to render the 
+elements of the group as a video.
+
+.. image:: /images/groups/dynamic-groups-frames-as-video.gif
    :alt: dynamic-groups
    :align: center
 
@@ -551,7 +725,7 @@ ________________
 
 You can configure which fields of your dataset appear in the App's sidebar by
 clicking the settings icon in the upper right of the sidebar to open the Field
-visiblity modal.
+visibility modal.
 
 Consider the following example:
 
@@ -621,7 +795,7 @@ determine which fields to include in the sidebar.
 
 .. note::
 
-    Fitler rules are dynamic. If you :ref:`save a view <app-saving-views>` that
+    Filter rules are dynamic. If you :ref:`save a view <app-saving-views>` that
     contains a filter rule, the matching fields may increase or decrease over
     time as you modify the dataset's schema.
 
@@ -700,11 +874,22 @@ in detail:
     | Tab             | Element                       | Description                                                   |
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
-    |                 |                               | the `field` that they are in or the `value` that each         |
-    |                 |                               | annotation takes                                              |
+    |                 |                               | the `field` that they are in, the `value` that each           |
+    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Label Opacity                 | Color opacity of annotations                                  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Multicolor keypoints          | Whether to independently coloy keypoint points by their index |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Show keypoints skeletons      | Whether to show keypoint skeletons, if available              |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default mask targets colors   | If the MaskTargetsField is defined with integer keys, the     |
+    |                 |                               | dataset can assign a default color based on the integer keys  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default colorscale            | The default colorscale to use when rendering heatmaps         |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | JSON editor     |                               | A JSON representation of the current color scheme that you    |
     |                 |                               | can directly edit or copy + paste                             |
@@ -728,7 +913,11 @@ in detail:
     |                 |                               | must also specify an attribute of each object. For example,   |
     |                 |                               | color all                                                     |
     |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
-    |                 |                               | instances whose `label` is `"car"` in `#FF0000`               |
+    |                 |                               | instances whose `label` is `"car"` in `#FF0000`;              |
+    |                 |                               | :class:`Segmentation <fiftyone.core.labels.Segmentation>`     |
+    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`;   |
+    |                 |                               | :class:`Heatmap <fiftyone.core.labels.Heatmap>`               |
+    |                 |                               | instances using `hsv` colorscale.                             |
     +-----------------+-------------------------------+---------------------------------------------------------------+
 
 .. _app-color-schemes-python:
@@ -750,19 +939,48 @@ You can also programmatically configure a session's color scheme by creating
                 "path": "ground_truth",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                     # false negatives: blue
+                    {"value": "fn", "color": "#0000ff"},
+                    # true positives: green
+                    {"value": "tp", "color": "#00ff00"},
                 ]
             },
             {
                 "path": "predictions",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fp", "color": "#ff0000"},  # false positives: red
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                    # false positives: red
+                    {"value": "fp", "color": "#ff0000"},
+                     # true positives: green
+                    {"value": "tp", "color": "#00ff00"}, 
+                ]
+            },
+            {
+                "path": "segmentations",
+                "maskTargetsColors": [
+                     # 12: red
+                    {"intTarget": 12, "color": "#ff0000"},
+                     # 15: green
+                    {"intTarget": 15, "color": "#00ff00"},
                 ]
             }
-        ]
+        ],
+        color_by="value",
+        opacity=0.5,
+        default_colorscale= { "name": "rdbu", "list": None },
+        colorscales=[
+            {
+                 # field definition overrides the default_colorscale
+                "path": "heatmap_2",
+                 # if name is defined, it will override the list
+                "name": None,
+                "list": [
+                    {"value": 0.0, "color": "rgb(0,255,255)"},
+                    {"value": 0.5, "color": "rgb(255,0,0)"},
+                    {"value": 1.0, "color": "rgb(0,0,255)"},
+                ],
+            }
+        ],
     )
 
 .. note::
@@ -801,17 +1019,6 @@ You can also dynamically edit your current color scheme by modifying it:
     # Edit the existing color scheme in-place
     session.color_scheme.color_pool = [...]
     session.refresh()
-
-You can reset the color scheme to its default value (the dataset's default
-color scheme, if any, else the global default) by setting
-:meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>` to
-None:
-
-.. code-block:: python
-    :linenos:
-
-    # Reset color scheme
-    session.color_scheme = None
 
 .. note::
 
@@ -898,7 +1105,7 @@ currently visible (or selected) labels by clicking on the `Crop` icon in the
 controls HUD or using the `z` keyboard shortcut. Press `ESC` to reset your
 view.
 
-When multiple labels are overlayed on top of each other, the up and down
+When multiple labels are overlaid on top of each other, the up and down
 arrows offer a convenient way to rotate the z-order of the labels that your
 cursor is hovering over, so every label and it's tooltip can be viewed.
 
@@ -907,7 +1114,7 @@ customizing the rendering of your labels, including whether to show object
 labels, confidences, or the tooltip. The default settings for these parameters
 can be configured via the :ref:`App config <app-config>`.
 
-Keyboard shortcuts are availble for almost every action. Click the `?` icon
+Keyboard shortcuts are available for almost every action. Click the `?` icon
 in the controls HUD or use the `?` keyboard shortcut to display the list of
 available actions and their associated hotkeys.
 
@@ -973,10 +1180,21 @@ Using the 3D visualizer
 _______________________
 
 The 3D visualizer allows you to interactively visualize
-:ref:`point cloud samples <point-cloud-datasets>` along with any associated
+:ref:`fo3d samples <three-d-datasets>` or
+:ref:`point cloud samples <point-cloud-datasets>`
+along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
 
-.. image:: /images/app/app-3d-visualizer.gif
+.. note::
+
+    Deprecation notice:
+
+    The `point-cloud` media type has been deprecated in favor of the
+    `3d` media type. While we'll keep supporting the `point-cloud` media type
+    for backward compatibility, we recommend using the `3d` media type for new
+    datasets.
+
+.. image:: /images/app/app-new-3d-visualizer.gif
    :alt: 3d-visualizer
    :align: center
 
@@ -995,6 +1213,12 @@ supports:
     +--------------+----------------+-------------------------------+
     | Shift + drag | Translate      | Translate the camera          |
     +--------------+----------------+-------------------------------+
+    | B            | Background     | Toggle background on/off      |
+    +--------------+----------------+-------------------------------+
+    | F            | Fullscreen     | Toggle fullscreen             |
+    +--------------+----------------+-------------------------------+
+    | G            | Grid           | Toggle the grid on/off        |
+    +--------------+----------------+-------------------------------+
     | T            | Top-down       | Reset camera to top-down view |
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
@@ -1002,17 +1226,19 @@ supports:
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
+A variety of context-specific options are available in a draggable
+panel in the 3D visualizer that let you configure lights, as well as
+material and visibility of the 3D objects in the scene.
+
 In addition, the HUD at the bottom of the 3D visualizer provides the following
 controls:
 
--   Use the points icon to change the size of the points in the cloud
--   Use the palette icon to choose whether the point cloud is colored by
-    height, intensity, RGB, or no coloring
+-   Click the grid icon to toggle the grid on/off
 -   Click the `T` to reset the camera to top-down view
 -   Click the `E` to reset the camera to ego-view
 
-When coloring by intensity, the color of each point is computed by mapping the
-`r` channel of the `rgb` field of the
+For point clouds, when coloring by intensity, the color of each point is
+computed by mapping the `r` channel of the `rgb` field of the
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 onto a fixed colormap, which is scaled so that the full colormap is matched to
 the observed dynamic range of `r` values for each sample.
@@ -1025,9 +1251,9 @@ the full colormap using the same strategy.
 Viewing 3D samples in the grid
 ------------------------------
 
-When you load point cloud collections in the App, any
+When you load 3D collections in the App, any
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
-fields will be visualized in the App using an orthographic projection
+fields will be visualized in the grid using an orthographic projection
 (onto the xy plane by default).
 
 In addition, if you have populated
@@ -1095,7 +1321,7 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    # Configure the 3D visualizer for a dataset's PCD/Label data
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
     }

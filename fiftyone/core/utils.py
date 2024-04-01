@@ -1,11 +1,13 @@
 """
 Core utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import abc
 import atexit
+from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
@@ -19,6 +21,7 @@ import io
 import itertools
 import logging
 import multiprocessing
+import numbers
 import os
 import platform
 import re
@@ -31,6 +34,9 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+
+from bson import ObjectId
+from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 from concurrent.futures import ThreadPoolExecutor
 
@@ -402,16 +408,16 @@ def ensure_package(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -486,12 +492,12 @@ def ensure_requirements(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         log_success (False): whether to generate a log message if a requirement
-            is satisifed
+            is satisfied
     """
     for req_str in load_requirements(requirements_path):
         ensure_package(
@@ -521,16 +527,16 @@ def ensure_import(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -554,14 +560,14 @@ def ensure_tf(eager=False, error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -607,14 +613,14 @@ def ensure_tfds(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -637,14 +643,14 @@ def ensure_torch(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -937,9 +943,22 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
-    def __init__(self, *args, **kwargs):
-        if "quiet" not in kwargs:
-            kwargs["quiet"] = not fo.config.show_progress_bars
+    def __init__(self, total=None, progress=None, quiet=None, **kwargs):
+        if progress is None:
+            progress = fo.config.show_progress_bars
+
+        if quiet is not None:
+            progress = not quiet
+
+        if callable(progress):
+            callback = progress
+            progress = False
+        else:
+            callback = None
+
+        kwargs["total"] = total
+        if isinstance(progress, bool):
+            kwargs["quiet"] = not progress
 
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
@@ -949,71 +968,127 @@ class ProgressBar(etau.ProgressBar):
         if foc.is_notebook_context() and "max_width" not in kwargs:
             kwargs["max_width"] = 90
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
+
+        self._progress = progress
+        self._callback = callback
+
+    def __call__(self, iterable):
+        # Ensure that `len(iterable)` is not computed unnecessarily
+        no_len = self._quiet and self._total is None
+        if no_len:
+            self._total = -1
+
+        super().__call__(iterable)
+
+        if no_len:
+            self._total = None
+
+        return self
+
+    def set_iteration(self, *args, **kwargs):
+        super().set_iteration(*args, **kwargs)
+
+        if self._callback is not None:
+            self._callback(self)
 
 
-class DynamicBatcher(object):
-    """Class for iterating over the elements of an iterable with a dynamic
-    batch size to achieve a desired latency.
-
-    The batch sizes emitted when iterating over this object are dynamically
-    scaled such that the latency between ``next()`` calls is as close as
-    possible to a specified target latency.
-
-    This class is often used in conjunction with a :class:`ProgressBar` to keep
-    the user appraised on the status of a long-running task.
+def report_progress(progress, n=None, dt=None):
+    """Wraps the provided progress function such that it will only be called
+    at the specified increments or time intervals.
 
     Example usage::
 
-        import fiftyone.core.utils as fou
+        import fiftyone as fo
+        import fiftyone.zoo as foz
 
-        elements = range(int(1e7))
+        def print_progress(pb):
+            if pb.complete:
+                print("COMPLETE")
+            else:
+                print("PROGRESS: %0.3f" % pb.progress)
 
-        batcher = fou.DynamicBatcher(
-            elements, target_latency=0.1, max_batch_beta=2.0
-        )
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-        for batch in batcher:
-            print("batch size: %d" % len(batch))
+        # Print progress at 10 equally-spaced increments
+        progress = fo.report_progress(print_progress, n=10)
+        dataset.compute_metadata(progress=progress)
 
-        batcher = fou.DynamicBatcher(
-            elements,
-            target_latency=0.1,
-            max_batch_beta=2.0,
-            progress=True,
-        )
-
-        with batcher:
-            for batch in batcher:
-                print("batch size: %d" % len(batch))
+        # Print progress every 0.5 seconds
+        progress = fo.report_progress(print_progress, dt=0.5)
+        dataset.compute_metadata(progress=progress, overwrite=True)
 
     Args:
-        iterable: an iterable
-        target_latency (0.2): the target latency between ``next()``
-            calls, in seconds
-        init_batch_size (1): the initial batch size to use
-        min_batch_size (1): the minimum allowed batch size
-        max_batch_size (None): an optional maximum allowed batch size
-        max_batch_beta (None): an optional lower/upper bound on the ratio
-            between successive batch sizes
-        return_views (False): whether to return each batch as a
-            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
-            iterable is a :class:`fiftyone.core.collections.SampleCollection`
-        progress (False): whether to render a progress bar tracking the
-            consumption of the batches
-        total (None): the length of ``iterable``. Only applicable when
-            ``progress=True``. If not provided, it is computed via
-            ``len(iterable)``, if possible
+        progress: a function that accepts a :class:`ProgressBar` as input
+        n (None): a number of equally-spaced increments to invoke ``progress``
+        dt (None): a number of seconds between ``progress`` calls
+
+    Returns:
+        a function that accepts a :class:`ProgressBar` as input
     """
+    if n is not None:
+        return _report_progress_n(progress, n)
+
+    if dt is not None:
+        return _report_progress_dt(progress, dt)
+
+    return progress
+
+
+def _report_progress_n(progress, n):
+    def progress_n(pb):
+        if not hasattr(pb, "_next_idx"):
+            if pb.has_total and n > 0:
+                next_iters = [
+                    int(np.round(i))
+                    for i in np.linspace(0, pb.total, min(n, pb.total) + 1)
+                ][1:]
+
+                pb._next_idx = 0
+                pb._next_iters = next_iters
+            else:
+                pb._next_idx = None
+                pb._next_iters = None
+
+        if (
+            pb._next_idx is not None
+            and pb.iteration >= pb._next_iters[pb._next_idx]
+        ):
+            progress(pb)
+
+            pb._next_idx += 1
+            if pb._next_idx >= len(pb._next_iters):
+                pb._next_idx = None
+
+    return progress_n
+
+
+def _report_progress_dt(progress, dt):
+    def progress_dt(pb):
+        if not hasattr(pb, "_next_dt"):
+            pb._next_dt = dt
+
+        if pb._next_dt is not None and (
+            pb.elapsed_time >= pb._next_dt or pb.complete
+        ):
+            progress(pb)
+
+            if not pb.complete:
+                pb._next_dt += dt
+            else:
+                pb._next_dt = None
+
+    return progress_dt
+
+
+class Batcher(abc.ABC):
+    """Base class for iterating over the elements of an iterable in batches."""
+
+    manual_backpressure = False
 
     def __init__(
         self,
         iterable,
-        target_latency=0.2,
-        init_batch_size=1,
-        min_batch_size=1,
-        max_batch_size=None,
-        max_batch_beta=None,
         return_views=False,
         progress=False,
         total=None,
@@ -1023,23 +1098,22 @@ class DynamicBatcher(object):
         if not isinstance(iterable, foc.SampleCollection):
             return_views = False
 
+        if progress is None:
+            progress = fo.config.show_progress_bars
+
         self.iterable = iterable
-        self.target_latency = target_latency
-        self.init_batch_size = init_batch_size
-        self.min_batch_size = min_batch_size
-        self.max_batch_size = max_batch_size
-        self.max_batch_beta = max_batch_beta
         self.return_views = return_views
         self.progress = progress
         self.total = total
 
         self._iter = None
-        self._last_time = None
         self._last_batch_size = None
         self._pb = None
         self._in_context = False
+        self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
+        self._manually_applied_backpressure = True
 
     def __enter__(self):
         self._in_context = True
@@ -1048,44 +1122,56 @@ class DynamicBatcher(object):
     def __exit__(self, *args):
         self._in_context = False
 
-        if self.progress:
+        if self._render_progress:
             if self._last_batch_size is not None:
                 self._pb.update(count=self._last_batch_size)
 
             self._pb.__exit__(*args)
 
     def __iter__(self):
-        if self.return_views:
-            self._last_offset = 0
-            self._num_samples = len(self.iterable)
-        else:
-            self._iter = iter(self.iterable)
+        if self.iterable is not None:
+            if self.return_views:
+                self._last_offset = 0
+                self._num_samples = len(self.iterable)
+            else:
+                self._iter = iter(self.iterable)
 
-        if self.progress:
+        if self._render_progress:
             if self._in_context:
                 total = self.total
                 if total is None:
-                    try:
-                        total = len(self.iterable)
-                    except:
-                        pass
+                    total = self.iterable
 
-                self._pb = ProgressBar(total=total)
+                self._pb = ProgressBar(total=total, progress=self.progress)
                 self._pb.__enter__()
             else:
                 logger.warning(
-                    "DynamicBatcher must be invoked as a context manager in "
-                    "order to print progress"
+                    "Batcher must be invoked as a context manager in order to "
+                    "print progress"
                 )
-                self.progress = False
+                self._render_progress = False
 
         return self
 
     def __next__(self):
-        if self.progress and self._last_batch_size is not None:
+        if (
+            self.manual_backpressure
+            and not self._manually_applied_backpressure
+        ):
+            raise ValueError(
+                "Backpressure value not registered for this batcher"
+            )
+
+        self._manually_applied_backpressure = False
+
+        if self._render_progress and self._last_batch_size is not None:
             self._pb.update(count=self._last_batch_size)
 
         batch_size = self._compute_batch_size()
+        self._last_batch_size = batch_size
+
+        if self.iterable is None:
+            return batch_size
 
         if self.return_views:
             if self._last_offset >= self._num_samples:
@@ -1110,19 +1196,65 @@ class DynamicBatcher(object):
             if not batch:
                 raise StopIteration
 
-        self._last_batch_size = len(batch)
-
         return batch
 
+    def apply_backpressure(self, *args, **kwargs):
+        """Apply backpressure needed to rightsize the next batch.
+
+        Required to be implemented and called every iteration, if
+        ``self.manual_backpressure == True``.
+
+        Subclass defines arguments and behavior of this method.
+        """
+
+    @abc.abstractmethod
     def _compute_batch_size(self):
-        current_time = timeit.default_timer()
+        """Return next batch size. Concrete classes must implement."""
+
+
+class BaseDynamicBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired target measurement.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the measurement between ``next()`` calls is as close as
+    possible to a specified target.
+
+    Concrete base classes define the target measurement and method of
+    calculation.
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_measurement,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+
+        self.target_measurement = target_measurement
+        self.init_batch_size = init_batch_size
+        self.min_batch_size = min_batch_size
+        self.max_batch_size = max_batch_size
+        self.max_batch_beta = max_batch_beta
+
+    def _compute_batch_size(self):
+        current_measurement = self._get_measurement()
 
         if self._last_batch_size is None:
             batch_size = self.init_batch_size
         else:
             # Compute optimal batch size
             try:
-                beta = self.target_latency / (current_time - self._last_time)
+                beta = self.target_measurement / current_measurement
             except ZeroDivisionError:
                 beta = 1e6
 
@@ -1141,9 +1273,360 @@ class DynamicBatcher(object):
                 batch_size = min(batch_size, self.max_batch_size)
 
         self._last_batch_size = batch_size
-        self._last_time = current_time
 
         return batch_size
+
+    @abc.abstractmethod
+    def _get_measurement(self):
+        """Get backpressure measurement for current batch."""
+
+
+class LatencyDynamicBatcher(BaseDynamicBatcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired latency.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the latency between ``next()`` calls is as close as
+    possible to a specified target latency.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.LatencyDynamicBatcher(
+            elements, target_latency=0.1, max_batch_beta=2.0
+        )
+
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.LatencyDynamicBatcher(
+            elements,
+            target_latency=0.1,
+            max_batch_beta=2.0,
+            progress=True,
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        target_latency (0.2): the target latency between ``next()``
+            calls, in seconds
+        init_batch_size (1): the initial batch size to use
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        max_batch_beta (None): an optional lower/upper bound on the ratio
+            between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_latency=0.2,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable,
+            target_latency,
+            init_batch_size=init_batch_size,
+            min_batch_size=min_batch_size,
+            max_batch_size=max_batch_size,
+            max_batch_beta=max_batch_beta,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+        )
+
+        self._last_time = None
+
+    def _get_measurement(self):
+        current_time = timeit.default_timer()
+        time_delta = 0
+        if self._last_time is not None:
+            time_delta = current_time - self._last_time
+
+        self._last_time = current_time
+        return time_delta
+
+
+# Define this for backwards compatibility in case someone was using this
+# batcher directly
+DynamicBatcher = LatencyDynamicBatcher
+
+
+class ContentSizeDynamicBatcher(BaseDynamicBatcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired content size.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the total content size of the batch is as close as
+    possible to a specified target size.
+
+    This batcher requires that backpressure feedback be provided, either by
+    providing a BSON-able batch from which the content size can be computed,
+    or by manually providing the content size.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.ContentSizeDynamicBatcher(
+            elements, target_size=2**20, max_batch_beta=2.0
+        )
+
+        # Raises ValueError after first batch, we forgot to apply backpressure
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        # Now it works
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+            batcher.apply_backpressure(batch)
+
+        batcher = fou.ContentSizeDynamicBatcher(
+            elements,
+            target_size=2**20,
+            max_batch_beta=2.0,
+            progress=True
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+                batcher.apply_backpressure(batch)
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        target_size (1048576): the target batch bson content size, in bytes
+        init_batch_size (1): the initial batch size to use
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        max_batch_beta (None): an optional lower/upper bound on the ratio
+            between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    manual_backpressure = True
+
+    def __init__(
+        self,
+        iterable,
+        target_size=2**20,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable,
+            target_size,
+            init_batch_size=init_batch_size,
+            min_batch_size=min_batch_size,
+            max_batch_size=max_batch_size,
+            max_batch_beta=max_batch_beta,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+        )
+        self._last_batch_content_size = 0
+
+    def apply_backpressure(self, batch_or_size):
+        if isinstance(batch_or_size, numbers.Number):
+            batch_content_size = batch_or_size
+        else:
+            batch_content_size = sum(
+                len(json_util.dumps(obj)) for obj in batch_or_size
+            )
+
+        self._last_batch_content_size = batch_content_size
+        self._manually_applied_backpressure = True
+
+    def _get_measurement(self):
+        return self._last_batch_content_size
+
+
+class StaticBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a static
+    batch size.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.StaticBatcher(elements, batch_size=10000)
+
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.StaticBatcher(elements, batch_size=10000, progress=True)
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        batch_size: size of batches to generate
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    def __init__(
+        self,
+        iterable,
+        batch_size,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+
+        self.batch_size = batch_size
+
+    def _compute_batch_size(self):
+        return self.batch_size
+
+
+def get_default_batcher(iterable, progress=False, total=None):
+    """Returns a :class:`Batcher` over ``iterable`` using defaults from your
+    FiftyOne config.
+
+    Uses ``fiftyone.config.default_batcher`` to determine the implementation
+    to use, and related configuration values as needed for each.
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+
+    Returns:
+        a :class:`Batcher`
+    """
+    default_batcher = fo.config.default_batcher
+    if default_batcher == "latency":
+        target_latency = fo.config.batcher_target_latency
+        return LatencyDynamicBatcher(
+            iterable,
+            target_latency=target_latency,
+            init_batch_size=1,
+            max_batch_beta=8.0,
+            max_batch_size=100000,
+            progress=progress,
+            total=total,
+        )
+    elif default_batcher == "size":
+        target_content_size = fo.config.batcher_target_size_bytes
+        return ContentSizeDynamicBatcher(
+            iterable,
+            target_size=target_content_size,
+            init_batch_size=1,
+            max_batch_beta=8.0,
+            max_batch_size=100000,
+            progress=progress,
+            total=total,
+        )
+    elif default_batcher == "static":
+        batch_size = fo.config.batcher_static_size
+        return StaticBatcher(
+            iterable, batch_size=batch_size, progress=progress, total=total
+        )
+    else:
+        raise ValueError(
+            f"Invalid fo.config.default_batcher: '{default_batcher}'"
+        )
+
+
+def recommend_batch_size_for_value(value, alpha=0.9, max_size=None):
+    """Computes a recommended batch size for the given value type such that a
+    request involving a list of values of this size will be less than
+    ``alpha * fo.config.batcher_target_size_bytes`` bytes.
+
+    Args:
+        value: a value
+        alpha (0.9): a safety factor
+        max_size (None): an optional max batch size
+
+    Returns:
+         a recommended batch size
+    """
+    # Even if ``fo.config.default_batcher != "size"``, it's still reasonable to
+    # use the size threshold to limit the size of individual requests
+    target_size = fo.config.batcher_target_size_bytes
+    value_bytes = sys.getsizeof(value, 40)  # 40 is size of an ObjectId
+    batch_size = int(alpha * target_size / max(value_bytes, 1))
+    if max_size is not None:
+        batch_size = min(batch_size, max_size)
+
+    return batch_size
 
 
 @contextmanager
@@ -1517,7 +2000,7 @@ class MonkeyPatchFunction(object):
     Args:
         module_or_fcn: a module or function
         monkey_fcn: the function to monkey patch in
-        fcn_name (None): the name of the funciton to monkey patch. Required iff
+        fcn_name (None): the name of the function to monkey patch. Required iff
             ``module_or_fcn`` is a module
         namespace (None): an optional package namespace
     """

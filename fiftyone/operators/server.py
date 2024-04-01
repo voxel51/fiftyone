@@ -1,10 +1,11 @@
 """
 FiftyOne operator server.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -17,6 +18,7 @@ from .executor import (
     execute_or_delegate_operator,
     resolve_type,
     resolve_placement,
+    resolve_execution_options,
     ExecutionContext,
 )
 from .message import GeneratedMessage
@@ -31,13 +33,12 @@ class ListOperators(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_list_request(
             request, dataset_ids=dataset_ids
         )
-        ctx = ExecutionContext()
-        operators_as_json = [
-            operator.to_json(ctx) for operator in registry.list_operators()
-        ]
-        for operator in operators_as_json:
-            config = operator["config"]
-            config["can_execute"] = registry.can_execute(operator["uri"])
+        operators_as_json = []
+        for operator in registry.list_operators():
+            serialized_op = operator.to_json()
+            config = serialized_op["config"]
+            config["can_execute"] = registry.can_execute(serialized_op["uri"])
+            operators_as_json.append(serialized_op)
 
         return {
             "operators": operators_as_json,
@@ -187,10 +188,37 @@ class ResolveType(HTTPEndpoint):
         return result.to_json() if result else {}
 
 
+class ResolveExecutionOptions(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
+        operator_uri = data.get("operator_uri", None)
+        if operator_uri is None:
+            raise ValueError("Operator URI must be provided")
+
+        registry = await PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
+
+        if registry.operator_exists(operator_uri) is False:
+            error_detail = {
+                "message": "Operator '%s' does not exist" % operator_uri,
+                "loading_errors": registry.list_errors(),
+            }
+            raise HTTPException(status_code=404, detail=error_detail)
+
+        result = resolve_execution_options(registry, operator_uri, data)
+        return result.to_dict() if result else {}
+
+
 OperatorRoutes = [
     ("/operators", ListOperators),
     ("/operators/execute", ExecuteOperator),
     ("/operators/execute/generator", ExecuteOperatorAsGenerator),
     ("/operators/resolve-type", ResolveType),
     ("/operators/resolve-placements", ResolvePlacements),
+    ("/operators/resolve-execution-options", ResolveExecutionOptions),
 ]

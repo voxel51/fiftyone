@@ -1,12 +1,13 @@
 """
 FiftyOne utilities unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import time
 import unittest
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 
@@ -18,6 +19,148 @@ import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
+
+
+class BatcherTests(unittest.TestCase):
+    def test_get_default_batcher(self):
+        iterable = list(range(100))
+
+        target_latency = 0.25
+        with patch.object(fo.config, "default_batcher", "latency"):
+            with patch.object(
+                fo.config,
+                "batcher_target_latency",
+                target_latency,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(isinstance(batcher, fou.DynamicBatcher))
+                self.assertEqual(batcher.target_measurement, target_latency)
+
+        static_batch_size = 1000
+        with patch.object(fo.config, "default_batcher", "static"):
+            with patch.object(
+                fo.config,
+                "batcher_static_size",
+                static_batch_size,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(isinstance(batcher, fou.StaticBatcher))
+                self.assertEqual(batcher.batch_size, static_batch_size)
+
+        target_size = 2**16
+        with patch.object(fo.config, "default_batcher", "size"):
+            with patch.object(
+                fo.config,
+                "batcher_target_size_bytes",
+                target_size,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(
+                    isinstance(batcher, fou.ContentSizeDynamicBatcher)
+                )
+                self.assertEqual(batcher.target_measurement, target_size)
+
+        with patch.object(fo.config, "default_batcher", "invalid"):
+            self.assertRaises(ValueError, fou.get_default_batcher, iterable)
+
+    def test_static_batcher(self):
+        iterable = list(range(105))
+        batcher = fou.StaticBatcher(iterable, batch_size=10, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            expected = [list(range(i, i + 10)) for i in range(0, 95, 10)] + [
+                iterable[100:]
+            ]
+            self.assertListEqual(batches, expected)
+
+    def test_static_batcher_covered(self):
+        iterable = list(range(105))
+        batcher = fou.StaticBatcher(iterable, batch_size=200, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            self.assertListEqual(batches, [iterable])
+
+    def test_static_batcher_perfect_boundary(self):
+        iterable = list(range(200))
+        batcher = fou.StaticBatcher(iterable, batch_size=100, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            self.assertListEqual(batches, [iterable[:100], iterable[100:]])
+
+    def test_inexhaustible_static_batcher(self):
+        batcher = fou.StaticBatcher(None, batch_size=100, progress=False)
+        nt = 10
+        batches = [next(batcher) for _ in range(10)]
+        self.assertListEqual(batches, [100] * nt)
+
+    def test_inexhaustible_content_size_batcher(self):
+        batcher = fou.ContentSizeDynamicBatcher(
+            None, init_batch_size=100, target_size=10
+        )
+        measurements = [1, 20, 10, 0.1, 11, 0]
+        expected_batches = [
+            100,
+            1_000,
+            500,
+            500,
+            50_000,
+            int(round(10 / 11 * 50_000)),
+        ]
+        batches = []
+        for m in measurements:
+            batches.append(next(batcher))
+            batcher.apply_backpressure(m)
+
+        self.assertListEqual(batches, expected_batches)
+
+    @drop_datasets
+    def test_batching_static_default(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_static_custom(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            with patch.object(fo.config, "batcher_static_size", 1):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_default(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_custom(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_latency", 1e-6):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_default(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_custom(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_size_bytes", 1):
+                self._test_batching()
+
+    def _test_batching(self):
+        n = 100
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample(filepath=f"{i}.jpg") for i in range(n)])
+
+        embeddings = np.random.randn(n, 512)
+        dataset.set_values("embeddings", embeddings)
+
+        self.assertEqual(len(dataset), n)
+        self.assertEqual(len(dataset.exists("embeddings")), n)
+
+        sample = dataset.view().first()
+        self.assertIsInstance(sample.embeddings, np.ndarray)
 
 
 class CoreUtilsTests(unittest.TestCase):
@@ -311,6 +454,125 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(len(list(db.config.aggregate([]))), 1)
         self.assertEqual(config.id, orig_config.id)
+
+
+from bson import ObjectId
+from fiftyone.core.odm.utils import load_dataset
+
+
+class TestLoadDataset(unittest.TestCase):
+    @patch("fiftyone.core.odm.get_db_conn")
+    @patch("fiftyone.core.dataset.Dataset")
+    def test_load_dataset_by_id(self, mock_dataset, mock_get_db_conn):
+        # Setup
+        identifier = ObjectId()
+        mock_db = MagicMock()
+        mock_get_db_conn.return_value = mock_db
+        mock_db.datasets.find_one.return_value = {
+            "_id": ObjectId(identifier),
+            "name": "test_dataset",
+        }
+
+        # Test
+        result = load_dataset(id=identifier)
+
+        # Assertions
+        mock_get_db_conn.assert_called_once()
+        mock_db.datasets.find_one.assert_called_once_with(
+            {"_id": ObjectId(identifier)}, {"name": True}
+        )
+
+        self.assertEqual(result, mock_dataset.return_value)
+
+    @patch("fiftyone.core.odm.get_db_conn")
+    @patch("fiftyone.core.dataset.Dataset")
+    def test_load_dataset_by_alt_id(self, mock_dataset, mock_get_db_conn):
+        # Setup
+        identifier = "alt_id"
+        mock_db = MagicMock()
+        mock_get_db_conn.return_value = mock_db
+        mock_db.datasets.find_one.return_value = {
+            "_id": "identifier",
+            "name": "dataset_name",
+        }
+
+        # Test
+        result = load_dataset(id=identifier)
+
+        # Assertions
+        mock_get_db_conn.assert_called_once()
+        mock_db.datasets.find_one.assert_called_once_with(
+            {"_id": identifier}, {"name": True}
+        )
+        self.assertEqual(result, mock_dataset.return_value)
+
+    @patch("fiftyone.core.dataset.Dataset")
+    def test_load_dataset_by_name(self, mock_dataset):
+        # Setup
+        identifier = "test_dataset"
+        mock_dataset.return_value = {"_id": ObjectId(), "name": identifier}
+
+        # Test
+        result = load_dataset(name=identifier)
+
+        # Assertions
+        self.assertEqual(result, mock_dataset.return_value)
+
+    @patch("fiftyone.core.odm.get_db_conn")
+    def test_load_dataset_nonexistent(self, mock_get_db_conn):
+        # Setup
+        identifier = ObjectId()
+        mock_db = MagicMock()
+        mock_db.datasets.find_one.return_value = None
+        mock_get_db_conn.return_value = mock_db
+
+        # Call the function and expect a ValueError
+        with self.assertRaises(ValueError) as context:
+            load_dataset(id=identifier)
+
+        # Assertions
+        mock_get_db_conn.assert_called_once()
+        mock_db.datasets.find_one.assert_called_once_with(
+            {"_id": identifier}, {"name": True}
+        )
+
+
+class ProgressBarTests(unittest.TestCase):
+    def _test_correct_value(self, progress, global_progress, quiet, expected):
+        with fou.SetAttributes(fo.config, show_progress_bars=global_progress):
+            with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
+                assert pb._progress == expected
+
+    def test_progress_none_uses_global(self):
+        self._test_correct_value(
+            progress=None, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=None, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_progress_overwrites_global(self):
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=True, global_progress=False, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=False, global_progress=True, quiet=None, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_quiet_overwrites_all(self):
+        # Careful, we expect here to have progress the opposite value of quiet
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=True, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=False, expected=True
+        )
 
 
 if __name__ == "__main__":

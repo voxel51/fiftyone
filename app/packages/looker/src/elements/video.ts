@@ -1,8 +1,11 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { Optional, StateUpdate, VideoState } from "../state";
+import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
+import lockIcon from "../icons/lock.svg";
+import lockOpenIcon from "../icons/lockOpen.svg";
+import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {
   muteUnmute,
@@ -11,10 +14,12 @@ import {
   supportLock,
 } from "./common/actions";
 import {
-  lookerControlActive,
   lookerClickable,
+  lookerControlActive,
   lookerTime,
 } from "./common/controls.module.css";
+import { lookerLoader } from "./common/looker.module.css";
+import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
   acquireThumbnailer,
@@ -23,22 +28,15 @@ import {
   getFullTimeString,
   getTime,
 } from "./util";
-
 import {
   bufferingCircle,
   bufferingPath,
-  lookerSeekBar,
-  lookerVolume,
   lookerPlaybackRate,
+  lookerSeekBar,
   lookerThumb,
   lookerThumbSeeking,
+  lookerVolume,
 } from "./video.module.css";
-import lockIcon from "../icons/lock.svg";
-import lockOpenIcon from "../icons/lockOpen.svg";
-
-import { lookerLoader } from "./common/looker.module.css";
-import { dispatchTooltipEvent } from "./common/util";
-import { volume as volumeIcon, volumeMuted, playbackRate } from "../icons";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering = false;
@@ -158,6 +156,9 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     element.style.height = "24px";
     element.style.width = "24px";
     element.style.gridArea = "2 / 2 / 2 / 2";
+
+    element.setAttribute("data-cy", "looker-video-play-button");
+
     return element;
   }
 
@@ -198,7 +199,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         this.element.appendChild(this.play);
         this.element.title = "Play (space)";
         this.element.style.cursor = "pointer";
-        this.element.setAttribute("data-cy", "looker-video-play-button");
       }
       this.isPlaying = playing;
       this.isBuffering = buffering || !loaded;
@@ -399,7 +399,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
-  private update: StateUpdate<VideoState>;
   private volume: number;
   private waitingToPause = false;
   private waitingToPlay = false;
@@ -525,10 +524,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement(update: StateUpdate<VideoState>) {
-    this.update = update;
+  createHTMLElement() {
     this.element = null;
-    update(({ config: { thumbnail, src, frameRate, support } }) => {
+    this.update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
@@ -539,7 +537,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
-            update({ error: true, loaded: true, dimensions: [512, 512] });
+            this.update({ error: true, loaded: true, dimensions: [512, 512] });
           };
 
           const seeked = () => {
@@ -570,7 +568,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             this.canvas.width = video.videoWidth;
             this.canvas.height = video.videoHeight;
 
-            update({ dimensions: [video.videoWidth, video.videoHeight] });
+            this.update({ dimensions: [video.videoWidth, video.videoHeight] });
           };
 
           video.src = src;
@@ -782,7 +780,7 @@ const seekFn = (
     lockedToSupport,
   }: Readonly<VideoState>,
   event: MouseEvent
-): Optional<VideoState> => {
+): Partial<VideoState> => {
   if (duration && seeking) {
     const element = event.currentTarget as HTMLDivElement;
     const { width, left } = element.getBoundingClientRect();
@@ -927,6 +925,7 @@ class PlaybackRateContainerElement extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerPlaybackRate);
+    element.setAttribute("data-cy", "looker-video-speed-button");
     return element;
   }
 

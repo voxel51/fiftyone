@@ -18,7 +18,7 @@ or `contact us on Slack <https://slack.voxel51.com>`_.
 
     .. code-block:: shell
 
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip setuptools wheel build
         pip install fiftyone
 
 .. _troubleshooting-pip:
@@ -207,9 +207,10 @@ open file limit.  MongoDB has full documentation on the issue
 Troubleshooting Linux imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`fiftyone-db` officially supports Debian 9+ (x86_64 only), Ubuntu 18.04+, and
-RHEL/CentOS 7+ Linux distributions. The correct MongoDB build is downloaded
-and installed while building the package wheel on your machine. 
+`fiftyone-db` officially supports Amazon Linux 2 and 2023, Debian 9+
+(x86_64 only), Ubuntu 18.04+, and RHEL/CentOS 7+ Linux distributions. The
+correct MongoDB build is downloaded and installed while building the package
+wheel on your machine. 
 
 If a suitable MongoDB build is not available or otherwise does not
 work in your environment, you may encounter a `FiftyOneConfigError`.

@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2172,9 +2172,9 @@ class DatasetZooLoadCommand(Command):
             splits=splits,
             dataset_name=dataset_name,
             dataset_dir=dataset_dir,
+            persistent=True,
             **kwargs,
         )
-        dataset.persistent = True
 
 
 class DatasetZooDeleteCommand(Command):
@@ -2771,13 +2771,7 @@ def _print_operators_list(enabled, names_only):
 
         return
 
-    headers = [
-        "uri",
-        "enabled",
-        "builtin",
-        "unlisted",
-        "on_startup",
-    ]
+    headers = ["uri", "enabled", "builtin", "unlisted"]
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
@@ -2789,7 +2783,6 @@ def _print_operators_list(enabled, names_only):
                 "enabled": op.builtin or op.plugin_name in enabled_plugins,
                 "builtin": op.builtin,
                 "unlisted": op.config.unlisted,
-                "on_startup": op.config.on_startup,
             }
         )
 

@@ -3,13 +3,17 @@ import {
   clone,
   Field,
   getFetchFunction,
+  GQLError,
+  GraphQLError,
   Schema,
   StrictField,
 } from "@fiftyone/utilities";
 import React, { MutableRefObject, useCallback, useRef } from "react";
 import {
   Environment,
+  FetchFunction,
   GraphQLResponse,
+  GraphQLResponseWithData,
   Network,
   RecordSource,
   Store,
@@ -94,6 +98,20 @@ export const collapseFields = (paths): StrictField[] => {
   return Object.entries(schema).map(([_, field]) => toStrictField(field));
 };
 
+export const getStandardizedUrls = (
+  urls: Array<{ field: string; url: string }> | { [field: string]: string }
+) => {
+  let standardizedUrls: { [field: string]: string } = {};
+  if (Array.isArray(urls)) {
+    for (const { field, url } of urls) {
+      standardizedUrls[field] = url;
+    }
+  } else {
+    standardizedUrls = urls;
+  }
+  return standardizedUrls;
+};
+
 const convertTargets = (
   targets: {
     target: string;
@@ -144,22 +162,32 @@ export const setCurrentEnvironment = (environment: Environment) => {
   currentEnvironment = environment;
 };
 
-async function fetchGraphQL(
-  text: string | null | undefined,
-  variables: object
-): Promise<GraphQLResponse> {
-  return await getFetchFunction()<unknown, GraphQLResponse>(
+type GQLResponse = Omit<GraphQLResponseWithData, "errors"> & {
+  errors?: GQLError[];
+};
+
+const fetchRelay: FetchFunction = async (
+  params,
+  variables
+): Promise<GraphQLResponse> => {
+  const data = await await getFetchFunction()<unknown, GQLResponse>(
     "POST",
     "/graphql",
     {
-      query: text,
+      query: params.text,
       variables,
     }
   );
-}
 
-const fetchRelay = async (params, variables) => {
-  return fetchGraphQL(params.text, variables);
+  // mutation errors are handled by the calling component or hook
+  if (params.operationKind !== "mutation" && "errors" in data && data.errors) {
+    throw new GraphQLError({
+      errors: data.errors,
+      variables,
+    });
+  }
+
+  return data;
 };
 
 export const getEnvironment = () =>

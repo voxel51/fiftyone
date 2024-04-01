@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -57,6 +57,7 @@ def import_samples(
     expand_schema=True,
     dynamic=False,
     add_info=True,
+    progress=None,
 ):
     """Adds the samples from the given :class:`DatasetImporter` to the dataset.
 
@@ -87,6 +88,9 @@ def import_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if
             any) to the dataset
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -114,7 +118,9 @@ def import_samples(
             )
 
         with dataset_importer:
-            return dataset_importer.import_samples(dataset, tags=tags)
+            return dataset_importer.import_samples(
+                dataset, tags=tags, progress=progress
+            )
 
     #
     # Non-batch imports
@@ -130,11 +136,6 @@ def import_samples(
             dynamic,
         )
 
-        try:
-            num_samples = len(dataset_importer)
-        except:
-            num_samples = None
-
         if isinstance(dataset_importer, GroupDatasetImporter):
             samples = _generate_group_samples(dataset_importer, parse_sample)
         else:
@@ -144,7 +145,8 @@ def import_samples(
             samples,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            num_samples=num_samples,
+            progress=progress,
+            num_samples=dataset_importer,
         )
 
         if add_info and dataset_importer.has_dataset_info:
@@ -174,6 +176,7 @@ def merge_samples(
     expand_schema=True,
     dynamic=False,
     add_info=True,
+    progress=None,
 ):
     """Merges the samples from the given :class:`DatasetImporter` into the
     dataset.
@@ -265,6 +268,9 @@ def merge_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if any)
             to the dataset
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if etau.is_str(tags):
         tags = [tags]
@@ -282,7 +288,9 @@ def merge_samples(
 
         try:
             with dataset_importer:
-                dataset_importer.import_samples(tmp, tags=tags)
+                dataset_importer.import_samples(
+                    tmp, tags=tags, progress=progress
+                )
 
             dataset.merge_samples(
                 tmp,
@@ -317,11 +325,6 @@ def merge_samples(
             dynamic,
         )
 
-        try:
-            num_samples = len(dataset_importer)
-        except:
-            num_samples = None
-
         if isinstance(dataset_importer, GroupDatasetImporter):
             samples = _generate_group_samples(dataset_importer, parse_sample)
         else:
@@ -339,7 +342,8 @@ def merge_samples(
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            num_samples=num_samples,
+            progress=progress,
+            num_samples=dataset_importer,
         )
 
         if add_info and dataset_importer.has_dataset_info:
@@ -563,6 +567,9 @@ def build_dataset_importer(
             "importer"
         )
 
+    if etau.is_str(dataset_type):
+        dataset_type = etau.get_class(dataset_type)
+
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
@@ -628,34 +635,32 @@ def parse_dataset_info(dataset, info, overwrite=True):
         overwrite (True): whether to overwrite existing dataset info fields
     """
     tags = info.pop("tags", None)
-    if tags is not None:
-        if overwrite:
-            dataset.tags = tags
-        else:
-            _update_no_overwrite(dataset.tags, tags)
+    if tags:
+        _update_no_overwrite(dataset.tags, tags)
 
     description = info.pop("description", None)
-    if description is not None:
+    if description:
         if overwrite or not dataset.description:
             dataset.description = str(description)
 
     classes = info.pop("classes", None)
-    if isinstance(classes, dict):
-        if overwrite:
-            dataset.classes.update(classes)
-        else:
-            _update_no_overwrite(dataset.classes, classes)
-    elif isinstance(classes, list):
-        if overwrite or not dataset.default_classes:
-            dataset.default_classes = classes
+    if classes:
+        if isinstance(classes, dict):
+            if overwrite:
+                dataset.classes.update(classes)
+            else:
+                _update_no_overwrite(dataset.classes, classes)
+        elif isinstance(classes, list):
+            if overwrite or not dataset.default_classes:
+                dataset.default_classes = classes
 
     default_classes = info.pop("default_classes", None)
-    if default_classes is not None:
+    if default_classes:
         if overwrite or not dataset.default_classes:
             dataset.default_classes = default_classes
 
     mask_targets = info.pop("mask_targets", None)
-    if mask_targets is not None:
+    if mask_targets:
         mask_targets = dataset._parse_mask_targets(mask_targets)
         if overwrite:
             dataset.mask_targets.update(mask_targets)
@@ -663,14 +668,14 @@ def parse_dataset_info(dataset, info, overwrite=True):
             _update_no_overwrite(dataset.mask_targets, mask_targets)
 
     default_mask_targets = info.pop("default_mask_targets", None)
-    if default_mask_targets is not None:
+    if default_mask_targets:
         if overwrite or not dataset.default_mask_targets:
             dataset.default_mask_targets = dataset._parse_default_mask_targets(
                 default_mask_targets
             )
 
     skeletons = info.pop("skeletons", None)
-    if skeletons is not None:
+    if skeletons:
         skeletons = dataset._parse_skeletons(skeletons)
         if overwrite:
             dataset.skeletons.update(skeletons)
@@ -678,7 +683,7 @@ def parse_dataset_info(dataset, info, overwrite=True):
             _update_no_overwrite(dataset.skeletons, skeletons)
 
     default_skeleton = info.pop("default_skeleton", None)
-    if default_skeleton is not None:
+    if default_skeleton:
         if overwrite or not dataset.default_skeleton:
             dataset.default_skeleton = dataset._parse_default_skeleton(
                 default_skeleton
@@ -981,12 +986,15 @@ class BatchDatasetImporter(DatasetImporter):
     def has_dataset_info(self):
         return False
 
-    def import_samples(self, dataset, tags=None):
+    def import_samples(self, dataset, tags=None, progress=None):
         """Imports the samples into the given dataset.
 
         Args:
             dataset: a :class:`fiftyone.core.dataset.Dataset`
             tags (None): an optional list of tags to attach to each sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -1763,7 +1771,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             else:
                 self._has_frames = False
 
-    def import_samples(self, dataset, tags=None):
+    def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = foo.import_document(self._metadata_path)
 
         if len(dataset) > 0 and fomi.needs_migration(
@@ -1777,7 +1785,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             try:
                 sample_ids = self._import_samples(
-                    tmp_dataset, dataset_dict, tags=tags
+                    tmp_dataset, dataset_dict, tags=tags, progress=progress
                 )
                 dataset.add_collection(tmp_dataset)
             finally:
@@ -1785,9 +1793,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             return sample_ids
 
-        return self._import_samples(dataset, dataset_dict, tags=tags)
+        return self._import_samples(
+            dataset, dataset_dict, tags=tags, progress=progress
+        )
 
-    def _import_samples(self, dataset, dataset_dict, tags=None):
+    def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name
         empty_import = not bool(dataset)
 
@@ -1815,23 +1825,36 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # here because the import may need migration
             #
             doc = dataset._doc
-            dataset_dict.update(
-                dict(
-                    _id=doc.id,
-                    name=doc.name,
-                    slug=doc.slug,
-                    persistent=doc.persistent,
-                    created_at=doc.created_at,
-                    last_loaded_at=doc.last_loaded_at,
-                    sample_collection_name=doc.sample_collection_name,
-                    frame_collection_name=doc.frame_collection_name,
-                )
+            keep_fields = dict(
+                _id=doc.id,
+                name=doc.name,
+                slug=doc.slug,
+                persistent=doc.persistent,
+                created_at=doc.created_at,
+                last_loaded_at=doc.last_loaded_at,
+                sample_collection_name=doc.sample_collection_name,
+                frame_collection_name=doc.frame_collection_name,
             )
+            if doc.description and not dataset_dict.get("description", None):
+                keep_fields["description"] = doc.description
+
+            if doc.tags:
+                tags = doc.tags.copy()
+                new_tags = dataset_dict.get("tags", None) or []
+                tags.extend([t for t in new_tags if t not in tags])
+                keep_fields["tags"] = tags
+
+            dataset_dict.update(keep_fields)
 
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)
 
             dataset._reload(hard=True)
+
+            if dataset.media_type == fomm.GROUP:
+                fod._create_group_indexes(
+                    dataset._sample_collection_name, dataset.group_field
+                )
         else:
             #
             # The dataset we're merging into is non-empty, but it is safe to
@@ -1882,7 +1905,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             map(_parse_sample, samples),
             dataset._sample_collection,
             ordered=self.ordered,
-            progress=True,
+            progress=progress,
             num_docs=num_samples,
         )
 
@@ -1910,7 +1933,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
-                progress=True,
+                progress=progress,
                 num_docs=num_frames,
             )
 
@@ -1964,8 +1987,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
-
-        logger.info("Import complete")
 
         return sample_ids
 

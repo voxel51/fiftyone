@@ -15,7 +15,7 @@ export const DeserializerFactory = {
   },
   Detections: (labels, buffers) => {
     labels.detections.forEach((label) =>
-      DeserializerFactory[label._cls](label, buffers)
+      DeserializerFactory.Detection(label, buffers)
     );
   },
   Heatmap: (label, buffers) => {

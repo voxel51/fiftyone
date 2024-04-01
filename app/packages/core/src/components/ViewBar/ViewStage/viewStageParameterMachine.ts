@@ -1,7 +1,8 @@
 import { v4 as uuid } from "uuid";
 import { actions, Machine, sendParent } from "xstate";
 
-import { computeBestMatchString, getMatch } from "./utils";
+import { isObjectIdString } from "@fiftyone/utilities";
+import { cleanCSV, computeBestMatchString, getArray, getMatch } from "./utils";
 
 const { assign } = actions;
 
@@ -42,9 +43,12 @@ export const PARSER = {
       ["true", "false"].indexOf(convert(value).toLowerCase()) >= 0,
   },
   float: {
-    castFrom: (value) => String(value),
-    castTo: (value) => +value,
+    castFrom: (value) => PARSER.float.parse(String(value)),
+    castTo: (value) => {
+      return +value.replaceAll(",", "");
+    },
     parse: (value) => {
+      value = value.replaceAll(",", "");
       const stripped = value.replace(/[\s]/g, "");
       const [integer, fractional] = stripped.split(".");
       return (
@@ -53,7 +57,7 @@ export const PARSER = {
       );
     },
     validate: (value) => {
-      const stripped = convert(value).replace(/[\s]/g, "");
+      const stripped = convert(value).replace(/[\s]/g, "").replaceAll(",", "");
       return stripped !== "" && !isNaN(+stripped);
     },
   },
@@ -82,7 +86,7 @@ export const PARSER = {
     castFrom: (value) => value,
     castTo: (value) => value,
     parse: (value) => value,
-    validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
+    validate: (value) => isObjectIdString(value),
   },
   int: {
     castFrom: (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
@@ -110,66 +114,25 @@ export const PARSER = {
   "list<field>": {
     castFrom: (value) => value.join(","),
     castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    parse: (value) => cleanCSV(value),
     validate: (value, fields) => {
-      const stripped = value.replace(/[\s]/g, "");
-      let array = null;
-      try {
-        array = JSON.parse(stripped);
-      } catch {
-        array = stripped.split(",");
-      }
-      return (
-        typeof value !== "string" &&
-        Array.isArray(array) &&
-        array.every((e) => PARSER.field.validate(e, fields))
-      );
+      return getArray(value).every((e) => PARSER.field.validate(e, fields));
     },
   },
   "list<id>": {
     castFrom: (value) => value.join(","),
     castTo: (value) => value.split(","),
-    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
+    parse: (value) => cleanCSV(value),
     validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
-      let array = null;
-      try {
-        array = JSON.parse(stripped);
-      } catch {
-        array = stripped.split(",");
-      }
-      return (
-        typeof value !== "string" &&
-        Array.isArray(array) &&
-        array.every((e) => PARSER.id.validate(e))
-      );
+      return getArray(value).every((e) => PARSER.id.validate(e));
     },
   },
   "list<str>": {
     castFrom: (value) => value.join(","),
     castTo: (value) => value.split(","),
-    parse: (value) =>
-      value
-        // replace spaces with a single space (to allow search by words with spaces)
-        .replace(/[\s\'\"\[\]]+/g, " ")
-        // replace comma followed by trailing spaces with a single comma
-        .replace(/,\s*/g, ",")
-        // remove trailing spaces
-        .replace(/[ \t]+$/, ""),
+    parse: (value) => cleanCSV(value),
     validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
-      let array = null;
-      try {
-        array = JSON.parse(stripped);
-      } catch {
-        // ex: exclude_fields('a, b'). 'a,b' => ['a', 'b']
-        array = stripped.split(",");
-      }
-      return (
-        typeof array !== "string" &&
-        Array.isArray(array) &&
-        array.every((e) => PARSER.str.validate(e))
-      );
+      return getArray(value).every((e) => PARSER.str.validate(e));
     },
   },
   NoneType: {

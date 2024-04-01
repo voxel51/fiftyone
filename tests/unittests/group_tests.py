@@ -1,10 +1,11 @@
 """
 FiftyOne group-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from itertools import groupby
 import json
 import os
@@ -21,6 +22,7 @@ import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 from fiftyone import ViewExpression as E, ViewField as F
 
 from decorators import drop_datasets
@@ -250,6 +252,23 @@ class GroupTests(unittest.TestCase):
         self.assertIn("left", group)
         self.assertNotIn("ego", group)
         self.assertIn("right", group)
+
+    @drop_datasets
+    def test_one_fo3d_group_slice(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        one = fo.Sample(filepath="one.fo3d", group=group.element("one"))
+        two = fo.Sample(filepath="two.fo3d", group=group.element("two"))
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples([one, two])
+
+        dataset = fo.Dataset()
+        dataset.add_sample(one)
+
+        with self.assertRaises(ValueError):
+            dataset.add_group_slice("two", "3d")
 
     @drop_datasets
     def test_field_operations(self):
@@ -1047,6 +1066,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(set(samples.values("frames.id", unwind=True))), 4)
 
     @drop_datasets
+    def test_merge_groups6(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slices(_allow_mixed=True)
+        samples = list(view)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(view), 6)
+
+        key_fcn = lambda sample: sample.filepath
+        dataset.merge_samples(samples, key_fcn=key_fcn)
+
+        view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(view), 6)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = _make_group_dataset()
 
@@ -1311,6 +1350,53 @@ class GroupImportExportTests(unittest.TestCase):
             set(flat_view.values("filepath")),
             set(flat_view2.values("filepath")),
         )
+
+    @drop_datasets
+    def test_fiftyone_dataset_group_indexes(self):
+        dataset = _make_group_dataset()
+
+        group_indexes = {
+            "id",
+            "filepath",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+            "group_field.id",
+            "group_field.name",
+        }
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(set(dataset.list_indexes()), group_indexes)
+        self.assertSetEqual(set(dataset2.list_indexes()), group_indexes)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertSetEqual(set(dataset.list_indexes()), group_indexes)
+        self.assertSetEqual(set(dataset2.list_indexes()), group_indexes)
 
     @drop_datasets
     def test_disjoint_groups(self):
@@ -2035,6 +2121,36 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(also_view.name, "group_by_clips")
         self.assertTrue(also_view.is_saved)
         self.assertEqual(len(also_view), 2)
+
+    @drop_datasets
+    def test_expand_group_metadata(self):
+        dataset: fo.Dataset = fo.Dataset()
+
+        group = fo.Group()
+        samples = [
+            fo.Sample(filepath="video.mp4", group=group.element("video")),
+            fo.Sample(filepath="image.png", group=group.element("image")),
+        ]
+        dataset.add_samples(samples)
+
+        # assert that slices have their media type metadata fields populated
+        for (
+            name,
+            field,
+        ) in fome.ImageMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
+
+        for (
+            name,
+            field,
+        ) in fome.VideoMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
 
 
 def _make_group_by_dataset():

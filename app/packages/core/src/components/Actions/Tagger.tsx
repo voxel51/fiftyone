@@ -1,5 +1,14 @@
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  LoadingDots,
+  PopoutSectionTitle,
+  useTheme,
+} from "@fiftyone/components";
+import {
+  FrameLooker,
+  ImaVidLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -21,7 +30,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { Button } from "../utils";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
@@ -317,6 +325,7 @@ const useTagCallback = (
     ...[
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+      useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),
     ],
   ];
 
@@ -324,6 +333,13 @@ const useTagCallback = (
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
         const isGroup = await snapshot.getPromise(fos.isGroup);
+        const isNonNestedDynamicGroup = await snapshot.getPromise(
+          fos.isNonNestedDynamicGroup
+        );
+        const isImaVidLookerActive = await snapshot.getPromise(
+          fos.isOrderedDynamicGroup
+        );
+
         const slices = await snapshot.getPromise(fos.currentSlices(modal));
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
@@ -335,14 +351,15 @@ const useTagCallback = (
               modal ? fos.modalFilters : fos.filters
             ),
             hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
-            groupData: isGroup
-              ? {
-                  id: modal ? await snapshot.getPromise(groupId) : null,
-                  slices,
-                  slice: await snapshot.getPromise(fos.groupSlice),
-                  mode: await snapshot.getPromise(groupStatistics(modal)),
-                }
-              : null,
+            groupData:
+              isGroup && !isNonNestedDynamicGroup
+                ? {
+                    id: modal ? await snapshot.getPromise(groupId) : null,
+                    slices,
+                    slice: await snapshot.getPromise(fos.groupSlice),
+                    mode: await snapshot.getPromise(groupStatistics(modal)),
+                  }
+                : null,
             modal,
             sampleId: modal
               ? await snapshot.getPromise(fos.sidebarSampleId)
@@ -351,6 +368,9 @@ const useTagCallback = (
             selectedSamples: await snapshot.getPromise(fos.selectedSamples),
             targetLabels,
             view: await snapshot.getPromise(fos.view),
+            extended: !modal
+              ? await snapshot.getPromise(fos.extendedStages)
+              : null,
           }),
           current_frame: lookerRef?.current?.frameNumber,
           changes,
@@ -370,6 +390,18 @@ const useTagCallback = (
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
+
+          if (isImaVidLookerActive) {
+            // assuming we're working with only one sample
+            (
+              lookerRef?.current as unknown as ImaVidLooker
+            )?.frameStoreController.store?.updateSample(
+              samples[0]._id,
+              samples[0]
+            );
+
+            lookerRef?.current?.updateSample(samples[0]);
+          }
         }
 
         set(fos.anyTagging, false);
@@ -389,7 +421,9 @@ const useLabelPlaceHolder = (
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
-    const selectedLabelCount = useRecoilValue(numItemsInSelection(true));
+    const selectedLabelCount = useRecoilValue(
+      numItemsInSelection({ labels: true, modal })
+    );
     const totalLabelCount = useRecoilValue(
       fos.labelCount({ modal, extended: true })
     );

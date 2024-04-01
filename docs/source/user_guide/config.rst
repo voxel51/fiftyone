@@ -55,6 +55,24 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
+|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` and                  |
+|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.          |
+|                               |                                     |                               | Supported values are `latency`, `size`, and `static`.                                  |
+|                               |                                     |                               |                                                                                        |
+|                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
+|                               |                                     |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
+|                               |                                     |                               | FiftyOne Teams SDK in :ref:`API connection mode <teams-api-connection>`, which targets |
+|                               |                                     |                               | a size of `batcher_target_size_bytes` for each call. `static` uses a fixed batch size  |
+|                               |                                     |                               | of `batcher_static_size`.                                                              |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_static_size`         | `FIFTYONE_BATCHER_STATIC_SIZE`      | `100`                         | Fixed size of batches. Only used when `default_batcher` is `static`.                   |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_target_size_bytes`   | `FIFTYONE_BATCHER_TARGET_SIZE_BYTES`| `2 ** 20`                     | Target content size of batches, in bytes. Only used when `default_batcher` is `size`.  |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`   | `0.2`                         | Target latency between batches, in seconds. Only used when `default_batcher` is        |
+|                               |                                     |                               | `latency`.                                                                             |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -105,10 +123,10 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
-|                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
+|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
 |                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
 |                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -136,6 +154,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "batcher_static_size": 100,
+            "batcher_target_latency": 0.2,
+            "batcher_target_size_bytes": 1048576,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -143,10 +164,10 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
-            "default_app_config_path": "~/.fiftyone/app_config.json",
-            "default_app_port": 5151,
             "default_app_address": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
+            "default_batcher": "latency",
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
             "default_ml_backend": "torch",
@@ -155,14 +176,14 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
-            "max_thread_pool_workers": null,
             "max_process_pool_workers": null,
+            "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
-            "plugins_dir": null,
             "plugins_cache_enabled": false,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -183,6 +204,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "batcher_static_size": 100,
+            "batcher_target_latency": 0.2,
+            "batcher_target_size_bytes": 1048576,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -190,10 +214,10 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
-            "default_app_config_path": "~/.fiftyone/app_config.json",
-            "default_app_port": 5151,
             "default_app_address": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
+            "default_batcher": "latency",
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
             "default_ml_backend": "torch",
@@ -202,14 +226,14 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
-            "max_thread_pool_workers": null,
             "max_process_pool_workers": null,
+            "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
-            "plugins_dir": null,
             "plugins_cache_enabled": false,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -455,7 +479,7 @@ Restricting migrations
 
 You can use the `database_admin` config setting to control whether a client is
 allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
-which means that upgrades are automatically peformed when you connect to your
+which means that upgrades are automatically performed when you connect to your
 database with newer Python client versions.
 
 If you set `database_admin` to `False`, your client will **never** cause the
@@ -652,6 +676,9 @@ The FiftyOne App can be configured in the ways described below:
 | `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
 |                           |                                        |                             | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `lightning_threshold`     | `FIFTYONE_APP_LIGHTNING_THRESHOLD`     | `None`                      | A dataset sample count threshold that enables performant sidebar filtering on indexed     |
+|                           |                                        |                             | fields. See :ref:`this section <app-lightning-mode>` for more details.                    |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
@@ -725,6 +752,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
@@ -773,6 +801,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
@@ -947,3 +976,25 @@ system:
 
     You can also store dataset-specific plugin settings by storing any subset
     of the above values on a :ref:`dataset's App config <dataset-app-config>`.
+
+.. _configuring-proxy-url:
+
+Configuring a proxy URL
+-----------------------
+
+When running FiftyOne in a cloud machine, such as a
+`SageMaker Notebook <https://aws.amazon.com/sagemaker/notebooks/>`_, a
+`proxy_url` should be set in your
+:ref:`FiftyOne App config <configuring-fiftyone-app>` before launching the App
+in order for browser windows or notebook cells to point to a correct App URL.
+For `SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_, the
+below code snippet shows how to configure the proxy based on your instance.
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # before launching the App, configure a proxy_url
+    fo.app_config.proxy_url = "https://<myinstance>.notebook.<region>.sagemaker.aws/proxy/<port>/"
+
+    session = fo.launch_app(port=<port>)

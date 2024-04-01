@@ -7,6 +7,10 @@ import { useState } from "react";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
 
+export const ActionDiv = styled.div`
+  position: relative;
+`;
+
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
   display: flex;
@@ -77,6 +81,7 @@ export const tagStatistics = selectorFamily<
               ? {
                   id: modal ? get(groupId) : null,
                   slices: get(fos.currentSlices(modal)),
+                  slice: get(fos.currentSlice(modal)),
                   mode: get(groupStatistics(modal)),
                 }
               : null,
@@ -87,17 +92,21 @@ export const tagStatistics = selectorFamily<
           selectedLabels: get(fos.selectedLabels),
           targetLabels: countLabels,
           view: get(fos.view),
+          extended: !modal ? get(fos.extendedStages) : null,
         })
       );
     },
 });
 
-export const numItemsInSelection = selectorFamily<number, boolean>({
+export const numItemsInSelection = selectorFamily<
+  number,
+  { modal: boolean; labels: boolean }
+>({
   key: "numLabelsInSelectedSamples",
   get:
-    (labels) =>
+    ({ modal = false, labels }) =>
     ({ get }) => {
-      return get(tagStatistics({ modal: false, labels })).count;
+      return get(tagStatistics({ modal, labels })).count;
     },
 });
 
@@ -168,6 +177,9 @@ export const tagParameters = ({
     if (shouldShowCurrentSample && !groups) {
       if (groupData?.slices) {
         return null;
+      }
+      if (targetLabels && selectedLabels.length) {
+        return [...new Set(selectedLabels.map((l) => l.sampleId))];
       }
       return [sampleId];
     } else if (selectedSamples.size) {

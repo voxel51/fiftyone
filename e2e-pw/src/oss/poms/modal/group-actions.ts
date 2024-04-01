@@ -58,12 +58,29 @@ export class ModalGroupActionsPom {
       .click();
   }
 
-  async setDynamicGroupsNavigationMode(mode: "carousel" | "pagination") {
+  async setDynamicGroupsNavigationMode(
+    mode: "carousel" | "pagination" | "video"
+  ) {
     await this.modal.toggleDisplayOptionsButton.click();
-    const selector = this.modal.locator.getByTestId(
-      `set-dynamic-groups-mode-${mode}`
-    );
-    return selector.click();
+
+    switch (mode) {
+      case "carousel":
+        await this.modal.locator
+          .getByTestId("tab-option-Sequential Access")
+          .click();
+        break;
+      case "pagination":
+        await this.modal.locator
+          .getByTestId("tab-option-Random Access")
+          .click();
+        break;
+      case "video":
+        await this.modal.locator.getByTestId("tab-option-Video").click();
+        break;
+      default:
+        throw new Error(`Unknown mode: ${mode}`);
+    }
+    await this.modal.toggleDisplayOptionsButton.click();
   }
 }
 

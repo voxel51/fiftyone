@@ -77,9 +77,19 @@ learn how:
     :image_title: PyTorch Lightning
 
 .. customimagelink::
+    :image_link: integrations/huggingface.html
+    :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
+    :image_title: Hugging Face
+
+.. customimagelink::
     :image_link: integrations/ultralytics.html
     :image_src: https://voxel51.com/images/integrations/ultralytics-128.png
     :image_title: Ultralytics
+
+.. customimagelink::
+    :image_link: integrations/super_gradients.html
+    :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
+    :image_title: SuperGradients
 
 .. customimagelink::
     :image_link: recipes/adding_detections.html
@@ -97,9 +107,19 @@ learn how:
     :image_title: Qdrant
 
 .. customimagelink::
+    :image_link: integrations/redis.html
+    :image_src: https://voxel51.com/images/integrations/redis-128.png
+    :image_title: Redis
+
+.. customimagelink::
     :image_link: integrations/pinecone.html
     :image_src: https://voxel51.com/images/integrations/pinecone-128.png
     :image_title: Pinecone
+
+.. customimagelink::
+    :image_link: integrations/mongodb.html
+    :image_src: https://voxel51.com/images/integrations/mongodb-128.png
+    :image_title: MongoDB
 
 .. customimagelink::
     :image_link: integrations/milvus.html
@@ -150,6 +170,11 @@ learn how:
     :image_link: integrations/labelstudio.html
     :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
     :image_title: Label Studio
+
+.. customimagelink::
+    :image_link: integrations/v7.html
+    :image_src: https://voxel51.com/images/integrations/v7-128.png
+    :image_title: V7
 
 .. customimagelink::
     :image_link: integrations/labelbox.html

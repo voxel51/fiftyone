@@ -1,7 +1,7 @@
 """
 FiftyOne import/export-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3173,6 +3173,29 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.values("filepath2"), dataset2.values("filepath2")
         )
 
+        # Retain description/tags
+
+        description = "Hello, world!"
+        tags = ["foo", "bar"]
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset()
+        dataset2.description = description
+        dataset2.tags = tags
+
+        dataset2.add_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(dataset2.description, description)
+        self.assertListEqual(dataset2.tags, tags)
+
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
@@ -3430,6 +3453,29 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertListEqual(
             dataset.values("filepath2"), dataset2.values("filepath2")
         )
+
+        # Retain description/tags
+
+        description = "Hello, world!"
+        tags = ["foo", "bar"]
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset()
+        dataset2.description = description
+        dataset2.tags = tags
+
+        dataset2.add_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(dataset2.description, description)
+        self.assertListEqual(dataset2.tags, tags)
 
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):

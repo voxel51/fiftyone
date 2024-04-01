@@ -3,21 +3,20 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS,
   LIST_FIELD,
+  PathType,
   StrictField,
   UNSUPPORTED_FILTER_TYPES,
   VALID_PRIMITIVE_TYPES,
+  determinePathType,
   getFetchParameters,
 } from "@fiftyone/utilities";
 import { RecoilValue, useRecoilValue } from "recoil";
 import { Nullable } from "vitest";
 
 export const getSampleSrc = (url: string) => {
-  try {
-    const { protocol } = new URL(url);
-    if (["http:", "https:"].includes(protocol)) {
-      return url;
-    }
-  } catch {}
+  if (determinePathType(url) === PathType.URL) {
+    return url;
+  }
 
   const params = getFetchParameters();
   const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
@@ -162,6 +161,8 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
       )
     )
     .flat();
+
+export type Range = [number | null | undefined, number | null | undefined];
 
 export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
   const value = useRecoilValue(recoilValue);

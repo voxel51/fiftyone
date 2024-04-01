@@ -1,7 +1,7 @@
 """
 FiftyOne server-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,8 +13,9 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.server.view as fosv
+from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
+import fiftyone.server.view as fosv
 
 from decorators import drop_datasets
 from utils.groups import make_disjoint_groups_dataset
@@ -894,3 +895,10 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(len(second_samples.edges), 1)
         self.assertEqual(second_samples.edges[0].node.id, second._id)
+
+
+class ServerDocTests(unittest.TestCase):
+    def test_dataset_doc(self):
+        doc = Dataset.modifier({"_id": "id"})
+        self.assertIn("frame_collection_name", doc)
+        self.assertEqual(doc["frame_collection_name"], None)

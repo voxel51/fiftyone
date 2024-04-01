@@ -1,7 +1,7 @@
 """
 FiftyOne operator types.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -270,6 +270,47 @@ class Object(BaseType):
         clone.properties = self.properties.copy()
         return clone
 
+    def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
+        """Defines a view target property.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            #
+            # in resolve_input()
+            #
+
+            inputs = types.Object()
+
+            vt = inputs.view_target(ctx)
+
+            # or add the property directly
+            # vt = types.ViewTargetProperty(ctx)
+            # inputs.add_property("view_target", vt)
+
+            return types.Property(inputs)
+
+            #
+            # in execute()
+            #
+
+            target_view = ctx.target_view()
+
+        Args:
+            ctx: the :class:`fiftyone.operators.ExecutionContext`
+            name: the name of the property
+            view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
+                etc.)
+
+        Returns:
+            a :class:`ViewTargetProperty`
+        """
+        view_type = view_type or RadioGroup
+        property = ViewTargetProperty(ctx, view_type)
+        self.add_property(name, property)
+        return property
+
     def to_json(self):
         """Converts the object definition to JSON.
 
@@ -323,7 +364,7 @@ class Property(BaseType):
         self.required = kwargs.get("required", False)
         # todo: deprecate and remove
         self.choices = kwargs.get("choices", None)
-        self.error_message = kwargs.get("error_message", "Invalid property")
+        self.error_message = kwargs.get("error_message", "")
         self.view = kwargs.get("view", None)
 
     def to_json(self):
@@ -683,9 +724,10 @@ class Choice(View):
         caption (None): a caption for the :class:`Choice`
     """
 
-    def __init__(self, value, **kwargs):
+    def __init__(self, value, include=True, **kwargs):
         super().__init__(**kwargs)
         self.value = value
+        self.include = include
 
     def clone(self):
         """Clones the :class:`Choice`.
@@ -723,7 +765,11 @@ class Choices(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.choices = kwargs.get("choices", [])
+        self._choices = kwargs.get("choices", [])
+
+    @property
+    def choices(self):
+        return [choice for choice in self._choices if choice.include]
 
     def values(self):
         """Returns the choice values for this instance.
@@ -743,12 +789,20 @@ class Choices(View):
             the :class:`Choice` that was added
         """
         choice = Choice(value, **kwargs)
-        self.choices.append(choice)
+        self.append(choice)
         return choice
+
+    def append(self, choice):
+        """Appends a :class:`Choice` to the list of choices.
+
+        Args:
+            choice: a :class:`Choice` instance
+        """
+        self._choices.append(choice)
 
     def clone(self):
         clone = super().clone()
-        clone.choices = [choice.clone() for choice in self.choices]
+        clone._choices = [choice.clone() for choice in self.choices]
         return clone
 
     def to_json(self):
@@ -1022,7 +1076,14 @@ class TabsView(Choices):
 
 
 class JSONView(View):
-    """Displays a JSON viewer."""
+    """Displays a JSON viewer.
+
+    Examples::
+
+        # Show an object/dictionary in a JSON viewer
+        outputs.obj("my_property", label="My Object", view=types.JSONView())
+
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1034,6 +1095,10 @@ class AutocompleteView(Choices):
     .. note::
 
         This view can be used in place of :class:`Choices`.
+
+    Args:
+        choices (None): a list of :class:`Choice` instances
+        read_only (False): whether the view is read-only
     """
 
     def __init__(self, **kwargs):
@@ -1046,13 +1111,16 @@ class FileView(View):
     .. note::
 
         This view can be used on :class:`String` or :class:`UploadedFile`
-        properties. If used on a :class:`String` property, the value will be the
-        value will be the file base64 encoded contents. If used on a
-        :class:`UploadedFile`, the value will be a :class:`UploadedFile` object.
+        properties. If used on a :class:`String` property, the value will be
+        the base64-encoded contents. If used on a :class:`UploadedFile`, the
+        value will be a :class:`UploadedFile` object.
 
     Args:
-        max_size: the maximum size of the file in bytes
-        max_size_error_message: the error message to display if the file larger than the given max_size
+        max_size (None): a maximum allowed size of the file, in bytes
+        max_size_error_message (None): an error message to display if the file
+            exceeds the max size
+        types (None): a string containing the comma-separated file types to
+            accept
     """
 
     def __init__(self, **kwargs):
@@ -1083,7 +1151,11 @@ class HiddenView(View):
 
 
 class LoadingView(ReadOnlyView):
-    """Displays a loading indicator."""
+    """Displays a loading indicator.
+
+    Args:
+        label ("Loading"): a label for the loading indicator
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1276,7 +1348,23 @@ class ProgressView(View):
 
 
 class ImageView(View):
-    """Displays an image."""
+    """Displays an image.
+
+    Examples::
+
+        def execute():
+            return {"image": "https://voxel51.com/your/image.png"}
+
+        def resolve_output(self, ctx):
+            outputs = types.Object()
+            outputs.define_property(
+                "image",
+                types.String(),
+                label="Image",
+                view=types.ImageView(),
+            )
+            return types.Property(outputs)
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1287,7 +1375,13 @@ class AlertView(View):
 
     Args:
         severity (None): the severity of the alert displayed, one of
-        ``(info", "success", "warning", "error")``
+            ``(info", "success", "warning", "error")``
+        componentsProps (None): an optional dict with the following keys:
+
+            -   ``'label'`` (None): props to pass to the label subcomponents
+            -   ``'description'`` (None): props to pass to the description
+                subcomponents
+            -   ``'caption'`` (None): props to pass to the caption subcomponents
     """
 
     def __init__(self, **kwargs):
@@ -1301,6 +1395,16 @@ class AlertView(View):
 class CheckboxView(View):
     """Displays a checkbox.
 
+    Examples::
+
+        inputs.bool(
+            "my_property_name",
+            default=True,
+            label="My Checkbox",
+            description="A checkbox description.",
+            view=types.CheckboxView(),
+        )
+
     .. note::
 
         Must be used with :class:`Boolean` properties.
@@ -1311,7 +1415,14 @@ class CheckboxView(View):
 
 
 class ErrorView(View):
-    """Displays an error."""
+    """Displays an error.
+
+    Args:
+        detailed (False): whether to display a detailed error message
+        popout (None): if provided, displays a popout button with the given
+            dictionary of props
+        left (False): whether to display on the left side of the popout button
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1378,6 +1489,28 @@ class FieldView(View):
         super().__init__(**kwargs)
 
 
+class LazyFieldView(View):
+    """Displays a lazy text input which only apply input field changes on blur
+    or when user clicks the save button within the field.
+
+    .. note::
+
+        Must be used with :class:`String` or :class:`Number` properties.
+
+    Args:
+        save_on_blur (True): when set to False, changes in input field will not
+            be automatically applied when user moves mouse out of the changed
+            field. To apply changes, user must click the save button.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.save_on_blur = kwargs.get("save_on_blur", True)
+
+    def to_json(self):
+        return {**super().to_json(), "save_on_blur": self.save_on_blur}
+
+
 class DropdownView(Dropdown):
     """Displays a dropdown selector input."""
 
@@ -1386,12 +1519,14 @@ class DropdownView(Dropdown):
 
 
 class LabelValueView(View):
-    """Displays a label-value component.
+    """Displays a label-value component. Used for displaying a label and a
+    corresponding value.
 
     .. note::
 
         Must be used with :class:`String`, :class:`Number`, or :class:`Boolean`
-        properties, or lists of such properties.
+        properties, or lists of such properties. Also this view is not supported
+        for input properties.
     """
 
     def __init__(self, **kwargs):
@@ -1515,3 +1650,107 @@ class PromptView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class ViewTargetOptions(object):
+    """Represents the options for a :class:`ViewTargetProperty`.
+
+    Attributes:
+        entire_dataset: a :class:`Choice` for the entire dataset
+        current_view: a :class:`Choice` for the current view
+        selected_samples: a :class:`Choice` for the selected samples
+    """
+
+    def __init__(self, choices_view, **kwargs):
+        super().__init__(**kwargs)
+        self.choices_view = choices_view
+        self.entire_dataset = Choice(
+            "DATASET",
+            label="Entire dataset",
+            description="Run on the entire dataset",
+            include=False,
+        )
+        self.current_view = Choice(
+            "CURRENT_VIEW",
+            label="Current view",
+            description="Run on the current view",
+            include=False,
+        )
+        self.selected_samples = Choice(
+            "SELECTED_SAMPLES",
+            label="Selected samples",
+            description="Run on the selected samples",
+            include=False,
+        )
+        [
+            choices_view.append(choice)
+            for choice in [
+                self.entire_dataset,
+                self.current_view,
+                self.selected_samples,
+            ]
+        ]
+
+    def values(self):
+        return self.choices_view.values()
+
+
+class ViewTargetProperty(Property):
+    """Displays a view target selector.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        vt = inputs.view_target(ctx)
+        # or add the property directly
+        # vt = types.ViewTargetProperty(ctx)
+        # inputs.add_property("view_target", vt)
+        return types.Property(inputs)
+
+        # in execute()
+        target_view = ctx.target_view()
+
+    Attributes:
+        options: a :class:`ViewTargetOptions` instance
+
+    Args:
+        ctx: the :class:`fiftyone.operators.ExecutionContext`
+        view_type (RadioGroup): the type of view to use (RadioGroup or Dropdown)
+    """
+
+    def __init__(self, ctx, view_type=RadioGroup, **kwargs):
+        choice_view = view_type()
+        options = ViewTargetOptions(choice_view)
+
+        self._options = options
+
+        # Entire dataset is always an option
+        default_target = options.entire_dataset.value
+        options.entire_dataset.include = True
+
+        has_custom_view = ctx.has_custom_view
+        if has_custom_view:
+            options.current_view.include = True
+            default_target = options.current_view.value
+
+        has_selected = bool(ctx.selected)
+        if has_selected:
+            options.selected_samples.include = True
+            default_target = options.selected_samples.value
+
+        _type = Enum(options.values())
+
+        # Only 1 option so no need for a radio group, just hide it.
+        if len(options.values()) == 1:
+            choice_view = HiddenView(read_only=True)
+
+        super().__init__(
+            _type, default=default_target, view=choice_view, **kwargs
+        )
+
+    @property
+    def options(self):
+        return self._options

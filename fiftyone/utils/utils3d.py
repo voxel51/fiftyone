@@ -5,8 +5,10 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
+import os
 import warnings
 
 import numpy as np
@@ -17,11 +19,12 @@ import eta.core.numutils as etan
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.utils.image as foui
+from fiftyone.core.odm import DynamicEmbeddedDocument
+from fiftyone.core.sample import Sample
+from fiftyone.core.threed import Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -185,7 +188,7 @@ class _Box(object):
         return _Box(new_rotation, new_translation, self.scale)
 
     def _scaled_axis_aligned_vertices(self, scale):
-        """Returns axis-aligned verticies for a box of the given scale."""
+        """Returns axis-aligned vertices for a box of the given scale."""
         x = scale[0] / 2.0
         y = scale[1] / 2.0
         z = scale[2] / 2.0
@@ -433,6 +436,25 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     height = fof.IntField()
 
 
+def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
+    pcd_path = None
+
+    def _visit_node_dfs(node):
+        nonlocal pcd_path
+        if hasattr(node, "pcd_path") and node.flag_for_projection:
+            pcd_path = node.pcd_path
+        else:
+            for child in node.children:
+                _visit_node_dfs(child)
+
+    _visit_node_dfs(scene)
+
+    if pcd_path is None or os.path.isabs(pcd_path):
+        return pcd_path
+
+    return os.path.join(os.path.dirname(scene_path), pcd_path)
+
+
 def compute_orthographic_projection_images(
     samples,
     size,
@@ -446,6 +468,7 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
     given collection.
@@ -509,24 +532,41 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if in_group_slice is None and samples.media_type == fom.GROUP:
-        in_group_slice = _get_point_cloud_slice(samples)
+        in_group_slice = _get_3d_slice(samples)
 
     if in_group_slice is not None or out_group_slice is not None:
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-        point_cloud_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(point_cloud_view, media_type=fom.POINT_CLOUD)
-
-        filepaths, groups = point_cloud_view.values(["filepath", group_field])
+        three_d_view = samples.select_group_slices(in_group_slice)
+        fov.validate_collection(
+            three_d_view, media_type={fom.POINT_CLOUD, fom.THREE_D}
+        )
+        filepaths, groups = three_d_view.values(["filepath", group_field])
     else:
-        fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
-        point_cloud_view = samples
+        try:
+            fov.validate_collection(samples, media_type=fom.THREE_D)
+        except ValueError:
+            fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
 
-        filepaths = point_cloud_view.values("filepath")
+        three_d_view = samples
+
+        filepaths = three_d_view.values("filepath")
         groups = itertools.repeat(None)
+
+    if three_d_view.media_type == fom.THREE_D:
+        # read through all the fo3d files, and collect point cloud filepaths
+        scenes = [Scene.from_fo3d(filepath) for filepath in filepaths]
+        scenes_filepaths = list(zip(scenes, filepaths))
+        filepaths = [
+            _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
+            for scene, scene_path in scenes_filepaths
+        ]
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir
@@ -537,8 +577,11 @@ def compute_orthographic_projection_images(
 
     all_metadata = []
 
-    with fou.ProgressBar(total=len(filepaths)) as pb:
+    with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
         for filepath, group in pb(zip(filepaths, groups)):
+            if filepath is None:
+                continue
+
             image_path = filename_maker.get_output_path(
                 filepath, output_ext=".png"
             )
@@ -567,7 +610,7 @@ def compute_orthographic_projection_images(
     if out_group_slice is not None:
         samples.add_samples(out_samples)
 
-    point_cloud_view.set_values(metadata_field, all_metadata)
+    three_d_view.set_values(metadata_field, all_metadata)
 
 
 def compute_orthographic_projection_image(
@@ -744,19 +787,19 @@ def _parse_point_cloud(
     return points, colors, metadata
 
 
-def _get_point_cloud_slice(samples):
-    point_cloud_slices = {
-        s for s, m in samples.group_media_types.items() if m == fom.POINT_CLOUD
+def _get_3d_slice(samples):
+    three_d_slices = {
+        s
+        for s, m in samples.group_media_types.items()
+        if m == fom.POINT_CLOUD or m == fom.THREE_D
     }
-    if not point_cloud_slices:
-        raise ValueError("%s has no point cloud slices" % type(samples))
+    if not three_d_slices:
+        raise ValueError("%s has no 3d / pcd slices" % type(samples))
 
-    slice_name = next(iter(point_cloud_slices))
+    slice_name = next(iter(three_d_slices))
 
-    if len(point_cloud_slices) > 1:
-        logger.warning(
-            "Found multiple point cloud slices; using '%s'", slice_name
-        )
+    if len(three_d_slices) > 1:
+        logger.warning("Found multiple 3d slices; using '%s'", slice_name)
 
     return slice_name
 

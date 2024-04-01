@@ -35,7 +35,7 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: pandas-style queries in FiftyOne
-    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common opertaions in pandas and FiftyOne.
+    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
     :link: pandas_comparison.html
     :image: ../_static/images/tutorials/pandas_tutorial.png
     :tags: Filtering,Dataset-Evaluation
@@ -131,6 +131,34 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/pointe.png
     :tags: Dataset-Curation,Filtering,Visualization
 
+.. customcarditem::
+    :header: Monocular Depth Estimation with Hugging Face
+    :description: Metrics for monocular depth estimation can be deceiving. Run MDE models on your data and visualize their predictions with FiftyOne.
+    :link: monocular_depth_estimation.html
+    :image: ../_static/images/tutorials/monocular_depth_estimation.png
+    :tags: Model-Evaluation,Visualization
+
+.. customcarditem::
+    :header: Visualizing Data with Dimensionality Reduction
+    :description: Compare and contrast dimensionality reduction techniques for visualizing your data in FiftyOne.
+    :link: dimension_reduction.html
+    :image: ../_static/images/tutorials/dimension_reduction.png
+    :tags: Brain,Visualization
+
+.. customcarditem::
+    :header: Zero-Shot Image Classification
+    :description: Run and evaluate zero-shot image classification models with OpenCLIP, Hugging Face Transformers, and FiftyOne.
+    :link: zero_shot_classification.html
+    :image: ../_static/images/tutorials/zero_shot_classification.png
+    :tags: Filtering,Model-Evaluation,Model-Zoo
+
+.. customcarditem::
+    :header: Augmenting Datasets with Albumentations
+    :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
+    :link: data_augmentation.html
+    :image: ../_static/images/tutorials/data_augmentation.png
+    :tags: App,Dataset-Curation,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -169,3 +197,7 @@ your datasets and turn your good models into *great models*.
    Embeddings with Qdrant <qdrant.ipynb>
    Fine-tuning YOLOv8 models <yolov8.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
+   Monocular depth estimation <monocular_depth_estimation.ipynb>
+   Dimensionality reduction <dimension_reduction.ipynb>
+   Zero-shot classification <zero_shot_classification.ipynb>
+   Data augmentation <data_augmentation.ipynb>

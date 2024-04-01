@@ -1,7 +1,7 @@
 """
 Tests for the :mod:`fiftyone.utils.labelstudio` module.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 =======
@@ -38,12 +38,16 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "classification",
-                "labels": ["Adult content", "Weapons", "Violence"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "classification",
+                        "classes": ["Adult content", "Weapons", "Violence"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Choices name="label" toName="image" choice="single-radio">
+  <Choices name="some_random_field" toName="image" choice="single-radio">
     <Choice value="Adult content"/>
     <Choice value="Weapons"/>
     <Choice value="Violence"/>
@@ -53,12 +57,16 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "classifications",
-                "labels": ["Boeing", "Airbus"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "classifications",
+                        "classes": ["Boeing", "Airbus"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Choices name="label" toName="image" choice="multiple">
+  <Choices name="some_random_field" toName="image" choice="multiple">
     <Choice value="Boeing"/>
     <Choice value="Airbus"/>
   </Choices>
@@ -67,12 +75,16 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "detections",
-                "labels": ["Airplane", "Car"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "detections",
+                        "classes": ["Airplane", "Car"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <RectangleLabels name="label" toName="image">
+  <RectangleLabels name="some_random_field" toName="image">
     <Label value="Airplane"/>
     <Label value="Car"/>
   </RectangleLabels>
@@ -81,40 +93,34 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "instances",
-                "labels": ["Airplane", "Car"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "instances",
+                        "classes": ["Airplane", "Car"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <RectangleLabels name="label" toName="image">
+  <BrushLabels name="some_random_field" toName="image">
     <Label value="Airplane"/>
     <Label value="Car"/>
-  </RectangleLabels>
+  </BrushLabels>
 </View>""",
         },
         {
             "input": {
                 "media": "image",
-                "label_type": "polylines",
-                "labels": ["Airplane", "Car"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "polylines",
+                        "classes": ["Airplane", "Car"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <PolygonLabels name="label" toName="image">
-    <Label value="Airplane"/>
-    <Label value="Car"/>
-  </PolygonLabels>
-</View>""",
-        },
-        {
-            "input": {
-                "media": "image",
-                "label_type": "polygons",
-                "labels": ["Airplane", "Car"],
-            },
-            "output": """<View>
-  <Image name="image" value="$image"/>
-  <PolygonLabels name="label" toName="image">
+  <PolygonLabels name="some_random_field" toName="image">
     <Label value="Airplane"/>
     <Label value="Car"/>
   </PolygonLabels>
@@ -123,12 +129,34 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "keypoints",
-                "labels": ["Engine", "Tail"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "polygons",
+                        "classes": ["Airplane", "Car"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <KeyPointLabels name="label" toName="image">
+  <PolygonLabels name="some_random_field" toName="image">
+    <Label value="Airplane"/>
+    <Label value="Car"/>
+  </PolygonLabels>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "keypoints",
+                        "classes": ["Engine", "Tail"],
+                    }
+                },
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <KeyPointLabels name="some_random_field" toName="image">
     <Label value="Engine"/>
     <Label value="Tail"/>
   </KeyPointLabels>
@@ -137,12 +165,16 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "segmentation",
-                "labels": ["Planet", "Moonwalker"],
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "segmentation",
+                        "classes": ["Planet", "Moonwalker"],
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <BrushLabels name="label" toName="image">
+  <BrushLabels name="some_random_field" toName="image">
     <Label value="Planet"/>
     <Label value="Moonwalker"/>
   </BrushLabels>
@@ -151,11 +183,58 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "scalar",
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "scalar",
+                    }
+                },
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Number name="label" toName="image"/>
+  <Number name="some_random_field" toName="image"/>
+</View>""",
+        },
+        # Multiple fields example. Also check that can have multiple of the same type
+        {
+            "input": {
+                "media": "image",
+                "label_schema": {
+                    "some_random_field": {
+                        "type": "segmentation",
+                        "classes": ["Planet", "Moonwalker"],
+                    },
+                    "some_random_field2": {
+                        "type": "classification",
+                        "classes": ["PlanetClass", "MoonwalkerClass"],
+                    },
+                    "some_random_field3": {
+                        "type": "classification",
+                        "classes": ["PlanetClass2", "MoonwalkerClass2"],
+                    },
+                    "some_random_field4": {
+                        "type": "detection",
+                        "classes": ["PlanetDet", "MoonwalkerDet"],
+                    },
+                },
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <BrushLabels name="some_random_field" toName="image">
+    <Label value="Planet"/>
+    <Label value="Moonwalker"/>
+  </BrushLabels>
+  <Choices name="some_random_field2" toName="image" choice="single-radio">
+    <Choice value="PlanetClass"/>
+    <Choice value="MoonwalkerClass"/>
+  </Choices>
+  <Choices name="some_random_field3" toName="image" choice="single-radio">
+    <Choice value="PlanetClass2"/>
+    <Choice value="MoonwalkerClass2"/>
+  </Choices>
+  <RectangleLabels name="some_random_field4" toName="image">
+    <Label value="PlanetDet"/>
+    <Label value="MoonwalkerDet"/>
+  </RectangleLabels>
 </View>""",
         },
     ]
@@ -298,17 +377,89 @@ def label_mappings():
                     "type": "keypointlabels",
                 },
             ],
-            "fiftyone": [
-                fol.Keypoint(
-                    label="Tail",
-                    points=[
-                        (0.39, 0.81),
-                        (0.333, 0.771),
-                        (0.424, 0.894),
-                        (0.424, 0.745),
-                    ],
-                ),
+            "fiftyone": fol.Keypoint(
+                label="Tail",
+                points=[
+                    (0.39, 0.81),
+                    (0.333, 0.771),
+                    (0.424, 0.894),
+                    (0.424, 0.745),
+                ],
+            ),
+        },
+        {
+            "labelstudio": [
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 39.0,
+                        "y": 81.0,
+                        "width": 0.346,
+                        "keypointlabels": ["LEye"],
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels",
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 33.3,
+                        "y": 77.1,
+                        "width": 0.346,
+                        "keypointlabels": ["LEye"],
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels",
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 42.4,
+                        "y": 89.4,
+                        "width": 0.346,
+                        "keypointlabels": ["REye"],
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels",
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 42.4,
+                        "y": 74.5,
+                        "width": 0.346,
+                        "keypointlabels": ["REye"],
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels",
+                },
             ],
+            "fiftyone": fol.Keypoints(
+                keypoints=[
+                    fol.Keypoint(
+                        label="LEye",
+                        points=[
+                            (0.39, 0.81),
+                            (0.333, 0.771),
+                        ],
+                    ),
+                    fol.Keypoint(
+                        label="REye",
+                        points=[
+                            (0.424, 0.894),
+                            (0.424, 0.745),
+                        ],
+                    ),
+                ]
+            ),
         },
         {
             "labelstudio": {
@@ -324,7 +475,7 @@ def label_mappings():
 
 def test_import_labels(label_mappings):
     for case in label_mappings:
-        label = fouls.import_label_studio_annotation(case["labelstudio"])
+        label = fouls.import_label_studio_annotation(case["labelstudio"])[1]
         expected = case["fiftyone"]
 
         if isinstance(expected, (list, tuple)):
@@ -389,6 +540,81 @@ def test_annotate_simple(backend_config, setup, label_type):
     assert len(labelled) == len(dummy_predictions)
 
 
+def test_annotate_not_all(backend_config, setup):
+    # check that we can load partially annotated data
+    label_type = "classification"
+    dataset, anno_key, label_field, labels = setup
+    label_field += f"-{label_type}"
+    dataset.annotate(
+        anno_key,
+        label_field=label_field,
+        project_name=f"labelstudio_{label_type}_tests",
+        label_type=label_type,
+        classes=labels if label_type != "scalar" else None,
+        backend="labelstudio",
+        **backend_config,
+    )
+
+    # create dummy prediction and convert to annotations
+    dummy_predictions = _generate_dummy_predictions(
+        label_type, labels, len(dataset) - 1
+    )
+    _add_dummy_annotations(
+        dataset, anno_key, dummy_predictions, backend_config
+    )
+
+    dataset.load_annotations(anno_key, cleanup=False, **backend_config)
+
+    labelled = dataset.exists(label_field)
+    assert len(labelled) == len(dummy_predictions)
+    assert len(labelled) == len(dataset) - 1
+
+
+def test_annotate_multiple_fields(backend_config, setup):
+    # check that we can load partially annotated data
+    dataset, anno_key, label_field, labels = setup
+    label_schema = {
+        "cls_field": {
+            "type": "classification",
+            "labels": ["yes", "no"],
+            "classes": ["yes", "no"],
+        },
+        "det_field": {
+            "type": "detections",
+            "classes": ["obj"],
+        },
+    }
+
+    dataset.annotate(
+        anno_key,
+        label_schema=label_schema,
+        project_name=f"labelstudio_multi-field_tests",
+        backend="labelstudio",
+        **backend_config,
+    )
+
+    # create dummy prediction and convert to annotations
+    dummy_predictions_cls = _generate_dummy_predictions(
+        "classification", labels, len(dataset)
+    )
+    dummy_predictions_det = _generate_dummy_predictions(
+        "detections", labels, len(dataset)
+    )
+    _add_dummy_annotations(
+        dataset, anno_key, dummy_predictions_det, backend_config
+    )
+    dataset.load_annotations(anno_key, cleanup=False, **backend_config)
+    labelled = dataset.exists("det_field")
+    assert len(labelled) == len(dataset)
+    # can't load them together, so do it one by one
+    _add_dummy_annotations(
+        dataset, anno_key, dummy_predictions_cls, backend_config
+    )
+    dataset.load_annotations(anno_key, cleanup=False, **backend_config)
+    labelled = dataset.exists("cls_field")
+    assert len(labelled) == len(dataset)
+
+
 @pytest.mark.parametrize(
     "label_type", ["classification", "detections", "polylines", "keypoints"]
 )
@@ -442,6 +668,9 @@ def _assert_labels_equal(converted, expected):
         np.testing.assert_allclose(
             converted.points, expected.points, atol=0.01, rtol=0.01
         )
+    elif expected._cls == "Keypoints":
+        for pair in zip(converted.keypoints, expected.keypoints):
+            _assert_labels_equal(*pair)
     elif expected._cls == "Regression":
         assert expected.value == converted.value
     else:
@@ -509,7 +738,7 @@ def _generate_dummy_predictions(label_type, labels, n):
             return [
                 {
                     "type": "keypointlabels",
-                    "from_name": "label",
+                    "from_name": "new_field-keypoints",
                     "to_name": "image",
                     "value": {
                         "x": random.randint(0, 50),

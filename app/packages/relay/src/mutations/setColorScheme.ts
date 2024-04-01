@@ -7,6 +7,8 @@ export default r(graphql`
     $subscription: String!
     $colorScheme: ColorSchemeInput!
   ) {
-    setColorScheme(subscription: $subscription, colorScheme: $colorScheme)
+    setColorScheme(subscription: $subscription, colorScheme: $colorScheme) {
+      ...colorSchemeFragment
+    }
   }
 `);

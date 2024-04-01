@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
 import mime from "mime";
@@ -11,10 +11,8 @@ import {
   BufferRange,
   Buffers,
   Coordinates,
-  CustomizeColor,
   Dimensions,
   DispatchEvent,
-  Optional,
 } from "./state";
 
 import {
@@ -24,6 +22,7 @@ import {
   NetworkError,
   ServerError,
 } from "@fiftyone/utilities";
+import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
@@ -254,6 +253,14 @@ export const ensureCanvasSize = (
   canvas.height = dimensions[1];
 };
 
+export const getMillisecondsFromPlaybackRate = (
+  playbackRate: number
+): number => {
+  const normalizedPlaybackRate =
+    playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
+  return 1000 / (DEFAULT_FRAME_RATE * normalizedPlaybackRate);
+};
+
 /**
  * Get the smallest box that contains all points
  */
@@ -399,7 +406,7 @@ export const clampScale = (
 
 export const mergeUpdates = <State extends BaseState>(
   state: State,
-  updates: Optional<State>
+  updates: Partial<State>
 ): State => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
@@ -416,6 +423,9 @@ export const mergeUpdates = <State extends BaseState>(
     }
     if (n === null || o === null) {
       return n;
+    }
+    if (o.constructor.name !== "Object" || n.constructor.name !== "Object") {
+      return n ?? o;
     }
     return mergeWith(merger, o, n);
   };

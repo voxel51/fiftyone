@@ -1,8 +1,7 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { update } from "immutable";
 import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 

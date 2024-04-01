@@ -3,7 +3,8 @@ name: Builds and publishes the fiftyone-db package
 on:
   push:
     tags:
-      - db-v*
+      - db-v[0-9]+.[0-9]+.[0-9]+
+      - db-v[0-9]+.[0-9]+.[0-9]+rc[0-9]+
   pull_request:
     paths:
       - package/db/**
@@ -30,39 +31,39 @@ jobs:
           python-version: 3.9
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel build
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
           fi
       - name: Build Darwin arm64 wheel
         if: ${{ matrix.platform == 'darwin-arm64' }}
         run: |
           cd package/db
-          FODB_MACHINE=arm64 FODB_SYSTEM=Darwin python setup.py bdist_wheel
+          FODB_MACHINE=arm64 FODB_SYSTEM=Darwin python -Im build
       - name: Build Darwin x86_64 wheel
         if: ${{ matrix.platform == 'darwin-x86_64' }}
         run: |
           cd package/db
-          FODB_MACHINE=x86_64 FODB_SYSTEM=Darwin python setup.py bdist_wheel
+          FODB_MACHINE=x86_64 FODB_SYSTEM=Darwin python -Im build
       - name: Build Windows 32 wheel
         if: ${{ matrix.platform == 'windows-32' }}
         run: |
           cd package/db
-          FODB_MACHINE=32 FODB_SYSTEM=Windows python setup.py bdist_wheel
+          FODB_MACHINE=32 FODB_SYSTEM=Windows python -Im build
       - name: Build Windows x86_64 wheel
         if: ${{ matrix.platform == 'windows-x86_64' }}
         run: |
           cd package/db
-          FODB_MACHINE=x86_64 FODB_SYSTEM=Windows python setup.py bdist_wheel
+          FODB_MACHINE=x86_64 FODB_SYSTEM=Windows python -Im build
       - name: Build sdist
         if: ${{ matrix.platform == 'sdist' }}
         run: |
           cd package/db
-          python setup.py sdist
+          python -Im build --sdist
       - name: Upload
         uses: actions/upload-artifact@v3
         with:

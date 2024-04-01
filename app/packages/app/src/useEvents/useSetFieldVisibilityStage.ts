@@ -3,6 +3,7 @@ import { useSessionRef, useSessionSetter } from "@fiftyone/state";
 import { useRecoilCallback } from "recoil";
 import { pendingEntry } from "../Renderer";
 import { useRouterContext } from "../routing";
+import { resolveURL } from "../utils";
 import { EventHandlerHook } from "./registerEvent";
 
 const useSetFieldVisibilityStage: EventHandlerHook = () => {
@@ -22,8 +23,12 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
           };
           unsubscribe();
         });
+
         router.history.replace(
-          `${router.history.location.pathname}${router.history.location.search}`,
+          resolveURL({
+            currentPathname: router.history.location.pathname,
+            currentSearch: router.history.location.search,
+          }),
           {
             ...router.get().state,
             fieldVisibility: stage,

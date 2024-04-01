@@ -4,8 +4,9 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionItem } from "../containers";
-import { ACTION_SET_PCDS, currentActionAtom } from "../state";
+import { currentActionAtom } from "../state";
 import { ActionPopOver } from "./shared";
+import { ACTION_SET_PCDS } from "../constants";
 
 export const SliceSelector = () => {
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
@@ -43,7 +44,10 @@ export const SliceSelector = () => {
 
   return (
     <>
-      <ActionItem title="Select point clouds">
+      <ActionItem
+        data-cy={"looker3d-select-slices"}
+        title="Select point clouds"
+      >
         <div onClick={handleActionClick}>{activeSlicesLabel}</div>
       </ActionItem>
 
@@ -70,7 +74,7 @@ const PcdsSelector = () => {
   return (
     <ActionPopOver>
       <PopoutSectionTitle>Select point clouds</PopoutSectionTitle>
-      <div>
+      <div data-cy={"looker3d-slice-checkboxes"}>
         {allPcdSlices.map((slice) => {
           return (
             <Checkbox
