@@ -38,7 +38,7 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-_DEFAULT_STYLE = "seaborn-ticks"
+_DEFAULT_STYLE = "default"
 _DEFAULT_LINE_COLOR = "#FF6D04"
 _DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
 

@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import DeleteIcon from "@material-ui/icons/Delete";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 export const ModalWrapper = styled.div`
   position: fixed;

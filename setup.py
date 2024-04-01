@@ -11,7 +11,6 @@ try:
 except ImportError:
     import importlib_metadata as metadata
 
-import os
 import re
 from setuptools import setup, find_packages
 
@@ -45,6 +44,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
+    "pydantic>=2",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
@@ -52,6 +52,7 @@ INSTALL_REQUIRES = [
     "retrying",
     "scikit-learn",
     "scikit-image",
+    "scipy",
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",

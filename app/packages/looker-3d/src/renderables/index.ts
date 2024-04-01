@@ -1,1 +1,1 @@
-export * from "./pointcloud";
+export * from "./pcd";

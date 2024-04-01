@@ -51,13 +51,14 @@ class MediaType(Enum):
     image = "image"
     group = "group"
     point_cloud = "point-cloud"
+    three_d = "3d"
     video = "video"
 
 
 async def get_metadata(
     collection: SampleCollection,
     sample: t.Dict,
-    media_type: t.Dict[str, t.Dict],
+    media_type: str,
     metadata_cache: t.Dict[str, t.Dict[str, str]],
     url_cache: t.Dict[str, str],
     session: aiohttp.ClientSession,
@@ -83,6 +84,7 @@ async def get_metadata(
     filepath_result, filepath_source, urls = await _create_media_urls(
         collection,
         sample,
+        media_type,
         url_cache,
         session,
         additional_fields=additional_fields,
@@ -494,6 +496,7 @@ class FFmpegNotFoundException(RuntimeError):
 async def _create_media_urls(
     collection: SampleCollection,
     sample: t.Dict,
+    sample_media_type: str,
     cache: t.Dict,
     session: aiohttp.ClientSession,
     additional_fields: t.Optional[t.List[str]] = None,
@@ -508,10 +511,14 @@ async def _create_media_urls(
     if additional_fields is not None:
         media_fields.extend(additional_fields)
 
-    use_opm = (
-        collection.media_type == fom.POINT_CLOUD
-        or collection.media_type == fom.GROUP
-    )
+    if (
+        sample_media_type == fom.POINT_CLOUD
+        or sample_media_type == fom.THREE_D
+    ):
+        use_opm = True
+    else:
+        use_opm = False
+
     opm_filepath = (
         f"{opm_field}.{_ADDITIONAL_MEDIA_FIELDS[OrthographicProjectionMetadata]}"
         if use_opm

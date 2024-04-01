@@ -118,6 +118,9 @@ describe("paths", () => {
         "min.io://bucket/"
       );
       expect(paths.resolveParent("min.io://voxel51-test/")).toBe("min.io://");
+      expect(paths.resolveParent("s3://foo/bar/baz.txt?q1=1&q2=2")).toBe(
+        "s3://foo/bar"
+      );
     });
   });
 
