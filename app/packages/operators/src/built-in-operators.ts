@@ -1,6 +1,7 @@
 import {
   Layout,
   SpaceNode,
+  usePanelState,
   usePanels,
   useSpaceNodes,
   useSpaces,
@@ -22,6 +23,7 @@ import {
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
+import { merge } from "lodash";
 
 //
 // BUILT-IN OPERATORS
@@ -764,6 +766,65 @@ class SetSpaces extends Operator {
   }
 }
 
+class ClearPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_panel_state",
+      label: "Clear panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const [panelState, setPanelState] = usePanelState();
+    return {
+      setPanelState,
+    };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.setPanelState({});
+  }
+}
+
+class SetPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_state",
+      label: "Set panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const [panelState, setPanelState] = usePanelState();
+    return {
+      setPanelState,
+    };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.setPanelState(ctx.params.state);
+  }
+}
+
+class PatchPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "patch_panel_state",
+      label: "Patch panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const [panelState, setPanelState] = usePanelState();
+    return {
+      panelState,
+      setPanelState,
+    };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const mergedState = merge(ctx.hooks.panelState, ctx.params.state);
+    ctx.hooks.setPanelState(mergedState);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -794,6 +855,9 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetSelectedLabels);
     _registerBuiltInOperator(ClearSelectedLabels);
     _registerBuiltInOperator(SetSpaces);
+    _registerBuiltInOperator(SetPanelState);
+    _registerBuiltInOperator(ClearPanelState);
+    _registerBuiltInOperator(PatchPanelState);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
