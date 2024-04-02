@@ -770,7 +770,8 @@ class ClearPanelState extends Operator {
   useHooks(ctx: ExecutionContext): {} {
     const [panelState, setPanelState] = usePanelStateForContext(ctx);
     return {
-      setPanelState,
+      panelState: panelState.state || {},
+      setPanelState: (state) => setPanelState({ state }),
     };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
