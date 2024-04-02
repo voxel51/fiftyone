@@ -304,7 +304,7 @@ above) or by directly visiting **$YOUR_FIFTYONE_TEAMS_URL/cas/api-doc**
    </td>
    <td><code>null</code>
    </td>
-   <td>When provided this function is called to map the external user_info to the internal fiftyone user/account. NOTE: function calls, the while keyword and other JS-specific syntax is not allowed in these functions.
+   <td>When provided this function is called to map the external user_info to the internal fiftyone user/account.
    </td>
   </tr>
   <tr>
