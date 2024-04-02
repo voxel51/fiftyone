@@ -52,7 +52,7 @@ and [OAuth2](https://oauth.net/2/).
 
 The Super Admin UI contains FiftyOne Teams deployment wide configurations. When
 logging into FiftyOne Teams as an admin, you are in the context of an
-organization.Settings are scoped by organization and only apply to that
+organization. Settings are scoped by organization and only apply to that
 organization. The Super Admin UI allows you to administer all organizations and
 global configurations (Identity Providers, Session timeouts, and JS hooks).
 
