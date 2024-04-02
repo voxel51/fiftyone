@@ -2755,7 +2755,7 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.42"
                 ],
                 "cpu": {
                     "support": true
@@ -2787,7 +2787,7 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.42"
                 ],
                 "cpu": {
                     "support": true
