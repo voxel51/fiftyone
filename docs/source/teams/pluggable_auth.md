@@ -2,51 +2,47 @@
 
 # Pluggable Authentication
 
-Pluggable Authentication (sometimes referred to as CAS or Central
-Authentication Service) introduces a self-contained authentication system,
-eliminating the need for external dependencies like Auth0. This is particularly
-advantageous for setups requiring an air-gapped or internal network
-environment, allowing FiftyOne Teams to operate in
-[internal mode](#internal-mode).
+FiftyOne Teams v1.6.0 introduces Pluggable Authentication that provides the
+Central Authentication Service (CAS). CAS is a self-contained authentication
+system with two modes (`legacy` and `internal`). Legacy mode uses Auth0.
+Internal mode eliminates the Auth0 external dependency and may run in
+environments without egress to the internet. CAS provides a UI, REST API, and
+JavaScript (JS) Hook mechanism to manage FiftyOne Teams user data and
+authentication.
 
-(central-auth-service)=
+## FiftyOne Authentication Modes
 
-## CAS
-
-The Central Auth Service (CAS), introduced in v1.6.0, provides a UI, REST API,
-and JS Hook mechanism to manage and customize authentication and user related
-data in FiftyOne teams.
-
-## FiftyOne Auth Mode
-
-With pluggable authentication comes a new setting called
-**FIFTYONE_AUTH_MODE**. This setting allows running FiftyOne Teams in two
-different modes: `legacy` and `internal`.
+The setting `FIFTYONE_AUTH_MODE` specifies the authentication mode `legacy` or
+`internal`.
 
 (legacy-mode)=
 
-**Legacy mode Overview**
+### Legacy Mode
 
-In [legacy mode](#legacy-mode), FiftyOne Teams uses Auth0 for user
-authentication and authorization. This mode requires an external connection to
-Auth0 and follows an eventually consistent model for user data. The
-configuration for identity providers and the persistence of user data in this
-mode is handled through Auth0, which includes support for SAML.
+In legacy mode, FiftyOne Teams uses Auth0 for user authentication and
+authorization. This mode requires an external connection to Auth0 endpoints.
+User data is eventually consistent (where changes are reflected across
+FiftyOneTeams eventually). Auth0 contains the configuration for identity
+providers and the persistence of user data. Auth0 supports multiple providers
+(including SAML). For the supported IdPs, see
+[Auth0 Enterprise Identity Providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
 
 (internal-mode)=
 
-**Introduction to internal mode**
+### Internal Mode
 
-Internal mode eliminates the need for Auth0, thereby removing FiftyOne Team's
-dependency on any external services. This mode does not require external
-connectivity, making it suitable for environments where security is paramount
-or internet access is limited or not allowed. Unlike
-[legacy mode](#legacy-mode), [internal mode](#internal-mode) operates on an
-immediate consistency basis, ensuring that changes are reflected across
-FiftyOne Teams instantly. Directory data is immediately written to MongoDB, and
-organizations have the autonomy to manage their Identity Provider
-Configuration. **NOTE: SAML support is not available in
-[internal mode](#internal-mode).**
+In internal mode, FiftyOne Teams the CAS replaces Auth0. FiftyOne Teams will
+not require network egress to external services. User data is immediately
+consistent (where changes are reflected across FiftyOne Teams instantly).
+Directory data is immediately written to MongoDB, and organizations have the
+autonomy to manage their Identity Provider Configuration. Internal mode
+supports
+[OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
+and [OAuth2](https://oauth.net/2/).
+
+> **NOTE**: SAML is not supported in [internal mode](#internal-mode)
+
+<!-- TODO: Enumerate what connection types are supported. -->
 
 (super-admin-ui)=
 
@@ -54,32 +50,32 @@ Configuration. **NOTE: SAML support is not available in
 
 ![Super Admin UI](/images/teams/cas/cas_api_docs.png)
 
-This is where you configure the deployment wide configuration of FiftyOne
-Teams. When logging into FiftyOne Teams itself as an admin you are in the
-context of an organization, and settings there only apply to that organization.
-On the other hand, the Super Admin UI allows you to administer all
-organizations, and global configuration such as Identity Providers, Session
-timeouts, and JS hooks.
+The Super Admin UI contains FiftyOne Teams deployment wide configurations. When
+logging into FiftyOne Teams as an admin, you are in the context of an
+organization.Settings are scoped by organization and only apply to that
+organization. The Super Admin UI allows you to administer all organizations and
+global configurations (Identity Providers, Session timeouts, and JS hooks).
 
-> NOTE: in v1.6.0 the Super Admin is only available in
+> **NOTE**: In v1.6.0, the Super Admin UI is only available in
 > [internal mode](#internal-mode)
 
 ![Sign In to CAS](/images/teams/cas/cas_sign_in.png)
 
 To login to this application navigate to
-**$YOUR_FIFTYONE_TEAMS_URL/cas/configurations** and provide the
-`FIFTYONE_AUTH_SECRET` in the top right of the screen to login. **NOTE: you
-should have provided the value to `FIFTYONE_AUTH_SECRET` during installation or
-upgrade.**
+`https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
+screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
+
+> **NOTE**: The value of `FIFTYONE_AUTH_SECRET` should be set prior to
+> installation or upgrade.
 
 (identity-providers)=
 
-## Identity Providers
+## Identity Providers (IdP)
 
-In internal mode you can use either the CAS REST API or Super Admin UI to
-configure FiftyOne teams to authenticate users directly against OIDC or OAuth
-compatible Identity Providers. Below is an example configuration for KeyCloak
-as an Identity Provider.
+In [internal mode](#internal-mode), use the CAS REST API or Super Admin UI to
+configure FiftyOne teams to authenticate users via OIDC or OAuth2 compatible
+Identity Providers. Below is an example configuration for KeyCloak as an
+Identity Provider.
 
 ```json
 {
@@ -124,8 +120,8 @@ API to ensure a comprehensive transfer of information.
 For each user, the migration involves several steps:
 
 1. Creating a FiftyOne Teams user profile via `POST /cas/api/users`.
-2. Assigning the user to the default organization through a membership entry.
-3. Linking the user's account to the new authentication provider by creating an
+1. Assigning the user to the default organization through a membership entry.
+1. Linking the user's account to the new authentication provider by creating an
    account reference via `POST /cas/api/accounts`.
 
 The final step in the migration involves changing the `FIFTYONE_AUTH_MODE`
@@ -133,50 +129,51 @@ setting from legacy to internal. This change officially activates Internal
 Mode, completing the migration process.
 -->
 
-## Getting started with internal mode
+## Getting Started with Internal Mode
 
-This section describes how to get up and running with the auth features added
-in v1.6.0, including “air gapped” support (also called
-[internal mode](#internal-mode)). These steps are only required to run FiftyOne
-Teams in [internal mode](#internal-mode) and can be skipped if using Auth0 via
+These steps are only required to run FiftyOne Teams in
+[internal mode](#internal-mode). Please skip when using Auth0 in
 [legacy mode](#legacy-mode).
 
-1. Login to the SuperUser UI to configure your Authentication Provider /
-   Identity Provider
-2. Click on the “Admins” tab.
-3. Click “Add admin” in the bottom left.
-4. Specify your name email address as it appears in the Identity Provider that
-   you will be configuring and then click “Add”.
-5. Click on the “Identity Providers” tab at the top of the screen and then
-   click “Add provider”.
-6. Fill out the “Add identity provider”
-    1. You can also click “Switch to advanced editor” to provide the full
-       configuration as a JSON object.
-7. In the “Profile callback” field, ensure that the mapping matches what is
-   expected for your Identity Provider.
-8. Navigate to `$YOUR_FIFTYONE_TEAMS/datasets`
-9. You should see the login screen for your newly configured authentication
-   provider.
-10. Before you login, make sure you have set your admin user in step 4.
-    Otherwise you will need to remove this user from the database and try
-    again.
-11. Click the login button and provide the credentials that match the user
-    defined as an admin in step 4
-12. Once logged in, click on the icon in the top right corner then click
-    “Settings”.
-13. Click “Users” on the left side.
-14. You should see yourself listed as an admin.
+1. Configure your Identity Provider
+1. Login to the SuperUser UI by navigating to
+   `https://≤YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and in the top right,
+   and provide the `FIFTYONE_AUTH_SECRET` to login.
+1. Create an Admin
+    1. Click on the “Admins” tab
+    1. Click “Add admin” in the bottom left
+    1. Set the name and email address (as it appears in your Identity Provider)
+       and click “Add”
+1. Add your Identity Provider
+    1. Click on the “Identity Providers” tab at the top of the screen and click
+       “Add provider”
+    1. Fill out the “Add identity provider”
+        1. You can also click “Switch to advanced editor” to provide the full
+           configuration as a JSON object
+    1. In the “Profile callback” field, set the mapping that your Identity
+       Provider expects
+1. Login with the admin user
+    1. Navigate to `https://≤YOUR_FIFTYONE_TEAMS_URL>/datasets`
+    1. You should see the login screen for your newly configured authentication
+       provider
+    1. Before logging in, set the admin user (in step 5). Otherwise, you will
+       need to remove this user from the database and try again.
+    1. Click the login button and provide the credentials of the Admin user
+       (set in step 5)
+    1. Click on the icon in the top right corner then click “Settings”
+    1. Click “Users” on the left side
+    1. Validate the user is listed as an admin
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
-Below is an example of how to use JavaScript hooks to sync FiftyOne teams with
-a corporate directory such as Open Directory, LDAP, or Active Directory via an
-intermediary REST API or Identity Provider. Note that the recommended setup is
-to do this via OAuth/OIDC claims, however the example below illustrates a more
-intricate integration.
+Below is an example of how to use JavaScript hooks to sync FiftyOne Teams with
+a corporate directory (such as Open Directory, LDAP, or Active Directory) via
+an intermediary REST API or Identity Provider. The recommended setup is with
+OAuth/OIDC claims, however the example below illustrates a more intricate
+integration.
 
 This example specifically addresses a scenario in which additional actions are
-performed during the **signIn** trigger, demonstrating how hooks can extend
+performed during the `signIn` trigger. This demonstrates how hooks can extend
 beyond simple authentication to interact with external APIs and internal
 services for complex user management and group assignment tasks. Here's a
 breakdown of the example:
@@ -250,24 +247,24 @@ functions and access to directory operations.
 
 ### **External API Integration**
 
--   **getGroups**: This function calls an external API to retrieve a list of
+-   `getGroups`: This function calls an external API to retrieve a list of
     groups to which the signing-in user should be added. It utilizes the
-    services.util.http.get method for making the HTTP request, demonstrating
+    `services.util.http.get` method for making the HTTP request, demonstrating
     how external services can be queried within the hook.
--   **addUserToGroup**: For each group retrieved from the external API, this
+-   `addUserToGroup`: For each group retrieved from the external API, this
     function checks if the group exists in the organization's directory. If a
     group does not exist, it is created, and then the user is added to it. This
     process involves querying and modifying the organization's group directory,
     illustrating the hook's capability to perform complex operations like
     dynamic group management based on external data.
 
-### **Error Handling**
+### Error Handling
 
 -   The try-catch block around the external API call and group manipulation
     logic ensures that errors do not prevent the user from signing in but are
     properly logged
 
-### **Summary**
+### Summary
 
 This hook example demonstrates a pattern for extending authentication flows in
 CAS with custom logic. By integrating with an external API to fetch group
@@ -278,7 +275,7 @@ real-world authentication and authorization scenarios.
 ## REST API
 
 You can view the REST API Documentation by logging into the Super Admin UI (see
-above) or by directly visiting **$YOUR_FIFTYONE_TEAMS_URL/cas/api-doc**
+above) or by directly visiting `https://≤YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
 
 ## Configuration
 
@@ -352,7 +349,7 @@ Authentication Service (CAS). As a CAS superuser, you are able to define
 JavaScript functions that integrate with various authentication flows within
 CAS, customizing the authentication processes.
 
-**Overview**
+### Overview
 
 JavaScript hooks allow superusers to programmatically influence authentication
 flows, including sign-in, sign-up, JWT handling and customization, redirection,
@@ -360,7 +357,7 @@ and session management. This document describes the available hooks, their
 triggers, expected return types, and contextual information provided to each
 hook.
 
-**Example JavaScript Hook**
+### Example JavaScript Hook
 
 ```typescript
 // Example JavaScript hook implementation
@@ -391,7 +388,7 @@ async function Hook(context) {
 }
 ```
 
-**Actionable Triggers**
+### Actionable Triggers
 
 <table>
   <tr>
