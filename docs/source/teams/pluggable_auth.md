@@ -48,6 +48,8 @@ organizations have the autonomy to manage their Identity Provider
 Configuration. **NOTE: SAML support is not available in
 [internal mode](#internal-mode).**
 
+> NOTE: invitations to onboard users are not supported in internal mode.
+
 (super-admin-ui)=
 
 ## Super Admin UI
