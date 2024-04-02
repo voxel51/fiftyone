@@ -5,7 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import contextlib
 import itertools
 import logging
 import os
@@ -15,16 +15,19 @@ import numpy as np
 import scipy.spatial as sp
 
 import eta.core.numutils as etan
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 from fiftyone.core.odm import DynamicEmbeddedDocument
 from fiftyone.core.sample import Sample
-from fiftyone.core.threed import Scene
+from fiftyone.core.threed import Pointcloud, Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -857,3 +860,193 @@ def _fill_none(values, ref_values):
         return ref_values
 
     return [v if v is not None else r for v, r in zip(values, ref_values)]
+
+
+def pcd_to_3d(
+    dataset,
+    slices=None,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    """Converts the point cloud samples in the given dataset to 3D samples.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset` containing point
+            clouds
+        slices (None): point cloud slice(s) to convert. Only applicable when
+            the dataset is grouped, in which case you can provide:
+
+            -   a slice or iterable of point cloud slices to convert in-place
+            -   a dict mapping point cloud slices to desired 3D slice names
+            -   None (default): all point cloud slices are converted in-place
+        output_dir (None): an optional output directory for the ``.fo3d`` files
+        assets_dir (None): an optional directory to copy the ``.pcd`` files
+            into. Can be either an absolute directory, a subdirectory of
+            ``output_dir``, or None if you do not wish to copy point clouds
+        rel_dir (None): an optional relative directory to strip from each point
+            cloud path to generate a unique identifier for each scene, which is
+            joined with ``output_dir`` to generate an output path for each
+            ``.fo3d`` file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
+        abs_paths (False): whether to store absolute paths to the point cloud
+            files in the exported ``.fo3d`` files
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_collection(dataset, media_type=(fom.POINT_CLOUD, fom.GROUP))
+
+    if dataset.media_type == fom.GROUP:
+        _pcd_slices_to_3d_slices(
+            dataset,
+            slices=slices,
+            output_dir=output_dir,
+            assets_dir=assets_dir,
+            rel_dir=rel_dir,
+            abs_paths=abs_paths,
+            progress=progress,
+        )
+        return
+
+    _pcd_to_3d(
+        dataset,
+        output_dir=output_dir,
+        assets_dir=assets_dir,
+        rel_dir=rel_dir,
+        abs_paths=abs_paths,
+        progress=progress,
+    )
+
+    dataset._doc.media_type = fom.THREE_D
+    dataset.save()
+
+
+def _pcd_slices_to_3d_slices(
+    dataset,
+    slices=None,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    if isinstance(slices, dict):
+        pass
+    elif etau.is_container(slices):
+        slices = {s: s for s in slices}
+    elif slices is not None:
+        slices = {slices: slices}
+    else:
+        slices = {
+            k: k
+            for k, v in dataset.group_media_types.items()
+            if v == fom.POINT_CLOUD
+        }
+
+    curr_slice = slices.get(dataset.group_slice, dataset.group_slice)
+
+    try:
+        for in_slice, out_slice in slices.items():
+            dataset.group_slice = in_slice
+
+            _pcd_to_3d(
+                dataset,
+                output_dir=output_dir,
+                assets_dir=assets_dir,
+                rel_dir=rel_dir,
+                abs_paths=abs_paths,
+                progress=progress,
+            )
+
+            dataset._doc.group_media_types[in_slice] = fom.THREE_D
+            dataset.save()
+
+            if in_slice != out_slice:
+                dataset.rename_group_slice(in_slice, out_slice)
+    finally:
+        dataset.group_slice = curr_slice
+
+
+def _pcd_to_3d(
+    dataset,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    filename_maker = None
+    media_exporter = None
+
+    if output_dir is not None:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=True,
+        )
+
+        if assets_dir is not None:
+            if not fos.isabs(assets_dir):
+                assets_dir = fos.join(output_dir, assets_dir)
+
+            media_exporter = foud.MediaExporter(
+                True,
+                export_path=assets_dir,
+                rel_dir=rel_dir,
+            )
+
+    ids, pcd_paths = dataset.values(["id", "filepath"])
+
+    scene_paths = []
+    with contextlib.ExitStack() as context:
+        if media_exporter is not None:
+            context.enter_context(media_exporter)
+
+        pb = context.enter_context(fou.ProgressBar(progress=progress))
+
+        for pcd_path in pb(pcd_paths):
+            scene_path = _make_scene(
+                pcd_path,
+                filename_maker=filename_maker,
+                media_exporter=media_exporter,
+                abs_paths=abs_paths,
+            )
+            scene_paths.append(scene_path)
+
+    dataset.set_values(
+        "filepath", dict(zip(ids, scene_paths)), key_field="id", validate=False
+    )
+    dataset.set_field("_media_type", fom.THREE_D, _allow_missing=True).save()
+
+
+def _make_scene(
+    pcd_path,
+    filename_maker=None,
+    media_exporter=None,
+    abs_paths=False,
+):
+    if filename_maker is not None:
+        scene_path = filename_maker.get_output_path(
+            input_path=pcd_path, output_ext=".fo3d"
+        )
+    else:
+        scene_path = os.path.splitext(pcd_path)[0] + ".fo3d"
+
+    if media_exporter is not None:
+        pcd_path, _ = media_exporter.export(pcd_path)
+
+    if not abs_paths:
+        rel_path = os.path.relpath(pcd_path, os.path.dirname(scene_path))
+        if not rel_path.startswith(".."):
+            pcd_path = rel_path
+
+    scene = Scene()
+    scene.add(Pointcloud("point cloud", pcd_path))
+    scene.write(scene_path)
+
+    return scene_path
