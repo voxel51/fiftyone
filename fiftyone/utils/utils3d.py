@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import os
@@ -451,10 +452,10 @@ def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
 
     _visit_node_dfs(scene)
 
-    if pcd_path is None or os.path.isabs(pcd_path):
+    if pcd_path is None or fos.isabs(pcd_path):
         return pcd_path
 
-    return os.path.join(os.path.dirname(scene_path), pcd_path)
+    return fos.join(os.path.dirname(scene_path), pcd_path)
 
 
 def compute_orthographic_projection_images(
@@ -548,7 +549,7 @@ def compute_orthographic_projection_images(
         three_d_view = samples.select_group_slices(in_group_slice)
         fov.validate_collection(three_d_view, media_type=fom.POINT_CLOUD)
 
-        groups = three_d_view.values(["filepath", group_field])
+        filepaths, groups = three_d_view.values(["filepath", group_field])
     else:
         try:
             fov.validate_collection(samples, media_type=fom.THREE_D)
@@ -557,9 +558,9 @@ def compute_orthographic_projection_images(
 
         three_d_view = samples
 
+        filepaths = three_d_view.values("filepath")
         groups = itertools.repeat(None)
 
-    # TODO fixme for cloud support
     local_paths = three_d_view.get_local_paths()
 
     if three_d_view.media_type == fom.THREE_D:
@@ -569,6 +570,9 @@ def compute_orthographic_projection_images(
         filepaths = [
             _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
             for scene, scene_path in scenes_filepaths
+        ]
+        local_paths = [
+            foc.media_cache.get_local_path(path) for path in filepaths
         ]
 
     filename_maker = fou.UniqueFilenameMaker(
@@ -587,14 +591,6 @@ def compute_orthographic_projection_images(
             alt_dir=local_dir,
             idempotent=False,
         )
-    with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
-        for filepath, group in pb(zip(filepaths, groups)):
-            if filepath is None:
-                continue
-
-            image_path = filename_maker.get_output_path(
-                filepath, output_ext=".png"
-            )
 
         with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
             for filepath, local_path, group in pb(

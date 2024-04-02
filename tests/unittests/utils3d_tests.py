@@ -77,7 +77,6 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
         o3d.io.write_point_cloud(self.test_pcd_path, pc, write_ascii=True)
 
 
-@unittest.skip("follow-on PR to come")
 class OrthographicProjectionTests(BaseOrthographicProjectionTests):
     @drop_datasets
     def test_params_validation(self):
