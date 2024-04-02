@@ -834,6 +834,9 @@ class RegisterPanel extends Operator {
       label: "On load operator",
       required: true,
     });
+    inputs.str("on_unload", {
+      label: "On unload operator",
+    });
     inputs.bool("allow_duplicates", {
       label: "Allow duplicates",
       default: false,
@@ -844,14 +847,13 @@ class RegisterPanel extends Operator {
     registerComponent({
       type: PluginComponentType.Panel,
       name: ctx.params.panel_name,
-      component: defineCustomPanel(ctx.params.on_load),
+      component: defineCustomPanel(ctx.params.on_load, ctx.params.on_unload),
       label: ctx.params.panel_label,
       activator: () => true,
       panelOptions: {
         allowDuplicates: ctx.params.allow_duplicates,
       },
     });
-    ctx.hooks.registerPanel(ctx.params.panel);
   }
 }
 

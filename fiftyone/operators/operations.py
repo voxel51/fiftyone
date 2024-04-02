@@ -192,6 +192,22 @@ class Operations(object):
 
         return self._ctx.trigger("open_panel", params=params)
 
+    def register_panel(self, name, label, on_load=None, on_unload=None):
+        """Register a panel with the given name and lifecycle callbacks.
+
+        Args:
+            name: the name of the panel to register
+            on_load (None): an operator to invoke when the panel is loaded
+            on_unload (None): an operator to invoke when the panel is unloaded
+        """
+        params = {
+            "panel_name": name,
+            "panel_label": label,
+            "on_load": on_load,
+            "on_unload": on_unload,
+        }
+        return self._ctx.trigger("register_panel", params=params)
+
     def open_all_panels(self):
         """Open all available panels in the App."""
         return self._ctx.trigger("open_all_panel")
