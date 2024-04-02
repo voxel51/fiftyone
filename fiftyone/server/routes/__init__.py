@@ -14,6 +14,7 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .plugins import Plugins
+from .fo3d_resolver import ResolveFo3d
 from .select import Select
 from .sort import Sort
 from .screenshot import Screenshot
@@ -35,6 +36,7 @@ routes = (
         ("/frames", Frames),
         ("/media", Media),
         ("/plugins", Plugins),
+        ("/resolve-fo3d", ResolveFo3d),
         ("/select", Select),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
