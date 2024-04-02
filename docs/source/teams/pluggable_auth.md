@@ -343,6 +343,16 @@ above) or by directly visiting **$YOUR_FIFTYONE_TEAMS_URL/cas/api-doc**
    <td>JavaScript hook which is invoked on several CAS events described in JS Hooks section below
    </td>
   </tr>
+  <tr>
+   <td><code>skipSignInPage</code>
+   </td>
+   <td><code>Boolean</code>
+   </td>
+   <td><code>false</code>
+   </td>
+   <td>When set to True, sign in page with identity provider choices will be skipped when there is only one identity provider is configured
+   </td>
+  </tr>
 </table>
 
 ## JavaScript Hooks
