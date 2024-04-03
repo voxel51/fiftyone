@@ -730,7 +730,7 @@ export const isInListField = selectorFamily({
 });
 
 export const isListField = selectorFamily({
-  key: "string",
+  key: "isListField",
   get:
     (path: string) =>
     ({ get }) => {
