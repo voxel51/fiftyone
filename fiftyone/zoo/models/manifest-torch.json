@@ -2512,6 +2512,166 @@
             "date_added": "2024-03-11 19:22:51"
         },
         {
+            "base_name": "yolov8n-seg-coco-torch",
+            "base_filename": "yolov8n-seg-coco.pt",
+            "description": "Ultralytics YOLOv8n Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov8/",
+            "size_bytes": 7054355,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov8s-seg-coco-torch",
+            "base_filename": "yolov8s-seg-coco.pt",
+            "description": "Ultralytics YOLOv8s Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov8/",
+            "size_bytes": 23897299,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov8m-seg-coco-torch",
+            "base_filename": "yolov8m-seg-coco.pt",
+            "description": "Ultralytics YOLOv8m Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov8/",
+            "size_bytes": 54899779,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov8l-seg-coco-torch",
+            "base_filename": "yolov8l-seg-coco.pt",
+            "description": "Ultralytics YOLOv8l Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov8/",
+            "size_bytes": 92391859,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov8x-seg-coco-torch",
+            "base_filename": "yolov8x-seg-coco.pt",
+            "description": "Ultralytics YOLOv8x Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov8/",
+            "size_bytes": 144076467,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8x-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
             "base_name": "yolov9c-coco-torch",
             "base_filename": "yolov9c-coco.pt",
             "description": "YOLOv9-C model trained on COCO",
@@ -2574,6 +2734,70 @@
             },
             "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
+        },
+        {
+            "base_name": "yolov9c-seg-coco-torch",
+            "base_filename": "yolov9c-seg-coco.pt",
+            "description": "YOLOv9-C Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
+            "size_bytes": 112406113,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov9c-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.42"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov9e-seg-coco-torch",
+            "base_filename": "yolov9e-seg-coco.pt",
+            "description": "YOLOv9-E Segmentation model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
+            "size_bytes": 243481823,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov9e-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.42"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "coco", "torch", "yolo"],
+            "date_added": "2024-04-02 19:22:51"
         },
         {
             "base_name": "yolov8s-world-torch",

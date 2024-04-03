@@ -169,6 +169,27 @@ manually convert Ultralytics predictions into the desired
    :alt: ultralytics-instances
    :align: center
 
+
+You can also load YOLOv8 and YOLOv9 segmentation models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov9c-seg-coco-torch"
+    # model_name = "yolov9e-seg-coco-torch"
+    # model_name = "yolov8x-seg-coco-torch"
+    # model_name = "yolov8l-seg-coco-torch"
+    # model_name = "yolov8m-seg-coco-torch"
+    # model_name = "yolov8s-seg-coco-torch"
+    # model_name = "yolov8n-seg-coco-torch"
+
+    model = foz.load_zoo_model(model_name, label_field="yolo_seg")
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
+
 .. _ultralytics-keypoints:
 
 Keypoints
