@@ -566,7 +566,7 @@ def compute_orthographic_projection_images(
     if three_d_view.media_type == fom.THREE_D:
         # read through all the fo3d files, and collect point cloud filepaths
         scenes = [Scene.from_fo3d(filepath) for filepath in local_paths]
-        scenes_filepaths = list(zip(scenes, local_paths))
+        scenes_filepaths = list(zip(scenes, filepaths))
         filepaths = [
             _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
             for scene, scene_path in scenes_filepaths
@@ -574,10 +574,6 @@ def compute_orthographic_projection_images(
         local_paths = [
             foc.media_cache.get_local_path(path) for path in filepaths
         ]
-
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir
-    )
 
     if out_group_slice is not None:
         out_samples = []
