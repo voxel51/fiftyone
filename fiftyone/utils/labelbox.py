@@ -482,7 +482,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         if delete_batches:
             if self.export_version != LabelboxExportVersion.V1:
                 logger.warning(
-                    "Deleting batches, but data rows will not be deleted. This method uses the Labelbox Export v1 API which has been deprecated, removed at the end of April 2024."
+                    "Deleting batches, but data rows will not be deleted. This"
+                    " method uses the Labelbox Export v1 API which has been "
+                    "deprecated, removed at the end of April 2024."
                 )
             for batch in project.batches():
                 batch.delete_labels()
@@ -1616,7 +1618,10 @@ def import_from_labelbox(
             progress callback function to invoke instead
     """
     logger.warning(
-        "This method uses the Export v1 format of Labelbox which is deprecated, removed at the end of April 2024. Instead, please use the `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_ when interacting with Labelbox."
+        "This method uses the Export v1 format of Labelbox which is "
+        "deprecated, removed at the end of April 2024. Instead, please use the"
+        " `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_"
+        " when interacting with Labelbox."
     )
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -1775,7 +1780,10 @@ def export_to_labelbox(
             progress callback function to invoke instead
     """
     logger.warning(
-        "This method uses the Export v1 format of Labelbox which is deprecated, removed at the end of April 2024. Instead, please use the `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_ when interacting with Labelbox."
+        "This method uses the Export v1 format of Labelbox which is "
+        "deprecated, removed at the end of April 2024. Instead, please use the"
+        " `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_"
+        " when interacting with Labelbox."
     )
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
