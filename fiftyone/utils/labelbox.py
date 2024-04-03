@@ -7,6 +7,7 @@ Utilities for working with annotations in
 |
 """
 from copy import copy, deepcopy
+import enum
 import logging
 import os
 import requests
@@ -41,6 +42,13 @@ lbr = fou.lazy_import("labelbox.schema.review")
 logger = logging.getLogger(__name__)
 
 
+class LabelboxExportVersion(enum.Enum):
+    """Enum specifying version and format for label exports"""
+
+    V1 = "v1"
+    V2 = "v2"
+
+
 class LabelboxBackendConfig(foua.AnnotationBackendConfig):
     """Class for configuring :class:`LabelboxBackend` instances.
 
@@ -63,6 +71,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             level of the editor (False) or whether to show the label field at
             the top level and annotate the class as a required attribute of
             each object (True)
+        export_version ("v2"): whether to use the Labelbox Export v1 or v2
+            label format and APIs
     """
 
     def __init__(
@@ -75,6 +85,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         members=None,
         classes_as_attrs=True,
+        export_version=LabelboxExportVersion.V2,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -83,6 +94,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.members = members
         self.classes_as_attrs = classes_as_attrs
+        self.export_version = export_version
 
         # store privately so these aren't serialized
         self._api_key = api_key
@@ -171,6 +183,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             self.config.name,
             self.config.url,
             api_key=self.config.api_key,
+            export_version=self.config.export_version,
             _experimental=self.config._experimental,
         )
 
@@ -213,9 +226,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         name: the name of the backend
         url: url of the Labelbox server
         api_key (None): the Labelbox API key
+        export_version ("v2"): whether to use the Labelbox Export v1 or v2
+            label format and APIs
     """
 
-    def __init__(self, name, url, api_key=None, _experimental=False):
+    def __init__(
+        self,
+        name,
+        url,
+        api_key=None,
+        export_version=LabelboxExportVersion.V2,
+        _experimental=False,
+    ):
         if "://" not in url:
             protocol = "http"
             base_url = url
@@ -229,6 +251,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self._experimental = _experimental
         self._roles = None
         self._tool_types_map = None
+        self.export_version = export_version
 
         self._setup()
 
@@ -265,6 +288,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             "classifications": lbo.Classification,
             "scalar": lbo.Classification,
         }
+
+    @property
+    def _LabelboxExportToFiftyOneConverter(self):
+        if self.export_version == LabelboxExportVersion.V1:
+            return _LabelboxExportToFiftyOneConverterV1
+
+        return _LabelboxExportToFiftyOneConverterV2
 
     @property
     def roles(self):
@@ -450,13 +480,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         logger.info("Deleting project '%s'...", project_id)
 
         if delete_batches:
+            if self.export_version != LabelboxExportVersion.V1:
+                logger.warning(
+                    "Deleting batches, but data rows will not be deleted. This method uses the Labelbox Export v1 API which has been deprecated, removed at the end of April 2024."
+                )
             for batch in project.batches():
                 batch.delete_labels()
-                lb.DataRow.bulk_delete(
-                    data_rows=list(
-                        batch.export_data_rows(include_metadata=False)
+                if self.export_version != LabelboxExportVersion.V1:
+                    lb.DataRow.bulk_delete(
+                        data_rows=list(
+                            batch.export_data_rows(include_metadata=False)
+                        )
                     )
-                )
                 batch.delete()
 
         ontology = project.ontology()
@@ -639,76 +674,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         return dict(zip(*[sample_ids, data_row_ids]))
 
-    def _upload_annotations(
-        self, samples, label_schema, project, classes_as_attrs, is_video
-    ):
-        labels, id_map = self._build_labels(
-            samples, label_schema, classes_as_attrs, is_video
-        )
-        if labels:
-            logger.info("Uploading annotations...")
-            upload_job = lb.LabelImport.create_from_objects(
-                client=self._client,
-                project_id=project.uid,
-                name="label_import_job_" + str(project.uid),
-                labels=labels,
-            )
-            upload_job.wait_until_done()
-
-        return id_map
-
-    def _build_labels(self, samples, label_schema, classes_as_attrs, is_video):
-        id_map = {}
-        labels = []
-        label_fields = {}
-        converters = {}
-        for label_field, label_info in label_schema.items():
-            if label_info["existing_field"]:
-                converters[label_field] = _FiftyOneToLabelboxInstanceConverter(
-                    label_field,
-                    label_schema=label_schema,
-                    classes_as_attrs=classes_as_attrs,
-                )
-            id_map[label_field] = {}
-
-        if not converters:
-            return labels
-
-        samples.compute_metadata()
-        logger.info("Formatting annotations...")
-        for sample in samples:
-            sample_id = sample.id
-
-            # Get frame size
-            if is_video:
-                frame_size = (
-                    sample.metadata.frame_width,
-                    sample.metadata.frame_height,
-                )
-            else:
-                frame_size = (sample.metadata.width, sample.metadata.height)
-
-            # Export sample-level labels
-            for label_field, converter in converters.items():
-                label = sample[label_field]
-                annos, label_ids = converter.convert_image_label(
-                    label, frame_size
-                )
-                id_map[label_field][sample_id] = label_ids
-                for anno in annos:
-                    anno.update(
-                        {
-                            "dataRow": {
-                                "globalKey": sample_id,
-                            }
-                        }
-                    )
-                labels.extend(annos)
-
-            # @todo Export frame-level labels to support videos
-
-        return labels, id_map
-
     def download_annotations(self, results):
         """Downloads the annotations from the Labelbox server for the given
         results instance and parses them into the appropriate FiftyOne types.
@@ -740,9 +705,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         else:
             class_attr = False
 
+        converter = self._LabelboxExportToFiftyOneConverter
+
         for d in labels_json:
-            labelbox_id = d["DataRow ID"]
-            sample_id = d["Global Key"]
+            labelbox_id = converter._get_datarow_id(d)
+            sample_id = converter._get_global_key(d)
 
             if sample_id is None:
                 logger.warning(
@@ -762,12 +729,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             frame_size = (metadata["width"], metadata["height"])
 
             if is_video:
-                video_d_list = self._get_video_labels(d["Label"])
                 frames = {}
-                for label_d in video_d_list:
-                    frame_number = int(label_d["frameNumber"])
+                for frame_number, label_d in converter._iter_video_labels(
+                    d, project_id
+                ):
                     frame_id = frame_id_map[sample_id][frame_number]
-                    labels_dict = _LabelboxExportToFiftyOneConverterV1._parse_image_labels(
+                    labels_dict = converter._parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
                     )
                     if not classes_as_attrs:
@@ -783,10 +750,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     label_schema,
                 )
 
-            labels_dict = (
-                _LabelboxExportToFiftyOneConverterV1._parse_image_labels(
-                    d["Label"], frame_size, class_attr=class_attr
-                )
+            labels_dict = converter._parse_image_labels(
+                converter._get_labels_dict(d, project_id),
+                frame_size,
+                class_attr=class_attr,
             )
             if not classes_as_attrs:
                 labels_dict = self._process_label_fields(
@@ -1648,6 +1615,9 @@ def import_from_labelbox(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    logger.warning(
+        "This method uses the Export v1 format of Labelbox which is deprecated, removed at the end of April 2024. Instead, please use the `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_ when interacting with Labelbox."
+    )
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
 
@@ -1804,6 +1774,9 @@ def export_to_labelbox(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    logger.warning(
+        "This method uses the Export v1 format of Labelbox which is deprecated, removed at the end of April 2024. Instead, please use the `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_ when interacting with Labelbox."
+    )
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
     )
@@ -1884,25 +1857,56 @@ def export_to_labelbox(
                 etas.write_ndjson([anno], ndjson_path, append=True)
 
 
-def download_labels_from_labelbox(labelbox_project, outpath=None):
+def download_labels_from_labelbox(
+    labelbox_project,
+    outpath=None,
+    labelbox_export_version=LabelboxExportVersion.V2,
+):
     """Downloads the labels for the given Labelbox project.
 
     Args:
         labelbox_project: a ``labelbox.schema.project.Project``
         outpath (None): the path to write the JSON export on disk
+        labelbox_export_version ("v2"): the version of the Labelbox export
+            format to use when downloading labels
 
     Returns:
         ``None`` if an ``outpath`` is provided, or the loaded JSON itself if no
         ``outpath`` is provided
     """
-    export_url = labelbox_project.export_labels()
+    if labelbox_export_version == LabelboxExportVersion.V1:
+        export_url = labelbox_project.export_labels()
+
+        if outpath:
+            etaw.download_file(export_url, path=outpath)
+            return None
+
+        labels_bytes = etaw.download_file(export_url)
+        return etas.load_json(labels_bytes)
+
+    params = {
+        "data_row_details": True,
+        "metadata_fields": True,
+        "attachments": True,
+        "project_details": True,
+        "performance_details": True,
+        "label_details": True,
+        "interpolated_frames": True,
+    }
+
+    export_task = labelbox_project.export_v2(params=params)
+
+    export_task.wait_till_done()
+    if export_task.errors:
+        logger.warning(export_task.errors)
+
+    export_json = export_task.result
 
     if outpath:
-        etaw.download_file(export_url, path=outpath)
+        etas.write_json(export_json, outpath)
         return None
 
-    labels_bytes = etaw.download_file(export_url)
-    return etas.load_json(labels_bytes)
+    return export_json
 
 
 def upload_media_to_labelbox(
@@ -2005,6 +2009,9 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
             labels (if applicable). If omitted, the input frame label files
             will be overwritten
     """
+    logger.warning(
+        "This method uses the Export v1 format of Labelbox which is deprecated, removed at the end of April 2024. Instead, please use the `FiftyOne and Labelbox integration <https://docs.voxel51.com/integrations/labelbox.html>`_ when interacting with Labelbox."
+    )
     if outpath is None:
         outpath = inpath
 
@@ -2315,155 +2322,6 @@ class _FiftyOneToLabelboxConverterBase:
         }
 
 
-class _FiftyOneToLabelboxInstanceConverter(_FiftyOneToLabelboxConverterBase):
-    def __init__(self, label_field, label_schema=None, classes_as_attrs=True):
-        self.label_schema = label_schema
-        self.label_field = label_field
-        self.classes_as_attrs = classes_as_attrs
-
-        self._available_classes = self._get_available_classes()
-        self._attrs_per_class = self._get_attrs_per_class()
-
-    def _get_attrs_per_class(self):
-        attrs_per_class = {}
-        label_info = self.label_schema.get(self.label_field, {})
-        global_attrs = label_info.get("attributes", {})
-        for c in label_info.get("classes", []):
-            _classes = []
-            if isinstance(c, dict):
-                subclasses = c.get("classes", [])
-                if isinstance(subclasses, str):
-                    subclasses = [subclasses]
-                for sc in subclasses:
-                    class_attrs = c.get("attributes", {})
-                    attrs_per_class[sc] = {**global_attrs, **class_attrs}
-
-            elif isinstance(c, str):
-                c = [c]
-
-            if isinstance(c, list):
-                for sc in c:
-                    attrs_per_class[sc] = global_attrs
-
-        return attrs_per_class
-
-    def _get_available_classes(self):
-        available_classes = []
-        label_info = self.label_schema.get(self.label_field, {})
-        for c in label_info.get("classes", []):
-            if isinstance(c, dict):
-                for sc in c.get("classes", []):
-                    if isinstance(sc, str):
-                        sc = [sc]
-                    available_classes.extend(sc)
-
-            elif isinstance(c, str):
-                c = [c]
-
-            available_classes.extend(c)
-
-        return available_classes
-
-    def convert_image_label(self, label, frame_size):
-        annotations = []
-        name = self.label_field
-
-        if isinstance(label, (fol.Classification, fol.Classifications)):
-            anno, label_ids = self._to_global_classification(name, label)
-            annotations.append(anno)
-        elif isinstance(label, (fol.Detection, fol.Detections)):
-            annos, label_ids = self._to_detections(label, frame_size)
-            annotations.extend(annos)
-        elif isinstance(label, (fol.Polyline, fol.Polylines)):
-            annos, label_ids = self._to_polylines(label, frame_size)
-            annotations.extend(annos)
-        elif isinstance(label, (fol.Keypoint, fol.Keypoints)):
-            annos, label_ids = self._to_points(label, frame_size)
-            annotations.extend(annos)
-        elif isinstance(label, fol.Segmentation):
-            label_ids = [label.id]
-            annos = self._to_mask(name, label)
-            annotations.extend(annos)
-        elif label is not None:
-            msg = "Ignoring unsupported label type '%s'" % label.__class__
-            warnings.warn(msg)
-
-        return annotations, label_ids
-
-    @classmethod
-    def _make_attribute_answer(cls, attr_name, attr_value, class_attrs):
-        if class_attrs["type"] == "text":
-            return {"answer": attr_value}
-
-        if class_attrs["type"] == "checkbox":
-            if isinstance(attr_value, (list, tuple)):
-                return {"answer": [{"name": value} for value in attr_value]}
-
-            if isinstance(attr_value, fol.Classifications):
-                return {
-                    "answer": [
-                        {"name": c.label} for c in attr_value.classifications
-                    ]
-                }
-
-        if class_attrs["type"] in ["select", "radio"]:
-            if isinstance(attr_value, fol.Classification):
-                return {"answer": {"name": attr_value.label}}
-
-            if isinstance(attr_value, str):
-                return {"answer": {"name": attr_value}}
-
-        raise ValueError(
-            "Cannot convert %s to a classification" % attr_value.__class__
-        )
-
-    def _get_base_anno_name(self, label):
-        if self.classes_as_attrs:
-            return self.label_field
-
-        return label.label
-
-    @classmethod
-    def _make_base_anno(cls, value, data_row_id=None):
-        return {"name": value}
-
-    # https://docs.labelbox.com/reference/import-image-annotations#bounding-box-with-nested-classification
-    def _get_nested_classifications(self, label):
-        classifications = []
-        class_attrs = self._attrs_per_class.get(label.label, {})
-        for name, value in label.iter_attributes():
-            if class_attrs and name not in class_attrs:
-                continue
-
-            class_attr = class_attrs[name]
-
-            if etau.is_str(value) or isinstance(value, (list, tuple)):
-                anno = self._make_base_anno(name)
-                anno.update(
-                    self._make_attribute_answer(name, value, class_attr)
-                )
-                classifications.append(anno)
-            else:
-                msg = "Ignoring unsupported attribute type '%s'" % type(value)
-                warnings.warn(msg)
-                continue
-
-        if self.classes_as_attrs:
-            class_as_attr = {
-                "name": "class_name",
-                "answer": {"name": label.label},
-            }
-            classifications.append(class_as_attr)
-
-        return classifications
-
-    def _validate_label_class(self, label):
-        if self._available_classes and label.label in self._available_classes:
-            return True
-
-        return False
-
-
 class _FiftyOneToLabelboxExportConverterV1(_FiftyOneToLabelboxConverterBase):
     # Converts FiftyOne labels to Labelbox export format v1:
     # https://docs.labelbox.com/reference/export-image-annotations
@@ -2553,8 +2411,25 @@ class _LabelboxExportToFiftyOneConverterV1:
         return labels
 
     @classmethod
+    def _get_datarow_id(cls, d):
+        return d["DataRow ID"]
+
+    @classmethod
+    def _get_global_key(cls, d):
+        return d["Global Key"]
+
+    @classmethod
     def _get_answer_value(cls, answer):
         return answer["value"]
+
+    @classmethod
+    def _iter_video_labels(cls, d, project_id):
+        for label_d in d["Label"]:
+            yield int(label_d["frameNumber"]), label_d
+
+    @classmethod
+    def _get_labels_dict(cls, d, project_id):
+        return d["Label"]
 
     @classmethod
     def _parse_classifications(cls, cd_list):
@@ -2807,11 +2682,103 @@ class _LabelboxExportToFiftyOneConverterV1:
         return etai.decode(img_bytes)
 
 
-class _LabelboxExportToFiftyOneConverter(_LabelboxExportToFiftyOneConverterV1):
+class _LabelboxExportToFiftyOneConverterV2(
+    _LabelboxExportToFiftyOneConverterV1
+):
     # Parse Labelbox export format v2 to FiftyOne labels:
     @classmethod
     def _get_answer_value(cls, answer):
         return answer["name"]
+
+    @classmethod
+    def _get_datarow_id(cls, d):
+        return d["data_row"]["id"]
+
+    @classmethod
+    def _get_global_key(cls, d):
+        return d["data_row"]["global_key"]
+
+    @classmethod
+    def _iter_video_labels(cls, d, project_id):
+        for frame_number, label_d in d["projects"][project_id]["labels"][
+            "annotations"
+        ]["frames"].items():
+            yield int(frame_number), label_d
+
+    @classmethod
+    def _get_labels_dict(cls, d, project_id):
+        return d["projects"][project_id]["labels"]["annotations"]
+
+    @classmethod
+    def _parse_classifications(cls, cd_list):
+        labels = {}
+
+        for cd in cd_list:
+            name = cd["name"]
+            if "radio_answer" in cd:
+                # Radio question
+                answer = cd["radio_answer"]
+                attributes = cls._parse_attributes(cd["classifications"])
+                attributes.pop("label", None)
+                labels[name] = fol.Classification(
+                    label=cls._get_answer_value(answer), **attributes
+                )
+            elif "checklist_answers" in cd:
+                # Checklist
+                answers = cd["checklist_answers"]
+                attributes = cls._parse_attributes(cd["classifications"])
+                attributes.pop("label", None)
+                labels[name] = fol.Classifications(
+                    classifications=[
+                        fol.Classification(label=cls._get_answer_value(a))
+                        for a in answers
+                    ],
+                    **attributes,
+                )
+            elif "text_answer" in cd:
+                # Free text
+                answer = cd["text_answer"]
+                attributes = cls._parse_attributes(cd["classifications"])
+                attributes.pop("label", None)
+                labels[name] = fol.Classification(label=answer, **attributes)
+
+        return labels
+
+    @classmethod
+    def _parse_attributes(cls, cd_list):
+        attributes = {}
+
+        for cd in cd_list:
+            if "classifications" in cd and cd["classifications"]:
+                attributes.update(cls._parse_attributes(cd["classifications"]))
+
+            else:
+                name = cls._get_answer_value(cd)
+                if "radio_answer" in cd:
+                    # Radio question
+                    answer = cd["radio_answer"]
+                    attributes[name] = _parse_attribute(
+                        cls._get_answer_value(answer)
+                    )
+                elif "checklist_answers" in cd:
+                    # Checklist
+                    answers = cd["checklist_answers"]
+                    attributes[name] = [
+                        _parse_attribute(cls._get_answer_value(answer))
+                        for a in answers
+                    ]
+
+                elif "text_answer" in cd:
+                    # Free text
+                    answer = cd["text_answer"]
+                    attributes[name] = _parse_attribute(answer)
+
+        return attributes
+
+    @classmethod
+    def _parse_objects(cls, od_list, frame_size, class_attr=None):
+        # @todo
+        return {}
 
 
 def _make_video_anno(labels_path, data_row_id=None):
