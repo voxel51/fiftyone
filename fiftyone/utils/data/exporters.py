@@ -1822,6 +1822,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1834,6 +1836,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         abs_paths=False,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         pretty_print=False,
     ):
         if export_media is None:
@@ -1846,6 +1849,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.abs_paths = abs_paths
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1950,6 +1954,12 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self._metadata["saved_views"] = [
                 json_util.dumps(v.to_dict())
                 for v in dataset._doc.get_saved_views()
+            ]
+
+        if dataset.has_workspaces and self.export_workspaces:
+            self._metadata["workspaces"] = [
+                json_util.dumps(w.to_dict())
+                for w in dataset._doc.get_workspaces()
             ]
 
         if dataset.has_annotation_runs and self.export_runs:
@@ -2102,6 +2112,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         use_dirs (False): whether to export metadata into directories of per
             sample/frame files
         ordered (True): whether to preserve the order of the exported
@@ -2115,6 +2127,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         rel_dir=None,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         use_dirs=False,
         ordered=True,
     ):
@@ -2130,6 +2143,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self.rel_dir = rel_dir
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.use_dirs = use_dirs
         self.ordered = ordered
 
@@ -2259,22 +2273,19 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}
         dataset_dict["runs"] = {}
+        dataset_dict["workspaces"] = []
 
         #
-        # Exporting saved views/runs only makes sense if the entire dataset is
-        # being exported, otherwise the view for the run cannot be
+        # Exporting saved views/runs/workspaces only makes sense if the entire
+        # dataset is being exported, otherwise the view for the run cannot be
         # reconstructed based on the information encoded in the run's document
         #
 
-        _export_saved_views = (
-            self.export_saved_views
-            and sample_collection == sample_collection._root_dataset
-        )
+        is_full_dataset = sample_collection == sample_collection._root_dataset
 
-        _export_runs = (
-            self.export_runs
-            and sample_collection == sample_collection._root_dataset
-        )
+        _export_saved_views = self.export_saved_views and is_full_dataset
+        _export_runs = self.export_runs and is_full_dataset
+        _export_workspaces = self.export_workspaces and is_full_dataset
 
         if _export_saved_views and dataset.has_saved_views:
             dataset_dict["saved_views"] = [
@@ -2307,6 +2318,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 k: v.to_dict() for k, v in dataset._doc.get_runs().items()
             }
             _export_run_results(dataset, self._runs_dir)
+
+        if _export_workspaces and dataset.has_workspaces:
+            dataset_dict["workspaces"] = [
+                v.to_dict() for v in dataset._doc.get_workspaces()
+            ]
 
         foo.export_document(dataset_dict, self._metadata_path)
 

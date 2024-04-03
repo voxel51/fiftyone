@@ -22,9 +22,9 @@ import fiftyone.core.clips as foc
 from fiftyone.core.config import AppConfig
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
+from fiftyone.core.odm.workspace import Space
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.spaces import Space
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.server.scalars import JSON
@@ -42,7 +42,7 @@ class StateDescription(etas.Serializable):
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        spaces (None): a :class:`fiftyone.core.spaces.Space`
+        spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
         color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a

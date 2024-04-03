@@ -1498,6 +1498,112 @@ You can reset your spaces to their default state by setting
     # Reset spaces layout in the App
     session.spaces = None
 
+.. _app-saving-spaces-python:
+
+Saving workspaces in Python
+---------------------------
+
+If you find yourself frequently using/recreating a certain spaces layout, you
+can save it as a workspace with a name of your choice, using
+:meth:`save_workspace() <fiftyone.core.dataset.Dataset.save_workspace>`.
+For example, to save the workspace defined in the
+:ref:`example above <app-spaces-python>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    samples_panel = fo.Panel(type="Samples", pinned=True)
+
+    histograms_panel = fo.Panel(
+        type="Histograms",
+        state=dict(plot="Labels"),
+    )
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+    )
+
+    workspace = fo.Space(
+        children=[
+            fo.Space(
+                children=[
+                    fo.Space(children=[samples_panel]),
+                    fo.Space(children=[histograms_panel]),
+                ],
+                orientation="horizontal",
+            ),
+            fo.Space(children=[embeddings_panel]),
+        ],
+        orientation="vertical",
+    )
+
+    workspace_name = "my-workspace"
+    description = "Samples, embeddings, histograms, oh my!"
+    color = "#FF6D04"
+    dataset.save_workspace(
+        workspace_name,
+        workspace,
+        description=description,
+        color=color
+    )
+
+Then in a future session you can load the workspace by name with
+:meth:`load_workspace() <fiftyone.core.dataset.Dataset.load_workspace>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("quickstart")
+
+    # Retrieve a saved workspace and launch app with it
+    workspace = dataset.load_workspace("my-workspace")
+    session = fo.launch_app(dataset, spaces=workspace)
+
+    # Or, set via session later on
+    session.spaces = workspace
+
+Saved workspaces have certain editable metadata such as a name, description,
+and color, that you can view via
+:meth:`get_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`
+and update via
+:meth:`update_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get a saved workspace's editable info
+    print(dataset.get_workspace_info("my-workspace"))
+
+    # Update the workspace's name and add a description
+    info = dict(
+        name="still-my-workspace",
+        description="Samples, embeddings, histograms, oh my oh my!!",
+    )
+    dataset.update_workspace_info("my-workspace", info)
+
+    # Verify that the info has been updated
+    print(dataset.get_workspace_info("still-my-workspace"))
+    # {
+    #   'name': 'still-my-workspace',
+    #   'description': 'Samples, embeddings, histograms, oh my oh my!!',
+    #   'color': None
+    # }
+
+You can also use
+:meth:`list_workspaces() <fiftyone.core.dataset.Dataset.list_workspaces>`,
+:meth:`has_workspace() <fiftyone.core.dataset.Dataset.has_workspace()>`,
+and
+:meth:`delete_workspace() <fiftyone.core.dataset.Dataset.delete_workspace>`
+to manage your saved workspaces.
+
 .. _app-samples-panel:
 
 Samples panel
