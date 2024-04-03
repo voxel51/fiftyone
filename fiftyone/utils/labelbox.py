@@ -2524,6 +2524,18 @@ class _LabelboxExportToFiftyOneConverterV1:
         return attributes
 
     @classmethod
+    def _bounding_box_name(cls):
+        return "bbox"
+
+    @classmethod
+    def _get_mask_url(cls, od):
+        return od["instanceURI"]
+
+    @classmethod
+    def _get_label_field_attr(cls, od):
+        return od["title"]
+
+    @classmethod
     def _parse_objects(cls, od_list, frame_size, class_attr=None):
         detections = []
         polylines = []
@@ -2536,7 +2548,7 @@ class _LabelboxExportToFiftyOneConverterV1:
             attributes = cls._parse_attributes(od.get("classifications", []))
             load_fo_seg = class_attr is not None
             if class_attr and class_attr in attributes:
-                label_field = od["title"]
+                label_field = cls._get_label_field_attr(od)
                 label = attributes.pop(class_attr)
                 if label_field not in label_fields:
                     label_fields[label_field] = {}
@@ -2544,9 +2556,11 @@ class _LabelboxExportToFiftyOneConverterV1:
                 label = od["value"]
                 label_field = None
 
-            if "bbox" in od:
+            if cls._bounding_box_name() in od:
                 # Detection
-                bounding_box = cls._parse_bbox(od["bbox"], frame_size)
+                bounding_box = cls._parse_bbox(
+                    od[cls._bounding_box_name()], frame_size
+                )
                 det = fol.Detection(
                     label=label, bounding_box=bounding_box, **attributes
                 )
@@ -2612,21 +2626,21 @@ class _LabelboxExportToFiftyOneConverterV1:
                 # Segmentation mask
                 if not load_fo_seg:
                     if mask is None:
-                        mask_instance_uri = od["instanceURI"]
+                        mask_instance_uri = cls._get_mask_url(od)
                         mask = cls._parse_mask(mask_instance_uri)
                         segmentation = {
                             "mask": current_mask,
                             "label": label,
                             "attributes": attributes,
                         }
-                    elif od["instanceURI"] != mask_instance_uri:
+                    elif cls._get_mask_url(od) != mask_instance_uri:
                         msg = (
                             "Only one segmentation mask per image/frame is "
                             "allowed; skipping additional mask(s)"
                         )
                         warnings.warn(msg)
                 else:
-                    current_mask_instance_uri = od["instanceURI"]
+                    current_mask_instance_uri = cls._get_mask_url(od)
                     current_mask = cls._parse_mask(current_mask_instance_uri)
                     segmentation = {
                         "mask": current_mask,
@@ -2784,9 +2798,21 @@ class _LabelboxExportToFiftyOneConverterV2(
         return attributes
 
     @classmethod
-    def _parse_objects(cls, od_list, frame_size, class_attr=None):
+    def _bounding_box_name(cls):
+        return "bounding_box"
+
+    @classmethod
+    def _get_mask_url(cls, od):
+        return od["mask"]["url"]
+
+    @classmethod
+    def _get_label_field_attr(cls, od):
+        return od["name"]
+
+    @classmethod
+    def _parse_video_labels(cls, video_label_d, frame_size):
         # @todo
-        return {}
+        pass
 
 
 def _make_video_anno(labels_path, data_row_id=None):
