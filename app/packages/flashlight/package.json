@@ -21,6 +21,6 @@
         "prettier": "^2.7.1",
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^3.2.8"
+        "vite": "^3.2.10"
     }
 }
