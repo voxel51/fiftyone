@@ -5,6 +5,7 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
@@ -27,7 +28,8 @@ import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
 hfh = fou.lazy_import(
-    "huggingface_hub", callback=lambda: fou.ensure_package("huggingface_hub")
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
 )
 
 
