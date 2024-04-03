@@ -6,17 +6,11 @@ FiftyOne Server /sort route
 |
 """
 
-from dataclasses import asdict
-
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-from fiftyone.core.json import stringify
-from fiftyone.core.utils import run_sync_task
-
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
-from fiftyone.server.query import serialize_dataset
 import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 

@@ -5,6 +5,7 @@ FiftyOne Server main
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import argparse
 import os
 
