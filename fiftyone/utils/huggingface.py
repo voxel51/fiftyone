@@ -30,13 +30,13 @@ hfh = fou.lazy_import(
     "huggingface_hub", callback=lambda: fou.ensure_package("huggingface_hub")
 )
 
+
 DATASETS_SERVER_URL = "https://datasets-server.huggingface.co"
 DEFAULT_MEDIA_TYPE = "image"
 DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 DATASETS_MAX_BATCH_SIZE = 100
 DEFAULT_IMAGE_FILEPATH_FEATURE = "image"
 FIFTYONE_BUILTIN_FIELDS = ("id", "filepath", "tags", "metadata")
-REPO_TYPE = "dataset"
 SUPPORTED_DTYPES = (
     "int8",
     "int16",
@@ -63,13 +63,15 @@ def push_to_hub(
     dataset_type=None,
     label_field=None,
     frame_labels_field=None,
+    token=None,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
 
     Args:
         dataset: a FiftyOne dataset
-        repo_name: the name of the dataset repo to create
+        repo_name: the name of the dataset repo to create. The repo ID will be
+            ``{your_username}/{repo_name}``
         description (None): a description of the dataset
         license (None): the license of the dataset
         tags (None): a list of tags for the dataset
@@ -84,7 +86,6 @@ def push_to_hub(
             - a list or tuple of label field(s) to export
             - a dictionary mapping label field names to keys to use when
               constructing the label dictionaries to pass to the exporter
-
         frame_labels_field (None): controls the frame label field(s) to export.
             The "frames." prefix is optional. Only applicable to labeled video
             datasets. Can be any of the following:
@@ -94,7 +95,8 @@ def push_to_hub(
             - a list or tuple of frame label field(s) to export
             - a dictionary mapping frame label field names to keys to use when
               constructing the frame label dictionaries to pass to the exporter
-
+        token (None): a Hugging Face API token to use. May also be provided via
+            the ``HF_TOKEN`` environment variable
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -108,6 +110,10 @@ def push_to_hub(
         tags = sorted(tags)
     else:
         tags = _get_dataset_tags(dataset)
+
+    # do this now in case HF login fails before we do anything expensive
+    hf_username = hfh.whoami(token=token)["name"]
+    repo_id = hf_username + "/" + repo_name
 
     with etau.TempDir() as tmp_dir:
         config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
@@ -129,17 +135,17 @@ def push_to_hub(
             tags=tags,
         )
 
-        hf_username = hfh.whoami()["name"]
-
         ## Create the dataset repo
-        repo_id = os.path.join(hf_username, repo_name)
         hfh.create_repo(
-            repo_id, repo_type="dataset", private=private, exist_ok=exist_ok
+            repo_id,
+            token=token,
+            repo_type="dataset",
+            private=private,
+            exist_ok=exist_ok,
         )
 
         ## Upload the dataset to the repo
-        api = hfh.HfApi()
-
+        api = hfh.HfApi(token=token)
         api.upload_folder(
             folder_path=tmp_dir,
             repo_id=repo_id,
@@ -175,7 +181,7 @@ def load_from_hub(
     config_file=None,
     **kwargs,
 ):
-    """Load a dataset from the Hugging Face Hub into FiftyOne.
+    """Loads a dataset from the Hugging Face Hub into FiftyOne.
 
     Args:
         repo_id: the Hugging Face Hub identifier of the dataset
@@ -186,17 +192,22 @@ def load_from_hub(
         subsets (None): the subsets of the dataset to load
         max_samples (None): the maximum number of samples to load
         batch_size (None): the batch size to use when loading samples
-        overwrite (True): whether to overwrite an existing dataset with the same name
+        num_workers (None): a suggested number of threads to use when
+            downloading media
+        overwrite (True): whether to overwrite an existing dataset with the
+            same name
         persistent (False): whether the dataset should be persistent
-        name (None): the name of the dataset to create
-        token (None): the Hugging Face API token to use to download the dataset
-        config_file (None): the path to a config file to use to load the dataset,
-            if the repo does not have a fiftyone.yml file
-        **kwargs: optional keyword arguments — for future compatibility
-    Returns:
-        a FiftyOne Dataset
-    """
+        name (None): an optional name to give the dataset
+        token (None): a Hugging Face API token to use. May also be provided via
+            the ``HF_TOKEN`` environment variable
+        config_file (None): the path to a config file on disk specifying how to
+            load the dataset if the repo has no ``fiftyone.yml`` file
+        **kwargs: keyword arguments specifying config parameters to load the
+            dataset if the repo has no ``fiftyone.yml`` file
 
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
     kwargs["splits"] = splits
     kwargs["split"] = split
     kwargs["subsets"] = subsets
@@ -213,26 +224,27 @@ def load_from_hub(
     config = _get_dataset_metadata(repo_id, revision=revision, **kwargs)
     if config is None:
         raise ValueError(f"Could not find fiftyone metadata for {repo_id}")
+
     return _load_dataset_from_config(config, **kwargs)
 
 
 class HFHubDatasetConfig(Config):
-    def __init__(self, **kwargs):
-        """
-        Config object for a Hugging Face Hub dataset
+    """Config for a Hugging Face Hub dataset.
 
-        Args:
-            name: the name of the dataset
-            repo_type: the type of the repository
-            repo_id: the identifier of the repository
-            revision: the revision of the dataset
-            filename: the name of the file
-            format: the format of the dataset
-            tags: the tags of the dataset
-            license: the license of the dataset
-            description: the description of the dataset
-            fiftyone: the fiftyone version requirement of the dataset
-        """
+    Args:
+        name: the name of the dataset
+        repo_type: the type of the repository
+        repo_id: the identifier of the repository
+        revision: the revision of the dataset
+        filename: the name of the file
+        format: the format of the dataset
+        tags: the tags of the dataset
+        license: the license of the dataset
+        description: the description of the dataset
+        fiftyone: the fiftyone version requirement of the dataset
+    """
+
+    def __init__(self, **kwargs):
         ## Internals
         self._repo_type = kwargs.get("repo_type", None)
         self._repo_id = kwargs.get("repo_id", None)
@@ -262,10 +274,10 @@ class HFHubDatasetConfig(Config):
 
 
 DATASET_CONTENT_TEMPLATE = """
-
 This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samples} samples.
 
 ## Installation
+
 If you haven't already, install FiftyOne:
 
 ```bash
@@ -279,8 +291,8 @@ import fiftyone as fo
 import fiftyone.utils.huggingface as fouh
 
 # Load the dataset
+# Note: other available arguments include 'split', 'max_samples', etc
 dataset = fouh.load_from_hub("{repo_id}")
-## can also pass in any other dataset kwargs, like `name`, `persistent`, etc.
 
 # Launch the App
 session = fo.launch_app(dataset)
@@ -296,7 +308,6 @@ def _populate_config_file(
     license=None,
     tags=None,
 ):
-
     config_dict = {
         "name": dataset.name,
         "format": dataset_type.__name__,
@@ -308,6 +319,7 @@ def _populate_config_file(
 
     if description is not None:
         config_dict["description"] = description
+
     if license is not None:
         config_dict["license"] = license
 
@@ -316,13 +328,8 @@ def _populate_config_file(
 
 
 def _get_dataset_tasks(dataset):
-    """Get the tasks that can be performed on the given dataset."""
-
     def _has_label(ftype):
-        return (
-            len(list(dataset.get_field_schema(embedded_doc_type=ftype).keys()))
-            > 0
-        )
+        return bool(dataset.get_field_schema(embedded_doc_type=ftype).keys())
 
     tasks = []
     if _has_label(fol.Classification) or _has_label(fol.Classifications):
@@ -335,7 +342,6 @@ def _get_dataset_tasks(dataset):
 
 
 def _get_dataset_tags(dataset):
-    """Get the tags of the given dataset."""
     tags = ["fiftyone"]
     tags.append(dataset.media_type)
     tags.extend(_get_dataset_tasks(dataset))
@@ -344,7 +350,6 @@ def _get_dataset_tags(dataset):
 
 
 def _generate_dataset_summary(repo_id, dataset):
-    """Generate a summary of the given dataset."""
     return DATASET_CONTENT_TEMPLATE.format(
         num_samples=len(dataset),
         repo_id=repo_id,
@@ -354,8 +359,6 @@ def _generate_dataset_summary(repo_id, dataset):
 def _create_dataset_card(
     repo_id, dataset, tags=None, license=None, **dataset_card_kwargs
 ):
-    """Create a `DatasetCard` for the given dataset."""
-
     card_inputs = {
         "language": "en",
         "annotations_creators": [],
@@ -403,26 +406,28 @@ def _parse_subset_kwargs(**kwargs):
 
 
 class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
-    def __init__(self, **kwargs):
-        """
-        Config object for a Hugging Face Hub dataset that is stored as parquet files
+    """Config for a Hugging Face Hub dataset that is stored as parquet files.
 
-        Args:
-            name: the name of the dataset
-            repo_type: the type of the repository
-            repo_id: the identifier of the repository
-            revision: the revision of the dataset
-            filename: the name of the file
-            format: the format of the dataset
-            tags: the tags of the dataset
-            license: the license of the dataset
-            description: the description of the dataset
-            fiftyone: the fiftyone version requirement of the dataset
-            label_fields: the label fields of the dataset
-            media_type: the media type of the dataset
-            default_media_fields: the default media fields of the dataset
-            additional_media_fields: the additional media fields of the dataset
-        """
+    Args:
+        name: the name of the dataset
+        repo_type: the type of the repository
+        repo_id: the identifier of the repository
+        revision: the revision of the dataset
+        filename: the name of the file
+        format: the format of the dataset
+        tags: the tags of the dataset
+        license: the license of the dataset
+        description: the description of the dataset
+        fiftyone: the fiftyone version requirement of the dataset
+        label_fields: the label fields of the dataset
+        media_type: the media type of the dataset
+        default_media_fields: the default media fields of the dataset
+        additional_media_fields: the additional media fields of the dataset
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         self.media_type = kwargs.get("media_type", DEFAULT_MEDIA_TYPE)
 
         self._build_name(kwargs)
@@ -430,7 +435,6 @@ class HFHubParquetFilesDatasetConfig(HFHubDatasetConfig):
         self._build_label_fields_dict(kwargs)
         self._build_allowed_splits(kwargs)
         self._build_allowed_subsets(kwargs)
-        super().__init__(**kwargs)
 
     def _build_name(self, kwargs):
         self.name = kwargs.get("name", None)
@@ -492,15 +496,6 @@ def _build_config(config_dict):
         return HFHubDatasetConfig(**config_dict)
 
 
-def _instantiate_api(**kwargs):
-    token = kwargs.get("token", None) or os.getenv("HF_TOKEN")
-    if token is not None:
-        api = hfh.HfApi(token=token)
-    else:
-        api = hfh.HfApi()
-    return api
-
-
 def _get_headers(**kwargs):
     token = kwargs.get("token", None) or os.getenv("HF_TOKEN")
     if token is not None:
@@ -508,14 +503,8 @@ def _get_headers(**kwargs):
     return None
 
 
-def _get_dataset_metadata(repo_id, revision=None, **kwargs):
-    """
-    Checks if a Hugging Face dataset can be converted to fiftyone. If it is,
-    it returns the metadata config loaded from the dataset's metadata file.
-
-    If config_file kwargs is provided, it will use that file to load the config
-    """
-    common_kwargs = dict(repo_type=REPO_TYPE, revision=revision)
+def _get_dataset_metadata(repo_id, revision=None, token=None, **kwargs):
+    common_kwargs = dict(repo_type="dataset", revision=revision)
     config_file = kwargs.get("config_file", None)
 
     if config_file is not None:
@@ -523,7 +512,7 @@ def _get_dataset_metadata(repo_id, revision=None, **kwargs):
         filename = os.path.basename(config_file)
         all_kwargs = dict(repo_id=repo_id, filename=filename, **common_kwargs)
     else:
-        api = _instantiate_api(**kwargs)
+        api = hfh.HfApi(token=token)
         for filename in DATASET_METADATA_FILENAMES:
             if api.file_exists(repo_id, filename, **common_kwargs):
                 all_kwargs = dict(
@@ -537,7 +526,8 @@ def _get_dataset_metadata(repo_id, revision=None, **kwargs):
 
     if config_file is None and "format" not in kwargs:
         return None
-    elif config_file is None:
+
+    if config_file is None:
         config_dict = kwargs
         config_dict.update(**common_kwargs)
         config_dict["repo_id"] = repo_id
@@ -545,32 +535,30 @@ def _get_dataset_metadata(repo_id, revision=None, **kwargs):
         with open(config_file, "r") as f:
             config_dict = yaml.safe_load(f)
         config_dict.update(**all_kwargs)
+
     return _build_config(config_dict)
 
 
 def _ensure_dataset_compatibility(config):
-    error_level = fo.config.requirement_error_level
-
     req_str = config.version
     if req_str is None:
         return
+
     try:
         req = Requirement(req_str)
     except:
         logger.warning(
-            f"Unable to parse dataset {config.name}'s fiftyone version requirement {req_str}."
+            f"Unable to parse dataset {config.name}'s fiftyone version requirement {req_str}"
         )
         return
 
     if not req.specifier.contains(foc.VERSION):
-        exception = ImportError(
-            f"Dataset {config.name} requires {req_str} but you are running {foc.VERSION}, which is not compatible"
+        logger.warning(
+            f"Dataset {config.name} requires {req_str} but you are running fiftyone=={foc.VERSION}"
         )
-        fou.handle_error(exception, error_level)
 
 
 def _get_download_dir(repo_id, split=None, subset=None, **kwargs):
-
     path_walk = [fo.config.default_dataset_dir, "huggingface", "hub", repo_id]
 
     ## Note: for now don't support multiple revisions storage
@@ -580,9 +568,7 @@ def _get_download_dir(repo_id, split=None, subset=None, **kwargs):
         path_walk.append(split)
 
     download_dir = os.path.join(*path_walk)
-
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
+    etau.ensure_dir(download_dir)
 
     return download_dir
 
@@ -606,7 +592,6 @@ def _load_dataset_from_config(config, **kwargs):
         return _load_parquet_files_dataset_from_config(config, **kwargs)
     else:
         return _load_fiftyone_dataset_from_config(config, **kwargs)
-        #
 
 
 def _get_allowed_splits(config, **kwargs):
@@ -720,13 +705,11 @@ def _download_image(url_and_filepath):
                 with open(filepath, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                # Optionally, open and save the image to ensure it's valid
-                Image.open(filepath).save(filepath)
     except Exception as e:
         logger.warning(f"Failed to download image from {url}: {e}")
 
 
-def _download_images_in_batch(urls_and_filepaths, num_workers):
+def _download_images(urls_and_filepaths, num_workers):
     if num_workers <= 1:
         for url_and_filepath in urls_and_filepaths:
             _download_image(url_and_filepath)
@@ -945,53 +928,57 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
         kwargs.get("num_workers", None)
     )
 
-    batch_size = kwargs.get("batch_size", DATASETS_MAX_BATCH_SIZE)
-    if batch_size is not None and batch_size > DATASETS_MAX_BATCH_SIZE:
-        logger.debug(
+    batch_size = kwargs.get("batch_size", None)
+    if batch_size is None:
+        batch_size = DATASETS_MAX_BATCH_SIZE
+
+    if batch_size > DATASETS_MAX_BATCH_SIZE:
+        logger.info(
             f"Batch size {batch_size} is larger than the maximum batch size {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
         )
         batch_size = DATASETS_MAX_BATCH_SIZE
-    elif batch_size is None:
-        batch_size = DATASETS_MAX_BATCH_SIZE
 
     logger.info(
-        f"Adding {num_rows} samples to dataset {dataset.name} from {config.name} ({split}, {subset}) in batch sizes of {batch_size}..."
+        f"Downloading {num_rows} images from {config.name} ({split}, {subset})..."
     )
 
     tags = [split]
     if subset != "default" and subset != config._repo_id:
         tags.append(subset)
 
-    for start_idx in range(0, num_rows, batch_size):
-        urls_and_filepaths = []
+    with fou.ProgressBar(total=num_rows) as pb:
+        for start_idx in range(0, num_rows, batch_size):
+            urls_and_filepaths = []
 
-        end_idx = min(start_idx + batch_size, num_rows)
+            end_idx = min(start_idx + batch_size, num_rows)
 
-        rows = _get_rows(
-            config._repo_id,
-            split,
-            subset,
-            start_index=start_idx,
-            end_index=end_idx,
-            revision=config._revision,
-        )
+            rows = _get_rows(
+                config._repo_id,
+                split,
+                subset,
+                start_index=start_idx,
+                end_index=end_idx,
+                revision=config._revision,
+            )
 
-        samples = []
-        for row in rows:
-            sample_dict = {}
-            for convert in feature_converters.values():
-                res = convert(sample_dict, row)
-                if res is not None:
-                    urls_and_filepaths.append(res)
+            samples = []
+            for row in rows:
+                sample_dict = {}
+                for convert in feature_converters.values():
+                    res = convert(sample_dict, row)
+                    if res is not None:
+                        urls_and_filepaths.append(res)
 
-            sample_dict["row_idx"] = row["row_idx"]
-            sample_dict["tags"] = tags
-            sample = Sample(**sample_dict)
-            samples.append(sample)
-        dataset.add_samples(samples)
+                sample_dict["row_idx"] = row["row_idx"]
+                sample_dict["tags"] = tags
+                sample = Sample(**sample_dict)
+                samples.append(sample)
 
-        ## Download images in batch
-        _download_images_in_batch(urls_and_filepaths, num_workers)
+            dataset.add_samples(samples, progress=False)
+
+            _download_images(urls_and_filepaths, num_workers)
+
+            pb.update(count=len(samples))
 
 
 def _configure_dataset_media_fields(dataset, config):
@@ -1027,7 +1014,8 @@ def _resolve_dataset_name(config, **kwargs):
 
 
 def _load_fiftyone_dataset_from_config(config, **kwargs):
-    logger.info("Loading parquet files dataset from config")
+    logger.info("Loading dataset")
+
     overwrite = kwargs.get("overwrite", False)
     persistent = kwargs.get("persistent", False)
     max_samples = kwargs.get("max_samples", None)
@@ -1062,7 +1050,8 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
 
 def _load_parquet_files_dataset_from_config(config, **kwargs):
-    logger.info("Loading parquet files dataset from config")
+    logger.info("Loading parquet files dataset")
+
     allowed_splits = _get_allowed_splits(config, **kwargs)
     allowed_subsets = _get_allowed_subsets(config, **kwargs)
 
