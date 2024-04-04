@@ -63,6 +63,7 @@ def push_to_hub(
     private=False,
     exist_ok=False,
     dataset_type=None,
+    min_fiftyone_version=None,
     label_field=None,
     frame_labels_field=None,
     token=None,
@@ -80,6 +81,7 @@ def push_to_hub(
         private (True): whether the repo should be private
         exist_ok (False): if True, do not raise an error if repo already exists.
         dataset_type (None): the type of the dataset to create
+        min_fiftyone_version (None): the minimum version of FiftyOne required
         label_field (None): controls the label field(s) to export. Only
             applicable to labeled datasets. Can be any of the following:
 
@@ -135,6 +137,7 @@ def push_to_hub(
             description=description,
             license=license,
             tags=tags,
+            min_fiftyone_version=min_fiftyone_version,
         )
 
         ## Create the dataset repo
@@ -309,15 +312,17 @@ def _populate_config_file(
     description=None,
     license=None,
     tags=None,
+    min_fiftyone_version=None,
 ):
     config_dict = {
         "name": dataset.name,
         "format": dataset_type.__name__,
-        "fiftyone": {
-            "version": f">={foc.VERSION}",
-        },
         "tags": tags,
     }
+
+    if min_fiftyone_version is not None:
+        version_val = f">={min_fiftyone_version}"
+        config_dict["fiftyone"] = {"version": version_val}
 
     if description is not None:
         config_dict["description"] = description
