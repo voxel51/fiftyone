@@ -169,7 +169,7 @@ def _to_instances(result, confidence_thresh=None):
     return fol.Detections(detections=detections)
 
 
-def obb_to_polylines(results, confidence_thresh=None,filled=False):
+def obb_to_polylines(results, confidence_thresh=None, filled=False):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
@@ -186,9 +186,7 @@ def obb_to_polylines(results, confidence_thresh=None,filled=False):
         results = [results]
 
     batch = [
-        _obb_to_polylines(
-            r, filled, confidence_thresh=confidence_thresh
-        )
+        _obb_to_polylines(r, filled, confidence_thresh=confidence_thresh)
         for r in results
     ]
 
@@ -198,7 +196,7 @@ def obb_to_polylines(results, confidence_thresh=None,filled=False):
     return batch
 
 
-def _obb_to_polylines(result,filled, confidence_thresh=None):
+def _obb_to_polylines(result, filled, confidence_thresh=None):
     if result.obb is None:
         return None
     classes = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
@@ -222,6 +220,7 @@ def _obb_to_polylines(result,filled, confidence_thresh=None):
         )
         polylines.append(polyline)
     return fol.Polylines(polylines=polylines)
+
 
 def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
@@ -441,6 +440,7 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
 class FiftyOneYOLOOBBConfig(FiftyOneYOLOModelConfig):
     pass
 
+
 class FiftyOneYOLOOBBModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO OBB detection model.
 
@@ -455,7 +455,6 @@ class FiftyOneYOLOOBBModel(FiftyOneYOLOModel):
         images = [Image.fromarray(arg) for arg in args]
         predictions = self.model(images, verbose=False)
         return self._format_predictions(predictions)
-
 
 
 class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
@@ -502,9 +501,11 @@ def _convert_yolo_detection_model(model):
     config = FiftyOneYOLODetectionModelConfig({"model": model})
     return FiftyOneYOLODetectionModel(config)
 
+
 def _convert_yolo_obb_model(model):
     config = FiftyOneYOLOOBBConfig({"model": model})
     return FiftyOneYOLOOBBModel(config)
+
 
 def _convert_yolo_segmentation_model(model):
     config = FiftyOneYOLOSegmentationModelConfig({"model": model})
