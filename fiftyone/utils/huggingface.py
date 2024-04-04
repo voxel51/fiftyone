@@ -1070,7 +1070,10 @@ def _add_dataset_metadata(dataset, config):
 def _resolve_dataset_name(config, **kwargs):
     name = kwargs.get("name", None)
     if name is None:
-        name = config.name
+        if hasattr(config, "name"):
+            name = config.name
+        else:
+            name = config._repo_id
     return name
 
 
