@@ -11,6 +11,7 @@ import logging
 import os
 from packaging.requirements import Requirement
 from PIL import Image
+import re
 import requests
 
 import yaml
@@ -305,6 +306,11 @@ session = fo.launch_app(dataset)
 """
 
 
+def _validate_fiftyone_version(version_string):
+    ## match to "a.b.c" where a, b, c are integers
+    return bool(re.match(r"\d+\.\d+\.\d+", version_string))
+
+
 def _populate_config_file(
     config_filepath,
     dataset,
@@ -321,6 +327,10 @@ def _populate_config_file(
     }
 
     if min_fiftyone_version is not None:
+        if not _validate_fiftyone_version(min_fiftyone_version):
+            raise ValueError(
+                f"Invalid fiftyone version requirement: {min_fiftyone_version}"
+            )
         version_val = f">={min_fiftyone_version}"
         config_dict["fiftyone"] = {"version": version_val}
 
