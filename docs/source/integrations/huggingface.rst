@@ -929,7 +929,7 @@ which you can install via PyPI:
     pip install -U huggingface_hub
 
 
-To push a dataset to the Hub, and in many cases to even access a dataset on
+To push a dataset to the Hub, and in some cases, to access a dataset on
 the hub, you will need to have a `Hugging Face Hub account <https://huggingface.co/join>`_.
 
 Hugging Face handles authentication via tokens, which you can obtain by
