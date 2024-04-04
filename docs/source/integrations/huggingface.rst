@@ -1902,7 +1902,7 @@ workers, you can do the following:
     session = fo.launch_app(dataset)
 
 
-**Loading Gated Datasets**:
+**Loading Private or Gated Datasets**:
 
 Like public datasets, you can also load gated datasets from the Hub, as long as
 you have the necessary permissions. If your Hugging Face token is set as an
