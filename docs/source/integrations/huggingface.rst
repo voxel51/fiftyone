@@ -902,46 +902,46 @@ model:
 
     session = fo.launch_app(view)
 
-
 .. _huggingface-hub:
 
 Hugging Face Hub
 ________________
 
-FiftyOne integrates with the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_
-to allow you to push datasets to and load datasets from the Hub with ease. This
-integration simplifies the process of sharing datasets with the machine learning 
-and computer vision community, and allows you to easily access and work with
-many of the most popular vision and multimodal datasets available!
-
+FiftyOne integrates with the
+`Hugging Face Hub <https://huggingface.co/docs/hub/index>`_ to allow you to
+push datasets to and load datasets from the Hub with ease. This integration
+simplifies the process of sharing datasets with the machine learning  and
+computer vision community, and allows you to easily access and work with many
+of the most popular vision and multimodal datasets available!
 
 .. _huggingface-hub-setup:
 
 Setup
 -----
 
-To push datasets to and load datasets from the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_,
-you will need the `Hugging Face Hub Python client <https://github.com/huggingface/huggingface_hub>`_,
+To push datasets to and load datasets from the
+`Hugging Face Hub <https://huggingface.co/docs/hub/index>`_, you will need the
+`Hugging Face Hub Python client <https://github.com/huggingface/huggingface_hub>`_,
 which you can install via PyPI:
 
 .. code-block:: shell
 
-    pip install -U huggingface_hub
-
+    pip install "huggingface_hub>=0.20.0"
 
 To push a dataset to the Hub, and in many cases to even access a dataset on
-the hub, you will need to have a `Hugging Face Hub account <https://huggingface.co/join>`_.
+the hub, you will need to have a
+`Hugging Face Hub account <https://huggingface.co/join>`_.
 
 Hugging Face handles authentication via tokens, which you can obtain by
 logging into your account and navigating to the 
-`Access Tokens <https://huggingface.co/settings/tokens>`_ section of your profile.
-At the bottom of this page, you can create a new token with write or read access
-to the Hub. Once you have your token, you can set it as an environment variable:
+`Access Tokens <https://huggingface.co/settings/tokens>`_ section of your
+profile. At the bottom of this page, you can create a new token with write or
+read access to the Hub. Once you have your token, you can set it as an
+environment variable:
 
 .. code-block:: shell
 
     export HF_TOKEN="<your-token-here>"
-
 
 .. _huggingface-hub-push-dataset:
 
@@ -949,14 +949,14 @@ Pushing datasets to the Hub
 ---------------------------
 
 If you are working with a dataset in FiftyOne and you want to quickly share it 
-with others, you can do so via the :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`
+with others, you can do so via the
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`
 function, which takes two positional arguments: 
 
 - the FiftyOne sample collection (a |Dataset| or |DatasetView|)
 - the `repo_name`, which will be combined with your Hugging Face username or
   organization name to construct the `repo_id` where the sample collection
   will be uploaded.
-
 
 As you will see, this simple function allows you to push datasets and filtered
 views containing images, videos, point clouds, and other multimodal data to the
@@ -980,7 +980,6 @@ code. As a starting point, let's use the example
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-
 To push the dataset to the Hugging Face Hub, all you need to do is call
 :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` with the dataset
 and the desired `repo_name`:
@@ -992,30 +991,30 @@ and the desired `repo_name`:
 
     fouh.push_to_hub(dataset, "my-quickstart-dataset")
 
-
 When you run this code, a few things happen:
 
 - The dataset and its media files are exported to a temporary directory and
   uploaded to the specified Hugging Face repo.
 - A `fiftyone.yml` config file for the dataset is generated and uploaded to
   the repo, which contains all of the necessary information so that the dataset
-  can be loaded with :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`.
-- A Hugging Face `Dataset Card <https://huggingface.co/docs/hub/en/datasets-cards>`_
-  for the dataset is auto-generated, providing tags, metadata, license info, and
-  a code snippet illustrating how to load the dataset from the hub.
-
+  can be loaded with
+  :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`.
+- A Hugging Face
+  `Dataset Card <https://huggingface.co/docs/hub/en/datasets-cards>`_
+  for the dataset is auto-generated, providing tags, metadata, license info,
+  and a code snippet illustrating how to load the dataset from the hub.
 
 Your dataset will be available on the Hub at the following URL:
 
-.. code-block:: shell
+.. code-block:: text
 
     https://huggingface.co/datasets/<your-username-or-org-name>/my-quickstart-dataset
-
 
 Pushing a |DatasetView| to the Hub works in exactly the same way. For example,
 if you want to push a filtered view of the `quickstart` dataset containing only
 predictions with high confidence, you can do so by creating the view as usual,
-and then passing that in to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`:
+and then passing that in to
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`:
 
 .. code-block:: python
     :linenos:
@@ -1044,13 +1043,13 @@ what license it is released under, and more.
 FiftyOne's :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`
 function supports the Hugging Face Hub API arguments `private` and `exist_ok`.
 
-- `private` (bool): Whether the dataset should be private. If `True`, the
+- **private** *(bool)*: Whether the dataset should be private. If `True`, the
   dataset will be private and only accessible to you. If `False`, the dataset
   will be public and accessible to anyone with the link. Defaults to `False`.
-- `exist_ok` (bool): Whether to overwrite an existing dataset with the same
+- **exist_ok** *(bool)*: Whether to overwrite an existing dataset with the same
     `repo_name`. If `True`, the existing dataset will be overwritten. If `False`,
-    an error will be raised if a dataset with the same `repo_name` already exists.
-    Defaults to `False`.
+    an error will be raised if a dataset with the same `repo_name` already
+    exists. Defaults to `False`.
 
 For example, to push a dataset to the Hub as private, you can do the following:
 
@@ -1060,7 +1059,6 @@ For example, to push a dataset to the Hub as private, you can do the following:
     import fiftyone.utils.huggingface as fouh
 
     fouh.push_to_hub(dataset, "my-private-dataset", private=True)
-
 
 You can also specify the `tags`, `license`, and `description` of the dataset,
 all of which will propagate to the `fiftyone.yml` config file and the Hugging
@@ -1084,7 +1082,6 @@ an MIT license and a description, you can do the following:
         description="A dataset of videos for action recognition tasks",
     )
 
-
 The pushed dataset will be available on the Hub and the dataset page will look
 like this:
 
@@ -1092,14 +1089,12 @@ like this:
    :alt: Pushing a dataset to the Hugging Face Hub with advanced options
    :align: center
 
-
 .. note::
 
     The `tags` argument can be a string or a list of strings. The tag `fiftyone`
     is automatically added to all datasets pushed with FiftyOne, communicating
     that the dataset was created with FiftyOne and can be loaded with the
     :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function.
-
 
 The license is specified as a string. For a list of supported licenses, see the
 `Hugging Face Hub documentation <https://huggingface.co/docs/hub/en/repositories-licenses>`_.
@@ -1131,9 +1126,8 @@ Creative Commons Attribution 4.0 license, you can do the following:
         "quickstart-coco",
         dataset_type=dataset_type,
         license="cc-by-4.0",
-        label_fields="*" ### convert all label fields, not just ground truth
+        label_fields="*",  # convert all label fields, not just ground truth
     )
-
 
 .. note::
 
@@ -1142,7 +1136,6 @@ Creative Commons Attribution 4.0 license, you can do the following:
     only the `ground_truth` label field is converted. If you want to convert all
     label fields, you can set `label_fields="*"`. If you want to convert specific
     label fields, you can pass a list of field names.
-
 
 .. _huggingface-hub-load-dataset:
 
@@ -1159,10 +1152,11 @@ as is common with datasets from the
 been uploaded to the Hugging Face Hub. Below, we will walk through all of the
 ways you can load datasets from the Hub.
 
-In its simplest usage, the :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`
-function only requires the `repo_id` of the dataset you want to load. For example,
-to load the :ref:`private dataset <huggingface-hub-push-dataset-advanced>` that
-we pushed to the Hub earlier, you can do the following:
+In its simplest usage, the
+:func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function
+only requires the `repo_id` of the dataset you want to load. For example, to
+load the :ref:`private dataset <huggingface-hub-push-dataset-advanced>` that we
+pushed to the Hub earlier, you can do the following:
 
 .. code-block:: python
     :linenos:
@@ -1171,13 +1165,11 @@ we pushed to the Hub earlier, you can do the following:
 
     dataset = fouh.load_from_hub("<username-or-org>/my-private-dataset")
 
-
 .. note::
 
     As long as you have an environment variable `HF_TOKEN` set with your Hugging
     Face token (with read access), you can load gated datasets that you have
     access to from the Hub.
-
 
 .. _huggingface-hub-load-dataset-from-repo-config:
 
@@ -1203,7 +1195,6 @@ For example, to load the `quickstart` dataset that we pushed to the Hub earlier,
 
     dataset = fouh.load_from_hub("my-quickstart-dataset")
 
-
 .. _huggingface-hub-load-dataset-from-local-config:
 
 Loading datasets from local configs
@@ -1212,11 +1203,12 @@ Loading datasets from local configs
 If the repo was uploaded to the Hugging Face Hub via FiftyOne's
 :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` function, then
 the `fiftyone.yml` config file will be generated and uploaded to the repo.
-However, some common datasets like `mnist <https://huggingface.co/datasets/mnist>`_
-were uploaded to the Hub using the `datasets` library and do not contain a
-`fiftyone.yml` or `fiftyone.yaml` file. If you know how the dataset is structured,
-you can load the dataset by passing the path to a local yaml config file that
-describes the dataset via the `config_file` keyword argument.
+However, some common datasets like
+`mnist <https://huggingface.co/datasets/mnist>`_ were uploaded to the Hub
+using the `datasets` library and do not contain a `fiftyone.yml` or
+`fiftyone.yaml` file. If you know how the dataset is structured, you can load
+the dataset by passing the path to a local yaml config file that describes the
+dataset via the `config_file` keyword argument.
 
 For example, to load the `mnist` dataset from the Hub, you might have a local
 yaml config file like this:
@@ -1225,7 +1217,6 @@ yaml config file like this:
 
     format: ParquetFilesDataset
     classification_fields: label
-
 
 To load the dataset from the Hub, you can pass the `repo_id` of the dataset and
 the path to the local yaml config file:
@@ -1237,13 +1228,11 @@ the path to the local yaml config file:
 
     dataset = fouh.load_from_hub(
         "mnist",
-        config_file="/path/to/mnist.yml"
+        config_file="/path/to/mnist.yml",
     )
-
 
 For a comprehensive list of the supported fields in the yaml config file, see
 :ref:`Supported config fields <huggingface-hub-load-dataset-config-kwargs>`.
-
 
 .. _huggingface-hub-load-dataset-from-kwargs:
 
@@ -1268,14 +1257,12 @@ and `classification_fields` arguments directly:
     dataset = fouh.load_from_hub(
         "mnist",
         format="ParquetFilesDataset",
-        classification_fields="label"
+        classification_fields="label",
     )
-
 
 This will tell FiftyOne that the data is stored in Parquet files, and that the
 `label` field should be treated as a classification field, to be converted into
 a |Classification| label field in the dataset.
-
 
 .. _huggingface-hub-load-dataset-config-kwargs:
 
@@ -1288,28 +1275,26 @@ passing the config arguments directly, you can specify a number of fields.
 Broadly speaking, these fields fall into three categories: format specification,
 media field specification, and label field specification. 
 
-
 Let's look at these categories in more detail:
-
 
 **Format specification**:
 
-- `format` (str): The format of the dataset. This can be any of the
+- **format** *(str)*: The format of the dataset. This can be any of the
   :ref:`common formats <supported-import-formats>` supported by FiftyOne — just
   pass the name of the format as a string. For example, to load a dataset in the
   :ref:`COCO <COCODetectionDataset-import>` format, you can pass 
   `format="COCODetectionDataset"`. To specify that the dataset is stored in
   Parquet files, you can pass `format="ParquetFilesDataset"` (or simply 
   `format="parquet"` for short). This is the only required field.
-- `name` (str): The name of the FiftyOne |Dataset| to be created. If the 
+- **name** *(str)*: The name of the FiftyOne |Dataset| to be created. If the
   `repo_id` is cumbersome, this can be used to specify a simpler default name.
   For example, for this `sheep dataset <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
   rather than using the `repo_id` `keremberke/aerial-sheep-object-detection`, you
   can specify `name="sheep-detection"`.
-- `subsets` (str or list): The subset or subsets of the Hugging Face dataset that
-  are *compatible* with this config, and are *available* to be loaded. In
-  Hugging Face, the "dataset" in a repo can contain multiple "subsets", which
-  may or may not have the same schema. Take the
+- **subsets** *(str or list)*: The subset or subsets of the Hugging Face
+  dataset that are *compatible* with this config, and are *available* to be
+  loaded. In Hugging Face, the "dataset" in a repo can contain multiple
+  "subsets", which may or may not have the same schema. Take the
   `Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset for
   example. This dataset has two subsets: `"cropped_digits"` and `"full_numbers"`.
   The `cropped_digits` subset contains classification labels, while the
@@ -1321,7 +1306,7 @@ Let's look at these categories in more detail:
   `subsets="cropped_digits"`. Note that this is not a required field, and by
   default all subsets are loaded. Also note that subsets are distinct from splits
   in the dataset, which are handled by the `splits` field (see below).
-- `splits` (str or list): The split or splits of the Hugging Face dataset that
+- **splits** *(str or list)*: The split or splits of the Hugging Face dataset that
   are *compatible* with this config, and are *available* to be loaded. As is
   standard for machine learning, many datasets are split into training, validation,
   and test sets. The specific names of these splits may vary from dataset to
@@ -1334,7 +1319,6 @@ Let's look at these categories in more detail:
   you can pass them as a list, e.g., `splits=["train", "test"]`. Note that this
   is not a required field, and by default all splits are loaded.
     
-
 **Media field specification**:
 
 While not all Parquet datasets contain media fields, all FiftyOne |Sample| objects
@@ -1342,7 +1326,7 @@ must be connected to at least one media file. The following fields can be used
 to configure the media fields in the Hugging Face dataset that should be converted
 to FiftyOne media fields:
 
-- `filepath` (str): In FiftyOne, `filepath` is 
+- **filepath** *(str)*: In FiftyOne, `filepath` is
   `a default field <https://docs.voxel51.com/user_guide/using_datasets.html#fields>`_
   that is used to store the path to the primary media file for each sample in
   the dataset. For Hugging Face parquet datasets, primary media fields for image
@@ -1355,19 +1339,18 @@ to FiftyOne media fields:
   `filepath="url"` will tell FiftyOne to look in the `url` column for the 
   primary media file path. Images will be downloaded from the corresponding URLs
   and saved to disk.
-- `thumbnail_path` (str): The field containing the path to a thumbnail image 
+- **thumbnail_path** *(str)*: The field containing the path to a thumbnail image
   for each sample in the dataset, if such a field exists. If a `thumbnail_path`
   is specified, this media file will be shown in the sample grid in the FiftyOne
   App. This can be useful for quickly visualizing the dataset when the primary
   media field contains large (e.g., high-resolution) images. For more information
   on thumbnail images, see :ref:`this section <app-multiple-media-fields>`.
-- `additional_media_fields` (dict): If each sample has multiple associated media
+- **additional_media_fields** *(dict)*: If each sample has multiple associated media
   files that you may want to visualize in the FiftyOne App, you can specify 
   these non-default media fields in the `additional_media_fields` dictionary,
   where the keys are the column names in the Hugging Face dataset and the values
   are the names of the fields in the FiftyOne |Dataset| that will store the
   paths. Note that this is *not* the same as :ref:`grouped datasets <groups>`.
-
 
 **Label field specification**:
 
@@ -1377,7 +1360,7 @@ Parquet datasets to FiftyOne label fields. The following fields can be used to
 specify the label fields in the Hugging Face dataset that should be converted to
 FiftyOne label fields:
 
-- `classification_fields` (str or list): The column or columns in the Hugging
+- **classification_fields** *(str or list)*: The column or columns in the Hugging
   Face dataset that should be converted to FiftyOne |Classification| label fields.
   contain classification labels. For example, if the dataset contains a `label`
   field that contains classification labels, you can specify
@@ -1385,7 +1368,7 @@ FiftyOne label fields:
   classification fields, you can specify them as a list, e.g.,
   `classification_fields=["label1", "label2"]`. This is not a required field,
   and if the dataset does not contain classification labels, you can omit it.
-- `detection_fields` (str or list): The column or columns in the Hugging Face
+- **detection_fields** *(str or list)*: The column or columns in the Hugging Face
   dataset that should be converted to FiftyOne |Detections| label fields. If the
   dataset contains detection labels, you can specify the column name or names
   here. For example, if the dataset contains a `detections` field that contains
@@ -1393,7 +1376,7 @@ FiftyOne label fields:
   dataset contains multiple detection fields, you can specify them as a list,
   e.g., `detection_fields=["detections1", "detections2"]`. This is not a required
   field, and if the dataset does not contain detection labels, you can omit it.
-- `mask_fields` (str or list): The column or columns in the Hugging Face dataset
+- **mask_fields** *(str or list)*: The column or columns in the Hugging Face dataset
   that should be converted to FiftyOne |Segmentation| label fields. The column
   in the Hugging Face dataset must contain an image or the URL for an image that
   can be used as a segmentation mask. If necessary, the images will be downloaded
@@ -1402,7 +1385,6 @@ FiftyOne label fields:
   that contains mask labels, you can specify `mask_fields="masks"`. This is not
   a required field, and if the dataset does not contain mask labels, you can
   omit it.
-
 
 .. _huggingface-hub-load-dataset-download:
 
@@ -1422,31 +1404,31 @@ process, from the maximum number of samples to be downloaded to the batch size
 to use when making requests to the Datasets Server. Here are the supported
 arguments:
 
-- `max_samples` (int): The number of samples to download from the dataset. If
-  not specified, all samples will be downloaded.
-- `batch_size` (int): The batch size to use when making requests to the Datasets
-  Server. Defaults to 100, which is the max batch size allowed by the Datasets
-  Server.
-- `num_workers` (int): The number of worker to use when downloading
+- **max_samples** *(int)*: The number of samples to download from the dataset.
+  If not specified, all samples will be downloaded.
+- **batch_size** *(int)*: The batch size to use when making requests to the
+  Datasets Server. Defaults to 100, which is the max batch size allowed by the
+  Datasets Server.
+- **num_workers** *(int)*: The number of worker to use when downloading
   media files. If not specified, the number of workers will be resolved by
   looking at your :ref:`FiftyOne Config <configuring-fiftyone>`.
-- `splits` (str or list): The split or splits of the Hugging Face dataset that
-  you want to download. This overrides the `splits` field in the config.
-- `subsets` (str or list): The subset or subsets of the Hugging Face dataset
+- **splits** *(str or list)*: The split or splits of the Hugging Face dataset
+  that you want to download. This overrides the `splits` field in the config.
+- **subsets** *(str or list)*: The subset or subsets of the Hugging Face dataset
   that you want to download. This overrides the `subsets` field in the config.
-- `overwrite` (bool): Whether to overwrite existing an existing dataset with the
-  same name. If `True`, the existing dataset will be overwritten. If `False`,
-  an error will be raised if a dataset with the same name already exists. Defaults
-  to `False`.
-- `persistent` (bool): Whether to persist the dataset to the underlying database
-  after it is loaded. If `True`, the dataset will be available for loading in
-  future FiftyOne sessions by passing the dataset's name into FiftyOne's
+- **overwrite** *(bool)*: Whether to overwrite existing an existing dataset
+  with the same name. If `True`, the existing dataset will be overwritten. If
+  `False`, an error will be raised if a dataset with the same name already
+  exists. Defaults to `False`.
+- **persistent** *(bool)*: Whether to persist the dataset to the underlying
+  database after it is loaded. If `True`, the dataset will be available for
+  loading in future FiftyOne sessions by passing the dataset's name into
+  FiftyOne's
   :func:`load_dataset() <fiftyone.core.dataset.Dataset.load_dataset>` function.
   Defaults to `False`.
-- `revision` (str): The revision (specified by a commit hash to the Hugging Face
-  repo) of the dataset to load. If not specified, the latest revision will be
-  loaded.
-
+- **revision** *(str)*: The revision (specified by a commit hash to the Hugging
+  Face repo) of the dataset to load. If not specified, the latest revision will
+  be loaded.
 
 .. _huggingface-hub-load-dataset-basic-examples:
 
@@ -1464,15 +1446,13 @@ easy it is in practice to load datasets from the Hugging Face Hub.
     `max_samples` argument to a reasonable number, like 1000, to get a feel for
     the dataset. If you like what you see, you can always download more samples!
 
-
-**Classification Datasets**:
+**Classification Datasets**
 
 Let's start by loading the
 `MNIST <https://huggingface.co/datasets/mnist>`_ dataset into FiftyOne. All you
 need to do is pass the `repo_id` of the dataset — in this case `"mnist"` — to
 :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`, specify the
 format as `"parquet"`, and specify the `classification_fields` as `"label"`:
-
 
 .. code-block:: python
     :linenos:
@@ -1483,11 +1463,10 @@ format as `"parquet"`, and specify the `classification_fields` as `"label"`:
         "mnist",
         format="parquet",
         classification_fields="label",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 The same exact syntax works for the `CIFAR-10 <https://huggingface.co/datasets/cifar10>`_
 and `FashionMNIST <https://huggingface.co/datasets/fashion_mnist>`_ datasets,
@@ -1522,11 +1501,10 @@ to load the CIFAR-100 dataset, you can specify the `classification_fields` as
         "cifar100",
         format="parquet",
         classification_fields=["coarse_label", "fine_label"],
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 To load the `WikiArt <https://huggingface.co/datasets/huggan/wikiart>`_ dataset,
 you can specify the `classification_fields` as `["artist", "genre", "style"]`:
@@ -1540,11 +1518,10 @@ you can specify the `classification_fields` as `["artist", "genre", "style"]`:
         "huggan/wikiart",
         format="parquet",
         classification_fields=["artist", "genre", "style"],
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 As touched upon earlier, you can also load a classification *subset* of a
 dataset. For example, to load the `cropped_digits` subset of the
@@ -1560,19 +1537,17 @@ dataset. For example, to load the `cropped_digits` subset of the
         format="parquet",
         classification_fields="label",
         subsets="cropped_digits",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
 
-
-
-**Detection Datasets**:
+**Detection Datasets**
 
 Loading detection datasets from the Hub is just as easy. For example, to load
-the `MS COCO <https://huggingface.co/datasets/detection-datasets/coco>`_ dataset,
-you can specify the `detection_fields` as `"objects"`, which is the standard
-column name for detection features in Hugging Face datasets:
+the `MS COCO <https://huggingface.co/datasets/detection-datasets/coco>`_
+dataset, you can specify the `detection_fields` as `"objects"`, which is the
+standard column name for detection features in Hugging Face datasets:
 
 .. code-block:: python
     :linenos:
@@ -1583,11 +1558,10 @@ column name for detection features in Hugging Face datasets:
         "detection-datasets/coco",
         format="parquet",
         detection_fields="objects",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 The same syntax works for many other popular detection datasets on the Hub,
 including:
@@ -1598,7 +1572,6 @@ including:
   (use `"keremberke/license-plate-object-detection"`)
 - `Aerial Sheep Object Detection <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
   (use `"keremberke/aerial-sheep-object-detection"`)
-
 
 Some detection datasets have their detections stored under a column with a
 different name. For example, the `full_numbers` subset of the
@@ -1616,11 +1589,10 @@ specify the `detection_fields` as `"digits"`:
         format="parquet",
         detection_fields="digits",
         subsets="full_numbers",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 .. note::
 
@@ -1630,8 +1602,7 @@ specify the `detection_fields` as `"digits"`:
     dataset has detections stored in Pascal VOC format, which is not the `standard
     Hugging Face format <https://huggingface.co/docs/transformers/en/tasks/object_detection>`_.
 
-
-**Segmentation Datasets**:
+**Segmentation Datasets**
 
 Loading segmentation datasets from the Hub is also a breeze. For example, to
 load the "instance_segmentation" subset from
@@ -1648,11 +1619,10 @@ need to do is specify the `mask_fields` as `"annotation"`:
         format="parquet",
         subsets="instance_segmentation",
         mask_fields="annotation",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 Many other segmentation datasets on the Hub can be loaded in the same way, such
 as `ADE 20K Tiny <https://huggingface.co/datasets/nateraw/ade20k-tiny>`_:
@@ -1672,11 +1642,10 @@ as `ADE 20K Tiny <https://huggingface.co/datasets/nateraw/ade20k-tiny>`_:
 
     session = fo.launch_app(dataset)
 
-
 In other cases, because there are now *multiple* image columns — one for the
 sample image and one for the mask — the naming convention for the dataset might
-be different, and you may need to explicitly specify the `filepath`. For example,
-to load the
+be different, and you may need to explicitly specify the `filepath`. For
+example, to load the
 `Sidewalk Semantic <https://huggingface.co/datasets/segments/sidewalk-semantic>`_
 dataset:
 
@@ -1692,19 +1661,18 @@ dataset:
         format="parquet",
         filepath="pixel_values",
         mask_fields="label",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
 
-
 .. note::
-    Once you have the dataset loaded into FiftyOne, you may want to set the dataset's
-    `mask targets <storing-mask-targets>`_ to specify the names of the classes
-    represented in the segmentation masks.
 
+    Once you have the dataset loaded into FiftyOne, you may want to set the
+    dataset's `mask targets <storing-mask-targets>`_ to specify the names of
+    the classes represented in the segmentation masks.
 
-**Unlabelled Image Datasets**:
+**Unlabelled Image Datasets**
 
 Some datasets on the Hub contain images and metadata in the form of features,
 but do not explicitly contain classification, detection, or segmentation labels.
@@ -1726,11 +1694,10 @@ can load the dataset as follows:
     dataset = fouh.load_from_hub(
         "poloclub/diffusiondb",
         format="parquet",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 Here are some other popular datasets on the Hub that can be loaded following the
 same syntax:
@@ -1745,7 +1712,6 @@ same syntax:
 - `VQA-RAD <https://huggingface.co/datasets/flaviagiammarino/vqa-rad>`_: (use `"flaviagiammarino/vqa-rad"`)
 - `ScienceQA <https://huggingface.co/datasets/derek-thomas/ScienceQA>`_: (use `"derek-thomas/ScienceQA"`)
 - `PathVQA <https://huggingface.co/datasets/flaviagiammarino/path-vqa>`_: (use `"flaviagiammarino/path-vqa"`)
-
 
 Many other popular datasets on the Hub can be loaded in the same way, with slight
 modifications to `filepath` or other arguments as needed. Here are a few examples:
@@ -1762,11 +1728,10 @@ need to specify the `filepath` as `"url"`:
         "kakaobrain/coyo-700m",
         format="parquet",
         filepath="url",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
 `"image_url"` as the `filepath`:
@@ -1780,11 +1745,10 @@ For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
         "red_caps",
         format="parquet",
         filepath="image_url",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
 
 For `MMMU <https://huggingface.co/datasets/MMMU/MMMU>`_ 
 (A Massive Multi-discipline Multimodal Understanding and Reasoning Benchmark for
@@ -1799,12 +1763,10 @@ Expert AGI), we use `"image_1"` as the `filepath`:
         "MMMU/MMMU",
         format="parquet",
         filepath="image_1",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
-
-
 
 .. _huggingface-hub-load-dataset-advanced-examples:
 
@@ -1816,8 +1778,7 @@ also allows us to load datasets in much more complex formats, as well as with
 more advanced configurations. Let's walk through a few examples to show you how
 to leverage the full power of FiftyOne's Hugging Face Hub integration.
 
-
-**Loading Datasets from Revisions**:
+**Loading Datasets from Revisions**
 
 When you load a dataset from the Hugging Face Hub, you are loading the latest
 revision of the dataset. However, you can also load a specific revision of the
@@ -1834,13 +1795,12 @@ revision of DiffusionDB before NSFW scores were added, you can specify this via:
         format="parquet",
         subset="2m_random_1k", ## just one of the subsets
         max_samples=1000,
-        revision="5fa48ba66a44822d82d024d195fbe918e6c42ca6"
+        revision="5fa48ba66a44822d82d024d195fbe918e6c42ca6",
     )
 
     session = fo.launch_app(dataset)
 
-
-**Loading Datasets with Multiple Media Fields**:
+**Loading Datasets with Multiple Media Fields**
 
 Some datasets on the Hub contain multiple media fields for each sample. Take
 `MagicBrush <https://huggingface.co/datasets/magicbrush>`_ for example, which
@@ -1859,7 +1819,6 @@ complex, we'll create a local yaml config file to specify the dataset format:
         target_img: target_img
     mask_fields: mask_img
 
-
 Now, you can load the dataset using the local yaml config file:
 
 .. code-block:: python
@@ -1870,13 +1829,12 @@ Now, you can load the dataset using the local yaml config file:
     dataset = fouh.load_from_hub(
         "osunlp/MagicBrush",
         config_file="/path/to/magicbrush.yml",
-        max_samples=1000
+        max_samples=1000,
     )
 
     session = fo.launch_app(dataset)
 
-
-**Customizing the Download Process**:
+**Customizing the Download Process**
 
 When loading datasets from the Hub, you can customize the download process by
 specifying the `batch_size`, `num_workers`, and `overwrite` arguments. For
@@ -1896,13 +1854,12 @@ workers, you can do the following:
         subsets="full_numbers",
         max_samples=1000,
         batch_size=50,
-        num_workers=4
+        num_workers=4,
     )
 
     session = fo.launch_app(dataset)
 
-
-**Loading Gated Datasets**:
+**Loading Gated Datasets**
 
 Like public datasets, you can also load gated datasets from the Hub, as long as
 you have the necessary permissions. If your Hugging Face token is set as an
