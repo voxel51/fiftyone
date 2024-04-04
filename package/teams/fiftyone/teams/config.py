@@ -9,7 +9,7 @@ import os
 
 import fiftyone.core.config as foc
 
-import fiftyone.teams.constants as fotc
+from fiftyone.teams.constants import FIFTYONE_TEAMS_CONFIG_PATH
 
 
 class EnvConfig(foc.EnvConfig):
@@ -24,28 +24,11 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.audience = self.parse_string(
+        self.auth_secret = self.parse_string(
             d,
-            "audience",
-            default="api.fiftyone.ai",
-            env_var="FIFTYONE_TEAMS_AUDIENCE",
-        )
-        self.client_id = self.parse_string(
-            d,
-            "client_id",
-            default="69dStE2hz7Ciifd1wBO4fzxxpFRR8aQc",
-            env_var="FIFTYONE_TEAMS_CLIENT_ID",
-        )
-        self.domain = self.parse_string(
-            d,
-            "domain",
-            default="login.fiftyone.ai",
-            env_var="FIFTYONE_TEAMS_DOMAIN",
-        )
-        self.organization = self.parse_string(
-            d,
-            "organization",
-            env_var="FIFTYONE_TEAMS_ORGANIZATION",
+            "auth_secret",
+            default=None,
+            env_var="FIFTYONE_AUTH_SECRET",
         )
 
 
@@ -76,6 +59,6 @@ def locate_config():
 
     """
     if "FIFTYONE_TEAMS_CONFIG_PATH" not in os.environ:
-        return fotc.FIFTYONE_TEAMS_CONFIG_PATH
+        return FIFTYONE_TEAMS_CONFIG_PATH
 
     return os.environ["FIFTYONE_TEAMS_CONFIG_PATH"]
