@@ -132,6 +132,7 @@ const ViewBar = React.memo(() => {
           state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
         }
         ref={barRef}
+        data-cy="view-bar"
       >
         {state.matches("running")
           ? stages.map((stage, i) => {
