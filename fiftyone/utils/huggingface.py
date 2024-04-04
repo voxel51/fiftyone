@@ -67,6 +67,7 @@ def push_to_hub(
     label_field=None,
     frame_labels_field=None,
     token=None,
+    preview_path=None,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
@@ -101,6 +102,8 @@ def push_to_hub(
               constructing the frame label dictionaries to pass to the exporter
         token (None): a Hugging Face API token to use. May also be provided via
             the ``HF_TOKEN`` environment variable
+        preview_path (None): a path to a preview image or video to display on
+            the readme of the dataset repo.
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -157,6 +160,35 @@ def push_to_hub(
             repo_type="dataset",
         )
 
+        # Upload preview image or video if provided
+        if preview_path is not None:
+            abs_preview_path = os.path.abspath(preview_path)
+            if not os.path.exists(abs_preview_path):
+                logger.warning(
+                    f"Preview path {abs_preview_path} does not exist"
+                )
+
+            ext = os.path.splitext(abs_preview_path)[1]
+            path_in_repo = "dataset_preview" + ext
+
+            try:
+                api.upload_file(
+                    path_or_fileobj=abs_preview_path,
+                    path_in_repo=path_in_repo,
+                    repo_id=repo_id,
+                    repo_type="dataset",
+                    commit_message="Add preview",
+                )
+            except:
+                logger.warning(
+                    f"Failed to upload preview media file {abs_preview_path}"
+                )
+
+                # If fails, set preview to None
+                preview_path = None
+
+        path_in_repo = path_in_repo if preview_path is not None else None
+
     ## Create the dataset card
     card = _create_dataset_card(
         repo_id,
@@ -164,6 +196,7 @@ def push_to_hub(
         description=description,
         license=license,
         tags=tags,
+        preview_path=path_in_repo,
         **data_card_kwargs,
     )
     card.push_to_hub(repo_id)
@@ -279,6 +312,9 @@ class HFHubDatasetConfig(Config):
 
 
 DATASET_CONTENT_TEMPLATE = """
+
+{preview}
+
 This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samples} samples.
 
 ## Installation
@@ -365,15 +401,24 @@ def _get_dataset_tags(dataset):
     return sorted(list(set(tags)))
 
 
-def _generate_dataset_summary(repo_id, dataset):
-    return DATASET_CONTENT_TEMPLATE.format(
-        num_samples=len(dataset),
-        repo_id=repo_id,
-    )
+def _generate_dataset_summary(repo_id, dataset, preview_path):
+    format_kwargs = {
+        "repo_id": repo_id,
+        "num_samples": len(dataset),
+        "preview": "",
+    }
+    if preview_path is not None:
+        format_kwargs["preview"] = f"\n![image/png]({preview_path})\n"
+    return DATASET_CONTENT_TEMPLATE.format(**format_kwargs)
 
 
 def _create_dataset_card(
-    repo_id, dataset, tags=None, license=None, **dataset_card_kwargs
+    repo_id,
+    dataset,
+    tags=None,
+    license=None,
+    preview_path=None,
+    **dataset_card_kwargs,
 ):
     card_inputs = {
         "language": "en",
@@ -388,7 +433,7 @@ def _create_dataset_card(
     for key, value in dataset_card_kwargs.items():
         card_inputs[key] = value
 
-    dataset_summary = _generate_dataset_summary(repo_id, dataset)
+    dataset_summary = _generate_dataset_summary(repo_id, dataset, preview_path)
     if dataset_summary is not None:
         card_inputs["dataset_summary"] = dataset_summary
 
