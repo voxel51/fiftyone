@@ -6,6 +6,7 @@
 import abc
 import codecs
 import inspect
+import pickle
 from typing import (
     Any,
     Iterable,
@@ -17,20 +18,34 @@ from typing import (
     Type,
 )
 
-import dill as pickle
+import dill
 
 
 def marshall(value: Any) -> str:
-    """Marshalls python object into string."""
-    return codecs.encode(pickle.dumps(value), "base64").decode()
+    """Marshall any Python objects into string."""
+    try:
+        pickled = pickle.dumps(value)
+    except Exception:  # pylint: disable=broad-except
+        pickled = dill.dumps(value)
+    return codecs.encode(pickled, "base64").decode()
 
 
-def unmarshall(value: Union[str, bytes]) -> Any:
-    """Unmarshalls string into python object."""
+def unmarshall(value: Union[bytes, str]) -> Any:
+    """Unmarshall any Python objects from string."""
+    if not value:
+        return
+
     if isinstance(value, str):
         value = value.encode()
 
-    return pickle.loads(codecs.decode(value, "base64"))
+    decoded = codecs.decode(value, "base64")
+
+    try:
+        unpickled = pickle.loads(decoded)
+    except Exception:  # pylint: disable=broad-except
+        unpickled = dill.loads(decoded)
+
+    return unpickled
 
 
 class IProxy(abc.ABC):
