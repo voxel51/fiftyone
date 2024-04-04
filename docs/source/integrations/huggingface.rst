@@ -928,7 +928,7 @@ which you can install via PyPI:
 
     pip install "huggingface_hub>=0.20.0"
 
-To push a dataset to the Hub, and in many cases to even access a dataset on
+To push a dataset to the Hub, and in some cases, to access a dataset on
 the hub, you will need to have a
 `Hugging Face Hub account <https://huggingface.co/join>`_.
 
@@ -1168,7 +1168,7 @@ pushed to the Hub earlier, you can do the following:
 .. note::
 
     As long as you have an environment variable `HF_TOKEN` set with your Hugging
-    Face token (with read access), you can load gated datasets that you have
+    Face token (with read access), you can load private or gated datasets that you have
     access to from the Hub.
 
 .. _huggingface-hub-load-dataset-from-repo-config:
@@ -1859,14 +1859,14 @@ workers, you can do the following:
 
     session = fo.launch_app(dataset)
 
-**Loading Gated Datasets**
+**Loading Private or Gated Datasets**
 
-Like public datasets, you can also load gated datasets from the Hub, as long as
-you have the necessary permissions. If your Hugging Face token is set as an
-environment variable `HF_TOKEN`, this is as simple as specifying the `repo_id`
-of the dataset. If you don't have your token set, or you need to use a specific
-token for a specific dataset, you can specify the `token` argument. You can do
-so following this recipe:
+Like public datasets, you can also load private or gated datasets from the Hub,
+as long as you have the necessary permissions. If your Hugging Face token is
+set as an environment variable `HF_TOKEN`, this is as simple as specifying the
+`repo_id` of the dataset. If you don't have your token set, or you need to use
+a specific token for a specific dataset, you can specify the `token` argument.
+You can do so following this recipe:
 
 .. code-block:: python
     :linenos:
