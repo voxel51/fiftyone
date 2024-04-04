@@ -1904,7 +1904,7 @@ workers, you can do the following:
 
 **Loading Private or Gated Datasets**:
 
-Like public datasets, you can also load gated datasets from the Hub, as long as
+Like public datasets, you can also load private or gated datasets from the Hub, as long as
 you have the necessary permissions. If your Hugging Face token is set as an
 environment variable `HF_TOKEN`, this is as simple as specifying the `repo_id`
 of the dataset. If you don't have your token set, or you need to use a specific
