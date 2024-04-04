@@ -1137,6 +1137,29 @@ Creative Commons Attribution 4.0 license, you can do the following:
     label fields, you can set `label_fields="*"`. If you want to convert specific
     label fields, you can pass a list of field names.
 
+
+Additionally, you can specify the minimum version of FiftyOne required to load
+the dataset by passing the `min_fiftyone_version` argument. This is useful when
+the dataset utilizes features that are only available in versions above a certain
+release. For example, to specify that the dataset requires FiftyOne version `0.23.0`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fouh.push_to_hub(
+        dataset,
+        "quickstart-min-version",
+        min_fiftyone_version="0.23.0",
+    )
+
+
+
 .. _huggingface-hub-load-dataset:
 
 Loading datasets from the Hub
