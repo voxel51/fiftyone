@@ -10,7 +10,6 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 from packaging.requirements import Requirement
-from PIL import Image
 import re
 import requests
 
