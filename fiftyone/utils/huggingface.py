@@ -10,7 +10,6 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 from packaging.requirements import Requirement
-import re
 import requests
 
 import yaml
@@ -83,6 +82,7 @@ def push_to_hub(
         exist_ok (False): if True, do not raise an error if repo already exists.
         dataset_type (None): the type of the dataset to create
         min_fiftyone_version (None): the minimum version of FiftyOne required
+            to load the dataset. For example ``"0.23.0"``.
         label_field (None): controls the label field(s) to export. Only
             applicable to labeled datasets. Can be any of the following:
 
@@ -341,11 +341,6 @@ session = fo.launch_app(dataset)
 """
 
 
-def _validate_fiftyone_version(version_string):
-    ## match to "a.b.c" where a, b, c are integers
-    return bool(re.match(r"\d+\.\d+\.\d+", version_string))
-
-
 def _populate_config_file(
     config_filepath,
     dataset,
@@ -362,10 +357,6 @@ def _populate_config_file(
     }
 
     if min_fiftyone_version is not None:
-        if not _validate_fiftyone_version(min_fiftyone_version):
-            raise ValueError(
-                f"Invalid fiftyone version requirement: {min_fiftyone_version}"
-            )
         version_val = f">={min_fiftyone_version}"
         config_dict["fiftyone"] = {"version": version_val}
 
