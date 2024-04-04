@@ -5,9 +5,8 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from fiftyone.internal.util import get_api_url
 from fiftyone.internal.requests import make_request
+from fiftyone.internal.util import get_api_url, get_token_from_request
 
 
 class ManagedPlugins:
@@ -99,33 +98,6 @@ class RemoteOperatorDefinition:
             uri=json["uri"],
             enabled=json.get("enabled", False),
         )
-
-
-def get_header_token(authorization: str):
-    if not authorization:
-        return False
-
-    parts = authorization.split()
-
-    if parts[0].lower() != "bearer":
-        return False
-
-    if len(parts) == 1:
-        return False
-
-    if len(parts) > 2:
-        return False
-
-    return parts[1]
-
-
-def get_token_from_request(request):
-    header = request.headers.get("Authorization", None)
-    cookie = request.cookies.get("fiftyone-token", None)
-    if header:
-        return get_header_token(header)
-    elif cookie:
-        return cookie
 
 
 # an example using the requests module to make a request to a graphql

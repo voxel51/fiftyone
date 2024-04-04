@@ -11,7 +11,7 @@ import aiohttp
 import requests
 from aiohttp.http_exceptions import InvalidHeader
 
-from fiftyone.internal.util import has_encryption_key, is_internal_service
+from fiftyone.internal.util import has_encryption_key
 
 
 async def make_request(url, access_token, query, variables=None):
