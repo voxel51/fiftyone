@@ -1030,6 +1030,39 @@ and then passing that in to
 When you do so, note that the view is exported as a new dataset, and other 
 details from the original dataset are not included.
 
+FiftyOne is a *visual* toolkit, so when you push a dataset to the Hub, you can
+optionally include a preview (image, gif, or video) of the dataset, that will be
+displayed on the dataset page. To do this, you can pass the `preview_path`
+argument to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`, with
+either a relative or absolute path to the preview file on your local machine:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    session = fo.launch_app(dataset)
+    # Screenshot and save the preview image to a file
+
+    fouh.push_to_hub(
+        dataset,
+        "my-quickstart-with-preview",
+        preview_path="/path/to/preview.jpg"
+    )
+
+The preview file will be uploaded to the Hub along with the dataset, and will be
+displayed on the dataset card!
+
+.. image:: /images/integrations/hf_data_card_preview.jpg
+   :alt: Pushing a dataset to the Hugging Face Hub with a preview image
+   :align: center
+   
+
 .. _huggingface-hub-push-dataset-advanced:
 
 Advanced usage
