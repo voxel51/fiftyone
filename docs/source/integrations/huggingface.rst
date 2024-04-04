@@ -1175,7 +1175,7 @@ we pushed to the Hub earlier, you can do the following:
 .. note::
 
     As long as you have an environment variable `HF_TOKEN` set with your Hugging
-    Face token (with read access), you can load gated datasets that you have
+    Face token (with read access), you can load private or gated datasets that you have
     access to from the Hub.
 
 
