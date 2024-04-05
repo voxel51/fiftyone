@@ -45,7 +45,7 @@ ARG PIP_INDEX_URL=https://pypi.org/simple
 COPY ./*.whl .
 COPY ./yarnrc.yml ~/.yarnrc.yml
 
-RUN pip --no-cache-dir install -q -U pip setuptools wheel ipython \
+RUN pip --no-cache-dir install -q -U pip setuptools wheel \
     && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
