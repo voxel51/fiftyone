@@ -1,14 +1,17 @@
-import { usePanelState } from "@fiftyone/spaces";
+import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { useEffect } from "react";
 import { executeOperator } from "./operators";
 import OperatorIO from "./OperatorIO";
+import * as types from "./types";
 
-export function CustomPanel({ panelId, onLoad, onUnLoad }) {
-  const [panelState, setPanelState] = usePanelState(panelId);
+export function CustomPanel({ panelId, onLoad, onChange, onUnLoad }) {
+  console.log("CustomPanel", panelId, onLoad);
+  const [panelState, setPanelState] = usePanelState(null, panelId);
+  const setCustomPanelState = useSetCustomPanelState();
   const renderableSchema = panelState?.schema;
   const data = panelState?.state;
   const handlePanelStateChange = (newState) => {
-    console.log(newState);
+    setCustomPanelState((state: any) => ({ ...state, ...newState }));
   };
 
   useEffect(() => {
@@ -19,17 +22,37 @@ export function CustomPanel({ panelId, onLoad, onUnLoad }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (onChange && panelState?.state)
+      executeOperator(onChange, {
+        panel_id: panelId,
+        panel_state: panelState.state,
+      });
+  }, [panelState?.state]);
+
+  if (!renderableSchema) return null;
+
+  const schema = types.Property.fromJSON(renderableSchema);
+
   return (
-    <OperatorIO
-      schema={renderableSchema}
-      onChange={handlePanelStateChange}
-      data={data}
-    />
+    <>
+      <OperatorIO
+        schema={schema}
+        onChange={handlePanelStateChange}
+        data={data}
+      />
+      <pre>{JSON.stringify(panelState, null, 2)}</pre>
+    </>
   );
 }
 
-export function defineCustomPanel(onLoad, onUnLoad) {
-  return ({ panelId }) => (
-    <CustomPanel panelId={panelId} onLoad={onLoad} onUnLoad={onUnLoad} />
+export function defineCustomPanel({ on_load, on_change, on_unload }) {
+  return ({ panelNode }) => (
+    <CustomPanel
+      panelId={panelNode?.id}
+      onLoad={on_load}
+      onUnLoad={on_unload}
+      onChange={on_change}
+    />
   );
 }

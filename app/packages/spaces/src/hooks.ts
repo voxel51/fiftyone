@@ -144,6 +144,42 @@ export function usePanelState<T>(
   return [computedState, setState];
 }
 
+export function useSetPanelStateById<T>(local = false) {
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (panelId: string, fn: (state: any) => any) => {
+        const panelState = await snapshot.getPromise(
+          panelStateSelector({ panelId, local })
+        );
+        const updatedValue = fn(panelState);
+        set(panelStateSelector({ panelId, local }), updatedValue);
+      },
+    []
+  );
+}
+
+export function usePanelId() {
+  const panelContext = usePanelContext();
+  const panelId = panelContext?.node?.id as string;
+  return panelId;
+}
+
+export function useSetCustomPanelState<T>(local = false) {
+  const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
+  return (fn: (state: T) => T) => {
+    setPanelState((panelState) => {
+      const customPanelState = fn(panelState.state || {});
+      const state = fn(customPanelState);
+      return { ...panelState, state };
+    });
+  };
+}
+
+export function useCustomPanelState(panelId?: string, local = false) {
+  const [panelState] = usePanelState(null, panelId, local);
+  return panelState.state || {};
+}
+
 /**
  * Can only be used within a panel component
  */
