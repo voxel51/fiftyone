@@ -437,7 +437,7 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         return self._format_predictions(predictions)
 
 
-class FiftyOneYOLOOBBConfig(FiftyOneYOLOModelConfig):
+class FiftyOneYOLOOBBModelConfig(FiftyOneYOLOModelConfig):
     pass
 
 
@@ -503,7 +503,7 @@ def _convert_yolo_detection_model(model):
 
 
 def _convert_yolo_obb_model(model):
-    config = FiftyOneYOLOOBBConfig({"model": model})
+    config = FiftyOneYOLOOBBModelConfig({"model": model})
     return FiftyOneYOLOOBBModel(config)
 
 
