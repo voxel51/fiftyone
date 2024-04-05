@@ -475,7 +475,7 @@ class SetView extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.obj("view", { view: new types.HiddenView({}) });
+    inputs.list("view", { view: new types.HiddenView({}) });
     inputs.str("name", { label: "Name or slug of a saved view" });
     return new types.Property(inputs);
   }
@@ -819,6 +819,30 @@ class SetPanelState extends Operator {
   }
 }
 
+class SetPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_data",
+      label: "Set panel data",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    setTimeout(() => {
+      ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+        return {
+          ...current,
+          data: ctx.params.data,
+        };
+      });
+    }, 1);
+  }
+}
+
 class PatchPanelState extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -971,6 +995,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(RegisterPanel);
     _registerBuiltInOperator(ShowPanelOutput);
     _registerBuiltInOperator(ReducePanelState);
+    _registerBuiltInOperator(SetPanelData);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
