@@ -1030,6 +1030,39 @@ and then passing that in to
 When you do so, note that the view is exported as a new dataset, and other 
 details from the original dataset are not included.
 
+FiftyOne is a *visual* toolkit, so when you push a dataset to the Hub, you can
+optionally include a preview (image, gif, or video) of the dataset, that will be
+displayed on the dataset page. To do this, you can pass the `preview_path`
+argument to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`, with
+either a relative or absolute path to the preview file on your local machine:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    session = fo.launch_app(dataset)
+    # Screenshot and save the preview image to a file
+
+    fouh.push_to_hub(
+        dataset,
+        "my-quickstart-with-preview",
+        preview_path="/path/to/preview.jpg"
+    )
+
+The preview file will be uploaded to the Hub along with the dataset, and will be
+displayed on the dataset card!
+
+.. image:: /images/integrations/hf_data_card_preview.jpg
+   :alt: Pushing a dataset to the Hugging Face Hub with a preview image
+   :align: center
+   
+
 .. _huggingface-hub-push-dataset-advanced:
 
 Advanced usage
@@ -1136,6 +1169,29 @@ Creative Commons Attribution 4.0 license, you can do the following:
     only the `ground_truth` label field is converted. If you want to convert all
     label fields, you can set `label_fields="*"`. If you want to convert specific
     label fields, you can pass a list of field names.
+
+
+Additionally, you can specify the minimum version of FiftyOne required to load
+the dataset by passing the `min_fiftyone_version` argument. This is useful when
+the dataset utilizes features that are only available in versions above a certain
+release. For example, to specify that the dataset requires FiftyOne version `0.23.0`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.huggingface as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fouh.push_to_hub(
+        dataset,
+        "quickstart-min-version",
+        min_fiftyone_version="0.23.0",
+    )
+
+
 
 .. _huggingface-hub-load-dataset:
 

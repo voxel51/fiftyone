@@ -10,7 +10,6 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 from packaging.requirements import Requirement
-from PIL import Image
 import requests
 
 import yaml
@@ -63,9 +62,11 @@ def push_to_hub(
     private=False,
     exist_ok=False,
     dataset_type=None,
+    min_fiftyone_version=None,
     label_field=None,
     frame_labels_field=None,
     token=None,
+    preview_path=None,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
@@ -80,6 +81,8 @@ def push_to_hub(
         private (True): whether the repo should be private
         exist_ok (False): if True, do not raise an error if repo already exists.
         dataset_type (None): the type of the dataset to create
+        min_fiftyone_version (None): the minimum version of FiftyOne required
+            to load the dataset. For example ``"0.23.0"``.
         label_field (None): controls the label field(s) to export. Only
             applicable to labeled datasets. Can be any of the following:
 
@@ -99,6 +102,8 @@ def push_to_hub(
               constructing the frame label dictionaries to pass to the exporter
         token (None): a Hugging Face API token to use. May also be provided via
             the ``HF_TOKEN`` environment variable
+        preview_path (None): a path to a preview image or video to display on
+            the readme of the dataset repo.
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -135,6 +140,7 @@ def push_to_hub(
             description=description,
             license=license,
             tags=tags,
+            min_fiftyone_version=min_fiftyone_version,
         )
 
         ## Create the dataset repo
@@ -154,6 +160,35 @@ def push_to_hub(
             repo_type="dataset",
         )
 
+        # Upload preview image or video if provided
+        if preview_path is not None:
+            abs_preview_path = os.path.abspath(preview_path)
+            if not os.path.exists(abs_preview_path):
+                logger.warning(
+                    f"Preview path {abs_preview_path} does not exist"
+                )
+
+            ext = os.path.splitext(abs_preview_path)[1]
+            path_in_repo = "dataset_preview" + ext
+
+            try:
+                api.upload_file(
+                    path_or_fileobj=abs_preview_path,
+                    path_in_repo=path_in_repo,
+                    repo_id=repo_id,
+                    repo_type="dataset",
+                    commit_message="Add preview",
+                )
+            except:
+                logger.warning(
+                    f"Failed to upload preview media file {abs_preview_path}"
+                )
+
+                # If fails, set preview to None
+                preview_path = None
+
+        path_in_repo = path_in_repo if preview_path is not None else None
+
     ## Create the dataset card
     card = _create_dataset_card(
         repo_id,
@@ -161,6 +196,7 @@ def push_to_hub(
         description=description,
         license=license,
         tags=tags,
+        preview_path=path_in_repo,
         **data_card_kwargs,
     )
     card.push_to_hub(repo_id)
@@ -276,6 +312,9 @@ class HFHubDatasetConfig(Config):
 
 
 DATASET_CONTENT_TEMPLATE = """
+
+{preview}
+
 This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samples} samples.
 
 ## Installation
@@ -309,15 +348,17 @@ def _populate_config_file(
     description=None,
     license=None,
     tags=None,
+    min_fiftyone_version=None,
 ):
     config_dict = {
         "name": dataset.name,
         "format": dataset_type.__name__,
-        "fiftyone": {
-            "version": f">={foc.VERSION}",
-        },
         "tags": tags,
     }
+
+    if min_fiftyone_version is not None:
+        version_val = f">={min_fiftyone_version}"
+        config_dict["fiftyone"] = {"version": version_val}
 
     if description is not None:
         config_dict["description"] = description
@@ -351,15 +392,24 @@ def _get_dataset_tags(dataset):
     return sorted(list(set(tags)))
 
 
-def _generate_dataset_summary(repo_id, dataset):
-    return DATASET_CONTENT_TEMPLATE.format(
-        num_samples=len(dataset),
-        repo_id=repo_id,
-    )
+def _generate_dataset_summary(repo_id, dataset, preview_path):
+    format_kwargs = {
+        "repo_id": repo_id,
+        "num_samples": len(dataset),
+        "preview": "",
+    }
+    if preview_path is not None:
+        format_kwargs["preview"] = f"\n![image/png]({preview_path})\n"
+    return DATASET_CONTENT_TEMPLATE.format(**format_kwargs)
 
 
 def _create_dataset_card(
-    repo_id, dataset, tags=None, license=None, **dataset_card_kwargs
+    repo_id,
+    dataset,
+    tags=None,
+    license=None,
+    preview_path=None,
+    **dataset_card_kwargs,
 ):
     card_inputs = {
         "language": "en",
@@ -374,7 +424,7 @@ def _create_dataset_card(
     for key, value in dataset_card_kwargs.items():
         card_inputs[key] = value
 
-    dataset_summary = _generate_dataset_summary(repo_id, dataset)
+    dataset_summary = _generate_dataset_summary(repo_id, dataset, preview_path)
     if dataset_summary is not None:
         card_inputs["dataset_summary"] = dataset_summary
 
@@ -1011,8 +1061,17 @@ def _add_dataset_metadata(dataset, config):
 def _resolve_dataset_name(config, **kwargs):
     name = kwargs.get("name", None)
     if name is None:
-        name = config.name
+        if hasattr(config, "name"):
+            name = config.name
+        else:
+            name = config._repo_id
     return name
+
+
+def _get_files_to_download(dataset):
+    filepaths = dataset.values("filepath")
+    filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
+    return filepaths
 
 
 def _load_fiftyone_dataset_from_config(config, **kwargs):
@@ -1024,11 +1083,25 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     splits = _parse_split_kwargs(**kwargs)
 
     download_dir = _get_download_dir(config._repo_id, **kwargs)
-    hfh.snapshot_download(
-        repo_id=config._repo_id, repo_type="dataset", local_dir=download_dir
-    )
+
+    init_download_kwargs = {
+        "repo_id": config._repo_id,
+        "repo_type": "dataset",
+        "local_dir": download_dir,
+    }
 
     dataset_type_name = config._format.strip()
+
+    if dataset_type_name == "FiftyOneDataset" and max_samples is not None:
+        # If the dataset is a FiftyOneDataset, download only the necessary files
+        hfh.snapshot_download(
+            **init_download_kwargs,
+            ignore_patterns="data/*",
+        )
+    else:
+        hfh.snapshot_download(
+            **init_download_kwargs,
+        )
 
     dataset_type = getattr(
         __import__("fiftyone.types", fromlist=[dataset_type_name]),
@@ -1048,6 +1121,18 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
         dataset_kwargs["name"] = name
 
     dataset = fod.Dataset.from_dir(download_dir, **dataset_kwargs)
+
+    if dataset_type_name != "FiftyOneDataset":
+        return dataset
+
+    filepaths = _get_files_to_download(dataset)
+    if filepaths:
+        logger.info(f"Downloading {len(filepaths)} media files...")
+        filenames = [os.path.basename(fp) for fp in filepaths]
+        allowed_globs = ["data/" + fn for fn in filenames]
+        hfh.snapshot_download(
+            **init_download_kwargs, allow_patterns=allowed_globs
+        )
     return dataset
 
 
