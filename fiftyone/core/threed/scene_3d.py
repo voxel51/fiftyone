@@ -202,8 +202,7 @@ class Scene(Object3D):
                         fo3d_path_dir, node.ply_path
                     )
 
-        with open(fo3d_path, "w") as f:
-            json.dump(validated_scene.as_dict(), f, indent=4)
+        fos.write_json(validated_scene.as_dict(), fo3d_path, pretty_print=True)
 
     def traverse(self, include_self=False):
         """Traverse the scene graph.
