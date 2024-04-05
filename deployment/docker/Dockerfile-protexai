@@ -5,6 +5,7 @@ ARG TORCH_IMAGE_NAME
 ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION} as wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels slack-sdk encord wandb opencv-python pandas
 

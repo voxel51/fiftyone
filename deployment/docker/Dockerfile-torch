@@ -4,6 +4,7 @@
 ARG TEAMS_IMAGE_NAME
 
 FROM ${TEAMS_IMAGE_NAME} as wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels torchvision==0.14.1 torch==1.13.1
 
