@@ -1092,9 +1092,8 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset_type_name = config._format.strip()
 
-    if dataset_type_name == "FiftyOneDataset":
-        # If the dataset is a FiftyOneDataset, we can smart only download the
-        # necessary files
+    if dataset_type_name == "FiftyOneDataset" and max_samples is not None:
+        # If the dataset is a FiftyOneDataset, download only the necessary files
         hfh.snapshot_download(
             **init_download_kwargs,
             ignore_patterns="data/*",
