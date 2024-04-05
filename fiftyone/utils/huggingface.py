@@ -329,7 +329,7 @@ This is a [FiftyOne](https://github.com/voxel51/fiftyone) dataset with {num_samp
 If you haven't already, install FiftyOne:
 
 ```bash
-pip install fiftyone
+pip install -U fiftyone
 ```
 
 ## Usage
