@@ -134,12 +134,14 @@ class Operations(object):
         """Set the view in the App from JSON present in clipboard."""
         return self._ctx.trigger("view_from_clipboard")
 
-    def _create_panel_params(self, panel_id, state=None):
+    def _create_panel_params(self, panel_id, state=None, data=None):
         params = {"panel_id": panel_id}
         if panel_id is None:
             params["panel_id"] = self._ctx.params.get("panel_id", None)
         if state is not None:
             params["state"] = state
+        if data is not None:
+            params["data"] = data
         return params
 
     def clear_panel_state(self, panel_id=None):
@@ -163,6 +165,18 @@ class Operations(object):
         return self._ctx.trigger(
             "set_panel_state",
             params=self._create_panel_params(panel_id, state=state),
+        )
+
+    def set_panel_data(self, data, panel_id=None):
+        """Set the data of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "set_panel_data",
+            params=self._create_panel_params(panel_id, data=data),
         )
 
     def patch_panel_state(self, panel_id=None, state=None):
@@ -225,7 +239,14 @@ class Operations(object):
         return self._ctx.trigger("open_panel", params=params)
 
     def register_panel(
-        self, name, label, on_load=None, on_unload=None, on_change=None
+        self,
+        name,
+        label,
+        on_load=None,
+        on_unload=None,
+        on_change=None,
+        on_view_change=None,
+        allow_duplicates=False,
     ):
         """Register a panel with the given name and lifecycle callbacks.
 
@@ -233,6 +254,8 @@ class Operations(object):
             name: the name of the panel to register
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
+            on_change (None): an operator to invoke when the panel state changes
+            allow_duplicates (False): whether to allow multiple instances of the panel
         """
         params = {
             "panel_name": name,
@@ -240,6 +263,8 @@ class Operations(object):
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
+            "allow_duplicates": allow_duplicates,
+            "on_view_change": on_view_change,
         }
         return self._ctx.trigger("register_panel", params=params)
 
