@@ -37,8 +37,16 @@ class InitializedListener:
 
 
 async def initialize_listener(payload: ListenPayload):
+    """Initialize a state listener.
+
+    Args:
+        payload: a :class:`fiftyone.core.session.events.ListenPayload`
+
+    Returns:
+        an :class:`InitializedListener`
+    """
     coroutine, is_app, state = await fou.run_sync_task(
-        _initialize_listener_sync, payload
+        initialize_listener_sync, payload
     )
     if coroutine:
         await coroutine
@@ -57,22 +65,37 @@ async def initialize_listener(payload: ListenPayload):
     return InitializedListener(is_app, request_listeners, state)
 
 
-def _initialize_listener_sync(payload: ListenPayload) -> InitializedListener:
+def initialize_listener_sync(payload: ListenPayload):
+    """Synchronously initializer a listener
+
+    Args:
+        payload: a :class:`fiftyone.core.session.events.ListenPayload`
+    """
     if isinstance(payload.initializer, AppInitializer):
         return (
-            _handle_app_initializer(payload.subscription, payload.initializer),
+            handle_app_initializer(payload.subscription, payload.initializer),
             True,
             get_state(),
         )
 
+    state = payload.initializer
     return (
         dispatch_event(payload.subscription, StateUpdate(payload.initializer)),
         False,
-        payload.initializer,
+        state,
     )
 
 
-def _handle_app_initializer(subscription: str, initializer: AppInitializer):
+def handle_app_initializer(subscription: str, initializer: AppInitializer):
+    """Handle an App initialization request
+
+    Args:
+        subscription: a subscription id
+        initializer: an app initializer
+
+    Returns:
+        ``None`` or a coroutine
+    """
     increment_app_count()
     state = get_state()
     current = state.dataset.name if state.dataset is not None else None
@@ -82,10 +105,10 @@ def _handle_app_initializer(subscription: str, initializer: AppInitializer):
     if initializer.dataset and initializer.dataset != current:
         update = True
         dataset_change = True
-        _handle_dataset(state, initializer)
+        handle_dataset_change(state, initializer)
     else:
-        update = _handle_saved_view(state, initializer.view)
-        update = _handle_workspace(state, initializer.workspace) or update
+        update = handle_saved_view(state, initializer.view)
+        update = handle_workspace(state, initializer.workspace) or update
 
     if not update:
         return None
@@ -98,7 +121,15 @@ def _handle_app_initializer(subscription: str, initializer: AppInitializer):
     return dispatch_event(subscription, StateUpdate(state))
 
 
-def _handle_dataset(state: fos.StateDescription, initializer: AppInitializer):
+def handle_dataset_change(
+    state: fos.StateDescription, initializer: AppInitializer
+):
+    """Handle a dataset change request.
+
+    Args:
+        state: the state description
+        initializer: an app initializer
+    """
     try:
         state.dataset = fod.load_dataset(initializer.dataset)
         state.selected = []
@@ -130,14 +161,23 @@ def _handle_dataset(state: fos.StateDescription, initializer: AppInitializer):
                 initializer.workspace, slug=True
             )
             state.spaces = state.dataset.load_workspace(doc.name)
-        except Exception:
-
+        except:
             pass
 
 
-def _handle_saved_view(
+def handle_saved_view(
     state: fos.StateDescription, slug: t.Optional[str] = None
 ):
+    """Handle a saved view slug request.
+
+    Args:
+        state: the state description
+        slug (None): an optional slug
+
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
     current_saved_view_slug = (
         fou.to_slug(state.view.name)
         if state.view is not None and state.view.name
@@ -160,9 +200,19 @@ def _handle_saved_view(
     return True
 
 
-def _handle_workspace(
+def handle_workspace(
     state: fos.StateDescription, slug: t.Optional[str] = None
 ):
+    """Handle a workspace slug request.
+
+    Args:
+        state: the state description
+        slug (None): an optional slug
+
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
     current_workspace_slug = (
         fou.to_slug(state.spaces.name)
         if state.spaces is not None and state.spaces.name
