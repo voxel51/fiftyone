@@ -241,8 +241,8 @@ def _connect():
 
 
 def _async_connect(use_global=False):
-    # Regular connect here to ensure connection kwargs are established for
-    #   below.
+    # Regular connect here first, to ensure connection kwargs are established
+    #   for below.
     _connect()
 
     global _async_client
