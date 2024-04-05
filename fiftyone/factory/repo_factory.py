@@ -15,11 +15,19 @@ from fiftyone.factory.repos.delegated_operation import (
     MongoDelegatedOperationRepo,
 )
 
-db: Database = foo.get_db_conn()
+_db: Database = None
+
+
+def _get_db():
+    global _db
+    if _db is None:
+        _db = foo.get_db_conn()
+    return _db
 
 
 class RepositoryFactory(object):
     repos = {}
+    db = None
 
     @staticmethod
     def delegated_operation_repo() -> DelegatedOperationRepo:
@@ -30,7 +38,9 @@ class RepositoryFactory(object):
             RepositoryFactory.repos[
                 MongoDelegatedOperationRepo.COLLECTION_NAME
             ] = MongoDelegatedOperationRepo(
-                collection=db[MongoDelegatedOperationRepo.COLLECTION_NAME]
+                collection=_get_db()[
+                    MongoDelegatedOperationRepo.COLLECTION_NAME
+                ]
             )
 
         return RepositoryFactory.repos[

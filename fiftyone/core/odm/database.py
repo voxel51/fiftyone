@@ -27,6 +27,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
@@ -220,12 +221,15 @@ def establish_db_conn(config):
 
     connect(config.database_name, **_connection_kwargs)
 
-    config = get_db_config()
-    if foc.CLIENT_TYPE != config.type:
+    db_config = get_db_config()
+    if foc.CLIENT_TYPE != db_config.type:
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
-            % (config.type, foc.CLIENT_TYPE)
+            % (db_config.type, foc.CLIENT_TYPE)
         )
+
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+        fom.migrate_database_if_necessary()
 
 
 def _connect():
@@ -233,13 +237,14 @@ def _connect():
     if _client is None:
         global _connection_kwargs
 
-        _client = pymongo.MongoClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
-        )
-        connect(fo.config.database_name, **_connection_kwargs)
+        establish_db_conn(fo.config)
 
 
 def _async_connect(use_global=False):
+    # Regular connect here to ensure connection kwargs are established for
+    #   below.
+    _connect()
+
     global _async_client
     if not use_global or _async_client is None:
         global _connection_kwargs
