@@ -241,6 +241,56 @@ manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
    :alt: ultralytics-keypoints
    :align: center
 
+
+.. _ultralytics-oriented-bounding-boxes:
+
+Oriented bounding boxes
+-----------------------
+
+You can directly pass Ultralytics YOLO oriented bounding box models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
+
+.. code-block:: python
+    :linenos:
+
+    model = YOLO("yolov8n-obb.pt")
+    # model = YOLO("yolov8s-obb.pt")
+    # model = YOLO("yolov8m-obb.pt")
+    # model = YOLO("yolov8l-obb.pt")
+    # model = YOLO("yolov8x-obb.pt")
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+You can also load YOLOv8 oriented bounding box models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov8n-obb-dotav1-torch"
+    # model_name = "yolov8s-obb-dotav1-torch"
+    # model_name = "yolov8m-obb-dotav1-torch"
+    # model_name = "yolov8l-obb-dotav1-torch"
+    # model_name = "yolov8x-obb-dotav1-torch"
+
+    model = foz.load_zoo_model(model_name)
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+.. note::
+
+    The oriented bounding box models are trained on the `DOTA dataset
+    <https://captain-whu.github.io/DOTA/index.html>`_, which consists of
+    drone images with oriented bounding boxes. The models are trained to
+    predict on bird's eye view images, so applying them to regular images
+    may not yield good results.
+
 .. _ultralytics-open-vocabulary-object-detection:
 
 Open vocabulary detection
