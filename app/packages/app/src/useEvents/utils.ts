@@ -14,7 +14,7 @@ export const appReadyState = atom<AppReadyState>({
 export const processState = (
   session: Session,
   state: any
-): Partial<LocationState<DatasetPageQuery>> & { workspace: string | null } => {
+): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
       state.color_scheme as ColorSchemeInput
@@ -37,7 +37,7 @@ export const processState = (
   });
 
   if (env().VITE_NO_STATE) {
-    return { view: [], fieldVisibility: undefined, workspace: null };
+    return { view: [], fieldVisibility: undefined };
   }
   return {
     fieldVisibility: state.field_visibility_stage,

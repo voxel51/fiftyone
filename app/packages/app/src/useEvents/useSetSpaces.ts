@@ -1,5 +1,6 @@
 import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
+import { LocationState } from "../routing";
 import { resolveURL } from "../utils";
 import { EventHandlerHook } from "./registerEvent";
 
@@ -8,6 +9,7 @@ const useSetSpaces: EventHandlerHook = ({ router }) => {
   return useCallback(
     (payload) => {
       setter("sessionSpaces", payload.spaces);
+      const state = router.history.location.state as LocationState;
       router.history.replace(
         resolveURL({
           currentPathname: router.history.location.pathname,
@@ -16,7 +18,7 @@ const useSetSpaces: EventHandlerHook = ({ router }) => {
             workspace: payload.spaces._name ?? null,
           },
         }),
-        router.history.location.state
+        { ...state, workspace: payload.spaces }
       );
     },
     [router, setter]

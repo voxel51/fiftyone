@@ -19,7 +19,7 @@ export default class SpaceTree {
 
   // the constructor takes the root node, the selected node, and the layout
   constructor(
-    serializedTree: SpaceNodeJSON,
+    serializedTree?: SpaceNodeJSON,
     onTreeUpdate?: SpaceTreeUpdateCallback
   ) {
     this.root = serializedTree
@@ -134,7 +134,6 @@ export default class SpaceTree {
     let compareWithTree: SpaceTree = treeOrSerializedTree as SpaceTree;
     if (!(treeOrSerializedTree instanceof SpaceTree))
       compareWithTree = new SpaceTree(treeOrSerializedTree);
-
     return isEqual(this.toJSON(), compareWithTree.toJSON());
   }
 }
