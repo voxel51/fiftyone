@@ -245,6 +245,13 @@ class Object(BaseType):
         """
         return self.define_property(name, Void(), view=view, **kwargs)
 
+    def btn(self, name, label, on_click=None, prompt=False, params=None):
+        """Defines a button to display to the user as a :class:`Button`."""
+        btn = Button(
+            label=label, operator=on_click, prompt=prompt, params=params
+        )
+        return self.view(name, btn)
+
     def message(self, name, label, **kwargs):
         """Defines a message to display to the user as a :class:`Notice`.
 
@@ -944,6 +951,7 @@ class Button(View):
         super().__init__(**kwargs)
         self.href = kwargs.get("href", None)
         self.operator = kwargs.get("operator", None)
+        self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
 
     def to_json(self):
@@ -952,6 +960,7 @@ class Button(View):
             "href": self.href,
             "operator": self.operator,
             "params": self.params,
+            "prompt": self.prompt,
         }
 
 

@@ -3,6 +3,7 @@ import {
   SpaceNode,
   usePanelState,
   usePanels,
+  useSetPanelStateById,
   useSpaceNodes,
   useSpaces,
 } from "@fiftyone/spaces";
@@ -781,14 +782,16 @@ class ClearPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelStateForContext(ctx);
-    return {
-      panelState: panelState.state || {},
-      setPanelState: (state) => setPanelState({ state }),
-    };
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setPanelState({});
+    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      return {
+        ...current,
+        state: {},
+      };
+    });
   }
 }
 
@@ -801,13 +804,18 @@ class SetPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelStateForContext(ctx);
-    return {
-      setPanelState,
-    };
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setPanelState(ctx.params.state);
+    setTimeout(() => {
+      ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+        return {
+          ...current,
+          state: ctx.params.state,
+        };
+      });
+    }, 1);
   }
 }
 
@@ -820,15 +828,67 @@ class PatchPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const [panelState, setPanelState] = usePanelStateForContext(ctx);
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      current = current || {};
+      const mergedState = merge(current.state, ctx.params.state);
+      return mergedState;
+    });
+  }
+}
+
+function createFunctionFromSource(src) {
+  return eval(src.trim());
+}
+
+class ReducePanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reduce_panel_state",
+      label: "Reduce panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const actualReducer = createFunctionFromSource(ctx.params.reducer);
+    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      return {
+        ...current,
+        state: actualReducer(current.state || {}),
+      };
+    });
+  }
+}
+
+class ShowPanelOutput extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_panel_output",
+      label: "Show panel output",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): any {
+    const setPanelStateById = useSetPanelStateById();
+
     return {
-      panelState,
-      setPanelState,
+      setPanelStateById,
     };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    const mergedState = merge(ctx.hooks.panelState, ctx.params.state);
-    ctx.hooks.setPanelState(mergedState);
+    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      return {
+        ...current,
+        schema: ctx.params.output,
+      };
+    });
   }
 }
 
@@ -846,7 +906,11 @@ class RegisterPanel extends Operator {
     inputs.str("panel_label", { label: "Panel label", required: true });
     inputs.str("on_load", {
       label: "On load operator",
-      required: true,
+      // required: true,
+    });
+    inputs.str("on_change", {
+      label: "On change operator",
+      // required: true,
     });
     inputs.str("on_unload", {
       label: "On unload operator",
@@ -861,7 +925,7 @@ class RegisterPanel extends Operator {
     registerComponent({
       type: PluginComponentType.Panel,
       name: ctx.params.panel_name,
-      component: defineCustomPanel(ctx.params.on_load, ctx.params.on_unload),
+      component: defineCustomPanel(ctx.params),
       label: ctx.params.panel_label,
       activator: () => true,
       panelOptions: {
@@ -905,6 +969,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ClearPanelState);
     _registerBuiltInOperator(PatchPanelState);
     _registerBuiltInOperator(RegisterPanel);
+    _registerBuiltInOperator(ShowPanelOutput);
+    _registerBuiltInOperator(ReducePanelState);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
