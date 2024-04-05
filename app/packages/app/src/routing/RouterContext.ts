@@ -101,6 +101,7 @@ export const createRouter = <T extends OperationType>(
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
             subscribers.forEach(([cb]) => cb(entry, action));
+            // update currentEntryResource after calling subscribers
             currentEntryResource = loadingResource;
             cleanup();
           });
