@@ -12,6 +12,8 @@ from typing import List, Optional
 
 from pydantic.dataclasses import dataclass
 
+import fiftyone.core.storage as fos
+
 from .camera import PerspectiveCamera
 from .lights import Light
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
@@ -334,7 +336,6 @@ class Scene(Object3D):
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
 
-        with open(path, "r") as f:
-            dict_data = json.load(f)
+        dict_data = fos.read_json(path)
 
         return Scene._from_fo3d_dict(dict_data)
