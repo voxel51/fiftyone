@@ -3,7 +3,7 @@ import { useHelpPanel } from "@fiftyone/state";
 import { ActionItem } from "../containers";
 import { ACTION_VIEW_HELP } from "../constants";
 
-const LOOKER3D_HELP_ITEMS = [
+export const LOOKER3D_HELP_ITEMS = [
   { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
   { shortcut: "Drag", title: "Rotate", detail: "Rotate the camera" },
   {
@@ -13,7 +13,10 @@ const LOOKER3D_HELP_ITEMS = [
   },
   { shortcut: "T", title: "Top-down", detail: "Reset camera to top-down view" },
   { shortcut: "E", title: "Ego-view", detail: "Reset the camera to ego view" },
+  { shortcut: "B", title: "Background", detail: "Toggle background" },
   { shortcut: "C", title: "Controls", detail: "Toggle controls" },
+  { shortcut: "G", title: "Grid", detail: "Toggle grid" },
+  { shortcut: "F", title: "Full-screen", detail: "Toggle full-screen" },
   { shortcut: "?", title: "Display help", detail: "Display this help window" },
   { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
 ];

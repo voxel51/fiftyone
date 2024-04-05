@@ -15,6 +15,7 @@ import {
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { actionRenderListAtomFamily } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
+import { FullScreenToggler } from "./FullScreenToggler";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
@@ -133,7 +134,10 @@ export const ActionBar = ({
       onMouseLeave={onMouseLeave}
     >
       {isSliceSelectorOn && <SliceSelector />}
-      <ActionsBar>{componentsToRender}</ActionsBar>
+      <ActionsBar>
+        {componentsToRender}
+        <FullScreenToggler />
+      </ActionsBar>
     </ActionBarContainer>
   );
 };
