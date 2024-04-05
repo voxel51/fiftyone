@@ -61,13 +61,13 @@ export const usePromptOperatorInput = () => {
   );
   const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
-  const prompt = (operatorName) => {
+  const prompt = (operatorName, params = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
       const update = new Set([...recentlyUsedOperators, operatorName]);
       return Array.from(update).slice(-5);
     });
 
-    setPromptingOperator({ operatorName, params: {} });
+    setPromptingOperator({ operatorName, params });
   };
 
   return prompt;

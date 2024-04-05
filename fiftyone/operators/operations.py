@@ -137,7 +137,7 @@ class Operations(object):
     def _create_panel_params(self, panel_id, state=None):
         params = {"panel_id": panel_id}
         if panel_id is None:
-            params["panel_id"] = self._ctx.current_panel.id
+            params["panel_id"] = self._ctx.params.get("panel_id", None)
         if state is not None:
             params["state"] = state
         return params
@@ -153,7 +153,7 @@ class Operations(object):
             "clear_panel_state", params=self._create_panel_params(panel_id)
         )
 
-    def set_panel_state(self, panel_id=None, state=None):
+    def set_panel_state(self, state, panel_id=None):
         """Set the state of the specified panel in the App.
 
         Args:
@@ -177,6 +177,38 @@ class Operations(object):
             params=self._create_panel_params(panel_id, state=state),
         )
 
+    def reduce_panel_state(self, reducer, panel_id=None):
+        """Reduce the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "reduce_panel_state",
+            params={
+                **self._create_panel_params(panel_id),
+                "reducer": reducer,
+            },
+        )
+
+    def show_panel_output(self, output, panel_id=None):
+        """Show output in the specified panel in the App.
+
+        Args:
+            output: the output to show
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        params = self._create_panel_params(panel_id)
+        return self._ctx.trigger(
+            "show_panel_output",
+            params={
+                **params,
+                "output": output.to_json(),
+            },
+        )
+
     def open_panel(self, name, is_active=True, layout=None):
         """Open a panel with the given name and layout options in the App.
 
@@ -192,7 +224,9 @@ class Operations(object):
 
         return self._ctx.trigger("open_panel", params=params)
 
-    def register_panel(self, name, label, on_load=None, on_unload=None):
+    def register_panel(
+        self, name, label, on_load=None, on_unload=None, on_change=None
+    ):
         """Register a panel with the given name and lifecycle callbacks.
 
         Args:
@@ -205,6 +239,7 @@ class Operations(object):
             "panel_label": label,
             "on_load": on_load,
             "on_unload": on_unload,
+            "on_change": on_change,
         }
         return self._ctx.trigger("register_panel", params=params)
 
