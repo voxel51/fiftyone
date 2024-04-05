@@ -100,8 +100,8 @@ export const createRouter = <T extends OperationType>(
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
-            currentEntryResource = loadingResource;
             subscribers.forEach(([cb]) => cb(entry, action));
+            currentEntryResource = loadingResource;
             cleanup();
           });
       });

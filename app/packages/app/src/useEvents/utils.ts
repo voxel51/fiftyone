@@ -14,7 +14,7 @@ export const appReadyState = atom<AppReadyState>({
 export const processState = (
   session: Session,
   state: any
-): Partial<LocationState<DatasetPageQuery>> => {
+): Partial<LocationState<DatasetPageQuery>> & { workspace: string | null } => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
       state.color_scheme as ColorSchemeInput
@@ -33,15 +33,15 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
-
     unsubscribe();
   });
 
   if (env().VITE_NO_STATE) {
-    return { view: [], fieldVisibility: undefined };
+    return { view: [], fieldVisibility: undefined, workspace: null };
   }
   return {
-    view: state.view || [],
     fieldVisibility: state.field_visibility_stage,
+    view: state.view || [],
+    workspace: state.spaces,
   };
 };
