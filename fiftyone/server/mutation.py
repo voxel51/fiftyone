@@ -368,7 +368,7 @@ class Mutation(SetColorScheme):
         return deleted_view_id
 
     @gql.mutation
-    async def update_saved_view(
+    def update_saved_view(
         self,
         view_name: str,
         subscription: t.Optional[str],
@@ -432,7 +432,7 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
-    async def search_select_fields(
+    def search_select_fields(
         self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[str]:
         if not meta_filter:
