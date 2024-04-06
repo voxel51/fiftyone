@@ -15,8 +15,8 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
 export const getValue = (atom) => {
   if (mockValuesStore[atom.key]) {
     const str = JSON.stringify(atom.params);
-    if (mockValuesStore[atom.key].hasOwn(str)) {
-      return mockValuesStore[atom.key][JSON.stringify[str]];
+    if (Object.hasOwn(mockValuesStore[atom.key], str)) {
+      return mockValuesStore[atom.key][str];
     }
   }
 
