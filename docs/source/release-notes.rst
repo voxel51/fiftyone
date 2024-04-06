@@ -9,7 +9,7 @@ FiftyOne Teams 1.5.9
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
-- Optimized performance of data-intensive API calls (~30% speedup) when using
+- Optimized performance of data-intensive API calls when using
   :ref:`API connections <teams-api-connection>`
 
 .. _release-notes-v0.23.8:
@@ -24,6 +24,8 @@ News
   programmatically publishing and downloading datasets to/from
   `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_!
   `#4193 <https://github.com/voxel51/fiftyone/pull/4193>`_
+- Refreshed many popular tutorials!
+  `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
 
 App
 
@@ -32,7 +34,7 @@ App
 - Enhanced label overlay processing to support empty label lists
   `#4215 <https://github.com/voxel51/fiftyone/pull/4215>`_
 - Optimized by the App server by removing unnecessary server lock-ups due to
-    synchronous IO calls
+  synchronous IO calls
   `#4180 <https://github.com/voxel51/fiftyone/pull/4180>`_
 - Optimized sidebar performance for grouped datasets
   `#4182 <https://github.com/voxel51/fiftyone/pull/4182>`_
@@ -47,22 +49,19 @@ App
 Core
 
 - Optimized segmentation mask conversion
-  `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_
+  `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_,
   `#4188 <https://github.com/voxel51/fiftyone/pull/4188>`_
 - Fixed matplotlib style deprecation error
   `#4213 <https://github.com/voxel51/fiftyone/pull/4213>`_
 
-Docs
-
-- Refreshed many popular tutorials!
-  `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
-
 Plugins
 
 - :ref:`Secrets <operator-secrets>` are now available to operators in
+  their
   :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`,
   :meth:`resolve_output() <fiftyone.operators.operator.Operator.resolve_output>`, and
-  :meth:`resolve_output() <fiftyone.operators.operator.Operator.resolve_output>`
+  :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
+  methods
   `#4169 <https://github.com/voxel51/fiftyone/pull/4169>`_
 - ``ctx.view`` now reflects when the current view is saved
   `#4200 <https://github.com/voxel51/fiftyone/pull/4200>`_
@@ -71,7 +70,7 @@ Plugins
   `#4199 <https://github.com/voxel51/fiftyone/pull/4199>`_
 - Fixed a bug when using the
   :meth:`set_view() <fiftyone.operators.operations.Operations.set_view>`
-  operation to set the view in plugins
+  method in operators
   `#4198 <https://github.com/voxel51/fiftyone/pull/4198>`_
 
 Zoo
@@ -79,9 +78,9 @@ Zoo
 - Added support for loading
   :ref:`YOLOv8 and YOLOv9 segmentation models <ultralytics-instance-segmentation>`
   from the Model Zoo
-  `#4220 <https://github.com/voxel51/fiftyone/pull/4220>`_,
+  `#4220 <https://github.com/voxel51/fiftyone/pull/4220>`_
 - Added support for applying oriented bounding box (OBB) models to FiftyOne
-  datasets via the :ref:`Ultralytics integration <ultralytics>`
+  datasets via the :ref:`Ultralytics integration <ultralytics-integration>`
   `#4230 <https://github.com/voxel51/fiftyone/pull/4230>`_,
   `#4238 <https://github.com/voxel51/fiftyone/pull/4238>`_
 - Added support for applying
