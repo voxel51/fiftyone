@@ -51,6 +51,9 @@ Core
 - Optimized segmentation mask conversion
   `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_,
   `#4188 <https://github.com/voxel51/fiftyone/pull/4188>`_
+- Resolved singularity issues in
+  :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+  `#4206 <https://github.com/voxel51/fiftyone/pull/4206>`_
 - Fixed matplotlib style deprecation error
   `#4213 <https://github.com/voxel51/fiftyone/pull/4213>`_
 
