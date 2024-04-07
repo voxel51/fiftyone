@@ -45,6 +45,8 @@ App
 - Fixed a bug where in-App tagging actions may not be restricted to the
   currently selected samples
   `#4195 <https://github.com/voxel51/fiftyone/pull/4195>`_
+- Fixed a bug when bookmarking sidebar filters for group datasets
+  `#4097 <https://github.com/voxel51/fiftyone/pull/4097>`_
 
 Core
 

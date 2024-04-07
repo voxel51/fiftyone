@@ -293,15 +293,6 @@ class Mutation(SetColorScheme):
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
-            sample_filter=(
-                SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
-                    )
-                )
-                if form.slice
-                else None
-            ),
             awaitable=True,
         )
 
