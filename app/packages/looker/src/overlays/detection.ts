@@ -168,6 +168,10 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+    if (!this.canvas) {
+      return;
+    }
+
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;

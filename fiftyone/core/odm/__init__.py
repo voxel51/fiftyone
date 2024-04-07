@@ -88,6 +88,13 @@ from .utils import (
 )
 from .views import SavedViewDocument
 
+from .workspace import (
+    default_workspace_factory,
+    Panel,
+    Space,
+    WorkspaceDocument,
+)
+
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
     k

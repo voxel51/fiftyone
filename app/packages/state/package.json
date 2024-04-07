@@ -30,7 +30,7 @@
         "babel-plugin-relay": "^14.1.0",
         "prettier": "^2.7.1",
         "typescript": "^4.7.4",
-        "vite": "^3.2.8",
+        "vite": "^3.2.10",
         "vitest": "^0.34.6"
     },
     "dependencies": {
@@ -38,7 +38,7 @@
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "^2.0.1",
-        "lodash": "^4.17.21",
-        "recoil-sync": "^0.2.0"
+        "html2canvas": "1.0.0-rc.7",
+        "lodash": "^4.17.21"
     }
 }

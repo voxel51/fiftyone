@@ -1,16 +1,19 @@
 import { useFont, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import { Leva as LevaOptions } from "leva";
 import { createPortal } from "react-dom";
+import { useRecoilValue } from "recoil";
 import { LevaContainer } from "../containers";
 
 function Leva() {
   const theme = useTheme();
   const font = useFont();
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   return (
     <>
       {createPortal(
-        <LevaContainer>
+        <LevaContainer isSidebarVisible={isSidebarVisible}>
           <LevaOptions
             theme={{
               colors: {
