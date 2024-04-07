@@ -21,10 +21,9 @@ FiftyOne 0.23.8
 News
 
 - Released a :ref:`Hugging Face Hub integration <huggingface-hub>` for
-  programmatically publishing and downloading datasets to/from
-  `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_!
+  programmatically publishing and downloading datasets to/from Hugging Face Hub!
   `#4193 <https://github.com/voxel51/fiftyone/pull/4193>`_
-- Refreshed many popular tutorials!
+- Refreshed many popular :ref:`tutorials <tutorials>`
   `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
 
 App
