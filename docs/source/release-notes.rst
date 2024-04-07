@@ -85,8 +85,9 @@ Zoo
   :ref:`YOLOv8 and YOLOv9 segmentation models <ultralytics-instance-segmentation>`
   from the Model Zoo
   `#4220 <https://github.com/voxel51/fiftyone/pull/4220>`_
-- Added support for applying oriented bounding box (OBB) models to FiftyOne
-  datasets via the :ref:`Ultralytics integration <ultralytics-integration>`
+- Added support for applying
+  :ref:`YOLO oriented bounding box models <ultralytics-oriented-bounding-boxes>`
+  to FiftyOne datasets
   `#4230 <https://github.com/voxel51/fiftyone/pull/4230>`_,
   `#4238 <https://github.com/voxel51/fiftyone/pull/4238>`_
 - Added support for applying
