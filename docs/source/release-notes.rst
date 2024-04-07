@@ -29,6 +29,8 @@ News
 
 App
 
+- :ref:`Space sizes <app-spaces>` are now persisted when the App is refreshed
+  `#4171 <https://github.com/voxel51/fiftyone/pull/4171>`_
 - Added support for rendering detections with empty instance masks in the App
   `#4227 <https://github.com/voxel51/fiftyone/pull/4227>`_
 - Enhanced label overlay processing to support empty label lists
