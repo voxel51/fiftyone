@@ -1,16 +1,14 @@
-import { useTheme } from "@fiftyone/components";
+import { useTheme, Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
-import { Resizable } from "re-resizable";
 import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
-import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
 const MARGIN = 3;
@@ -695,7 +693,6 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
-  const resizableSide = modal ? "left" : "right";
 
   return shown ? (
     <Resizable
@@ -703,38 +700,12 @@ const InteractiveSidebar = ({
       size={{ height: "100%", width }}
       minWidth={200}
       maxWidth={600}
-      enable={{
-        top: false,
-        right: !modal,
-        bottom: false,
-        left: modal,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
+      direction={modal ? "left" : "right"}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
-        // reset sidebar to default width on double click
-        if (e.detail === 2) resetWidth();
       }}
-      style={{
-        borderLeft: modal
-          ? `1px solid ${theme.primary.plainBorder}`
-          : undefined,
-        borderRight: !modal
-          ? `1px solid ${theme.primary.plainBorder}`
-          : undefined,
-        borderTopRightRadius: 8,
-        display: "flex",
-        flexDirection: "column",
-      }}
-      handleStyles={{
-        [resizableSide]: { right: 0, width: 4 },
-      }}
-      handleClasses={{
-        [resizableSide]: resizeHandle,
-      }}
+      onResizeReset={resetWidth}
+      style={{ borderTopRightRadius: 8 }}
     >
       <SchemaSettings />
       {!modal && (

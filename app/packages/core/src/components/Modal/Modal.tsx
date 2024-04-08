@@ -19,6 +19,7 @@ import Sample from "./Sample";
 import { Sample3d } from "./Sample3d";
 import { TooltipInfo } from "./TooltipInfo";
 import { usePanels } from "./hooks";
+import { OperatorDrawer } from "@fiftyone/operators";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -255,6 +256,7 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
+          <OperatorDrawer placementArea="sample-view-left" />
           <TooltipInfo />
           <ContentColumn>
             <ModalNavigation onNavigate={onNavigate} />
@@ -288,6 +290,7 @@ const SampleModal = () => {
             </ErrorBoundary>
           </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />
+          <OperatorDrawer placementArea="sample-view-right" />
         </Container>
       </ModalWrapper>
     </Fragment>,

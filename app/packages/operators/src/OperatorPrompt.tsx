@@ -1,5 +1,5 @@
 import { Box, LinearProgress, Typography } from "@mui/material";
-import { useCallback } from "react";
+import { ComponentType, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 import OperatorIO from "./OperatorIO";
@@ -17,6 +17,7 @@ import {
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { formatValidationErrors, stringifyError } from "./utils";
 import { types } from ".";
+import { CUSTOM_PROMPTS } from "./constants";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -31,12 +32,30 @@ export default function OperatorPrompt() {
   }
 }
 
+export function withOperatorPrompt(Component: ComponentType) {
+  return function WithOperatorPrompt(props) {
+    const show = useRecoilValue(showOperatorPromptSelector);
+    if (show) {
+      return <Component {...props} />;
+    }
+    return null;
+  };
+}
+
 function ActualOperatorPrompt() {
   const operatorPrompt = useOperatorPrompt();
+
   const showResultOrError =
     operatorPrompt.hasResultOrError ||
     operatorPrompt.executorError ||
     operatorPrompt.resolveError;
+  const showPrompt = operatorPrompt.showPrompt;
+  const isExecuting = operatorPrompt.isExecuting;
+  const show = showResultOrError || showPrompt || isExecuting;
+  const customPrompt = operatorPrompt?.promptView;
+  const customPromptName = customPrompt?.name;
+
+  if (CUSTOM_PROMPTS.includes(customPromptName) || !show) return null;
 
   const paletteProps: OperatorPaletteProps = {
     submitButtonText: "Execute",
@@ -48,9 +67,8 @@ function ActualOperatorPrompt() {
     cancelButtonText: "Cancel",
   };
 
-  const customPromptView = operatorPrompt?.inputFields?.view;
-  if (customPromptView && customPromptView.name == "PromptView") {
-    const prompt = types.PromptView.fromJSON(customPromptView);
+  if (customPromptName == "PromptView") {
+    const prompt = types.PromptView.fromJSON(customPrompt);
     if (prompt.submitButtonLabel)
       paletteProps.submitButtonText = prompt.submitButtonLabel;
   }
@@ -111,7 +129,7 @@ function Executing() {
   );
 }
 
-function Prompting({ operatorPrompt }) {
+export function Prompting({ operatorPrompt }) {
   const setFormState = useCallback((data) => {
     const formData = data;
     for (const field in formData) {
