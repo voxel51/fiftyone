@@ -92,6 +92,8 @@ class SaveContext(object):
             -   ``"static"``: a fixed sample batch size for each save
             -   ``"size"``: a target batch size, in bytes, for each save
             -   ``"latency"``: a target latency, in seconds, between saves
+
+            By default, ``fo.config.default_batcher`` is used
     """
 
     def __init__(
@@ -890,6 +892,8 @@ class SampleCollection(object):
                 -   ``"size"``: a target batch size, in bytes, for each save
                 -   ``"latency"``: a target latency, in seconds, between saves
 
+                By default, ``fo.config.default_batcher`` is used
+
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` instances
@@ -928,6 +932,8 @@ class SampleCollection(object):
                 -   ``"static"``: a fixed sample batch size for each save
                 -   ``"size"``: a target batch size, in bytes, for each save
                 -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -974,6 +980,12 @@ class SampleCollection(object):
                 sample.ground_truth.label = make_label()
                 sample.save()
 
+            # Save using default batching strategy
+            with dataset.save_context() as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
             # Save in batches of 10
             with dataset.save_context(batch_size=10) as context:
                 for sample in dataset.iter_samples(progress=True):
@@ -1001,6 +1013,8 @@ class SampleCollection(object):
                 -   ``"static"``: a fixed sample batch size for each save
                 -   ``"size"``: a target batch size, in bytes, for each save
                 -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             a :class:`SaveContext`
