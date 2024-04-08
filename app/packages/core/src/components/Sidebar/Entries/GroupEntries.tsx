@@ -131,6 +131,7 @@ const GroupEntry = React.memo(
     const ref = useRef<HTMLInputElement>();
     const canCommit = useRef(false);
     const theme = useTheme();
+    const notify = fos.useNotification();
 
     return (
       <div
@@ -175,20 +176,28 @@ const GroupEntry = React.memo(
                 }}
                 defaultValue={title}
                 onKeyDown={(event) => {
+                  const inputElem = event.target as HTMLInputElement;
+                  const updatedTitle = inputElem.value;
+                  const unchanged = updatedTitle === title;
                   if (event.key === "Enter") {
-                    setValue(event.target.value).then((success) => {
+                    if (unchanged) {
+                      return inputElem.blur();
+                    }
+                    setValue?.(updatedTitle).then((success) => {
                       if (!success) {
-                        event.target.value = title;
+                        inputElem.value = title;
+                        notify({
+                          msg: "Failed to rename the group",
+                          variant: "error",
+                        });
                       }
-
-                      setEditing(false);
-                      event.target.blur();
+                      inputElem.blur();
                     });
 
                     return;
                   }
                   if (event.key === "Escape") {
-                    event.target.blur();
+                    inputElem.blur();
                   }
                 }}
                 onFocus={() => !editing && setEditing(true)}

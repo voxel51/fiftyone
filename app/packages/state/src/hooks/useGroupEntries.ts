@@ -37,9 +37,10 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         set(fos.sidebarGroupsDefinition(modal), newGroups);
         !modal &&
           fos.persistSidebarGroups({
-            dataset: await snapshot.getPromise(datasetName),
+            dataset: await snapshot.getPromise(fos.datasetName),
             stages: view,
             sidebarGroups: newGroups,
+            subscription: await snapshot.getPromise(fos.stateSubscription),
           });
         return true;
       },
