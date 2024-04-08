@@ -143,7 +143,8 @@ export class SavedViewsPom {
   }
 
   async openSelect() {
-    await this.selector().click({ timeout: 2000 });
+    // need to force click otherwise intercepted by material-ui backdrop
+    await this.selector().click({ timeout: 2000, force: true });
   }
 
   async openCreateModal() {

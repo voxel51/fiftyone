@@ -114,7 +114,6 @@ export default function Selection(props: SelectionProps) {
         defaultValue={selectedId}
         sx={{
           width: "100%",
-          zIndex: 999,
           background: theme.background.level3,
         }}
         renderValue={() => {
