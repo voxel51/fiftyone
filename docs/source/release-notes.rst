@@ -9,6 +9,8 @@ FiftyOne Teams 1.5.9
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
+- Optimized the localhost App experience when using
+  :ref:`API connections <teams-api-connection>`
 - Optimized performance of data-intensive API calls when using
   :ref:`API connections <teams-api-connection>`
 
