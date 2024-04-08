@@ -128,7 +128,7 @@ const GroupEntry = React.memo(
   }: GroupEntryProps) => {
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
-    const ref = useRef<HTMLInputElement>();
+    const ref = useRef<HTMLInputElement>(null);
     const canCommit = useRef(false);
     const theme = useTheme();
     const notify = fos.useNotification();
@@ -286,10 +286,8 @@ interface PathGroupProps {
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
     const [expanded, setExpanded] = useShown(name, modal);
-
-    const renameGroup = useRenameGroup(modal, name);
-    const onDelete = !modal ? useDeleteGroup(modal, name) : null;
-    const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));
+    const renameGroup = useRenameGroup(!modal, name);
+    const onDelete = useDeleteGroup(!modal && mutable, name);
 
     return (
       <GroupEntry
@@ -297,8 +295,8 @@ export const PathGroupEntry = React.memo(
         title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
-        setValue={modal || !mutable ? null : (value) => renameGroup(value)}
-        onDelete={!empty ? null : onDelete}
+        setValue={renameGroup}
+        onDelete={onDelete}
         pills={
           <Pills
             entries={[
