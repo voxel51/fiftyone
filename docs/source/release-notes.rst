@@ -52,6 +52,8 @@ App
   `#4195 <https://github.com/voxel51/fiftyone/pull/4195>`_
 - Fixed a bug when bookmarking sidebar filters for group datasets
   `#4097 <https://github.com/voxel51/fiftyone/pull/4097>`_
+- Fixed a bug where the saved view dropdown would cover the view stage popover
+  `#4242 <https://github.com/voxel51/fiftyone/pull/4242>`_
 
 Core
 
