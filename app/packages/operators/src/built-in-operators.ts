@@ -8,8 +8,11 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
+import { useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
+import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import {
   ExecutionContext,
   Operator,
@@ -19,9 +22,6 @@ import {
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
-import { useSetRecoilState } from "recoil";
-import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
-import { toSlug } from "@fiftyone/utilities";
 
 //
 // BUILT-IN OPERATORS
@@ -751,6 +751,19 @@ class ClearSelectedLabels extends Operator {
   }
 }
 
+class SetSpaces extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+  }
+  useHooks() {
+    const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
+    return { setSessionSpacesState };
+  }
+  async execute(ctx: ExecutionContext) {
+    ctx.hooks.setSessionSpacesState(ctx.params.spaces);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -780,6 +793,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SplitPanel);
     _registerBuiltInOperator(SetSelectedLabels);
     _registerBuiltInOperator(ClearSelectedLabels);
+    _registerBuiltInOperator(SetSpaces);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
