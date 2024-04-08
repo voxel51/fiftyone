@@ -431,7 +431,13 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=False, autosave=False, batch_size=None):
+    def iter_samples(
+        self,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+    ):
         """Returns an iterator over the samples in the view.
 
         Examples::
@@ -453,6 +459,10 @@ class DatasetView(foc.SampleCollection):
                 sample.ground_truth.label = make_label()
                 sample.save()
 
+            # Save using default batching strategy
+            for sample in view.iter_samples(progress=True, autosave=True):
+                sample.ground_truth.label = make_label()
+
             # Save in batches of 10
             for sample in view.iter_samples(
                 progress=True, autosave=True, batch_size=10
@@ -471,9 +481,21 @@ class DatasetView(foc.SampleCollection):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
@@ -486,7 +508,11 @@ class DatasetView(foc.SampleCollection):
             samples = pb(samples)
 
             if autosave:
-                save_context = foc.SaveContext(self, batch_size=batch_size)
+                save_context = foc.SaveContext(
+                    self,
+                    batch_size=batch_size,
+                    batching_strategy=batching_strategy,
+                )
                 exit_context.enter_context(save_context)
 
             for sample in samples:
@@ -543,6 +569,7 @@ class DatasetView(foc.SampleCollection):
         progress=False,
         autosave=False,
         batch_size=None,
+        batching_strategy=None,
     ):
         """Returns an iterator over the groups in the view.
 
@@ -566,6 +593,11 @@ class DatasetView(foc.SampleCollection):
                     sample["test"] = make_label()
                     sample.save()
 
+            # Save using default batching strategy
+            for group in view.iter_groups(progress=True, autosave=True):
+                for sample in group.values():
+                    sample["test"] = make_label()
+
             # Save in batches of 10
             for group in view.iter_groups(
                 progress=True, autosave=True, batch_size=10
@@ -587,9 +619,21 @@ class DatasetView(foc.SampleCollection):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
 
         Returns:
             an iterator that emits dicts mapping slice names to
@@ -611,7 +655,11 @@ class DatasetView(foc.SampleCollection):
             groups = pb(groups)
 
             if autosave:
-                save_context = foc.SaveContext(self, batch_size=batch_size)
+                save_context = foc.SaveContext(
+                    self,
+                    batch_size=batch_size,
+                    batching_strategy=batching_strategy,
+                )
                 exit_context.enter_context(save_context)
 
             for group in groups:
