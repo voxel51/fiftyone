@@ -53,6 +53,17 @@ App
 
 Core
 
+- All :ref:`autosave contexts <efficient-batch-edits>` now respect the
+  :ref:`default batching strategy <configuring-fiftyone>` and can be configured
+  to use content size-based batching
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
+- All SDK methods now use :ref:`autosave contexts <efficient-batch-edits>`
+  rather than calling :meth:`sample.save() <fiftyone.core.sample.Sample.save>`
+  in a loop
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
+- Added a :func:`read_files() <fiftyone.core.storage.read_files>` utility to
+  efficiently read from multiple files in a threadpool
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
 - Optimized segmentation mask conversion
   `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_,
   `#4188 <https://github.com/voxel51/fiftyone/pull/4188>`_
