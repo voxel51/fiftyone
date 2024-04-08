@@ -2333,6 +2333,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   ``"size"``: a target batch size, in bytes, for each save
                 -   ``"latency"``: a target latency, in seconds, between saves
 
+                By default, ``fo.config.default_batcher`` is used
+
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
@@ -2461,6 +2463,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   ``"static"``: a fixed sample batch size for each save
                 -   ``"size"``: a target batch size, in bytes, for each save
                 -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator that emits dicts mapping group slice names to

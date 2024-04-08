@@ -1625,6 +1625,11 @@ def parse_batching_strategy(batch_size=None, batching_strategy=None):
             -   ``"static"``: a fixed sample batch size for each save
             -   ``"size"``: a target batch size, in bytes, for each save
             -   ``"latency"``: a target latency, in seconds, between saves
+
+            By default, ``fo.config.default_batcher`` is used
+
+    Returns:
+        a tuple of ``(batch_size, batching_strategy)``
     """
     if batching_strategy is None:
         if batch_size is None:
