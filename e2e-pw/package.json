@@ -28,6 +28,6 @@
         "build-linux-screenshot-docker-image": "./scripts/generate-screenshots-docker-image/build-docker-image.sh",
         "e2e:ui": "npx playwright test --ui -c playwright.config.ts",
         "e2e": "playwright test -c playwright.config.ts",
-        "devserver": "export VITE_API=http://localhost:8787 VITE_NO_STATE=true FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)"
+        "devserver": "export VITE_API=http://localhost:8787 FIFTYONE_SERVER_PORT=8787 VITE_NO_STATE=true FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)"
     }
 }
