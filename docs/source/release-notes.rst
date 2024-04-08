@@ -43,6 +43,8 @@ App
   `#4182 <https://github.com/voxel51/fiftyone/pull/4182>`_
 - Optimized dataset counting for index page queries
   `#4114 <https://github.com/voxel51/fiftyone/pull/4114>`_
+- Fixed a bug where sidebar group name changes in the App were not persisted
+  `#4241 <https://github.com/voxel51/fiftyone/pull/4241>`_
 - Fixed a bug when applying filters to |Keypoint| fields
   `#4201 <https://github.com/voxel51/fiftyone/pull/4201>`_
 - Fixed a bug where in-App tagging actions may not be restricted to the
