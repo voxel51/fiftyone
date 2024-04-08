@@ -3448,6 +3448,7 @@ __metadata:
     react-laag: ^2.0.3
     react-syntax-highlighter: ^15.5.0
     react-use: ^17.3.2
+    searchable-react-json-view: ^0.0.8
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.0.2
     vite: ^3.2.10
