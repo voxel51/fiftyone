@@ -11,6 +11,7 @@ export default class SpaceNode {
   // if layout is set, render as space container instead of panel container
   layout?: Layout;
   pinned?: boolean;
+  sizes?: number[];
   constructor(
     id?: string,
     children?: SpaceNode[],
@@ -109,6 +110,7 @@ export default class SpaceNode {
       layout: this.layout,
       pinned: this.pinned,
       activeChild: this.activeChild,
+      sizes: this.sizes,
     };
   }
 }

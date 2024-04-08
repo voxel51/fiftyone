@@ -5,6 +5,7 @@ FiftyOne Server /sort route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 
 from starlette.endpoints import HTTPEndpoint
@@ -29,20 +30,19 @@ class Sort(HTTPEndpoint):
         subscription = data.get("subscription", None)
         slice = data.get("slice", None)
 
-        await run_sync_task(
-            lambda: fosv.get_view(
-                dataset_name,
-                stages=stages,
-                filters=filters,
-                extended_stages={
-                    "fiftyone.core.stages.SortBySimilarity": data["extended"]
-                },
-                sample_filter=SampleFilter(
-                    group=GroupElementFilter(slice=slice)
-                )
+        await fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            extended_stages={
+                "fiftyone.core.stages.SortBySimilarity": data["extended"]
+            },
+            sample_filter=(
+                SampleFilter(group=GroupElementFilter(slice=slice))
                 if slice is not None
-                else None,
-            )
+                else None
+            ),
+            awaitable=True,
         )
 
         state = fose.get_state()

@@ -3,6 +3,100 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.9
+--------------------
+*Released April 8, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
+
+- Optimized the localhost App experience when using
+  :ref:`API connections <teams-api-connection>`
+- Optimized performance of data-intensive API calls when using
+  :ref:`API connections <teams-api-connection>`
+
+.. _release-notes-v0.23.8:
+
+FiftyOne 0.23.8
+---------------
+*Released April 8, 2024*
+
+News
+
+- Released a :ref:`Hugging Face Hub integration <huggingface-hub>` for
+  programmatically publishing and downloading datasets to/from Hugging Face Hub!
+  `#4193 <https://github.com/voxel51/fiftyone/pull/4193>`_
+- Refreshed many popular :ref:`tutorials <tutorials>`
+  `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
+
+App
+
+- :ref:`Space sizes <app-spaces>` are now persisted when the App is refreshed
+  `#4171 <https://github.com/voxel51/fiftyone/pull/4171>`_
+- Added support for rendering detections with empty instance masks in the App
+  `#4227 <https://github.com/voxel51/fiftyone/pull/4227>`_
+- Enhanced label overlay processing to support empty label lists
+  `#4215 <https://github.com/voxel51/fiftyone/pull/4215>`_
+- Optimized by the App server by removing unnecessary server lock-ups due to
+  synchronous IO calls
+  `#4180 <https://github.com/voxel51/fiftyone/pull/4180>`_
+- Optimized sidebar performance for grouped datasets
+  `#4182 <https://github.com/voxel51/fiftyone/pull/4182>`_
+- Optimized dataset counting for index page queries
+  `#4114 <https://github.com/voxel51/fiftyone/pull/4114>`_
+- Fixed a bug when applying filters to |Keypoint| fields
+  `#4201 <https://github.com/voxel51/fiftyone/pull/4201>`_
+- Fixed a bug where in-App tagging actions may not be restricted to the
+  currently selected samples
+  `#4195 <https://github.com/voxel51/fiftyone/pull/4195>`_
+- Fixed a bug when bookmarking sidebar filters for group datasets
+  `#4097 <https://github.com/voxel51/fiftyone/pull/4097>`_
+
+Core
+
+- Optimized segmentation mask conversion
+  `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_,
+  `#4188 <https://github.com/voxel51/fiftyone/pull/4188>`_
+- Resolved singularity issues in
+  :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+  `#4206 <https://github.com/voxel51/fiftyone/pull/4206>`_
+- Fixed matplotlib style deprecation error
+  `#4213 <https://github.com/voxel51/fiftyone/pull/4213>`_
+
+Plugins
+
+- :ref:`Secrets <operator-secrets>` are now available to operators in
+  their
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`,
+  :meth:`resolve_output() <fiftyone.operators.operator.Operator.resolve_output>`, and
+  :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
+  methods
+  `#4169 <https://github.com/voxel51/fiftyone/pull/4169>`_
+- ``ctx.view`` now reflects when the current view is saved
+  `#4200 <https://github.com/voxel51/fiftyone/pull/4200>`_
+- Fixed a regression in debounce behavior in operator input forms that could
+  potentially result in degraded performance
+  `#4199 <https://github.com/voxel51/fiftyone/pull/4199>`_
+- Fixed a bug when using the
+  :meth:`set_view() <fiftyone.operators.operations.Operations.set_view>`
+  method in operators
+  `#4198 <https://github.com/voxel51/fiftyone/pull/4198>`_
+
+Zoo
+
+- Added support for loading
+  :ref:`YOLOv8 and YOLOv9 segmentation models <ultralytics-instance-segmentation>`
+  from the Model Zoo
+  `#4220 <https://github.com/voxel51/fiftyone/pull/4220>`_
+- Added support for applying
+  :ref:`YOLO oriented bounding box models <ultralytics-oriented-bounding-boxes>`
+  to FiftyOne datasets
+  `#4230 <https://github.com/voxel51/fiftyone/pull/4230>`_,
+  `#4238 <https://github.com/voxel51/fiftyone/pull/4238>`_
+- Added support for applying
+  :ref:`Segment Anything <model-zoo-segment-anything-vitb-torch>` models to the
+  frames of video datasets
+  `#4229 <https://github.com/voxel51/fiftyone/pull/4229>`_
+
 FiftyOne Teams 1.5.8
 --------------------
 *Released March 21, 2024*

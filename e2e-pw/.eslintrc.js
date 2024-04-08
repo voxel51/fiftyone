@@ -10,7 +10,8 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   rules: {
     "playwright/expect-expect": "off",
-    "playwright/no-networkidle": "off",
+    // todo: this is giving false positives, enable when fixed
+    "playwright/no-standalone-expect": "off",
   },
   ignorePatterns: ["node_modules/", "scripts/"],
 };

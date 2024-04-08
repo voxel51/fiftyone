@@ -66,6 +66,7 @@ INSTALL_REQUIRES = [
     "retrying",
     "scikit-learn",
     "scikit-image",
+    "scipy",
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
