@@ -47,11 +47,12 @@ async def _get_operator_registry_for_route(
 
 
 def resolve_dataset_name(request_params: dict):
-    try:
-        ctx = ExecutionContext(request_params)
-        return ctx.dataset.head_name
-    except:
-        return request_params.get("dataset_name", None)
+    head_name = request_params.get("dataset_head_name", None)
+
+    if head_name:
+        return head_name
+
+    return request_params.get("dataset_name", None)
 
 
 class ListOperators(HTTPEndpoint):

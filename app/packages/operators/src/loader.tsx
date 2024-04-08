@@ -1,4 +1,7 @@
-import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import {
+  datasetHeadName,
+  datasetName as datasetNameAtom,
+} from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -12,9 +15,9 @@ import {
 
 let startupOperatorsExecuted = false;
 
-async function loadOperators(datasetName: string) {
+async function loadOperators(datasetName: string, headName?: string) {
   registerBuiltInOperators();
-  await loadOperatorsFromServer(datasetName);
+  await loadOperatorsFromServer(datasetName, headName);
   executeOperatorsForEvent("onDatasetOpen");
   if (!startupOperatorsExecuted) {
     executeOperatorsForEvent("onStartup");
@@ -29,6 +32,7 @@ async function loadOperators(datasetName: string) {
 export function useOperators(datasetLess?: boolean) {
   const [ready, setReady] = useState(false);
   const datasetName = useRecoilValue(datasetNameAtom);
+  const headName = useRecoilValue(datasetHeadName);
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
     availableOperatorsRefreshCount
   );
@@ -37,7 +41,7 @@ export function useOperators(datasetLess?: boolean) {
 
   useEffect(() => {
     if (isPrimitiveString(datasetName) || datasetLess) {
-      loadOperators(datasetName).then(() => {
+      loadOperators(datasetName, headName).then(() => {
         // trigger force refresh
         setAvailableOperatorsRefreshCount((count) => count + 1);
         setReady(true);
@@ -47,6 +51,7 @@ export function useOperators(datasetLess?: boolean) {
   }, [
     datasetLess,
     datasetName,
+    headName,
     setAvailableOperatorsRefreshCount,
     setOperatorsInitialized,
   ]);

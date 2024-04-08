@@ -76,5 +76,11 @@ export default graphql`
     ...sampleFieldsFragment
     ...sidebarGroupsFragment
     ...viewFragment
+
+    # START TEAMS
+
+    ...snapshotFragment
+
+    ### END TEAMS
   }
 `;

@@ -84,6 +84,9 @@ const globalContextSelector = selector({
     const selectedLabels = get(fos.selectedLabels);
     const currentSample = get(fos.currentSampleId);
 
+    // Teams only
+    const datasetHeadName = get(fos.datasetHeadName);
+
     return {
       datasetName,
       view,
@@ -92,6 +95,9 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       currentSample,
+
+      // Teams only
+      datasetHeadName,
     };
   },
 });
@@ -121,6 +127,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     currentSample,
+
+    // Teams only
+    datasetHeadName,
   } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -133,6 +142,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedSamples,
         selectedLabels,
         currentSample,
+
+        // Teams only
+        datasetHeadName,
       },
       hooks
     );
