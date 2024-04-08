@@ -25,8 +25,6 @@ News
 - Released a :ref:`Hugging Face Hub integration <huggingface-hub>` for
   programmatically publishing and downloading datasets to/from Hugging Face Hub!
   `#4193 <https://github.com/voxel51/fiftyone/pull/4193>`_
-- Refreshed many popular :ref:`tutorials <tutorials>`
-  `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
 
 App
 
@@ -65,6 +63,13 @@ Core
   `#4206 <https://github.com/voxel51/fiftyone/pull/4206>`_
 - Fixed matplotlib style deprecation error
   `#4213 <https://github.com/voxel51/fiftyone/pull/4213>`_
+
+Docs
+
+- Added a :doc:`clustering tutorial </tutorials/clustering>`
+  `#4245 <https://github.com/voxel51/fiftyone/pull/4245>`_
+- Refreshed many popular :ref:`tutorials <tutorials>`
+  `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
 
 Plugins
 
