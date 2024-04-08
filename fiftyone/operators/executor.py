@@ -5,6 +5,7 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import collections
 import inspect
@@ -346,7 +347,7 @@ async def do_execute_operator(operator, ctx, exhaust=False):
         return result
 
 
-def resolve_type(registry, operator_uri, request_params):
+async def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
@@ -367,6 +368,7 @@ def resolve_type(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -375,7 +377,7 @@ def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_execution_options(registry, operator_uri, request_params):
+async def resolve_execution_options(registry, operator_uri, request_params):
     """Resolves the execution options of the operator with the given name.
 
     Args:
@@ -398,6 +400,7 @@ def resolve_execution_options(registry, operator_uri, request_params):
         required_secrets=operator._plugin_secrets,
     )
     orc_svc = OrchestratorService()
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         search_params = {}
         search_params[operator.uri] = ["available_operators"]
@@ -525,6 +528,7 @@ class ExecutionContext(object):
 
         # Always derive the view from the context's dataset
         dataset = self.dataset
+        view_name = self.request_params.get("view_name", None)
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
@@ -532,13 +536,16 @@ class ExecutionContext(object):
         if dataset is None:
             return None
 
-        self._view = fosv.get_view(
-            dataset,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended,
-            reload=False,
-        )
+        if view_name is None:
+            self._view = fosv.get_view(
+                dataset,
+                stages=stages,
+                filters=filters,
+                extended_stages=extended,
+                reload=False,
+            )
+        else:
+            self._view = dataset.load_saved_view(view_name)
 
         return self._view
 
@@ -820,9 +827,9 @@ class ExecutionResult(object):
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
             "delegated": self.delegated,
-            "validation_ctx": self.validation_ctx.to_json()
-            if self.validation_ctx
-            else None,
+            "validation_ctx": (
+                self.validation_ctx.to_json() if self.validation_ctx else None
+            ),
         }
 
 

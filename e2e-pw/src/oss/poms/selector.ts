@@ -54,10 +54,11 @@ class SelectorAsserter {
     expect(count).toBe(values.length);
 
     for (let index = 0; index < values.length; index++) {
-      const visible = await this.selectorPom.resultsContainer
-        .getByTestId(`selector-result-${values[index]}`)
-        .isVisible();
-      expect(visible).toBe(true);
+      await expect(
+        this.selectorPom.resultsContainer.getByTestId(
+          `selector-result-${values[index]}`
+        )
+      ).toBeVisible();
     }
 
     await this.selectorPom.closeResults();

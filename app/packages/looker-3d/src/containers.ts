@@ -79,10 +79,10 @@ export const Container = styled.div`
   justify-content: center;
 `;
 
-export const LevaContainer = styled.div`
+export const LevaContainer = styled.div<{ isSidebarVisible: boolean }>`
   position: absolute;
-  bottom: 30vh;
-  left: 2.5vw;
+  top: 12vh;
+  right: ${(props) => (props.isSidebarVisible ? "23vw" : "3vw")};
   z-index: 1000;
   height: 0;
 `;

@@ -138,7 +138,9 @@ from .core.odm import (
     DynamicEmbeddedDocument,
     EmbeddedDocument,
     KeypointSkeleton,
+    Panel,
     SidebarGroupDocument,
+    Space,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -188,10 +190,6 @@ from .core.threed import (
     Euler,
     Quaternion,
     Vector3,
-)
-from .core.spaces import (
-    Space,
-    Panel,
 )
 from .core.stages import (
     Concat,

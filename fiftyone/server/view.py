@@ -104,7 +104,7 @@ def get_view(
         a :class:`fiftyone.core.view.DatasetView`
     """
 
-    def run(dataset):
+    def run(dataset, stages):
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset)
 
@@ -121,19 +121,7 @@ def get_view(
 
         if sample_filter is not None:
             if sample_filter.group:
-                if sample_filter.group.slice:
-                    view.group_slice = sample_filter.group.slice
-
-                if sample_filter.group.id:
-                    view = fov.make_optimized_select_view(
-                        view, sample_filter.group.id, groups=True
-                    )
-
-                if sample_filter.group.slices:
-                    view = view.select_group_slices(
-                        sample_filter.group.slices,
-                        _force_mixed=True,
-                    )
+                view = _handle_group_filter(dataset, view, sample_filter.group)
 
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -149,9 +137,9 @@ def get_view(
         return view
 
     if awaitable:
-        return fou.run_sync_task(run, dataset)
+        return fou.run_sync_task(run, dataset, stages)
 
-    return run(dataset)
+    return run(dataset, stages)
 
 
 def get_extended_view(
@@ -247,6 +235,45 @@ def _add_labels_tags_counts(view):
         view = add_tags(path, field, view)
 
     view = _count_list_items(_LABEL_TAGS, view)
+
+    return view
+
+
+def _handle_group_filter(
+    dataset: fod.Dataset,
+    view: foc.SampleCollection,
+    filter: GroupElementFilter,
+):
+    stages = view._stages
+    unselected = all(
+        not isinstance(stage, fosg.SelectGroupSlices) for stage in stages
+    )
+    group_field = dataset.group_field
+    if unselected and filter.slice:
+        # flatten the collection if the view has no slice selection
+        view = dataset.select_group_slices(_force_mixed=True)
+
+        if filter.id:
+            # use 'match' to select a group by 'id'
+            view = view.match(
+                {group_field + "._id": {"$in": [ObjectId(filter.id)]}}
+            )
+
+        for stage in stages:
+            # add stages after flattening and group match
+            view = view._add_view_stage(stage, validate=False)
+
+    else:
+        if filter.slice:
+            view.group_slice = filter.slice
+
+        if filter.id:
+            view = fov.make_optimized_select_view(view, filter.id, groups=True)
+
+    if filter.slices:
+        # use 'match' to select requested slices, and avoid media type
+        # validation
+        view = view.match({group_field + ".name": {"$in": filter.slices}})
 
     return view
 
