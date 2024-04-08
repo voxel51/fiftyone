@@ -83,12 +83,15 @@ class DownloadContext(object):
     you can configure a batching strategy via the `batch_size` or
     `target_size_bytes` parameters.
 
+    If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+    downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         batch_size (None): a sample batch size to use for each download
         target_size_bytes (None): a target content size, in bytes, for each
-            download batch
+            download batch. If negative, all media is downloaded in one batch
         media_fields (None): a field or iterable of fields containing media to
             download. By default, all media fields in the collection's
             :meth:`app_config` are used
@@ -1233,12 +1236,21 @@ class SampleCollection(object):
         but you can configure a batching strategy via the `batch_size` or
         `target_size_bytes` parameters.
 
+        If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+        downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
+
         Examples::
 
             import time
             import fiftyone as fo
 
             dataset = fo.load_dataset("a-cloud-backed-dataset")
+
+            # Download media using the default batching strategy
+            with dataset.download_context():
+                for sample in dataset.iter_samples(progress=True):
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
 
             # Download media in batches of 100 samples
             with dataset.download_context(batch_size=100):
@@ -1247,7 +1259,7 @@ class SampleCollection(object):
                     time.sleep(0.01)
 
             # Download media in batches of 50MB
-            with dataset.download_context(target_size_bytes=50 * 1024 ** 2):
+            with dataset.download_context(target_size_bytes=50 * 1024**2):
                 for sample in dataset.iter_samples(progress=True):
                     assert fo.media_cache.is_local_or_cached(sample.filepath)
                     time.sleep(0.01)
@@ -1255,7 +1267,8 @@ class SampleCollection(object):
         Args:
             batch_size (None): a sample batch size to use for each download
             target_size_bytes (None): a target content size, in bytes, for each
-                download batch
+                download batch. If negative, all media is downloaded in one
+                batch
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used
