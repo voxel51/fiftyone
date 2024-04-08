@@ -79,14 +79,30 @@ class SaveContext(object):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        batch_size (None): the batching strategy to use. Can either be an
-            integer specifying the number of samples to save in a batch, or a
-            float number of seconds between batched saves
+        batch_size (None): the batch size to use. If a ``batching_strategy`` is
+            provided, this parameter configures the strategy as described below.
+            If no ``batching_strategy`` is provided, this can either be an
+            integer specifying the number of samples to save in a batch (in
+            which case ``batching_strategy`` is implicitly set to ``"static"``)
+            or a float number of seconds between batched saves (in which case
+            ``batching_strategy`` is implicitly set to ``"latency"``)
+        batching_strategy (None): the batching strategy to use for each save
+            operation. Supported values are:
+
+            -   ``"static"``: a fixed sample batch size for each save
+            -   ``"size"``: a target batch size, in bytes, for each save
+            -   ``"latency"``: a target latency, in seconds, between saves
     """
 
-    def __init__(self, sample_collection, batch_size=None):
-        if batch_size is None:
-            batch_size = 0.2
+    def __init__(
+        self,
+        sample_collection,
+        batch_size=None,
+        batching_strategy=None,
+    ):
+        batch_size, batching_strategy = fou.parse_batching_strategy(
+            batch_size=batch_size, batching_strategy=batching_strategy
+        )
 
         self.sample_collection = sample_collection
         self.batch_size = batch_size
@@ -99,15 +115,19 @@ class SaveContext(object):
         self._frame_ops = []
         self._reload_parents = []
 
+        self._batching_strategy = batching_strategy
         self._curr_batch_size = None
-        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
+        self._curr_batch_size_bytes = None
         self._last_time = None
 
     def __enter__(self):
-        if self._dynamic_batches:
+        if self._batching_strategy == "static":
+            self._curr_batch_size = 0
+        elif self._batching_strategy == "size":
+            self._curr_batch_size_bytes = 0
+        elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
 
-        self._curr_batch_size = 0
         return self
 
     def __exit__(self, *args):
@@ -129,8 +149,6 @@ class SaveContext(object):
         sample_ops, frame_ops = sample._save(deferred=True)
         updated = sample_ops or frame_ops
 
-        self._curr_batch_size += 1
-
         if sample_ops:
             self._sample_ops.extend(sample_ops)
 
@@ -140,16 +158,31 @@ class SaveContext(object):
         if updated and isinstance(sample, fosa.SampleView):
             self._reload_parents.append(sample)
 
-        if self._dynamic_batches:
+        if self._batching_strategy == "static":
+            self._curr_batch_size += 1
+            if self._curr_batch_size >= self.batch_size:
+                self._save_batch()
+                self._curr_batch_size = 0
+        elif self._batching_strategy == "size":
+            if sample_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in sample_ops
+                )
+
+            if frame_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in frame_ops
+                )
+
+            if self._curr_batch_size_bytes >= self.batch_size:
+                self._save_batch()
+                self._curr_batch_size_bytes = 0
+        elif self._batching_strategy == "latency":
             if timeit.default_timer() - self._last_time >= self.batch_size:
                 self._save_batch()
                 self._last_time = timeit.default_timer()
-        elif self._curr_batch_size >= self.batch_size:
-            self._save_batch()
 
     def _save_batch(self):
-        self._curr_batch_size = 0
-
         if self._sample_ops:
             foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
             self._sample_ops.clear()
@@ -826,7 +859,13 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self, progress=False, autosave=False, batch_size=None):
+    def iter_samples(
+        self,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+    ):
         """Returns an iterator over the samples in the collection.
 
         Args:
@@ -835,9 +874,21 @@ class SampleCollection(object):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
@@ -851,6 +902,7 @@ class SampleCollection(object):
         progress=False,
         autosave=False,
         batch_size=None,
+        batching_strategy=None,
     ):
         """Returns an iterator over the groups in the collection.
 
@@ -861,9 +913,21 @@ class SampleCollection(object):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -888,7 +952,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_group()")
 
-    def save_context(self, batch_size=None):
+    def save_context(self, batch_size=None, batching_strategy=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
 
@@ -923,14 +987,27 @@ class SampleCollection(object):
                     context.save(sample)
 
         Args:
-            batch_size (None): the batching strategy to use. Can either be an
-                integer specifying the number of samples to save in a batch, or
-                a float number of seconds between batched saves
+            batch_size (None): the batch size to use. If a ``batching_strategy``
+                is provided, this parameter configures the strategy as
+                described below. If no ``batching_strategy`` is provided, this
+                can either be an integer specifying the number of samples to
+                save in a batch (in which case ``batching_strategy`` is
+                implicitly set to ``"static"``) or a float number of seconds
+                between batched saves (in which case ``batching_strategy`` is
+                implicitly set to ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
 
         Returns:
             a :class:`SaveContext`
         """
-        return SaveContext(self, batch_size=batch_size)
+        return SaveContext(
+            self, batch_size=batch_size, batching_strategy=batching_strategy
+        )
 
     def _get_default_sample_fields(
         self,
