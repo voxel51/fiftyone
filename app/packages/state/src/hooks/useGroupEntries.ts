@@ -3,14 +3,14 @@ import { removeKeys } from "@fiftyone/utilities";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { groupLength, replace } from "../recoil/groupEntries";
 
-export const useRenameGroup = (modal: boolean, group: string) => {
-  return useRecoilCallback(
+export const useRenameGroup = (mutable: boolean, group: string) => {
+  const callback = useRecoilCallback(
     ({ set, snapshot }) =>
       async (newName: string) => {
         newName = newName.toLowerCase();
 
         const current = await snapshot.getPromise(
-          fos.sidebarGroupsDefinition(modal)
+          fos.sidebarGroupsDefinition(false)
         );
         if (
           !fos.validateGroupName(
@@ -28,44 +28,53 @@ export const useRenameGroup = (modal: boolean, group: string) => {
 
         const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          fos.groupShown({ modal, group, loading: true })
+          fos.groupShown({ modal: false, group, loading: true })
         );
 
         replace[newName] = group;
 
-        set(fos.groupShown({ group: newName, modal, loading: true }), shown);
-        set(fos.sidebarGroupsDefinition(modal), newGroups);
-        !modal &&
-          fos.persistSidebarGroups({
-            dataset: await snapshot.getPromise(fos.datasetName),
-            stages: view,
-            sidebarGroups: newGroups,
-            subscription: await snapshot.getPromise(fos.stateSubscription),
-          });
+        set(
+          fos.groupShown({ group: newName, modal: false, loading: true }),
+          shown
+        );
+        set(fos.sidebarGroupsDefinition(false), newGroups);
+
+        fos.persistSidebarGroups({
+          dataset: await snapshot.getPromise(fos.datasetName),
+          stages: view,
+          sidebarGroups: newGroups,
+          subscription: await snapshot.getPromise(fos.stateSubscription),
+        });
         return true;
       },
-    []
+    [group]
   );
+
+  if (mutable) {
+    return callback;
+  }
+
+  return undefined;
 };
 
-export const useDeleteGroup = (modal: boolean, group: string) => {
-  const numFields = useRecoilValue(groupLength({ modal, group }));
+export const useDeleteGroup = (mutable: boolean, group: string) => {
+  const numFields = useRecoilValue(groupLength({ modal: false, group }));
   const onDelete = useRecoilCallback(
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
-          fos.sidebarGroups({ modal, loading: true })
+          fos.sidebarGroups({ modal: false, loading: true })
         );
         set(
-          fos.sidebarGroups({ modal, loading: true }),
+          fos.sidebarGroups({ modal: false, loading: true }),
           groups.filter(({ name }) => name !== group)
         );
       },
     []
   );
 
-  if (numFields) {
-    return null;
+  if (numFields || !mutable) {
+    return undefined;
   }
 
   return onDelete;
