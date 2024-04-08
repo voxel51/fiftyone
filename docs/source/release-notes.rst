@@ -9,6 +9,15 @@ FiftyOne Teams 1.5.9
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
+- :ref:`Download contexts <teams-cloud-media-python>` now support batching
+  based on content size
+- All builtin methods that require access to cloud media now use
+  :ref:`download contexts <teams-cloud-media-python>` to download media in
+  batches during execution rather than downloading media in a single batch
+  up-front
+- The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  method no longer downloads cloud media if the export does not require it
+  (e.g., labels-only exports)
 - Optimized the localhost App experience when using
   :ref:`API connections <teams-api-connection>`
 - Optimized performance of data-intensive API calls when using
