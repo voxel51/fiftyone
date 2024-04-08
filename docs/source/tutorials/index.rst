@@ -163,7 +163,7 @@ your datasets and turn your good models into *great models*.
     :header: Clustering Images with Embeddings
     :description: Use embeddings to cluster images in your dataset and visualize the results in FiftyOne.
     :link: clustering.html
-    :image: ../_static/images/tutorials/clustering.png
+    :image: ../_static/images/tutorials/clustering.jpg
     :tags: App,Brain,Dataset-Curation,Embeddings,Visualization
 
 .. End of tutorial cards
