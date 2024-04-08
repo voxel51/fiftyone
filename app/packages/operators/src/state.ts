@@ -310,6 +310,9 @@ export const useOperatorPrompt = () => {
   const cachedResolvedInput = useMemo(() => {
     return isDynamic ? null : resolvedIO.input;
   }, [isDynamic, resolvedIO.input]);
+  const promptView = useMemo(() => {
+    return inputFields?.view;
+  }, [inputFields]);
 
   const resolveInput = useCallback(
     debounce(
@@ -509,6 +512,7 @@ export const useOperatorPrompt = () => {
     pendingResolve,
     execDetails,
     submitOptions,
+    promptView,
   };
 };
 

@@ -30,6 +30,7 @@
         "vite": "^3.2.10"
     },
     "peerDependencies": {
+        "re-resizable": "*",
         "react": "*",
         "react-relay": "*",
         "recoil": "*",

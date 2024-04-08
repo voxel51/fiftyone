@@ -1,0 +1,11 @@
+.resizeHandle:hover,
+.resizeHandle:active,
+.resizeHandle:focus {
+  background: var(--fo-palette-neutral-plainColor);
+  z-index: 1;
+  transition-delay: 0.25s;
+}
+
+.resizeHandle {
+  transition: background-color 0.1s ease;
+}

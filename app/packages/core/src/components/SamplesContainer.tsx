@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
 import Sidebar, { Entries } from "./Sidebar";
+import { OperatorDrawer } from "@fiftyone/operators";
 
 const Container = styled.div`
   display: flex;
@@ -99,8 +100,10 @@ function SamplesContainer() {
   );
   return (
     <Container>
+      <OperatorDrawer placementArea="left" />
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
       <MainSpace />
+      <OperatorDrawer placementArea="right" />
     </Container>
   );
 }
