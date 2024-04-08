@@ -21,6 +21,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
@@ -1583,8 +1584,12 @@ def import_from_labelbox(
     # Load labels
     d_list = etas.read_json(json_path)
 
+    new_samples = []
+
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
-    with fou.ProgressBar(progress=progress) as pb:
+    pb = fou.ProgressBar(progress=progress)
+    ctx = foc.SaveContext(dataset)
+    with pb, ctx:
         for d in pb(d_list):
             labelbox_id = d["DataRow ID"]
 
@@ -1599,7 +1604,6 @@ def import_from_labelbox(
                 filepath = filename_maker.get_output_path(image_url)
                 etaw.download_file(image_url, path=filepath, quiet=True)
                 sample = fos.Sample(filepath=filepath)
-                dataset.add_sample(sample)
             else:
                 logger.info(
                     "Skipping labels for unknown Labelbox ID '%s'; provide a "
@@ -1641,7 +1645,13 @@ def import_from_labelbox(
                     {label_key(k): v for k, v in labels_dict.items()}
                 )
 
-            sample.save()
+            if sample._in_db:
+                ctx.save(sample)
+            else:
+                new_samples.append(sample)
+
+    if new_samples:
+        dataset.add_samples(new_samples, progress=progress)
 
 
 def export_to_labelbox(
@@ -1837,7 +1847,9 @@ def upload_media_to_labelbox(
     # @todo use `create_data_rows()` to optimize performance
     # @todo handle API rate limits
     # Reference: https://labelbox.com/docs/python-api/data-rows
-    with fou.ProgressBar(progress=progress) as pb:
+    pb = fou.ProgressBar(progress=progress)
+    ctx = foc.SaveContext(sample_collection)
+    with pb, ctx:
         for sample in pb(sample_collection):
             try:
                 has_id = sample[labelbox_id_field] is not None
@@ -1855,7 +1867,7 @@ def upload_media_to_labelbox(
             filepath = sample.filepath
             data_row = labelbox_dataset.create_data_row(row_data=filepath)
             sample[labelbox_id_field] = data_row.uid
-            sample.save()
+            ctx.save(sample)
 
 
 def upload_labels_to_labelbox(
