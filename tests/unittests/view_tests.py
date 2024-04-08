@@ -4269,8 +4269,9 @@ class ViewStageTests(unittest.TestCase):
         optimized_view = fov.make_optimized_select_view(
             dataset, sample_ids[0], flatten=True
         )
+
         expected_stages = [
-            fosg.SelectGroupSlices(),
+            fosg.SelectGroupSlices(_allow_mixed=True),
             fosg.Select(sample_ids[0]),
         ]
         self.assertEqual(optimized_view._all_stages, expected_stages)

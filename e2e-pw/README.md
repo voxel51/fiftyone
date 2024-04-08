@@ -7,6 +7,8 @@
 -   Run tests directly from VSCode or from the command line with `yarn e2e`, or
     start the UI mode using `yarn e2e:ui` command. If you're using a local dev
     build, read the following section.
+-   If you upgrade the version of Playwright, you'll need to run
+    `yarn playwright install` to update the browser binaries.
 
 ### To use the local dev server of the app
 

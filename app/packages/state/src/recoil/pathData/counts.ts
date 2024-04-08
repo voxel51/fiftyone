@@ -185,11 +185,12 @@ export const noneCount = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const data = get(aggregation(params));
+      const { count: aggCount = 0 } = get(aggregation(params)) ?? {};
+
       const parent = params.path.split(".").slice(0, -1).join(".");
       const isLabelTag = params.path.startsWith("_label_tags");
       return get(schemaAtoms.isListField(params.path)) || isLabelTag
         ? 0
-        : (get(count({ ...params, path: parent })) as number) - data.count;
+        : (get(count({ ...params, path: parent })) as number) - aggCount;
     },
 });

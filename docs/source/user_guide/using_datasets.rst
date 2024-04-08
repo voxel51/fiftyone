@@ -1,4 +1,4 @@
-parameter.. _using-datasets:
+.. _using-datasets:
 
 Using FiftyOne Datasets
 =======================

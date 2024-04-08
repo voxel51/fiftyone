@@ -446,6 +446,8 @@ async function executeOperatorAsGenerator(
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
+      request_delegation: ctx.requestDelegation,
+      view_name: currentContext.viewName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -548,6 +550,7 @@ export async function executeOperatorWithContext(
           current_sample: currentContext.currentSample,
           delegation_target: ctx.delegationTarget,
           request_delegation: ctx.requestDelegation,
+          view_name: currentContext.viewName,
 
           // Teams only
           dataset_head_name: currentContext.datasetHeadName,
@@ -617,6 +620,7 @@ export async function resolveRemoteType(
       results: results ? results.result : null,
       delegated: results ? results.delegated : null,
       current_sample: currentContext.currentSample,
+      view_name: currentContext.viewName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -687,6 +691,7 @@ export async function resolveExecutionOptions(
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      view_name: currentContext.viewName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -718,6 +723,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
+      view_name: currentContext.viewName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,

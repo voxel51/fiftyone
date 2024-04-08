@@ -6988,7 +6988,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
-    def _update_last_loaded_at(self):
+    def _update_last_loaded_at(self, force=False):
+        if os.environ.get("FIFTYONE_SERVER", False) and not force:
+            return
+
         self._doc.last_loaded_at = datetime.utcnow()
         self._save()
 

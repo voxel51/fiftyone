@@ -28,6 +28,7 @@ function useCurrentSample() {
 function useOperatorThrottledContextSetter() {
   const datasetName = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.view);
+  const viewName = useRecoilValue(fos.viewName);
   const extendedStages = useRecoilValue(fos.extendedStages);
   const filters = useRecoilValue(fos.filters);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
@@ -58,6 +59,7 @@ function useOperatorThrottledContextSetter() {
       selectedSamples,
       selectedLabels,
       currentSample,
+      viewName,
     });
   }, [
     setThrottledContext,
@@ -69,6 +71,7 @@ function useOperatorThrottledContextSetter() {
     selectedSamples,
     selectedLabels,
     currentSample,
+    viewName,
   ]);
 }
 
