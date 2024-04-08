@@ -83,6 +83,7 @@ const globalContextSelector = selector({
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
     const currentSample = get(fos.currentSampleId);
+    const viewName = get(fos.viewName);
 
     // Teams only
     const datasetHeadName = get(fos.datasetHeadName);
@@ -95,6 +96,7 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       currentSample,
+      viewName,
 
       // Teams only
       datasetHeadName,
@@ -127,6 +129,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     currentSample,
+    viewName,
 
     // Teams only
     datasetHeadName,
@@ -142,6 +145,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedSamples,
         selectedLabels,
         currentSample,
+        viewName,
 
         // Teams only
         datasetHeadName,
@@ -157,6 +161,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     selectedLabels,
     hooks,
+    viewName,
+    currentSample,
   ]);
 
   return ctx;
