@@ -4818,9 +4818,11 @@ update strategy:
     As the above snippet shows, you should also optimize your iteration by
     :ref:`selecting only <efficient-iteration-views>` the required fields.
 
-By default, updates are batched and submitted every 0.2 seconds, but you can
-configure the batching strategy by passing the optional ``batch_size`` argument
-to :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
+You can configure the default batching strategy that is used via your
+:ref:`FiftyOne config <configuring-fiftyone>`, or you can configure the
+batching strategy on a per-method call basis by passing the optional
+``batch_size`` and ``batching_strategy`` arguments to
+:meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
 
 You can also use the
 :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`
