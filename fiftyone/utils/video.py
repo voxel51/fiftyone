@@ -757,6 +757,7 @@ def _transform_videos(
         output_field = media_field
 
     diff_field = output_field != media_field
+    save = (save_filepaths and sample_frames) or update_filepaths
 
     if sample_frames:
         reencode = True
@@ -772,7 +773,9 @@ def _transform_videos(
         frames = itertools.repeat(None)
 
     with fou.ProgressBar(total=view, progress=progress) as pb:
-        for sample, _frames in pb(zip(view, frames)):
+        for sample, _frames in pb(
+            zip(view.iter_samples(autosave=save), frames)
+        ):
             inpath = sample[media_field]
 
             _outpath = _get_outpath(
@@ -837,12 +840,9 @@ def _transform_videos(
                     if e:
                         sample.frames[fn][output_field] = frame_path
 
-                sample.save()
-
             if diff_field or outpath != inpath:
                 if update_filepaths and not sample_frames:
                     sample[output_field] = outpath
-                    sample.save()
 
                 if delete_originals:
                     stale_paths.append(inpath)

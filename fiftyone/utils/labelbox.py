@@ -20,7 +20,8 @@ import numpy as np
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.cache as foc
+import fiftyone as fo
+import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
@@ -551,13 +552,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 path = self._convert_s3_path(path)
             elif fs != fos.FileSystem.LOCAL:
                 paths_to_download.append(path)
-                path = foc.media_cache.get_local_path(path, download=False)
+                path = fo.media_cache.get_local_path(path, download=False)
                 unsupported_fs.add(fs)
 
             converted_paths.append(path)
 
         if paths_to_download:
-            _ = foc.media_cache.get_local_paths(paths_to_download)
+            _ = fo.media_cache.get_local_paths(paths_to_download)
             logger.warning(
                 "Only S3 media can be uploaded directly with "
                 "upload_media=False, but found %s media as well. These files "
@@ -622,7 +623,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         media_paths, sample_ids = samples.values([media_field, "id"])
         if upload_media:
             # Ensure all media exists locally, this downloads cloud media
-            media_paths = foc.media_cache.get_local_paths(media_paths)
+            media_paths = fo.media_cache.get_local_paths(media_paths)
         else:
             media_paths = self._convert_cloud_paths(media_paths)
 
@@ -1691,8 +1692,12 @@ def import_from_labelbox(
     # Load labels
     d_list = fos.read_json(json_path)
 
+    new_samples = []
+
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
-    with fou.ProgressBar(progress=progress) as pb:
+    pb = fou.ProgressBar(progress=progress)
+    ctx = foc.SaveContext(dataset)
+    with pb, ctx:
         for d in pb(d_list):
             labelbox_id = d["DataRow ID"]
 
@@ -1707,7 +1712,6 @@ def import_from_labelbox(
                 filepath = filename_maker.get_output_path(image_url)
                 fos.copy_file(image_url, filepath)
                 sample = Sample(filepath=filepath)
-                dataset.add_sample(sample)
             else:
                 logger.info(
                     "Skipping labels for unknown Labelbox ID '%s'; provide a "
@@ -1749,7 +1753,13 @@ def import_from_labelbox(
                     {label_key(k): v for k, v in labels_dict.items()}
                 )
 
-            sample.save()
+            if sample._in_db:
+                ctx.save(sample)
+            else:
+                new_samples.append(sample)
+
+    if new_samples:
+        dataset.add_samples(new_samples, progress=progress)
 
 
 def export_to_labelbox(
@@ -1962,7 +1972,9 @@ def upload_media_to_labelbox(
     # @todo use `create_data_rows()` to optimize performance
     # @todo handle API rate limits
     # Reference: https://labelbox.com/docs/python-api/data-rows
-    with fou.ProgressBar(progress=progress) as pb:
+    pb = fou.ProgressBar(progress=progress)
+    ctx = foc.SaveContext(sample_collection)
+    with pb, ctx:
         for sample in pb(sample_collection):
             try:
                 has_id = sample[labelbox_id_field] is not None
@@ -1980,7 +1992,7 @@ def upload_media_to_labelbox(
             filepath = sample.filepath
             data_row = labelbox_dataset.create_data_row(row_data=filepath)
             sample[labelbox_id_field] = data_row.uid
-            sample.save()
+            ctx.save(sample)
 
 
 def upload_labels_to_labelbox(

@@ -18,6 +18,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
@@ -206,7 +207,9 @@ def import_from_scale(
     else:
         label_key = lambda k: k
 
-    with fou.ProgressBar(total=len(labels), progress=progress) as pb:
+    pb = fou.ProgressBar(total=len(labels), progress=progress)
+    ctx = foc.SaveContext(dataset)
+    with pb, ctx:
         for task_id, task_labels in pb(labels.items()):
             if task_id not in id_map:
                 logger.info(
@@ -245,7 +248,7 @@ def import_from_scale(
                     {label_key(k): v for k, v in labels_dict.items()}
                 )
 
-            sample.save()
+            ctx.save(sample)
 
 
 # @todo add support for `duration_time`, `frame_rate`, and `start_time`

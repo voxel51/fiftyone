@@ -364,8 +364,9 @@ class SimpleEvaluation(SegmentationEvaluation):
             bandwidth = self.config.bandwidth
             average = self.config.average
             compute_dice = self.config.compute_dice
+            save = eval_key is not None
 
-            if eval_key is not None:
+            if save:
                 acc_field = "%s_accuracy" % eval_key
                 pre_field = "%s_precision" % eval_key
                 rec_field = "%s_recall" % eval_key
@@ -373,7 +374,9 @@ class SimpleEvaluation(SegmentationEvaluation):
                     dice_field = "%s_dice" % eval_key
 
             logger.info("Evaluating segmentations...")
-            for sample in _samples.iter_samples(progress=progress):
+            for sample in _samples.iter_samples(
+                progress=progress, autosave=save
+            ):
                 if processing_frames:
                     images = sample.frames.values()
                 else:
@@ -401,8 +404,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                     )
                     sample_conf_mat += image_conf_mat
 
-                    # Record frame stats, if requested
-                    if processing_frames and eval_key is not None:
+                    if processing_frames and save:
                         facc, fpre, frec = _compute_accuracy_precision_recall(
                             image_conf_mat, values, average
                         )
@@ -416,8 +418,7 @@ class SimpleEvaluation(SegmentationEvaluation):
 
                 confusion_matrix += sample_conf_mat
 
-                # Record sample stats, if requested
-                if eval_key is not None:
+                if save:
                     sacc, spre, srec = _compute_accuracy_precision_recall(
                         sample_conf_mat, values, average
                     )
@@ -428,8 +429,6 @@ class SimpleEvaluation(SegmentationEvaluation):
                         sample[dice_field] = _compute_dice_score(
                             confusion_matrix
                         )
-
-                    sample.save()
 
         if nc > 0:
             missing = classes[0] if values[0] in (0, "#000000") else None

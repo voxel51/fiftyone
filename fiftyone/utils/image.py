@@ -366,12 +366,13 @@ def _transform_images_single(
         output_field = media_field
 
     diff_field = output_field != media_field
+    save = update_filepaths
 
     view = sample_collection.select_fields(media_field)
     stale_paths = []
 
-    with fou.ProgressBar(progress=progress) as pb:
-        for sample in pb(view):
+    with fou.ProgressBar(total=view, progress=progress) as pb:
+        for sample in pb(view.iter_samples(autosave=save)):
             inpath = sample[media_field]
 
             outpath = _get_outpath(
@@ -396,7 +397,6 @@ def _transform_images_single(
             if diff_field or outpath != inpath:
                 if update_filepaths:
                     sample[output_field] = outpath
-                    sample.save()
 
                 if delete_originals:
                     stale_paths.append(inpath)
