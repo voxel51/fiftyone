@@ -4577,7 +4577,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # particular way that they want to preserve in CVAT.
                     samples_batch = samples_batch.sort_by(media_field)
                 else:
-                    samples.download_media(
+                    samples_batch.download_media(
                         media_fields=media_field, progress=False
                     )
 
