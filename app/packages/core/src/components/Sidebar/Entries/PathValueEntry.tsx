@@ -3,8 +3,6 @@ import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  EMBEDDED_DOCUMENT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -12,12 +10,7 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
-import {
-  selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -314,7 +307,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   );
 };
 
-const useSlicesData = <T extends unknown>(path: string) => {
+const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
@@ -328,14 +321,14 @@ const useSlicesData = <T extends unknown>(path: string) => {
   }
 
   if (!slices.every((slice) => loadable.contents[slice])) {
-    throw new Promise(() => {});
+    throw new Promise(() => null);
   }
 
-  const data = { ...loadable.contents };
+  const data = { ...loadable.contents } as object;
 
   const target = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {
-    let sliceData = data[slice].sample;
+    let sliceData = data[slice].sample as object;
     let field = target;
 
     for (let index = 0; index < keys.length; index++) {
@@ -346,7 +339,7 @@ const useSlicesData = <T extends unknown>(path: string) => {
       sliceData = sliceData[field?.dbField || key];
 
       if (keys[index + 1]) {
-        field = field?.fields[keys[index + 1]];
+        field = field?.fields?.[keys[index + 1]] ?? null;
       }
     }
     data[slice] = sliceData;
@@ -374,25 +367,9 @@ const Loadable = ({ path }: { path: string }) => {
   );
 };
 
-const isOfDocumentFieldList = selectorFamily({
-  key: "isOfDocumentField",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      const field = get(fos.field(path.split(".")[0]));
-
-      return [
-        DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-        EMBEDDED_DOCUMENT_FIELD,
-      ].includes(field?.subfield || "");
-    },
-});
-
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
-  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
-  const sampleId = useRecoilValue(fos.currentSampleId);
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -400,7 +377,7 @@ const useData = <T,>(path: string): T => {
 
   if (loadable.state === "hasError") {
     if (loadable.contents instanceof fos.SampleNotFound) {
-      throw new Promise(() => {});
+      throw new Promise(() => null);
     }
 
     throw loadable.contents;
@@ -409,7 +386,7 @@ const useData = <T,>(path: string): T => {
   let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
-  if (useRecoilValue(isOfDocumentFieldList(path))) {
+  if (useRecoilValue(fos.isOfDocumentFieldList(path))) {
     data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
   } else {
     for (let index = 0; index < keys.length; index++) {
@@ -422,21 +399,6 @@ const useData = <T,>(path: string): T => {
       if (keys[index + 1]) {
         field = field?.fields?.[keys[index + 1]] || null;
       }
-    }
-  }
-
-  const noneValued = noneValuedPaths?.[sampleId];
-  if (
-    (data === undefined || data === null) &&
-    path &&
-    !noneValued?.has(path) &&
-    sampleId
-  ) {
-    const newNoneValued = noneValued
-      ? new Set([...noneValued]).add(path)
-      : new Set([path]);
-    if (newNoneValued) {
-      setNoneValued({ [sampleId]: new Set([...newNoneValued, path]) });
     }
   }
 

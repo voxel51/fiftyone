@@ -66,8 +66,6 @@ const SampleModal = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const is3D = useRecoilValue(fos.is3DDataset);
-  const sampleId = useRecoilValue(fos.currentSampleId);
-
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
   const tooltip = fos.useTooltip();
@@ -92,9 +90,6 @@ const SampleModal = () => {
     [eventHandler]
   );
 
-  const noneValuedPaths = useRecoilValue(fos.noneValuedPaths)?.[sampleId];
-  const hideNoneFields = useRecoilValue(fos.hideNoneValuedFields);
-
   const renderEntry = useCallback(
     (
       key: string,
@@ -115,10 +110,6 @@ const SampleModal = () => {
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
             !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
-
-          if (hideNoneFields && noneValuedPaths?.has(entry?.path)) {
-            return { children: null };
-          }
 
           return {
             children: (
@@ -189,7 +180,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, hideNoneFields, labelPaths, mode, noneValuedPaths]
+    [disabled, labelPaths, mode]
   );
 
   useEffect(() => {

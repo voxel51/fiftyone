@@ -34,13 +34,21 @@ import {
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
+import {
+  activeModalSidebarSample,
+  activePcdSlices,
+  activePcdSlicesToSampleMap,
+  pinned3DSampleSlice,
+} from "./groups";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
+  isOfDocumentFieldList,
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
@@ -505,6 +513,10 @@ export const sidebarEntries = selectorFamily<
     (params) =>
     ({ get }) => {
       const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
+      const hidden =
+        params.modal && !params.loading
+          ? get(hiddenNoneGroups)
+          : { groups: new Set<string>(), paths: new Set<string>() };
       const entries = [
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
@@ -539,7 +551,7 @@ export const sidebarEntries = selectorFamily<
               ...paths.map<PathEntry>((path) => ({
                 path,
                 kind: EntryKind.PATH,
-                shown,
+                shown: shown && !hidden.paths.has(path),
               })),
             ];
           })
@@ -825,4 +837,73 @@ export const sidebarVisible = atomFamily<boolean, boolean>({
 export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",
   default: 300,
+});
+
+const hiddenNoneGroups = selector({
+  key: "hiddenNoneGroups",
+  get: ({ get }) => {
+    if (!get(atoms.hideNoneValuedFields)) {
+      return { paths: new Set<string>(), groups: new Set<string>() };
+    }
+
+    const groups = get(
+      sidebarGroups({ modal: true, loading: false, filtered: true })
+    );
+
+    const multipleSlices =
+      Boolean(get(pinned3DSampleSlice)) &&
+      (get(activePcdSlices)?.length || 1) > 1;
+
+    let samples: { [key: string]: { sample: object } } = {
+      default: { sample: get(activeModalSidebarSample) },
+    };
+    let slices = ["default"];
+
+    if (multipleSlices) {
+      samples = get(activePcdSlicesToSampleMap);
+      slices = Array.from(get(activePcdSlices) || []).sort();
+    }
+
+    const result = { groups: new Set<string>(), paths: new Set<string>() };
+
+    for (const group of groups) {
+      if (group.name === "tags") {
+        continue;
+      }
+      result.groups.add(group.name);
+
+      for (const path of group.paths) {
+        result.paths.add(path);
+        for (const slice of slices) {
+          let data: null | object | undefined = samples[slice].sample;
+
+          const keys = path.split(".");
+          let f = get(field(keys[0]));
+
+          if (get(isOfDocumentFieldList(path))) {
+            data = data?.[f?.dbField || keys[0]]?.map((d) => d[keys[1]]);
+          } else {
+            for (let index = 0; index < keys.length; index++) {
+              if (data === null || data === undefined) {
+                break;
+              }
+              const key = keys[index];
+              data = data[f?.dbField || key];
+
+              if (keys[index + 1]) {
+                f = f?.fields?.[keys[index + 1]] || null;
+              }
+            }
+          }
+
+          if (data !== null && data !== undefined) {
+            result.groups.delete(group.name);
+            result.paths.delete(path);
+          }
+        }
+      }
+    }
+
+    return result;
+  },
 });

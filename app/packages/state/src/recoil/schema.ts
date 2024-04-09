@@ -780,3 +780,17 @@ export const parentField = selectorFamily({
       return get(field(parent));
     },
 });
+
+export const isOfDocumentFieldList = selectorFamily({
+  key: "isOfDocumentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path.split(".")[0]));
+
+      return [
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+        EMBEDDED_DOCUMENT_FIELD,
+      ].includes(f.subfield || "");
+    },
+});
