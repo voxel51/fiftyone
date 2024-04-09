@@ -326,23 +326,15 @@ const useSlicesData = <T,>(path: string) => {
 
   const data = { ...loadable.contents } as object;
 
-  const target = useRecoilValue(fos.field(keys[0]));
+  const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
+  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
   slices.forEach((slice) => {
-    let sliceData = data[slice].sample as object;
-    let field = target;
-
-    for (let index = 0; index < keys.length; index++) {
-      if (!sliceData) {
-        break;
-      }
-      const key = keys[index];
-      sliceData = sliceData[field?.dbField || key];
-
-      if (keys[index + 1]) {
-        field = field?.fields?.[keys[index + 1]] ?? null;
-      }
-    }
-    data[slice] = sliceData;
+    data[slice] = fos.pullSidebarValue(
+      target,
+      keys,
+      data[slice].sample,
+      isList
+    );
   });
 
   return data as { [slice: string]: T };
@@ -383,26 +375,10 @@ const useData = <T,>(path: string): T => {
     throw loadable.contents;
   }
 
-  let data = loadable.contents;
-  let field = useRecoilValue(fos.field(keys[0]));
+  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
+  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
 
-  if (useRecoilValue(fos.isOfDocumentFieldList(path))) {
-    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
-  } else {
-    for (let index = 0; index < keys.length; index++) {
-      if (!data) {
-        break;
-      }
-      const key = keys[index];
-      data = data[field?.dbField || key];
-
-      if (keys[index + 1]) {
-        field = field?.fields?.[keys[index + 1]] || null;
-      }
-    }
-  }
-
-  return data as T;
+  return fos.pullSidebarValue(field, keys, loadable.contents, isList) as T;
 };
 
 const isScalarValue = selectorFamily({

@@ -14,6 +14,7 @@ import {
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  Field,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -850,15 +851,14 @@ const hiddenNoneGroups = selector({
       sidebarGroups({ modal: true, loading: false, filtered: true })
     );
 
-    const multipleSlices =
-      Boolean(get(pinned3DSampleSlice)) &&
-      (get(activePcdSlices)?.length || 1) > 1;
-
     let samples: { [key: string]: { sample: object } } = {
       default: { sample: get(activeModalSidebarSample) },
     };
     let slices = ["default"];
 
+    const multipleSlices =
+      Boolean(get(pinned3DSampleSlice)) &&
+      (get(activePcdSlices)?.length || 1) > 1;
     if (multipleSlices) {
       samples = get(activePcdSlicesToSampleMap);
       slices = Array.from(get(activePcdSlices) || []).sort();
@@ -874,27 +874,15 @@ const hiddenNoneGroups = selector({
 
       for (const path of group.paths) {
         result.paths.add(path);
+        const isList = get(isOfDocumentFieldList(path));
         for (const slice of slices) {
-          let data: null | object | undefined = samples[slice].sample;
-
           const keys = path.split(".");
-          let f = get(field(keys[0]));
-
-          if (get(isOfDocumentFieldList(path))) {
-            data = data?.[f?.dbField || keys[0]]?.map((d) => d[keys[1]]);
-          } else {
-            for (let index = 0; index < keys.length; index++) {
-              if (data === null || data === undefined) {
-                break;
-              }
-              const key = keys[index];
-              data = data[f?.dbField || key];
-
-              if (keys[index + 1]) {
-                f = f?.fields?.[keys[index + 1]] || null;
-              }
-            }
-          }
+          const data = pullSidebarValue(
+            get(field(keys[0])),
+            keys,
+            samples[slice]?.sample,
+            isList
+          );
 
           if (data !== null && data !== undefined) {
             result.groups.delete(group.name);
@@ -907,3 +895,28 @@ const hiddenNoneGroups = selector({
     return result;
   },
 });
+
+export const pullSidebarValue = (
+  field: Field,
+  keys: string[],
+  data: null | object | undefined,
+  isList: boolean
+) => {
+  if (isList) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
+  } else {
+    for (let index = 0; index < keys.length; index++) {
+      if (data === null || data === undefined) {
+        break;
+      }
+      const key = keys[index];
+      data = data[field?.dbField || key];
+
+      if (keys[index + 1]) {
+        field = field?.fields?.[keys[index + 1]] || null;
+      }
+    }
+  }
+
+  return data;
+};
