@@ -566,6 +566,9 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 
 def _do_get_metadata(args):
     filepath, skip_failures = args
+    if not filepath:
+        return None, None
+
     filepath, _ = foc.media_cache.use_cached_path(filepath)
     media_type = fom.get_media_type(filepath)
 

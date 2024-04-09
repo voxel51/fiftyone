@@ -151,11 +151,16 @@ class DownloadContext(object):
         media_fields = _resolve_media_fields(
             self.sample_collection, self.media_fields
         )
+        if not media_fields:
+            return self
+
         self._filepaths = self.sample_collection._get_media_paths(
             media_fields=media_fields,
             group_slices=self.group_slices,
             flat=False,
         )
+        if not self._filepaths:
+            return self
 
         if self.batch_size is None and self.target_size_bytes is None:
             self._download_batch(None)  # download everything now
@@ -202,7 +207,14 @@ class DownloadContext(object):
     def _download_batch(self, batch_size):
         i = self._offset or 0
         j = i + batch_size if batch_size is not None else None
-        filepaths = itertools.chain.from_iterable(self._filepaths[i:j])
+        filepaths = [
+            f
+            for f in itertools.chain.from_iterable(self._filepaths[i:j])
+            if f is not None
+        ]
+
+        if not filepaths:
+            return
 
         if self.update:
             foc.media_cache.update(
@@ -231,7 +243,17 @@ def _resolve_media_fields(sample_collection, media_fields):
     else:
         media_fields = [media_fields]
 
-    return media_fields
+    # Omit media fields that contain no values
+    resolved_fields = []
+    for field in media_fields:
+        if field != "filepath":
+            field = sample_collection._resolve_media_field(field)
+            if not sample_collection.exists(field).limit(1):
+                continue
+
+        resolved_fields.append(field)
+
+    return resolved_fields
 
 
 def _get_sizes(sample_collection, media_fields, filepaths):
@@ -254,22 +276,21 @@ def _get_sizes(sample_collection, media_fields, filepaths):
             zip(*view.values(["filepath", "metadata.size_bytes"]))
         )
 
-        metadata_paths = []
+        metadata_paths = set()
         for sample_paths in filepaths:
             for path in sample_paths:
                 if path not in file_sizes:
-                    metadata_paths.append(path)
+                    metadata_paths.add(path)
     else:
-        metadata_paths = list(itertools.chain.from_iterable(filepaths))
+        metadata_paths = set(itertools.chain.from_iterable(filepaths))
+
+    metadata_paths.discard(None)
 
     # Compute any missing metadata
     if metadata_paths:
-        file_sizes.update(
-            {
-                f: m.size_bytes if m is not None else None
-                for f, m in fomt.get_metadata(metadata_paths).items()
-            }
-        )
+        for filepath, metadata in fomt.get_metadata(metadata_paths).items():
+            if metadata is not None and metadata.size_bytes is not None:
+                file_sizes[filepath] = metadata.size_bytes
 
     avg_file_size = sum(file_sizes.values()) / max(len(file_sizes), 1)
 
@@ -3377,14 +3398,7 @@ class SampleCollection(object):
         else:
             media_fields = [media_fields]
 
-        _media_fields = []
-        for media_field in media_fields:
-            field = self.get_field(media_field)
-            if isinstance(field, fof.EmbeddedDocumentField):
-                if issubclass(field.document_type, fol._HasMedia):
-                    media_field += "." + field.document_type._MEDIA_FIELD
-
-            _media_fields.append(media_field)
+        media_fields = [self._resolve_media_field(f) for f in media_fields]
 
         # When flat=False, return lists of lists of media paths, one per sample
         if not flat:
@@ -3393,7 +3407,7 @@ class SampleCollection(object):
                 view = self.select_group_slices(
                     slices=group_slices, _allow_mixed=True
                 )
-                group_ids, *paths = view.values([id_field] + _media_fields)
+                group_ids, *paths = view.values([id_field] + media_fields)
                 paths_map = defaultdict(list)
                 for _id, _paths in zip(group_ids, zip(*paths)):
                     paths_map[_id].extend(_merge_paths(_paths))
@@ -3401,7 +3415,7 @@ class SampleCollection(object):
                 # Intentionally only returns paths for groups in active slice
                 return [paths_map[_id] for _id in self.values(id_field)]
             else:
-                paths = self.values(_media_fields)
+                paths = self.values(media_fields)
                 return [_merge_paths(p) for p in zip(*paths)]
 
         # When flat=True, return flat list of all media paths
@@ -3412,9 +3426,9 @@ class SampleCollection(object):
         else:
             view = self
 
-        filepaths = view.values(_media_fields, unwind=True)
+        filepaths = view.values(media_fields, unwind=True)
 
-        if len(_media_fields) > 1:
+        if len(media_fields) > 1:
             filepaths = list(itertools.chain.from_iterable(filepaths))
         else:
             filepaths = filepaths[0]
