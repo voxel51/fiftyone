@@ -1,9 +1,13 @@
 import { Resizable } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
-import { IconButton } from "@mui/material";
+import { Box, IconButton, Stack } from "@mui/material";
 import { useState } from "react";
+import { withOperatorPrompt } from "./OperatorPrompt";
+import OperatorPromptBody from "./components/OperatorPromptBody";
 import { useOperatorPrompt } from "./state";
-import { Prompting, withOperatorPrompt } from "./OperatorPrompt";
+import OperatorPromptFooter from "./components/OperatorPromptFooter";
+import { getOperatorPromptConfigs } from "./utils";
+import OperatorPromptHeader from "./components/OperatorPromptHeader";
 
 const DEFAULT_WIDTH = 250;
 const RIGHT_RESIZE_PLACEMENTS = ["left", "sample-view-left"];
@@ -18,6 +22,8 @@ function OperatorDrawer(props: OperatorDrawerProps) {
     : "left";
 
   if (name !== "DrawerView" || placementArea !== placement) return null;
+
+  const { title, ...otherConfigs } = getOperatorPromptConfigs(operatorPrompt);
 
   return (
     <Resizable
@@ -38,7 +44,13 @@ function OperatorDrawer(props: OperatorDrawerProps) {
       >
         <Close />
       </IconButton>
-      <Prompting operatorPrompt={operatorPrompt} />
+      <Box sx={{ p: 1 }}>
+        <OperatorPromptHeader title={title} />
+      </Box>
+      <OperatorPromptBody operatorPrompt={operatorPrompt} />
+      <Stack direction="row" spacing={1} justifyContent="center">
+        <OperatorPromptFooter {...otherConfigs} />
+      </Stack>
     </Resizable>
   );
 }

@@ -1780,4 +1780,15 @@ class DrawerView(View):
     """
 
     def __init__(self, **kwargs):
+        placement = kwargs.get("placement", None)
+        if placement not in [
+            "left",
+            "right",
+            "sample-view-left",
+            "sample-view-right",
+        ]:
+            raise ValueError(
+                'position must be either "left", "right", "sample-view-left",'
+                ' or "sample-view-right"'
+            )
         super().__init__(**kwargs)
