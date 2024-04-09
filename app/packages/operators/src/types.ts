@@ -1,4 +1,5 @@
 import { ExecutionContext } from "./operators";
+import { useOperatorPrompt } from "./state";
 
 export class BaseType {}
 
@@ -1247,3 +1248,5 @@ type PropertyOptions = {
   view?: View;
 };
 type ObjectProperties = Map<string, Property>;
+
+export type OperatorPromptType = ReturnType<typeof useOperatorPrompt>;

@@ -1,3 +1,11 @@
+import { scrollable } from "@fiftyone/components";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogProps,
+  DialogTitle,
+} from "@mui/material";
 import {
   PropsWithChildren,
   ReactElement,
@@ -5,23 +13,9 @@ import {
   useEffect,
   useRef,
 } from "react";
-import SplitButton from "./SplitButton";
+import OperatorPromptFooter from "./components/OperatorPromptFooter";
+import OperatorPromptHeader from "./components/OperatorPromptHeader";
 import { PALETTE_CONTROL_KEYS } from "./constants";
-import { BaseStylesProvider } from "./styled-components";
-
-import { Button, scrollable } from "@fiftyone/components";
-import {
-  Alert,
-  AlertTitle,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogProps,
-  DialogTitle,
-  Button as MUIButton,
-} from "@mui/material";
-import { onEnter } from "./utils";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
   const paletteElem = useRef<HTMLDivElement>(null);
@@ -30,21 +24,10 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onSubmit,
     onCancel,
     onClose,
-    submitButtonText = "Execute",
-    cancelButtonText = "Cancel",
     onOutsideClick,
     allowPropagation,
     submitOnControlEnter,
     title,
-    disableSubmit,
-    disabledReason,
-    loading,
-    submitButtonOptions,
-    submitOptionsLoading,
-    hasSubmitButtonOptions,
-    showWarning,
-    warningMessage,
-    warningTitle,
     dialogProps,
   } = props;
   const hideActions = !onSubmit && !onCancel;
@@ -73,11 +56,6 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     },
     [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter]
   );
-
-  const handleSubmit = useCallback(() => {
-    if (disableSubmit) return;
-    onSubmit();
-  }, [disableSubmit, onSubmit]);
 
   useEffect(() => {
     document.addEventListener("keydown", keyDownHandler);
@@ -108,7 +86,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     >
       {title && (
         <DialogTitle component="div" sx={{ p: 1 }}>
-          <BaseStylesProvider>{title}</BaseStylesProvider>
+          <OperatorPromptHeader title={title} />
         </DialogTitle>
       )}
       <DialogContent
@@ -120,66 +98,11 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
           ...(title ? {} : { borderTop: "none" }),
         }}
       >
-        <BaseStylesProvider>
-          {showWarning ? (
-            <Alert severity="warning">
-              <AlertTitle>{warningTitle}</AlertTitle>
-              {warningMessage}
-            </Alert>
-          ) : (
-            children
-          )}
-        </BaseStylesProvider>
+        {children}
       </DialogContent>
-      {!hideActions && showWarning && (
+      {!hideActions && (
         <DialogActions sx={{ p: 1 }}>
-          <MUIButton
-            sx={{ textTransform: "none" }}
-            onClick={onCancel}
-            onKeyDown={onEnter(onCancel)}
-          >
-            OK
-          </MUIButton>
-        </DialogActions>
-      )}
-      {!hideActions && !showWarning && (
-        <DialogActions sx={{ p: 1 }}>
-          {loading && (
-            <CircularProgress
-              size={20}
-              sx={{ mr: 1, color: (theme) => theme.palette.text.secondary }}
-            />
-          )}
-          {onCancel && (
-            <BaseStylesProvider>
-              <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
-                {cancelButtonText}
-              </Button>
-            </BaseStylesProvider>
-          )}
-          {onSubmit && !hasSubmitButtonOptions && !submitOptionsLoading && (
-            <BaseStylesProvider>
-              <Button
-                onClick={handleSubmit}
-                onKeyDown={onEnter(handleSubmit)}
-                disabled={disableSubmit}
-                title={disableSubmit && disabledReason}
-              >
-                {submitButtonText}
-              </Button>
-            </BaseStylesProvider>
-          )}
-          {onSubmit && hasSubmitButtonOptions && !submitOptionsLoading && (
-            <BaseStylesProvider>
-              <SplitButton
-                disabled={disableSubmit}
-                disabledReason={disabledReason}
-                options={submitButtonOptions}
-                submitOnEnter
-                onSubmit={onSubmit}
-              />
-            </BaseStylesProvider>
-          )}
+          <OperatorPromptFooter {...props} />
         </DialogActions>
       )}
     </Dialog>

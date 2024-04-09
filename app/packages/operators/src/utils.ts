@@ -1,5 +1,7 @@
-import { getFetchParameters, getFetchPathPrefix } from "@fiftyone/utilities";
-import { KeyboardEventHandler } from "react";
+import { getFetchParameters } from "@fiftyone/utilities";
+import { KeyboardEventHandler, ReactElement } from "react";
+import { types } from ".";
+import { OperatorPromptType } from "./types";
 
 export function stringifyError(error, fallback?) {
   if (typeof error === "string") return error;
@@ -28,9 +30,82 @@ export function resolveServerPath(plugin) {
   return pathPrefix + plugin.serverPath;
 }
 
-export function formatValidationErrors(errors: []) {
+export function formatValidationErrors(errors: any[]) {
   if (!Array.isArray(errors) || errors.length === 0) return "";
   return errors
     .map(({ path, reason }) => `params.${path}: ${reason}`)
     .join("\n");
+}
+
+export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
+  const showResultOrError =
+    operatorPrompt.hasResultOrError ||
+    operatorPrompt.executorError ||
+    operatorPrompt.resolveError;
+  const showPrompt = operatorPrompt.showPrompt;
+  const isExecuting = operatorPrompt.isExecuting;
+  const show = showResultOrError || showPrompt || isExecuting;
+  const customPrompt = operatorPrompt?.promptView;
+  const customPromptName = customPrompt?.name;
+
+  let submitButtonText = "Execute";
+  const submitButtonOptions = operatorPrompt.submitOptions.options;
+  const submitButtonLoading = operatorPrompt.submitOptions.isLoading;
+  const hasSubmitButtonOptions = operatorPrompt.submitOptions.hasOptions;
+  const showWarning = operatorPrompt.submitOptions.showWarning;
+  const warningMessage = operatorPrompt.submitOptions.warningMessage;
+  let cancelButtonText = "Cancel";
+  let onSubmit, onCancel;
+
+  if (customPromptName == "PromptView") {
+    const prompt = types.PromptView.fromJSON(customPrompt);
+    if (prompt.submitButtonLabel) {
+      submitButtonText = prompt.submitButtonLabel;
+    }
+  }
+
+  if (operatorPrompt.showPrompt) {
+    onSubmit = operatorPrompt.onSubmit;
+    onCancel = operatorPrompt.cancel;
+  } else if (showResultOrError) {
+    onCancel = operatorPrompt.close;
+    cancelButtonText = "Close";
+  }
+
+  const title = getPromptTitle(operatorPrompt);
+  const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
+  const { resolving, pendingResolve } = operatorPrompt;
+  const validationErrorsStr = formatValidationErrors(
+    operatorPrompt.validationErrors
+  );
+
+  return {
+    title,
+    hasValidationErrors,
+    resolving,
+    pendingResolve,
+    validationErrorsStr,
+    showResultOrError,
+    showPrompt,
+    isExecuting,
+    customPrompt,
+    customPromptName,
+    show,
+    submitButtonText,
+    submitButtonOptions,
+    submitButtonLoading,
+    hasSubmitButtonOptions,
+    showWarning,
+    warningMessage,
+    cancelButtonText,
+    onSubmit,
+    onCancel,
+  };
+}
+
+function getPromptTitle(operatorPrompt) {
+  const definition = operatorPrompt.showPrompt
+    ? operatorPrompt?.inputFields
+    : operatorPrompt?.outputFields;
+  return definition?.view?.label;
 }
