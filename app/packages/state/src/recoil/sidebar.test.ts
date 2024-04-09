@@ -1,3 +1,4 @@
+import { Field } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 import * as sidebar from "./sidebar";
 
@@ -354,5 +355,62 @@ describe("test sidebar groups resolution", () => {
     expect(labels.name).toBe("labels");
     expect(labels.paths).toEqual(["predictions"]);
     expect(labels.expanded).toBe(true);
+  });
+});
+
+const TEST_FIELD_DATA: Field = {
+  name: "unused",
+  path: "unused",
+  embeddedDocType: null,
+  dbField: null,
+  description: null,
+  ftype: null,
+  info: {},
+  subfield: null,
+};
+
+describe("test pullSidebarValue", () => {
+  it("handles dbField values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        { ...TEST_FIELD_DATA, dbField: "_id" },
+        ["id"],
+        { _id: "idValue" },
+        false
+      )
+    ).toBe("idValue");
+  });
+
+  it("handles embedded list values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["nested", "field"],
+        { nested: [{ field: "nestedListValue" }] },
+        true
+      )
+    ).toStrictEqual(["nestedListValue"]);
+  });
+
+  it("handles nested values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["nested", "field"],
+        { nested: { field: "nestedValue" } },
+        false
+      )
+    ).toBe("nestedValue");
+  });
+
+  it("handles undefined values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["undefined", "value"],
+        {},
+        false
+      )
+    ).toBe(undefined);
   });
 });
