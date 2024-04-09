@@ -29,6 +29,7 @@ describe("test aggregation path accumulation", () => {
       groupId: "groupId",
     });
     expect(testModalSampleAggregationPaths()).toStrictEqual([
+      "tags",
       "ground_truth.detections",
       "ground_truth.detections.one",
       "ground_truth.detections.two",
