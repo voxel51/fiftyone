@@ -2724,6 +2724,7 @@ class _OpenFile(object):
         self._is_writing = None
         self._client = None
         self._f = None
+        self._f_iter = None
         self._open()
 
     def __enter__(self):
@@ -2731,6 +2732,13 @@ class _OpenFile(object):
 
     def __exit__(self, *args):
         self.close()
+
+    def __iter__(self):
+        self._f_iter = iter(self._f)
+        return self
+
+    def __next__(self):
+        return next(self._f_iter)
 
     def __getattr__(self, *args, **kwargs):
         return getattr(self._f, *args, **kwargs)
