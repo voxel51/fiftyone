@@ -10,11 +10,13 @@ from copy import copy, deepcopy
 import logging
 import os
 import requests
+import urllib.request
 from uuid import uuid4
 import warnings
 import webbrowser
 
 import numpy as np
+from PIL import Image
 
 import eta.core.image as etai
 import eta.core.serial as etas
@@ -736,7 +738,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 ):
                     frame_id = frame_id_map[sample_id][frame_number]
                     labels_dict = converter._parse_image_labels(
-                        label_d, frame_size, class_attr=class_attr
+                        label_d,
+                        frame_size,
+                        class_attr=class_attr,
+                        headers=self._client.headers,
                     )
                     if not classes_as_attrs:
                         labels_dict = self._process_label_fields(
@@ -755,6 +760,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 converter._get_labels_dict(d, project_id),
                 frame_size,
                 class_attr=class_attr,
+                headers=self._client.headers,
             )
             if not classes_as_attrs:
                 labels_dict = self._process_label_fields(
@@ -2405,7 +2411,9 @@ class _LabelboxExportToFiftyOneConverterV1:
     # Parse v1 export format
     # https://docs.labelbox.com/reference/export-image-annotations#annotation-export-formats
     @classmethod
-    def _parse_image_labels(cls, label_d, frame_size, class_attr=None):
+    def _parse_image_labels(
+        cls, label_d, frame_size, class_attr=None, headers=None
+    ):
         labels = {}
 
         # Parse classifications
@@ -2418,7 +2426,7 @@ class _LabelboxExportToFiftyOneConverterV1:
         # @todo what if `objects.keys()` conflicts with `classifications.keys()`?
         od_list = label_d.get("objects", [])
         objects = cls._parse_objects(
-            od_list, frame_size, class_attr=class_attr
+            od_list, frame_size, class_attr=class_attr, headers=headers
         )
         labels.update(objects)
 
@@ -2542,7 +2550,9 @@ class _LabelboxExportToFiftyOneConverterV1:
         return od["title"]
 
     @classmethod
-    def _parse_objects(cls, od_list, frame_size, class_attr=None):
+    def _parse_objects(
+        cls, od_list, frame_size, class_attr=None, headers=None
+    ):
         detections = []
         polylines = []
         keypoints = []
@@ -2628,12 +2638,14 @@ class _LabelboxExportToFiftyOneConverterV1:
 
                     label_fields[label_field]["keypoints"].append(keypoint)
 
-            elif "instanceURI" in od:
+            elif "instanceURI" in od or "mask" in od:
                 # Segmentation mask
                 if not load_fo_seg:
                     if mask is None:
                         mask_instance_uri = cls._get_mask_url(od)
-                        mask = cls._parse_mask(mask_instance_uri)
+                        mask = cls._parse_mask(
+                            mask_instance_uri, headers=headers
+                        )
                         segmentation = {
                             "mask": current_mask,
                             "label": label,
@@ -2647,7 +2659,9 @@ class _LabelboxExportToFiftyOneConverterV1:
                         warnings.warn(msg)
                 else:
                     current_mask_instance_uri = cls._get_mask_url(od)
-                    current_mask = cls._parse_mask(current_mask_instance_uri)
+                    current_mask = cls._parse_mask(
+                        current_mask_instance_uri, headers=headers
+                    )
                     segmentation = {
                         "mask": current_mask,
                         "label": label,
@@ -2705,7 +2719,7 @@ class _LabelboxExportToFiftyOneConverterV1:
         return (pd["x"] / width, pd["y"] / height)
 
     @classmethod
-    def _parse_mask(cls, instance_uri):
+    def _parse_mask(cls, instance_uri, headers=None):
         img_bytes = etaw.download_file(instance_uri, quiet=True)
         return etai.decode(img_bytes)
 
@@ -2842,6 +2856,12 @@ class _LabelboxExportToFiftyOneConverterV2(
     @classmethod
     def _get_label_field_attr(cls, od):
         return od["name"]
+
+    @classmethod
+    def _parse_mask(cls, instance_uri, headers=None):
+        req = urllib.request.Request(instance_uri, headers=headers)
+        open_url = urllib.request.urlopen(req)
+        return np.array(Image.open(open_url))
 
 
 def _make_video_anno(labels_path, data_row_id=None):
