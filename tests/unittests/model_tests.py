@@ -1,24 +1,46 @@
 """
 FiftyOne model inference unit tests.
 
+These tests can optionally be configured to read from a cloud bucket
+rather than a local directory by passing the extra ``--basedir`` argument::
+
+    BASEDIR=s3://voxel51-test/models
+    BASEDIR=gs://voxel51-test/models
+
+    python tests/unittests/model_tests.py --basedir $BASEDIR
+
+You can run specific test(s) as follows::
+
+    BASEDIR=s3://voxel51-test/models
+    BASEDIR=gs://voxel51-test/models
+
+    python tests/unittests/model_tests.py \
+        ClassName.method_name \
+        --basedir $BASEDIR
+
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import argparse
 import os
 import random
 import string
+import sys
 import unittest
 
 import numpy as np
 
-import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.image as foui
 
 from decorators import drop_datasets
+
+
+basedir = None
 
 
 class MockImageModel(fo.EmbeddingsMixin, fo.Model):
@@ -61,10 +83,10 @@ class MockBatchImageModel(MockImageModel):
 
 class ImageDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         root_dir = temp_dir.__enter__()
-        ref_image_path = os.path.join(root_dir, "_ref_image.jpg")
-        images_dir = os.path.join(root_dir, "_images")
+        ref_image_path = fos.join(root_dir, "_ref_image.jpg")
+        images_dir = fos.join(root_dir, "_images")
 
         img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
         foui.write(img, ref_image_path)
@@ -82,12 +104,12 @@ class ImageDatasetTests(unittest.TestCase):
         if name is None:
             name = self._new_name()
 
-        filepath = os.path.join(
+        filepath = fos.join(
             self.images_dir,
             name + os.path.splitext(self._ref_image_path)[1],
         )
 
-        etau.copy_file(self._ref_image_path, filepath)
+        fos.copy_file(self._ref_image_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -97,7 +119,7 @@ class ImageDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self.root_dir, self._new_name())
+        return fos.join(self.root_dir, self._new_name())
 
 
 class ImageModelTests(ImageDatasetTests):
@@ -171,17 +193,18 @@ class ImageModelTests(ImageDatasetTests):
 
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         root_dir = temp_dir.__enter__()
-        ref_video_path = os.path.join(root_dir, "_ref_video.mp4")
-        videos_dir = os.path.join(root_dir, "_videos")
+        ref_video_path = fos.join(root_dir, "_ref_video.mp4")
+        videos_dir = fos.join(root_dir, "_videos")
 
-        with etav.FFmpegVideoWriter(ref_video_path, 5, (640, 480)) as writer:
-            for _ in range(5):
-                img = np.random.randint(
-                    255, size=(480, 640, 3), dtype=np.uint8
-                )
-                writer.write(img)
+        with fos.LocalFile(ref_video_path, "w") as local_path:
+            with etav.FFmpegVideoWriter(local_path, 5, (640, 480)) as writer:
+                for _ in range(5):
+                    img = np.random.randint(
+                        255, size=(480, 640, 3), dtype=np.uint8
+                    )
+                    writer.write(img)
 
         self.root_dir = root_dir
         self.videos_dir = videos_dir
@@ -195,12 +218,12 @@ class VideoDatasetTests(unittest.TestCase):
     def _new_video(self, filename=None):
         if filename is None:
             filename = self._new_name()
-        filepath = os.path.join(
+        filepath = fos.join(
             self.videos_dir,
             filename + os.path.splitext(self._ref_video_path)[1],
         )
 
-        etau.copy_file(self._ref_video_path, filepath)
+        fos.copy_file(self._ref_video_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -210,7 +233,7 @@ class VideoDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self.root_dir, self._new_name())
+        return fos.join(self.root_dir, self._new_name())
 
 
 class VideoModelTests(VideoDatasetTests):
@@ -291,3 +314,13 @@ class VideoModelTests(VideoDatasetTests):
     def test_image_model_frames_batch(self):
         model = MockBatchImageModel()
         self._test_model(model, batch_size=2)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--basedir", default=None)
+    options, args = parser.parse_known_args()
+    basedir = options.basedir
+
+    # fo.config.show_progress_bars = False
+    unittest.main(argv=sys.argv[:1] + args, verbosity=2)
