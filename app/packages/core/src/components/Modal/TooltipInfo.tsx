@@ -1,12 +1,12 @@
 import { animated, useSpring } from "@react-spring/web";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
-import { ContentDiv, ContentHeader } from "../utils";
 import { joinStringArray } from "../Filters/utils";
+import { ContentDiv, ContentHeader } from "../utils";
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
@@ -96,10 +96,12 @@ const TagInfo = ({ tags }: { tags: string[] }) => {
 };
 
 export const TooltipInfo = React.memo(() => {
-  const { detail, coords } = fos.useTooltip();
-  const position = detail
-    ? coords
-    : { top: -1000, left: -1000, bottom: "unset" };
+  const detail = useRecoilValue(fos.tooltipDetail);
+  const coords = useRecoilValue(fos.tooltipCoordinates);
+  const position = useMemo(
+    () => (detail ? coords : { top: -1000, left: -1000, bottom: "unset" }),
+    [coords, detail]
+  );
 
   const coordsProps = useSpring({
     ...position,

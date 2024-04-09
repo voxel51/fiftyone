@@ -1,34 +1,101 @@
-import { useEffect } from "react";
-import { atom, useRecoilState } from "recoil";
-
-const tooltipState = atom({
-  key: "tooltipState",
-  default: { hovering: false },
-});
+import * as fos from "@fiftyone/state";
+import { useCallback, useEffect } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 export default function useTooltip() {
-  const [{ hovering, coords, detail }, setState] = useRecoilState(tooltipState);
-  function handleMouseMove(e) {
-    setCoords([e.pageX, e.pageY]);
-  }
-  function removeListener() {
+  const setIsControlKeyPressed = useSetRecoilState(
+    fos.isTooltipControlKeyPressed
+  );
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const [isTooltipOn3DLabel, setIsTooltipOn3DLabel] = useRecoilState(
+    fos.isTooltipOn3DLabel
+  );
+  const setTooltipCoordinates = useSetRecoilState(fos.tooltipCoordinates);
+
+  const setCoords = useCallback(
+    (coordinates: [number, number]) => {
+      const coords = computeCoordinates(coordinates);
+      setTooltipCoordinates(coords);
+    },
+    [setTooltipCoordinates]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      setCoords([e.pageX, e.pageY]);
+    },
+    [setCoords]
+  );
+
+  const registerMouseListener = useCallback(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    console.log("mouse listener added");
+  }, [handleMouseMove]);
+
+  const removeMouseListener = useCallback(() => {
     window.removeEventListener("mousemove", handleMouseMove);
-  }
-  function getMeshProps(label) {
-    return {
-      onPointerOver: () => {
-        setState((s) => ({
-          ...s,
-          hovering: true,
-          detail: getDetailsFromLabel(label),
-        }));
-      },
-      onPointerOut: () => {
-        removeListener();
-        setState((s) => ({ ...s, hovering: false, detail: null }));
-      },
-    };
-  }
+    console.log("removing mouse listener");
+  }, [handleMouseMove]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Control") {
+        console.log("control key pressed");
+        setIsControlKeyPressed(true);
+      }
+    },
+    [setIsControlKeyPressed]
+  );
+
+  useEffect(() => {
+    if (!isTooltipOn3DLabel) {
+      removeMouseListener();
+    }
+  }, [isTooltipOn3DLabel, removeMouseListener]);
+
+  const handleKeyUp = useCallback(
+    (e) => {
+      if (e.key === "Control") {
+        console.log("control key lifted up");
+        setIsControlKeyPressed(false);
+      }
+    },
+    [setIsControlKeyPressed]
+  );
+
+  const registerCtrlKeyListener = useCallback(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    console.log("key listeners added");
+  }, [handleKeyDown, handleKeyUp]);
+
+  const removeKeyListeners = useCallback(() => {
+    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
+    console.log("key listeners removed");
+  }, [handleKeyDown, handleKeyUp]);
+
+  const removeListeners = useCallback(() => {
+    removeMouseListener();
+    removeKeyListeners();
+  }, [removeMouseListener, removeKeyListeners]);
+
+  // only relevant for looker-3d
+  const getMeshProps = useCallback(
+    (label) => {
+      return {
+        onPointerOver: () => {
+          setIsTooltipOn3DLabel(true);
+          setTooltipDetail(getDetailsFromLabel(label));
+        },
+        onPointerOut: () => {
+          setIsTooltipOn3DLabel(true);
+        },
+      };
+    },
+    [setTooltipDetail, setIsTooltipOn3DLabel]
+  );
+
   function getDetailsFromLabel(label) {
     const field = label.path[label.path.length - 1];
     const { color, selected, ...labelToView } = label;
@@ -40,30 +107,11 @@ export default function useTooltip() {
     };
   }
 
-  function setDetail(detail) {
-    setState((s) => ({ ...s, detail }));
-  }
-  function setCoords(coordinates) {
-    const coords = computeCoordinates(coordinates);
-    setState((s) => ({ ...s, coords }));
-  }
-
-  useEffect(() => {
-    if (hovering) {
-      window.addEventListener("mousemove", handleMouseMove);
-    } else {
-      removeListener();
-    }
-
-    return removeListener;
-  }, [hovering]);
-
   return {
-    showTooltip: hovering,
-    coords,
-    detail,
     getMeshProps,
-    setDetail,
+    registerCtrlKeyListener,
+    registerMouseListener,
+    removeListeners,
     setCoords,
   };
 }
@@ -90,3 +138,7 @@ function computeCoordinates([x, y]: [number, number]): {
     right: x > window.innerWidth / 2 ? window.innerWidth - x + 24 : "unset",
   };
 }
+
+export type ComputeCoordinatesReturnType = ReturnType<
+  typeof computeCoordinates
+>;

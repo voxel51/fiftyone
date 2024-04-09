@@ -71,14 +71,32 @@ const SampleModal = () => {
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
   const tooltip = fos.useTooltip();
-
-  const eventHandler = useCallback(
-    (e) => {
-      tooltip.setDetail(e.detail ? e.detail : null);
-      e.detail && tooltip.setCoords(e.detail.coordinates);
-    },
-    [tooltip]
+  const isTooltipControlKeyPressed = useRecoilValue(
+    fos.isTooltipControlKeyPressed
   );
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+
+  const tooltipEventHandler = useCallback(
+    (e) => {
+      if (e.detail) {
+        setTooltipDetail(e.detail);
+
+        if (!isTooltipControlKeyPressed && e.detail?.coordinates) {
+          tooltip.setCoords(e.detail.coordinates);
+        }
+      } else {
+        setTooltipDetail(null);
+      }
+    },
+    [isTooltipControlKeyPressed, tooltip, setTooltipDetail]
+  );
+
+  useEffect(() => {
+    tooltip.registerCtrlKeyListener();
+    return () => {
+      tooltip.removeListeners();
+    };
+  }, [tooltip]);
 
   /**
    * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
@@ -87,9 +105,9 @@ const SampleModal = () => {
   const lookerRefCallback = useCallback(
     (looker: fos.Lookers) => {
       lookerRef.current = looker;
-      looker.addEventListener("tooltip", eventHandler);
+      looker.addEventListener("tooltip", tooltipEventHandler);
     },
-    [eventHandler]
+    [tooltipEventHandler]
   );
 
   const noneValuedPaths = useRecoilValue(fos.noneValuedPaths)?.[sampleId];
@@ -195,9 +213,9 @@ const SampleModal = () => {
   useEffect(() => {
     return () => {
       lookerRef.current &&
-        lookerRef.current.removeEventListener("tooltip", eventHandler);
+        lookerRef.current.removeEventListener("tooltip", tooltipEventHandler);
     };
-  }, [eventHandler]);
+  }, [tooltipEventHandler]);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
