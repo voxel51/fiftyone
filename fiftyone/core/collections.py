@@ -10694,6 +10694,9 @@ class SampleCollection(object):
         return media_fields
 
     def _resolve_media_field(self, media_field):
+        if media_field in self._dataset.app_config.media_fields:
+            return media_field
+
         _media_field, is_frame_field = self._handle_frame_field(media_field)
 
         media_fields = self._get_media_fields(frames=is_frame_field)
