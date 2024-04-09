@@ -1,19 +1,16 @@
 """
 FiftyOne model inference unit tests.
 
-These tests can optionally be configured to read from a cloud bucket
+These tests can optionally be configured to read/write from a cloud bucket
 rather than a local directory by passing the extra ``--basedir`` argument::
 
-    BASEDIR=s3://voxel51-test/models
-    BASEDIR=gs://voxel51-test/models
+    BASEDIR=s3://voxel51-test/unittests
+    BASEDIR=gs://voxel51-test/unittests
 
+    # All tests
     python tests/unittests/model_tests.py --basedir $BASEDIR
 
-You can run specific test(s) as follows::
-
-    BASEDIR=s3://voxel51-test/models
-    BASEDIR=gs://voxel51-test/models
-
+    # Specific test
     python tests/unittests/model_tests.py \
         ClassName.method_name \
         --basedir $BASEDIR
