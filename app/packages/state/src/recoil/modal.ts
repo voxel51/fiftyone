@@ -5,6 +5,7 @@ import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
+import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ResponseFrom } from "../utils";
 import {
   activeModalSidebarSample,
@@ -201,6 +202,36 @@ export const modalSample = graphQLSelector<
       },
     };
   },
+});
+
+export const tooltipCoordinates = atom<ComputeCoordinatesReturnType | null>({
+  key: "tooltipCoordinates",
+  default: null,
+});
+
+export const tooltipDetail = atom<Record<string, string> | null>({
+  key: "tooltipDetail",
+  default: null,
+});
+
+export const isTooltipControlKeyPressed = atom<boolean>({
+  key: "isTooltipControlKeyPressed",
+  default: false,
+});
+
+export const isTooltipKeyListenersOn = atom<boolean>({
+  key: "isTooltipKeyListenersOn",
+  default: false,
+});
+
+export const isTooltipMouseListenerOn = atom<boolean>({
+  key: "isTooltipMouseListenerOn",
+  default: false,
+});
+
+export const isTooltipOn3DLabel = atom<boolean>({
+  key: "isTooltipOn3DLabel",
+  default: false,
 });
 
 export class SampleNotFound extends Error {}
