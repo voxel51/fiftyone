@@ -7,7 +7,6 @@ Utilities for working with annotations in
 |
 """
 from copy import copy, deepcopy
-import enum
 import logging
 import os
 import requests
@@ -42,7 +41,7 @@ lbr = fou.lazy_import("labelbox.schema.review")
 logger = logging.getLogger(__name__)
 
 
-class LabelboxExportVersion(enum.Enum):
+class LabelboxExportVersion(object):
     """Enum specifying version and format for label exports"""
 
     V1 = "v1"
@@ -1531,13 +1530,20 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, anno_key):
+        frame_id_map = {
+            sample_id: {
+                int(frame_id): frame_data
+                for frame_id, frame_data in frame_map.items()
+            }
+            for sample_id, frame_map in d["frame_id_map"].items()
+        }
         return cls(
             samples,
             config,
             anno_key,
             d["id_map"],
             d["project_id"],
-            d["frame_id_map"],
+            frame_id_map,
         )
 
 
@@ -2432,7 +2438,7 @@ class _LabelboxExportToFiftyOneConverterV1:
 
     @classmethod
     def _iter_video_labels(cls, d, project_id):
-        for label_d in d["Label"]:
+        for label_d in cls._get_labels_dict(d, project_id):
             yield int(label_d["frameNumber"]), label_d
 
     @classmethod
@@ -2722,14 +2728,42 @@ class _LabelboxExportToFiftyOneConverterV2(
 
     @classmethod
     def _iter_video_labels(cls, d, project_id):
-        for frame_number, label_d in d["projects"][project_id]["labels"][
-            "annotations"
-        ]["frames"].items():
+        frames = {}
+        for annos in d["projects"][project_id]["labels"]:
+            for frame_number, frame_values in annos["annotations"][
+                "frames"
+            ].items():
+                if frame_number not in frames:
+                    frames[frame_number] = {
+                        "objects": [],
+                        "classifications": [],
+                        "relationships": [],
+                    }
+                for key, values in frame_values.items():
+                    # https://docs.labelbox.com/reference/export-video-annotations#sample-project-export
+                    # Iterate through objects, classifications, relationships
+                    if isinstance(values, dict):
+                        # For videos, objects are dicts, get list of values
+                        values = list(values.values())
+
+                    frames[frame_number][key].extend(values)
+
+        for frame_number, label_d in frames.items():
             yield int(frame_number), label_d
 
     @classmethod
     def _get_labels_dict(cls, d, project_id):
-        return d["projects"][project_id]["labels"]["annotations"]
+        annotations = {
+            "objects": [],
+            "classifications": [],
+            "relationships": [],
+        }
+        for labels_dict in d["projects"][project_id]["labels"]:
+            for key, value in labels_dict["annotations"].items():
+                if key in annotations:
+                    annotations[key].extend(value)
+
+        return annotations
 
     @classmethod
     def _parse_classifications(cls, cd_list):
@@ -2786,7 +2820,7 @@ class _LabelboxExportToFiftyOneConverterV2(
                     # Checklist
                     answers = cd["checklist_answers"]
                     attributes[name] = [
-                        _parse_attribute(cls._get_answer_value(answer))
+                        _parse_attribute(cls._get_answer_value(a))
                         for a in answers
                     ]
 
@@ -2808,11 +2842,6 @@ class _LabelboxExportToFiftyOneConverterV2(
     @classmethod
     def _get_label_field_attr(cls, od):
         return od["name"]
-
-    @classmethod
-    def _parse_video_labels(cls, video_label_d, frame_size):
-        # @todo
-        pass
 
 
 def _make_video_anno(labels_path, data_row_id=None):
