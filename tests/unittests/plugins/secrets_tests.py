@@ -22,7 +22,6 @@ class MockSecret(UnencryptedSecret):
 
 
 class TestExecutionContext:
-
     secrets = {SECRET_KEY: SECRET_VALUE, SECRET_KEY2: SECRET_VALUE2}
     operator_uri = "operator"
     plugin_secrets = [k for k, v in secrets.items()]
@@ -117,7 +116,7 @@ class TestOperatorSecrets(unittest.TestCase):
         self.assertListEqual(operator._plugin_secrets, secrets)
 
 
-class PluginSecretResolverClientTests(unittest.TestCase):
+class PluginSecretResolverClientTests:
     @patch(
         "fiftyone.plugins.secrets._get_secrets_client",
         return_value=fois.EnvSecretProvider(),
@@ -127,7 +126,7 @@ class PluginSecretResolverClientTests(unittest.TestCase):
         assert isinstance(resolver.client, fois.EnvSecretProvider)
 
 
-class TestGetSecret(unittest.TestCase):
+class TestGetSecret:
     @pytest.fixture(autouse=False)
     def secrets_client(self):
         mock_client = MagicMock(spec=fois.EnvSecretProvider)
@@ -136,27 +135,20 @@ class TestGetSecret(unittest.TestCase):
         return mock_client
 
     @pytest.fixture(autouse=False)
-    def plugin_secrets_resolver(self):
+    def plugin_secrets_resolver(self, secrets_client):
         resolver = fop.PluginSecretsResolver()
         resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
+        resolver._instance.client = secrets_client
         return resolver
 
-    @patch(
-        "fiftyone.plugins.secrets._get_secrets_client",
-        return_value=fois.EnvSecretProvider(),
-    )
     @pytest.mark.asyncio
-    async def test_get_secret(
-        self, secrets_client, plugin_secrets_resolver, patched_get_client
-    ):
+    async def test_get_secret(self, secrets_client, plugin_secrets_resolver):
         result = await plugin_secrets_resolver.get_secret(
             key="MY_SECRET_KEY", operator_uri="operator"
         )
 
         assert result == "mocked_secret_value"
-        secrets_client.get.assert_called_once_with(
-            key="MY_SECRET_KEY", operator_uri="operator"
-        )
+        secrets_client.get.assert_called_once_with("MY_SECRET_KEY")
 
 
 class TestGetSecretSync:
