@@ -27,7 +27,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
-
+import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
@@ -35,7 +35,6 @@ import fiftyone.core.utils as fou
 
 from .document import Document
 
-fom = fou.lazy_import("fiftyone.migrations")
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -229,14 +228,7 @@ def establish_db_conn(config):
             % (db_config.type, foc.CLIENT_TYPE)
         )
 
-    # Migrate the database if necessary after establishing connection.
-    #   If we are forcing immediate connection upon import though, migration
-    #   is being performed at that time, and we cannot do it here as well,
-    #   or else it'll be a circular import.
-    if (
-        os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1"
-        and "_FIFTYONE_FORCE_DB_CONNECT_ON_IMPORT" not in os.environ
-    ):
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
         fom.migrate_database_if_necessary()
 
 

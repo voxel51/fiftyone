@@ -5,7 +5,6 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os as _os
 
 import fiftyone.core.config as _foc
 
@@ -13,13 +12,6 @@ config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 evaluation_config = _foc.load_evaluation_config()
 app_config = _foc.load_app_config()
-
-# The old way of doing things, connecting to database on import. If we
-#   REALLY need to do this, for example doc build, we can.
-if "_FIFTYONE_FORCE_DB_CONNECT_ON_IMPORT" in _os.environ:
-    import fiftyone.core.odm as _foo
-
-    _foo.establish_db_conn(config)
 
 from .core.aggregations import (
     Aggregation,

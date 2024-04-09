@@ -26,14 +26,5 @@ from fiftyone.__public__ import *
 
 import fiftyone.core.logging as _fol
 
-# The old way of doing things, migrating database on import. If we
-#   REALLY need to do this, for example doc build, we can.
-if (
-    _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1"
-    and "_FIFTYONE_FORCE_DB_CONNECT_ON_IMPORT" in _os.environ
-):
-    import fiftyone.migrations as _fom
-
-    _fom.migrate_database_if_necessary()
 
 _fol.init_logging()
