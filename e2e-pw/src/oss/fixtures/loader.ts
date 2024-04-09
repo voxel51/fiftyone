@@ -65,7 +65,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         console.log("webserver started");
       })
       .catch((err) => {
-        console.log("webserver failed to start");
+        console.log("webserver failed to start, err = ", err);
         throw err;
       });
   }
