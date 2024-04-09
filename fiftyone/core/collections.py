@@ -10702,7 +10702,11 @@ class SampleCollection(object):
                 leaf = root + "." + leaf
 
             if _media_field in (root, leaf):
-                return leaf if leaf is not None else root
+                _resolved_field = leaf if leaf is not None else root
+                if is_frame_field:
+                    _resolved_field = self._FRAMES_PREFIX + _resolved_field
+
+                return _resolved_field
 
         raise ValueError("'%s' is not a valid media field" % media_field)
 
