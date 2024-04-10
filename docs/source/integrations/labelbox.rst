@@ -1478,8 +1478,9 @@ or
 methods to delete specific Labelbox project(s) associated with an annotation
 run.
 
-Use the `delete_datasets=True` flag to also delete the corresponding datasets
-that were created.
+Note that if setting `delete_batches=True` when deleting projects, then the
+corresponding datarows will no longer be deleted from Labelbox since the
+transition to Labelbox export v2.
 
 .. code:: python
     :linenos:
@@ -1503,7 +1504,11 @@ that were created.
     results = dataset.load_annotation_results(anno_key)
     api = results.connect_to_api()
 
-    api.delete_project(results.project_id, delete_datasets=True)
+    api.delete_project(
+        results.project_id,
+        delete_batches=True,
+        delete_ontologies=False,
+    )
 
     # OR
 
