@@ -26,7 +26,6 @@ def _get_db():
 
 class RepositoryFactory(object):
     repos = {}
-    db = None
 
     @staticmethod
     def delegated_operation_repo() -> DelegatedOperationRepo:
