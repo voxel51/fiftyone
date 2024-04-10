@@ -1271,7 +1271,9 @@ For example, let's upload some blurred images to Labelbox for annotation:
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
+        label_field="objects",
+        label_type="detections",
+        classes=["person", "car"],
         media_field="alt_filepath",
         launch_editor=True,
     )

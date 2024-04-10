@@ -2794,7 +2794,7 @@ class _LabelboxExportToFiftyOneConverterV2(
             if "radio_answer" in cd:
                 # Radio question
                 answer = cd["radio_answer"]
-                attributes = cls._parse_attributes(cd["classifications"])
+                attributes = cls._parse_attributes(answer["classifications"])
                 attributes.pop("label", None)
                 labels[name] = fol.Classification(
                     label=cls._get_answer_value(answer), **attributes
