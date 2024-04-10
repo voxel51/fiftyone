@@ -156,7 +156,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supported_attr_types(self):
-        return ["text", "select", "radio", "checkbox"]
+        return ["text", "radio", "checkbox"]
 
     @property
     def supports_keyframes(self):
@@ -308,7 +308,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def attr_type_map(self):
         return {
             "text": lbo.Classification.Type.TEXT,
-            "select": lbo.Classification.Type.DROPDOWN,
+            "select": lbo.Classification.Type.DROPDOWN,  # deprecated
             "radio": lbo.Classification.Type.RADIO,
             "checkbox": lbo.Classification.Type.CHECKLIST,
         }
@@ -2796,21 +2796,23 @@ class _LabelboxExportToFiftyOneConverterV2(
             elif "checklist_answers" in cd:
                 # Checklist
                 answers = cd["checklist_answers"]
-                attributes = cls._parse_attributes(cd["classifications"])
-                attributes.pop("label", None)
+                classifications = []
+                for a in answers:
+                    attributes = cls._parse_attributes(a["classifications"])
+                    attributes.pop("label", None)
+                    classifications.append(
+                        fol.Classification(
+                            label=cls._get_answer_value(a),
+                            **attributes,
+                        )
+                    )
                 labels[name] = fol.Classifications(
-                    classifications=[
-                        fol.Classification(label=cls._get_answer_value(a))
-                        for a in answers
-                    ],
-                    **attributes,
+                    classifications=classifications
                 )
             elif "text_answer" in cd:
                 # Free text
-                answer = cd["text_answer"]
-                attributes = cls._parse_attributes(cd["classifications"])
-                attributes.pop("label", None)
-                labels[name] = fol.Classification(label=answer, **attributes)
+                answer = cd["text_answer"].get("content", None)
+                labels[name] = fol.Classification(label=answer)
 
         return labels
 
@@ -2840,7 +2842,7 @@ class _LabelboxExportToFiftyOneConverterV2(
 
                 elif "text_answer" in cd:
                     # Free text
-                    answer = cd["text_answer"]
+                    answer = cd["text_answer"].get("content", None)
                     attributes[name] = _parse_attribute(answer)
 
         return attributes

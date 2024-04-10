@@ -523,7 +523,7 @@ each label field:
             "classes": ["class1", "class2"],
             "attributes": {
                 "attr1": {
-                    "type": "select",
+                    "type": "checkbox",
                     "values": ["val1", "val2"],
                 },
                 "attr2": {
@@ -562,7 +562,7 @@ only applies to `class1` and `class2` while `attr2` applies to all classes:
                     "classes": ["class1", "class2"],
                     "attributes": {
                         "attr1": {
-                            "type": "select",
+                            "type": "radio",
                             "values": ["val1", "val2"],
                         }
                      }
@@ -598,7 +598,7 @@ individually:
     # These are optional
     attributes = {
         "attr1": {
-            "type": "select",
+            "type": "radio",
             "values": ["val1", "val2"],
         },
         "attr2": {
@@ -655,7 +655,7 @@ attribute that you wish to label:
             "values": [True, False],
         },
         "weather": {
-            "type": "select",
+            "type": "checkbox",
             "values": ["cloudy", "sunny", "overcast"],
         },
         "caption": {
@@ -678,9 +678,10 @@ default `label`.
 For Labelbox, the following `type` values are supported:
 
 -   `text`: a free-form text box. In this case, `values` is unused
--   `select`: a selection dropdown. In this case, `values` is required
 -   `radio`: a radio button list UI. In this case, `values` is required
 -   `checkbox`: a list of checkboxes. In this case, `values` is required
+
+(The `select` type has been deprecated and removed by Labelbox)
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -717,7 +718,7 @@ attribute's value can change between frames for each object:
 
     attributes = {
         "type": {
-            "type": "select",
+            "type": "checkbox",
             "values": ["sedan", "suv", "truck"],
             "mutable": False,
         },
@@ -1083,7 +1084,7 @@ fields at once:
             "classes": ["person", "cat", "dog", "food"],
             "attributes": {
                 "occluded": {
-                    "type": "select",
+                    "type": "radio",
                     "values": [True, False],
                 }
             }
