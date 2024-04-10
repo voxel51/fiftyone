@@ -243,6 +243,8 @@ const BorderDiv = styled.div`
 const AttrBlock = styled.div`
   padding: 0.1rem 0 0 0;
   margin: 0;
+  max-height: 50vh;
+  overflow-y: scroll;
 `;
 
 const useTarget = (field, target) => {
