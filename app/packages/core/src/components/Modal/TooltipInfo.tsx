@@ -5,6 +5,7 @@ import styled from "styled-components";
 
 import { Close as CloseIcon } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Typography } from "@mui/material";
 import Draggable from "react-draggable";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { joinStringArray } from "../Filters/utils";
@@ -41,6 +42,13 @@ const ContentName = styled.div`
   font-weight: bold;
   padding-bottom: 0.3rem;
   color: ${({ theme }) => theme.text.secondary};
+`;
+
+const CtrlToLockContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  width: 5em;
 `;
 
 export const ContentItem = ({
@@ -188,7 +196,7 @@ const Header = ({ title }: { title: string }) => {
       id={TOOLTIP_HEADER_ID}
     >
       <span>{title}</span>
-      {isTooltipLocked && (
+      {isTooltipLocked ? (
         <CloseIcon
           style={{ cursor: "pointer" }}
           onClick={() => {
@@ -196,8 +204,20 @@ const Header = ({ title }: { title: string }) => {
             setIsTooltipLocked(false);
           }}
         />
+      ) : (
+        <CtrlToLock />
       )}
     </ContentHeader>
+  );
+};
+
+const CtrlToLock = () => {
+  return (
+    <CtrlToLockContainer>
+      <Typography variant="caption" color="gray" fontSize={"0.5em"}>
+        Press Ctrl to lock
+      </Typography>
+    </CtrlToLockContainer>
   );
 };
 

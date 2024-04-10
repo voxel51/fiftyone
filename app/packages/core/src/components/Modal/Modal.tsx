@@ -83,6 +83,8 @@ const SampleModal = () => {
         if (!isTooltipLocked && e.detail?.coordinates) {
           tooltip.setCoords(e.detail.coordinates);
         }
+      } else if (!isTooltipLocked) {
+        setTooltipDetail(null);
       }
     },
     [isTooltipLocked, tooltip]
