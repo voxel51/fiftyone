@@ -76,7 +76,7 @@ aggregation = _make_registrar()
 
 
 class DownloadContext(object):
-    """Context that can be used to pre-download media in baches while iterating
+    """Context that can be used to pre-download media in batches while iterating
     over a collection.
 
     By default, all media will be downloaded when the context is entered, but
