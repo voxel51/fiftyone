@@ -33,14 +33,6 @@ the following label types are supported, for both image and video datasets:
 - :ref:`Scalar fields <adding-sample-fields>`
 - :ref:`Semantic segmentation <semantic-segmentation>`
 
-.. note::
-
-    If you have a `paid Labelbox account <https://labelbox.com/pricing>`_, you
-    **will soon be able to** take advantage of Labelbox's
-    `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-    feature to upload existing labels from your FiftyOne Datasets to edit them
-    directly without needing to annotate them from scratch.
-
 .. image:: /images/integrations/labelbox_video.png
    :alt: labelbox-video
    :align: center
@@ -531,7 +523,7 @@ each label field:
             "classes": ["class1", "class2"],
             "attributes": {
                 "attr1": {
-                    "type": "select",
+                    "type": "checkbox",
                     "values": ["val1", "val2"],
                 },
                 "attr2": {
@@ -570,7 +562,7 @@ only applies to `class1` and `class2` while `attr2` applies to all classes:
                     "classes": ["class1", "class2"],
                     "attributes": {
                         "attr1": {
-                            "type": "select",
+                            "type": "radio",
                             "values": ["val1", "val2"],
                         }
                      }
@@ -606,7 +598,7 @@ individually:
     # These are optional
     attributes = {
         "attr1": {
-            "type": "select",
+            "type": "radio",
             "values": ["val1", "val2"],
         },
         "attr2": {
@@ -663,7 +655,7 @@ attribute that you wish to label:
             "values": [True, False],
         },
         "weather": {
-            "type": "select",
+            "type": "checkbox",
             "values": ["cloudy", "sunny", "overcast"],
         },
         "caption": {
@@ -686,9 +678,10 @@ default `label`.
 For Labelbox, the following `type` values are supported:
 
 -   `text`: a free-form text box. In this case, `values` is unused
--   `select`: a selection dropdown. In this case, `values` is required
 -   `radio`: a radio button list UI. In this case, `values` is required
 -   `checkbox`: a list of checkboxes. In this case, `values` is required
+
+(The `select` type has been deprecated and removed by Labelbox)
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -725,7 +718,7 @@ attribute's value can change between frames for each object:
 
     attributes = {
         "type": {
-            "type": "select",
+            "type": "checkbox",
             "values": ["sedan", "suv", "truck"],
             "mutable": False,
         },
@@ -1059,45 +1052,8 @@ Editing existing labels
 
     Uploading existing labels is not yet implemented for the Labelbox backend.
 
-    Note that, when this feature is implemented, it will require a paid
-    Labelbox account with access to Labelbox's
-    `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-    feature.
-
     See :ref:`this section <labelbox-editing-labels-free>` for one possible
-    workflow for editing existing labels with a free Labelbox account.
-
-A common use case is to fix annotation mistakes that you discovered in your
-datasets through FiftyOne.
-
-If you have a paid Labelbox account, you will **soon be able to** upload
-existing labels from a FiftyOne dataset for editing by simply passing the name
-of the existing field via the `label_field` parameter of
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "labelbox_existing_field"
-
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Modify/add/delete bounding boxes and their attributes in Labelbox
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
+    workflow for editing existing labels with Labelbox.
 
 .. _labelbox-multiple-fields:
 
@@ -1128,7 +1084,7 @@ fields at once:
             "classes": ["person", "cat", "dog", "food"],
             "attributes": {
                 "occluded": {
-                    "type": "select",
+                    "type": "radio",
                     "values": [True, False],
                 }
             }
@@ -1315,7 +1271,9 @@ For example, let's upload some blurred images to Labelbox for annotation:
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
+        label_field="objects",
+        label_type="detections",
+        classes=["person", "car"],
         media_field="alt_filepath",
         launch_editor=True,
     )
@@ -1523,8 +1481,9 @@ or
 methods to delete specific Labelbox project(s) associated with an annotation
 run.
 
-Use the `delete_datasets=True` flag to also delete the corresponding datasets
-that were created.
+Note that if setting `delete_batches=True` when deleting projects, then the
+corresponding datarows will no longer be deleted from Labelbox since the
+transition to Labelbox export v2.
 
 .. code:: python
     :linenos:
@@ -1548,7 +1507,11 @@ that were created.
     results = dataset.load_annotation_results(anno_key)
     api = results.connect_to_api()
 
-    api.delete_project(results.project_id, delete_datasets=True)
+    api.delete_project(
+        results.project_id,
+        delete_batches=True,
+        delete_ontologies=False,
+    )
 
     # OR
 
