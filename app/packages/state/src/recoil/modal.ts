@@ -214,23 +214,8 @@ export const tooltipDetail = atom<Record<string, string> | null>({
   default: null,
 });
 
-export const isTooltipControlKeyPressed = atom<boolean>({
-  key: "isTooltipControlKeyPressed",
-  default: false,
-});
-
-export const isTooltipKeyListenersOn = atom<boolean>({
-  key: "isTooltipKeyListenersOn",
-  default: false,
-});
-
-export const isTooltipMouseListenerOn = atom<boolean>({
-  key: "isTooltipMouseListenerOn",
-  default: false,
-});
-
-export const isTooltipOn3DLabel = atom<boolean>({
-  key: "isTooltipOn3DLabel",
+export const isTooltipLocked = atom<boolean>({
+  key: "isTooltipLocked",
   default: false,
 });
 

@@ -1,7 +1,7 @@
 import { useTheme } from "@fiftyone/components";
+import { animated, useSpring, useSprings } from "@react-spring/web";
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring, useSprings } from "@react-spring/web";
 
 export const Box = styled.div`
   padding: 1em;
@@ -32,10 +32,13 @@ export const ContentDiv = styled.div`
   z-index: 802;
 `;
 
-export const ContentHeader = styled.div`
+export const ContentHeader = styled.div<{ isTooltipLocked: boolean }>`
   color: ${({ theme }) => theme.text.primary};
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding-bottom: 0.5rem;
+  cursor: ${({ isTooltipLocked }) => (isTooltipLocked ? "grab" : "default")};
 `;
 
 export const PopoutDiv = animated(styled.div`

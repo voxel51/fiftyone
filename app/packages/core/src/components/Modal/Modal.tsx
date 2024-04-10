@@ -71,8 +71,8 @@ const SampleModal = () => {
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
   const tooltip = fos.useTooltip();
-  const isTooltipControlKeyPressed = useRecoilValue(
-    fos.isTooltipControlKeyPressed
+  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+    fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
 
@@ -80,23 +80,22 @@ const SampleModal = () => {
     (e) => {
       if (e.detail) {
         setTooltipDetail(e.detail);
-
-        if (!isTooltipControlKeyPressed && e.detail?.coordinates) {
+        if (!isTooltipLocked && e.detail?.coordinates) {
           tooltip.setCoords(e.detail.coordinates);
         }
-      } else {
-        setTooltipDetail(null);
       }
     },
-    [isTooltipControlKeyPressed, tooltip, setTooltipDetail]
+    [isTooltipLocked, tooltip]
   );
 
   useEffect(() => {
-    tooltip.registerCtrlKeyListener();
+    // reset tooltip state when modal is closed
+    setIsTooltipLocked(false);
+
     return () => {
-      tooltip.removeListeners();
+      setTooltipDetail(null);
     };
-  }, [tooltip]);
+  }, []);
 
   /**
    * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
