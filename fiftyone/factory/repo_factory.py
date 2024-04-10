@@ -5,10 +5,9 @@ FiftyOne repository factory.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import pymongo
+
 from pymongo.database import Database
 
-import fiftyone as fo
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,

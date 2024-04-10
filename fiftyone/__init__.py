@@ -7,8 +7,8 @@ See https://voxel51.com/fiftyone for more information.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from pkgutil import extend_path as _extend_path
-import os as _os
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
