@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.5.9
 --------------------
-*Released April 8, 2024*
+*Released April 11, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
@@ -26,7 +26,7 @@ Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
 FiftyOne 0.23.8
 ---------------
-*Released April 8, 2024*
+*Released April 11, 2024*
 
 News
 
