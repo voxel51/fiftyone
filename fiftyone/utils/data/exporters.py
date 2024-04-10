@@ -1327,7 +1327,10 @@ class MediaExporter(object):
                     )
                 else:
                     fos.copy_files(
-                        self._inpaths, self._outpaths, progress=progress
+                        self._inpaths,
+                        self._outpaths,
+                        use_cache=True,
+                        progress=progress,
                     )
         finally:
             if self._tmpdir is not None:
@@ -1379,8 +1382,17 @@ class LabelsExporter(fos.FileWriter):
     in a threaded batch.
     """
 
-    def __init__(self, type_str="labels", **kwargs):
-        super().__init__(type_str=type_str, **kwargs)
+    def __init__(self, type_str="labels", use_cache=False, **kwargs):
+        progress_str = None
+        if type_str:
+            progress_str = "Exporting %s..." % type_str
+
+        super().__init__(
+            type_str=type_str,
+            _progress_str=progress_str,
+            _use_cache=use_cache,
+            **kwargs,
+        )
 
     def setup(self):
         """Performs necessary setup to begin exporting labels.
@@ -3510,7 +3522,9 @@ class ImageSegmentationDirectoryExporter(
         )
         self._media_exporter.setup()
 
-        self._labels_exporter = LabelsExporter(type_str="masks")
+        self._labels_exporter = LabelsExporter(
+            type_str="masks", use_cache=True
+        )
         self._labels_exporter.setup()
 
     def export_sample(self, image_or_path, label, metadata=None):
@@ -3549,7 +3563,10 @@ class ImageSegmentationDirectoryExporter(
             raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = fos.join(self.labels_path, uuid + self.mask_format)
-        if label.mask_path is not None:
+        if label.mask_path is not None and (
+            not fos.is_local(label.mask_path)
+            or not fos.is_local(out_mask_path)
+        ):
             self._labels_exporter.register_path(label.mask_path, out_mask_path)
         else:
             local_path = self._labels_exporter.get_local_path(out_mask_path)
