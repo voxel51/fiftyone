@@ -74,7 +74,7 @@ class TestExecutionContext:
                 assert k in context._secrets
                 assert context._secrets[k] == v
                 assert context.secrets.get(k) == v
-        except Exception as e:
+        except Exception:
             pytest.fail(
                 "secrets proproperty items should be the same as _secrets items"
             )
@@ -88,7 +88,6 @@ class TestExecutionContext:
         )
         context._secrets = {}
         assert "MY_SECRET_KEY" not in context.secrets.keys()
-        secret_val = context.secrets["MY_SECRET_KEY"]
         assert "MY_SECRET_KEY" in context.secrets.keys()
         assert context.secrets["MY_SECRET_KEY"] == "mocked_sync_secret_value"
         assert context.secrets == context._secrets
