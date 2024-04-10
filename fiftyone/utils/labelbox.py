@@ -309,6 +309,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return {
             "text": lbo.Classification.Type.TEXT,
             # lbo.Classification.Type.DROPDOWN is deprecated
+            # select now uses radio
             "select": lbo.Classification.Type.RADIO,
             "radio": lbo.Classification.Type.RADIO,
             "checkbox": lbo.Classification.Type.CHECKLIST,
