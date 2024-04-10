@@ -1018,10 +1018,12 @@ def _pcd_to_3d(
             context.enter_context(media_exporter)
 
         pb = context.enter_context(fou.ProgressBar(progress=progress))
+        file_writer = context.enter_context(fos.FileWriter())
 
         for pcd_path in pb(pcd_paths):
             scene_path = _make_scene(
                 pcd_path,
+                file_writer,
                 filename_maker=filename_maker,
                 media_exporter=media_exporter,
                 abs_paths=abs_paths,
@@ -1036,6 +1038,7 @@ def _pcd_to_3d(
 
 def _make_scene(
     pcd_path,
+    file_writer,
     filename_maker=None,
     media_exporter=None,
     abs_paths=False,
@@ -1055,8 +1058,10 @@ def _make_scene(
         if not rel_path.startswith(".."):
             pcd_path = rel_path
 
+    local_scene_path = file_writer.get_local_path(scene_path)
+
     scene = Scene()
     scene.add(Pointcloud("point cloud", pcd_path))
-    scene.write(scene_path)
+    scene.write(local_scene_path)
 
     return scene_path
