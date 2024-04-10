@@ -16,8 +16,7 @@ Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
   batches during execution rather than downloading media in a single batch
   up-front
 - The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-  method no longer downloads cloud media if the export does not require it
-  (e.g., labels-only exports)
+  method no longer caches all cloud media involved in the export
 - Optimized the localhost App experience when using
   :ref:`API connections <teams-api-connection>`
 - Optimized performance of data-intensive API calls when using
