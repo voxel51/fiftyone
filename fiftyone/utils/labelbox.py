@@ -156,7 +156,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supported_attr_types(self):
-        return ["text", "radio", "checkbox"]
+        return ["text", "radio", "checkbox", "select"]
 
     @property
     def supports_keyframes(self):
@@ -308,7 +308,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def attr_type_map(self):
         return {
             "text": lbo.Classification.Type.TEXT,
-            "select": lbo.Classification.Type.DROPDOWN,  # deprecated
+            # lbo.Classification.Type.DROPDOWN is deprecated
+            "select": lbo.Classification.Type.RADIO,
             "radio": lbo.Classification.Type.RADIO,
             "checkbox": lbo.Classification.Type.CHECKLIST,
         }
@@ -917,6 +918,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         for attr_name, attr_info in attr_schema.items():
             attr_type = attr_info["type"]
             class_type = self.attr_type_map[attr_type]
+            if attr_type == "select":
+                logger.warning(
+                    "The `select` attribute type has been deprecated, using "
+                    "`radio` instead."
+                )
             if attr_type == "text":
                 attr = lbo.Classification(
                     class_type=class_type,
