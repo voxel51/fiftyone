@@ -88,6 +88,7 @@ class TestExecutionContext:
         )
         context._secrets = {}
         assert "MY_SECRET_KEY" not in context.secrets.keys()
+        _ = context.secrets["MY_SECRET_KEY"]
         assert "MY_SECRET_KEY" in context.secrets.keys()
         assert context.secrets["MY_SECRET_KEY"] == "mocked_sync_secret_value"
         assert context.secrets == context._secrets
