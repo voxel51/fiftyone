@@ -2564,10 +2564,10 @@ class _LabelboxExportToFiftyOneConverterV1(object):
         segmentations = []
         mask = None
         mask_instance_uri = None
+        load_fo_seg = class_attr is not None
         label_fields = {}
         for od in od_list:
             attributes = cls._parse_attributes(od.get("classifications", []))
-            load_fo_seg = class_attr is not None
             if class_attr and class_attr in attributes:
                 label_field = cls._get_label_field_attr(od)
                 label = attributes.pop(class_attr)
@@ -2646,13 +2646,15 @@ class _LabelboxExportToFiftyOneConverterV1(object):
             elif "instanceURI" in od or "mask" in od:
                 # Segmentation mask
                 if not load_fo_seg:
+                    # This condition is only triggered by the deprecated
+                    # `import_from_labelbox()` method
                     if mask is None:
                         mask_instance_uri = cls._get_mask_url(od)
                         mask = cls._parse_mask(
                             mask_instance_uri, headers=headers
                         )
                         segmentation = {
-                            "mask": current_mask,
+                            "mask": mask,
                             "label": label,
                             "attributes": attributes,
                         }
@@ -2663,6 +2665,9 @@ class _LabelboxExportToFiftyOneConverterV1(object):
                         )
                         warnings.warn(msg)
                 else:
+                    # Segementations are later loaded as either fo.Segmentation
+                    # or fo.Detection instances once the label schema of the
+                    # annotation task is available
                     current_mask_instance_uri = cls._get_mask_url(od)
                     current_mask = cls._parse_mask(
                         current_mask_instance_uri, headers=headers
