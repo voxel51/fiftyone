@@ -9,6 +9,8 @@ FiftyOne Server /sort route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+from fiftyone.core.session.events import StateUpdate
+
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
 import fiftyone.server.view as fosv
@@ -43,7 +45,7 @@ class Sort(HTTPEndpoint):
         state.selected = []
         state.selected_labels = []
 
-        await fose.dispatch_event(subscription, fose.StateUpdate(state))
+        await fose.dispatch_event(subscription, StateUpdate(state))
 
         # empty response
         #
