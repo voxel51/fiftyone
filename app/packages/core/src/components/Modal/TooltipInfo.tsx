@@ -1,13 +1,20 @@
-import { animated, useSpring } from "@react-spring/web";
-import React, { useLayoutEffect, useMemo, useRef } from "react";
-import ReactDOM from "react-dom";
-import styled from "styled-components";
-
-import { Close as CloseIcon } from "@fiftyone/components";
+import { Close as CloseIcon, IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
+import { animated, useSpring } from "@react-spring/web";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
 
@@ -25,7 +32,8 @@ const TooltipDiv = animated(styled(ContentDiv)<{ isTooltipLocked: boolean }>`
 
 const TooltipContentDiv = styled.div`
   overflow-y: auto;
-  max-height: 50vh;
+  max-width: 15rem;
+  max-height: 40vh;
 
   /* Customize the scrollbar (non-standard across browsers) */
   scrollbar-width: thin;
@@ -46,11 +54,26 @@ const TooltipContentDiv = styled.div`
   }
 `;
 
+const ContentItemContainer = styled.div`
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 12rem;
 `;
+
+const VisibilityIconContainer = animated(styled.div`
+  width: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.5rem;
+`);
 
 const ContentValue = styled.div`
   font-size: 0.8rem;
@@ -75,6 +98,14 @@ const CtrlToLockContainer = styled.div`
   width: 5em;
 `;
 
+const getHiddenLabelsKey = (datasetName: string) =>
+  `${datasetName}-fo-hiddenLabels`;
+
+const getHiddenLabels = (datasetName: string) => {
+  const hiddenLabels = localStorage.getItem(getHiddenLabelsKey(datasetName));
+  return hiddenLabels ? new Set(hiddenLabels.split(",")) : new Set();
+};
+
 export const ContentItem = ({
   name,
   value,
@@ -84,30 +115,71 @@ export const ContentItem = ({
   value?: number | string | string[];
   style?: object;
 }) => {
-  if (typeof value === "object" && !value?.length) {
+  const datasetName = useRecoilValue(fos.datasetName);
+  const [isVisibilityIconVisible, setIsVisibilityIconVisible] = useState(false);
+  const [isThisItemVisible, setIsThisItemVisible] = useState(true);
+
+  const hideThisItem = useCallback(() => {
+    if (name === "tags") {
+      return;
+    }
+
+    const hiddenLabels = getHiddenLabels(datasetName);
+    hiddenLabels.add(name);
+    localStorage.setItem(
+      getHiddenLabelsKey(datasetName),
+      [...hiddenLabels].join(",")
+    );
+    setIsThisItemVisible(false);
+  }, [datasetName, name]);
+
+  useEffect(() => {
+    const hiddenLabels = getHiddenLabels(datasetName);
+    setIsThisItemVisible(!hiddenLabels.has(name));
+  }, [datasetName, name]);
+
+  if (!isThisItemVisible || (typeof value === "object" && !value?.length)) {
     return null;
   }
 
   return (
-    <ContentItemDiv style={style}>
-      <ContentValue>
-        {(() => {
-          switch (typeof value) {
-            case "number":
-              return Number.isInteger(value) ? value : value.toFixed(3);
-            case "string":
-              return value.length ? value : '""';
-            case "boolean":
-              return value ? "True" : "False";
-            case "object":
-              return joinStringArray(value);
-            default:
-              return "None";
-          }
-        })()}
-      </ContentValue>
-      <ContentName>{name}</ContentName>
-    </ContentItemDiv>
+    <ContentItemContainer
+      onMouseEnter={() => {
+        if (name !== "tags") setIsVisibilityIconVisible(true);
+      }}
+      onMouseLeave={() => {
+        setIsVisibilityIconVisible(false);
+      }}
+    >
+      <ContentItemDiv style={style}>
+        <ContentValue>
+          {(() => {
+            switch (typeof value) {
+              case "number":
+                return Number.isInteger(value) ? value : value.toFixed(3);
+              case "string":
+                return value.length ? value : '""';
+              case "boolean":
+                return value ? "True" : "False";
+              case "object":
+                return joinStringArray(value);
+              default:
+                return "None";
+            }
+          })()}
+        </ContentValue>
+        <ContentName>{name}</ContentName>
+      </ContentItemDiv>
+      <VisibilityIconContainer>
+        {isVisibilityIconVisible && (
+          <IconButton onClick={hideThisItem} size="small">
+            <Tooltip text="Hide this item" placement="bottom-center">
+              <VisibilityOffIcon fontSize="small" />
+            </Tooltip>
+          </IconButton>
+        )}
+      </VisibilityIconContainer>
+    </ContentItemContainer>
   );
 };
 
