@@ -2279,7 +2279,7 @@ class AnnotationAPI(object):
             prefix = "FIFTYONE_%s_" % backend.upper()
             logger.info(
                 "Please enter your API key.\nYou can avoid this in the future "
-                "by setting your `%sKEY` environment variable",
+                "by setting your `%sAPI_KEY` environment variable",
                 prefix,
             )
 
