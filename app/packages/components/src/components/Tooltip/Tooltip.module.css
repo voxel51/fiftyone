@@ -7,4 +7,5 @@
   z-index: 100000;
   font-size: 14px;
   color: var(--fo-palette-text-secondary);
+  user-select: none;
 }

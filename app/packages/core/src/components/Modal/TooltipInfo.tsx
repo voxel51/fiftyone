@@ -1,7 +1,9 @@
-import { Close as CloseIcon, IconButton, Tooltip } from "@fiftyone/components";
+import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import CloseIcon from "@mui/icons-material/Close";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
 import React, {
   useCallback,
@@ -54,6 +56,25 @@ const TooltipContentDiv = styled.div`
   }
 `;
 
+const HiddenItemsContainer = styled.div`
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid ${({ theme }) => theme.border};
+`;
+
+const HiddenItemRowDiv = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 1.5rem;
+`;
+
+const HiddenHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
 const ContentItemContainer = styled.div`
   margin: 0;
   padding: 0;
@@ -101,9 +122,19 @@ const CtrlToLockContainer = styled.div`
 const getHiddenLabelsKey = (datasetName: string) =>
   `${datasetName}-fo-hiddenLabels`;
 
+const LABEL_CHANGE_EVENT_NAME = "fo-hide-label-change";
+
 const getHiddenLabels = (datasetName: string) => {
   const hiddenLabels = localStorage.getItem(getHiddenLabelsKey(datasetName));
-  return hiddenLabels ? new Set(hiddenLabels.split(",")) : new Set();
+  const hiddenLabelsArray = hiddenLabels ? hiddenLabels.split(",") : [];
+  const sortedHiddenLabels = hiddenLabelsArray.sort();
+  // insertion order is preserved, so this set can be expected to be ordered
+  return new Set<string>(sortedHiddenLabels);
+};
+
+const dispatchHideLabelChangeEvent = () => {
+  const event = new CustomEvent(LABEL_CHANGE_EVENT_NAME);
+  window.dispatchEvent(event);
 };
 
 export const ContentItem = ({
@@ -115,7 +146,7 @@ export const ContentItem = ({
   value?: number | string | string[];
   style?: object;
 }) => {
-  const datasetName = useRecoilValue(fos.datasetName);
+  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
   const [isVisibilityIconVisible, setIsVisibilityIconVisible] = useState(false);
   const [isThisItemVisible, setIsThisItemVisible] = useState(true);
 
@@ -131,12 +162,24 @@ export const ContentItem = ({
       [...hiddenLabels].join(",")
     );
     setIsThisItemVisible(false);
+    dispatchHideLabelChangeEvent();
+  }, [datasetName, name]);
+
+  const refreshHiddenLabels = useCallback(() => {
+    const newHiddenLabels = getHiddenLabels(datasetName);
+    setIsThisItemVisible(!newHiddenLabels.has(name));
   }, [datasetName, name]);
 
   useEffect(() => {
     const hiddenLabels = getHiddenLabels(datasetName);
     setIsThisItemVisible(!hiddenLabels.has(name));
-  }, [datasetName, name]);
+
+    window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
+
+    return () => {
+      window.removeEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
+    };
+  }, [datasetName, name, refreshHiddenLabels]);
 
   if (!isThisItemVisible || (typeof value === "object" && !value?.length)) {
     return null;
@@ -173,7 +216,7 @@ export const ContentItem = ({
       <VisibilityIconContainer>
         {isVisibilityIconVisible && (
           <IconButton onClick={hideThisItem} size="small">
-            <Tooltip text="Hide this item" placement="bottom-center">
+            <Tooltip text="Hide this label" placement="bottom-center">
               <VisibilityOffIcon fontSize="small" />
             </Tooltip>
           </IconButton>
@@ -229,6 +272,27 @@ export const TooltipInfo = React.memo(() => {
   const Component = detail ? OVERLAY_INFO[detail.type] : null;
 
   useLayoutEffect(() => {
+    if (!isTooltipLocked) {
+      return;
+    }
+
+    // set esc handler to unlock tooltip
+    // because looker's esc handler doesn't always work
+    const unlockTooltip = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsTooltipLocked(false);
+        e.stopImmediatePropagation();
+      }
+    };
+
+    document.addEventListener("keyup", unlockTooltip);
+
+    return () => {
+      document.removeEventListener("keyup", unlockTooltip);
+    };
+  }, [isTooltipLocked]);
+
+  useLayoutEffect(() => {
     const lockTooltip = (e: KeyboardEvent) => {
       if (e.key === "Control") {
         setIsTooltipLocked(true);
@@ -260,6 +324,11 @@ export const TooltipInfo = React.memo(() => {
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}
           <Component key={"attrs"} detail={detail} />
+          {isTooltipLocked && (
+            <HiddenItemsContainer>
+              <HiddenItems />
+            </HiddenItemsContainer>
+          )}
         </TooltipContentDiv>
       </TooltipDiv>
     );
@@ -281,6 +350,105 @@ export const TooltipInfo = React.memo(() => {
   );
 });
 
+const HiddenItems = () => {
+  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
+  const [shouldShowHidden, setShouldShowHidden] = useState(false);
+
+  const [currentHiddenLabels, setCurrentHiddenLabels] = useState(
+    getHiddenLabels(datasetName)
+  );
+
+  const refreshHiddenLabels = useCallback(() => {
+    setCurrentHiddenLabels(getHiddenLabels(datasetName));
+  }, [datasetName]);
+
+  useEffect(() => {
+    window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
+
+    return () => {
+      window.removeEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
+    };
+  }, [datasetName, refreshHiddenLabels]);
+
+  if (!shouldShowHidden) {
+    return (
+      <Button onClick={() => setShouldShowHidden(true)} size="small">
+        Show hidden
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      <HiddenHeader>
+        <ContentHeader>Hidden</ContentHeader>
+        <IconButton onClick={() => setShouldShowHidden(false)} size="small">
+          <Tooltip text="Hide hidden items" placement="bottom-center">
+            <VisibilityOffIcon fontSize="small" />
+          </Tooltip>
+        </IconButton>
+      </HiddenHeader>
+
+      {currentHiddenLabels.size === 0 ? (
+        <Typography>No items hidden</Typography>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {[...currentHiddenLabels].map((label) => (
+            <HiddenItemRow
+              key={label}
+              name={label}
+              refreshHiddenLabels={refreshHiddenLabels}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+const HiddenItemRow = ({
+  name,
+  refreshHiddenLabels,
+}: {
+  name: string;
+  refreshHiddenLabels: () => void;
+}) => {
+  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
+  const [showUnhideIcon, setShowUnhideIcon] = useState(false);
+
+  const unHideItem = useCallback(() => {
+    const hiddenLabels = getHiddenLabels(datasetName);
+    hiddenLabels.delete(name);
+    localStorage.setItem(
+      getHiddenLabelsKey(datasetName),
+      [...hiddenLabels].join(",")
+    );
+    refreshHiddenLabels();
+    window.dispatchEvent(new CustomEvent(LABEL_CHANGE_EVENT_NAME));
+  }, [datasetName, name, refreshHiddenLabels]);
+
+  return (
+    <HiddenItemRowDiv
+      onMouseEnter={() => setShowUnhideIcon(true)}
+      onMouseLeave={() => setShowUnhideIcon(false)}
+    >
+      <Typography variant="caption" color="gray">
+        {name}
+      </Typography>
+
+      <VisibilityIconContainer>
+        {showUnhideIcon && (
+          <IconButton onClick={unHideItem} size="small">
+            <Tooltip text="Show this label" placement="bottom-center">
+              <VisibilityIcon fontSize="small" />
+            </Tooltip>
+          </IconButton>
+        )}
+      </VisibilityIconContainer>
+    </HiddenItemRowDiv>
+  );
+};
+
 const Header = ({ title }: { title: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
@@ -295,13 +463,15 @@ const Header = ({ title }: { title: string }) => {
     >
       <span>{title}</span>
       {isTooltipLocked ? (
-        <CloseIcon
-          style={{ cursor: "pointer" }}
+        <IconButton
+          size="small"
           onClick={() => {
             setTooltipDetail(null);
             setIsTooltipLocked(false);
           }}
-        />
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
       ) : (
         <CtrlToLock />
       )}

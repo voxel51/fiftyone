@@ -32,7 +32,7 @@ export const ContentDiv = styled.div`
   z-index: 802;
 `;
 
-export const ContentHeader = styled.div<{ isTooltipLocked: boolean }>`
+export const ContentHeader = styled.div<{ isTooltipLocked?: boolean }>`
   color: ${({ theme }) => theme.text.primary};
   display: flex;
   justify-content: space-between;
