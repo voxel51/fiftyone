@@ -73,7 +73,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             the top level and annotate the class as a required attribute of
             each object (True)
         export_version ("v2"): the Labelbox export format and API version to
-            use. Suppoted values are ``("v1", "v2")``
+            use. Supported values are ``("v1", "v2")``
     """
 
     def __init__(
@@ -228,7 +228,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url: url of the Labelbox server
         api_key (None): the Labelbox API key
         export_version ("v2"): the Labelbox export format and API version to
-            use. Suppoted values are ``("v1", "v2")``
+            use. Supported values are ``("v1", "v2")``
     """
 
     def __init__(
@@ -1889,7 +1889,7 @@ def download_labels_from_labelbox(
         labelbox_project: a ``labelbox.schema.project.Project``
         outpath (None): the path to write the JSON export on disk
         export_version ("v2"): the Labelbox export format and API version to
-            use. Suppoted values are ``("v1", "v2")``
+            use. Supported values are ``("v1", "v2")``
 
     Returns:
         ``None`` if an ``outpath`` is provided, or the loaded JSON itself if no

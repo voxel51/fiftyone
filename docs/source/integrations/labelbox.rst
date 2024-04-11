@@ -488,7 +488,7 @@ can also be provided:
     top level and annotate the class as a required attribute of each object
     (True)
 -   **export_version** (*"v2"*): the Labelbox export format and API version to
-    use. Suppoted values are `("v1", "v2")`
+    use. Supported values are `("v1", "v2")`
 
 .. note::
 
