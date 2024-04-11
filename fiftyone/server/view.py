@@ -121,7 +121,7 @@ def get_view(
 
         if sample_filter is not None:
             if sample_filter.group:
-                view = _handle_group_filter(dataset, view, sample_filter.group)
+                view = handle_group_filter(dataset, view, sample_filter.group)
 
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -239,18 +239,29 @@ def _add_labels_tags_counts(view):
     return view
 
 
-def _handle_group_filter(
+def handle_group_filter(
     dataset: fod.Dataset,
     view: foc.SampleCollection,
     filter: GroupElementFilter,
-):
+) -> fov.DatasetView:
+    """Handle a group filter for App view requests.
+
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset`
+        view: the base :class:`fiftyone.core.collections.SampleCollection`
+        filter: the :class:`fiftyone.server.aggregations.GroupElementFilter`
+
+    Returns:
+        a :class:`fiftyone.core.collections.SampleCollection` with a group or
+        slice selection
+    """
     stages = view._stages
     unselected = all(
         not isinstance(stage, fosg.SelectGroupSlices) for stage in stages
     )
     group_field = dataset.group_field
-    if unselected and filter.slice:
-        # flatten the collection if the view has no slice selection
+    if unselected:
+        # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
         if filter.id:
@@ -262,13 +273,6 @@ def _handle_group_filter(
         for stage in stages:
             # add stages after flattening and group match
             view = view._add_view_stage(stage, validate=False)
-
-    else:
-        if filter.slice:
-            view.group_slice = filter.slice
-
-        if filter.id:
-            view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
     if filter.slices:
         # use 'match' to select requested slices, and avoid media type

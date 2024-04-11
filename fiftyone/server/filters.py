@@ -5,6 +5,7 @@ FiftyOne Server filter inputs
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import strawberry as gql
 from strawberry.schema_directive import Location
 import typing as t
@@ -18,7 +19,9 @@ class OneOf:
 @gql.input
 class GroupElementFilter:
     id: t.Optional[str] = None
-    slice: t.Optional[str] = None
+    slice: t.Optional[str] = gql.field(
+        deprecation_reason="unused, use 'slices' instead"
+    )
     slices: t.Optional[t.List[str]] = None
 
 
