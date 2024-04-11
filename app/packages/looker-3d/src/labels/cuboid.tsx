@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import * as THREE from "three";
 import { OverlayProps } from "./shared";
+import { useCursor } from "@react-three/drei";
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
@@ -21,26 +22,45 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
-  const geo = React.useMemo(
+  const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
     [dimensions]
   );
 
+  // @todo: add comment to add more context on what legacy coordinates means
+  const loc = useMemo(() => {
+    const [x, y, z] = location;
+    return useLegacyCoordinates
+      ? new THREE.Vector3(x, y - 0.5 * dimensions[1], z)
+      : new THREE.Vector3(x, y, z);
+  }, [location, dimensions, useLegacyCoordinates]);
+
+  const itemRotationVec = useMemo(
+    () => new THREE.Vector3(...itemRotation),
+    [itemRotation]
+  );
+  const resolvedRotation = useMemo(
+    () => new THREE.Vector3(...rotation),
+    [rotation]
+  );
+  const actualRotation = useMemo(
+    () => resolvedRotation.add(itemRotationVec).toArray(),
+    [resolvedRotation, itemRotationVec]
+  );
+
+  const [isCuboidHovered, setIsCuboidHovered] = useState(false);
+
+  useCursor(isCuboidHovered);
+
   if (!location || !dimensions) return null;
 
-  const [x, y, z] = location;
-
-  // @todo: add comment to add more context on what legacy coordinates means
-  const loc = useLegacyCoordinates
-    ? new THREE.Vector3(x, y - 0.5 * dimensions[1], z)
-    : new THREE.Vector3(x, y, z);
-
-  const itemRotationVec = new THREE.Vector3(...itemRotation);
-  const resolvedRotation = new THREE.Vector3(...rotation);
-  const actualRotation = resolvedRotation.add(itemRotationVec).toArray();
-
   return (
-    <>
+    <group
+      onPointerOver={() => setIsCuboidHovered(true)}
+      onPointerOut={() => {
+        setIsCuboidHovered(false);
+      }}
+    >
       <mesh position={loc} rotation={actualRotation}>
         <lineSegments>
           <edgesGeometry args={[geo]} attach="geometry" />
@@ -64,6 +84,6 @@ export const Cuboid = ({
           color={selected ? "orange" : color}
         />
       </mesh>
-    </>
+    </group>
   );
 };
