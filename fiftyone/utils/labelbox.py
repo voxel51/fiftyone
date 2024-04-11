@@ -2146,7 +2146,9 @@ class _FiftyOneToLabelboxConverterBase(object):
         if isinstance(label, fol.Classification):
             label_ids = [label.id]
         elif isinstance(label, fol.Classifications):
-            label_ids = [l.id for l in label.classifications]
+            label_ids = [
+                classification.id for classification in label.classifications
+            ]
         else:
             label_ids = []
 
