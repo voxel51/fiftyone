@@ -743,7 +743,7 @@ The meaning of the `mutable` attribute is defined as follows:
 -   `True` (default): the attribute is dynamic and can have a different value
     for every frame in which the object track appears
 -   `False`: the attribute is static and is the same for every frame in which
-    the object track appears
+    the object track appears (**Not yet supported**)
 
 .. _labelbox-loading-annotations:
 
