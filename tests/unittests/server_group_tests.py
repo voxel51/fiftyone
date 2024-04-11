@@ -12,7 +12,6 @@ from bson import ObjectId
 
 import fiftyone as fo
 from fiftyone import ViewExpression as F
-import fiftyone.core.media as fom
 from fiftyone.server.aggregations import GroupElementFilter
 import fiftyone.server.view as fosv
 
