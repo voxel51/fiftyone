@@ -20,6 +20,31 @@ import fiftyone.zoo as foz
 import fiftyone.utils.labelbox as foul
 
 
+_anno_key = "anno_key"
+
+
+def _image_dataset(dataset_name):
+    dataset = foz.load_zoo_dataset(
+        "quickstart",
+        max_samples=3,
+        dataset_name=dataset_name,
+        drop_existing_dataset=True,
+    )
+    dataset.persistent = True
+    return dataset
+
+
+def _video_dataset(dataset_name):
+    dataset = foz.load_zoo_dataset(
+        "quickstart-video",
+        max_samples=1,
+        dataset_name=dataset_name,
+        drop_existing_dataset=True,
+    )
+    dataset.persistent = True
+    return dataset
+
+
 def test_labelbox_image():
     # Image dataset
     dataset = foz.load_zoo_dataset(
@@ -35,6 +60,155 @@ def test_labelbox_image():
     ]
 
     _test_labelbox_image(dataset, label_field)
+
+
+_image_dataset_name = "qs-lb-image"
+
+
+def test_labelbox_launch_image_base():
+    # Image dataset, single detections field
+
+    dataset = _image_dataset(_image_dataset_name)
+
+    label_schema = {
+        "new_field": {
+            "type": "detections",
+            "classes": ["dog", "cat"],
+            "attributes": {
+                "test": {
+                    "type": "checkbox",
+                    "values": ["testattr", "testattr2"],
+                }
+            },
+        }
+    }
+
+    results = dataset.annotate(
+        _anno_key,
+        label_schema=label_schema,
+        backend="labelbox",
+        launch_editor=True,
+    )
+
+
+def test_labelbox_load_image_base():
+    dataset = fo.load_dataset(_image_dataset_name)
+    dataset.load_annotations(_anno_key)
+
+
+_image_instance_segs_dataset_name = "qs-lb-image-segs"
+
+
+def test_labelbox_launch_image_instance_segs():
+    # Image dataset, instance segmentations and classifications, attributes dict from doc
+
+    dataset = _image_dataset(_image_instance_segs_dataset_name)
+
+    label_schema = {
+        "segs": {
+            "type": "instances",
+            "classes": ["c1", "c2"],
+            "attributes": ["attr1", "attr2"],
+        },
+        "classifications": {
+            "type": "classifications",
+            "classes": ["ccc1", "ccc2", "ccc3"],
+            "attributes": {
+                "occluded": {
+                    "type": "radio",
+                    "values": [True, False],
+                },
+                "weather": {
+                    "type": "select",
+                    "values": ["cloudy", "sunny", "overcast"],
+                },
+                "caption": {
+                    "type": "text",
+                },
+            },
+        },
+    }
+
+    results = dataset.annotate(
+        _anno_key,
+        label_schema=label_schema,
+        backend="labelbox",
+        launch_editor=True,
+    )
+
+
+def test_labelbox_load_image_instance_segs():
+    dataset = fo.load_dataset(_image_instance_segs_dataset_name)
+    dataset.load_annotations(_anno_key, cleanup=True)
+
+
+_image_polylines_dataset_name = "qs-lb-image-polylines"
+
+
+def test_labelbox_launch_image_polylines():
+    # Image dataset, polylines, classes_as_attrs, project_name
+
+    dataset = _image_dataset(_image_polylines_dataset_name)
+
+    attributes = {
+        "radio": {
+            "type": "radio",
+            "values": [1, 2, 3],
+        }
+    }
+
+    results = dataset.annotate(
+        _anno_key,
+        label_field="polylines",
+        label_type="polylines",
+        classes=["p0", "p1", "p2", "p3"],
+        attributes=attributes,
+        backend="labelbox",
+        classes_as_attrs=False,
+        project_name="proj_polylines",
+        launch_editor=True,
+    )
+
+
+def test_labelbox_load_image_polylines():
+    dataset = fo.load_dataset(_image_polylines_dataset_name)
+    dataset.load_annotations(_anno_key, cleanup=True)
+
+
+_video_dataset_name = "qs-lb-video"
+
+
+def test_labelbox_launch_video_base():
+    # Video dataset, doc example video label attributes
+
+    dataset = _video_dataset(_video_dataset_name)
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "mutable": True,
+        },
+    }
+
+    dataset.annotate(
+        _anno_key,
+        backend="labelbox",
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+
+def test_labelbox_load_video_base():
+    dataset = fo.load_dataset(_video_dataset_name)
+    dataset.load_annotations(_anno_key, cleanup=True)
 
 
 def test_labelbox_video_objects():
