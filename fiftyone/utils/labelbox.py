@@ -2617,7 +2617,7 @@ class _LabelboxExportToFiftyOneConverterV1(object):
                 polyline = fol.Polyline(
                     label=label,
                     points=[points],
-                    closed=True,
+                    closed=False,
                     filled=False,
                     **attributes,
                 )
