@@ -119,13 +119,17 @@ const CtrlToLockContainer = styled.div`
   width: 5em;
 `;
 
-const getHiddenLabelsKey = (datasetName: string) =>
-  `${datasetName}-fo-hiddenLabels`;
+const getHiddenLabelsKey = (datasetName: string, labelName: string) => {
+  console.log("getting key for dataset", datasetName, "label", labelName);
+  return `fo-hiddenLabels-${datasetName}-${labelName}`;
+};
 
 const LABEL_CHANGE_EVENT_NAME = "fo-hide-label-change";
 
-const getHiddenLabels = (datasetName: string) => {
-  const hiddenLabels = localStorage.getItem(getHiddenLabelsKey(datasetName));
+const getHiddenLabels = (datasetName: string, labelName: string) => {
+  const hiddenLabels = localStorage.getItem(
+    getHiddenLabelsKey(datasetName, labelName)
+  );
   const hiddenLabelsArray = hiddenLabels ? hiddenLabels.split(",") : [];
   const sortedHiddenLabels = hiddenLabelsArray.sort();
   // insertion order is preserved, so this set can be expected to be ordered
@@ -138,10 +142,12 @@ const dispatchHideLabelChangeEvent = () => {
 };
 
 export const ContentItem = ({
+  field,
   name,
   value,
   style,
 }: {
+  field: string;
   name: string;
   value?: number | string | string[];
   style?: object;
@@ -155,23 +161,23 @@ export const ContentItem = ({
       return;
     }
 
-    const hiddenLabels = getHiddenLabels(datasetName);
+    const hiddenLabels = getHiddenLabels(datasetName, field);
     hiddenLabels.add(name);
     localStorage.setItem(
-      getHiddenLabelsKey(datasetName),
+      getHiddenLabelsKey(datasetName, field),
       [...hiddenLabels].join(",")
     );
     setIsThisItemVisible(false);
     dispatchHideLabelChangeEvent();
-  }, [datasetName, name]);
+  }, [datasetName, name, field]);
 
   const refreshHiddenLabels = useCallback(() => {
-    const newHiddenLabels = getHiddenLabels(datasetName);
+    const newHiddenLabels = getHiddenLabels(datasetName, field);
     setIsThisItemVisible(!newHiddenLabels.has(name));
-  }, [datasetName, name]);
+  }, [datasetName, name, field]);
 
   useEffect(() => {
-    const hiddenLabels = getHiddenLabels(datasetName);
+    const hiddenLabels = getHiddenLabels(datasetName, field);
     setIsThisItemVisible(!hiddenLabels.has(name));
 
     window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
@@ -179,7 +185,7 @@ export const ContentItem = ({
     return () => {
       window.removeEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
     };
-  }, [datasetName, name, refreshHiddenLabels]);
+  }, [datasetName, name, refreshHiddenLabels, field]);
 
   if (!isThisItemVisible || (typeof value === "object" && !value?.length)) {
     return null;
@@ -326,7 +332,7 @@ export const TooltipInfo = React.memo(() => {
           <Component key={"attrs"} detail={detail} />
           {isTooltipLocked && (
             <HiddenItemsContainer>
-              <HiddenItems />
+              <HiddenItems key={detail.field} field={detail.field} />
             </HiddenItemsContainer>
           )}
         </TooltipContentDiv>
@@ -350,17 +356,17 @@ export const TooltipInfo = React.memo(() => {
   );
 });
 
-const HiddenItems = () => {
+const HiddenItems = ({ field }: { field: string }) => {
   const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
   const [shouldShowHidden, setShouldShowHidden] = useState(false);
 
   const [currentHiddenLabels, setCurrentHiddenLabels] = useState(
-    getHiddenLabels(datasetName)
+    getHiddenLabels(datasetName, field)
   );
 
   const refreshHiddenLabels = useCallback(() => {
-    setCurrentHiddenLabels(getHiddenLabels(datasetName));
-  }, [datasetName]);
+    setCurrentHiddenLabels(getHiddenLabels(datasetName, field));
+  }, [datasetName, field]);
 
   useEffect(() => {
     window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
@@ -397,6 +403,7 @@ const HiddenItems = () => {
             <HiddenItemRow
               key={label}
               name={label}
+              field={field}
               refreshHiddenLabels={refreshHiddenLabels}
             />
           ))}
@@ -408,24 +415,26 @@ const HiddenItems = () => {
 
 const HiddenItemRow = ({
   name,
+  field,
   refreshHiddenLabels,
 }: {
   name: string;
+  field: string;
   refreshHiddenLabels: () => void;
 }) => {
   const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
   const [showUnhideIcon, setShowUnhideIcon] = useState(false);
 
   const unHideItem = useCallback(() => {
-    const hiddenLabels = getHiddenLabels(datasetName);
+    const hiddenLabels = getHiddenLabels(datasetName, field);
     hiddenLabels.delete(name);
     localStorage.setItem(
-      getHiddenLabelsKey(datasetName),
+      getHiddenLabelsKey(datasetName, field),
       [...hiddenLabels].join(",")
     );
     refreshHiddenLabels();
     window.dispatchEvent(new CustomEvent(LABEL_CHANGE_EVENT_NAME));
-  }, [datasetName, name, refreshHiddenLabels]);
+  }, [datasetName, name, refreshHiddenLabels, field]);
 
   return (
     <HiddenItemRowDiv
@@ -518,7 +527,7 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const AttrInfo = ({ label, labelType, children = null }) => {
+const AttrInfo = ({ label, field, labelType, children = null }) => {
   let entries = Object.entries(label).filter(
     ([k, v]) => "tags" !== k && !k.startsWith("_")
   );
@@ -536,7 +545,7 @@ const AttrInfo = ({ label, labelType, children = null }) => {
       )
   );
   const mapper = ([name, value]) => (
-    <ContentItem key={name} name={name} value={value} />
+    <ContentItem key={name} name={name} field={field} value={value} />
   );
 
   const attributes =
@@ -562,7 +571,11 @@ const AttrInfo = ({ label, labelType, children = null }) => {
 const ClassificationInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
@@ -570,7 +583,11 @@ const ClassificationInfo = ({ detail }) => {
 const DetectionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
@@ -578,8 +595,17 @@ const DetectionInfo = ({ detail }) => {
 const HeatmapInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <ContentItem
+        field={detail.field}
+        key={"pixel-value"}
+        name={"pixel"}
+        value={detail.target}
+      />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
@@ -587,9 +613,14 @@ const HeatmapInfo = ({ detail }) => {
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
       {detail.point && (
         <AttrInfo
+          field={detail.field}
           label={Object.fromEntries(
             detail.point.attributes
               .filter(([x, y]) => x !== "points")
@@ -608,7 +639,11 @@ const KeypointInfo = ({ detail }) => {
 const RegressionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
@@ -623,17 +658,23 @@ const SegmentationInfo = ({ detail }) => {
         (targetValue ? (
           <ContentItem
             key={"target-value"}
+            field={detail.field}
             name={"label"}
             value={targetValue}
           />
         ) : (
           <ContentItem
             key={"pixel-value"}
+            field={detail.field}
             name={"pixel"}
             value={detail.target}
           />
         ))}
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
@@ -641,7 +682,11 @@ const SegmentationInfo = ({ detail }) => {
 const PolylineInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <AttrInfo label={detail.label} labelType={detail.type} />
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
     </AttrBlock>
   );
 };
