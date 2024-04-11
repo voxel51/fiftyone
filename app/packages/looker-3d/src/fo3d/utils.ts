@@ -121,6 +121,8 @@ export const getMediaUrlForFo3dSample = (
 };
 
 export const getFo3dRoot = (fo3dUrl: string) => {
+  let filepath = fo3dUrl;
+
   const decodedUrl = decodeURIComponent(fo3dUrl);
 
   // extract the filepath from the URL
@@ -135,10 +137,11 @@ export const getFo3dRoot = (fo3dUrl: string) => {
       }
       return parent + "/";
     } catch {
-      throw new Error("Filepath not found in URL");
+      // assume url is filepath, do nothing
     }
+  } else {
+    filepath = filepathMatch[1];
   }
-  let filepath = filepathMatch[1];
 
   // remove the query string if present
   const queryStringIndex = filepath.indexOf("?");

@@ -6,13 +6,12 @@
 |
 """
 
-import json
 import os
 from typing import List, Optional
 
-from pydantic.dataclasses import dataclass
-
+import fiftyone as fo
 import fiftyone.core.storage as fos
+from pydantic.dataclasses import dataclass
 
 from .camera import PerspectiveCamera
 from .lights import Light
@@ -334,6 +333,8 @@ class Scene(Object3D):
         """Load a scene from a ``.fo3d`` file."""
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
+
+        path, _ = fo.media_cache.use_cached_path(path)
 
         dict_data = fos.read_json(path)
 
