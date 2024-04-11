@@ -19,8 +19,32 @@ const TooltipDiv = animated(styled(ContentDiv)<{ isTooltipLocked: boolean }>`
   left: -1000;
   top: -1000;
   z-index: 20000;
+  min-width: 13rem;
   pointer-events: ${(props) => (props.isTooltipLocked ? "auto" : "none")};
 `);
+
+const TooltipContentDiv = styled.div`
+  overflow-y: auto;
+  max-height: 50vh;
+
+  /* Customize the scrollbar (non-standard across browsers) */
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f0f0f0;
+
+  &::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f0f0f0; /* Color of the track (background of the scrollbar) */
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #888; /* color of the scrollbar thumb (the draggable part) */
+    border-radius: 6px; /* roundness of the scrollbar thumb */
+    border: 3px solid #f0f0f0; /* creates a border around the thumb (should match the track color) */
+  }
+`;
 
 const ContentItemDiv = styled.div`
   margin: 0;
@@ -159,10 +183,12 @@ export const TooltipInfo = React.memo(() => {
       >
         <Header title={detail.field} />
         <Border color={detail.color} id={detail.label.id} />
-        {detail.label.tags && detail.label.tags.length > 0 && (
-          <TagInfo key={"tags"} tags={detail.label?.tags} />
-        )}
-        <Component key={"attrs"} detail={detail} />
+        <TooltipContentDiv>
+          {detail.label.tags && detail.label.tags.length > 0 && (
+            <TagInfo key={"tags"} tags={detail.label?.tags} />
+          )}
+          <Component key={"attrs"} detail={detail} />
+        </TooltipContentDiv>
       </TooltipDiv>
     );
   }, [Component, coordsProps, detail, isTooltipLocked, showProps]);
@@ -243,8 +269,6 @@ const BorderDiv = styled.div`
 const AttrBlock = styled.div`
   padding: 0.1rem 0 0 0;
   margin: 0;
-  max-height: 50vh;
-  overflow-y: scroll;
 `;
 
 const useTarget = (field, target) => {
