@@ -2667,7 +2667,7 @@ class _LabelboxExportToFiftyOneConverterV1(object):
                         )
                         warnings.warn(msg)
                 else:
-                    # Segementations are later loaded as either fo.Segmentation
+                    # Segmentations are later loaded as either fo.Segmentation
                     # or fo.Detection instances once the label schema of the
                     # annotation task is available
                     current_mask_instance_uri = cls._get_mask_url(od)
