@@ -11,6 +11,7 @@ import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { State } from "./types";
 import * as viewAtoms from "./view";
 
 type Aggregation = Exclude<
@@ -136,25 +137,16 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      let paths = get(schemaAtoms.filterFields(path));
-      let mixed = params.mixed;
-      const numeric = get(schemaAtoms.isNumericField(path));
-      if (params.modal) {
-        paths = paths.filter((p) => {
-          const n = get(schemaAtoms.isNumericField(p));
-          return numeric ? n : !n;
-        });
-        // mixed only when in a group dataset
-        mixed ||= Boolean(get(groupId) && numeric);
-      }
+      const paths = params.modal
+        ? get(modalAggregationPaths({ path, mixed: params.mixed }))
+        : get(schemaAtoms.filterFields(path));
 
       return get(
         aggregations({
           ...params,
-          mixed,
           paths,
         })
-      ).filter((data) => data.path === path)[0];
+      ).find((data) => data.path === path);
     },
 });
 
@@ -177,5 +169,46 @@ export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
           })
         ).at(0)?.count ?? 0
       );
+    },
+});
+
+export const modalAggregationPaths = selectorFamily({
+  key: "modalAggregationPaths",
+  get:
+    (params: { path: string; mixed?: boolean }) =>
+    ({ get }) => {
+      const frames = get(
+        schemaAtoms.labelFields({ space: State.SPACE.FRAME })
+      ).map((path) => get(schemaAtoms.expandPath(path)));
+
+      // separate frames path requests and sample path requests
+      const isFramesPath = frames.some((p) => params.path.startsWith(p));
+      let paths = isFramesPath
+        ? frames
+        : get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
+            (path) => get(schemaAtoms.expandPath(path))
+          );
+
+      paths = paths
+        .sort()
+        .map((p) => get(schemaAtoms.modalFilterFields(p)))
+        .flat();
+
+      const numeric = get(schemaAtoms.isNumericField(params.path));
+      if (params.mixed || get(groupId)) {
+        paths = [
+          ...paths.filter((p) => {
+            const n = get(schemaAtoms.isNumericField(p));
+            return numeric ? n : !n;
+          }),
+        ];
+
+        if (!numeric && !isFramesPath) {
+          // the modal currently requires a 'tags' aggregation
+          paths = ["tags", ...paths];
+        }
+      }
+
+      return paths;
     },
 });

@@ -19,14 +19,17 @@ const Lightning = ({ path }: { path: string }) => {
 };
 
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
-  const lightning = useRecoilValue(fos.lightning);
+  const disabled = useRecoilValue(fos.isDisabledPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
+  const lightning = useRecoilValue(fos.lightning);
+
   if (lightning && !modal) {
     return <Lightning path={path} />;
   }
 
   return (
     <Arrow
+      disabled={disabled}
       expanded={fos.sidebarExpanded({ modal, path: expandedPath })}
       id={path}
     />
