@@ -487,6 +487,8 @@ can also be provided:
     top level of the editor (False) or whether to show the label field at the
     top level and annotate the class as a required attribute of each object
     (True)
+-   **export_version** (*"v2"*): the Labelbox export format and API version to
+    use. Suppoted values are `("v1", "v2")`
 
 .. note::
 
@@ -680,8 +682,6 @@ For Labelbox, the following `type` values are supported:
 -   `text`: a free-form text box. In this case, `values` is unused
 -   `radio`: a radio button list UI. In this case, `values` is required
 -   `checkbox`: a list of checkboxes. In this case, `values` is required
-
-(The `select` type has been deprecated and removed by Labelbox)
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1481,10 +1481,6 @@ or
 methods to delete specific Labelbox project(s) associated with an annotation
 run.
 
-Note that if setting `delete_batches=True` when deleting projects, then the
-corresponding datarows will no longer be deleted from Labelbox since the
-transition to Labelbox export v2.
-
 .. code:: python
     :linenos:
 
@@ -1522,3 +1518,9 @@ transition to Labelbox export v2.
     # Delete all projects and datasets from your Labelbox account
     api.delete_projects(project_ids)
     api.delete_datasets(dataset_ids)
+
+.. note::
+
+    Note that passing `delete_batches=True` when deleting projects will not
+    delete the corresponding data rows from Labelbox when using the V2 export
+    API (the default).
