@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.23.7"
+VERSION = "0.23.8"
 
 
 def get_version():
@@ -66,6 +66,7 @@ INSTALL_REQUIRES = [
     "retrying",
     "scikit-learn",
     "scikit-image",
+    "scipy",
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",

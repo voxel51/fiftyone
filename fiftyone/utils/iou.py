@@ -539,7 +539,6 @@ def _compute_polygon_ious(
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
         if error_level > 1:
-            # pylint: disable=no-member
             context.enter_context(
                 fou.LoggingLevel(logging.CRITICAL, logger="shapely")
             )
@@ -629,7 +628,6 @@ def _compute_mask_ious(
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
         if error_level > 1:
-            # pylint: disable=no-member
             context.enter_context(
                 fou.LoggingLevel(logging.CRITICAL, logger="shapely")
             )
