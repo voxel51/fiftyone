@@ -214,31 +214,6 @@ def extend_view(view, extended_stages):
     return view
 
 
-def _add_labels_tags_counts(view):
-    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
-
-    for path, field in foc._iter_label_fields(view):
-        if isinstance(field, fof.ListField) or (
-            isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._HasLabelList)
-        ):
-            if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _add_frame_labels_tags
-            else:
-                add_tags = _add_labels_tags
-        else:
-            if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _add_frame_label_tags
-            else:
-                add_tags = _add_label_tags
-
-        view = add_tags(path, field, view)
-
-    view = _count_list_items(_LABEL_TAGS, view)
-
-    return view
-
-
 def handle_group_filter(
     dataset: fod.Dataset,
     view: foc.SampleCollection,
@@ -260,7 +235,7 @@ def handle_group_filter(
         not isinstance(stage, fosg.SelectGroupSlices) for stage in stages
     )
     group_field = dataset.group_field
-    if unselected:
+    if unselected and filter.slices:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
@@ -278,6 +253,31 @@ def handle_group_filter(
         # use 'match' to select requested slices, and avoid media type
         # validation
         view = view.match({group_field + ".name": {"$in": filter.slices}})
+
+    return view
+
+
+def _add_labels_tags_counts(view):
+    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
+
+    for path, field in foc._iter_label_fields(view):
+        if isinstance(field, fof.ListField) or (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+        ):
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _add_frame_labels_tags
+            else:
+                add_tags = _add_labels_tags
+        else:
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _add_frame_label_tags
+            else:
+                add_tags = _add_label_tags
+
+        view = add_tags(path, field, view)
+
+    view = _count_list_items(_LABEL_TAGS, view)
 
     return view
 
