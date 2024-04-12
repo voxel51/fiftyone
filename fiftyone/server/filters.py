@@ -19,9 +19,7 @@ class OneOf:
 @gql.input
 class GroupElementFilter:
     id: t.Optional[str] = None
-    slice: t.Optional[str] = gql.field(
-        default=None, deprecation_reason="unused, use 'slices' instead"
-    )
+    slice: t.Optional[str] = None
     slices: t.Optional[t.List[str]] = None
 
 

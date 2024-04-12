@@ -21,7 +21,7 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
 
@@ -236,7 +236,7 @@ def handle_group_filter(
     unselected = not any(
         isinstance(stage, fosg.SelectGroupSlices) for stage in stages
     )
-    if unselected and filter.slices:
+    if unselected and filter.slice:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
@@ -249,6 +249,13 @@ def handle_group_filter(
         for stage in stages:
             # add stages after flattening and group match
             view = view._add_view_stage(stage, validate=False)
+
+    else:
+        if filter.slice:
+            view.group_slice = filter.slice
+
+        if filter.id:
+            view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
     if filter.slices:
         # use 'match' to select requested slices, and avoid media type
