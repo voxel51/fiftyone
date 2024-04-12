@@ -1,10 +1,10 @@
-import React from "react";
+import { Close } from "@mui/icons-material";
 import {
-  DialogProps as MuiDialogProps,
   IconButton,
   Dialog as MuiDialog,
+  DialogProps as MuiDialogProps,
 } from "@mui/material";
-import { Close } from "@mui/icons-material";
+import React from "react";
 
 export default function Dialog(props: DialogProps) {
   const { children, PaperProps, onClose, ...otherProps } = props;

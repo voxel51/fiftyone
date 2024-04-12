@@ -3,7 +3,6 @@ import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
   Button,
-  CircularProgress,
   List,
   ListItem,
   ListItemButton,
@@ -38,7 +37,7 @@ export default function SavedSpaces() {
     if (open && !initialized) {
       listWorkspace();
     }
-  }, [open, initialized]);
+  }, [open, initialized, listWorkspace]);
 
   return (
     <Box>

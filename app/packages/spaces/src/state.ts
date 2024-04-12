@@ -1,11 +1,11 @@
-import { atom, selector, selectorFamily } from "recoil";
+import { COLOR_OPTIONS } from "@fiftyone/components";
+import { atom, selectorFamily } from "recoil";
 import {
-  PanelsCloseEffect,
   PanelStateParameter,
   PanelStatePartialParameter,
+  PanelsCloseEffect,
   SpaceNodeJSON,
 } from "./types";
-import { COLOR_OPTIONS } from "@fiftyone/components";
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
@@ -103,11 +103,17 @@ export const workspaceEditorStateAtom = atom({
   },
 });
 
+export interface Workspace {
+  description: string;
+  color: string;
+  name: string;
+}
+
 export const savedWorkspacesAtom = atom({
   key: "savedWorkspacesSelect",
   default: {
     initialized: false,
-    workspaces: [],
+    workspaces: [] as Workspace[],
   },
 });
 
