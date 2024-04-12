@@ -76,8 +76,9 @@ Media cache config
 __________________
 
 By default, your local media cache is located at `~/fiftyone/__cache__`, has
-a size of 32GB, and will use a thread pool whose size equals the number of
-virtual CPU cores on your machine to download media files.
+a size of 32GB, will download media in batches of 128MB when using
+`download_context()`, and will use a thread pool whose size equals the number
+of virtual CPU cores on your machine to download media files.
 
 When the cache is full, local files are automatically deleted in reverse order
 of when they were last accessed (i.e., oldest deleted first).
@@ -91,7 +92,8 @@ following environment variables (default values shown):
 .. code-block:: shell
 
     export FIFTYONE_MEDIA_CACHE_DIR=/path/for/media-cache
-    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=137438953472
+    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=34359738368  # 32GB
+    export FIFTYONE_MEDIA_CACHE_DOWNLOAD_SIZE_BYTES=134217728  # 128MB
     export FIFTYONE_MEDIA_CACHE_NUM_WORKERS=16
     export FIFTYONE_MEDIA_CACHE_APP_IMAGES=false
 
@@ -102,7 +104,8 @@ that contains any of the following keys (default values shown):
 
     {
         "cache_dir": "/path/for/media-cache",
-        "cache_size_bytes": 137438953472,
+        "cache_size_bytes": 34359738368,
+        "download_size_bytes": 134217728,
         "num_workers": 16,
         "cache_app_images": false
     }
@@ -178,12 +181,23 @@ when iterating over samples in a collection:
 
     dataset = fo.load_dataset("a-teams-dataset")
 
-    # Pre-download in batches of 50
-    with dataset.download_context(batch_size=50):
+    # Download media using the default batching strategy
+    with dataset.download_context():
         for sample in dataset:
             sample.local_path  # already downloaded
 
-This context provides a middle ground between the two extremes:
+    # Download media in batches of 50MB
+    with dataset.download_context(target_size_bytes=50 * 1024**2):
+        for sample in dataset:
+            sample.local_path  # already downloaded
+
+.. note::
+
+    You can configure the default size of each download batch via the
+    ``download_size_bytes`` parameter of your
+    :ref:`media cache config <teams-media-cache-config>`.
+
+Download contexts provide a middle ground between the two extremes:
 
 .. code-block:: python
     :linenos:
@@ -432,14 +446,14 @@ _____________
         """Returns a context that can be used to pre-download media in batches
         when iterating over samples in this collection.
 
-        By default, all media will be downloaded when the context is entered,
-        but you can configure a batching strategy via the `batch_size` or
-        `target_size_bytes` parameters.
+        If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+        downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
 
         Args:
             batch_size (None): a sample batch size to use for each download
             target_size_bytes (None): a target content size, in bytes, for each
-                download batch
+                download batch. If negative, all media is downloaded in one
+                batch
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used

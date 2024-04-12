@@ -5,10 +5,18 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.5.9
 --------------------
-*Released April 8, 2024*
+*Released April 12, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
+- :ref:`Download contexts <teams-cloud-media-python>` now support batching
+  based on content size
+- All builtin methods that require access to cloud media now use
+  :ref:`download contexts <teams-cloud-media-python>` to download media in
+  batches during execution rather than downloading media in a single batch
+  up-front
+- The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  method no longer caches all cloud media involved in the export
 - Optimized the localhost App experience when using
   :ref:`API connections <teams-api-connection>`
 - Optimized performance of data-intensive API calls when using
@@ -18,7 +26,7 @@ Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
 FiftyOne 0.23.8
 ---------------
-*Released April 8, 2024*
+*Released April 12, 2024*
 
 News
 
@@ -55,6 +63,17 @@ App
 
 Core
 
+- All :ref:`autosave contexts <efficient-batch-edits>` now respect the
+  :ref:`default batching strategy <configuring-fiftyone>` and can be configured
+  to use content size-based batching
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
+- All SDK methods now use :ref:`autosave contexts <efficient-batch-edits>`
+  rather than calling :meth:`sample.save() <fiftyone.core.sample.Sample.save>`
+  in a loop
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
+- Added a :func:`read_files() <fiftyone.core.storage.read_files>` utility to
+  efficiently read from multiple files in a threadpool
+  `#4243 <https://github.com/voxel51/fiftyone/pull/4243>`_
 - Optimized segmentation mask conversion
   `#4185 <https://github.com/voxel51/fiftyone/pull/4185>`_,
   `#4188 <https://github.com/voxel51/fiftyone/pull/4188>`_
@@ -70,6 +89,12 @@ Docs
   `#4245 <https://github.com/voxel51/fiftyone/pull/4245>`_
 - Refreshed many popular :ref:`tutorials <tutorials>`
   `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
+
+Annotation
+
+- Upgraded the :ref:`Labelbox integration <labelbox-integration>` to support
+  the Export V2 API
+  `#4260 <https://github.com/voxel51/fiftyone/pull/4260>`_
 
 Plugins
 
