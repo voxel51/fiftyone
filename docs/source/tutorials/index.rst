@@ -170,7 +170,7 @@ your datasets and turn your good models into *great models*.
     :header: Small Object Detection with SAHI
     :description: Detect small objects in your images with Slicing-Aided Hyper-Inference (SAHI) and FiftyOne.
     :link: small_object_detection.html
-    :image: ../_static/images/tutorials/small_object_detection.png
+    :image: ../_static/images/tutorials/small_object_detection.jpg
     :tags: Model-Evaluation,Model-Zoo
 
 .. End of tutorial cards
@@ -216,4 +216,4 @@ your datasets and turn your good models into *great models*.
    Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
    Clustering images <clustering.ipynb>
-   Small object detection with SAHI<small_object_detection.ipynb>
+   Detecting small objects<small_object_detection.ipynb>
