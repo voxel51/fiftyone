@@ -35,7 +35,7 @@ class ServerGroupTests(unittest.TestCase):
         view = fosv.handle_group_filter(
             dataset,
             filtered,
-            GroupElementFilter(slices=["image"]),
+            GroupElementFilter(slice="image", slices=["image"]),
         )
         self.assertEqual(
             view._all_stages,
@@ -49,7 +49,9 @@ class ServerGroupTests(unittest.TestCase):
         view = fosv.handle_group_filter(
             dataset,
             filtered,
-            GroupElementFilter(id=image.group.id, slices=["image"]),
+            GroupElementFilter(
+                id=image.group.id, slice="image", slices=["image"]
+            ),
         )
         self.assertEqual(
             view._all_stages,
