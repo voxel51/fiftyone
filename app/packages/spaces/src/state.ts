@@ -1,10 +1,11 @@
-import { atom, selectorFamily } from "recoil";
+import { atom, selector, selectorFamily } from "recoil";
 import {
   PanelsCloseEffect,
   PanelStateParameter,
   PanelStatePartialParameter,
   SpaceNodeJSON,
 } from "./types";
+import { COLOR_OPTIONS } from "@fiftyone/components";
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
@@ -89,6 +90,26 @@ export const previousTabsGroupAtom = atom<HTMLElement | null>({
 });
 
 export const panelsCloseEffect: PanelsCloseEffect = {};
+
+export const workspaceEditorStateAtom = atom({
+  key: "workspaceEditorState",
+  default: {
+    open: false,
+    oldName: "",
+    name: "",
+    description: "",
+    color: COLOR_OPTIONS[0].color,
+    edit: false,
+  },
+});
+
+export const savedWorkspacesAtom = atom({
+  key: "savedWorkspacesSelect",
+  default: {
+    initialized: false,
+    workspaces: [],
+  },
+});
 
 function getStateAtom(local?: boolean) {
   return local ? panelsLocalStateAtom : panelsStateAtom;

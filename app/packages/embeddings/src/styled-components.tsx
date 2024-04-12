@@ -14,7 +14,7 @@ export const Selectors = styled.div`
   top: 1rem;
   display: flex;
   column-gap: 1rem;
-  z-index: 999;
+  z-index: 1;
   padding: 0 1rem;
   > div {
     display: flex;
@@ -37,7 +37,7 @@ export const PlotOption = styled(Link)`
 export const WarningsContainer = styled.ul`
   position: absolute;
   top: 3rem;
-  z-index: 999;
+  z-index: 1;
   list-style: none;
   padding-inline-start: 0;
   background: var(--fo-palette-background-level1);

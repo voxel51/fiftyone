@@ -42,7 +42,10 @@ def convert_ultralytics_model(model):
     elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
         return _convert_yolo_pose_model(model)
     elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
-        return _convert_yolo_detection_model(model)
+        if isinstance(model.model, ultralytics.nn.tasks.OBBModel):
+            return _convert_yolo_obb_model(model)
+        else:
+            return _convert_yolo_detection_model(model)
     else:
         raise ValueError(
             "Unsupported model type; cannot convert %s to a FiftyOne model"
@@ -164,6 +167,59 @@ def _to_instances(result, confidence_thresh=None):
         detections.append(detection)
 
     return fol.Detections(detections=detections)
+
+
+def obb_to_polylines(results, confidence_thresh=None, filled=False):
+    """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+        confidence_thresh (None): a confidence threshold to filter boxes
+        filled (False): whether the polyline should be filled
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.PolyLines`
+    """
+
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [
+        _obb_to_polylines(r, filled, confidence_thresh=confidence_thresh)
+        for r in results
+    ]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _obb_to_polylines(result, filled, confidence_thresh=None):
+    if result.obb is None:
+        return None
+    classes = np.rint(result.obb.cls.detach().cpu().numpy()).astype(int)
+    confs = result.obb.conf.detach().cpu().numpy().astype(float)
+    points = result.obb.xyxyxyxyn.detach().cpu().numpy()
+    polylines = []
+    for cls, _points, conf in zip(classes, points, confs):
+        if confidence_thresh is not None and conf < confidence_thresh:
+            continue
+
+        _points = [_points.astype(float)]
+
+        label = result.names[cls]
+
+        polyline = fol.Polyline(
+            label=label,
+            points=_points,
+            confidence=conf,
+            closed=True,
+            filled=filled,
+        )
+        polylines.append(polyline)
+    return fol.Polylines(polylines=polylines)
 
 
 def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
@@ -381,6 +437,26 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         return self._format_predictions(predictions)
 
 
+class FiftyOneYOLOOBBModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
+class FiftyOneYOLOOBBModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an Ultralytics YOLO OBB detection model.
+
+    Args:
+        config: a :class:`FiftyOneYOLOConfig`
+    """
+
+    def _format_predictions(self, predictions):
+        return obb_to_polylines(predictions)
+
+    def predict_all(self, args):
+        images = [Image.fromarray(arg) for arg in args]
+        predictions = self.model(images, verbose=False)
+        return self._format_predictions(predictions)
+
+
 class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
     pass
 
@@ -424,6 +500,11 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
 def _convert_yolo_detection_model(model):
     config = FiftyOneYOLODetectionModelConfig({"model": model})
     return FiftyOneYOLODetectionModel(config)
+
+
+def _convert_yolo_obb_model(model):
+    config = FiftyOneYOLOOBBModelConfig({"model": model})
+    return FiftyOneYOLOOBBModel(config)
 
 
 def _convert_yolo_segmentation_model(model):

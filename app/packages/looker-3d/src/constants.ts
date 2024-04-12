@@ -35,10 +35,10 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
   { label: "None", value: SHADE_BY_NONE },
 ];
 
-export const PANEL_ORDER_VISIBILITY = 9;
+export const PANEL_ORDER_VISIBILITY = -1;
+export const PANEL_ORDER_ANIMATIONS = 1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
-export const PANEL_ORDER_LIGHTS = 10;
-export const PANEL_ORDER_ANIMATIONS = 3;
+export const PANEL_ORDER_LIGHTS = 999;
 export const PANEL_ORDER_SETTINGS = 1000;
 
 export const COLOR_POOL = [

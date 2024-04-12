@@ -2928,6 +2928,166 @@
             "date_added": "2024-03-11 19:22:51"
         },
         {
+            "base_name": "yolov8n-obb-dotav1-torch",
+            "base_filename": "yolov8n-obb.pt",
+            "description": "YOLOv8n Oriented Bounding Box model",
+            "source": "https://docs.ultralytics.com/tasks/obb/",
+            "size_bytes": 6548034,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n-obb.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "date_added": "2024-04-05 19:22:51"
+        },
+        {
+            "base_name": "yolov8s-obb-dotav1-torch",
+            "base_filename": "yolov8s-obb.pt",
+            "description": "YOLOv8s Oriented Bounding Box model",
+            "source": "https://docs.ultralytics.com/tasks/obb/",
+            "size_bytes": 23245186,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8s-obb.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "date_added": "2024-04-05 19:22:51"
+        },
+        {
+            "base_name": "yolov8m-obb-dotav1-torch",
+            "base_filename": "yolov8m-obb.pt",
+            "description": "YOLOv8m Oriented Bounding Box model",
+            "source": "https://docs.ultralytics.com/tasks/obb/",
+            "size_bytes": 53304682,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8m-obb.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "date_added": "2024-04-05 19:22:51"
+        },
+        {
+            "base_name": "yolov8l-obb-dotav1-torch",
+            "base_filename": "yolov8l-obb.pt",
+            "description": "YOLOv8l Oriented Bounding Box model",
+            "source": "https://docs.ultralytics.com/tasks/obb/",
+            "size_bytes": 89504274,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8l-obb.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "date_added": "2024-04-05 19:22:51"
+        },
+        {
+            "base_name": "yolov8x-obb-dotav1-torch",
+            "base_filename": "yolov8x-obb.pt",
+            "description": "YOLOv8x Oriented Bounding Box model",
+            "source": "https://docs.ultralytics.com/tasks/obb/",
+            "size_bytes": 139533138,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8x-obb.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOOBBModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.1.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "torch", "yolo", "polylines", "obb"],
+            "date_added": "2024-04-05 19:22:51"
+        },
+        {
             "base_name": "yolo-nas-torch",
             "base_filename": null,
             "version": null,

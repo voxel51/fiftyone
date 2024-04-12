@@ -9,17 +9,17 @@ import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
 export const SPACES_DEFAULT = {
-  id: "root",
+  _cls: "Space",
+  component_id: "root",
   children: [
     {
-      id: "default-samples-node",
-      children: [],
-      type: "Samples",
+      _cls: "Panel",
+      component_id: "default-samples-node",
       pinned: true,
+      type: "Samples",
     },
   ],
-  type: "panel-container",
-  activeChild: "default-samples-node",
+  active_child: "default-samples-node",
 };
 
 export interface Session {
