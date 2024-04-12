@@ -14,8 +14,9 @@
         "noImplicitAny": false,
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
         "composite": true,
-        "jsx": "react"
+        "jsx": "react",
+        "rootDir": "../../"
     },
-    "include": ["./__mocks__", "./src", "tests/recoil/options.test.ts"],
+    "include": ["../../__mocks__", "./src"],
     "exclude": ["node_modules"]
 }

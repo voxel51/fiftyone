@@ -21,7 +21,7 @@ export const ActionBarContainer = styled.div`
   bottom: 0;
   left: 0;
   opacity: 1;
-  z-index: 20;
+  z-index: 20000;
   justify-items: center;
   align-items: center;
   display: flex;
@@ -77,6 +77,42 @@ export const Container = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+export const LevaContainer = styled.div<{ isSidebarVisible: boolean }>`
+  position: absolute;
+  top: 12vh;
+  right: ${(props) => (props.isSidebarVisible ? "23vw" : "3vw")};
+  z-index: 1000;
+  height: 0;
+`;
+
+export const StatusBarRootContainer = styled.div`
+  position: absolute;
+  bottom: 3em;
+  margin-bottom: 3vh;
+  left: 1vw;
+  z-index: 1000;
+
+  & .looker-3d-core-stats-panel {
+    position: relative !important;
+  }
+`;
+
+export const NodeInfoRootContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 3em;
+  margin-top: 2vh;
+  right: 1vw;
+  z-index: 1000;
+`;
+
+export const StatusBarContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 150px;
 `;
 
 export const ViewButton = styled.div`
