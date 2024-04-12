@@ -227,8 +227,8 @@ def handle_group_filter(
         filter: the :class:`fiftyone.server.aggregations.GroupElementFilter`
 
     Returns:
-        a :class:`fiftyone.core.collections.SampleCollection` with a group or
-        slice selection
+        a :class:`fiftyone.core.view.DatasetView` with a group or slice
+        selection
     """
     stages = view._stages
     group_field = dataset.group_field
