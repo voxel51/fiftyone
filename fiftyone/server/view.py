@@ -231,10 +231,11 @@ def handle_group_filter(
         slice selection
     """
     stages = view._stages
-    unselected = all(
-        not isinstance(stage, fosg.SelectGroupSlices) for stage in stages
-    )
     group_field = dataset.group_field
+
+    unselected = not any(
+        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
+    )
     if unselected and filter.slices:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
