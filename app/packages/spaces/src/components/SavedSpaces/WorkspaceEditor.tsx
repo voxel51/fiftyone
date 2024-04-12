@@ -4,6 +4,8 @@ import {
   Selection,
   TextField,
 } from "@fiftyone/components";
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { sessionSpaces } from "@fiftyone/state";
 import { Delete } from "@mui/icons-material";
 import {
   Box,
@@ -17,8 +19,6 @@ import {
 import { useCallback, useMemo } from "react";
 import { useRecoilCallback, useRecoilState, useResetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { sessionSpaces } from "@fiftyone/state";
 import { useSavedSpaces } from "./hooks";
 
 export default function WorkspaceEditor() {
@@ -78,9 +78,12 @@ export default function WorkspaceEditor() {
             <Typography color="text.secondary">Color</Typography>
             <Selection
               id="workspace-color"
-              selected={colorObject}
-              setSelected={(color) => {
-                setState((state) => ({ ...state, color: color.color }));
+              selected={colorObject ?? null}
+              setSelected={({ color }) => {
+                if (!color) {
+                  throw new Error("no color defined");
+                }
+                setState((state) => ({ ...state, color }));
               }}
               items={COLOR_OPTIONS}
               hideActions
