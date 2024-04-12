@@ -13,10 +13,10 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
         currentPathname: router.history.location.pathname,
         currentSearch: router.history.location.search,
         extra: {
-          workspace: null,
+          workspace: spaces._name || null,
         },
       }),
-      { ...state, workspace: null }
+      { ...state, workspace: spaces._name || null }
     );
 
     commitMutation<setSpacesMutation>(environment, {
