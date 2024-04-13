@@ -216,4 +216,4 @@ your datasets and turn your good models into *great models*.
    Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
    Clustering images <clustering.ipynb>
-   Detecting small objects<small_object_detection.ipynb>
+   Detecting small objects <small_object_detection.ipynb>
