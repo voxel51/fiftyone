@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.5.9
 --------------------
-*Released April 12, 2024*
+*Released April 15, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
@@ -26,7 +26,7 @@ Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
 
 FiftyOne 0.23.8
 ---------------
-*Released April 12, 2024*
+*Released April 15, 2024*
 
 News
 
@@ -87,6 +87,9 @@ Docs
 
 - Added a :doc:`clustering tutorial </tutorials/clustering>`
   `#4245 <https://github.com/voxel51/fiftyone/pull/4245>`_
+- Added a
+  :doc:`small object detection tutorial </tutorials/small_object_detection>`
+  `#4263 <https://github.com/voxel51/fiftyone/pull/4263>`_
 - Refreshed many popular :ref:`tutorials <tutorials>`
   `#4207 <https://github.com/voxel51/fiftyone/pull/4207>`_
 
