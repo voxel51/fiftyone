@@ -1,6 +1,10 @@
-import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import {
+  PluginComponentType,
+  subscribeToRegistry,
+  useActivePlugins,
+} from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
   useRecoilCallback,
@@ -8,15 +12,15 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
+import { PanelContext } from "./contexts";
 import {
-  panelsCloseEffect,
-  panelsStateAtom,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
+  panelsCloseEffect,
+  panelsStateAtom,
   previousTabsGroupAtom,
   spaceSelector,
 } from "./state";
@@ -96,6 +100,17 @@ export function usePanels() {
 }
 
 export function usePanel(name: SpaceNodeType) {
+  const panels = usePanels();
+  return panels.find((panel) => panel.name === name);
+}
+
+export function useReactivePanel(name: SpaceNodeType) {
+  const [_, setCount] = useState(0);
+  useEffect(() => {
+    return subscribeToRegistry(() => {
+      setCount((count) => count + 1); // trigger re-resolution of panels
+    });
+  }, []);
   const panels = usePanels();
   return panels.find((panel) => panel.name === name);
 }

@@ -2873,6 +2873,8 @@ __metadata:
     react-sortablejs: ^6.1.4
     sortablejs: ^1.15.0
     vite: ^3.2.8
+  peerDependencies:
+    "@mui/material": "*"
   languageName: unknown
   linkType: soft
 

@@ -23,5 +23,8 @@
         "allotment": "^1.17.0",
         "react-sortablejs": "^6.1.4",
         "sortablejs": "^1.15.0"
+    },
+    "peerDependencies": {
+        "@mui/material": "*"
     }
 }
