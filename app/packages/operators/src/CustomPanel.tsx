@@ -1,11 +1,18 @@
-import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
-import { useEffect, useState } from "react";
-import { executeOperator } from "./operators";
-import OperatorIO from "./OperatorIO";
-import * as types from "./types";
+import { CenteredStack } from "@fiftyone/components";
+import {
+  PanelSkeleton,
+  usePanelState,
+  useSetCustomPanelState,
+} from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { Box, Typography } from "@mui/material";
 import { merge } from "lodash";
+import { useEffect } from "react";
+import { useRecoilValue } from "recoil";
+import OperatorIO from "./OperatorIO";
+import { PANEL_LOAD_TIMEOUT } from "./constants";
+import { executeOperator } from "./operators";
+import * as types from "./types";
 
 function getPanelViewData(panelState) {
   const state = panelState?.state;
@@ -23,14 +30,14 @@ export function CustomPanel({
 }) {
   console.log("CustomPanel", panelId, onLoad);
   const [panelState, setPanelState] = usePanelState(null, panelId);
-  const { height, width } = dimensions;
+  const { height, width } = dimensions?.bounds || {};
   const setCustomPanelState = useSetCustomPanelState();
-  const renderableSchema = panelState?.schema;
+  const panelSchema = panelState?.schema;
   const data = getPanelViewData(panelState);
   const handlePanelStateChange = (newState) => {
     setCustomPanelState((state: any) => ({ ...state, ...newState }));
   };
-  const [loaded, setLoaded] = useState(false);
+  const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const view = useRecoilValue(fos.view);
 
   useEffect(() => {
@@ -62,19 +69,27 @@ export function CustomPanel({
       });
   }, [panelState?.state]);
 
-  if (!renderableSchema)
+  if (pending && !panelSchema) {
+    return <PanelSkeleton />;
+  }
+
+  if (!panelSchema)
     return (
-      <div>
-        <h1>Custom Panel</h1>
-        <p>Custom panel is not configured yet.</p>
-        <pre>{panelId}</pre>
-      </div>
+      <CenteredStack spacing={1}>
+        <Typography variant="h3">Custom Panel</Typography>
+        <Typography color="text.secondary">
+          Custom panel is not configured yet.
+        </Typography>
+        <Typography component="pre" color="text.tertiary">
+          {panelId}
+        </Typography>
+      </CenteredStack>
     );
 
-  const schema = types.Property.fromJSON(renderableSchema);
+  const schema = types.Property.fromJSON(panelSchema);
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <Box sx={{ height: "100%", width: "100%" }}>
       <OperatorIO
         schema={{
           ...schema,
@@ -84,7 +99,7 @@ export function CustomPanel({
               gridContainer: {
                 spacing: 0,
                 sx: { pl: 0 },
-                height: height || 750,
+                height: height,
                 width,
               },
             },
@@ -93,7 +108,8 @@ export function CustomPanel({
         onChange={handlePanelStateChange}
         data={data}
       />
-    </div>
+      <pre>{JSON.stringify(panelState, null, 2)}</pre>
+    </Box>
   );
 }
 
