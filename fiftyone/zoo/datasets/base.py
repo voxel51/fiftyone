@@ -2432,19 +2432,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
     def _patch_if_necessary(self, dataset_dir, split):
-        try:
-            # This data is in FiftyOneDataset format
-            split_dir = os.path.join(dataset_dir, split)
-            metadata_path = os.path.join(split_dir, "metadata.json")
-            metadata = etas.read_json(metadata_path)
-            config = metadata["app_config"]["plugins"]["3d"]
-            is_legacy = "itemRotation" in config["overlay"]
-        except:
-            is_legacy = False
-
-        if is_legacy:
+        split_dir = os.path.join(dataset_dir, split)
+        if _should_patch_pcd(split_dir):
             logger.info("Patching existing download...")
-            foukt._prepare_kitti_split(split_dir, overwrite=True)
+            foukt._prepare_kitti_split(split_dir, overwrite=False)
 
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
@@ -3181,16 +3172,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
     def _patch_if_necessary(self, dataset_dir, _):
-        try:
-            # This data is in LegacyFiftyOneDataset format
-            metadata_path = os.path.join(dataset_dir, "metadata.json")
-            metadata = etas.read_json(metadata_path)
-            config = metadata["info"]["app_config"]["plugins"]["3d"]
-            is_legacy = "itemRotation" in config["overlay"]
-        except:
-            is_legacy = False
-
-        if is_legacy:
+        if _should_patch_pcd(dataset_dir):
             logger.info("Downloading patched dataset...")
             scratch_dir = os.path.join(dataset_dir, "tmp-download")
             self._download_and_prepare(dataset_dir, scratch_dir, None)
@@ -3310,6 +3292,31 @@ AVAILABLE_DATASETS = {
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
+
+
+def _should_patch_pcd(dataset_dir):
+    try:
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        metadata = etas.read_json(metadata_path)
+    except:
+        return False
+
+    try:
+        # LegacyFiftyOneDataset format
+        config = metadata["info"]["app_config"]["plugins"]["3d"]
+        if "itemRotation" in config["overlay"]:
+            return True
+    except:
+        pass
+
+    try:
+        # PCD format
+        if metadata["group_media_types"]["pcd"] == "point-cloud":
+            return True
+    except:
+        pass
+
+    return False
 
 
 def _download_and_extract_archive(
