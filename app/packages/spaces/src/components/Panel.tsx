@@ -1,20 +1,36 @@
-import { PanelContext } from "../contexts";
-import { usePanel, useSpaces } from "../hooks";
-import { PanelProps } from "../types";
-import { warnPanelNotFound } from "../utils";
-import { StyledPanel } from "./StyledElements";
-import React from "react";
+import { CenteredStack } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Typography } from "@mui/material";
+import React from "react";
+import { PANEL_LOADING_TIMEOUT } from "../constants";
+import { PanelContext } from "../contexts";
+import { useReactivePanel } from "../hooks";
+import { PanelProps } from "../types";
+import PanelSkeleton from "./PanelSkeleton";
+import { StyledPanel } from "./StyledElements";
 
-function Panel({ node, spaceId }: PanelProps) {
-  const { spaces } = useSpaces(spaceId);
-  const panelName = node.type;
-  const panel = usePanel(panelName);
+function Panel({ node }: PanelProps) {
+  const panelName = node.type as string;
+  const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
+  const pending = fos.useTimeout(PANEL_LOADING_TIMEOUT);
+
   if (!panel) {
-    spaces.removeNode(node);
-    return warnPanelNotFound(panelName);
+    return (
+      <StyledPanel>
+        <CenteredStack>
+          {pending ? (
+            <PanelSkeleton />
+          ) : (
+            <Typography>
+              Panel &quot;{panelName}&quot; no longer exists!
+            </Typography>
+          )}
+        </CenteredStack>
+      </StyledPanel>
+    );
   }
+
   const { component: Component } = panel;
 
   return (
