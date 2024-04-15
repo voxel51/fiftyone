@@ -5,6 +5,9 @@ FiftyOne Teams secret graphQL API.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from cachetools.func import ttl_cache
+
 from typing import List, Optional, Tuple, Union
 
 from fiftyone.internal.secrets.secret import EncryptedSecret
@@ -13,6 +16,9 @@ from fiftyone.internal.util import (
     get_api_url,
 )
 from fiftyone.internal.requests import make_request, make_sync_request
+from fiftyone.utils.decorators import async_ttl_cache
+from fiftyone.internal.constants import TTL_CACHE_LIFETIME_SECONDS
+
 
 _API_URL = get_api_url()
 _QUERY_SECRET = """
@@ -34,6 +40,7 @@ query ResolveSecrets($filter: SecretFilter, $order: SecretOrderFieldsOrder) {
 """
 
 
+@async_ttl_cache(ttl=TTL_CACHE_LIFETIME_SECONDS)
 async def resolve_secret(
     key: str, request_token: Optional[str] = None
 ) -> Optional[EncryptedSecret]:
@@ -58,6 +65,7 @@ async def resolve_secret(
     return EncryptedSecret.from_dict(secret) if secret else None
 
 
+@ttl_cache(ttl=TTL_CACHE_LIFETIME_SECONDS)
 def resolve_secret_sync(
     key: str, request_token: Optional[str] = None
 ) -> Optional[EncryptedSecret]:
@@ -83,6 +91,7 @@ def resolve_secret_sync(
     return EncryptedSecret.from_dict(secret) if secret else None
 
 
+@async_ttl_cache(ttl=TTL_CACHE_LIFETIME_SECONDS)
 async def resolve_secrets(
     keys: List[str],
     order_by: Optional[Union[str, Tuple[str, int]]] = None,
@@ -119,6 +128,7 @@ async def resolve_secrets(
     return []
 
 
+@async_ttl_cache(ttl=TTL_CACHE_LIFETIME_SECONDS)
 async def search_secrets(
     regex: str,
     request_token: Optional[str] = None,
