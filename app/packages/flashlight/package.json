@@ -1,5 +1,5 @@
 {
-    "name": "@fiftyone/spotlight",
+    "name": "@fiftyone/flashlight",
     "version": "0.1.0",
     "author": "Voxel51, Inc.",
     "description": "Cursor based flex-layout virtualized grid",
@@ -26,7 +26,7 @@
         "typescript": "^5.4.5",
         "typescript-eslint": "^7.7.0",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^3.2.7"
+        "vite": "^5.2.8"
     },
     "type": "module"
 }

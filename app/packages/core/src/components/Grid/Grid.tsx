@@ -1,5 +1,6 @@
 import Flashlight, { PageChange } from "@fiftyone/flashlight";
 import * as fos from "@fiftyone/state";
+import { Lookers } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -188,6 +189,7 @@ const Wrap = () => {
       }, 1000);
     });
   }, [set]);
+
   useEffect(() => {
     if (!ref.current) {
       return;

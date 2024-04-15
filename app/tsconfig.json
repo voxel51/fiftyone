@@ -1,6 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ES2023"
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": ["ES2023"]
     },
     "files": [],
     "references": [

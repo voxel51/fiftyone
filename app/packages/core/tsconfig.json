@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-
+        "module": "ESNext",
+        "lib": ["ES2023"],
         "jsx": "preserve",
         "types": ["vite/client"]
     },

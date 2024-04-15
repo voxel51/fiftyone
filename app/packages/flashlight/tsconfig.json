@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
+        "target": "ES2022",
         "module": "ESNext",
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
         "sourceMap": true,
@@ -12,5 +12,6 @@
         "noImplicitAny": true,
         "plugins": [{ "name": "typescript-plugin-css-modules" }]
     },
+    "extends": "../../tsconfig.json",
     "include": ["./src"]
 }
