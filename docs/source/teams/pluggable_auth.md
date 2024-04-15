@@ -161,7 +161,7 @@ These steps are only required to run FiftyOne Teams in
     1. Before logging in, set the admin user (in step 5). Otherwise, you will
        need to remove this user from the database and try again.
     1. Click the login button and provide the credentials of the Admin user
-       (set in step 5)
+       (set in step 3)
     1. Click on the icon in the top right corner then click “Settings”
     1. Click “Users” on the left side
     1. Validate the user is listed as an admin
