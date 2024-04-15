@@ -52,6 +52,8 @@ class ImagePatchesExtractor(object):
         force_square=False,
         alpha=None,
     ):
+        fov.validate_image_collection(samples)
+
         if patches_field is None:
             if samples._is_patches:
                 patches_field = samples._label_fields[0]
@@ -73,25 +75,28 @@ class ImagePatchesExtractor(object):
         return self.samples.count(label_path)
 
     def __iter__(self):
-        for sample in self.samples.select_fields(self.patches_field):
-            patches = parse_patches(
-                sample, self.patches_field, handle_missing="skip"
-            )
+        view = self.samples.select_fields(self.patches_field)
+        with view.download_context(media_fields="filepath"):
+            for sample in view:
+                patches = parse_patches(
+                    sample, self.patches_field, handle_missing="skip"
+                )
 
-            if patches is not None:
-                fov.validate_image_sample(sample)
-                img = _load_image(sample.local_path, force_rgb=self.force_rgb)
-                for detection in patches.detections:
-                    patch = extract_patch(
-                        img,
-                        detection,
-                        force_square=self.force_square,
-                        alpha=self.alpha,
+                if patches is not None:
+                    img = _load_image(
+                        sample.local_path, force_rgb=self.force_rgb
                     )
-                    if self.include_labels:
-                        yield patch, _to_classification(detection)
-                    else:
-                        yield patch
+                    for detection in patches.detections:
+                        patch = extract_patch(
+                            img,
+                            detection,
+                            force_square=self.force_square,
+                            alpha=self.alpha,
+                        )
+                        if self.include_labels:
+                            yield patch, _to_classification(detection)
+                        else:
+                            yield patch
 
 
 def parse_patches(doc, patches_field, handle_missing="skip"):

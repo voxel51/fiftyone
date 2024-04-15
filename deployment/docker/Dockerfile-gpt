@@ -5,15 +5,16 @@ ARG TORCH_IMAGE_NAME
 ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION} as wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels langchain==0.0.288 "openai<1.0.0" pandas scipy tiktoken google-cloud-bigquery
+RUN pip wheel --wheel-dir=/tmp/wheels "langchain>=0.1.0" "openai<1.0.0" pandas scipy tiktoken google-cloud-bigquery
 
 
 FROM ${TORCH_IMAGE_NAME} as gptrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels langchain==0.0.288 "openai<1.0.0" pandas scipy tiktoken google-cloud-bigquery
+    --find-links=/wheelhouse/tmp/wheels "langchain>=0.1.0" "openai<1.0.0" pandas scipy tiktoken google-cloud-bigquery
 
 # run as the voxel51 user
 USER 1000:1000

@@ -52,6 +52,7 @@ INSTALL_REQUIRES = [
     "retrying",
     "scikit-learn",
     "scikit-image",
+    "scipy",
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
@@ -122,7 +123,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.15.8",
+    version="0.15.9rc6",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

@@ -6,6 +6,7 @@ Annotation utilities.
 |
 """
 from collections import defaultdict, OrderedDict
+import contextlib
 from copy import deepcopy
 import getpass
 import inspect
@@ -1311,7 +1312,7 @@ def _merge_scalars(
     num_deletions = 0
 
     logger.info("Loading scalars for field '%s'...", label_field)
-    for sample in view.iter_samples(progress=progress):
+    for sample in view.iter_samples(progress=progress, autosave=True):
         sample_annos = anno_dict.get(sample.id, None)
 
         if is_frame_field:
@@ -1347,8 +1348,6 @@ def _merge_scalars(
                 else:
                     # Edit value
                     image[field] = new_value
-
-        sample.save()
 
     if num_additions > 0 and not allow_additions:
         logger.warning(
@@ -1494,7 +1493,7 @@ def _merge_labels(
     # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
     view = view.select(sample_ids).select_fields(label_field)
-    for sample in view.iter_samples(progress=progress):
+    for sample in view.iter_samples(progress=progress, autosave=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
 
@@ -1579,8 +1578,6 @@ def _merge_labels(
                             added_id_map[sample_id][frame_id].append(label_id)
                         else:
                             added_id_map[sample_id].append(label_id)
-
-        sample.save()
 
     if new_ids and not allow_additions:
         logger.warning(
@@ -2280,7 +2277,7 @@ class AnnotationAPI(object):
             prefix = "FIFTYONE_%s_" % backend.upper()
             logger.info(
                 "Please enter your API key.\nYou can avoid this in the future "
-                "by setting your `%sKEY` environment variable",
+                "by setting your `%sAPI_KEY` environment variable",
                 prefix,
             )
 
@@ -2360,11 +2357,9 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    samples.download_media(media_fields="filepath")
-
     media_fields = samples._get_media_fields(whitelist=label_fields)
-    if media_fields:
-        samples.download_media(media_fields=list(media_fields.keys()))
+    media_fields["filepath"] = None
+    media_fields = list(media_fields.keys())
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir, idempotent=False
@@ -2372,7 +2367,15 @@ def draw_labeled_images(
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    with fos.FileWriter(type_str="images") as writer:
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields=media_fields, progress=progress
+            )
+        )
+
+        writer = context.enter_context(fos.FileWriter(type_str="images"))
+
         for sample in samples.iter_samples(progress=progress):
             outpath = filename_maker.get_output_path(
                 sample.local_path, output_ext=output_ext

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<18d5090250555bdba67d42cdd28af87f>>
+ * @generated SignedSource<<e0795a0616c3848ab74ec3e449ce4d95>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -77,7 +77,7 @@ export type datasetFragment$data = {
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "snapshotFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -472,6 +472,11 @@ return {
       "args": null,
       "kind": "FragmentSpread",
       "name": "viewFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
+      "name": "snapshotFragment"
     }
   ],
   "type": "Dataset",
@@ -479,6 +484,6 @@ return {
 };
 })();
 
-(node as any).hash = "866766401d421b021e8ff682461bb3c0";
+(node as any).hash = "60e365b78b4bb23d4c0d1a96db886a2c";
 
 export default node;

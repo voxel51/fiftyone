@@ -83,6 +83,10 @@ const globalContextSelector = selector({
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
     const currentSample = get(fos.currentSampleId);
+    const viewName = get(fos.viewName);
+
+    // Teams only
+    const datasetHeadName = get(fos.datasetHeadName);
 
     return {
       datasetName,
@@ -92,6 +96,10 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       currentSample,
+      viewName,
+
+      // Teams only
+      datasetHeadName,
     };
   },
 });
@@ -121,6 +129,10 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     currentSample,
+    viewName,
+
+    // Teams only
+    datasetHeadName,
   } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -133,6 +145,10 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedSamples,
         selectedLabels,
         currentSample,
+        viewName,
+
+        // Teams only
+        datasetHeadName,
       },
       hooks
     );
@@ -145,6 +161,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     selectedLabels,
     hooks,
+    viewName,
+    currentSample,
   ]);
 
   return ctx;
@@ -343,7 +361,7 @@ export const useOperatorPrompt = () => {
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
       { leading: true }
     ),
-    [cachedResolvedInput, setResolvedCtx, ctx]
+    [cachedResolvedInput, setResolvedCtx]
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;

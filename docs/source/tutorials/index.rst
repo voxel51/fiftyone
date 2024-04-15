@@ -159,6 +159,20 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/data_augmentation.png
     :tags: App,Dataset-Curation,Visualization
 
+.. customcarditem::
+    :header: Clustering Images with Embeddings
+    :description: Use embeddings to cluster images in your dataset and visualize the results in FiftyOne.
+    :link: clustering.html
+    :image: ../_static/images/tutorials/clustering.jpg
+    :tags: App,Brain,Dataset-Curation,Embeddings,Visualization
+
+.. customcarditem::
+    :header: Small Object Detection with SAHI
+    :description: Detect small objects in your images with Slicing-Aided Hyper-Inference (SAHI) and FiftyOne.
+    :link: small_object_detection.html
+    :image: ../_static/images/tutorials/small_object_detection.jpg
+    :tags: Model-Evaluation,Model-Zoo
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -201,3 +215,5 @@ your datasets and turn your good models into *great models*.
    Dimensionality reduction <dimension_reduction.ipynb>
    Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
+   Clustering images <clustering.ipynb>
+   Detecting small objects <small_object_detection.ipynb>

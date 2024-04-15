@@ -656,6 +656,12 @@ class MediaCacheConfig(EnvConfig):
             env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
             default=32 * 1024**3,  # 32 GB
         )
+        self.download_size_bytes = self.parse_int(
+            d,
+            "download_size_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_DOWNLOAD_SIZE_BYTES",
+            default=128 * 1024**2,  # 128MB
+        )
         self.cache_app_images = self.parse_bool(
             d,
             "cache_app_images",

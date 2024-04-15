@@ -28,12 +28,17 @@ function useCurrentSample() {
 function useOperatorThrottledContextSetter() {
   const datasetName = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.view);
+  const viewName = useRecoilValue(fos.viewName);
   const extendedStages = useRecoilValue(fos.extendedStages);
   const filters = useRecoilValue(fos.filters);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const currentSample = useCurrentSample();
   const setContext = useSetRecoilState(operatorThrottledContext);
+
+  // Teams only
+  const datasetHeadName = useRecoilValue(fos.datasetHeadName);
+
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -47,22 +52,26 @@ function useOperatorThrottledContextSetter() {
   useEffect(() => {
     setThrottledContext({
       datasetName,
+      datasetHeadName,
       view,
       extendedStages,
       filters,
       selectedSamples,
       selectedLabels,
       currentSample,
+      viewName,
     });
   }, [
     setThrottledContext,
     datasetName,
+    datasetHeadName,
     view,
     extendedStages,
     filters,
     selectedSamples,
     selectedLabels,
     currentSample,
+    viewName,
   ]);
 }
 
