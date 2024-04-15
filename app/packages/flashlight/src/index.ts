@@ -5,22 +5,22 @@
 import { EventCallback, Load, PageChange } from "./events";
 import { Render } from "./row";
 import { Response, Section } from "./section";
-import { flashlight } from "./styles.module.css";
+import { spotlight } from "./styles.module.css";
 import { createScrollReader } from "./zooming";
 
 export { Load, PageChange } from "./events";
 export type { Response } from "./section";
 export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
 
-export interface FlashlightConfig<K, V> {
+export interface SpotlightConfig<K, V> {
   get: Get<K, V>;
   render: Render;
   key: K;
   rowAspectRatioThreshold: number;
 }
 
-export default class Flashlight<K, V> extends EventTarget {
-  readonly #config: FlashlightConfig<K, V>;
+export default class Spotlight<K, V> extends EventTarget {
+  readonly #config: SpotlightConfig<K, V>;
   readonly #element = document.createElement("div");
 
   #rect?: DOMRect;
@@ -32,11 +32,11 @@ export default class Flashlight<K, V> extends EventTarget {
   readonly #keys = new WeakMap<symbol, K>();
   #page: K;
 
-  constructor(config: FlashlightConfig<K, V>) {
+  constructor(config: SpotlightConfig<K, V>) {
     super();
     this.#config = config;
 
-    this.#element.classList.add(flashlight);
+    this.#element.classList.add(spotlight);
 
     this.#page = config.key;
   }
@@ -71,7 +71,7 @@ export default class Flashlight<K, V> extends EventTarget {
 
   attach(element: HTMLElement | string): void {
     if (this.attached) {
-      throw new Error("flashlight is attached");
+      throw new Error("spotlight is attached");
     }
 
     if (typeof element === "string") {
@@ -85,7 +85,7 @@ export default class Flashlight<K, V> extends EventTarget {
 
   detach(): void {
     if (!this.attached) {
-      throw new Error("flashlight is not attached");
+      throw new Error("spotlight is not attached");
     }
 
     this.#element.parentElement.removeChild(this.#element);

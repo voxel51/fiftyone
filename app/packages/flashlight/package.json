@@ -1,16 +1,17 @@
 {
-    "name": "@fiftyone/flashlight",
-    "version": "0.0.0",
+    "name": "@fiftyone/spotlight",
+    "version": "0.1.0",
     "author": "Voxel51, Inc.",
     "description": "Cursor based flex-layout virtualized grid",
-    "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/spotlight",
     "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/voxel51/fiftyone"
     },
     "main": "./src/index.ts",
     "scripts": {
-        "dev": "vite"
+        "dev": "vite",
+        "lint": "eslint ."
     },
     "private": true,
     "files": [
@@ -18,9 +19,12 @@
         "README.md"
     ],
     "devDependencies": {
+        "@eslint/js": "^9.0.0",
+        "eslint": "^9.0.0",
         "prettier": "^2.7.1",
         "ts-node": "^10.9.2",
-        "typescript": "^4.7.4",
+        "typescript": "^5.4.5",
+        "typescript-eslint": "^7.7.0",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^3.2.7"
     },

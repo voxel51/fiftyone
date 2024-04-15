@@ -5,7 +5,7 @@
 import { closest } from "./closest";
 import { MARGIN } from "./constants";
 import Row, { ItemData, Render } from "./row";
-import { flashlightContainer, flashlightSection } from "./styles.module.css";
+import { spotlightContainer, spotlightSection } from "./styles.module.css";
 import tile from "./tile";
 
 export interface Response<K, V> {
@@ -36,9 +36,9 @@ export class Section<K, V> {
   ) {
     this.#end = edge;
     this.#direction = direction;
-    this.#container.classList.add(flashlightContainer);
+    this.#container.classList.add(spotlightContainer);
 
-    this.#section.classList.add(flashlightSection);
+    this.#section.classList.add(spotlightSection);
     this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
   }

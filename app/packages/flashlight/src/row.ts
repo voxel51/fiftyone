@@ -3,7 +3,7 @@
  */
 
 import { MARGIN } from "./constants";
-import { flashlightRow, flashlightRowHidden } from "./styles.module.css";
+import { spotlightRow, spotlightRowHidden } from "./styles.module.css";
 
 export interface ItemData<V> {
   id?: symbol;
@@ -29,7 +29,7 @@ export default class Row<V> {
   readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
 
   constructor(items: ItemData<V>[], from: number, width: number) {
-    this.#container.classList.add(flashlightRow);
+    this.#container.classList.add(spotlightRow);
 
     this.#row = items.map((item) => {
       const element = document.createElement("div");
@@ -119,8 +119,8 @@ export default class Row<V> {
   ): void {
     if (hidden !== this.#hidden) {
       hidden
-        ? this.#container.classList.add(flashlightRowHidden)
-        : this.#container.classList.remove(flashlightRowHidden);
+        ? this.#container.classList.add(spotlightRowHidden)
+        : this.#container.classList.remove(spotlightRowHidden);
       this.#hidden = hidden;
     }
 

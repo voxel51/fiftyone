@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-.flashlight {
+.spotlight {
   position: relative;
   width: 100%;
   height: 100%;
@@ -15,56 +15,56 @@
   scrollbar-color: transparent;
 }
 
-.flashlight::-webkit-scrollbar {
+.spotlight::-webkit-scrollbar {
   display: none;
 }
 
-.flashlight::-webkit-scrollbar-track {
+.spotlight::-webkit-scrollbar-track {
   border: solid 4px transparent var(--light-color);
 }
 
-.flashlight::-webkit-scrollbar-thumb {
+.spotlight::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px transparent;
   border: solid 4px transparent;
   border-radius: 16px;
   transition: box-shadow linear 0.5s;
 }
 
-.flashlight:hover::-webkit-scrollbar-thumb {
+.spotlight:hover::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px var(--light-color);
 }
 
-.flashlightSection {
+.spotlightSection {
   position: absolute;
   display: block;
   width: 100%;
 }
 
-.flashlightContainer {
+.spotlightContainer {
   position: relative;
   display: block;
   width: 100%;
   contain: size layout paint;
 }
 
-.flashlightContainer:focus {
+.spotlightContainer:focus {
   border: none;
   outline: none;
 }
 
-.flashlightRow {
+.spotlightRow {
   display: block;
   position: absolute;
   contain: size layout paint;
 }
 
-.flashlightRow > div {
+.spotlightRow > div {
   position: absolute;
   contain: size layout paint;
   background-color: var(--fo-palette-background-level1);
   overflow: hidden;
 }
 
-.flashlightRow.flashlightRowHidden > div > div {
+.spotlightRow.spotlightRowHidden > div > div {
   display: none;
 }
