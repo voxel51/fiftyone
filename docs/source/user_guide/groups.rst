@@ -6,12 +6,13 @@ Grouped datasets
 .. default-role:: code
 
 FiftyOne supports the creation of **grouped datasets**, which contain multiple
-slices of samples of possibly different modalities (image, video, or point
-cloud) that are organized into groups.
+slices of samples of possibly different modalities (e.g.,
+:ref:`image <dataset-media-type>`, :ref:`video <video-datasets>`, or
+:ref:`3D scenes <3d-datasets>`) that are organized into groups.
 
-Grouped datasets can be used, for example, to represent multiview scenes, where
-data for multiple perspectives of the same scene can be stored, visualized, and
-queried in ways that respect the relationships between the slices of data.
+Grouped datasets can be used to represent multiview scenes, where data for
+multiple perspectives of the same scene can be stored, visualized, and queried
+in ways that respect the relationships between the slices of data.
 
 .. image:: /images/groups/groups-modal.gif
    :alt: groups-sizzle
@@ -179,9 +180,9 @@ expanded as you add samples to a grouped dataset.
 
 .. note::
 
-    Grouped datasets may contain a mix of images, videos, and point clouds, but
-    FiftyOne strictly enforces that each **slice** of a grouped dataset must
-    have a homogeneous media type.
+    Grouped datasets may contain a mix of different modalities (e.g., images,
+    videos, and 3D scenes), but FiftyOne strictly enforces that each **slice**
+    of a grouped dataset must have a homogeneous media type.
 
     For example, you would see an error if you tried to add a video sample to
     the `left` slice of the above dataset, since it contains images.
@@ -509,7 +510,7 @@ data:
     dataset = foz.load_zoo_dataset("quickstart-groups")
 
     print(dataset.group_media_types)
-    # {'left': 'image', 'right': 'image', 'pcd': 'point-cloud'}
+    # {'left': 'image', 'right': 'image', 'pcd': '3d'}
 
     print(dataset)
 
@@ -585,6 +586,10 @@ points that demonstrates how
     pc.points = o3d.utility.Vector3dVector(np.array(point_cloud))
     o3d.io.write_point_cloud("/tmp/toy.pcd", pc)
 
+    scene = fo.Scene()
+    scene.add(fo.Pointcloud("point cloud", "/tmp/toy.pcd"))
+    scene.write("/tmp/toy.fo3d")
+
     group = fo.Group()
     samples = [
         fo.Sample(
@@ -592,7 +597,7 @@ points that demonstrates how
             group=group.element("image"),
         ),
         fo.Sample(
-            filepath="/tmp/toy.pcd",
+            filepath="/tmp/toy.fo3d",
             group=group.element("pcd"),
             detections=fo.Detections(detections=detections),
         )
@@ -611,15 +616,6 @@ points that demonstrates how
 .. image:: /images/groups/toy-point-cloud.png
    :alt: toy-point-cloud
    :align: center
-
-.. _groups-point-clouds:
-
-Point cloud slices
-__________________
-
-Grouped datasets may contain one or more
-:ref:`point cloud slices <point-cloud-datasets>`, which can be visualized in
-the App's :ref:`3D visualizer <app-3d-visualizer>`.
 
 .. _groups-views:
 
@@ -990,7 +986,7 @@ You can use the selector shown below to change which slice you are viewing:
 
 .. note::
 
-    In order to view point cloud slices in the grid view, you must populate
+    In order to view 3D scenes in the grid view, you must populate
     :ref:`orthographic projection images <orthographic-projection-images>`.
 
 When you open the expanded modal with a grouped dataset or view loaded in the
@@ -1000,8 +996,8 @@ If the group contains image/video slices, the lefthand side of the modal will
 contain a scrollable carousel that you can use to choose which sample to load
 in the maximized image/video visualizer below.
 
-If the group contains point cloud slices, the righthand side of the modal will
-contain a :ref:`3D visualizer <app-3d-visualizer>`:
+If the group contains 3D slices, the righthand side of the modal will contain a
+:ref:`3D visualizer <app-3d-visualizer>`:
 
 .. image:: /images/groups/groups-modal.gif
    :alt: groups-modal
