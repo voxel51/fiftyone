@@ -1,5 +1,9 @@
+import { describe, expect, it, vi } from "vitest";
+vi.mock("recoil");
+vi.mock("recoil-relay");
+
 import { Field } from "@fiftyone/utilities";
-import { describe, expect, it } from "vitest";
+import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
 import * as sidebar from "./sidebar";
 
 const mockFields = {
@@ -412,5 +416,113 @@ describe("test pullSidebarValue", () => {
         false
       )
     ).toBe(undefined);
+  });
+});
+
+describe("hiddenNoneGroups selector", () => {
+  const assertSidebarGroupsRequest = (
+    filtered: boolean,
+    loading: boolean,
+    modal: boolean
+  ) => {
+    if (!filtered) {
+      throw new Error("'filtered' should be 'true'");
+    }
+
+    if (loading) {
+      throw new Error("'loading' should be 'false'");
+    }
+
+    if (!modal) {
+      throw new Error("'modal' should be 'true'");
+    }
+  };
+
+  const testHiddenNoneGroups = <TestSelector<typeof sidebar.hiddenNoneGroups>>(
+    (<unknown>sidebar.hiddenNoneGroups)
+  );
+
+  const present = {
+    paths: new Set<string>(),
+    groups: new Set<string>(),
+  };
+
+  const hidden = {
+    paths: new Set(["my_field", "my_list_field.subfield"]),
+    groups: new Set(["field", "list_field"]),
+  };
+
+  it("tests disabled", () => {
+    setMockAtoms({
+      hideNoneValuedFields: false,
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("tests single slice enabled", () => {
+    setMockAtoms({
+      hideNoneValuedFields: true,
+      isOfDocumentFieldList: (p) => p === "my_list_field.subfield",
+      sidebarGroups: ({ filtered, loading, modal }) => {
+        assertSidebarGroupsRequest(filtered, loading, modal);
+
+        return [
+          {
+            name: "tags",
+            paths: [],
+          },
+          {
+            name: "field",
+            paths: ["my_field"],
+          },
+          {
+            name: "list_field",
+            paths: ["my_list_field.subfield"],
+          },
+        ];
+      },
+      field: () => TEST_FIELD_DATA,
+    });
+
+    // test null
+    setMockAtoms({
+      activeModalSidebarSample: {
+        field: null,
+        my_list_field: null,
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test empty list
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: null,
+        my_list_field: [],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test null list value
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: null,
+        my_list_field: [{ subfield: null }],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test values
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: "value",
+        my_list_field: [{ subfield: "value" }],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
   });
 });

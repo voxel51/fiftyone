@@ -24,10 +24,10 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { VariablesOf, commitMutation } from "react-relay";
+import { commitMutation, VariablesOf } from "react-relay";
 import {
-  DefaultValue,
   atomFamily,
+  DefaultValue,
   selector,
   selectorFamily,
   useRecoilStateLoadable,
@@ -840,7 +840,7 @@ export const sidebarWidth = atomFamily<number, boolean>({
   default: 300,
 });
 
-const hiddenNoneGroups = selector({
+export const hiddenNoneGroups = selector({
   key: "hiddenNoneGroups",
   get: ({ get }) => {
     if (!get(atoms.hideNoneValuedFields)) {
@@ -849,7 +849,7 @@ const hiddenNoneGroups = selector({
 
     const groups = get(
       sidebarGroups({ modal: true, loading: false, filtered: true })
-    );
+    ).filter((group) => group.name !== "tags"); // always show tags
 
     let samples: { [key: string]: { sample: object } } = {
       default: { sample: get(activeModalSidebarSample) },
@@ -864,30 +864,29 @@ const hiddenNoneGroups = selector({
       slices = Array.from(get(activePcdSlices) || []).sort();
     }
 
-    const result = { groups: new Set<string>(), paths: new Set<string>() };
+    const items = groups
+      .map(({ name: group, paths }) => paths.map((path) => ({ group, path })))
+      .flat();
 
-    for (const group of groups) {
-      if (group.name === "tags") {
-        continue;
-      }
-      result.groups.add(group.name);
+    const result = {
+      groups: new Set(groups.map(({ name }) => name)),
+      paths: new Set<string>(items.map(({ path }) => path)),
+    };
 
-      for (const path of group.paths) {
-        result.paths.add(path);
-        const isList = get(isOfDocumentFieldList(path));
-        for (const slice of slices) {
-          const keys = path.split(".");
-          const data = pullSidebarValue(
-            get(field(keys[0])),
-            keys,
-            samples[slice]?.sample,
-            isList
-          );
+    for (const { group, path } of items) {
+      const isList = get(isOfDocumentFieldList(path));
+      for (const slice of slices) {
+        const keys = path.split(".");
+        const data = pullSidebarValue(
+          get(field(keys[0])),
+          keys,
+          samples[slice]?.sample,
+          isList
+        );
 
-          if (data !== null && data !== undefined) {
-            result.groups.delete(group.name);
-            result.paths.delete(path);
-          }
+        if (data !== null && data !== undefined) {
+          result.groups.delete(group);
+          result.paths.delete(path);
         }
       }
     }
@@ -897,7 +896,7 @@ const hiddenNoneGroups = selector({
 });
 
 export const pullSidebarValue = (
-  field: Field,
+  field: Pick<Field, "dbField" | "fields">,
   keys: string[],
   data: null | object | undefined,
   isList: boolean
@@ -916,6 +915,10 @@ export const pullSidebarValue = (
         field = field?.fields?.[keys[index + 1]] || null;
       }
     }
+  }
+
+  if (Array.isArray(data)) {
+    return data.some((d) => d !== null && d !== undefined) ? data : null;
   }
 
   return data;

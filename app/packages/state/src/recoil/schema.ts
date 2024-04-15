@@ -17,13 +17,13 @@ import {
   LABEL_LISTS,
   LABEL_LISTS_MAP,
   LIST_FIELD,
+  meetsFieldType,
   OBJECT_ID_FIELD,
-  STRING_FIELD,
   Schema,
   StrictField,
+  STRING_FIELD,
   VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
-  meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
@@ -782,7 +782,7 @@ export const parentField = selectorFamily({
 });
 
 export const isOfDocumentFieldList = selectorFamily({
-  key: "isOfDocumentField",
+  key: "isOfDocumentFieldList",
   get:
     (path: string) =>
     ({ get }) => {
