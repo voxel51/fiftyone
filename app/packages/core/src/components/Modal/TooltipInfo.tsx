@@ -1,9 +1,11 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
+import ArrowUpIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { Button, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
 import React, {
   useCallback,
@@ -69,7 +71,7 @@ const HiddenItemRowDiv = styled.div`
   height: 1.5rem;
 `;
 
-const HiddenHeader = styled.div`
+const Row = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -378,25 +380,32 @@ const HiddenItems = ({ field }: { field: string }) => {
 
   if (!shouldShowHidden) {
     return (
-      <Button onClick={() => setShouldShowHidden(true)} size="small">
-        Show hidden
-      </Button>
+      <Row onClick={() => setShouldShowHidden(true)}>
+        <Typography variant="caption" color="gray" fontSize="0.8em">
+          Hidden
+        </Typography>
+        <IconButton size="small">
+          <ArrowDropDownIcon fontSize="small" />
+        </IconButton>
+      </Row>
     );
   }
 
   return (
     <>
-      <HiddenHeader>
-        <ContentHeader>Hidden</ContentHeader>
-        <IconButton onClick={() => setShouldShowHidden(false)} size="small">
-          <Tooltip text="Hide hidden items" placement="bottom-center">
-            <VisibilityOffIcon fontSize="small" />
-          </Tooltip>
+      <Row onClick={() => setShouldShowHidden(false)}>
+        <Typography variant="caption" color="gray" fontSize="0.8em">
+          Hidden
+        </Typography>
+        <IconButton size="small">
+          <ArrowUpIcon fontSize="small" />
         </IconButton>
-      </HiddenHeader>
+      </Row>
 
       {currentHiddenLabels.size === 0 ? (
-        <Typography>No items hidden</Typography>
+        <Typography variant="caption" fontSize="small">
+          No items hidden
+        </Typography>
       ) : (
         <div style={{ display: "flex", flexDirection: "column" }}>
           {[...currentHiddenLabels].map((label) => (
