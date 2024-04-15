@@ -8,7 +8,7 @@ export const createScrollReader = (
   getScrollSpeedThreshold: () => number
 ) => {
   let prior: number;
-  let timer: number;
+  let timer: ReturnType<typeof setTimeout>;
   let zooming = false;
   let destroyed = false;
   let scrolling;
@@ -35,7 +35,7 @@ export const createScrollReader = (
         timer = undefined;
         scrolling = false;
         render(false);
-      }, 1000);
+      }, 400);
     }
 
     prior = element.scrollTop;
@@ -48,7 +48,7 @@ export const createScrollReader = (
       requestAnimationFrame(animate);
       if (element.parentElement) {
         updateScrollStatus();
-        scrolling && render(zooming);
+        scrolling && prior && render(zooming);
       }
     }
   };
@@ -62,5 +62,6 @@ export const createScrollReader = (
     destroy: () => {
       destroyed = true;
     },
+    zooming: () => zooming,
   };
 };

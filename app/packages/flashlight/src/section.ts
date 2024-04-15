@@ -42,6 +42,7 @@ export class Section<K, V> {
     this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
   }
+
   get finished() {
     return Boolean(this.#end && !this.#end.key);
   }
@@ -223,6 +224,7 @@ export class Section<K, V> {
     hide.forEach((row) => row.hide());
 
     this.#container.style.height = this.height + "px";
+
     return {
       more: requestMore && this.ready,
       match: { row: pageRow, delta },
@@ -230,14 +232,15 @@ export class Section<K, V> {
   }
 
   #reverse() {
-    const from = this.#height;
+    const from = this.#height - (this.#direction === "forward" ? MARGIN : 0);
     this.#rows.reverse();
+    const old = this.#direction;
     this.#direction = this.#direction === "backward" ? "forward" : "backward";
     this.#rows.forEach((row) => {
       row.from = from - row.from - row.height;
       row.switch(this.#direction === "backward" ? "bottom" : "top");
     });
-    this.#section.classList.remove(this.#direction);
+    this.#section.classList.remove(old);
 
     this.#section.classList.add(this.#direction);
   }
@@ -256,9 +259,7 @@ export class Section<K, V> {
     for (let index = 0; index < breakpoints.length; index++) {
       const rowItems = items.slice(previous, breakpoints[index]);
 
-      if (this.#direction === "backward") {
-        rowItems.reverse();
-      }
+      this.#direction === "backward" && rowItems.reverse();
 
       const row = new Row(rowItems, from + offset, this.width);
       rows.push(row);

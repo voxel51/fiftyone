@@ -23,6 +23,7 @@ export default class Flashlight<K, V> extends EventTarget {
   readonly #config: FlashlightConfig<K, V>;
   readonly #element = document.createElement("div");
 
+  #rect?: DOMRect;
   #scrollReader?: ReturnType<typeof createScrollReader>;
 
   #forward: Section<K, V>;
@@ -78,7 +79,7 @@ export default class Flashlight<K, V> extends EventTarget {
     }
 
     element.appendChild(this.#element);
-
+    this.#rect = this.#element.parentElement.getBoundingClientRect();
     this.#fill();
   }
 
@@ -95,15 +96,15 @@ export default class Flashlight<K, V> extends EventTarget {
   }
 
   get #height() {
-    return this.#element.parentElement.getBoundingClientRect().height;
+    return this.#rect.height;
   }
 
   get #padding() {
-    return this.#height * 0.5;
+    return this.#height * 1;
   }
 
   get #width() {
-    return this.#element.getBoundingClientRect().width - 16;
+    return this.#rect.width - 16;
   }
 
   async #next(render = true) {
@@ -137,7 +138,9 @@ export default class Flashlight<K, V> extends EventTarget {
           offset = before - this.#containerHeight - 48;
         }
 
-        this.#render(false, offset);
+        console.log(offset);
+
+        this.#render(false, offset, false);
       });
     });
   }
@@ -158,19 +161,31 @@ export default class Flashlight<K, V> extends EventTarget {
         runner();
         return;
       }
-      requestAnimationFrame(() => {
-        const { section, offset } = runner();
-        if (section) {
-          const forward = this.#backward;
-          this.#backward = section;
-          this.#backward.attach(this.#element);
 
-          this.#forward.remove();
-          this.#forward = forward;
-        }
+      const run = () =>
+        requestAnimationFrame(() => {
+          if (
+            this.#element.scrollTop > this.#containerHeight ||
+            this.#element.scrollTop < 0 ||
+            this.#scrollReader.zooming()
+          ) {
+            requestAnimationFrame(run);
+            return;
+          }
+          const { section, offset } = runner();
+          if (section) {
+            const forward = this.#backward;
+            this.#backward = section;
+            this.#backward.attach(this.#element);
 
-        this.#render(false, typeof offset === "number" ? -offset : false);
-      });
+            this.#forward.remove();
+            this.#forward = forward;
+          }
+
+          this.#render(false, typeof offset === "number" ? -offset : false);
+        });
+
+      run();
     });
   }
 
@@ -236,10 +251,14 @@ export default class Flashlight<K, V> extends EventTarget {
     return result;
   }
 
-  #render(zooming: boolean, offset: number | false = false) {
+  #render(zooming: boolean, offset: number | false = false, go = true) {
+    if (go && offset !== false) {
+      this.#forward.top = this.#backward.height;
+      this.#backward.top = 0;
+    }
+
     const top = this.#element.scrollTop - (offset === false ? 0 : offset);
 
-    console.log(zooming);
     const backward = this.#backward.render(
       top + this.#height + this.#padding,
       (n) => n > top - this.#padding,
@@ -247,8 +266,6 @@ export default class Flashlight<K, V> extends EventTarget {
       this.#config.render,
       top + 48
     );
-
-    if (backward.more) this.#previous();
 
     const forward = this.#forward.render(
       top - this.#padding - this.#backward.height,
@@ -260,15 +277,13 @@ export default class Flashlight<K, V> extends EventTarget {
       top - this.#backward.height + 48
     );
 
-    if (forward.more) this.#next();
-
     let pageRow = forward.match?.row;
 
     if (!pageRow || backward.match.delta < forward.match.delta) {
       pageRow = backward.match.row;
     }
 
-    if (pageRow && !zooming) {
+    if (offset === false && pageRow && !zooming) {
       const page = this.#keys.get(pageRow.id);
       if (page !== this.#page) {
         this.#page = page;
@@ -276,17 +291,16 @@ export default class Flashlight<K, V> extends EventTarget {
       }
     }
 
-    if (offset === false) {
-      return;
+    if (!go && offset !== false) {
+      this.#forward.top = this.#backward.height;
+      this.#backward.top = 0;
     }
 
-    if (this.#scrollReader && top) {
-      this.#element.scroll(0, top);
+    if (offset !== false && top) {
+      this.#element.scrollTo(0, top);
     }
-    this.#forward.top = this.#backward.height;
-    this.#backward.top = 0;
-    if (!this.#scrollReader && top) {
-      this.#element.scroll(0, top);
-    }
+
+    if (!zooming && backward.more) this.#previous();
+    if (!zooming && forward.more) this.#next();
   }
 }
