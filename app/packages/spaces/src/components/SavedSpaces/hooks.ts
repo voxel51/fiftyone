@@ -1,12 +1,12 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { canEditWorkspaces, readOnly } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { useEffect, useMemo } from "react";
-import { useRecoilState, useResetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { Workspace, savedWorkspacesAtom } from "../../state";
 
 export function useSavedSpaces() {
   const [state, setState] = useRecoilState(savedWorkspacesAtom);
-  console.log(state);
   const resetState = useResetRecoilState(savedWorkspacesAtom);
   const listOperator = useOperatorExecutor(
     "@voxel51/operators/list_saved_workspaces"
@@ -45,4 +45,22 @@ export function useSavedSpaces() {
     reset: resetState,
     existingSlugs,
   };
+}
+
+export function useWorkspacePermission() {
+  const canEditSavedViews = useRecoilValue(canEditWorkspaces);
+  const isReadOnly = useRecoilValue(readOnly);
+  const canEdit = useMemo(
+    () => canEditSavedViews && !isReadOnly,
+    [canEditSavedViews, isReadOnly]
+  );
+  const disabledInfo = useMemo(() => {
+    return !canEditSavedViews
+      ? "You do not have permission to save a workspace"
+      : isReadOnly
+      ? "Can not save workspace in read-only mode"
+      : undefined;
+  }, [canEditSavedViews, isReadOnly]);
+
+  return { canEdit, disabledInfo };
 }

@@ -18,7 +18,7 @@ import { useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
 import SavedSpace from "./SavedSpace";
 import WorkspaceEditor from "./WorkspaceEditor";
-import { useSavedSpaces } from "./hooks";
+import { useSavedSpaces, useWorkspacePermission } from "./hooks";
 
 export default function SavedSpaces() {
   const [open, setOpen] = useState(false);
@@ -26,6 +26,7 @@ export default function SavedSpaces() {
   const { savedSpaces, loadWorkspace, initialized, listWorkspace } =
     useSavedSpaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
+  const { canEdit, disabledInfo } = useWorkspacePermission();
 
   const items = useMemo(() => {
     return savedSpaces.filter((space) =>
@@ -123,12 +124,16 @@ export default function SavedSpaces() {
                       "&:hover": {
                         ".MuiStack-root": { visibility: "visible" },
                       },
+                      cursor: !canEdit ? "not-allowed" : undefined,
                     }}
+                    title={disabledInfo}
                   >
                     <ListItemButton
                       component="a"
                       sx={{ py: 0.5, pr: 0.5 }}
+                      disabled={!canEdit}
                       onClick={() => {
+                        if (!canEdit) return;
                         setOpen(false);
                         setWorkspaceEditorState((state) => ({
                           ...state,
