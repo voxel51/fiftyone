@@ -272,8 +272,10 @@ class MaterialCreator {
       if (typeof url !== "string" || url === "") return "";
 
       const mtlBase = decodeURIComponent(baseUrl);
-      const indexOfLastSlash = mtlBase.lastIndexOf("/");
-      const textureUrl = mtlBase.substring(0, indexOfLastSlash + 1) + url;
+      const regex = /\/([^\/]+\.mtl)/;
+      const match = regex.exec(mtlBase);
+      const filename = match ? match[1] : "";
+      const textureUrl = mtlBase.replace(filename, url);
       return textureUrl;
     }
 
