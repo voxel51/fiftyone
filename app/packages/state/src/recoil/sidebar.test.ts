@@ -452,6 +452,30 @@ describe("hiddenNoneGroups selector", () => {
     groups: new Set(["field", "list_field"]),
   };
 
+  const base = {
+    hideNoneValuedFields: true,
+    isOfDocumentFieldList: (p) => p === "my_list_field.subfield",
+    sidebarGroups: ({ filtered, loading, modal }) => {
+      assertSidebarGroupsRequest(filtered, loading, modal);
+
+      return [
+        {
+          name: "tags",
+          paths: [],
+        },
+        {
+          name: "field",
+          paths: ["my_field"],
+        },
+        {
+          name: "list_field",
+          paths: ["my_list_field.subfield"],
+        },
+      ];
+    },
+    field: () => TEST_FIELD_DATA,
+  };
+
   it("tests disabled", () => {
     setMockAtoms({
       hideNoneValuedFields: false,
@@ -461,30 +485,7 @@ describe("hiddenNoneGroups selector", () => {
   });
 
   it("tests single slice enabled", () => {
-    setMockAtoms({
-      hideNoneValuedFields: true,
-      isOfDocumentFieldList: (p) => p === "my_list_field.subfield",
-      sidebarGroups: ({ filtered, loading, modal }) => {
-        assertSidebarGroupsRequest(filtered, loading, modal);
-
-        return [
-          {
-            name: "tags",
-            paths: [],
-          },
-          {
-            name: "field",
-            paths: ["my_field"],
-          },
-          {
-            name: "list_field",
-            paths: ["my_list_field.subfield"],
-          },
-        ];
-      },
-      field: () => TEST_FIELD_DATA,
-    });
-
+    setMockAtoms(base);
     // test null
     setMockAtoms({
       activeModalSidebarSample: {
@@ -521,6 +522,45 @@ describe("hiddenNoneGroups selector", () => {
         my_field: "value",
         my_list_field: [{ subfield: "value" }],
       },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("tests multiple slices enabled", () => {
+    setMockAtoms(base);
+
+    // test null
+    setMockAtoms({
+      activePcdSlices: ["one", "two"],
+      activePcdSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {},
+        },
+      },
+      pinned3DSampleSlice: "one",
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test null and present
+    setMockAtoms({
+      activePcdSlices: ["one", "two"],
+      activePcdSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {
+            my_field: "value",
+            my_list_field: [{ subfield: "value" }],
+          },
+        },
+      },
+      pinned3DSampleSlice: "one",
     });
 
     expect(testHiddenNoneGroups()).toStrictEqual(present);

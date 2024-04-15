@@ -24,10 +24,10 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { commitMutation, VariablesOf } from "react-relay";
+import { VariablesOf, commitMutation } from "react-relay";
 import {
-  atomFamily,
   DefaultValue,
+  atomFamily,
   selector,
   selectorFamily,
   useRecoilStateLoadable,
