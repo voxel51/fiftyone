@@ -14,6 +14,8 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  LOCAL_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY,
+  REMOTE_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -313,6 +315,16 @@ export const useOperatorPrompt = () => {
   const promptView = useMemo(() => {
     return inputFields?.view;
   }, [inputFields]);
+  const autoExecuteOnChange = useMemo(() => {
+    return promptView?.auto_execute;
+  }, [promptView]);
+  const autoExecuteDelay = useMemo(() => {
+    const providedDelay = promptView?.auto_execute_delay;
+    const defaultDelay = operator.isRemote
+      ? REMOTE_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY
+      : LOCAL_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY;
+    return providedDelay ?? defaultDelay;
+  }, [promptView, operator.isRemote]);
 
   const resolveInput = useCallback(
     debounce(
@@ -396,10 +408,10 @@ export const useOperatorPrompt = () => {
   }, [ctx, operatorName, hooks, JSON.stringify(executor.result)]);
 
   useEffect(() => {
-    if (executor.result) {
+    if (executor.result && !autoExecuteOnChange) {
       resolveOutputFields();
     }
-  }, [executor.result]);
+  }, [executor.result, autoExecuteOnChange]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
@@ -447,12 +459,18 @@ export const useOperatorPrompt = () => {
 
   const isExecuting = executor && executor.isExecuting;
   const hasResultOrError = executor.hasResultOrError;
-  const showPrompt = inputFields && !isExecuting && !hasResultOrError;
+  const showPrompt =
+    inputFields && (resolveOutputFields || (!isExecuting && !hasResultOrError));
   const executorError = executor.error;
   const resolveError = resolveTypeError.current;
 
   useEffect(() => {
-    if (executor.hasExecuted && !executor.needsOutput && !executorError) {
+    if (
+      executor.hasExecuted &&
+      !executor.needsOutput &&
+      !executorError &&
+      !autoExecuteOnChange
+    ) {
       close();
       if (executor.isDelegated) {
         notify({ msg: "Operation successfully scheduled", variant: "success" });
@@ -465,6 +483,7 @@ export const useOperatorPrompt = () => {
     executor.isDelegated,
     close,
     notify,
+    autoExecuteOnChange,
   ]);
 
   const pendingResolve = useMemo(
@@ -485,6 +504,23 @@ export const useOperatorPrompt = () => {
     },
     [submitOptions?.handleSubmit]
   );
+
+  const debouncedAutoExecute = useMemo(() => {
+    return debounce((execute) => {
+      execute();
+    }, autoExecuteDelay);
+  }, [autoExecuteDelay]);
+
+  useEffect(() => {
+    if (autoExecuteOnChange) {
+      debouncedAutoExecute(execute);
+    }
+  }, [
+    promptingOperator.params,
+    autoExecuteOnChange,
+    debouncedAutoExecute,
+    execute,
+  ]);
 
   if (!promptingOperator) return null;
 
@@ -514,6 +550,7 @@ export const useOperatorPrompt = () => {
     submitOptions,
     promptView,
     resolvedIO,
+    autoExecuteOnChange,
   };
 };
 

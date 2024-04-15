@@ -1647,6 +1647,8 @@ class PromptView(View):
         label (None): the title for the prompt
         submit_button_label (None): the label for the submit button
         cancel_button_label (None): the label for the cancel button
+        auto_execute (False): whether to automatically execute the operator on params change
+        auto_execute_delay (1000): delay in milliseconds before auto-executing the operator
     """
 
     def __init__(self, **kwargs):
@@ -1771,6 +1773,11 @@ class DrawerView(View):
         return types.Property(inputs, view=prompt)
 
     Args:
+        label (None): the title for the prompt
+        submit_button_label (None): the label for the submit button
+        cancel_button_label (None): the label for the cancel button
+        auto_execute (False): whether to automatically execute the operator on params change
+        auto_execute_delay (1000): delay in milliseconds before auto-executing the operator
         placement (None): the placement of the drawer. Can be one of the
             following
 

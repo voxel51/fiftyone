@@ -71,6 +71,11 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
     cancelButtonText = "Close";
   }
 
+  if (operatorPrompt.autoExecuteOnChange) {
+    onSubmit = undefined;
+    onCancel = undefined;
+  }
+
   const title = getPromptTitle(operatorPrompt);
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
   const { resolving, pendingResolve } = operatorPrompt;

@@ -13,3 +13,5 @@ export enum QueueItemStatus {
   Completed,
   Failed,
 }
+export const REMOTE_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY = 1000;
+export const LOCAL_OPERATOR_DEFAULT_AUTO_EXECUTE_DELAY = 250;
