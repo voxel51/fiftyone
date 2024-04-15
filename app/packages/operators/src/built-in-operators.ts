@@ -735,7 +735,18 @@ class SetSelectedLabels extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.labels);
+    const labels = params?.labels;
+    const formattedLabels = Array.isArray(labels)
+      ? labels.map((label) => {
+          return {
+            field: label.field,
+            sampleId: label.sampleId ?? label.sample_id,
+            labelId: label.labelId ?? label.label_id,
+            frameNumber: label.frameNumber ?? label.frame_number,
+          };
+        })
+      : [];
+    hooks.setSelected(formattedLabels);
   }
 }
 
