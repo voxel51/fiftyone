@@ -169,6 +169,27 @@ manually convert Ultralytics predictions into the desired
    :alt: ultralytics-instances
    :align: center
 
+
+You can also load YOLOv8 and YOLOv9 segmentation models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov9c-seg-coco-torch"
+    # model_name = "yolov9e-seg-coco-torch"
+    # model_name = "yolov8x-seg-coco-torch"
+    # model_name = "yolov8l-seg-coco-torch"
+    # model_name = "yolov8m-seg-coco-torch"
+    # model_name = "yolov8s-seg-coco-torch"
+    # model_name = "yolov8n-seg-coco-torch"
+
+    model = foz.load_zoo_model(model_name, label_field="yolo_seg")
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
+
 .. _ultralytics-keypoints:
 
 Keypoints
@@ -219,6 +240,56 @@ manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
 .. image:: /images/integrations/ultralytics_keypoints.jpg
    :alt: ultralytics-keypoints
    :align: center
+
+
+.. _ultralytics-oriented-bounding-boxes:
+
+Oriented bounding boxes
+-----------------------
+
+You can directly pass Ultralytics YOLO oriented bounding box models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
+
+.. code-block:: python
+    :linenos:
+
+    model = YOLO("yolov8n-obb.pt")
+    # model = YOLO("yolov8s-obb.pt")
+    # model = YOLO("yolov8m-obb.pt")
+    # model = YOLO("yolov8l-obb.pt")
+    # model = YOLO("yolov8x-obb.pt")
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+You can also load YOLOv8 oriented bounding box models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov8n-obb-dotav1-torch"
+    # model_name = "yolov8s-obb-dotav1-torch"
+    # model_name = "yolov8m-obb-dotav1-torch"
+    # model_name = "yolov8l-obb-dotav1-torch"
+    # model_name = "yolov8x-obb-dotav1-torch"
+
+    model = foz.load_zoo_model(model_name)
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+.. note::
+
+    The oriented bounding box models are trained on the `DOTA dataset
+    <https://captain-whu.github.io/DOTA/index.html>`_, which consists of
+    drone images with oriented bounding boxes. The models are trained to
+    predict on bird's eye view images, so applying them to regular images
+    may not yield good results.
 
 .. _ultralytics-open-vocabulary-object-detection:
 
@@ -283,11 +354,10 @@ the model should detect:
 
     model = foz.load_zoo_model(
         model_name,
-        label_field="yolo_world_detections",
         classes=["plant", "window", "keyboard", "human baby", "computer monitor"],
     )
 
-    dataset.apply_model(model)
+    dataset.apply_model(model, label_field="yolo_world_detections")
 
     session = fo.launch_app(dataset)
 

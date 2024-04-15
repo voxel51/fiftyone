@@ -2,7 +2,7 @@ import { deserialize } from "../numpy";
 
 export const DeserializerFactory = {
   Detection: (label, buffers) => {
-    if (typeof label.mask === "string") {
+    if (typeof label?.mask === "string") {
       const data = deserialize(label.mask);
       const [height, width] = data.shape;
       label.mask = {
@@ -14,12 +14,12 @@ export const DeserializerFactory = {
     }
   },
   Detections: (labels, buffers) => {
-    labels.detections.forEach((label) =>
+    labels?.detections?.forEach((label) =>
       DeserializerFactory.Detection(label, buffers)
     );
   },
   Heatmap: (label, buffers) => {
-    if (typeof label.map === "string") {
+    if (typeof label?.map === "string") {
       const data = deserialize(label.map);
       const [height, width] = data.shape;
 
@@ -33,7 +33,7 @@ export const DeserializerFactory = {
     }
   },
   Segmentation: (label, buffers) => {
-    if (typeof label.mask === "string") {
+    if (typeof label?.mask === "string") {
       const data = deserialize(label.mask);
       const [height, width] = data.shape;
 

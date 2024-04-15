@@ -336,6 +336,7 @@ class Dataset:
             serialized_view=view,
             saved_view_slug=saved_view_slug,
             dicts=False,
+            update_last_loaded_at=True,
         )
 
 
@@ -409,6 +410,10 @@ class Query(fosa.AggregateQuery):
     @gql.field
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
+
+    @gql.field
+    async def estimated_dataset_count(self, info: Info = None) -> int:
+        return await info.context.db.datasets.estimated_document_count()
 
     dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
@@ -564,12 +569,17 @@ async def serialize_dataset(
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
     dicts=True,
+    update_last_loaded_at=False,
 ) -> Dataset:
     def run():
         if not fod.dataset_exists(dataset_name):
             return None
 
         dataset = fod.load_dataset(dataset_name)
+
+        if update_last_loaded_at:
+            dataset._update_last_loaded_at(force=True)
+
         dataset.reload()
         view_name = None
         try:
