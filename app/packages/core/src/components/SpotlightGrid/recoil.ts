@@ -14,7 +14,7 @@ export const gridZoom = atom<number>({
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
-  default: [0, 10],
+  default: [1, 10],
 });
 
 export const rowAspectRatioThreshold = selector<number>({
@@ -38,8 +38,13 @@ export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
     const slice = get(fos.groupSlice);
+    const dataset = get(fos.datasetName);
+
+    if (!dataset) {
+      throw new Error("dataset is not defined");
+    }
     const params = {
-      dataset: get(fos.datasetName),
+      dataset,
       view: get(fos.view),
       filters: get(fos.filters),
       filter: {

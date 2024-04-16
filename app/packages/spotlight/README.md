@@ -1,3 +1,3 @@
 # Spotlight
 
-Cursor based flex-layout virtualized grid
+A cursor based flex-layout virtualized grid

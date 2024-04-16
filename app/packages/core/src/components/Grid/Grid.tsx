@@ -1,103 +1,84 @@
-import Flashlight, { PageChange } from "@fiftyone/flashlight";
+import Flashlight from "@fiftyone/flashlight";
+import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { Lookers } from "@fiftyone/state";
-import { animated, useSpring } from "@react-spring/web";
-import { useDrag } from "@use-gesture/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  atom,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
-import styled from "styled-components";
+import { stringifyObj, useDeferrer, useExpandSample } from "@fiftyone/state";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../useFlashlightPager";
-import { flashlightLooker, pixels } from "./Grid.module.css";
-import { pageParameters, rowAspectRatioThreshold } from "./recoil";
+import { flashlightLooker } from "./Grid.module.css";
+import {
+  gridCropCallback,
+  pageParameters,
+  rowAspectRatioThreshold,
+} from "./recoil";
+import useResize from "./useResize";
 
-const Contain = styled.div`
-  position: relative;
-  display: block;
-  height: 100%;
-  width: 100%;
-`;
+const Grid: React.FC<{}> = () => {
+  const [id] = React.useState(() => uuid());
+  const store = fos.useLookerStore();
+  const expandSample = useExpandSample(store);
+  const { init, deferred } = useDeferrer();
 
-const Drag = styled(animated.div)`
-  z-index: 10000000;
-  width: 100%;
-  background: ${({ theme }) => theme.primary.plainColor};
-  height: 4px;
-  position: absolute;
-  right: 0;
-  cursor: pointer;
-  box-shadow: rgb(26, 26, 26) 0px 2px 20px;
-  border-radius: 3px 0 0 3px;
-  cursor: row-resize;
-  width: 30px;
-
-  &:hover {
-    width: 40px;
-    height: 6px;
-    margin-top: -1px;
-  }
-
-  transition-property: margin-top, height, width;
-  transition-duration: 0.25s;
-  transition-timing-function: ease-in-out;
-`;
-
-const sessionPage = fos.sessionAtom({
-  key: "sessionPage",
-  default: 0,
-});
-
-const showGridPixels = atom({ key: "showGridPixels", default: true });
-
-function Grid() {
-  const id = useMemo(() => uuid(), []);
-  const threshold = useRecoilValue(rowAspectRatioThreshold);
-  const { page, store } = useFlashlightPager(pageParameters);
   const lookerOptions = fos.useLookerOptions(false);
-  const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
-
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
-  const getPage = useRecoilCallback(
-    ({ snapshot }) =>
-      () =>
-        snapshot.getLoadable(sessionPage).getValue(),
-    []
+
+  const selected = useRecoilValue(fos.selectedSamples);
+  const threshold = useRecoilValue(rowAspectRatioThreshold);
+  const resize = useResize();
+
+  const isModalOpen = useRecoilValue(fos.isModalActive);
+
+  const { page, reset } = useFlashlightPager(
+    store,
+    pageParameters,
+    gridCropCallback
   );
 
-  const showPixels = useRecoilValue(showGridPixels);
-
-  const setPage = useSetRecoilState(sessionPage);
-  useEffect(() => {
-    if (showPixels) {
-      return;
-    }
-
-    const flashlight = new Flashlight<number, object>({
-      key: getPage(),
-      rowAspectRatioThreshold: threshold,
-      get: (next) => page.current(next),
+  // create flashlight only one time
+  const [flashlight] = React.useState(() => {
+    const flashlight = new Flashlight<number>({
+      containerId: "grid-flashlight",
+      horizontal: false,
+      showPixels: true,
+      initialRequestKey: 0,
+      options: { rowAspectRatioThreshold: threshold, offset: 52 },
+      onItemClick: expandSample,
+      onResize: resize.current,
+      onItemResize: (id, dimensions) =>
+        store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
+      get: page,
       render: (id, element, dimensions, soft, hide) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
-          hide ? looker?.disable() : looker.attach(element, dimensions);
+        let result = store.samples.get(id);
+
+        if (store.lookers.has(id)) {
+          const looker = store.lookers.get(id);
+          hide ? looker?.disable() : looker?.attach(element, dimensions);
 
           return;
         }
 
-        const result = store.get(id);
-
-        if (!createLooker.current || !result) {
+        if (!createLooker.current || !result || !selectSample.current) {
           throw new Error("bad data");
         }
 
         const init = (l) => {
-          lookerStore.set(id, l);
+          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
+            selectSample.current(flashlight, detail);
+          });
+
+          l.addEventListener("reset", () => {
+            l.detach();
+            l.destroy();
+            result = store.samples.get(id);
+            if (!result) {
+              throw new Error("unexpected value");
+            }
+            l = createLooker.current(result);
+            init(l);
+          });
+
+          store.lookers.set(id, l);
           l.attach(element, dimensions);
         };
 
@@ -106,108 +87,105 @@ function Grid() {
         }
       },
     });
-    const pagechange = (e: PageChange<number>) => setPage(e.page);
 
-    flashlight.addEventListener("pagechange", pagechange);
-    flashlight.addEventListener("load", () => {
-      document.getElementById(id)?.classList.remove(pixels);
-    });
-    flashlight.attach(id);
-
-    return () => {
-      document.getElementById(id)?.classList.add(pixels);
-      flashlight.removeEventListener("pagechange", pagechange);
-      flashlight.detach();
-    };
-  }, [
-    showPixels,
-    getPage,
-    id,
-    page,
-    setPage,
-    store,
-    threshold,
-    lookerStore,
-    createLooker,
-  ]);
-
-  return (
-    <div
-      id={id}
-      className={flashlightLooker + " " + pixels}
-      data-cy="fo-grid"
-    />
-  );
-}
-const Bar = ({ height }) => {
-  const [page, setPage] = useRecoilState(sessionPage);
-  const count = useRecoilValue(fos.datasetSampleCount);
-
-  const [{ y }, api] = useSpring(() => ({
-    y: ((page * 20) / count) * (height - 48) + 48,
-  }));
-
-  if (page * 20 >= count) {
-    throw new Error("WRONG");
-  }
-
-  const bind = useDrag(({ down, movement: [_, my] }) => {
-    setDragging(down && my !== 0);
-
-    const base = ((page * 20) / count) * (height - 48);
-    api.start({
-      y: down ? my + base + 48 : base + 48,
-      immediate: down,
-    });
-
-    !down && setPage(Math.floor((((base + my) / (height - 48)) * count) / 20));
+    return flashlight;
   });
 
   useEffect(() => {
-    api.start({ y: ((page * 20) / count) * (height - 48) + 48 });
-  }, [api, count, page, height]);
+    deferred(() => {
+      if (isModalOpen || isTagging || !flashlight.isAttached()) {
+        return;
+      }
 
-  const setDragging = useSetRecoilState(showGridPixels);
-
-  return <Drag {...bind()} style={{ top: y, right: 0 }} />;
-};
-
-const Wrap = () => {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [height, setHeight] = useState<DOMRect>();
-  const set = useSetRecoilState(showGridPixels);
-
-  const observer = useMemo(() => {
-    let timeout;
-    return new ResizeObserver(() => {
-      set(true);
-
-      timeout && clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        setHeight(ref.current?.getBoundingClientRect());
-        set(false);
-      }, 1000);
+      flashlight.reset();
+      store.reset();
+      freeVideos();
     });
-  }, [set]);
+  }, [
+    deferred,
+    reset,
+    stringifyObj(useRecoilValue(fos.filters)),
+    useRecoilValue(fos.datasetName),
+    useRecoilValue(fos.cropToContent(false)),
+    fos.filterView(useRecoilValue(fos.view)),
+    useRecoilValue(fos.groupSlice),
+    useRecoilValue(fos.refresher),
+    useRecoilValue(fos.similarityParameters),
+    useRecoilValue(fos.selectedMediaField(false)),
+    useRecoilValue(fos.extendedStagesUnsorted),
+    useRecoilValue(fos.extendedStages),
+    useRecoilValue(fos.shouldRenderImaVidLooker),
+  ]);
+
+  const select = fos.useSelectFlashlightSample();
+  const selectSample = useRef(select);
+  selectSample.current = select;
+
+  useLayoutEffect(
+    () =>
+      deferred(() =>
+        flashlight.updateOptions({ rowAspectRatioThreshold: threshold })
+      ),
+    [deferred, flashlight, threshold]
+  );
+
+  useLayoutEffect(() => {
+    deferred(() => {
+      flashlight.updateItems((sampleId) => {
+        store.lookers.get(sampleId)?.updateOptions({
+          ...lookerOptions,
+          selected: selected.has(sampleId),
+        });
+      });
+    });
+  }, [deferred, flashlight, lookerOptions, store, selected]);
+
+  useLayoutEffect(() => {
+    flashlight.attach(id);
+    return () => flashlight.detach();
+  }, [flashlight, id]);
+  const taggingLabels = useRecoilValue(
+    fos.tagging({ modal: false, labels: true })
+  );
+
+  const taggingSamples = useRecoilValue(
+    fos.tagging({ modal: false, labels: false })
+  );
+  const isTagging = taggingLabels || taggingSamples;
+
+  const escEventHandler = useRecoilCallback(
+    ({ snapshot, reset }) =>
+      async (event: KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+
+        const isModalOpen = await snapshot.getPromise(fos.isModalActive);
+        !isModalOpen && reset(fos.selectedSamples);
+      },
+    []
+  );
 
   useEffect(() => {
-    if (!ref.current) {
-      return;
-    }
-    const el = ref.current;
-    observer.observe(el);
+    // this deferred execution is a hack to address problem caused by a race condition in `isModalOpen`
+    setTimeout(() => {
+      if (!isModalOpen) {
+        document.addEventListener("keydown", escEventHandler);
+      } else {
+        document.removeEventListener("keydown", escEventHandler);
+      }
+    }, 0);
 
     return () => {
-      observer.unobserve(el);
+      document.removeEventListener("keydown", escEventHandler);
     };
-  }, [observer, ref]);
+  }, [isModalOpen, escEventHandler]);
 
-  return (
-    <Contain ref={ref}>
-      <Grid />
-      {height && <Bar height={height?.height} />}
-    </Contain>
-  );
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
 };
 
-export default React.memo(Wrap);
+export default Grid;

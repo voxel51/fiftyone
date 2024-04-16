@@ -1,17 +1,18 @@
 {
     "compilerOptions": {
-        "target": "ES2022",
+        "target": "ESNext",
         "module": "ESNext",
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "moduleResolution": "Node",
         "sourceMap": true,
+        "resolveJsonModule": true,
         "esModuleInterop": true,
         "noEmit": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "plugins": [{ "name": "typescript-plugin-css-modules" }]
     },
-    "extends": "../../tsconfig.json",
     "include": ["./src"]
 }

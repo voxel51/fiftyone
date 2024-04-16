@@ -1,3 +1,3 @@
-# Spotlight
+# Flashlight
 
-Cursor based flex-layout virtualized grid
+An infinite scrolling flex-layout virtualized grid

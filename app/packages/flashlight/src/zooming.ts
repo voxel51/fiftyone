@@ -4,64 +4,58 @@
 
 export const createScrollReader = (
   element: HTMLElement,
+  horizontal: boolean,
   render: (zooming: boolean) => void,
-  getScrollSpeedThreshold: () => number
-) => {
-  let prior: number;
-  let timer: ReturnType<typeof setTimeout>;
+  getScrollSpeendThreshold: () => number
+): void => {
   let zooming = false;
-  let destroyed = false;
-  let scrolling;
+  let scrolling = false;
+  let prior = 0;
+  let timer = undefined;
+
+  element.addEventListener("scroll", () => {
+    scrolling = true;
+    updateScrollStatus() && !zooming && render(zooming);
+  });
 
   const updateScrollStatus = () => {
-    const threshold = getScrollSpeedThreshold();
+    const threshold = getScrollSpeendThreshold();
     if (threshold === Infinity) {
       return false;
     }
-
-    scrolling = prior !== undefined && Math.abs(element.scrollTop - prior);
-
-    if (
-      prior === undefined ||
-      Math.abs(element.scrollTop - prior) > threshold
-    ) {
-      zooming = prior !== undefined;
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        timer = undefined;
+    if (!prior) {
+      prior = horizontal ? element.scrollLeft : element.scrollTop;
+    } else {
+      if (
+        Math.abs(
+          (horizontal ? element.scrollLeft : element.scrollTop) - prior
+        ) > threshold
+      ) {
+        zooming = true;
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        timer = setTimeout(function () {
+          zooming = false;
+          timer = undefined;
+          render(false);
+        }, 350);
+      } else {
+        if (timer === undefined) {
+          scrolling = false;
+        }
       }
-      timer = setTimeout(function () {
-        zooming = false;
-        timer = undefined;
-        scrolling = false;
-        render(false);
-      }, 400);
+      prior = horizontal ? element.scrollLeft : element.scrollTop;
     }
-
-    prior = element.scrollTop;
 
     return true;
   };
 
   const animate = () => {
-    if (!destroyed) {
-      requestAnimationFrame(animate);
-      if (element.parentElement) {
-        updateScrollStatus();
-        scrolling && prior && render(zooming);
-      }
-    }
+    requestAnimationFrame(animate);
+    scrolling && updateScrollStatus() && zooming && render(zooming);
   };
 
   animate();
-
-  return {
-    adjust: (offset: number) => {
-      element.scroll(0, element.scrollTop + offset);
-    },
-    destroy: () => {
-      destroyed = true;
-    },
-    zooming: () => zooming,
-  };
 };

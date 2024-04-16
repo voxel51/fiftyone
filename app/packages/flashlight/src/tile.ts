@@ -1,116 +1,87 @@
-/**
- * Copyright 2017-2024, Voxel51, Inc.
- */
+import { ItemData, RowData } from "./state";
 
-// adapted from https://medium.com/google-design/google-photos-45b714dfbed1
-export default (
-  items: number[],
-  threshold: number,
-  remainder: boolean
-): number[] => {
-  const row = (start: number, end: number) => {
-    const key = `${start}:${end}`;
-    if (!cache.has(key)) {
-      const aspectRatio = items
-        .slice(start, end)
-        .reduce((sum, aspectRatio) => sum + aspectRatio, 0);
-      const delta = 2 + threshold - aspectRatio;
-
-      cache.set(key, {
-        delta,
-        score: Math.pow(Math.abs(delta), 3),
-      });
+const lastRow = (
+  { items }: RowData,
+  horizontal: boolean,
+  threshold: number
+): RowData => {
+  const aspectRatios = items.map(({ aspectRatio }) =>
+    horizontal ? 1 / aspectRatio : aspectRatio
+  );
+  if (aspectRatios.length && new Set(aspectRatios).size === 1) {
+    let aspectRatio = aspectRatios[0];
+    let singleAR = aspectRatio;
+    let counter = 1;
+    while (aspectRatio < threshold) {
+      aspectRatio += singleAR;
+      counter += 1;
     }
-
-    return cache.get(key);
-  };
-
-  const cache = new Map<string, { delta: number; score: number }>();
-
-  const nodes = new Map<
-    number,
-    { parent: number; score: () => number; length: () => number }
-  >();
-  const search = (item: number, parent?: number) => {
-    const score = () => {
-      if (parent === undefined) {
-        return 0;
-      }
-
-      return row(parent, item).score + nodes.get(parent).score();
-    };
-
-    const length = () => {
-      if (parent === undefined) {
-        return 1;
-      }
-
-      return 1 + nodes.get(parent).length();
-    };
-
-    const exists = nodes.has(item);
-    if (!exists || nodes.get(item).score() >= score()) {
-      nodes.set(item, {
-        parent,
-        score,
-        length,
-      });
-    }
-
-    if (exists) {
-      return;
-    }
-
-    let end = item + 1;
-    while (end <= items.length) {
-      const edge = row(item, end);
-
-      if (edge.delta < 0 && end - item > 1) {
-        break;
-      }
-
-      if (edge.delta < 0 && end - item === 1) {
-        search(end, item);
-      }
-
-      if (edge.delta > 0) {
-        search(end, item);
-      }
-      end++;
-    }
-
-    return;
-  };
-
-  search(0);
-
-  const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
-
-  let cursor = keys[0];
-  let score = nodes.get(keys[0]).score();
-  const length = nodes.get(keys[0]).length();
-
-  if (remainder) {
-    for (const next of keys.slice(1)) {
-      const nextScore = nodes.get(next).score();
-      const nextLength = nodes.get(next).length();
-
-      if (nextLength < length - 1) {
-        break;
-      }
-
-      if (nextScore < score) {
-        score = nextScore;
-        cursor = next;
-      }
-    }
+    return { items, aspectRatio, extraMargins: counter - items.length };
   }
-
-  const result = [];
-  while (cursor) {
-    result.push(cursor);
-    cursor = nodes.get(cursor)?.parent;
-  }
-
-  return result.reverse();
+  return {
+    items,
+    aspectRatio: Math.max(
+      threshold,
+      aspectRatios.reduce((acc, cur) => acc + cur, 0)
+    ),
+  };
 };
+
+export default function tile(
+  items: ItemData[],
+  horizontal: boolean,
+  rowAspectRatioThreshold: number,
+  hasMore: boolean
+): {
+  rows: RowData[];
+  remainder: ItemData[];
+} {
+  const rows: RowData[] = [];
+  let currentRow = [];
+  let currentAR = null;
+  for (const i in items) {
+    const item = items[i];
+    if (currentAR === null) {
+      currentAR = item.aspectRatio;
+      if (horizontal) {
+        currentAR = 1 / currentAR;
+      }
+      currentRow.push(item);
+      continue;
+    }
+
+    if (rowAspectRatioThreshold <= 0 || currentAR >= rowAspectRatioThreshold) {
+      rows.push({ items: currentRow, aspectRatio: currentAR });
+      currentRow = [item];
+      currentAR = item.aspectRatio;
+
+      if (horizontal) {
+        currentAR = 1 / currentAR;
+      }
+      continue;
+    }
+
+    let ar = item.aspectRatio;
+
+    if (horizontal) {
+      ar = 1 / ar;
+    }
+
+    currentAR += ar;
+    currentRow.push(item);
+  }
+
+  let remainder = [];
+  if (!hasMore) {
+    currentRow.length &&
+      rows.push(
+        lastRow(
+          { items: currentRow, aspectRatio: currentAR },
+          horizontal,
+          rowAspectRatioThreshold
+        )
+      );
+  } else remainder = currentRow;
+
+  return { rows, remainder };
+}

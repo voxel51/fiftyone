@@ -1,306 +1,631 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-
-import { EventCallback, Load, PageChange } from "./events";
-import { Render } from "./row";
-import { Response, Section } from "./section";
-import { spotlight } from "./styles.module.css";
+import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
+import SectionElement from "./section";
+import {
+  Get,
+  ItemData,
+  ItemIndexMap,
+  OnItemClick,
+  OnItemResize,
+  OnResize,
+  Options,
+  Render,
+  RowData,
+  State,
+} from "./state";
 import { createScrollReader } from "./zooming";
+export type { Render, Response } from "./state";
 
-export { Load, PageChange } from "./events";
-export type { Response } from "./section";
-export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
+import {
+  flashlight,
+  flashlightContainer,
+  flashlightPixels,
+} from "./styles.module.css";
+import tile from "./tile";
+import { argMin, getDims } from "./util";
 
-export interface SpotlightConfig<K, V> {
-  get: Get<K, V>;
+export type FlashlightOptions = Partial<Options>;
+
+export interface FlashlightConfig<K> {
+  get: Get<K>;
   render: Render;
-  key: K;
-  rowAspectRatioThreshold: number;
+  showPixels?: boolean;
+  initialRequestKey: K;
+  horizontal: boolean;
+  options: FlashlightOptions;
+  elementId?: string;
+  containerId?: string;
+  enableHorizontalKeyNavigation?: {
+    navigationCallback: (isPrev: boolean) => Promise<void>;
+    previousKey: string;
+    nextKey: string;
+  };
+  onItemClick?: OnItemClick;
+  onResize?: OnResize;
+  onItemResize?: OnItemResize;
 }
 
-export default class Spotlight<K, V> extends EventTarget {
-  readonly #config: SpotlightConfig<K, V>;
-  readonly #element = document.createElement("div");
+export default class Flashlight<K> {
+  public container: HTMLDivElement;
+  public element: HTMLDivElement;
+  public state: State<K>;
 
-  #rect?: DOMRect;
-  #scrollReader?: ReturnType<typeof createScrollReader>;
+  private loading = false;
+  private resizeObserver: ResizeObserver;
+  private readonly config: FlashlightConfig<K>;
+  private ctx = 0;
+  private resizeTimeout: ReturnType<typeof setTimeout>;
 
-  #forward: Section<K, V>;
-  #backward: Section<K, V>;
+  constructor(config: FlashlightConfig<K>) {
+    this.config = config;
+    this.container = this.createContainer();
+    this.showPixels();
+    this.element = document.createElement("div");
+    config.elementId && this.element.setAttribute("id", config.elementId);
+    this.element.classList.add(flashlight);
+    this.element.setAttribute("data-cy", "flashlight");
+    this.state = this.getEmptyState(config);
 
-  readonly #keys = new WeakMap<symbol, K>();
-  #page: K;
+    document.addEventListener("visibilitychange", () => this.render());
 
-  constructor(config: SpotlightConfig<K, V>) {
-    super();
-    this.#config = config;
+    if (config.enableHorizontalKeyNavigation && config.horizontal) {
+      const keyDownEventListener = (e) => {
+        if (!this.isAttached()) {
+          document.removeEventListener("keydown", keyDownEventListener);
+          return;
+        }
 
-    this.#element.classList.add(spotlight);
+        if (e.key === config.enableHorizontalKeyNavigation.previousKey) {
+          e.preventDefault();
+          config.enableHorizontalKeyNavigation.navigationCallback(true);
+        } else if (e.key === config.enableHorizontalKeyNavigation.nextKey) {
+          e.preventDefault();
+          config.enableHorizontalKeyNavigation.navigationCallback(false);
+        }
+      };
 
-    this.#page = config.key;
+      document.addEventListener("keydown", keyDownEventListener);
+    }
+
+    this.resizeObserver = new ResizeObserver(
+      ([
+        {
+          contentRect: { width, height },
+        },
+      ]: ResizeObserverEntry[]) => {
+        if (!this.isAttached()) {
+          return;
+        }
+        if (this.config.horizontal) {
+          const tmp = height;
+          height = width;
+          width = tmp;
+        }
+
+        this.state.containerHeight = height;
+
+        width = width - 16;
+        requestAnimationFrame(() => {
+          const options =
+            this.state.width !== width && this.state.onResize
+              ? this.state.onResize(width)
+              : {};
+
+          const newWidth = this.state.width !== width;
+          this.state.width = width;
+
+          if (newWidth) {
+            this.updateOptions(options, newWidth);
+          } else {
+            this.render(false);
+          }
+        });
+      }
+    );
+
+    createScrollReader(
+      this.element,
+      this.config.horizontal,
+      (zooming) => this.render(zooming),
+      () => {
+        if (this.state.resizing) {
+          return Infinity;
+        }
+
+        return (
+          (this.state.width /
+            (this.state.containerHeight *
+              Math.max(this.state.options.rowAspectRatioThreshold, 1))) *
+          500
+        );
+      }
+    );
+
+    this.element.appendChild(this.container);
   }
 
-  get attached() {
-    return Boolean(this.#element.parentElement);
+  get itemIndexes(): ItemIndexMap {
+    return this.state.itemIndexMap;
   }
 
-  addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
-  addEventListener(
-    type: "pagechange",
-    callback: EventCallback<PageChange<K>>
-  ): void;
-  addEventListener(
-    type: string,
-    callback: EventListenerOrEventListenerObject
-  ): void {
-    super.addEventListener(type, callback);
+  reset() {
+    this.ctx++;
+    this.loading = false;
+    const newContainer = this.createContainer();
+    this.container.replaceWith(newContainer);
+    this.container = newContainer;
+    this.state = this.getEmptyState(this.config);
+
+    this.showPixels();
+    this.element.dispatchEvent(
+      new CustomEvent("flashlight-refreshing", {
+        bubbles: true,
+      })
+    );
+
+    const { width, height } = getDims(
+      this.config.horizontal,
+      this.container.parentElement
+    );
+    this.state.width = width - 16;
+    this.state.containerHeight = height;
+
+    this.get();
   }
 
-  removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
-  removeEventListener(
-    type: "pagechange",
-    callback: EventCallback<PageChange<K>>
-  ): void;
-  removeEventListener(
-    type: string,
-    callback: EventListenerOrEventListenerObject
-  ): void {
-    super.removeEventListener(type, callback);
+  isAttached() {
+    return Boolean(this.element.parentElement);
+  }
+  private showPixels() {
+    this.container.dispatchEvent(
+      new CustomEvent("flashlight-show-loading-pixels", { bubbles: true })
+    );
+    this.config.showPixels && this.container.classList.add(flashlightPixels);
+  }
+
+  private hidePixels() {
+    this.container.dispatchEvent(
+      new CustomEvent("flashlight-hide-loading-pixels", { bubbles: true })
+    );
+    this.container.classList.remove(flashlightPixels);
   }
 
   attach(element: HTMLElement | string): void {
-    if (this.attached) {
-      throw new Error("spotlight is attached");
-    }
-
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
-    element.appendChild(this.#element);
-    this.#rect = this.#element.parentElement.getBoundingClientRect();
-    this.#fill();
+    const { width, height } = getDims(this.config.horizontal, element);
+
+    this.state.width = width - 16;
+    this.state.containerHeight = height;
+
+    const options = this.state.onResize ? this.state.onResize(width) : {};
+
+    element.appendChild(this.element);
+
+    this.resizeObserver.observe(element);
+
+    this.updateOptions(options, false);
+
+    this.get();
   }
 
   detach(): void {
-    if (!this.attached) {
-      throw new Error("spotlight is not attached");
+    if (this.isAttached()) {
+      this.resizeObserver.unobserve(this.element.parentElement);
+      this.element.parentNode.removeChild(this.element);
     }
-
-    this.#element.parentElement.removeChild(this.#element);
   }
 
-  get #containerHeight() {
-    return this.#forward.height + this.#backward.height;
-  }
+  updateOptions(options: Partial<Options>, newWidth?: boolean) {
+    const retile = Object.entries(options).some(
+      ([k, v]) => this.state.options[k] != v
+    );
 
-  get #height() {
-    return this.#rect.height;
-  }
-
-  get #padding() {
-    return this.#height * 1;
-  }
-
-  get #width() {
-    return this.#rect.width - 16;
-  }
-
-  async #next(render = true) {
-    const forward = async (key) => {
-      const { items, next, previous } = await this.#get(key);
-
-      return {
-        items,
-        next,
-        previous,
-      };
+    this.state.options = {
+      ...this.state.options,
+      ...options,
     };
 
-    await this.#forward.next(forward, (runner) => {
-      if (!render) {
-        runner();
-        return;
+    if (retile && this.state.sections.length) {
+      this.resetResize();
+      const newContainer = this.createContainer();
+      this.container.replaceWith(newContainer);
+      this.container = newContainer;
+      const items = [
+        ...this.state.sections.map((section) => section.getItems()).flat(),
+        ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
+      ];
+      const active = this.state.activeSection;
+      const activeItemIndex = this.state.sections[active].itemIndex;
+      let sections = this.tile(items);
+
+      const lastSection = sections[sections.length - 1];
+      if (
+        sections.length &&
+        Boolean(this.state.currentRequestKey) &&
+        lastSection.length !== NUM_ROWS_PER_SECTION
+      ) {
+        this.state.currentRowRemainder = lastSection;
+        sections = sections.slice(0, -1);
+      } else {
+        this.state.currentRowRemainder = [];
       }
 
-      requestAnimationFrame(() => {
-        const { section } = runner();
-        const before = this.#containerHeight;
-        let offset: false | number = false;
-        if (section) {
-          const backward = this.#forward;
-          this.#forward = section;
-          this.#forward.attach(this.#element);
+      this.state.height = this.config.options.offset;
+      this.state.sections = [];
+      this.state.shownSections = new Set();
+      this.state.clean = new Set();
 
-          this.#backward.remove();
-          this.#backward = backward;
-          offset = before - this.#containerHeight - 48;
+      sections.forEach((rows, index) => {
+        const sectionElement = new SectionElement(
+          index,
+          this.state.itemIndexMap[rows[0].items[0].id],
+          rows,
+          this.state.render,
+          this.config.horizontal,
+          this.getOnItemClick()
+        );
+
+        sectionElement.set(this.state.height, this.state.width);
+        this.state.sections.push(sectionElement);
+
+        this.state.height += sectionElement.getHeight();
+      });
+      if (this.config.horizontal) {
+        newContainer.style.minWidth = `${this.state.height}px`;
+      } else {
+        newContainer.style.minHeight = `${this.state.height}px`;
+      }
+
+      for (const section of this.state.sections) {
+        if (section.itemIndex >= activeItemIndex) {
+          const top = section.getTop();
+
+          if (this.config.horizontal) {
+            this.container.parentElement.scrollLeft = top;
+          } else {
+            this.container.parentElement.scrollTop = top;
+          }
+
+          this.render();
+          return;
+        }
+      }
+    } else if (newWidth) {
+      this.resetResize();
+      this.state.sections.forEach((section) => {
+        section.set(this.state.height, this.state.width);
+        this.state.height += section.getHeight();
+      });
+      if (this.config.horizontal) {
+        this.container.style.minWidth = `${this.state.height}px`;
+      } else {
+        this.container.style.minHeight = `${this.state.height}px`;
+      }
+      const activeSection = this.state.sections[this.state.activeSection];
+      if (activeSection) {
+        const top = this.state.activeSection === 0 ? 0 : activeSection.getTop();
+        if (this.config.horizontal) {
+          this.container.parentElement.scrollLeft = top;
+        } else {
+          this.container.parentElement.scrollTop = top;
+        }
+      }
+
+      this.render();
+    }
+  }
+
+  updateItems(updater: (id: string) => void) {
+    this.state.clean = new Set();
+    this.state.shownSections.forEach((index) => {
+      const section = this.state.sections[index];
+      section
+        .getItems()
+        .map(({ id }) => id)
+        .forEach((id) => updater(id));
+    });
+    this.state.updater = updater;
+  }
+
+  get(): Promise<void> | null {
+    if (
+      this.loading ||
+      this.state.currentRequestKey === null ||
+      !this.isAttached()
+    ) {
+      return null;
+    }
+
+    this.loading = true;
+    const ctx = this.ctx;
+    return this.state
+      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
+      .then(({ items, nextRequestKey }) => {
+        if (ctx !== this.ctx) {
+          return;
         }
 
-        console.log(offset);
+        this.state.currentRequestKey = nextRequestKey;
 
-        this.#render(false, offset, false);
+        for (const { id } of items) {
+          this.state.itemIndexMap[id] = this.state.nextItemIndex;
+          this.state.nextItemIndex++;
+        }
+
+        items = [...this.state.currentRemainder, ...items];
+
+        let sections = this.tile(items, true);
+
+        const lastSection = sections[sections.length - 1];
+        if (
+          Boolean(nextRequestKey) &&
+          lastSection &&
+          lastSection.length !== NUM_ROWS_PER_SECTION
+        ) {
+          this.state.currentRowRemainder = lastSection;
+          sections = sections.slice(0, -1);
+        } else {
+          this.state.currentRowRemainder = [];
+        }
+
+        sections.forEach((rows) => {
+          const sectionElement = new SectionElement(
+            this.state.sections.length,
+            this.state.itemIndexMap[rows[0].items[0].id],
+            rows,
+            this.state.render,
+            this.config.horizontal,
+            this.getOnItemClick()
+          );
+          sectionElement.set(this.state.height, this.state.width);
+          this.state.sections.push(sectionElement);
+
+          this.state.height += sectionElement.getHeight();
+          this.state.clean.add(sectionElement.index);
+        });
+
+        if (sections.length) {
+          if (this.config.horizontal) {
+            this.container.style.minWidth = `${this.state.height}px`;
+          } else {
+            this.container.style.minHeight = `${this.state.height}px`;
+          }
+        }
+
+        const headSection = this.state.sections[this.state.sections.length - 1];
+
+        this.state.currentRequestKey = nextRequestKey;
+        this.loading = false;
+
+        if (
+          this.state.height <= this.state.containerHeight ||
+          (!sections.length && nextRequestKey) ||
+          (headSection && this.state.shownSections.has(headSection.index))
+        ) {
+          this.requestMore();
+        }
+
+        if (
+          this.state.height >= this.state.containerHeight ||
+          nextRequestKey === null
+        ) {
+          this.hidePixels();
+          this.render();
+        }
       });
-    });
   }
 
-  async #previous(render = true) {
-    const backward = async (key) => {
-      const { items, next, previous } = await this.#get(key);
+  private requestMore() {
+    if (this.state.currentRequestKey) {
+      this.get();
+    }
+  }
 
-      return {
-        items: [...items].reverse(),
-        next: previous,
-        previous: next,
-      };
-    };
+  private hideSection(index: number) {
+    const section = this.state.sections[index];
+    if (!section || !section.isShown()) {
+      return;
+    }
 
-    await this.#backward.next(backward, (runner) => {
-      if (!render) {
-        runner();
+    section.hide();
+    this.state.shownSections.delete(section.index);
+  }
+
+  private showSections(zooming: boolean) {
+    this.state.shownSections.forEach((index) => {
+      const section = this.state.sections[index];
+      if (!section) {
         return;
       }
 
-      const run = () =>
-        requestAnimationFrame(() => {
-          if (
-            this.#element.scrollTop > this.#containerHeight ||
-            this.#element.scrollTop < 0 ||
-            this.#scrollReader.zooming()
-          ) {
-            requestAnimationFrame(run);
-            return;
-          }
-          const { section, offset } = runner();
-          if (section) {
-            const forward = this.#backward;
-            this.#backward = section;
-            this.#backward.attach(this.#element);
+      if (
+        this.state.resized &&
+        !this.state.resized.has(section.index) &&
+        !zooming &&
+        !this.state.resizing
+      ) {
+        this.state.onItemResize && section.resizeItems(this.state.onItemResize);
+        this.state.resized.add(section.index);
+      }
 
-            this.#forward.remove();
-            this.#forward = forward;
-          }
+      if (!this.state.clean.has(section.index) && !zooming) {
+        this.state.updater &&
+          section
+            .getItems()
+            .map(({ id }) => id)
+            .forEach((id) => this.state.updater(id));
+        this.state.clean.add(section.index);
+      }
 
-          this.#render(false, typeof offset === "number" ? -offset : false);
-        });
-
-      run();
+      const clean = this.state.clean.has(section.index) || !this.state.updater;
+      section.show(
+        this.container,
+        (!clean && zooming) || this.state.resizing,
+        zooming
+      );
+      this.state.shownSections.add(section.index);
     });
   }
 
-  async #fill() {
-    this.#forward = new Section(
-      { key: this.#config.key, remainder: [] },
-      "forward",
-      this.#config.rowAspectRatioThreshold,
-      this.#width
-    );
-    this.#forward.attach(this.#element);
+  private render(zooming = false) {
+    if (
+      this.state.sections.length === 0 &&
+      this.state.currentRequestKey === null
+    ) {
+      this.hidePixels();
+      return;
+    }
 
-    await this.#next(false);
+    const top = this.config.horizontal
+      ? this.element.scrollLeft
+      : this.element.scrollTop;
+
+    const index = argMin(
+      this.state.sections.map((section) => Math.abs(section.getTop() - top))
+    );
+
+    this.state.firstSection = Math.max(index - 2, 0);
+    let revealing = this.state.sections[this.state.firstSection];
+    let revealingIndex = this.state.firstSection;
 
     while (
-      this.#containerHeight < this.#height + this.#padding * 2 &&
-      !this.#forward.finished
+      revealing &&
+      revealing.getTop() <= top + this.state.containerHeight
     ) {
-      await this.#next(false);
+      revealingIndex = revealing.index + 1;
+      revealing = this.state.sections[revealingIndex];
     }
 
-    await this.#previous(false);
+    this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
 
-    requestAnimationFrame(() => {
-      this.#render(false, -this.#backward.height + 48);
+    this.state.activeSection = this.state.firstSection;
+    let activeSection = this.state.sections[this.state.activeSection];
 
-      requestAnimationFrame(() => {
-        this.#scrollReader = createScrollReader(
-          this.#element,
-          (zooming) => {
-            this.#render(zooming);
-          },
-          () => {
-            return (
-              (this.#width /
-                (this.#height *
-                  Math.max(this.#config.rowAspectRatioThreshold, 1))) *
-              200
-            );
-          }
-        );
-      });
-
-      this.dispatchEvent(new Load(this.#config.key));
-    });
-  }
-
-  async #get(key: K) {
-    const result = await this.#config.get(key);
-    if (!this.#backward) {
-      this.#backward = new Section(
-        result.previous !== null
-          ? { key: result.previous, remainder: [] }
-          : undefined,
-        "backward",
-        this.#config.rowAspectRatioThreshold,
-        this.#width
-      );
-      this.#backward.attach(this.#element);
+    if (!activeSection) {
+      return;
     }
 
-    result.items.forEach(({ id }) => this.#keys.set(id, key));
-    return result;
-  }
-
-  #render(zooming: boolean, offset: number | false = false, go = true) {
-    if (go && offset !== false) {
-      this.#forward.top = this.#backward.height;
-      this.#backward.top = 0;
+    while (activeSection.getBottom() - MARGIN <= top) {
+      if (this.state.sections[this.state.activeSection + 1]) {
+        this.state.activeSection += 1;
+        activeSection = this.state.sections[this.state.activeSection];
+      } else break;
     }
 
-    const top = this.#element.scrollTop - (offset === false ? 0 : offset);
-
-    const backward = this.#backward.render(
-      top + this.#height + this.#padding,
-      (n) => n > top - this.#padding,
-      zooming,
-      this.#config.render,
-      top + 48
-    );
-
-    const forward = this.#forward.render(
-      top - this.#padding - this.#backward.height,
-      (n) => {
-        return n < top + this.#height + this.#padding - this.#backward.height;
-      },
-      zooming,
-      this.#config.render,
-      top - this.#backward.height + 48
-    );
-
-    let pageRow = forward.match?.row;
-
-    if (!pageRow || backward.match.delta < forward.match.delta) {
-      pageRow = backward.match.row;
+    let i = this.state.firstSection;
+    while (i <= this.state.lastSection) {
+      this.state.shownSections.add(i);
+      i++;
     }
-
-    if (offset === false && pageRow && !zooming) {
-      const page = this.#keys.get(pageRow.id);
-      if (page !== this.#page) {
-        this.#page = page;
-        this.dispatchEvent(new PageChange(page));
+    [...Array.from(this.state.shownSections)].forEach((index) => {
+      if (index < this.state.firstSection || index > this.state.lastSection) {
+        this.hideSection(index);
       }
+    });
+
+    this.showSections(zooming);
+
+    if (this.state.lastSection === this.state.sections.length - 1) {
+      this.requestMore();
+    }
+  }
+
+  private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
+    let { rows, remainder } = tile(
+      items,
+      this.config.horizontal,
+      this.state.options.rowAspectRatioThreshold,
+      Boolean(this.state.currentRequestKey)
+    );
+
+    this.state.currentRemainder = remainder;
+
+    if (useRowRemainder) {
+      rows = [...this.state.currentRowRemainder, ...rows];
     }
 
-    if (!go && offset !== false) {
-      this.#forward.top = this.#backward.height;
-      this.#backward.top = 0;
+    return new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
+      .fill(0)
+      .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
+  }
+
+  private getEmptyState(config: FlashlightConfig<K>): State<K> {
+    const state = {
+      currentRequestKey: config.initialRequestKey,
+      containerHeight: null,
+      width: null,
+      height: config.options.offset || 0,
+      ...config,
+      currentRemainder: [],
+      currentRowRemainder: [],
+      items: [],
+      sections: [],
+      activeSection: 0,
+      firstSection: 0,
+      lastSection: 0,
+      options: {
+        offset: 0,
+        rowAspectRatioThreshold: 5,
+        ...config.options,
+      },
+      clean: new Set<number>(),
+      shownSections: new Set<number>(),
+      onItemClick: config.onItemClick,
+      onItemResize: config.onItemResize,
+      onResize: config.onResize,
+      itemIndexMap: {},
+      nextItemIndex: 0,
+      resized: null,
+      resizing: false,
+    };
+
+    if (typeof this.state?.options?.rowAspectRatioThreshold === "number") {
+      state.options.rowAspectRatioThreshold =
+        this.state.options.rowAspectRatioThreshold;
     }
 
-    if (offset !== false && top) {
-      this.#element.scrollTo(0, top);
+    return state;
+  }
+
+  private getOnItemClick(): (id: string, event: MouseEvent) => void | null {
+    if (!this.state.onItemClick) {
+      return null;
     }
 
-    if (!zooming && backward.more) this.#previous();
-    if (!zooming && forward.more) this.#next();
+    return (id, event) =>
+      this.state.onItemClick(
+        () => this.get(),
+        id,
+        {
+          ...this.state.itemIndexMap,
+        },
+        event
+      );
+  }
+
+  private createContainer(): HTMLDivElement {
+    const container = document.createElement("div");
+    container.classList.add(flashlightContainer);
+    if (this.config.containerId) {
+      container.setAttribute("id", this.config.containerId);
+    }
+    return container;
+  }
+
+  private resetResize(): void {
+    this.state.resized = new Set();
+    this.state.height = this.config.options.offset || 0;
+    this.state.resizing = true;
+    this.resizeTimeout && clearTimeout(this.resizeTimeout);
+    this.resizeTimeout = setTimeout(() => {
+      this.state.resizing = false;
+      this.resizeTimeout = null;
+      this.render();
+    }, 500);
   }
 }
