@@ -211,6 +211,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class SidebarMode(Enum):
     all = "all"
     best = "best"
+    disabled = "disabled"
     fast = "fast"
 
 

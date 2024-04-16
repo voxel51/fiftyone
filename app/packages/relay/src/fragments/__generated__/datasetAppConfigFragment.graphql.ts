@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0e53882eaec766b9e68a577cda17ae34>>
+ * @generated SignedSource<<4eba2e73d437433d92a16a2cd360ea4e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type SidebarMode = "all" | "best" | "fast" | "%future added value";
+export type SidebarMode = "all" | "best" | "disabled" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {

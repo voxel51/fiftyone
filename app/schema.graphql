@@ -737,6 +737,7 @@ input SidebarGroupInput {
 
 enum SidebarMode {
   all
+  disabled
   best
   fast
 }

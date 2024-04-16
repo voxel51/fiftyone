@@ -55,6 +55,24 @@ describe("Resolves configured sidebar mode priority", () => {
     TestSelectorFamily<typeof options.configuredSidebarModeDefault>
   >(<unknown>options.configuredSidebarModeDefault(false));
 
+  it("resolves to disabled from app config", () => {
+    setMockAtoms({
+      configData: { config: { sidebarMode: "disabled" } },
+      datasetAppConfig: { sidebarMode: "best" },
+      sidebarMode: (modal) => "all",
+    });
+    expect(test()).toBe("disabled");
+  });
+
+  it("resolves to disabled from dataset config", () => {
+    setMockAtoms({
+      configData: { config: { sidebarMode: "all" } },
+      datasetAppConfig: { sidebarMode: "disabled" },
+      sidebarMode: (modal) => "all",
+    });
+    expect(test()).toBe("disabled");
+  });
+
   it("resolves to all", () => {
     setMockAtoms({
       configData: { config: { sidebarMode: null } },

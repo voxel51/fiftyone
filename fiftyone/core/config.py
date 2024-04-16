@@ -5,6 +5,7 @@ FiftyOne config.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -495,7 +496,7 @@ class AppConfig(EnvConfig):
             )
             self.color_by = default_color_by
 
-        supported_sidebar_modes = {"all", "best", "fast"}
+        supported_sidebar_modes = {"all", "best", "fast", "disabled"}
         default_sidebar_mode = "best"
         if self.sidebar_mode not in supported_sidebar_modes:
             logger.warning(
