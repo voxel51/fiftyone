@@ -46,7 +46,7 @@ export const load3dOverlayForSample = (
         sampleId,
         path,
         selected: label._id in selectedLabels,
-        _cls: cls,
+        type: cls,
       });
     } else if (RENDERABLE_LIST.includes(cls) && label[LABEL_LIST[cls]]) {
       overlays = [

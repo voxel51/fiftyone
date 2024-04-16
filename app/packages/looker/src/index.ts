@@ -5,7 +5,9 @@
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
 export * from "./lookers";
+export type { PointInfo } from "./overlays";
 export type {
+  BaseState,
   Coloring,
   CustomizeColor,
   FrameConfig,
