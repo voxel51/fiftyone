@@ -122,7 +122,6 @@ const CtrlToLockContainer = styled.div`
 `;
 
 const getHiddenLabelsKey = (datasetName: string, labelName: string) => {
-  console.log("getting key for dataset", datasetName, "label", labelName);
   return `fo-hiddenLabels-${datasetName}-${labelName}`;
 };
 
