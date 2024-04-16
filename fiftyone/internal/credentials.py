@@ -213,9 +213,16 @@ class CloudCredentialsManager(object):
             if credentials.get("prefixes"):
                 for bucket in credentials["prefixes"]:
                     if bucket.startswith("r'"):
-                        self._bucket_creds_regex[fs].append(
-                            (re.compile(bucket[2:]), creds_path)
-                        )
+                        try:
+                            self._bucket_creds_regex[fs].append(
+                                (re.compile(bucket[2:]), creds_path)
+                            )
+                        except re.error:
+                            logger.warning(
+                                "Bad regex provided for provider '%s': '%s'",
+                                provider,
+                                bucket,
+                            )
                     else:
                         self._bucket_creds_exact[fs][bucket] = creds_path
             else:

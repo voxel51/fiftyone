@@ -17,7 +17,7 @@ from fiftyone.internal import credentials
 CREDENTIAL_DATA = [
     {
         "creds": {"access-key-id": "blah", "secret-access-key": "bloh"},
-        "prefixes": ["hello"],
+        "prefixes": ["hello", "hallo"],
         "provider": "AWS",
     },
     {
@@ -33,6 +33,12 @@ CREDENTIAL_DATA = [
     {
         "creds": {"account-name": "azure-me", "aliases": ["az"]},
         "prefixes": ["r'az://\\w+"],
+        "provider": "AZURE",
+    },
+    # Invalid regex, should just be ignored
+    {
+        "creds": {"account-name": "azure-me", "aliases": ["az"]},
+        "prefixes": ["r'["],
         "provider": "AZURE",
     },
 ]
@@ -85,6 +91,7 @@ class TestCredentialsManager:
 
     def test_has_bucket_credentials(self, manager):
         assert manager.has_bucket_credentials(FileSystem.S3, "hello")
+        assert manager.has_bucket_credentials(FileSystem.S3, "hallo")
         assert manager.has_bucket_credentials(FileSystem.S3, "hello-world")
         assert manager.has_bucket_credentials(FileSystem.S3, "hello--")
         assert manager.has_bucket_credentials(
@@ -107,6 +114,7 @@ class TestCredentialsManager:
     def test_get_buckets_with_credentials(self, manager):
         assert set(manager.get_buckets_with_credentials(FileSystem.S3)) == {
             "hello",
+            "hallo",
             "s3://hello-there",
         }
         assert manager.get_buckets_with_credentials(FileSystem.AZURE) == []
@@ -114,6 +122,8 @@ class TestCredentialsManager:
     def test_get_credentials(self, manager):
         # Exact match
         creds_path = manager.get_credentials(FileSystem.S3, "hello")
+        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[0])
+        creds_path = manager.get_credentials(FileSystem.S3, "hallo")
         assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[0])
 
         creds_path = manager.get_credentials(FileSystem.S3, "s3://hello-there")
