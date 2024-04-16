@@ -245,6 +245,7 @@ const TagInfo = ({ tags }: { tags: string[] }) => {
   return (
     <TagBlock>
       <ContentItem
+        field={"tags"}
         key={"tags"}
         name={"tags"}
         value={tags.length ? tags.join(", ") : "No tags"}
@@ -315,7 +316,7 @@ export const TooltipInfo = React.memo(() => {
   }, []);
 
   const tooltipDiv = useMemo(() => {
-    if (!Component) {
+    if (!detail) {
       return null;
     }
 
@@ -711,7 +712,7 @@ const OVERLAY_INFO = {
 };
 
 const HIDDEN_LABELS = {
-  Classification: ["logtis"],
+  Classification: ["logits"],
   Detection: ["bounding_box", "mask"],
   Heatmap: ["map"],
   Keypoint: ["points", "occluded", "confidence"],

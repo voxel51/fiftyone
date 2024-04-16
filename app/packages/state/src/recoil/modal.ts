@@ -1,5 +1,9 @@
-import { AbstractLooker, type Sample } from "@fiftyone/looker";
-import { BaseState } from "@fiftyone/looker/src/state";
+import {
+  AbstractLooker,
+  BaseState,
+  PointInfo,
+  type Sample,
+} from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
@@ -209,7 +213,7 @@ export const tooltipCoordinates = atom<ComputeCoordinatesReturnType | null>({
   default: null,
 });
 
-export const tooltipDetail = atom<Record<string, string> | null>({
+export const tooltipDetail = atom<PointInfo | null>({
   key: "tooltipDetail",
   default: null,
 });
