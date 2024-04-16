@@ -78,12 +78,13 @@ function computeCoordinates([x, y]: [number, number]): {
 }
 
 const getDetailsFromLabel = (label) => {
-  const field = label.path[label.path.length - 1];
-  const { ...labelToView } = label;
+  const field = Array.isArray(label.path)
+    ? [label.path.length - 1]
+    : label.path;
   return {
     field,
-    label: labelToView,
-    type: label._cls,
+    label,
+    type: label.type,
     color: label.color,
   };
 };
