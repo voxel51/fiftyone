@@ -1250,3 +1250,7 @@ type PropertyOptions = {
 type ObjectProperties = Map<string, Property>;
 
 export type OperatorPromptType = ReturnType<typeof useOperatorPrompt>;
+
+export type OperatorPromptPropsType = {
+  prompt: OperatorPromptType;
+};
