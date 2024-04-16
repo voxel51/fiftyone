@@ -35,6 +35,7 @@ import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.internal as fi
+import fiftyone.internal.constants as fic
 
 foc = fou.lazy_import("fiftyone.core.cache")
 
@@ -66,7 +67,8 @@ def init_storage():
     if fi.has_encryption_key():
         from fiftyone.internal.credentials import CloudCredentialsManager
 
-        creds_manager = CloudCredentialsManager()
+        encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
+        creds_manager = CloudCredentialsManager(encryption_key)
     else:
         creds_manager = None
 
