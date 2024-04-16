@@ -513,6 +513,7 @@ export const useOperatorPrompt = () => {
     execDetails,
     submitOptions,
     promptView,
+    resolvedIO,
   };
 };
 

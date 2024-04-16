@@ -1,6 +1,8 @@
 import { getFetchParameters } from "@fiftyone/utilities";
-import { KeyboardEventHandler, ReactElement } from "react";
-import { types } from ".";
+import { KeyboardEventHandler } from "react";
+import { OPERATOR_PROMPT_AREAS, types } from ".";
+import OperatorDrawerPrompt from "./OperatorPrompt/OperatorDrawerPrompt";
+import OperatorModalPrompt from "./OperatorPrompt/OperatorModalPrompt";
 import { OperatorPromptType } from "./types";
 
 export function stringifyError(error, fallback?) {
@@ -108,4 +110,32 @@ function getPromptTitle(operatorPrompt) {
     ? operatorPrompt?.inputFields
     : operatorPrompt?.outputFields;
   return definition?.view?.label;
+}
+
+const defaultTargetResolver = () => document.body;
+const targetResolverByName = {
+  DrawerView: (promptView: OperatorPromptType["promptView"]) => {
+    const promptArea =
+      promptView.placement === "left"
+        ? OPERATOR_PROMPT_AREAS.DRAWER_LEFT
+        : OPERATOR_PROMPT_AREAS.DRAWER_RIGHT;
+    return document.getElementById(promptArea);
+  },
+};
+export function getPromptTarget(operatorPrompt: OperatorPromptType) {
+  const { promptView } = operatorPrompt;
+  const targetResolver =
+    targetResolverByName[promptView?.name] || defaultTargetResolver;
+  return targetResolver(promptView);
+}
+
+const defaultPromptComponentResolver = () => OperatorModalPrompt;
+const promptComponentByName = {
+  DrawerView: () => OperatorDrawerPrompt,
+};
+export function getPromptComponent(operatorPrompt: OperatorPromptType) {
+  const { promptView } = operatorPrompt;
+  const targetResolver =
+    promptComponentByName[promptView?.name] || defaultPromptComponentResolver;
+  return targetResolver(promptView);
 }

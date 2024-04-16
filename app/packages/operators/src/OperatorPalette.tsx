@@ -128,11 +128,11 @@ export type OperatorPaletteProps = PropsWithChildren & {
   disableSubmit?: boolean;
   disabledReason?: string;
   loading?: boolean;
-  submitButtonOptions: SubmitButtonOption[];
-  hasSubmitButtonOptions: boolean;
-  submitOptionsLoading: boolean;
+  submitButtonOptions?: SubmitButtonOption[];
+  hasSubmitButtonOptions?: boolean;
+  submitOptionsLoading?: boolean;
   showWarning?: boolean;
-  warningTitle: string;
+  warningTitle?: string;
   warningMessage?: string;
   dialogProps?: Omit<DialogProps, "open">;
 };
