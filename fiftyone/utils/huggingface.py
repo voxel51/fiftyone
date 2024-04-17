@@ -1056,9 +1056,10 @@ def _configure_dataset_media_fields(dataset, config):
     media_fields = config.media_fields
     media_field_keys = list(media_fields.keys())
     if len(media_field_keys) > 1:
-        dataset.app_config_media_fields = media_field_keys
+        dataset.app_config.media_fields = media_field_keys
     if "thumbnail_path" in media_field_keys:
         dataset.app_config.grid_media_field = "thumbnail_path"
+
     dataset.save()
 
 
