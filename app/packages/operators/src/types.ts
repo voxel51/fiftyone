@@ -1254,3 +1254,5 @@ export type OperatorPromptType = ReturnType<typeof useOperatorPrompt>;
 export type OperatorPromptPropsType = {
   prompt: OperatorPromptType;
 };
+
+export type ValidationErrorsType = Array<{ path: string; reason: string }>;

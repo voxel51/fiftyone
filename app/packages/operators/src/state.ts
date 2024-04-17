@@ -342,7 +342,7 @@ export const useOperatorPrompt = () => {
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
       { leading: true }
     ),
-    [cachedResolvedInput, setResolvedCtx]
+    [cachedResolvedInput, setResolvedCtx, operator.uri]
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;

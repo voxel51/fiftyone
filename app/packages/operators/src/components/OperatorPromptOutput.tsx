@@ -17,7 +17,6 @@ export default function OperatorPromptOutput({ operatorPrompt, outputFields }) {
           type="output"
           data={result}
           schema={operatorPrompt.outputFields}
-          onChange={() => {}}
         />
       )}
       {error && (
