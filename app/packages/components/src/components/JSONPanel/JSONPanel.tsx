@@ -27,6 +27,24 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
   const isDarkMode = mode === "dark";
   const [searchTerm, setSearchTerm] = useState<string>("");
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (searchTerm) {
+          setSearchTerm("");
+          return;
+        }
+
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, [searchTerm, onClose]);
+
   const keyRenderer = useMemo(
     () => KeyRendererWrapper(searchTerm),
     [searchTerm]
