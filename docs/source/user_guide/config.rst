@@ -711,6 +711,9 @@ The FiftyOne App can be configured in the ways described below:
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -765,7 +768,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True
@@ -814,7 +818,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True

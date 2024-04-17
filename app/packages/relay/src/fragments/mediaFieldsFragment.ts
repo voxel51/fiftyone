@@ -7,6 +7,7 @@ export default graphql`
       gridMediaField
       mediaFields
       modalMediaField
+      mediaFallback
     }
     sampleFields {
       path

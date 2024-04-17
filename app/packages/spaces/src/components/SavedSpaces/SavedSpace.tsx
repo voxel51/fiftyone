@@ -1,3 +1,4 @@
+import { ColoredDot } from "@fiftyone/components";
 import { Edit } from "@mui/icons-material";
 import {
   IconButton,
@@ -10,11 +11,12 @@ import {
 import "allotment/dist/style.css";
 import { useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import { ColoredDot } from "@fiftyone/components";
+import { useWorkspacePermission } from "./hooks";
 
 export default function SavedSpace(props: SavedSpacePropsType) {
   const { name, description, color, onClick, onEdit } = props;
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
+  const { canEdit, disabledInfo } = useWorkspacePermission();
 
   return (
     <ListItem
@@ -37,10 +39,19 @@ export default function SavedSpace(props: SavedSpacePropsType) {
           <ColoredDot color={color} />
         </ListItemIcon>
         <ListItemText primary={name} />
-        <Stack direction="row" spacing={0} sx={{ visibility: "hidden" }}>
+        <Stack
+          direction="row"
+          spacing={0}
+          sx={{
+            visibility: "hidden",
+            cursor: !canEdit ? "not-allowed" : undefined,
+          }}
+          title={disabledInfo}
+        >
           <IconButton
             size="small"
             onClick={(e) => {
+              if (!canEdit) return;
               e.preventDefault();
               e.stopPropagation();
               setWorkspaceEditorState((state) => ({
@@ -54,8 +65,12 @@ export default function SavedSpace(props: SavedSpacePropsType) {
               }));
               onEdit();
             }}
+            disabled={!canEdit}
           >
-            <Edit color="secondary" sx={{ fontSize: 18 }} />
+            <Edit
+              color={canEdit ? "secondary" : "disabled"}
+              sx={{ fontSize: 18 }}
+            />
           </IconButton>
         </Stack>
       </ListItemButton>

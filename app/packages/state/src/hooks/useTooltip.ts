@@ -1,69 +1,55 @@
-import { useEffect } from "react";
-import { atom, useRecoilState } from "recoil";
-
-const tooltipState = atom({
-  key: "tooltipState",
-  default: { hovering: false },
-});
+import * as fos from "@fiftyone/state";
+import { useCallback } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 export default function useTooltip() {
-  const [{ hovering, coords, detail }, setState] = useRecoilState(tooltipState);
-  function handleMouseMove(e) {
-    setCoords([e.pageX, e.pageY]);
-  }
-  function removeListener() {
-    window.removeEventListener("mousemove", handleMouseMove);
-  }
-  function getMeshProps(label) {
-    return {
-      onPointerOver: () => {
-        setState((s) => ({
-          ...s,
-          hovering: true,
-          detail: getDetailsFromLabel(label),
-        }));
-      },
-      onPointerOut: () => {
-        removeListener();
-        setState((s) => ({ ...s, hovering: false, detail: null }));
-      },
-    };
-  }
-  function getDetailsFromLabel(label) {
-    const field = label.path[label.path.length - 1];
-    const { color, selected, ...labelToView } = label;
-    return {
-      field,
-      label: labelToView,
-      type: label._cls,
-      color: label.color,
-    };
-  }
+  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+    fos.isTooltipLocked
+  );
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const setTooltipCoordinates = useSetRecoilState(fos.tooltipCoordinates);
 
-  function setDetail(detail) {
-    setState((s) => ({ ...s, detail }));
-  }
-  function setCoords(coordinates) {
+  const setCoords = useCallback((coordinates: [number, number]) => {
     const coords = computeCoordinates(coordinates);
-    setState((s) => ({ ...s, coords }));
-  }
+    setTooltipCoordinates(coords);
+  }, []);
 
-  useEffect(() => {
-    if (hovering) {
-      window.addEventListener("mousemove", handleMouseMove);
-    } else {
-      removeListener();
-    }
+  // only relevant for looker-3d
+  const getMeshProps = useCallback(
+    (label) => {
+      return {
+        onPointerOver: () => {
+          setTooltipDetail(getDetailsFromLabel(label));
+        },
+        onPointerOut: () => {
+          if (!isTooltipLocked) {
+            setTooltipDetail(null);
+          }
+        },
+        onPointerMissed: () => {
+          if (!isTooltipLocked) {
+            setTooltipDetail(null);
+            setIsTooltipLocked(false);
+          }
+        },
+        onPointerMove: (e: MouseEvent) => {
+          if (isTooltipLocked) {
+            return;
+          }
 
-    return removeListener;
-  }, [hovering]);
+          if (e.ctrlKey) {
+            setIsTooltipLocked(true);
+          } else {
+            setCoords([e.clientX, e.clientY]);
+          }
+        },
+      };
+    },
+    [setCoords, isTooltipLocked]
+  );
 
   return {
-    showTooltip: hovering,
-    coords,
-    detail,
     getMeshProps,
-    setDetail,
     setCoords,
   };
 }
@@ -90,3 +76,19 @@ function computeCoordinates([x, y]: [number, number]): {
     right: x > window.innerWidth / 2 ? window.innerWidth - x + 24 : "unset",
   };
 }
+
+const getDetailsFromLabel = (label) => {
+  const field = Array.isArray(label.path)
+    ? [label.path.length - 1]
+    : label.path;
+  return {
+    field,
+    label,
+    type: label.type,
+    color: label.color,
+  };
+};
+
+export type ComputeCoordinatesReturnType = ReturnType<
+  typeof computeCoordinates
+>;

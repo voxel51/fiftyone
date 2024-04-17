@@ -5,6 +5,7 @@ FiftyOne config.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -368,6 +369,12 @@ class AppConfig(EnvConfig):
             d,
             "loop_videos",
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
+        self.media_fallback = self.parse_bool(
+            d,
+            "media_fallback",
+            env_var="FIFTYONE_APP_MEDIA_FALLBACK",
             default=False,
         )
         self.multicolor_keypoints = self.parse_bool(
