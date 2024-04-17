@@ -1,4 +1,4 @@
-import Flashlight, { PageChange } from "@fiftyone/flashlight";
+import Flashlight, { PageChange } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { Lookers } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
@@ -13,8 +13,8 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
-import useFlashlightPager from "../../useFlashlightPager";
-import { pixels, spotlightLooker } from "./Grid.module.css";
+import useSpotlightPager from "../../useSpotlightPager";
+import { pixels, spotlightLooker } from "./SpotlightGrid.module.css";
 import { pageParameters, rowAspectRatioThreshold } from "./recoil";
 
 const Contain = styled.div`
@@ -58,7 +58,7 @@ const showGridPixels = atom({ key: "showGridPixels", default: true });
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
-  const { page, store } = useFlashlightPager(pageParameters);
+  const { page, store } = useSpotlightPager(pageParameters);
   const lookerOptions = fos.useLookerOptions(false);
   const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
 
@@ -78,14 +78,14 @@ function Grid() {
       return;
     }
 
-    const flashlight = new Flashlight<number, object>({
+    const spotlight = new Flashlight<number, object>({
       key: getPage(),
       rowAspectRatioThreshold: threshold,
       get: (next) => page.current(next),
       render: (id, element, dimensions, soft, hide) => {
         if (lookerStore.has(id)) {
           const looker = lookerStore.get(id);
-          hide ? looker?.disable() : looker.attach(element, dimensions);
+          hide ? looker?.disable() : looker?.attach(element, dimensions);
 
           return;
         }
@@ -108,16 +108,16 @@ function Grid() {
     });
     const pagechange = (e: PageChange<number>) => setPage(e.page);
 
-    flashlight.addEventListener("pagechange", pagechange);
-    flashlight.addEventListener("load", () => {
+    spotlight.addEventListener("pagechange", pagechange);
+    spotlight.addEventListener("load", () => {
       document.getElementById(id)?.classList.remove(pixels);
     });
-    flashlight.attach(id);
+    spotlight.attach(id);
 
     return () => {
       document.getElementById(id)?.classList.add(pixels);
-      flashlight.removeEventListener("pagechange", pagechange);
-      flashlight.detach();
+      spotlight.removeEventListener("pagechange", pagechange);
+      spotlight.detach();
     };
   }, [
     showPixels,

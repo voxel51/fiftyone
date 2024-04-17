@@ -2892,14 +2892,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
-    "@eslint/js": ^9.0.0
-    eslint: ^9.0.0
     prettier: ^2.7.1
-    ts-node: ^10.9.2
-    typescript: ^5.4.5
-    typescript-eslint: ^7.7.0
+    typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.0.2
-    vite: ^5.2.8
+    vite: ^3.2.10
   languageName: unknown
   linkType: soft
 
@@ -3038,6 +3034,21 @@ __metadata:
     react-sortablejs: ^6.1.4
     sortablejs: ^1.15.0
     vite: ^3.2.7
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/spotlight@workspace:packages/spotlight":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/spotlight@workspace:packages/spotlight"
+  dependencies:
+    "@eslint/js": ^9.0.0
+    eslint: ^9.0.0
+    prettier: ^2.7.1
+    ts-node: ^10.9.2
+    typescript: ^5.4.5
+    typescript-eslint: ^7.7.0
+    typescript-plugin-css-modules: ^5.0.2
+    vite: ^5.2.8
   languageName: unknown
   linkType: soft
 
@@ -22436,6 +22447,44 @@ __metadata:
   bin:
     vite: bin/vite.js
   checksum: 615b50ae89b54e2d6716e71f0bbc8a1bd0046e2db46eb0441138064791cc063315824e7f1beac5ce0c2ab6cb72637891fb8a671bf36e4aa845abbf8bf9c4dbf4
+  languageName: node
+  linkType: hard
+
+"vite@npm:^3.2.10":
+  version: 3.2.10
+  resolution: "vite@npm:3.2.10"
+  dependencies:
+    esbuild: ^0.15.9
+    fsevents: ~2.3.2
+    postcss: ^8.4.18
+    resolve: ^1.22.1
+    rollup: ^2.79.1
+  peerDependencies:
+    "@types/node": ">= 14"
+    less: "*"
+    sass: "*"
+    stylus: "*"
+    sugarss: "*"
+    terser: ^5.4.0
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  peerDependenciesMeta:
+    "@types/node":
+      optional: true
+    less:
+      optional: true
+    sass:
+      optional: true
+    stylus:
+      optional: true
+    sugarss:
+      optional: true
+    terser:
+      optional: true
+  bin:
+    vite: bin/vite.js
+  checksum: 6772a0fce62d56d2d4480439a63a43a33ccb111aba981633947c7991bbba5414ad54711d835af464f851a176c3b0a93d8b07952d52fa52bcd5507220f83df443
   languageName: node
   linkType: hard
 

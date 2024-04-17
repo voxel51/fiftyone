@@ -2,15 +2,13 @@
     "name": "@fiftyone/spotlight",
     "version": "0.1.0",
     "author": "Voxel51, Inc.",
-    "description": "Cursor based flex-layout virtualized grid",
+    "description": "An infinite scrolling flex-layout virtualized grid",
     "homepage": "https://github.com/voxel51/fiftyone/app/packages/spotlight",
     "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/voxel51/fiftyone"
     },
-    "main": "./src/index.ts",
     "scripts": {
-        "dev": "vite",
         "lint": "eslint ."
     },
     "private": true,
