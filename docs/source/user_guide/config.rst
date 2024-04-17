@@ -711,8 +711,8 @@ The FiftyOne App can be configured in the ways described below:
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
-| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fallback to the default media field ("filepath") when the alternate media      |
-|                           |                                        |                             | field value for a sample is None.                                                         |
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
