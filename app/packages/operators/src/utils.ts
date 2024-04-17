@@ -3,7 +3,7 @@ import { KeyboardEventHandler } from "react";
 import { OPERATOR_PROMPT_AREAS, types } from ".";
 import OperatorDrawerPrompt from "./OperatorPrompt/OperatorDrawerPrompt";
 import OperatorModalPrompt from "./OperatorPrompt/OperatorModalPrompt";
-import { OperatorPromptType } from "./types";
+import { ValidationErrorsType, OperatorPromptType } from "./types";
 
 export function stringifyError(error, fallback?) {
   if (typeof error === "string") return error;
@@ -32,7 +32,7 @@ export function resolveServerPath(plugin) {
   return pathPrefix + plugin.serverPath;
 }
 
-export function formatValidationErrors(errors: any[]) {
+function formatValidationErrors(errors: ValidationErrorsType) {
   if (!Array.isArray(errors) || errors.length === 0) return "";
   return errors
     .map(({ path, reason }) => `params.${path}: ${reason}`)

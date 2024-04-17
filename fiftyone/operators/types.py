@@ -1758,7 +1758,7 @@ class ViewTargetProperty(Property):
 
 
 class DrawerView(View):
-    """Renders operator prompt as a left/right drawer.
+    """Renders operator prompt as a left or right side drawer.
 
     Examples::
 
@@ -1773,22 +1773,12 @@ class DrawerView(View):
     Args:
         placement (None): the placement of the drawer. Can be one of the following:
 
-            -   ``'left'``: display to the left of sidebar on samples grid view
-            -   ``'right'``: display to the right of spaces on samples grid view
-            -   ``'sample-view-left'``: display to the left of media on samples view
-            -   ``'sample-view-right'``: display to the right of sidebar on samples view
+            -   ``'left'``: display to the left of sidebar on samples grid or sample viewer
+            -   ``'right'``: display to the right of spaces on samples grid or sample viewer
     """
 
     def __init__(self, **kwargs):
         placement = kwargs.get("placement", None)
-        if placement not in [
-            "left",
-            "right",
-            "sample-view-left",
-            "sample-view-right",
-        ]:
-            raise ValueError(
-                'position must be either "left", "right", "sample-view-left",'
-                ' or "sample-view-right"'
-            )
+        if placement not in ["left", "right"]:
+            raise ValueError('placement must be either "left" or "right".')
         super().__init__(**kwargs)
