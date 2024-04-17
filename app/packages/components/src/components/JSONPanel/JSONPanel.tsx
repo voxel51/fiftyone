@@ -1,31 +1,41 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import { useState } from "react";
-import { Copy as CopyIcon, Close as CloseIcon } from "@fiftyone/components";
+import { Close as CloseIcon, Copy as CopyIcon } from "@fiftyone/components";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { useColorScheme } from "@mui/material";
+import { JsonViewer } from "@textea/json-viewer";
+import React, { useEffect, useMemo, useState } from "react";
+import { KeyRendererWrapper, getValueRenderersForSearch } from "./highlight";
+import {
+  lookerCloseJSON,
+  lookerCopyJSON,
+  lookerJSONPanel,
+} from "./json.module.css";
 import {
   lookerPanel,
   lookerPanelContainer,
   lookerPanelVerticalContainer,
+  searchCloseIcon,
   searchContainer,
   searchInput,
-  copyBtnClass,
-  searchCloseIcon,
 } from "./panel.module.css";
-import {
-  lookerCopyJSON,
-  lookerCloseJSON,
-  lookerJSONPanel,
-} from "./json.module.css";
-import ReactJson from "searchable-react-json-view";
-import { useColorScheme } from "@mui/material";
 
 export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
   const parsed = JSON.parse(json);
   const { mode } = useColorScheme();
   const isDarkMode = mode === "dark";
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const keyRenderer = useMemo(
+    () => KeyRendererWrapper(searchTerm),
+    [searchTerm]
+  );
+
+  const valuesRenderer = useMemo(
+    () => getValueRenderersForSearch(searchTerm),
+    [searchTerm]
+  );
 
   return (
     <div
@@ -51,7 +61,25 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
                   />
                 )}
               </div>
-              <ReactJson
+              <JsonViewer
+                value={parsed}
+                rootName={false}
+                objectSortKeys={true}
+                indentWidth={2}
+                keyRenderer={keyRenderer}
+                valueTypes={valuesRenderer}
+                quotesOnKeys={false}
+                theme={isDarkMode ? "dark" : "light"}
+                style={{
+                  padding: "1rem 1rem 2rem 1rem",
+                  overflowX: "scroll",
+                  maxWidth: "60vw",
+                  minWidth: "60vw",
+                  minHeight: "70vh",
+                }}
+              />
+
+              {/* <ReactJson
                 highlightSearch={searchTerm}
                 src={parsed}
                 theme={`ashes${!isDarkMode ? ":inverted" : ""}`}
@@ -71,7 +99,7 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
                     style={{ fontSize: "11px" }}
                   />
                 }
-              />
+              /> */}
             </div>
           )}
         </div>
