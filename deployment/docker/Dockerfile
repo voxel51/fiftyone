@@ -46,7 +46,7 @@ COPY ./*.whl .
 COPY ./yarnrc.yml ~/.yarnrc.yml
 
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip wheel --wheel-dir=/tmp/wheels ./*.whl ffmpeg
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
 FROM python:${PYTHON_VERSION}-slim as release
@@ -63,6 +63,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Update the base image, install ffmpeg, create the voxel51 user
 RUN apt-get -qq -y update && apt-get -qq -y upgrade \
+    && apt-get -qq install -y --no-install-recommends ffmpeg \
     && apt clean && rm -rf /var/lib/apt/lists/* \
     # addresses CVE-2022-40897
     && /usr/local/bin/pip install -U pip setuptools \
@@ -74,7 +75,7 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
     pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip --no-cache-dir install -q --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app ffmpeg \
+    && pip --no-cache-dir install -q --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
     && mkdir -p /opt/plugins \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /opt
 
