@@ -5,6 +5,7 @@ Session events.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import base64
 from dataclasses import asdict, dataclass
 import re
@@ -321,6 +322,7 @@ class StateUpdate(Event):
 class AppInitializer:
     dataset: t.Optional[str] = None
     view: t.Optional[str] = None
+    workspace: t.Optional[str] = None
 
 
 @dataclass

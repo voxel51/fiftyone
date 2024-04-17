@@ -10,10 +10,8 @@ from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import logging
-import os
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util

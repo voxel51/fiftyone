@@ -76,11 +76,8 @@ export default function Space({ node, id }: SpaceProps) {
     );
   } else if (node.isPanelContainer() && node.hasChildren()) {
     const canSpaceSplit = spaces.canSplitLayout(node);
-    let activeChild = node.getActiveChild();
-    if (!activeChild && node.hasChildren()) {
-      activeChild = node.firstChild();
-      spaces.setNodeActive(activeChild);
-    }
+    const activeChild = node.getActiveChild();
+
     return (
       <PanelContainer>
         {node.isRoot() && <SavedSpaces />}
