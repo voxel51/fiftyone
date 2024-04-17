@@ -40,7 +40,7 @@ export function CustomPanel({
         setPanelState((s) => ({ ...s, loaded: true }));
       }
     }
-    console.log("panelState", panelState);
+
     return () => {
       if (onUnLoad) executeOperator(onUnLoad, { panel_id: panelId });
     };
@@ -93,7 +93,6 @@ export function CustomPanel({
         onChange={handlePanelStateChange}
         data={data}
       />
-      <pre>{JSON.stringify(panelState, null, 2)}</pre>
     </div>
   );
 }
