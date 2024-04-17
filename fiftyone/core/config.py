@@ -5,6 +5,7 @@ FiftyOne config.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -437,6 +438,12 @@ class AppConfig(EnvConfig):
             default=False,
         )
         self.plugins = d.get("plugins", {})
+        self.media_fallback = self.parse_bool(
+            d,
+            "media_fallback",
+            env_var="FIFTYONE_APP_MEDIA_FALLBACK",
+            default=False,
+        )
 
         self._init()
 
