@@ -17,7 +17,13 @@ from fiftyone.internal import credentials
 CREDENTIAL_DATA = [
     {
         "creds": {"access-key-id": "blah", "secret-access-key": "bloh"},
-        "prefixes": ["hello", "hallo"],
+        "prefixes": [
+            "hello",
+            "hallo",
+            "weird[bucket*",
+            "he?llo",
+            "*secretphrase*",
+        ],
         "provider": "AWS",
     },
     {
@@ -27,18 +33,12 @@ CREDENTIAL_DATA = [
     },
     {
         "creds": {"access-key-id": "bloop", "secret-access-key": "blip"},
-        "prefixes": ["r'hello-.*"],
+        "prefixes": ["hello-*"],
         "provider": "AWS",
     },
     {
         "creds": {"account-name": "azure-me", "aliases": ["az"]},
-        "prefixes": ["r'az://\\w+"],
-        "provider": "AZURE",
-    },
-    # Invalid regex, should just be ignored
-    {
-        "creds": {"account-name": "azure-me", "aliases": ["az"]},
-        "prefixes": ["r'["],
+        "prefixes": ["http://blah.azure.com/container*"],
         "provider": "AZURE",
     },
 ]
@@ -84,6 +84,18 @@ def _make_default_creds_path(manager, provider):
     )
 
 
+def _test_creds_path(manager, fs, bucket, expected_cred_idx):
+    creds_path = manager.get_credentials(fs, bucket)
+    assert creds_path == manager._make_creds_path(
+        CREDENTIAL_DATA[expected_cred_idx]
+    )
+
+
+def _test_default_creds(manager, fs, provider, bucket):
+    creds_path = manager.get_credentials(fs, bucket)
+    assert creds_path == _make_default_creds_path(manager, provider)
+
+
 class TestCredentialsManager:
     def test_has_default(self, manager):
         assert manager.has_default_credentials(FileSystem.S3)
@@ -92,6 +104,11 @@ class TestCredentialsManager:
     def test_has_bucket_credentials(self, manager):
         assert manager.has_bucket_credentials(FileSystem.S3, "hello")
         assert manager.has_bucket_credentials(FileSystem.S3, "hallo")
+        assert manager.has_bucket_credentials(FileSystem.S3, "heyllo")
+        assert manager.has_bucket_credentials(FileSystem.S3, "weird[bucket")
+        assert manager.has_bucket_credentials(
+            FileSystem.S3, "innocuous-secretphrase-bucket"
+        )
         assert manager.has_bucket_credentials(FileSystem.S3, "hello-world")
         assert manager.has_bucket_credentials(FileSystem.S3, "hello--")
         assert manager.has_bucket_credentials(
@@ -99,10 +116,10 @@ class TestCredentialsManager:
         )
         assert not manager.has_bucket_credentials(FileSystem.S3, "s3://hello")
         assert manager.has_bucket_credentials(
-            FileSystem.AZURE, "az://container1"
+            FileSystem.AZURE, "http://blah.azure.com/container"
         )
-        assert not manager.has_bucket_credentials(
-            FileSystem.AZURE, "az://container@1"
+        assert manager.has_bucket_credentials(
+            FileSystem.AZURE, "http://blah.azure.com/container1"
         )
 
     def test_get_file_systems_with_credentials(self, manager):
@@ -121,37 +138,33 @@ class TestCredentialsManager:
 
     def test_get_credentials(self, manager):
         # Exact match
-        creds_path = manager.get_credentials(FileSystem.S3, "hello")
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[0])
-        creds_path = manager.get_credentials(FileSystem.S3, "hallo")
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[0])
+        _test_creds_path(manager, FileSystem.S3, "hello", 0)
+        _test_creds_path(manager, FileSystem.S3, "hallo", 0)
+        _test_creds_path(manager, FileSystem.S3, "heyllo", 0)
+        _test_creds_path(manager, FileSystem.S3, "weird[bucket", 0)
+        _test_creds_path(
+            manager, FileSystem.S3, "innocuous-secretphrase-bucket", 0
+        )
 
-        creds_path = manager.get_credentials(FileSystem.S3, "s3://hello-there")
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[1])
+        _test_creds_path(manager, FileSystem.S3, "s3://hello-there", 1)
 
         # Regex match
-        creds_path = manager.get_credentials(FileSystem.S3, "hello-blah")
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[2])
-
-        creds_path = manager.get_credentials(FileSystem.S3, "hello--")
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[2])
+        _test_creds_path(manager, FileSystem.S3, "hello-blah", 2)
+        _test_creds_path(manager, FileSystem.S3, "hello--", 2)
 
         # No match
-        creds_path = manager.get_credentials(FileSystem.S3, "not-matching")
-        assert creds_path == _make_default_creds_path(manager, "AWS")
+        _test_default_creds(manager, FileSystem.S3, "AWS", "not-matching")
 
         creds_path = manager.get_credentials(FileSystem.AZURE, "not-matching")
         assert creds_path is None
 
         # Default case
-        creds_path = manager.get_credentials(FileSystem.S3)
-        assert creds_path == _make_default_creds_path(manager, "AWS")
+        _test_default_creds(manager, FileSystem.S3, "AWS", None)
 
         # Azure match
-        creds_path = manager.get_credentials(
-            FileSystem.AZURE, "az://container1"
+        _test_creds_path(
+            manager, FileSystem.AZURE, "http://blah.azure.com/container1", 3
         )
-        assert creds_path == manager._make_creds_path(CREDENTIAL_DATA[3])
 
     def test_get_all_credentials_for_file_system(self, manager):
         assert set(

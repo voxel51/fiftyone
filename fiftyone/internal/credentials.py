@@ -212,10 +212,16 @@ class CloudCredentialsManager(object):
 
             if credentials.get("prefixes"):
                 for bucket in credentials["prefixes"]:
-                    if bucket.startswith("r'"):
+                    if "*" in bucket or "?" in bucket:
+                        # Bucket has a wildcard so convert and compile as regex
+                        #   Escape it in the weird case that other regex escape
+                        #   chars like '[' are in here
+                        regex = re.escape(bucket)
+                        regex = regex.replace(r"\*", ".*")
+                        regex = regex.replace(r"\?", ".")
                         try:
                             self._bucket_creds_regex[fs].append(
-                                (re.compile(bucket[2:]), creds_path)
+                                (re.compile(regex), creds_path)
                             )
                         except re.error:
                             logger.warning(
@@ -224,6 +230,7 @@ class CloudCredentialsManager(object):
                                 bucket,
                             )
                     else:
+                        # Exact bucket match
                         self._bucket_creds_exact[fs][bucket] = creds_path
             else:
                 self._default_creds[fs] = creds_path
