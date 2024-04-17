@@ -140,14 +140,11 @@ class StateDescription(etas.Serializable):
         )
 
     @classmethod
-    def from_dict(cls, d, with_config=None):
+    def from_dict(cls, d):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
-            with_config (None): an existing
-                :class:`fiftyone.core.config.AppConfig` to attach and apply
-                settings to
 
         Returns:
             :class:`StateDescription`
@@ -174,7 +171,8 @@ class StateDescription(etas.Serializable):
                     dataset.reload()
                     view = fov.DatasetView._build(dataset, stages)
 
-        config = with_config or fo.app_config.copy()
+        config = fo.AppConfig.from_dict(d["config"]) if "config" in d else None
+
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
 
@@ -246,9 +244,11 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=_convert_mongoengine_data(field.info)
-                    if isinstance(field.info, BaseDict)
-                    else field.info,
+                    info=(
+                        _convert_mongoengine_data(field.info)
+                        if isinstance(field.info, BaseDict)
+                        else field.info
+                    ),
                 )
             )
 

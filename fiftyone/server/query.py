@@ -10,10 +10,8 @@ from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import logging
-import os
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
@@ -36,6 +34,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
@@ -396,8 +395,9 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
-        d["timezone"] = fo.config.timezone
+        config = get_state().config
+        d = config.serialize()
+        d["timezone"] = config.timezone
         return from_dict(AppConfig, d)
 
     @gql.field
