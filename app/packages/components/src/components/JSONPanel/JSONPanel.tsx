@@ -96,28 +96,6 @@ export default function JSONPanel({ containerRef, onClose, onCopy, json }) {
                   minHeight: "70vh",
                 }}
               />
-
-              {/* <ReactJson
-                highlightSearch={searchTerm}
-                src={parsed}
-                theme={`ashes${!isDarkMode ? ":inverted" : ""}`}
-                style={{
-                  padding: "1rem 1rem 2rem 1rem",
-                  overflowX: "scroll",
-                  maxWidth: "60vw",
-                  minWidth: "60vw",
-                  minHeight: "70vh",
-                }}
-                iconStyle="square"
-                indentWidth={2}
-                customCopyIcon={<CopyIcon style={{ fontSize: "11px" }} />}
-                customCopiedIcon={
-                  <CopyIcon
-                    className={copyBtnClass}
-                    style={{ fontSize: "11px" }}
-                  />
-                }
-              /> */}
             </div>
           )}
         </div>
