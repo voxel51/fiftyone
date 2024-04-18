@@ -508,6 +508,30 @@ def _generate_dataset_summary(repo_id, dataset, preview_path):
     return DATASET_CONTENT_TEMPLATE.format(**format_kwargs)
 
 
+def _get_size_category(num_samples):
+    if num_samples < 1e3:
+        return "n<1K"
+    if num_samples < 1e4:
+        return "1K<n<10K"
+    if num_samples < 1e5:
+        return "10K<n<100K"
+    if num_samples < 1e6:
+        return "100K<n<1M"
+    if num_samples < 1e7:
+        return "1M<n<10M"
+    if num_samples < 1e8:
+        return "10M<n<100M"
+    if num_samples < 1e9:
+        return "100M<n<1B"
+    if num_samples < 1e10:
+        return "1B<n<10B"
+    if num_samples < 1e11:
+        return "10B<n<100B"
+    if num_samples < 1e12:
+        return "100B<n<1T"
+    return "n>1T"
+
+
 def _create_dataset_card(
     repo_id,
     dataset,
@@ -523,6 +547,7 @@ def _create_dataset_card(
         "task_ids": [],
         "pretty_name": dataset.name,
         "license": license,
+        "size_categories": [_get_size_category(dataset.count())],
         "tags": tags,
     }
 
