@@ -141,7 +141,7 @@ def push_to_hub(
             "frame_labels_field": frame_labels_field,
             "export_media": True,
         }
-        if isinstance(dataset_type, fot.FiftyOneChunkedDataset):
+        if dataset_type == fot.FiftyOneChunkedDataset:
             export_kwargs["chunk_size"] = chunk_size
         dataset.export(**export_kwargs)
 
@@ -1209,8 +1209,12 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset_type_name = config._format.strip()
 
-    if dataset_type_name == "FiftyOneDataset" and max_samples is not None:
-        # If the dataset is a FiftyOneDataset, download only the necessary files
+    if (
+        dataset_type_name in ["FiftyOneDataset", "FiftyOneChunkedDataset"]
+        and max_samples is not None
+    ):
+        # If the dataset is a FiftyOneDataset or FiftyOneChunkedDataset,
+        # download only the necessary files
         with _no_progress_bars():
             hfh.snapshot_download(
                 **init_download_kwargs,

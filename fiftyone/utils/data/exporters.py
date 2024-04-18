@@ -1363,15 +1363,16 @@ class MediaExporter(object):
             etas.write_json(self._manifest, self._manifest_path)
 
 
-# class MediaExporter(MediaExporterOriginal):
 class ChunkedDatasetMediaExporter(MediaExporter):
     """Utility class for :class:`FiftyOneChunkedDatasetExporter` instances.
 
     See :class:`ChunkedDatasetMediaExporter` for details.
     """
 
-    def __init__(self, *args, chunk_size=20, **kwargs):
+    def __init__(self, *args, chunk_size=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if chunk_size is None:
+            chunk_size = 100
         self.chunk_size = chunk_size
         self._chunk_num = 0
         self._chunk_count = 0
@@ -1400,7 +1401,10 @@ class ChunkedDatasetMediaExporter(MediaExporter):
 
         return uuid
 
-    def export(self, media_or_path, outpath=None):
+    def export(self, media_or_path, outpath=None, chunk_size=None):
+        if chunk_size is not None:
+            self.chunk_size = chunk_size
+
         if outpath is not None:
             outpath = fos.normalize_path(outpath)
 
@@ -2247,6 +2251,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
+        self._export_kwargs = {}
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -2299,7 +2304,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             filepath = sd["filepath"]
             if self.export_media is not False:
                 # Store relative path
-                _, uuid = self._media_exporter.export(filepath)
+                _, uuid = self._media_exporter.export(
+                    filepath, **self._export_kwargs
+                )
                 sd["filepath"] = os.path.join("data", uuid)
             elif self.rel_dir is not None:
                 # Remove `rel_dir` prefix from filepath
@@ -2445,7 +2452,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if self.export_media is not False:
             # Store relative path
             media_exporter = self._get_media_field_exporter(field_name)
-            _, uuid = media_exporter.export(value)
+            _, uuid = media_exporter.export(value, **self._export_kwargs)
             d[key] = os.path.join("fields", field_name, uuid)
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from path
@@ -2539,7 +2546,7 @@ class FiftyOneChunkedDatasetExporter(FiftyOneDatasetExporter):
             sample/frame files
         ordered (True): whether to preserve the order of the exported
             collections
-        chunk_size (1000): the number of media files to put into each directory
+        chunk_size (100): the number of media files to put into each directory
     """
 
     def __init__(
@@ -2552,9 +2559,10 @@ class FiftyOneChunkedDatasetExporter(FiftyOneDatasetExporter):
         export_workspaces=True,
         use_dirs=False,
         ordered=True,
-        chunk_size=20,
+        chunk_size=100,
     ):
         self.chunk_size = chunk_size
+        self._export_kwargs = {"chunk_size": chunk_size}
 
         super().__init__(
             export_dir,
