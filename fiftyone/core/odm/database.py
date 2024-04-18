@@ -72,7 +72,8 @@ class DatabaseConfigDocument:
     type: str
 
     def __init__(self, conn, version=None, type=None, *args, **kwargs):
-        # Create our own __init__ so we can ignore extra kwargs
+        # Create our own __init__ so we can ignore extra kwargs / unknown
+        #   fields from other versions
         self._conn = conn
         self.version = version
         self.type = type
