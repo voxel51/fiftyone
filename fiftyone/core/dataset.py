@@ -2079,6 +2079,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if (
             fom.THREE_D in rev_media_types
             and rev_media_types[fom.THREE_D] != name
+            and media_type == fom.THREE_D
         ):
             raise ValueError(
                 "Only one 'fo3d' group slice is allowed, '%s' already exists"
