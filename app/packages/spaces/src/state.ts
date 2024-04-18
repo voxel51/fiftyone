@@ -110,10 +110,11 @@ export interface Workspace {
 }
 
 export const savedWorkspacesAtom = atom({
-  key: "savedWorkspacesSelect",
+  key: "savedWorkspacesAtom",
   default: {
     initialized: false,
     workspaces: [] as Workspace[],
+    dataset: "",
   },
 });
 

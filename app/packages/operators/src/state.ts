@@ -824,6 +824,7 @@ export function useOperatorBrowser() {
 type OperatorExecutorOptions = {
   delegationTarget?: string;
   requestDelegation?: boolean;
+  skipOutput?: boolean;
 };
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
@@ -854,7 +855,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation } = options || {};
+      const { delegationTarget, requestDelegation, skipOutput } = options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -872,7 +873,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
-        setNeedsOutput(await operator.needsOutput(ctx, result));
+        setNeedsOutput(
+          skipOutput ? false : await operator.needsOutput(ctx, result)
+        );
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
