@@ -25,7 +25,7 @@ const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
   height: 2.5rem;
   line-height: 2.5rem;
   padding: 0 1rem;
-  :hover {
+  &:hover {
     background: ${({ theme }) => theme.background.level1};
     cursor: pointer;
   }
@@ -144,6 +144,7 @@ export default function OperatorBrowser() {
               autoFocus
               placeholder="Search operations by name..."
               onChange={(e) => browser.onChangeQuery(e.target.value)}
+              data-cy="operators-browser-search"
             />
           </QueryDiv>
           <IconsContainer>
@@ -172,6 +173,7 @@ export default function OperatorBrowser() {
           </IconsContainer>
         </TopBarDiv>
       }
+      dialogProps={{ PaperProps: { "data-cy": "operators-browser" } }}
     >
       <PaletteContentContainer>
         {browser.choices.map((choice) => (

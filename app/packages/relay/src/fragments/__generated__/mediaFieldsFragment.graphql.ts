@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6a026f47ac9fe6e3324ad7be21c88269>>
+ * @generated SignedSource<<04b7313af6c823a25d93c822f2e9f8eb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ import { FragmentRefs } from "relay-runtime";
 export type mediaFieldsFragment$data = {
   readonly appConfig: {
     readonly gridMediaField: string;
+    readonly mediaFallback: boolean;
     readonly mediaFields: ReadonlyArray<string> | null;
     readonly modalMediaField: string;
   } | null;
@@ -68,6 +69,13 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "modalMediaField",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaFallback",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -95,6 +103,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "f65b23fc366d07867fc580339a336842";
+(node as any).hash = "fcece821cb951d5759a3b3ff76a70516";
 
 export default node;

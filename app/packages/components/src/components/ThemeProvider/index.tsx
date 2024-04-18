@@ -17,6 +17,9 @@ let theme = extendMuiTheme({
   cssVarPrefix: "fo",
   typography: {
     fontFamily: "Palanquin, sans-serif",
+    button: {
+      textTransform: "none",
+    },
   },
   zIndex: {
     // Samples modal zIndex is set to 1000
@@ -214,7 +217,7 @@ let theme = extendMuiTheme({
       styleOverrides: {
         root: {
           "&:hover": {
-            backgroundColor: "unset",
+            backgroundColor: dynamicTheme("palette.background.level2"),
           },
         },
       },

@@ -2079,6 +2079,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if (
             fom.THREE_D in rev_media_types
             and rev_media_types[fom.THREE_D] != name
+            and media_type == fom.THREE_D
         ):
             raise ValueError(
                 "Only one 'fo3d' group slice is allowed, '%s' already exists"
@@ -2154,7 +2155,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
-    def iter_samples(self, progress=False, autosave=False, batch_size=None):
+    def iter_samples(
+        self,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+    ):
         """Returns an iterator over the samples in the dataset.
 
         Examples::
@@ -2175,6 +2182,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.ground_truth.label = make_label()
                 sample.save()
 
+            # Save using default batching strategy
+            for sample in dataset.iter_samples(progress=True, autosave=True):
+                sample.ground_truth.label = make_label()
+
             # Save in batches of 10
             for sample in dataset.iter_samples(
                 progress=True, autosave=True, batch_size=10
@@ -2193,9 +2204,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
@@ -2208,7 +2233,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples = pb(samples)
 
             if autosave:
-                save_context = foc.SaveContext(self, batch_size=batch_size)
+                save_context = foc.SaveContext(
+                    self,
+                    batch_size=batch_size,
+                    batching_strategy=batching_strategy,
+                )
                 exit_context.enter_context(save_context)
 
             for sample in samples:
@@ -2251,6 +2280,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         progress=False,
         autosave=False,
         batch_size=None,
+        batching_strategy=None,
     ):
         """Returns an iterator over the groups in the dataset.
 
@@ -2273,6 +2303,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     sample["test"] = make_label()
                     sample.save()
 
+            # Save using default batching strategy
+            for group in dataset.iter_groups(progress=True, autosave=True):
+                for sample in group.values():
+                    sample["test"] = make_label()
+
             # Save in batches of 10
             for group in dataset.iter_groups(
                 progress=True, autosave=True, batch_size=10
@@ -2294,9 +2329,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -2313,7 +2362,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             groups = pb(groups)
 
             if autosave:
-                save_context = foc.SaveContext(self, batch_size=batch_size)
+                save_context = foc.SaveContext(
+                    self,
+                    batch_size=batch_size,
+                    batching_strategy=batching_strategy,
+                )
                 exit_context.enter_context(save_context)
 
             for group in groups:
@@ -3460,12 +3513,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return name in self.list_saved_views()
 
-    def list_saved_views(self):
-        """Returns the names of saved views on this dataset.
+    def list_saved_views(self, info=False):
+        """List saved views on this dataset.
+
+        Args:
+            info (False): whether to return info dicts describing each saved view
+                rather than just their names
 
         Returns:
-            a list of saved view names
+            a list of saved view names or info dicts
         """
+
+        if info:
+            return [
+                {f: getattr(view_doc, f) for f in view_doc._EDITABLE_FIELDS}
+                for view_doc in self._doc.get_saved_views()
+            ]
+
         return [view_doc.name for view_doc in self._doc.get_saved_views()]
 
     def save_view(
@@ -3722,12 +3786,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return name in self.list_workspaces()
 
-    def list_workspaces(self):
-        """Returns the names of saved workspaces on this dataset.
+    def list_workspaces(self, info=False):
+        """List saved workspaces on this dataset.
+
+        Args:
+            info (False): whether to return info dicts describing each saved workspace
+                rather than just their names
 
         Returns:
-            a list of saved workspace names
+            a list of saved workspace names or info dicts
         """
+
+        if info:
+            return [
+                {
+                    f: getattr(workspace_doc, f)
+                    for f in workspace_doc._EDITABLE_FIELDS
+                }
+                for workspace_doc in self._doc.get_workspaces()
+            ]
+
         return [
             workspace_doc.name for workspace_doc in self._doc.get_workspaces()
         ]

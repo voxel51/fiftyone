@@ -1,3 +1,5 @@
+import { useCursor } from "@react-three/drei";
+import { useMemo, useState } from "react";
 import * as THREE from "three";
 import { Line } from "./line";
 import { OverlayProps } from "./shared";
@@ -20,25 +22,39 @@ export const Polyline = ({
   tooltip,
   label,
 }: PolyLineProps) => {
+  const lines = useMemo(
+    () =>
+      points3d.map((points) => (
+        <Line
+          key={`polyline-${label}-${points3d[0][0]}`}
+          rotation={rotation}
+          points={points}
+          opacity={opacity}
+          color={selected ? "orange" : color}
+          onClick={onClick}
+          tooltip={tooltip}
+          label={label}
+        />
+      )),
+    [points3d, rotation, opacity, color, selected, onClick, tooltip, label]
+  );
+
+  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
+
+  useCursor(isPolylineHovered);
+
   if (filled) {
     // @todo: filled not yet supported
+    // @todo: closed prop not used
     return null;
   }
 
-  // @todo: closed prop isn't used
-
-  const lines = points3d.map((points) => (
-    <Line
-      key={`polyline-${label}-${points3d[0][0]}`}
-      rotation={rotation}
-      points={points}
-      opacity={opacity}
-      color={selected ? "orange" : color}
-      onClick={onClick}
-      tooltip={tooltip}
-      label={label}
-    />
-  ));
-
-  return <group>{lines}</group>;
+  return (
+    <group
+      onPointerOver={() => setIsPolylineHovered(true)}
+      onPointerOut={() => setIsPolylineHovered(false)}
+    >
+      {lines}
+    </group>
+  );
 };

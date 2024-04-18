@@ -354,11 +354,10 @@ the model should detect:
 
     model = foz.load_zoo_model(
         model_name,
-        label_field="yolo_world_detections",
         classes=["plant", "window", "keyboard", "human baby", "computer monitor"],
     )
 
-    dataset.apply_model(model)
+    dataset.apply_model(model, label_field="yolo_world_detections")
 
     session = fo.launch_app(dataset)
 

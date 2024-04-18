@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4eba2e73d437433d92a16a2cd360ea4e>>
+ * @generated SignedSource<<73f5c676c9c54c25dd5291458d73b758>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type datasetAppConfigFragment$data = {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
   } | null;
   readonly gridMediaField: string;
+  readonly mediaFallback: boolean;
   readonly mediaFields: ReadonlyArray<string> | null;
   readonly modalMediaField: string;
   readonly plugins: object | null;
@@ -83,12 +84,19 @@ const node: ReaderFragment = {
         }
       ],
       "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaFallback",
+      "storageKey": null
     }
   ],
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
 
-(node as any).hash = "c962e7928367bf9097b33f5970633612";
+(node as any).hash = "6b71b3fc8c5a07b921938d7d0cf03272";
 
 export default node;

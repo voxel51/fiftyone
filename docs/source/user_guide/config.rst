@@ -56,8 +56,9 @@ FiftyOne supports the configuration options described below:
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
-|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` and                  |
-|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.          |
+|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,                     |
+|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`, and      |
+|                               |                                     |                               | :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`.      |
 |                               |                                     |                               | Supported values are `latency`, `size`, and `static`.                                  |
 |                               |                                     |                               |                                                                                        |
 |                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
@@ -712,6 +713,9 @@ The FiftyOne App can be configured in the ways described below:
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -766,7 +770,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True
@@ -815,7 +820,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True

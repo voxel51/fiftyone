@@ -9,7 +9,6 @@ FiftyOne Server /aggregation and /tagging routes
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.view as fov
 

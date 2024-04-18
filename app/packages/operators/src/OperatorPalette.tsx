@@ -45,6 +45,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     showWarning,
     warningMessage,
     warningTitle,
+    dialogProps,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -87,13 +88,17 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
 
   return (
     <Dialog
+      {...dialogProps}
       open
       onClose={onClose || onOutsideClick}
       scroll={scroll}
       maxWidth={false}
       aria-labelledby=""
       aria-describedby="scroll-dialog-description"
-      PaperProps={{ sx: { backgroundImage: "none" } }}
+      PaperProps={{
+        ...(dialogProps?.PaperProps || {}),
+        sx: { backgroundImage: "none" },
+      }}
       sx={{
         "& .MuiDialog-container": {
           alignItems: "flex-start",
@@ -206,4 +211,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   showWarning?: boolean;
   warningTitle: string;
   warningMessage?: string;
+  dialogProps?: Omit<DialogProps, "open">;
 };
