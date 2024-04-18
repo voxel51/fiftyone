@@ -455,9 +455,14 @@ def _populate_config_file(
     tags=None,
     min_fiftyone_version=None,
 ):
+
+    dataset_type_name = dataset_type.__name__
+    if dataset_type_name == "FiftyOneChunkedDataset":
+        dataset_type_name = "FiftyOneDataset"
+
     config_dict = {
         "name": dataset.name,
-        "format": dataset_type.__name__,
+        "format": dataset_type_name,
         "tags": tags,
     }
 
