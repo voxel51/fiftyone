@@ -552,9 +552,6 @@ def compute_orthographic_projection_images(
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-    if in_group_slice is None and samples.media_type == fom.GROUP:
-        in_group_slice = _get_3d_slice(samples)
-
         view = samples.select_group_slices(in_group_slice).select_fields(
             group_field
         )
@@ -563,58 +560,54 @@ def compute_orthographic_projection_images(
 
     fov.validate_collection(view, media_type={fom.POINT_CLOUD, fom.THREE_D})
 
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir
+    )
+
     if out_group_slice is not None:
         out_samples = []
 
-    with contextlib.ExitStack() as context:
-        context.enter_context(
-            view.download_context(media_fields="filepath", progress=progress)
-        )
+    for sample in view.iter_samples(autosave=True, progress=progress):
+        projection_pcd_filepath = sample.filepath
 
-        local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
-
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir,
-            rel_dir=rel_dir,
-            alt_dir=local_dir,
-            idempotent=False,
-        )
-
-        for sample in view.iter_samples(autosave=True, progress=progress):
-            image_path = filename_maker.get_output_path(
-                sample.filepath, output_ext=".png"
+        if view.media_type == fom.THREE_D:
+            projection_pcd_filepath = _get_pcd_filepath_from_fo3d_scene(
+                Scene.from_fo3d(sample.filepath), sample.filepath
             )
-            local_image_path = filename_maker.get_alt_path(image_path)
 
-            try:
-                img, metadata = compute_orthographic_projection_image(
-                    sample.local_path,
-                    size,
-                    shading_mode=shading_mode,
-                    colormap=colormap,
-                    subsampling_rate=subsampling_rate,
-                    projection_normal=projection_normal,
-                    bounds=bounds,
-                )
-            except Exception as e:
-                if not skip_failures:
-                    raise
+        image_path = filename_maker.get_output_path(
+            projection_pcd_filepath, output_ext=".png"
+        )
 
-                if skip_failures != "ignore":
-                    logger.warning(e)
+        try:
+            img, metadata = compute_orthographic_projection_image(
+                projection_pcd_filepath,
+                size,
+                shading_mode=shading_mode,
+                colormap=colormap,
+                subsampling_rate=subsampling_rate,
+                projection_normal=projection_normal,
+                bounds=bounds,
+            )
+        except Exception as e:
+            if not skip_failures:
+                raise
 
-                continue
+            if skip_failures != "ignore":
+                logger.warning(e)
 
-            foui.write(img, local_image_path)
-            metadata.filepath = image_path
+            continue
 
-            sample[metadata_field] = metadata
+        foui.write(img, image_path)
+        metadata.filepath = image_path
 
-            if out_group_slice is not None:
-                s = Sample(filepath=image_path)
-                s[group_field] = sample[group_field].element(out_group_slice)
-                s[metadata_field] = metadata
-                out_samples.append(s)
+        sample[metadata_field] = metadata
+
+        if out_group_slice is not None:
+            s = Sample(filepath=image_path)
+            s[group_field] = sample[group_field].element(out_group_slice)
+            s[metadata_field] = metadata
+            out_samples.append(s)
 
     if out_group_slice is not None:
         samples._root_dataset.add_samples(out_samples)
