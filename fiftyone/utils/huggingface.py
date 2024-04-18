@@ -92,20 +92,31 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
             )
 
     num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
+    chunk_size = len(os.listdir(os.path.join(tmp_dir, "data", "data_0")))
     field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
 
     from tqdm import tqdm
 
-    for i in tqdm(range(num_chunks), desc="Uploading media in chunks"):
-        media_chunk_dir = os.path.join(tmp_dir, "data", f"data_{i}")
-        api.upload_folder(
-            folder_path=media_chunk_dir,
-            repo_id=repo_id,
-            repo_type="dataset",
-            path_in_repo=f"data/data_{i}",
-            commit_message=f"Adding media files in dir data_{i}",
-        )
-        for field_dir in field_dirs:
+    num_total_chunks = num_chunks * (len(field_dirs) + 1)
+
+    for n in tqdm(
+        range(num_total_chunks),
+        desc=f"Uploading media files in {num_total_chunks} batches of size {chunk_size}",
+    ):
+        i = n // (len(field_dirs) + 1)
+        j = n % (len(field_dirs) + 1)
+
+        if j == 0:
+            media_chunk_dir = os.path.join(tmp_dir, "data", f"data_{i}")
+            api.upload_folder(
+                folder_path=media_chunk_dir,
+                repo_id=repo_id,
+                repo_type="dataset",
+                path_in_repo=f"data/data_{i}",
+                commit_message=f"Adding media files in dir data_{i}",
+            )
+        else:
+            field_dir = field_dirs[j - 1]
             field_chunk_dir = os.path.join(
                 tmp_dir, "fields", field_dir, f"{field_dir}_{i}"
             )
