@@ -100,7 +100,7 @@ export default function WorkspaceEditor() {
               startIcon={<Delete color="error" />}
               color="error"
               onClick={() => {
-                deleteOperator.execute({ name });
+                deleteOperator.execute({ name }, { skipOutput: true });
                 reset();
                 handleClose();
               }}
@@ -116,11 +116,14 @@ export default function WorkspaceEditor() {
           <Button
             variant="contained"
             onClick={async () => {
-              saveOperator.execute({
-                ...state,
-                current_name: edit ? state.oldName : undefined,
-                spaces: await getSessionSpaces(),
-              });
+              saveOperator.execute(
+                {
+                  ...state,
+                  current_name: edit ? state.oldName : undefined,
+                  spaces: await getSessionSpaces(),
+                },
+                { skipOutput: true }
+              );
               reset();
               handleClose();
             }}

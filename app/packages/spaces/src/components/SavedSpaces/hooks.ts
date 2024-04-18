@@ -1,7 +1,7 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { canEditWorkspaces, readOnly } from "@fiftyone/state";
+import { canEditWorkspaces, datasetName, readOnly } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { Workspace, savedWorkspacesAtom } from "../../state";
 
@@ -12,13 +12,17 @@ export function useSavedSpaces() {
     "@voxel51/operators/list_saved_workspaces"
   );
   const loadOperator = useOperatorExecutor("@voxel51/operators/load_workspace");
+  const [listWorkspaceExecuting, setListWorkspaceExecuting] = useState(false);
+  const currentDataset = useRecoilValue(datasetName);
 
   const listWorkspace = () => {
-    listOperator.execute({});
+    if (listWorkspaceExecuting) return;
+    setListWorkspaceExecuting(true);
+    listOperator.execute({}, { skipOutput: true });
   };
 
   const loadWorkspace = (name: string) => {
-    loadOperator.execute({ name });
+    loadOperator.execute({ name }, { skipOutput: true });
   };
   const existingSlugs = useMemo(() => {
     return state.workspaces.map(({ name }) => toSlug(name));
@@ -26,16 +30,28 @@ export function useSavedSpaces() {
 
   useEffect(() => {
     if (listOperator.hasExecuted) {
-      // @ts-ignore
       const workspaces: Workspace[] = listOperator.result?.workspaces || [];
       setState((state) => ({
         ...state,
         initialized: true,
         workspaces,
+        dataset: currentDataset,
       }));
       listOperator.clear();
+      setListWorkspaceExecuting(false);
     }
-  }, [listOperator.hasExecuted, listOperator.result]);
+  }, [
+    currentDataset,
+    listOperator.hasExecuted,
+    listOperator.result,
+    setListWorkspaceExecuting,
+  ]);
+
+  useEffect(() => {
+    if (currentDataset !== state.dataset) {
+      resetState();
+    }
+  }, [currentDataset, state, resetState]);
 
   return {
     initialized: state.initialized,
