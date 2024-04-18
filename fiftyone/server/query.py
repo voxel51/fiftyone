@@ -34,6 +34,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
@@ -209,6 +210,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class SidebarMode(Enum):
     all = "all"
     best = "best"
+    disabled = "disabled"
     fast = "fast"
 
 
@@ -395,7 +397,8 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 
