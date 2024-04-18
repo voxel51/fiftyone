@@ -169,7 +169,11 @@ class StateDescription(etas.Serializable):
                     dataset.reload()
                     view = fov.DatasetView._build(dataset, stages)
 
-        config = fo.AppConfig.from_dict(d["config"]) if "config" in d else None
+        config = (
+            fo.AppConfig.from_dict(d["config"])
+            if d.get("config", None)
+            else None
+        )
 
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
