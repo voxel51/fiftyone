@@ -347,7 +347,7 @@ import fiftyone as fo
 import fiftyone.utils.huggingface as fouh
 
 # Load the dataset
-# Note: other available arguments include 'split', 'max_samples', etc
+# Note: other available arguments include 'max_samples', etc
 dataset = fouh.load_from_hub("{repo_id}")
 
 # Launch the App
