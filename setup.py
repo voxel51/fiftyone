@@ -2,7 +2,7 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -59,6 +59,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
+    "pydantic>=2",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",

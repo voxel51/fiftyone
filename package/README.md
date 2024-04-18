@@ -206,20 +206,3 @@ To download packages from this instance, add `--index http://localhost:5159` to
 `pip install`. (If your instance is on another host and is not HTTPS-enabled,
 you will need to add `--trusted-host <hostname>` as well.)
 
-#### Testing on other Linux distributions
-
-The `test-envs` folder contains some scripts to help with testing on various
-Linux distributions. You will need Docker installed. Note that the base images
-are typically very minimal compared to a typical desktop installation, but if
-FiftyOne works in them, chances are good that it will work in a full
-installation as well.
-
--   `test-envs/build.bash` will build all available images from the
-    `dockerfiles` subfolder. You can optionally pass the names of one or more
-    files to build from as arguments.
--   `test-envs/run.bash IMAGE_NAME` will spin up a container from the specified
-    image and connect it to your local machine's network (so it will be able to
-    connect to your local pypi server if needed).
-    -   Note that the pip cache is mounted to the `pip-cache` subfolder to
-        speed up downloads. You can clear this folder to replicate a true fresh
-        install.

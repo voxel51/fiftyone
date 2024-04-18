@@ -22,5 +22,5 @@ export { default as Selection } from "./Selection";
 export { default as Selector, SelectorValidationError } from "./Selector";
 export type { UseSearch } from "./Selector";
 export { default as TabOption } from "./TabOption";
-export { default as ThemeProvider, useTheme } from "./ThemeProvider";
+export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";

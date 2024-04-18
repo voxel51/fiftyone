@@ -1,11 +1,11 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import {
   crop,
-  fullscreenExit,
   fullscreen as fullscreenIcon,
+  fullscreenExit,
   help as helpIcon,
   json as jsonIcon,
   minus,
@@ -51,7 +51,7 @@ export class ControlsElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.setAttribute("data-cy", "looker-video-controls");
+    element.setAttribute("data-cy", "looker-controls");
     element.classList.add(lookerControls);
     return element;
   }
@@ -283,7 +283,7 @@ export class OptionsButtonElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.setAttribute("data-cy", "looker-video-controls-settings");
+    element.setAttribute("data-cy", "looker-controls-settings");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.style.display = "flex";

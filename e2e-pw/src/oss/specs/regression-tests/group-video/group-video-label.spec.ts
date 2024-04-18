@@ -69,7 +69,7 @@ test.describe("groups video labels", () => {
 
     const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
       return new Promise<void>((resolve) => {
-        document.addEventListener("sample-loaded", (e: CustomEvent) => {
+        document.addEventListener("canvas-loaded", (e: CustomEvent) => {
           if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
             resolve();
           }
@@ -120,7 +120,7 @@ test.describe("groups video labels", () => {
 
     const sampleLoadEventPromiseForv2 =
       eventUtils.getEventReceivedPromiseForPredicate(
-        "sample-loaded",
+        "canvas-loaded",
         (e) => e.detail.sampleFilepath === testVideoPath2
       );
 

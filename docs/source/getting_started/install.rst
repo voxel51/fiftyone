@@ -144,7 +144,7 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
     .. code-block:: shell
 
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip setuptools wheel build
         pip install fiftyone
 
 **Mac users:**

@@ -1,7 +1,7 @@
 """
 Session events.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -325,7 +325,7 @@ class AppInitializer:
 
 @dataclass
 class ListenPayload:
-    """A an initialization payload for an event listener request"""
+    """An initialization payload for an event listener request"""
 
     initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]

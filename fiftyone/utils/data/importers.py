@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,8 +27,8 @@ import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
 from fiftyone.core.sample import Sample
@@ -1451,6 +1451,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
             runs in the import. Only applicable when importing full datasets
+        import_workspaces (True): whether to include saved workspaces in the
+            import. Only applicable when importing full datasets
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1464,6 +1466,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         rel_dir=None,
         import_saved_views=True,
         import_runs=True,
+        import_workspaces=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1478,6 +1481,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self.rel_dir = rel_dir
         self.import_saved_views = import_saved_views
         self.import_runs = import_runs
+        self.import_workspaces = import_workspaces
 
         self._metadata = None
         self._rel_dir = None
@@ -1588,6 +1592,11 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             and self.max_samples is None
         ):
             _import_saved_views(dataset, saved_views)
+
+        # Import workspaces
+        workspaces = self._metadata.get("workspaces", None)
+        if workspaces and self.import_workspaces and self.max_samples is None:
+            _import_workspaces(dataset, workspaces)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
@@ -1700,6 +1709,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
             runs in the import. Only applicable when importing full datasets
+        import_workspaces (True): whether to include saved workspaces in the
+            import. Only applicable when importing full datasets
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1714,6 +1725,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir=None,
         import_saved_views=True,
         import_runs=True,
+        import_workspaces=True,
         ordered=True,
         shuffle=False,
         seed=None,
@@ -1729,6 +1741,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self.rel_dir = rel_dir
         self.import_saved_views = import_saved_views
         self.import_runs = import_runs
+        self.import_workspaces = import_workspaces
         self.ordered = ordered
 
         self._data_dir = None
@@ -1810,6 +1823,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         views = dataset_dict.pop("saved_views", [])
+        workspaces = dataset_dict.pop("workspaces", [])
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
@@ -1949,6 +1963,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             _import_saved_views(dataset, views)
 
         #
+        # Import workspaces
+        #
+
+        if (
+            empty_import
+            and self.import_workspaces
+            and self.max_samples is None
+        ):
+            _import_workspaces(dataset, workspaces)
+
+        #
         # Import runs
         #
 
@@ -2047,6 +2072,26 @@ def _import_saved_views(dataset, views):
         view_doc.save(upsert=True)
 
         dataset._doc.saved_views.append(view_doc)
+
+    dataset.save()
+
+
+def _import_workspaces(dataset, workspaces):
+    for d in workspaces:
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        name = d["name"]
+        if dataset.has_workspace(name):
+            logger.warning("Overwriting existing workspace '%s'", name)
+            dataset.delete_workspace(name)
+
+        d.pop("_id", None)
+        workspace_doc = foo.WorkspaceDocument.from_dict(d)
+        workspace_doc.dataset_id = str(dataset._doc.id)
+        workspace_doc.save(upsert=True)
+
+        dataset._doc.workspaces.append(workspace_doc)
 
     dataset.save()
 

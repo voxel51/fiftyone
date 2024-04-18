@@ -1,7 +1,7 @@
 """
 FiftyOne Server mutations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,7 +18,6 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.session.events as fose
 from fiftyone.core.session.events import StateUpdate
-from fiftyone.core.spaces import default_spaces, Space
 from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -98,7 +97,7 @@ class Mutation(SetColorScheme):
         state.selected_labels = []
         state.view = None
         state.view_name = view_name if view_name is not None else None
-        state.spaces = default_spaces
+        state.spaces = foo.default_workspace_factory()
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
@@ -196,7 +195,7 @@ class Mutation(SetColorScheme):
         if not dataset_name:
             state.dataset = None
             state.view = None
-            state.spaces = default_spaces
+            state.spaces = foo.default_workspace_factory()
             state.group_slice = None
             await dispatch_event(subscription, StateUpdate(state=state))
 
@@ -418,7 +417,7 @@ class Mutation(SetColorScheme):
         spaces: BSON,
     ) -> bool:
         state = get_state()
-        state.spaces = Space.from_dict(spaces)
+        state.spaces = foo.Space.from_dict(spaces)
         await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 

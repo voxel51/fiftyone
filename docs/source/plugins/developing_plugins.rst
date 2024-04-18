@@ -2285,7 +2285,7 @@ to create a new custom run on a dataset:
 .. code:: python
     :linenos:
 
-    config = dataset.init_run(run_key)
+    config = dataset.init_run()
     config.foo = "bar"  # add as many key-value pairs as you need
 
     dataset.register_run(run_key, config)
