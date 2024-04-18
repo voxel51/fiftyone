@@ -63,8 +63,8 @@ export const usePromptOperatorInput = () => {
 
   const prompt = (operatorName) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
-      const update = new Set([...recentlyUsedOperators, operatorName]);
-      return Array.from(update).slice(-5);
+      const update = new Set([operatorName, ...recentlyUsedOperators]);
+      return Array.from(update).slice(0, 5);
     });
 
     setPromptingOperator({ operatorName, params: {} });
@@ -620,12 +620,13 @@ export const operatorBrowserQueryState = atom({
 });
 
 function sortResults(results, recentlyUsedOperators) {
+  const recentlyUsedOperatorsCount = recentlyUsedOperators.length;
   return results
     .map((result) => {
       let score = (result.description || result.label).charCodeAt(0);
       if (recentlyUsedOperators.includes(result.value)) {
-        const recentIdx = recentlyUsedOperators.indexOf(result.label);
-        score = recentIdx * -1;
+        const recentIdx = recentlyUsedOperators.indexOf(result.value);
+        score = (recentlyUsedOperatorsCount - recentIdx) * -1;
       }
       if (result.canExecute === false) {
         score += results.length;
@@ -639,7 +640,7 @@ function sortResults(results, recentlyUsedOperators) {
       if (a.score < b.score) {
         return -1;
       }
-      if (a.scrote > b.scrote) {
+      if (a.score > b.score) {
         return 1;
       }
       return 0;
@@ -675,7 +676,11 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
-  effects: [fos.getBrowserStorageEffectForKey("operators-recently-used")],
+  effects: [
+    fos.getBrowserStorageEffectForKey("recently-used-operators", {
+      useJsonSerialization: true,
+    }),
+  ],
 });
 
 export function useOperatorBrowser() {
