@@ -9,6 +9,7 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import logging
+import math
 import os
 from packaging.requirements import Requirement
 import re
@@ -386,7 +387,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     base_dir_contents = os.listdir(tmp_dir)
 
     for filename in base_dir_contents:
-        if filename.endswith(".json"):
+        if "." in filename:
             api.upload_file(
                 path_or_fileobj=os.path.join(tmp_dir, filename),
                 path_in_repo=filename,
@@ -1197,6 +1198,7 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     overwrite = kwargs.get("overwrite", False)
     persistent = kwargs.get("persistent", False)
     max_samples = kwargs.get("max_samples", None)
+    batch_size = kwargs.get("batch_size", None)
     splits = _parse_split_kwargs(**kwargs)
 
     download_dir = _get_download_dir(config._repo_id, **kwargs)
@@ -1245,19 +1247,35 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset = fod.Dataset.from_dir(download_dir, **dataset_kwargs)
 
-    if dataset_type_name != "FiftyOneDataset":
+    if dataset_type_name not in ["FiftyOneDataset", "FiftyOneChunkedDataset"]:
         return dataset
 
     filepaths = _get_files_to_download(dataset)
+
     if filepaths:
-        logger.info(f"Downloading {len(filepaths)} media files...")
-        filenames = [os.path.basename(fp) for fp in filepaths]
-        allowed_globs = ["data/" + fn for fn in filenames]
+        _download_files_in_batches(
+            filepaths, download_dir, batch_size, **init_download_kwargs
+        )
+    return dataset
+
+
+def _download_files_in_batches(
+    filepaths, download_dir, batch_size, **init_download_kwargs
+):
+    logger.info(f"Downloading {len(filepaths)} media files...")
+    rel_paths = [os.path.relpath(fp, download_dir) for fp in filepaths]
+    num_files = len(filepaths)
+    num_batches = math.ceil(num_files / batch_size)
+    from tqdm import tqdm
+
+    for i in tqdm(range(num_batches)):
+        start_idx = i * batch_size
+        end_idx = min((i + 1) * batch_size, num_files)
+        batch_paths = rel_paths[start_idx:end_idx]
         with _no_progress_bars():
             hfh.snapshot_download(
-                **init_download_kwargs, allow_patterns=allowed_globs
+                **init_download_kwargs, allow_patterns=batch_paths
             )
-    return dataset
 
 
 def _load_parquet_files_dataset_from_config(config, **kwargs):
