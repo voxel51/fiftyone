@@ -470,7 +470,7 @@ class SetView extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.obj("view", { view: new types.HiddenView({}) });
+    inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
     inputs.str("name", { label: "Name or slug of a saved view" });
     return new types.Property(inputs);
   }

@@ -12,6 +12,7 @@ jobs:
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+      FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
     defaults:
       run:
         shell: bash

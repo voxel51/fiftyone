@@ -10,14 +10,14 @@ FiftyOne integrates natively with Hugging Face's
 you can load, fine-tune, and run inference with your favorite Transformers
 models on your FiftyOne datasets with just a few lines of code!
 
-FiftyOne also integrates with the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_, 
-so you can push datasets to and load datasets from the Hub with ease.
+FiftyOne also integrates with the
+`Hugging Face Hub <https://huggingface.co/docs/hub/index>`_,  so you can push
+datasets to and load datasets from the Hub with ease.
 
 .. _huggingface-transformers:
 
 Transformers Library
 ____________________
-
 
 .. _huggingface-transformers-setup:
 
@@ -31,7 +31,6 @@ To get started with
 .. code-block:: shell
 
     pip install -U transformers
-
 
 .. _huggingface-transformers-inference:
 

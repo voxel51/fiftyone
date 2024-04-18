@@ -144,6 +144,7 @@ export default function OperatorBrowser() {
               autoFocus
               placeholder="Search operations by name..."
               onChange={(e) => browser.onChangeQuery(e.target.value)}
+              data-cy="operators-browser-search"
             />
           </QueryDiv>
           <IconsContainer>
@@ -172,6 +173,7 @@ export default function OperatorBrowser() {
           </IconsContainer>
         </TopBarDiv>
       }
+      dialogProps={{ PaperProps: { "data-cy": "operators-browser" } }}
     >
       <PaletteContentContainer>
         {browser.choices.map((choice) => (
