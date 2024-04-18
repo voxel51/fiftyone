@@ -59,7 +59,7 @@ ______
    * - First row/sample
      - ``df.iloc[0]`` or ``df.head(1)``
      - ``ds.first()`` or ``ds.head(1)``
-   * - First row/sample
+   * - Last row/sample
      - ``df.iloc[-1]`` or ``df.tail(1)``
      - ``ds.last()`` or ``ds.tail(1)``
    * - First few rows/samples
