@@ -406,7 +406,10 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
 
     num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
     chunk_size = len(os.listdir(os.path.join(tmp_dir, "data", "data_0")))
-    field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
+    if os.path.exists(os.path.join(tmp_dir, "fields")):
+        field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
+    else:
+        field_dirs = []
 
     from tqdm import tqdm
 
