@@ -219,8 +219,6 @@ def handle_workspace(
         else None
     )
 
-    print(current_workspace_slug, slug)
-
     if current_workspace_slug == slug:
         return False
 
