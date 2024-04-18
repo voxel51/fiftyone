@@ -149,7 +149,9 @@ def cleanup_multiple_config_docs(conn, config_docs):
         "the one with latest 'version' is the correct one",
         len(config_docs),
     )
-    keep_doc = max(config_docs, key=lambda d: Version(d.get("version", 0)))
+    # Keep config with latest version. If no version key, use 0.0 so it sorts
+    #   to the bottom.
+    keep_doc = max(config_docs, key=lambda d: Version(d.get("version", "0.0")))
 
     conn.config.delete_many({"_id": {"$ne": keep_doc["_id"]}})
     return keep_doc
