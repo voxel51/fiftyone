@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import itertools
 import logging
@@ -473,6 +474,7 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    skip_failures=False,
     progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
@@ -537,6 +539,8 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a projection fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -548,41 +552,27 @@ def compute_orthographic_projection_images(
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-        three_d_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(three_d_view, media_type=fom.POINT_CLOUD)
+    if in_group_slice is None and samples.media_type == fom.GROUP:
+        in_group_slice = _get_3d_slice(samples)
 
-        filepaths, groups = three_d_view.values(["filepath", group_field])
+        view = samples.select_group_slices(in_group_slice).select_fields(
+            group_field
+        )
     else:
-        try:
-            fov.validate_collection(samples, media_type=fom.THREE_D)
-        except ValueError:
-            fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
+        view = samples.select_fields()
 
-        three_d_view = samples
-
-        filepaths = three_d_view.values("filepath")
-        groups = itertools.repeat(None)
-
-    local_paths = three_d_view.get_local_paths()
-
-    if three_d_view.media_type == fom.THREE_D:
-        # read through all the fo3d files, and collect point cloud filepaths
-        scenes = [Scene.from_fo3d(filepath) for filepath in local_paths]
-        scenes_filepaths = list(zip(scenes, filepaths))
-        filepaths = [
-            _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
-            for scene, scene_path in scenes_filepaths
-        ]
-        local_paths = [
-            foc.media_cache.get_local_path(path) for path in filepaths
-        ]
+    fov.validate_collection(view, media_type={fom.POINT_CLOUD, fom.THREE_D})
 
     if out_group_slice is not None:
         out_samples = []
 
-    all_metadata = []
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            view.download_context(media_fields="filepath", progress=progress)
+        )
 
-    with fos.LocalDir(output_dir, "w") as local_dir:
+        local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+
         filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=rel_dir,
@@ -590,17 +580,15 @@ def compute_orthographic_projection_images(
             idempotent=False,
         )
 
-        with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
-            for filepath, local_path, group in pb(
-                zip(filepaths, local_paths, groups)
-            ):
-                image_path = filename_maker.get_output_path(
-                    filepath, output_ext=".png"
-                )
-                local_image_path = filename_maker.get_alt_path(image_path)
+        for sample in view.iter_samples(autosave=True, progress=progress):
+            image_path = filename_maker.get_output_path(
+                sample.filepath, output_ext=".png"
+            )
+            local_image_path = filename_maker.get_alt_path(image_path)
 
+            try:
                 img, metadata = compute_orthographic_projection_image(
-                    local_path,
+                    sample.local_path,
                     size,
                     shading_mode=shading_mode,
                     colormap=colormap,
@@ -608,22 +596,28 @@ def compute_orthographic_projection_images(
                     projection_normal=projection_normal,
                     bounds=bounds,
                 )
+            except Exception as e:
+                if not skip_failures:
+                    raise
 
-                foui.write(img, local_image_path)
-                metadata.filepath = image_path
+                if skip_failures != "ignore":
+                    logger.warning(e)
 
-                if out_group_slice is not None:
-                    sample = Sample(filepath=image_path)
-                    sample[group_field] = group.element(out_group_slice)
-                    sample[metadata_field] = metadata
-                    out_samples.append(sample)
+                continue
 
-                all_metadata.append(metadata)
+            foui.write(img, local_image_path)
+            metadata.filepath = image_path
+
+            sample[metadata_field] = metadata
+
+            if out_group_slice is not None:
+                s = Sample(filepath=image_path)
+                s[group_field] = sample[group_field].element(out_group_slice)
+                s[metadata_field] = metadata
+                out_samples.append(s)
 
     if out_group_slice is not None:
-        samples.add_samples(out_samples)
-
-    three_d_view.set_values(metadata_field, all_metadata)
+        samples._root_dataset.add_samples(out_samples)
 
 
 def compute_orthographic_projection_image(

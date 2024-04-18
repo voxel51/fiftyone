@@ -35,6 +35,10 @@ function useOperatorThrottledContextSetter() {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const currentSample = useCurrentSample();
   const setContext = useSetRecoilState(operatorThrottledContext);
+
+  // Teams only
+  const datasetHeadName = useRecoilValue(fos.datasetHeadName);
+
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -48,6 +52,7 @@ function useOperatorThrottledContextSetter() {
   useEffect(() => {
     setThrottledContext({
       datasetName,
+      datasetHeadName,
       view,
       extendedStages,
       filters,
@@ -59,6 +64,7 @@ function useOperatorThrottledContextSetter() {
   }, [
     setThrottledContext,
     datasetName,
+    datasetHeadName,
     view,
     extendedStages,
     filters,

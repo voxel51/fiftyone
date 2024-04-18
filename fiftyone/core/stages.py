@@ -7238,7 +7238,7 @@ class SortBySimilarity(ViewStage):
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
-                context.enter_context(results)  # pylint: disable=no-member
+                context.enter_context(results)
 
             return results.sort_by_similarity(
                 self._query,

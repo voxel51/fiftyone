@@ -388,7 +388,9 @@ def compute_metadata(
             raise ValueError(msg)
 
 
-def get_metadata(filepaths, num_workers=None, skip_failures=True):
+def get_metadata(
+    filepaths, num_workers=None, skip_failures=True, progress=None
+):
     """Gets :class:`Metadata` instances for the given filepaths.
 
     Args:
@@ -396,6 +398,9 @@ def get_metadata(filepaths, num_workers=None, skip_failures=True):
         num_workers (None): the number of worker threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a file
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a dict mapping filepaths to :class:`Metadata` instances
@@ -412,14 +417,19 @@ def get_metadata(filepaths, num_workers=None, skip_failures=True):
     if not tasks:
         return metadata
 
+    logger.info("Getting metadata...")
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar(total=len(tasks), iters_str="files") as pb:
+        with fou.ProgressBar(
+            total=len(tasks), iters_str="files", progress=progress
+        ) as pb:
             for task in pb(tasks):
                 filepath, _metadata = _do_get_metadata(task)
                 metadata[filepath] = _metadata
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks), iters_str="files") as pb:
+            with fou.ProgressBar(
+                total=len(tasks), iters_str="files", progress=progress
+            ) as pb:
                 results = pool.imap_unordered(_do_get_metadata, tasks)
                 for filepath, _metadata in pb(results):
                     metadata[filepath] = _metadata
@@ -561,10 +571,7 @@ def _do_compute_metadata(args):
 
 
 def _compute_sample_metadata(filepath, media_type, skip_failures=False):
-    if foc.media_cache.is_local_or_cached(filepath):
-        filepath = foc.media_cache.get_local_path(
-            filepath, skip_failures=False
-        )
+    filepath, _ = foc.media_cache.use_cached_path(filepath)
 
     if not skip_failures:
         return _get_metadata(filepath, media_type)
@@ -577,6 +584,10 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 
 def _do_get_metadata(args):
     filepath, skip_failures = args
+    if not filepath:
+        return None, None
+
+    filepath, _ = foc.media_cache.use_cached_path(filepath)
     media_type = fom.get_media_type(filepath)
 
     try:

@@ -347,7 +347,9 @@ async def do_execute_operator(operator, ctx, exhaust=False):
         return result
 
 
-async def resolve_type(registry, operator_uri, request_params):
+async def resolve_type(
+    registry, operator_uri, request_params, request_token=None
+):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
@@ -368,7 +370,9 @@ async def resolve_type(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
-    await ctx.resolve_secret_values(operator._plugin_secrets)
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -377,7 +381,9 @@ async def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
-async def resolve_execution_options(registry, operator_uri, request_params):
+async def resolve_execution_options(
+    registry, operator_uri, request_params, request_token=None
+):
     """Resolves the execution options of the operator with the given name.
 
     Args:
@@ -398,6 +404,9 @@ async def resolve_execution_options(registry, operator_uri, request_params):
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+    )
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
     )
     orc_svc = OrchestratorService()
     await ctx.resolve_secret_values(operator._plugin_secrets)

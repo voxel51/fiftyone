@@ -240,14 +240,6 @@ def export_samples(
         dataset_exporter, "export_media", export_media
     ) in {True, "move", "symlink"}
 
-    if _export_media:
-        samples.download_media(media_fields="filepath")
-
-    if label_field is not None:
-        media_fields = samples._get_media_fields(whitelist=label_field)
-        if media_fields:
-            samples.download_media(media_fields=list(media_fields.keys()))
-
     sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
@@ -271,10 +263,7 @@ def export_samples(
             sample_parser = ImageSampleParser()
             num_samples = samples
         else:
-            sample_parser = FiftyOneUnlabeledImageSampleParser(
-                compute_metadata=True,
-                export_media=_export_media,
-            )
+            sample_parser = FiftyOneUnlabeledImageSampleParser()
 
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
         if found_clips and not samples._is_clips:
@@ -293,15 +282,12 @@ def export_samples(
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
-            compute_metadata=True,
-            export_media=_export_media,
+            write_clips=_export_media,
             **clips_kwargs,
         )
 
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
-        sample_parser = FiftyOneUnlabeledMediaSampleParser(
-            compute_metadata=True
-        )
+        sample_parser = FiftyOneUnlabeledMediaSampleParser()
 
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         if found_patches:
@@ -319,10 +305,7 @@ def export_samples(
                 label_field, samples, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
-                label_field,
-                label_fcn=label_fcn,
-                compute_metadata=True,
-                export_media=_export_media,
+                label_field, label_fcn=label_fcn
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
@@ -355,8 +338,7 @@ def export_samples(
             frame_labels_field=frame_labels_field,
             label_fcn=label_fcn,
             frame_labels_fcn=frame_labels_fcn,
-            compute_metadata=True,
-            export_media=_export_media,
+            write_clips=_export_media,
             **clips_kwargs,
         )
 
@@ -893,14 +875,16 @@ def _write_image_dataset(
 ):
     if (
         dataset_exporter.requires_image_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
 
     labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
+    requires_metadata = dataset_exporter.requires_image_metadata
 
     with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
@@ -920,16 +904,13 @@ def _write_image_dataset(
                     image_or_path = sample_parser.get_image()
 
                 # Parse metadata
-                if dataset_exporter.requires_image_metadata:
-                    if sample_parser.has_image_metadata:
-                        metadata = sample_parser.get_image_metadata()
-                    else:
-                        metadata = None
-
-                    if metadata is None:
-                        metadata = fom.ImageMetadata.build_for(image_or_path)
+                if sample_parser.has_image_metadata:
+                    metadata = sample_parser.get_image_metadata()
                 else:
                     metadata = None
+
+                if metadata is None and requires_metadata:
+                    metadata = fom.ImageMetadata.build_for(image_or_path)
 
                 if labeled_images:
                     # Parse label
@@ -956,14 +937,16 @@ def _write_video_dataset(
 ):
     if (
         dataset_exporter.requires_video_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
 
     labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
+    requires_metadata = dataset_exporter.requires_video_metadata
 
     with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
@@ -977,16 +960,13 @@ def _write_video_dataset(
                 video_path = sample_parser.get_video_path()
 
                 # Parse metadata
-                if dataset_exporter.requires_video_metadata:
-                    if sample_parser.has_video_metadata:
-                        metadata = sample_parser.get_video_metadata()
-                    else:
-                        metadata = None
-
-                    if metadata is None:
-                        metadata = fom.VideoMetadata.build_for(video_path)
+                if sample_parser.has_video_metadata:
+                    metadata = sample_parser.get_video_metadata()
                 else:
                     metadata = None
+
+                if metadata is None and requires_metadata:
+                    metadata = fom.VideoMetadata.build_for(video_path)
 
                 if labeled_videos:
                     # Parse labels
@@ -1014,12 +994,15 @@ def _write_unlabeled_dataset(
 ):
     if (
         dataset_exporter.requires_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
+
+    requires_metadata = dataset_exporter.requires_metadata
 
     with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
@@ -1033,16 +1016,13 @@ def _write_unlabeled_dataset(
                 filepath = sample_parser.get_media_path()
 
                 # Parse metadata
-                if dataset_exporter.requires_metadata:
-                    if sample_parser.has_metadata:
-                        metadata = sample_parser.get_metadata()
-                    else:
-                        metadata = None
-
-                    if metadata is None:
-                        metadata = fom.Metadata.build_for(filepath)
+                if sample_parser.has_metadata:
+                    metadata = sample_parser.get_metadata()
                 else:
                     metadata = None
+
+                if metadata is None and requires_metadata:
+                    metadata = fom.Metadata.build_for(filepath)
 
                 # Export sample
                 dataset_exporter.export_sample(filepath, metadata=metadata)
@@ -1449,7 +1429,10 @@ class MediaExporter(object):
                     )
                 else:
                     fos.copy_files(
-                        self._inpaths, self._outpaths, progress=progress
+                        self._inpaths,
+                        self._outpaths,
+                        use_cache=True,
+                        progress=progress,
                     )
         finally:
             if self._tmpdir is not None:
@@ -1501,8 +1484,17 @@ class LabelsExporter(fos.FileWriter):
     in a threaded batch.
     """
 
-    def __init__(self, type_str="labels", **kwargs):
-        super().__init__(type_str=type_str, **kwargs)
+    def __init__(self, type_str="labels", use_cache=False, **kwargs):
+        progress_str = None
+        if type_str:
+            progress_str = "Exporting %s..." % type_str
+
+        super().__init__(
+            type_str=type_str,
+            _progress_str=progress_str,
+            _use_cache=use_cache,
+            **kwargs,
+        )
 
     def setup(self):
         """Performs necessary setup to begin exporting labels.
@@ -3648,7 +3640,9 @@ class ImageSegmentationDirectoryExporter(
         )
         self._media_exporter.setup()
 
-        self._labels_exporter = LabelsExporter(type_str="masks")
+        self._labels_exporter = LabelsExporter(
+            type_str="masks", use_cache=True
+        )
         self._labels_exporter.setup()
 
     def export_sample(self, image_or_path, label, metadata=None):
@@ -3662,6 +3656,13 @@ class ImageSegmentationDirectoryExporter(
                 frame_size = self.mask_size
             else:
                 if metadata is None:
+                    msg = (
+                        "This export requires metadata but not all samples "
+                        "have it; consider using compute_metadata() to "
+                        "efficiently precompute it"
+                    )
+                    warnings.warn(msg)
+
                     metadata = fom.ImageMetadata.build_for(image_or_path)
 
                 frame_size = (metadata.width, metadata.height)
@@ -3680,8 +3681,14 @@ class ImageSegmentationDirectoryExporter(
             raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = fos.join(self.labels_path, uuid + self.mask_format)
-        local_mask_path = self._labels_exporter.get_local_path(out_mask_path)
-        label.export_mask(local_mask_path)
+        if label.mask_path is not None and (
+            not fos.is_local(label.mask_path)
+            or not fos.is_local(out_mask_path)
+        ):
+            self._labels_exporter.register_path(label.mask_path, out_mask_path)
+        else:
+            local_path = self._labels_exporter.get_local_path(out_mask_path)
+            label.export_mask(local_path)
 
     def close(self, *args):
         self._media_exporter.close()

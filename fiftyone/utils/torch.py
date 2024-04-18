@@ -1478,6 +1478,7 @@ class TorchImageDataset(Dataset):
         force_rgb (False): whether to force convert the images to RGB
         skip_failures (False): whether to return an ``Exception`` object rather
             than raising it if an error occurs while loading a sample
+        download (True): whether to download cloud media
     """
 
     def __init__(
@@ -1490,12 +1491,14 @@ class TorchImageDataset(Dataset):
         use_numpy=False,
         force_rgb=False,
         skip_failures=False,
+        download=True,
     ):
         image_paths, sample_ids = self._parse_inputs(
             image_paths=image_paths,
             samples=samples,
             sample_ids=sample_ids,
             include_ids=include_ids,
+            download=download,
         )
 
         self.image_paths = image_paths
@@ -1504,6 +1507,7 @@ class TorchImageDataset(Dataset):
         self.force_rgb = force_rgb
         self.use_numpy = use_numpy
         self.skip_failures = skip_failures
+        self.download = download
 
     def __len__(self):
         return len(self.image_paths)
@@ -1539,6 +1543,7 @@ class TorchImageDataset(Dataset):
         samples=None,
         sample_ids=None,
         include_ids=False,
+        download=True,
     ):
         if image_paths is None and samples is None:
             raise ValueError(
@@ -1546,7 +1551,9 @@ class TorchImageDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.get_local_paths()
+            image_paths = samples.get_local_paths(
+                download=download, skip_failures=True
+            )
 
         image_paths = _to_bytes_array(image_paths)
 
@@ -1589,6 +1596,7 @@ class TorchImageClassificationDataset(Dataset):
         force_rgb (False): whether to force convert the images to RGB
         skip_failures (False): whether to return an ``Exception`` object rather
             than raising it if an error occurs while loading a sample
+        download (True): whether to download cloud media
     """
 
     def __init__(
@@ -1602,6 +1610,7 @@ class TorchImageClassificationDataset(Dataset):
         use_numpy=False,
         force_rgb=False,
         skip_failures=False,
+        download=True,
     ):
         image_paths, sample_ids, targets, str_targets = self._parse_inputs(
             image_paths=image_paths,
@@ -1609,6 +1618,7 @@ class TorchImageClassificationDataset(Dataset):
             samples=samples,
             sample_ids=sample_ids,
             include_ids=include_ids,
+            download=download,
         )
 
         self.image_paths = image_paths
@@ -1618,6 +1628,7 @@ class TorchImageClassificationDataset(Dataset):
         self.use_numpy = use_numpy
         self.force_rgb = force_rgb
         self.skip_failures = skip_failures
+        self.download = download
 
         self._str_targets = str_targets
 
@@ -1660,6 +1671,7 @@ class TorchImageClassificationDataset(Dataset):
         samples=None,
         sample_ids=None,
         include_ids=False,
+        download=True,
     ):
         if image_paths is None and samples is None:
             raise ValueError(
@@ -1667,7 +1679,9 @@ class TorchImageClassificationDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.get_local_paths()
+            image_paths = samples.get_local_paths(
+                download=download, skip_failures=True
+            )
 
         image_paths = _to_bytes_array(image_paths)
 
@@ -1758,6 +1772,7 @@ class TorchImagePatchesDataset(Dataset):
             to contract the boxes by 10%
         skip_failures (False): whether to return an ``Exception`` object rather
             than raising it if an error occurs while loading a sample
+        download (True): whether to download cloud media
     """
 
     def __init__(
@@ -1776,6 +1791,7 @@ class TorchImagePatchesDataset(Dataset):
         force_square=False,
         alpha=None,
         skip_failures=False,
+        download=True,
     ):
         image_paths, sample_ids, patch_edges, patches = self._parse_inputs(
             image_paths=image_paths,
@@ -1785,6 +1801,7 @@ class TorchImagePatchesDataset(Dataset):
             handle_missing=handle_missing,
             sample_ids=sample_ids,
             include_ids=include_ids,
+            download=download,
         )
 
         self.image_paths = image_paths
@@ -1796,6 +1813,7 @@ class TorchImagePatchesDataset(Dataset):
         self.force_square = force_square
         self.alpha = alpha
         self.skip_failures = skip_failures
+        self.download = download
 
         self._patch_edges = patch_edges
         self._patches = patches
@@ -1870,6 +1888,7 @@ class TorchImagePatchesDataset(Dataset):
         handle_missing="skip",
         sample_ids=None,
         include_ids=False,
+        download=True,
     ):
         if image_paths is None and samples is None:
             raise ValueError(
@@ -1877,7 +1896,9 @@ class TorchImagePatchesDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.get_local_paths()
+            image_paths = samples.get_local_paths(
+                download=download, skip_failures=True
+            )
 
         image_paths = _to_bytes_array(image_paths)
 

@@ -679,9 +679,9 @@ class Frames(object):
                     {"_sample_id": self._sample_id}
                 )
 
-            Frame._reset_docs(
-                self._frame_collection_name, sample_ids=[self._sample.id]
-            )
+                Frame._reset_docs(
+                    self._frame_collection_name, sample_ids=[self._sample.id]
+                )
 
             self._delete_all = False
             self._delete_frames.clear()
@@ -700,11 +700,11 @@ class Frames(object):
             if not deferred:
                 self._frame_collection.bulk_write(ops, ordered=False)
 
-            Frame._reset_docs_for_sample(
-                self._frame_collection_name,
-                self._sample.id,
-                self._delete_frames,
-            )
+                Frame._reset_docs_for_sample(
+                    self._frame_collection_name,
+                    self._sample.id,
+                    self._delete_frames,
+                )
 
             self._delete_frames.clear()
 
@@ -756,15 +756,15 @@ class Frames(object):
         if not deferred:
             self._frame_collection.bulk_write(ops, ordered=False)
 
-        if new_dicts:
-            ids_map = self._get_ids_map()
-            for frame_number, d in new_dicts.items():
-                frame = replacements[frame_number]
-                if isinstance(frame._doc, foo.NoDatasetFrameDocument):
-                    doc = self._dataset._frame_dict_to_doc(d)
-                    frame._set_backing_doc(doc, dataset=self._dataset)
+            if new_dicts:
+                ids_map = self._get_ids_map()
+                for frame_number, d in new_dicts.items():
+                    frame = replacements[frame_number]
+                    if isinstance(frame._doc, foo.NoDatasetFrameDocument):
+                        doc = self._dataset._frame_dict_to_doc(d)
+                        frame._set_backing_doc(doc, dataset=self._dataset)
 
-                frame._doc.id = ids_map[frame_number]
+                    frame._doc.id = ids_map[frame_number]
 
         self._replacements.clear()
 
