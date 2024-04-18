@@ -59,6 +59,65 @@ SUPPORTED_DTYPES = (
 logger = logging.getLogger(__name__)
 
 
+def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
+    if not dataset_type == fot.FiftyOneChunkedDataset:
+        api.upload_folder(
+            folder_path=tmp_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message="Adding dataset",
+        )
+        return
+
+    num_nested_dirs = len([d for d in tmp_dir.split(os.path.sep) if d])
+
+    base_dir_contents = os.listdir(tmp_dir)
+
+    for filename in base_dir_contents:
+        if filename.endswith(".json"):
+            api.upload_file(
+                path_or_fileobj=os.path.join(tmp_dir, filename),
+                path_in_repo=filename,
+                repo_id=repo_id,
+                repo_type="dataset",
+            )
+
+    for runtype in ["annotations", "brain", "evaluations", "runs"]:
+        if runtype in base_dir_contents:
+            api.upload_folder(
+                folder_path=os.path.join(tmp_dir, runtype),
+                path_in_repo=runtype,
+                repo_id=repo_id,
+                repo_type="dataset",
+            )
+
+    num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
+    field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
+
+    from tqdm import tqdm
+
+    for i in tqdm(range(num_chunks), desc="Uploading media in chunks"):
+        media_chunk_dir = os.path.join(tmp_dir, "data", f"data_{i}")
+        api.upload_folder(
+            folder_path=media_chunk_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo=f"data/data_{i}",
+            commit_message=f"Adding media files in dir data_{i}",
+        )
+        for field_dir in field_dirs:
+            field_chunk_dir = os.path.join(
+                tmp_dir, "fields", field_dir, f"{field_dir}_{i}"
+            )
+            api.upload_folder(
+                folder_path=field_chunk_dir,
+                repo_id=repo_id,
+                repo_type="dataset",
+                path_in_repo=f"fields/{field_dir}/{field_dir}_{i}",
+                commit_message=f"Adding media field files in dir {field_dir}_{i}",
+            )
+
+
 def push_to_hub(
     dataset,
     repo_name,
@@ -73,6 +132,7 @@ def push_to_hub(
     frame_labels_field=None,
     token=None,
     preview_path=None,
+    chunk_size=100,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
@@ -110,11 +170,12 @@ def push_to_hub(
             the ``HF_TOKEN`` environment variable
         preview_path (None): a path to a preview image or video to display on
             the readme of the dataset repo.
+        chunk_size (100): the number of samples to upload in each chunk
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
     if dataset_type is None:
-        dataset_type = fot.FiftyOneDataset
+        dataset_type = fot.FiftyOneChunkedDataset
 
     if tags is not None:
         if isinstance(tags, str):
@@ -131,13 +192,16 @@ def push_to_hub(
     with etau.TempDir() as tmp_dir:
         config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
 
-        dataset.export(
-            export_dir=tmp_dir,
-            dataset_type=dataset_type,
-            label_field=label_field,
-            frame_labels_field=frame_labels_field,
-            export_media=True,
-        )
+        export_kwargs = {
+            "export_dir": tmp_dir,
+            "dataset_type": dataset_type,
+            "label_field": label_field,
+            "frame_labels_field": frame_labels_field,
+            "export_media": True,
+        }
+        if isinstance(dataset_type, fot.FiftyOneChunkedDataset):
+            export_kwargs["chunk_size"] = chunk_size
+        dataset.export(**export_kwargs)
 
         _populate_config_file(
             config_filepath,
@@ -161,10 +225,11 @@ def push_to_hub(
         ## Upload the dataset to the repo
         api = hfh.HfApi(token=token)
         with _no_progress_bars():
-            api.upload_folder(
-                folder_path=tmp_dir,
-                repo_id=repo_id,
-                repo_type="dataset",
+            _upload_data_to_repo(
+                api,
+                repo_id,
+                tmp_dir,
+                dataset_type,
             )
 
         # Upload preview image or video if provided
