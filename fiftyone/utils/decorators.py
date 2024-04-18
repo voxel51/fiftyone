@@ -6,6 +6,9 @@ Python decorator utilities.
 |
 """
 
+from functools import wraps
+from cachetools import TTLCache
+
 
 def route_requires_auth(RouteCls):
     """
@@ -21,3 +24,19 @@ def route_requires_auth(RouteCls):
         hasattr(RouteCls, "requires_authentication")
         and RouteCls.requires_authentication == True
     )
+
+
+def async_ttl_cache(maxsize: float = 128, ttl: float = 600):
+    cache = TTLCache(maxsize=maxsize, ttl=ttl)
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            key = (func.__name__, args, tuple(kwargs.items()))
+            if not key in cache:
+                cache[key] = await func(*args, **kwargs)
+            return cache[key]
+
+        return wrapper
+
+    return decorator

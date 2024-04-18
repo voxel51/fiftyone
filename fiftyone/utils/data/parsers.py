@@ -1561,14 +1561,13 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
             if :meth:`get_image_metadata` is called and no metadata is
             available
-        export_media (True): whether the caller wants to export media and thus
-            local paths should be returned for cloud media
+        local_media (False): whether to return local paths for cloud media
     """
 
-    def __init__(self, compute_metadata=False, export_media=True):
+    def __init__(self, compute_metadata=False, local_media=False):
         super().__init__()
         self.compute_metadata = compute_metadata
-        self.export_media = export_media
+        self.local_media = local_media
 
     @property
     def has_image_path(self):
@@ -1580,14 +1579,14 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
 
     @property
     def _image_path(self):
-        if self.export_media:
+        if self.local_media:
             return self.current_sample.local_path
 
         return self.current_sample.filepath
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return foui.read(self.current_sample.local_path)
+        return foui.read(self._image_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
@@ -1616,8 +1615,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
             if :meth:`get_image_metadata` is called and no metadata is
             available
-        export_media (True): whether the caller wants to export media and thus
-            local paths should be returned for cloud media
+        local_media (False): whether to return local paths for cloud media
     """
 
     def __init__(
@@ -1625,13 +1623,13 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         label_field,
         label_fcn=None,
         compute_metadata=False,
-        export_media=True,
+        local_media=False,
     ):
         super().__init__()
         self.label_field = label_field
         self.label_fcn = label_fcn
         self.compute_metadata = compute_metadata
-        self.export_media = export_media
+        self.local_media = local_media
 
     @property
     def has_image_path(self):
@@ -1647,14 +1645,14 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     @property
     def _image_path(self):
-        if self.export_media:
+        if self.local_media:
             return self.current_sample.local_path
 
         return self.current_sample.filepath
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return foui.read(self.current_sample.local_path)
+        return foui.read(self._image_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
@@ -1700,8 +1698,9 @@ class ExtractClipsMixin(object):
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             when no pre-computed metadata is available
-        export_media (True): whether to actually write clips when their paths
-            are requested
+        local_media (False): whether to return local paths for cloud media
+        write_clips (True): whether to write clips when their paths are
+            requested
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1711,7 +1710,8 @@ class ExtractClipsMixin(object):
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        local_media=False,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1719,21 +1719,22 @@ class ExtractClipsMixin(object):
             video_format = fo.config.default_video_ext
 
         self.compute_metadata = compute_metadata
-        self.export_media = export_media
+        self.local_media = local_media
+        self.write_clips = write_clips
         self.clip_dir = clip_dir
         self.video_format = video_format
 
         self._curr_clip_path = None
 
     def _get_clip_path(self, sample):
-        if self.export_media:
+        if self.local_media or self.write_clips:
             video_path = sample.local_path
         else:
             video_path = sample.filepath
 
         basename, ext = os.path.splitext(os.path.basename(video_path))
 
-        if self.export_media:
+        if self.write_clips:
             if self.clip_dir is None:
                 # @todo need to clean this up?
                 self.clip_dir = etau.make_temp_dir()
@@ -1751,7 +1752,7 @@ class ExtractClipsMixin(object):
         )
         clip_path = fos.join(dirname, clip_name)
 
-        if self.export_media:
+        if self.write_clips:
             self._curr_clip_path = clip_path
             fouv.extract_clip(
                 video_path,
@@ -1784,8 +1785,9 @@ class FiftyOneUnlabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether the caller wants to export media and thus
-            local paths should be returned for cloud media
+        local_media (False): whether to return local paths for cloud media
+        write_clips (True): whether to write clips when :meth:`get_video_path`
+            is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1795,14 +1797,16 @@ class FiftyOneUnlabeledVideoSampleParser(
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        local_media=False,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            local_media=local_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
@@ -1814,7 +1818,7 @@ class FiftyOneUnlabeledVideoSampleParser(
 
     @property
     def _video_path(self):
-        if self.export_media:
+        if self.local_media:
             return self.current_sample.local_path
 
         return self.current_sample.filepath
@@ -1862,8 +1866,9 @@ class FiftyOneLabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether the caller wants to export media and thus
-            local paths should be returned for cloud media
+        local_media (False): whether to return local paths for cloud media
+        write_clips (True): whether to write clips when :meth:`get_video_path`
+            is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1877,7 +1882,8 @@ class FiftyOneLabeledVideoSampleParser(
         label_fcn=None,
         frame_labels_fcn=None,
         compute_metadata=False,
-        export_media=True,
+        local_media=False,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1888,7 +1894,8 @@ class FiftyOneLabeledVideoSampleParser(
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            local_media=local_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
@@ -1913,7 +1920,7 @@ class FiftyOneLabeledVideoSampleParser(
 
     @property
     def _video_path(self):
-        if self.export_media:
+        if self.local_media:
             return self.current_sample.local_path
 
         return self.current_sample.filepath
@@ -2021,22 +2028,31 @@ class FiftyOneUnlabeledMediaSampleParser(MediaSampleParser):
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.Metadata` instances on-the-fly if
             :meth:`get_metadata` is called and no metadata is available
+        local_media (False): whether to return local paths for cloud media
     """
 
-    def __init__(self, compute_metadata=False):
+    def __init__(self, compute_metadata=False, local_media=False):
         super().__init__()
         self.compute_metadata = compute_metadata
+        self.local_media = local_media
 
     @property
     def has_metadata(self):
         return True
 
-    def get_media_path(self):
+    @property
+    def _media_path(self):
+        if self.local_media:
+            return self.current_sample.local_path
+
         return self.current_sample.filepath
+
+    def get_media_path(self):
+        return self._media_path
 
     def get_metadata(self):
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
-            metadata = fom.Metadata.build_for(self.current_sample.filepath)
+            metadata = fom.Metadata.build_for(self._media_path)
 
         return metadata

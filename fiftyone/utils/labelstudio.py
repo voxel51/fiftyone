@@ -238,16 +238,17 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
     def _prepare_tasks(self, samples, label_schema, media_field):
         """Prepares Label Studio tasks for the given data."""
-        samples.compute_metadata()
-
         ids, mime_types, filepaths = samples.values(
             ["id", "metadata.mime_type", media_field]
         )
+
         filepaths = foc.media_cache.get_local_paths(filepaths)
 
-        media_fields = samples._get_media_fields(whitelist=label_schema)
-        if media_fields:
-            samples.download_media(media_fields=list(media_fields.keys()))
+        label_fields = samples._get_media_fields(whitelist=label_schema)
+        label_fields = list(label_fields.keys())
+
+        if label_fields:
+            samples.download_media(media_fields=label_fields)
 
         tasks = [
             {
@@ -456,6 +457,9 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         project = self._init_project(config, samples)
 
+        samples.compute_metadata()
+
+        # @todo can we add support for uploading tasks in batches?
         tasks, predictions, id_map = self._prepare_tasks(
             samples,
             config.label_schema,

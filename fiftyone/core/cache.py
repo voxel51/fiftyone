@@ -145,16 +145,17 @@ class MediaCache(object):
         return fs == fos.FileSystem.LOCAL or exists
 
     def use_cached_path(self, filepath):
-        """Converts ``filepath`` to local path if it exists, otherwise
-        returns ``filepath``. Also returns whether the returned path is local.
+        """Returns the local cache path for the given filepath, if it exists,
+        otherwise returns the filepath itself.
 
         Args:
             filepath: a filepath
 
         Returns:
-            Tuple of the (possibly locally-cached) filepath, and whether the
+            tuple of the (possibly locally-cached) filepath, and whether the
             returned path is local
         """
+
         # Function will report exists as True if we have previously
         #   failed to download it, so we must override that protection. In this
         #   function, we'd prefer to err on the side of returning the original
@@ -166,6 +167,18 @@ class MediaCache(object):
             return local_path, True
         else:
             return filepath, False
+
+    def use_cached_paths(self, filepaths):
+        """Returns the local cache path for each filepath, if it exists,
+        otherwise returns the input filepath.
+
+        Args:
+            filepaths: a list of filepaths
+
+        Returns:
+            a list of (possibly locally-cached) filepaths
+        """
+        return [self.use_cached_path(f)[0] for f in filepaths]
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.

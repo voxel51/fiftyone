@@ -59,6 +59,7 @@ ENV FIFTYONE_DATABASE_ADMIN=false \
     FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
     TZ=Etc/UTC \
     VIRTUAL_ENV=/opt/fiftyone-teams-app
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Update the base image, install ffmpeg, create the voxel51 user
 RUN apt-get -qq -y update && apt-get -qq -y upgrade \
@@ -68,10 +69,8 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && /usr/local/bin/pip install -U pip setuptools \
     && groupadd -g 1000 voxel51 \
     && useradd -u 1000 -g 1000 -l -d /opt voxel51 \
-    && python3 -m venv "${VIRTUAL_ENV}"
-
-# Activate the virtual env
-ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+    && python3 -m venv "${VIRTUAL_ENV}" \
+    && "${VIRTUAL_ENV}"/bin/pip --no-cache-dir install -q -U pip setuptools wheel
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \

@@ -5,6 +5,7 @@ Segmentation evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 from copy import deepcopy
 import logging
 import inspect
@@ -344,79 +345,90 @@ class SimpleEvaluation(SegmentationEvaluation):
             )
 
         _samples = samples.select_fields([gt_field, pred_field])
-        _samples.download_media(media_fields=[gt_field, pred_field])
 
-        pred_field, processing_frames = samples._handle_frame_field(pred_field)
-        gt_field, _ = samples._handle_frame_field(gt_field)
-
-        nc = len(values)
-        confusion_matrix = np.zeros((nc, nc), dtype=int)
-
-        bandwidth = self.config.bandwidth
-        average = self.config.average
-        compute_dice = self.config.compute_dice
-
-        if eval_key is not None:
-            acc_field = "%s_accuracy" % eval_key
-            pre_field = "%s_precision" % eval_key
-            rec_field = "%s_recall" % eval_key
-            if compute_dice:
-                dice_field = "%s_dice" % eval_key
-
-        logger.info("Evaluating segmentations...")
-        for sample in _samples.iter_samples(progress=progress):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
-
-            sample_conf_mat = np.zeros((nc, nc), dtype=int)
-            for image in images:
-                gt_seg = image[gt_field]
-                if gt_seg is None or not gt_seg.has_mask:
-                    msg = "Skipping sample with missing ground truth mask"
-                    warnings.warn(msg)
-                    continue
-
-                pred_seg = image[pred_field]
-                if pred_seg is None or not pred_seg.has_mask:
-                    msg = "Skipping sample with missing prediction mask"
-                    warnings.warn(msg)
-                    continue
-
-                image_conf_mat = _compute_pixel_confusion_matrix(
-                    pred_seg.get_mask(),
-                    gt_seg.get_mask(),
-                    values,
-                    bandwidth=bandwidth,
+        with contextlib.ExitStack() as context:
+            context.enter_context(
+                _samples.download_context(
+                    media_fields=[gt_field, pred_field], progress=progress
                 )
-                sample_conf_mat += image_conf_mat
+            )
 
-                # Record frame stats, if requested
-                if processing_frames and eval_key is not None:
-                    facc, fpre, frec = _compute_accuracy_precision_recall(
-                        image_conf_mat, values, average
-                    )
-                    image[acc_field] = facc
-                    image[pre_field] = fpre
-                    image[rec_field] = frec
-                    if compute_dice:
-                        image[dice_field] = _compute_dice_score(image_conf_mat)
+            pred_field, processing_frames = samples._handle_frame_field(
+                pred_field
+            )
+            gt_field, _ = samples._handle_frame_field(gt_field)
 
-            confusion_matrix += sample_conf_mat
+            nc = len(values)
+            confusion_matrix = np.zeros((nc, nc), dtype=int)
 
-            # Record sample stats, if requested
-            if eval_key is not None:
-                sacc, spre, srec = _compute_accuracy_precision_recall(
-                    sample_conf_mat, values, average
-                )
-                sample[acc_field] = sacc
-                sample[pre_field] = spre
-                sample[rec_field] = srec
+            bandwidth = self.config.bandwidth
+            average = self.config.average
+            compute_dice = self.config.compute_dice
+            save = eval_key is not None
+
+            if save:
+                acc_field = "%s_accuracy" % eval_key
+                pre_field = "%s_precision" % eval_key
+                rec_field = "%s_recall" % eval_key
                 if compute_dice:
-                    sample[dice_field] = _compute_dice_score(confusion_matrix)
+                    dice_field = "%s_dice" % eval_key
 
-                sample.save()
+            logger.info("Evaluating segmentations...")
+            for sample in _samples.iter_samples(
+                progress=progress, autosave=save
+            ):
+                if processing_frames:
+                    images = sample.frames.values()
+                else:
+                    images = [sample]
+
+                sample_conf_mat = np.zeros((nc, nc), dtype=int)
+                for image in images:
+                    gt_seg = image[gt_field]
+                    if gt_seg is None or not gt_seg.has_mask:
+                        msg = "Skipping sample with missing ground truth mask"
+                        warnings.warn(msg)
+                        continue
+
+                    pred_seg = image[pred_field]
+                    if pred_seg is None or not pred_seg.has_mask:
+                        msg = "Skipping sample with missing prediction mask"
+                        warnings.warn(msg)
+                        continue
+
+                    image_conf_mat = _compute_pixel_confusion_matrix(
+                        pred_seg.get_mask(),
+                        gt_seg.get_mask(),
+                        values,
+                        bandwidth=bandwidth,
+                    )
+                    sample_conf_mat += image_conf_mat
+
+                    if processing_frames and save:
+                        facc, fpre, frec = _compute_accuracy_precision_recall(
+                            image_conf_mat, values, average
+                        )
+                        image[acc_field] = facc
+                        image[pre_field] = fpre
+                        image[rec_field] = frec
+                        if compute_dice:
+                            image[dice_field] = _compute_dice_score(
+                                image_conf_mat
+                            )
+
+                confusion_matrix += sample_conf_mat
+
+                if save:
+                    sacc, spre, srec = _compute_accuracy_precision_recall(
+                        sample_conf_mat, values, average
+                    )
+                    sample[acc_field] = sacc
+                    sample[pre_field] = spre
+                    sample[rec_field] = srec
+                    if compute_dice:
+                        sample[dice_field] = _compute_dice_score(
+                            confusion_matrix
+                        )
 
         if nc > 0:
             missing = classes[0] if values[0] in (0, "#000000") else None

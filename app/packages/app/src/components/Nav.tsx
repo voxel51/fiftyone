@@ -20,7 +20,6 @@ import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
 import gaConfig from "../ga";
-import { datasetHeadName, datasetSnapshotName } from "../versionSelectors";
 import DatasetSelector from "./DatasetSelector";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
@@ -121,8 +120,8 @@ const Nav: React.FC<{
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
-  const datasetHead = useRecoilValue(datasetHeadName);
-  const datasetSnapshot = useRecoilValue(datasetSnapshotName);
+  const datasetHead = useRecoilValue(fos.datasetHeadName);
+  const datasetSnapshot = useRecoilValue(fos.datasetSnapshotName);
 
   return (
     <>

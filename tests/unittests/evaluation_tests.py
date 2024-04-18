@@ -1,10 +1,25 @@
 """
 FiftyOne evaluation-related unit tests.
 
-| Copyright 2017-2024, Voxel51, Inc.
+These tests can optionally be configured to read/write from a cloud bucket
+rather than a local directory by passing the extra ``--basedir`` argument::
+
+    BASEDIR=s3://voxel51-test/unittests
+    BASEDIR=gs://voxel51-test/unittests
+
+    # All tests
+    python tests/unittests/evaluation_tests.py --basedir $BASEDIR
+
+    # Specific test
+    python tests/unittests/evaluation_tests.py \
+        ClassName.method_name \
+        --basedir $BASEDIR
+
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import argparse
 import os
 import random
 import string
@@ -14,9 +29,8 @@ import warnings
 
 import numpy as np
 
-import eta.core.utils as etau
-
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.eval.classification as fouc
 import fiftyone.utils.eval.coco as coco
 import fiftyone.utils.eval.detection as foud
@@ -26,6 +40,9 @@ import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
 from decorators import drop_datasets
+
+
+basedir = None
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -2522,7 +2539,7 @@ class CustomSegmentationEvaluation(fous.SimpleEvaluation):
 
 class SegmentationTests(unittest.TestCase):
     def setUp(self):
-        self._temp_dir = etau.TempDir()
+        self._temp_dir = fos.TempDir(basedir=basedir)
         self._root_dir = self._temp_dir.__enter__()
 
     def tearDown(self):
@@ -2533,7 +2550,7 @@ class SegmentationTests(unittest.TestCase):
             random.choice(string.ascii_lowercase + string.digits)
             for _ in range(24)
         )
-        return os.path.join(self._root_dir, name)
+        return fos.join(self._root_dir, name)
 
     def _make_segmentation_dataset(self):
         dataset = fo.Dataset()
@@ -3045,5 +3062,10 @@ class VideoSegmentationTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    fo.config.show_progress_bars = False
-    unittest.main(verbosity=2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--basedir", default=None)
+    options, args = parser.parse_known_args()
+    basedir = options.basedir
+
+    # fo.config.show_progress_bars = False
+    unittest.main(argv=sys.argv[:1] + args, verbosity=2)

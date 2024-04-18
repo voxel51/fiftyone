@@ -1061,7 +1061,7 @@ class DeleteFiles(object):
             progress = _parse_progress(self._progress)
 
             if progress and self._type_str:
-                logger.info("Uploading %s...", self._type_str)
+                logger.info("Deleting %s...", self._type_str)
 
             delete_files(
                 self._delpaths,
@@ -1116,14 +1116,21 @@ class FileWriter(object):
         skip_failures=False,
         type_str="files",
         progress=None,
+        _progress_str=None,
+        _use_cache=False,
     ):
         if basedir is not None and not is_local(basedir):
             raise ValueError("basedir must be local; found '%s'" % basedir)
+
+        if _progress_str is None and type_str:
+            _progress_str = "Uploading %s..." % type_str
 
         self._basedir = basedir
         self._skip_failures = skip_failures
         self._type_str = type_str
         self._progress = progress
+        self._progress_str = _progress_str
+        self._use_cache = _use_cache
         self._tmpdir = None
         self._filename_maker = None
         self._inpaths = None
@@ -1141,13 +1148,14 @@ class FileWriter(object):
             if self._inpaths:
                 progress = _parse_progress(self._progress)
 
-                if progress and self._type_str:
-                    logger.info("Uploading %s...", self._type_str)
+                if progress and self._progress_str:
+                    logger.info(self._progress_str)
 
                 copy_files(
                     self._inpaths,
                     self._outpaths,
                     skip_failures=self._skip_failures,
+                    use_cache=self._use_cache,
                     progress=progress,
                 )
         finally:
@@ -1227,13 +1235,32 @@ class FileWriter(object):
         for filepath, local_path in zip(filepaths, local_paths):
             self.register_local_path(filepath, local_path)
 
+    def register_path(self, inpath, outpath):
+        """Registers an arbitrary input/output pair.
 
-@contextmanager
+        Args:
+            inpath: an input path
+            outpath: an output path
+        """
+        self._inpaths.append(inpath)
+        self._outpaths.append(outpath)
+
+    def register_paths(self, inpaths, outpaths):
+        """Registers an arbitrary set of input/output pairs.
+
+        Args:
+            inpath: an input path
+            outpath: an output path
+        """
+        for inpath, outpath in zip(inpaths, outpaths):
+            self.register_path(inpath, outpath)
+
+
 def open_file(path, mode="r"):
     """Opens the given file for reading or writing.
 
-    This function *must* be used as a context manager, and it assumes that any
-    cloud files being read/written can fit into RAM.
+    This function assumes that any cloud files being read/written can fit into
+    RAM.
 
     Example usage::
 
@@ -1254,53 +1281,37 @@ def open_file(path, mode="r"):
     Args:
         path: the path
         mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
+
+    Returns:
+        an open file-like object
     """
-    if is_local(path):
-        f = open(path, mode)
+    return _open_file(path, mode)
 
-        try:
-            yield f
-        finally:
-            f.close()
 
-        return
+def open_files(paths, mode="r", skip_failures=False, progress=None):
+    """Opens the given files for reading or writing.
 
-    client = get_client(path=path)
-    is_writing = mode in ("w", "wb")
+    This function assumes that all cloud files being read/written can fit into
+    RAM simultaneously.
 
-    if mode == "r":
-        b = client.download_bytes(path)
-        f = io.StringIO(b.decode())
-    elif mode == "rb":
-        f = io.BytesIO()
-        client.download_stream(path, f)
-    elif is_writing:
-        f = _BytesIO()
-    else:
-        raise ValueError("Unsupported mode '%s'" % mode)
+    Args:
+        paths: a list of paths
+        mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an operation fails
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
-    f.seek(0)
-
-    try:
-        yield f
-    finally:
-        if not is_writing:
-            f.close()
-
-    if not is_writing:
-        return
-
-    f.seek(0)
-    content_type = etau.guess_mime_type(path)
-
-    try:
-        client.upload_stream(f, path, content_type=content_type)
-    finally:
-        f.close()
+    Returns:
+        a list of open file-like objects
+    """
+    tasks = [(p, mode, skip_failures) for p in paths]
+    return _run(_do_open_file, tasks, progress=progress)
 
 
 def read_file(path, binary=False):
-    """Reads the file.
+    """Reads the file into memory.
 
     Args:
         path: the filepath
@@ -1309,9 +1320,26 @@ def read_file(path, binary=False):
     Returns:
         the file contents
     """
-    mode = "rb" if binary else "r"
-    with open_file(path, mode) as f:
-        return f.read()
+    return _read_file(path, binary=binary)
+
+
+def read_files(paths, binary=False, skip_failures=False, progress=None):
+    """Reads the specified files into memory.
+
+    Args:
+        paths: a list of filepaths
+        binary (False): whether to read the files in binary mode
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an operation fails
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+
+    Returns:
+        a list of file contents
+    """
+    tasks = [(p, binary, skip_failures) for p in paths]
+    return _run(_do_read_file, tasks, progress=progress)
 
 
 def write_file(str_or_bytes, path):
@@ -1330,10 +1358,6 @@ def write_file(str_or_bytes, path):
 
 def sep(path):
     """Returns the path separator for the given path.
-
-    For local paths, ``os.path.sep`` is returned.
-
-    For remote paths, ``"/"`` is returned.
 
     Args:
         path: the filepath
@@ -1996,33 +2020,54 @@ def get_glob_root(glob_patt):
     return root, found_special
 
 
-def copy_file(inpath, outpath):
+def copy_file(inpath, outpath, use_cache=False):
     """Copies the input file to the output location.
 
     Args:
         inpath: the input path
         outpath: the output path
+        use_cache (False): whether to use the locally cached version of a
+            remote input file, if it exists
     """
-    _copy_file(inpath, outpath, cleanup=False)
+    _copy_file(inpath, outpath, use_cache=use_cache)
 
 
-def copy_files(inpaths, outpaths, skip_failures=False, progress=None):
+def copy_files(
+    inpaths,
+    outpaths,
+    skip_failures=False,
+    use_cache=False,
+    progress=None,
+):
     """Copies the files to the given locations.
 
     Args:
         inpaths: a list of input paths
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
+        use_cache (False): whether to use the locally cached versions of any
+            remote input files, if they exist
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
-    _copy_files(inpaths, outpaths, skip_failures, False, progress)
+    _copy_files(
+        inpaths,
+        outpaths,
+        skip_failures=skip_failures,
+        use_cache=use_cache,
+        progress=progress,
+    )
 
 
 def copy_dir(
-    indir, outdir, overwrite=True, skip_failures=False, progress=None
+    indir,
+    outdir,
+    overwrite=True,
+    skip_failures=False,
+    use_cache=False,
+    progress=None,
 ):
     """Copies the input directory to the output directory.
 
@@ -2032,7 +2077,9 @@ def copy_dir(
         overwrite (True): whether to delete an existing output directory (True)
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
+        use_cache (False): whether to use the locally cached versions of any
+            remote input files, if they exist
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2046,7 +2093,11 @@ def copy_dir(
     inpaths = [join(indir, f) for f in files]
     outpaths = [join(outdir, f) for f in files]
     copy_files(
-        inpaths, outpaths, skip_failures=skip_failures, progress=progress
+        inpaths,
+        outpaths,
+        skip_failures=skip_failures,
+        use_cache=use_cache,
+        progress=progress,
     )
 
 
@@ -2067,14 +2118,13 @@ def move_files(inpaths, outpaths, skip_failures=False, progress=None):
         inpaths: a list of input paths
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
-    if tasks:
-        _run(_do_move_file, tasks, progress=progress)
+    _run(_do_move_file, tasks, progress=progress)
 
 
 def move_dir(
@@ -2089,7 +2139,7 @@ def move_dir(
         overwrite (True): whether to delete an existing output directory (True)
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2133,14 +2183,13 @@ def delete_files(paths, skip_failures=False, progress=None):
     Args:
         paths: a list of paths
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
     tasks = [(p, skip_failures) for p in paths]
-    if tasks:
-        _run(_do_delete_file, tasks, progress=progress)
+    _run(_do_delete_file, tasks, progress=progress)
 
 
 def delete_dir(dirpath):
@@ -2195,7 +2244,7 @@ def upload_media(
         overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
         skip_failures (False): whether to gracefully continue without raising
-            an error if a remote operation fails
+            an error if an operation fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -2208,6 +2257,7 @@ def upload_media(
             _allow_mixed=True
         )
 
+    media_field = sample_collection._resolve_media_field(media_field)
     filepaths = sample_collection.values(media_field)
 
     filename_maker = fou.UniqueFilenameMaker(
@@ -2230,7 +2280,13 @@ def upload_media(
 
     if paths_map:
         inpaths, outpaths = zip(*paths_map.items())
-        _copy_files(inpaths, outpaths, skip_failures, cache, progress)
+        _copy_files(
+            inpaths,
+            outpaths,
+            skip_failures=skip_failures,
+            cache=cache,
+            progress=progress,
+        )
 
     if update_filepaths:
         sample_collection.set_values(media_field, remote_paths)
@@ -2599,7 +2655,14 @@ def _load_minio_credentials(bucket=None):
     return credentials
 
 
-def _copy_files(inpaths, outpaths, skip_failures, cache, progress):
+def _copy_files(
+    inpaths,
+    outpaths,
+    skip_failures=False,
+    cache=False,
+    use_cache=False,
+    progress=None,
+):
     supported_cache_values = ("copy", "move", True, False)
     if cache not in supported_cache_values:
         raise ValueError(
@@ -2610,37 +2673,42 @@ def _copy_files(inpaths, outpaths, skip_failures, cache, progress):
     if cache is True:
         cache = "copy"
 
-    tasks = [(i, o, skip_failures, cache) for i, o in zip(inpaths, outpaths)]
-    if tasks:
-        _run(_do_copy_file, tasks, progress=progress)
+    tasks = [
+        (i, o, skip_failures, cache, use_cache)
+        for i, o in zip(inpaths, outpaths)
+    ]
+    _run(_do_copy_file, tasks, progress=progress)
 
 
 def _run(fcn, tasks, num_workers=None, progress=None):
-    num_workers = fou.recommend_thread_pool_workers(num_workers)
+    num_tasks = len(tasks)
+    if num_tasks == 0:
+        return []
 
-    try:
-        num_tasks = len(tasks)
-    except:
-        num_tasks = None
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
+    results = []
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             for task in pb(tasks):
-                fcn(task)
+                result = fcn(task)
+                results.append(result)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(**kwargs) as pb:
-                for _ in pb(pool.imap_unordered(fcn, tasks)):
-                    pass
+                for result in pb(pool.imap_unordered(fcn, tasks)):
+                    results.append(result)
+
+    return results
 
 
 def _do_copy_file(arg):
-    inpath, outpath, skip_failures, cache = arg
+    inpath, outpath, skip_failures, cache, use_cache = arg
 
     try:
-        _copy_file(inpath, outpath, cleanup=False)
+        _copy_file(inpath, outpath, use_cache=use_cache)
         if cache:
             # Implicitly assumes outpath is the remote path
             foc.media_cache.add(
@@ -2680,12 +2748,119 @@ def _do_delete_file(arg):
             logger.warning(e)
 
 
-def _copy_file(inpath, outpath, cleanup=False):
-    fsi = get_file_system(inpath)
-    fso = get_file_system(outpath)
+def _do_open_file(arg):
+    filepath, mode, skip_failures = arg
 
-    if fsi == FileSystem.LOCAL:
-        if fso == FileSystem.LOCAL:
+    try:
+        return _open_file(filepath, mode)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _open_file(path, mode):
+    if is_local(path):
+        return open(path, mode)
+
+    return _OpenFile(path, mode)
+
+
+class _OpenFile(object):
+    def __init__(self, path, mode):
+        self.path = path
+        self.mode = mode
+        self._is_writing = None
+        self._client = None
+        self._f = None
+        self._f_iter = None
+        self._open()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __iter__(self):
+        self._f_iter = iter(self._f)
+        return self
+
+    def __next__(self):
+        return next(self._f_iter)
+
+    def __getattr__(self, *args, **kwargs):
+        return getattr(self._f, *args, **kwargs)
+
+    def _open(self):
+        client = get_client(path=self.path)
+        is_writing = self.mode in ("w", "wb")
+
+        if self.mode == "r":
+            b = client.download_bytes(self.path)
+            f = io.StringIO(b.decode())
+        elif self.mode == "rb":
+            f = io.BytesIO()
+            client.download_stream(self.path, f)
+        elif is_writing:
+            f = _BytesIO()
+        else:
+            raise ValueError("Unsupported mode '%s'" % self.mode)
+
+        f.seek(0)
+
+        self._is_writing = is_writing
+        self._client = client
+        self._f = f
+
+    def close(self):
+        """Flush and close the IO object.
+
+        This method has no effect if the file is already closed.
+        """
+        try:
+            if self._is_writing and not self._f.closed:
+                self._f.seek(0)
+                self._client.upload_stream(
+                    self._f,
+                    self.path,
+                    content_type=etau.guess_mime_type(self.path),
+                )
+        finally:
+            self._f.close()
+
+
+def _do_read_file(arg):
+    filepath, binary, skip_failures = arg
+
+    try:
+        return _read_file(filepath, binary=binary)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _read_file(filepath, binary=False):
+    mode = "rb" if binary else "r"
+    with open_file(filepath, mode) as f:
+        return f.read()
+
+
+def _copy_file(inpath, outpath, use_cache=False, cleanup=False):
+    if use_cache:
+        inpath, local_in = foc.media_cache.use_cached_path(inpath)
+    else:
+        local_in = is_local(inpath)
+
+    local_out = is_local(outpath)
+
+    if local_in:
+        if local_out:
             # Local -> local
             etau.ensure_basedir(outpath)
             if cleanup:
@@ -2698,7 +2873,7 @@ def _copy_file(inpath, outpath, cleanup=False):
             client.upload(inpath, outpath)
             if cleanup:
                 os.remove(inpath)
-    elif fso == FileSystem.LOCAL:
+    elif local_out:
         # Remote -> local
         client = get_client(path=inpath)
         client.download(inpath, outpath)

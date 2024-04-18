@@ -174,8 +174,9 @@ def evaluate_detections(
     eval_method.register_samples(samples, eval_key, dynamic=dynamic)
 
     processing_frames = samples._is_frame_field(pred_field)
+    save = eval_key is not None
 
-    if eval_key is not None:
+    if save:
         tp_field = "%s_tp" % eval_key
         fp_field = "%s_fp" % eval_key
         fn_field = "%s_fn" % eval_key
@@ -187,7 +188,7 @@ def evaluate_detections(
 
     matches = []
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress):
+    for sample in _samples.iter_samples(progress=progress, autosave=save):
         if processing_frames:
             docs = sample.frames.values()
         else:
@@ -204,16 +205,15 @@ def evaluate_detections(
             sample_fp += fp
             sample_fn += fn
 
-            if processing_frames and eval_key is not None:
+            if processing_frames and save:
                 doc[tp_field] = tp
                 doc[fp_field] = fp
                 doc[fn_field] = fn
 
-        if eval_key is not None:
+        if save:
             sample[tp_field] = sample_tp
             sample[fp_field] = sample_fp
             sample[fn_field] = sample_fn
-            sample.save()
 
     results = eval_method.generate_results(
         samples,
