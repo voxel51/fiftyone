@@ -11,6 +11,7 @@ from contextlib import contextmanager
 import logging
 import os
 from packaging.requirements import Requirement
+import re
 import requests
 
 import yaml
@@ -57,6 +58,24 @@ SUPPORTED_DTYPES = (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_number(filename):
+    match = re.search(r"\d+", filename)
+    if match:
+        return int(match.group(0))
+    return None
+
+
+def _is_already_uploaded(api, repo_id, folder_path):
+    filenames = os.listdir(folder_path)
+    sorted_filenames = sorted(filenames, key=_extract_number)
+    first_last = [sorted_filenames[0], sorted_filenames[-1]]
+    first_last = [os.path.join(folder_path, f) for f in first_last]
+    response = api.get_paths_info(
+        repo_id, paths=first_last, repo_type="dataset"
+    )
+    return len(response) == 2
 
 
 def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
@@ -108,6 +127,8 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
 
         if j == 0:
             media_chunk_dir = os.path.join(tmp_dir, "data", f"data_{i}")
+            if _is_already_uploaded(api, repo_id, media_chunk_dir):
+                continue
             api.upload_folder(
                 folder_path=media_chunk_dir,
                 repo_id=repo_id,
@@ -120,6 +141,8 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
             field_chunk_dir = os.path.join(
                 tmp_dir, "fields", field_dir, f"{field_dir}_{i}"
             )
+            if _is_already_uploaded(api, repo_id, field_chunk_dir):
+                continue
             api.upload_folder(
                 folder_path=field_chunk_dir,
                 repo_id=repo_id,
