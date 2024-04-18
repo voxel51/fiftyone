@@ -452,7 +452,7 @@ def _get_dataset_tasks(dataset):
     if _has_label(fol.Detections):
         tasks.append("object-detection")
     if _has_label(fol.Segmentation):
-        tasks.append("semantic-segmentation")
+        tasks.append("image-segmentation")
     return tasks
 
 
