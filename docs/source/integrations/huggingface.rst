@@ -1061,6 +1061,32 @@ displayed on the dataset card!
 .. image:: /images/integrations/hf_data_card_preview.jpg
    :alt: Pushing a dataset to the Hugging Face Hub with a preview image
    :align: center
+
+
+.. _huggingface-hub-push-large-dataset:
+
+Pushing large datasets
+^^^^^^^^^^^^^^^^^^^^^^
+
+Large datasets with many samples require a bit more care when pushing to the
+Hub. Hugging Face limits the number of files that can be uploaded in a single
+directory to 10000, so if your dataset contains more than 10000 samples, the
+data will need to be split into multiple directories. FiftyOne handles this
+automatically when pushing large datasets to the Hub, but you can also control
+the number of samples per directory by passing the `chunk_size` argument to
+:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`. To limit the
+number of samples per directory to 100, you can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.huggingface as fouh
+
+    fouh.push_to_hub(dataset, "my-large-dataset", chunk_size=100)
+
+
+This argument currently only works when exporting to the
+:ref:`FiftyOneDataset <FiftyOneDataset-import>` format.
    
 
 .. _huggingface-hub-push-dataset-advanced:
