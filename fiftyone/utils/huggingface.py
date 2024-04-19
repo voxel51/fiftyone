@@ -461,6 +461,8 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
             field_chunk_dir = os.path.join(
                 tmp_dir, "fields", field_dir, f"{field_dir}_{i}"
             )
+            if not os.path.exists(field_chunk_dir):
+                continue
             if _is_already_uploaded(api, repo_id, field_chunk_dir):
                 continue
             api.upload_folder(
