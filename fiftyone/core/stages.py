@@ -5356,7 +5356,7 @@ class MatchTags(ViewStage):
             tags = [tags]
         else:
             tags = list(tags)
-            if not builtins.all([etau.is_str(t) for t in tags]):
+            if not builtins.all(etau.is_str(t) for t in tags):
                 raise ValueError(
                     "The `tags` argument must be a string or iterable of "
                     "strings."
