@@ -2156,57 +2156,6 @@ def _parse_media_fields(sd, media_fields, rel_dir):
                 sd[field_name] = os.path.join(rel_dir, value)
 
 
-class FiftyOneChunkedDatasetImporter(FiftyOneDatasetImporter):
-    """Importer for chunked FiftyOne datasets stored on disk in serialized JSON
-        format.
-
-    See :ref:`this page <FiftyOneChunkedDataset-import>` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-        rel_dir (None): a relative directory to prepend to the ``filepath`` of
-            each sample if the filepath is not absolute. This path is converted
-            to an absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
-        import_saved_views (True): whether to include saved views in the
-            import. Only applicable when importing full datasets
-        import_runs (True): whether to include annotation/brain/evaluation
-            runs in the import. Only applicable when importing full datasets
-        import_workspaces (True): whether to include saved workspaces in the
-            import. Only applicable when importing full datasets
-        ordered (True): whether to preserve document order when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By default,
-            all samples are imported
-    """
-
-    def __init__(
-        self,
-        dataset_dir,
-        rel_dir=None,
-        import_saved_views=True,
-        import_runs=True,
-        import_workspaces=True,
-        ordered=True,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-    ):
-        super().__init__(
-            dataset_dir,
-            rel_dir=rel_dir,
-            import_saved_views=import_saved_views,
-            import_runs=import_runs,
-            import_workspaces=import_workspaces,
-            ordered=ordered,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-        )
-
-
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
     """Importer for a directory of images stored on disk.
 

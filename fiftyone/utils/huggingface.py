@@ -75,7 +75,7 @@ def push_to_hub(
     frame_labels_field=None,
     token=None,
     preview_path=None,
-    chunk_size=100,
+    chunk_size=None,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
@@ -113,12 +113,27 @@ def push_to_hub(
             the ``HF_TOKEN`` environment variable
         preview_path (None): a path to a preview image or video to display on
             the readme of the dataset repo.
-        chunk_size (100): the number of samples to upload in each chunk
+        chunk_size (None): the number of media files to put in each
+            subdirectory, to avoid having too many files in a single directory.
+            If None, no chunking is performed. If the dataset has more than
+            10,000 samples, it will be chunked by default to avoid exceeding
+            the maximum number of files in a directory on Hugging Face Hub.
+            This parameter is only applicable to
+            `:class:fiftyone.types.dataset_types.FiftyOneDataset` datasets.
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
     if dataset_type is None:
-        dataset_type = fot.FiftyOneChunkedDataset
+        dataset_type = fot.FiftyOneDataset
+
+    if dataset_type == fot.FiftyOneDataset and chunk_size is None:
+        if dataset.count() > 10000:
+            logger.info(
+                "Dataset has more than 10,000 samples. Chunking by default to avoid "
+                "exceeding the maximum number of files in a directory on Hugging"
+                " Face Hub. Setting chunk_size to 1000."
+            )
+            chunk_size = 1000
 
     if tags is not None:
         if isinstance(tags, str):
@@ -142,7 +157,7 @@ def push_to_hub(
             "frame_labels_field": frame_labels_field,
             "export_media": True,
         }
-        if dataset_type == fot.FiftyOneChunkedDataset:
+        if dataset_type == fot.FiftyOneDataset:
             export_kwargs["chunk_size"] = chunk_size
         dataset.export(**export_kwargs)
 
@@ -375,7 +390,7 @@ def _is_already_uploaded(api, repo_id, folder_path):
 
 
 def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
-    if not dataset_type == fot.FiftyOneChunkedDataset:
+    if not dataset_type == fot.FiftyOneDataset:
         api.upload_folder(
             folder_path=tmp_dir,
             repo_id=repo_id,
@@ -460,8 +475,6 @@ def _populate_config_file(
 ):
 
     dataset_type_name = dataset_type.__name__
-    if dataset_type_name == "FiftyOneChunkedDataset":
-        dataset_type_name = "FiftyOneDataset"
 
     config_dict = {
         "name": dataset.name,
@@ -1244,12 +1257,8 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset_type_name = config._format.strip()
 
-    if (
-        dataset_type_name in ["FiftyOneDataset", "FiftyOneChunkedDataset"]
-        and max_samples is not None
-    ):
-        # If the dataset is a FiftyOneDataset or FiftyOneChunkedDataset,
-        # download only the necessary files
+    if dataset_type_name != "FiftyOneDataset" and max_samples is not None:
+        # If the dataset is a FiftyOneDataset, download only the necessary files
         with _no_progress_bars():
             hfh.snapshot_download(
                 **init_download_kwargs,
@@ -1280,7 +1289,7 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset = fod.Dataset.from_dir(download_dir, **dataset_kwargs)
 
-    if dataset_type_name not in ["FiftyOneDataset", "FiftyOneChunkedDataset"]:
+    if dataset_type_name != "FiftyOneDataset":
         return dataset
 
     filepaths = _get_files_to_download(dataset)

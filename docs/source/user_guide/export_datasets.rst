@@ -521,9 +521,6 @@ refer to the corresponding dataset format when writing the dataset to disk.
     | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an entire serialized |Dataset| and its associated source   |
     |                                                                    | media.                                                                             |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneChunkedDataset <FiftyOneChunkedDataset-export>`      | A dataset consisting of an entire serialized |Dataset| and its associated source   |
-    |                                                                    | media split into subdirectories of size `chunk_size`.                              |
-    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-exporter>`                    | Export datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                    | |DatasetExporter| class.                                                           |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -3906,27 +3903,33 @@ image's filepath, and then provide the new `rel_dir` when
                 export_media=False \
                 rel_dir=/common/images/dir
 
-.. note::
 
-    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
-    using the `export_media=False` and `rel_dir` parameters is a convenient way
-    to transfer datasets between work environments, since this enables you to
-    store the media files wherever you wish in each environment and then simply
-    provide the appropriate `rel_dir` value when
-    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
-    new environment.
+You can also pass in a `chunk_size` parameter to create nested directories of
+media files with a maximum number of files per directory. This can be useful
+when exporting large datasets to avoid filesystem limits on the number of files
+in a single directory.
 
+As an example, the following code exports a dataset with a maximum of 1000 media
+files per directory:
 
-.. _FiftyOneChunkedDataset-export:
+.. code-block:: python
+    :linenos:
 
-FiftyOneChunkedDataset
-----------------------
+    import fiftyone as fo
 
-The :class:`fiftyone.types.FiftyOneChunkedDataset` provides a disk 
-representation of an entire |Dataset| in a serialized JSON format along with its
-source media split into subdirectories of size `chunk_size`.
+    export_dir = "/path/for/fiftyone-dataset"
 
-Datasets of this type are exported in the following format:
+    # The dataset or view to export
+    dataset_or_view = fo.Dataset(...)
+
+    # Export the dataset with a maximum of 1000 media files per directory
+    dataset_or_view.export(
+        export_dir=export_dir,
+        dataset_type=fo.types.FiftyOneDataset,
+        chunk_size=1000,
+    )
+
+This will create a directory structure like the following:
 
 .. code-block:: text
 
@@ -3942,69 +3945,17 @@ Datasets of this type are exported in the following format:
                 <filename1>.<ext>
                 <filename2>.<ext>
             ...
-        annotations/
-            <anno_key1>.json
-            <anno_key2>.json
-            ...
-        brain/
-            <brain_key1>.json
-            <brain_key2>.json
-            ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
-            ...
 
-where `metadata.json` is a JSON file containing metadata associated with the
-dataset, `samples.json` is a JSON file containing a serialized representation
-of the samples in the dataset, `annotations/` contains any serialized
-|AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
-`evaluations/` contains any serialized |EvaluationResults|.
-
-Video datasets have an additional `frames.json` file that contains a serialized
-representation of the frame labels for each video in the dataset.
 
 .. note::
 
-    See :class:`FiftyOneChunkedDatasetExporter <fiftyone.utils.data.exporters.FiftyOneChunkedDatasetExporter>`
-    for parameters that can be passed to methods like
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
-    to customize the export of datasets of this type.
-
-You can export a FiftyOne dataset to disk in the above format as follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        export_dir = "/path/for/fiftyone-dataset"
-
-        # The dataset or view to export
-        dataset_or_view = fo.Dataset(...)
-
-        # Export the dataset
-        dataset_or_view.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneChunkedDataset,
-            chunk_size=1000
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/fiftyone-dataset
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --type fiftyone.types.FiftyOneChunkedDataset
+    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
+    using the `export_media=False` and `rel_dir` parameters is a convenient way
+    to transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value when
+    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
+    new environment.
 
 
 .. _custom-dataset-exporter:

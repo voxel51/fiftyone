@@ -292,9 +292,6 @@ refer to the corresponding dataset format when reading the dataset from disk.
     | :ref:`FiftyOneDataset <FiftyOneDataset-import>`                                       | A dataset consisting of an entire serialized |Dataset| and its associated source   |
     |                                                                                       | media.                                                                             |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneChunkedDataset <FiftyOneChunkedDataset-import>`                         | A dataset consisting of an entire serialized |Dataset| and its associated source   |
-    |                                                                                       | media split into subdirectories of size `chunk_size`                               |
-    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-importer>`                                       | Import datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                                       | |DatasetImporter| class.                                                           |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -5021,6 +5018,34 @@ of the samples in the dataset, `annotations/` contains any serialized
 |AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
 `evaluations/` contains any serialized |EvaluationResults|.
 
+The data directories may also have nested subdirectories, which may be
+useful for organizing large datasets.
+
+As an example, the following a dataset with the following structure can also be
+imported as a FiftyOneDataset:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        metadata.json
+        samples.json
+        data/
+            data_0/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            data_1/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            ...
+        evaluations/
+            <eval_key1>.json
+            <eval_key2>.json
+            ...
+
+
+
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.
 
@@ -5137,121 +5162,6 @@ into FiftyOne to prepend the appropriate prefix to each media path:
     store the media files wherever you wish in each environment and then simply
     provide the appropriate `rel_dir` value as shown above when importing the
     dataset into FiftyOne in a new environment.
-
-
-.. _FiftyOneChunkedDataset-import:
-
-FiftyOneChunkedDataset
-----------------------
-
-The :class:`fiftyone.types.FiftyOneChunkedDataset` provides a disk 
-representation of an entire |Dataset| in a serialized JSON format along with its
-source media split into subdirectories of size `chunk_size`.
-
-Datasets of this type are read in the following format:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        metadata.json
-        samples.json
-        data/
-            data_0/
-                <filename1>.<ext>
-                <filename2>.<ext>
-                ...
-            data_1/
-                <filename1>.<ext>
-                <filename2>.<ext>
-                ...
-            ...
-        annotations/
-            <anno_key1>.json
-            <anno_key2>.json
-            ...
-        brain/
-            <brain_key1>.json
-            <brain_key2>.json
-            ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
-            ...
-
-where `metadata.json` is a JSON file containing metadata associated with the
-dataset, `samples.json` is a JSON file containing a serialized representation
-of the samples in the dataset, `annotations/` contains any serialized
-|AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
-`evaluations/` contains any serialized |EvaluationResults|.
-
-Video datasets have an additional `frames.json` file that contains a serialized
-representation of the frame labels for each video in the dataset.
-
-.. note::
-
-    See :class:`FiftyOneChunkedDatasetImporter <fiftyone.utils.data.importers.FiftyOneChunkedDatasetImporter>`
-    for parameters that can be passed to methods like
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-    customize the import of datasets of this type.
-
-You can create a FiftyOne dataset from a directory in the above format as
-follows:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        name = "my-dataset"
-        dataset_dir = "/path/to/fiftyone-dataset"
-
-        # Create the dataset
-        dataset = fo.Dataset.from_dir(
-            dataset_dir=dataset_dir,
-            dataset_type=fo.types.FiftyOneChunkedDataset,
-            name=name,
-        )
-
-        # View summary info about the dataset
-        print(dataset)
-
-        # Print the first few samples in the dataset
-        print(dataset.head())
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        DATASET_DIR=/path/to/fiftyone-dataset
-
-        # Create the dataset
-        fiftyone datasets create \
-            --name $NAME \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.FiftyOneChunkedDataset
-
-        # View summary info about the dataset
-        fiftyone datasets info $NAME
-
-        # Print the first few samples in the dataset
-        fiftyone datasets head $NAME
-
-    To view a dataset stored on disk in the FiftyOne App without creating a
-    persistent FiftyOne dataset, you can execute:
-
-    .. code-block:: shell
-
-        DATASET_DIR=/path/to/fiftyone-dataset
-
-        # View the dataset in the App
-        fiftyone app view \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.FiftyOneChunkedDataset
 
 
 .. _custom-dataset-importer:
