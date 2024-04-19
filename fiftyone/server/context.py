@@ -12,7 +12,6 @@ import starlette.responses as strp
 import strawberry.asgi as gqla
 
 
-import fiftyone as fo
 from fiftyone.core.odm import get_async_db_conn
 
 from fiftyone.server.data import Context
