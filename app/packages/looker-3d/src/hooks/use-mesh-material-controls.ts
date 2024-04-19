@@ -2,23 +2,24 @@ import { folder, useControls } from "leva";
 import { useMemo, useState } from "react";
 import { PANEL_ORDER_PCD_CONTROLS } from "../constants";
 import { getThreeMaterialFromFo3dMaterial } from "../fo3d/utils";
-import { ObjAsset } from "./use-fo3d";
+import { FoMeshMaterial } from "./use-fo3d";
 
-export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
-  const { defaultMaterial } = node;
-
-  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
+export const useMeshMaterialControls = (
+  name: string,
+  foMeshMaterial: FoMeshMaterial
+) => {
+  const [opacity, setOpacity] = useState(foMeshMaterial.opacity);
   const [renderAsWireframe, setRenderAsWireframe] = useState(
-    defaultMaterial.wireframe
+    foMeshMaterial.wireframe
   );
-  const [color, setColor] = useState(defaultMaterial["color"] ?? "#ffffff");
-  const [metalness, setMetalness] = useState(defaultMaterial["metalness"] ?? 0);
-  const [roughness, setRoughness] = useState(defaultMaterial["roughness"] ?? 1);
+  const [color, setColor] = useState(foMeshMaterial["color"] ?? "#ffffff");
+  const [metalness, setMetalness] = useState(foMeshMaterial["metalness"] ?? 0);
+  const [roughness, setRoughness] = useState(foMeshMaterial["roughness"] ?? 1);
   const [emissiveColor, setEmissiveColor] = useState(
-    defaultMaterial["emissive"] ?? "#000000"
+    foMeshMaterial["emissive"] ?? "#000000"
   );
   const [emissiveIntensity, setEmissiveIntensity] = useState(
-    defaultMaterial["emissiveIntensity"] ?? 0.1
+    foMeshMaterial["emissiveIntensity"] ?? 0.1
   );
 
   // note: we're not making attributes like reflectivity, IOR, etc. configurable
@@ -28,7 +29,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       [name]: folder(
         {
           materialTypeLabel: {
-            value: defaultMaterial._type,
+            value: foMeshMaterial._type,
             label: "Material Type",
             editable: false,
             order: -1,
@@ -52,7 +53,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             value: color,
             label: "Color",
             onChange: setColor,
-            render: () => defaultMaterial._type !== "MeshDepthMaterial",
+            render: () => foMeshMaterial._type !== "MeshDepthMaterial",
             order: 1004,
           },
           metalness: {
@@ -62,7 +63,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             step: 0.1,
             label: "Metalness",
             onChange: setMetalness,
-            render: () => defaultMaterial._type === "MeshStandardMaterial",
+            render: () => foMeshMaterial._type === "MeshStandardMaterial",
             order: 1005,
           },
           roughness: {
@@ -72,7 +73,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             step: 0.1,
             label: "Roughness",
             onChange: setRoughness,
-            render: () => defaultMaterial._type === "MeshStandardMaterial",
+            render: () => foMeshMaterial._type === "MeshStandardMaterial",
             order: 1006,
           },
           emissiveIntensity: {
@@ -83,8 +84,8 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             label: "Emissive Intensity",
             onChange: setEmissiveIntensity,
             render: () =>
-              defaultMaterial._type !== "MeshDepthMaterial" &&
-              defaultMaterial._type !== "MeshBasicMaterial",
+              foMeshMaterial._type !== "MeshDepthMaterial" &&
+              foMeshMaterial._type !== "MeshBasicMaterial",
             order: 1007,
           },
           emissiveColor: {
@@ -103,7 +104,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       ),
     }),
     [
-      defaultMaterial,
+      foMeshMaterial,
       opacity,
       metalness,
       roughness,
@@ -117,7 +118,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
 
   const material = useMemo(() => {
     return getThreeMaterialFromFo3dMaterial({
-      ...defaultMaterial,
+      ...foMeshMaterial,
       opacity,
       wireframe: renderAsWireframe,
       color,
@@ -127,7 +128,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       emissiveIntensity,
     });
   }, [
-    defaultMaterial,
+    foMeshMaterial,
     opacity,
     renderAsWireframe,
     color,
