@@ -5,8 +5,10 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+# pylint: disable=no-member
+
 import logging
-from cv2 import cv2
+import cv2
 
 import fiftyone as fo
 import fiftyone.zoo as foz
