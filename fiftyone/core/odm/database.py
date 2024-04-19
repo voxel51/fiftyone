@@ -409,13 +409,13 @@ def get_async_db_client(use_global=False):
     return _async_connect(use_global)
 
 
-def get_async_db_conn():
+def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client()[fo.config.database_name]
+    db = get_async_db_client(use_global=use_global)[fo.config.database_name]
     return _apply_options(db)
 
 
