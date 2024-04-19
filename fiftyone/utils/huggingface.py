@@ -400,8 +400,16 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
         return
 
     base_dir_contents = os.listdir(tmp_dir)
+    filenames = [
+        f
+        for f in base_dir_contents
+        if os.path.isfile(os.path.join(tmp_dir, f))
+    ]
+    subdirs = [
+        d for d in base_dir_contents if os.path.isdir(os.path.join(tmp_dir, d))
+    ]
 
-    for filename in base_dir_contents:
+    for filename in filenames:
         if "." in filename:
             api.upload_file(
                 path_or_fileobj=os.path.join(tmp_dir, filename),
@@ -411,7 +419,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
             )
 
     for runtype in ["annotations", "brain", "evaluations", "runs"]:
-        if runtype in base_dir_contents:
+        if runtype in subdirs:
             api.upload_folder(
                 folder_path=os.path.join(tmp_dir, runtype),
                 path_in_repo=runtype,
