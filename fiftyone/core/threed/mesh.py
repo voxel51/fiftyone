@@ -18,7 +18,7 @@ class Mesh(Object3D):
     Args:
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
             if not provided
         **kwargs: keyword arguments for the
             :class:`fiftyone.core.threed.Object3D` parent class
@@ -61,7 +61,7 @@ class ObjMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh if ``mtl_path`` is not provided
             or if material in ``mtl_path`` is not found. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
@@ -147,7 +147,7 @@ class GltfMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh if gLTF file does not contain
             material information. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
@@ -188,7 +188,9 @@ class PlyMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh if PLY file does not contain
             vertex colors. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`. If the PLY
+            file contains vertex colors, the material will be ignored and
+            vertex colors will be used.
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
@@ -226,7 +228,7 @@ class StlMesh(Mesh):
             file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
