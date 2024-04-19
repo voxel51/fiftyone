@@ -28,7 +28,7 @@ from fiftyone.core.session.events import (
     SetFieldVisibilityStage,
 )
 
-from fiftyone.server.events.state import get_listeners, get_state
+from fiftyone.server.events.state import get_listeners, get_state, set_state
 
 
 async def dispatch_event(
@@ -66,7 +66,7 @@ async def dispatch_event(
         state.group_slice = event.slice
 
     if isinstance(event, (StateUpdate, Refresh)):
-        state = event.state
+        set_state(event.state)
 
     if isinstance(event, ReactivateNotebookCell):
         await dispatch_event(subscription, DeactivateNotebookCell())
