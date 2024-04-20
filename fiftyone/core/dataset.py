@@ -3663,12 +3663,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return name in self.list_saved_views()
 
-    def list_saved_views(self):
-        """Returns the names of saved views on this dataset.
+    def list_saved_views(self, info=False):
+        """List saved views on this dataset.
+
+        Args:
+            info (False): whether to return info dicts describing each saved view
+                rather than just their names
 
         Returns:
-            a list of saved view names
+            a list of saved view names or info dicts
         """
+
+        if info:
+            return [
+                {f: getattr(view_doc, f) for f in view_doc._EDITABLE_FIELDS}
+                for view_doc in self._doc.get_saved_views()
+            ]
+
         return [view_doc.name for view_doc in self._doc.get_saved_views()]
 
     @mutates_data
@@ -3929,12 +3940,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return name in self.list_workspaces()
 
-    def list_workspaces(self):
-        """Returns the names of saved workspaces on this dataset.
+    def list_workspaces(self, info=False):
+        """List saved workspaces on this dataset.
+
+        Args:
+            info (False): whether to return info dicts describing each saved workspace
+                rather than just their names
 
         Returns:
-            a list of saved workspace names
+            a list of saved workspace names or info dicts
         """
+
+        if info:
+            return [
+                {
+                    f: getattr(workspace_doc, f)
+                    for f in workspace_doc._EDITABLE_FIELDS
+                }
+                for workspace_doc in self._doc.get_workspaces()
+            ]
+
         return [
             workspace_doc.name for workspace_doc in self._doc.get_workspaces()
         ]

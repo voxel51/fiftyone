@@ -33,7 +33,6 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
-
     unsubscribe();
   });
 
@@ -41,7 +40,8 @@ export const processState = (
     return { view: [], fieldVisibility: undefined };
   }
   return {
-    view: state.view || [],
     fieldVisibility: state.field_visibility_stage,
+    view: state.view || [],
+    workspace: state.spaces,
   };
 };

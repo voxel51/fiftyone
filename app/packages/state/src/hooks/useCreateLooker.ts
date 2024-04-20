@@ -14,6 +14,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
+  isNullish,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRef } from "react";
@@ -139,6 +140,9 @@ export default <T extends AbstractLooker>(
         };
 
         let sampleMediaFilePath = urls[mediaField];
+        if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
+          sampleMediaFilePath = urls["filepath"];
+        }
 
         if (constructor === ThreeDLooker) {
           config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");

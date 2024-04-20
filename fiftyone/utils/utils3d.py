@@ -443,17 +443,29 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
 
 
 def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
-    pcd_path = None
+    explicitly_flagged_pcd_path = None
+    fallover_pcd_path = None
 
     def _visit_node_dfs(node):
-        nonlocal pcd_path
+        nonlocal explicitly_flagged_pcd_path
+        nonlocal fallover_pcd_path
+
         if hasattr(node, "pcd_path") and node.flag_for_projection:
-            pcd_path = node.pcd_path
+            explicitly_flagged_pcd_path = node.pcd_path
         else:
+            if hasattr(node, "pcd_path"):
+                fallover_pcd_path = node.pcd_path
+
             for child in node.children:
                 _visit_node_dfs(child)
 
     _visit_node_dfs(scene)
+
+    pcd_path = (
+        explicitly_flagged_pcd_path
+        if explicitly_flagged_pcd_path
+        else fallover_pcd_path
+    )
 
     if pcd_path is None or fos.isabs(pcd_path):
         return pcd_path

@@ -199,12 +199,12 @@ const measureGroups = (
   data: { top: number; height: number; key: string }[];
   activeHeight: number;
 } => {
-  const data = [];
   let current = {
     top: -MARGIN,
     height: 0,
     key: getEntryKey(items[order[0]].entry),
   };
+  const data: typeof current[] = [];
   let activeHeight = -MARGIN;
 
   for (let i = 0; i < order.length; i++) {
@@ -264,24 +264,25 @@ const isDisabledEntry = (
 };
 
 const getAfterKey = (
-  activeKey: string,
+  activeKey: string | null,
   items: InteractiveItems,
   order: string[],
   direction: Direction,
   disabled: Set<string>
 ): string | null => {
-  if (!items[activeKey]) {
-    return;
+  if (activeKey === null || !items[activeKey]) {
+    return null;
   }
 
   const up = direction === Direction.UP;
-  const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
+  const baseTop =
+    items[order[0]].el.parentElement?.getBoundingClientRect().y || 0;
   const isGroup = items[activeKey].entry.kind === fos.EntryKind.GROUP;
-  let { data, activeHeight } = isGroup
+  const measurement = isGroup
     ? measureGroups(activeKey, items, order)
     : measureEntries(activeKey, items, order);
 
-  data = data.filter(
+  const data = measurement.data.filter(
     ({ key }) => !isDisabledEntry(items[key].entry, disabled, !isGroup)
   );
 
@@ -289,7 +290,7 @@ const getAfterKey = (
   let y = top - baseTop;
 
   if (!up) {
-    y += activeHeight;
+    y += measurement.activeHeight;
   }
 
   let filtered = data
@@ -435,7 +436,7 @@ const InteractiveSidebar = ({
     throw entries;
   }
 
-  let group = null;
+  let group: string | null = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
     const key = getEntryKey(entry);

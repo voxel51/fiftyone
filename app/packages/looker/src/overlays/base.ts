@@ -20,7 +20,7 @@ export interface BaseLabel {
   index?: number;
 }
 
-export interface PointInfo<Label extends BaseLabel> {
+export interface PointInfo<Label extends BaseLabel = BaseLabel> {
   color: string;
   field: string;
   label: Label;

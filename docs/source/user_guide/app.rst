@@ -483,6 +483,7 @@ show statistics for the current collection based on the **sidebar mode**:
 -   `all`: always compute counts for all fields
 -   `best`: automatically choose between `fast` and `all` mode based on the
     size of the dataset
+-   `disabled`: disable the feature in the App and always choose `fast`
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:

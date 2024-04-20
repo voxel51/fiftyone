@@ -184,6 +184,7 @@ interface BaseOptions {
   isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
   thumbnailTitle?: (sample: any) => string;
+  mediaFallback: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -460,6 +461,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showOverlays: true,
   pointFilter: (path: string, point: Point) => true,
   attributeVisibility: {},
+  mediaFallback: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

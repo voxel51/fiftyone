@@ -42,6 +42,7 @@
         "@mui/icons-material": "^5.10.2",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.7.3",
+        "@textea/json-viewer": "^3.4.1",
         "classnames": "^2.3.1",
         "framer-motion": "^6.2.7",
         "path-to-regexp": "^6.2.0",

@@ -9,7 +9,6 @@ Defines the shared state between the FiftyOne App and backend.
 import logging
 import typing as t
 
-from bson import json_util
 from dataclasses import asdict
 from mongoengine.base import BaseDict, BaseList
 import strawberry as gql
@@ -23,7 +22,6 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
-import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -121,7 +119,7 @@ class StateDescription(etas.Serializable):
                 d["colorscale"] = self.config.get_colormap()
 
             if isinstance(self.spaces, Space):
-                d["spaces"] = self.spaces.to_json()
+                d["spaces"] = self.spaces.to_dict()
 
             if isinstance(self.color_scheme, ColorScheme):
                 d["color_scheme"] = self.color_scheme.to_dict(False)
@@ -139,13 +137,11 @@ class StateDescription(etas.Serializable):
         )
 
     @classmethod
-    def from_dict(cls, d, with_config=None):
+    def from_dict(cls, d):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
         Args:
             d: a JSON dictionary
-            with_config (None): an existing
-                :class:`fiftyone.core.config.AppConfig` to attach and apply
-                settings to
+
         Returns:
             :class:`StateDescription`
         """
@@ -171,7 +167,12 @@ class StateDescription(etas.Serializable):
                     dataset.reload()
                     view = fov.DatasetView._build(dataset, stages)
 
-        config = with_config or fo.app_config.copy()
+        config = (
+            fo.AppConfig.from_dict(d["config"])
+            if d.get("config", None)
+            else None
+        )
+
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
 
@@ -179,7 +180,7 @@ class StateDescription(etas.Serializable):
 
         spaces = d.get("spaces", None)
         if spaces is not None:
-            spaces = Space.from_dict(json_util.loads(spaces))
+            spaces = Space.from_dict(spaces)
 
         color_scheme = d.get("color_scheme", None)
         if color_scheme:
@@ -243,9 +244,11 @@ def serialize_fields(schema: t.Dict) -> t.List[SampleField]:
                     embedded_doc_type=embedded_doc_type,
                     subfield=subfield,
                     description=field.description,
-                    info=_convert_mongoengine_data(field.info)
-                    if isinstance(field.info, BaseDict)
-                    else field.info,
+                    info=(
+                        _convert_mongoengine_data(field.info)
+                        if isinstance(field.info, BaseDict)
+                        else field.info
+                    ),
                 )
             )
 

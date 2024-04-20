@@ -24,3 +24,6 @@ export type { UseSearch } from "./Selector";
 export { default as TabOption } from "./TabOption";
 export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
+export { default as Dialog } from "./Dialog";
+export { default as TextField } from "./TextField";
+export { default as ColoredDot } from "./ColoredDot";

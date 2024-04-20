@@ -47,7 +47,6 @@
         "recoil-relay": "^0.1.0",
         "remark-gfm": "^3.0.1",
         "resize-observer-polyfill": "^1.5.1",
-        "searchable-react-json-view": "^0.0.8",
         "styled-components": "^6.1.8",
         "uuid": "^8.3.2",
         "xstate": "^4.14.0"
