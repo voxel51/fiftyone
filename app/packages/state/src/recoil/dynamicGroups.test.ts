@@ -26,5 +26,3 @@ describe("handles non-nested dynamic groups", () => {
     expect(testNesting()).toBe(false);
   });
 });
-
-describe("dynamic group view modifications", () => {});

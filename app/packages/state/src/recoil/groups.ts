@@ -35,6 +35,7 @@ import {
 import { ModalSample, modalLooker, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
+import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
@@ -367,9 +368,7 @@ export const groupSamples = graphQLSelectorFamily<
       return {
         count,
         dataset: get(datasetName),
-        view: get(viewAtoms.view).filter(
-          (stage) => stage._cls !== viewAtoms.GROUP_BY_VIEW_STAGE
-        ),
+        view: get(groupView),
         filter: {
           group: {
             slice: get(groupSlice),
@@ -447,4 +446,16 @@ export const activeModalSidebarSample = selector({
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
+});
+
+/**
+ * A group view, i.e. all slices of a group, can potentially be of a dynamic
+ * group. The GroupBy stage is filtered to accomodate this
+ */
+export const groupView = selector<State.Stage[]>({
+  key: "groupView",
+  get: ({ get }) =>
+    get(viewAtoms.view).filter(
+      (stage) => stage._cls !== viewAtoms.GROUP_BY_VIEW_STAGE
+    ),
 });

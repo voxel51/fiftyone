@@ -7,9 +7,6 @@ export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
   get:
     (groupByFieldValueExplicit: string | null = null) =>
     ({ get }) => {
-      if (groupByFieldValueExplicit === null) {
-        throw new Error("E");
-      }
       return (
         get(
           aggregationQuery({
