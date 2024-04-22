@@ -1,4 +1,5 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
+import { resolveParent } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
   MeshBasicMaterial,
@@ -7,6 +8,8 @@ import {
   MeshPhongMaterial,
   MeshStandardMaterial,
   PointsMaterial,
+  Vector3,
+  Vector3Tuple,
 } from "three";
 import {
   FoMeshBasicMaterialProps,
@@ -15,7 +18,6 @@ import {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import { resolveParent } from "@fiftyone/utilities";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -210,4 +212,28 @@ export const getThreeMaterialFromFo3dMaterial = (
   } else {
     throw new Error("Unknown material " + JSON.stringify(foMtl, null, 2));
   }
+};
+
+export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
+  if (!vec?.length) {
+    return null;
+  }
+
+  if (vec instanceof Vector3) {
+    vec = vec.toArray();
+  }
+
+  if (vec[0] === 1 && vec[1] === 0 && vec[2] === 0) {
+    return "X";
+  }
+
+  if (vec[0] === 0 && vec[1] === 1 && vec[2] === 0) {
+    return "Y";
+  }
+
+  if (vec[0] === 0 && vec[1] === 0 && vec[2] === 1) {
+    return "Z";
+  }
+
+  return null;
 };

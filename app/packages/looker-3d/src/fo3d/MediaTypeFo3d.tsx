@@ -14,10 +14,7 @@ import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PerspectiveCamera, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import {
-  Looker3dPluginSettings,
-  defaultPluginSettings,
-} from "../Looker3dPlugin";
+import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
@@ -42,7 +39,7 @@ import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
-import { getMediaUrlForFo3dSample } from "./utils";
+import { getMediaUrlForFo3dSample, getOrthonormalAxis } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -53,10 +50,7 @@ export const MediaTypeFo3dComponent = () => {
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
-  const settings = usePluginSettings<Looker3dPluginSettings>(
-    "3d",
-    defaultPluginSettings
-  );
+  const settings = usePluginSettings<Looker3dPluginSettings>("3d");
 
   const mediaUrl = useMemo(
     () => getMediaUrlForFo3dSample(sample, mediaField),
@@ -92,9 +86,21 @@ export const MediaTypeFo3dComponent = () => {
       }
     }
 
+    if (settings.defaultUp) {
+      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
+
+      if (maybeOrthonormalAxis) {
+        return new Vector3(
+          settings.defaultUp[0],
+          settings.defaultUp[1],
+          settings.defaultUp[2]
+        );
+      }
+    }
+
     // default to y-up
     return new Vector3(0, 1, 0);
-  }, [foScene]);
+  }, [foScene, settings]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const orbitControlsRef = useRef<OrbitControlsImpl>();
