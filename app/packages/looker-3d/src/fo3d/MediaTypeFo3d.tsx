@@ -1,6 +1,6 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { AdaptiveDpr, AdaptiveEvents, OrbitControls } from "@react-three/drei";
+import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
 import {
   Suspense,
@@ -13,7 +13,6 @@ import {
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { PerspectiveCamera, Vector3 } from "three";
-import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
@@ -103,7 +102,7 @@ export const MediaTypeFo3dComponent = () => {
   }, [foScene, settings]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const orbitControlsRef = useRef<OrbitControlsImpl>();
+  const cameraControlsRef = useRef<CameraControls>();
 
   const assetsGroupRef = useRef<THREE.Group>();
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
@@ -246,21 +245,37 @@ export const MediaTypeFo3dComponent = () => {
       if (
         !sceneBoundingBox ||
         !cameraRef.current ||
-        !orbitControlsRef.current
+        !cameraControlsRef.current
       ) {
         return;
       }
 
+      let newCameraPosition = [
+        defaultCameraPositionComputed.x,
+        defaultCameraPositionComputed.y,
+        defaultCameraPositionComputed.z,
+      ] as const;
+
       if (view === "top") {
-        cameraRef.current.position.copy(topCameraPosition);
-      } else {
-        cameraRef.current.position.copy(defaultCameraPositionComputed);
+        newCameraPosition = [
+          topCameraPosition.x,
+          topCameraPosition.y,
+          topCameraPosition.z,
+        ];
       }
 
-      const newLookAt = sceneBoundingBox.getCenter(new Vector3());
+      const boundingBoxCenter = sceneBoundingBox.getCenter(new Vector3());
+      const newLookAt = [
+        boundingBoxCenter.x,
+        boundingBoxCenter.y,
+        boundingBoxCenter.z,
+      ] as const;
 
-      orbitControlsRef.current.target.copy(newLookAt);
-      orbitControlsRef.current.update();
+      cameraControlsRef.current.setLookAt(
+        ...newCameraPosition,
+        ...newLookAt,
+        true
+      );
     },
     [sceneBoundingBox, topCameraPosition, defaultCameraPositionComputed]
   );
@@ -314,25 +329,22 @@ export const MediaTypeFo3dComponent = () => {
   ]);
 
   useEffect(() => {
-    if (!orbitControlsRef.current) {
+    if (!cameraControlsRef.current) {
       return;
     }
 
     if (foScene?.cameraProps.lookAt?.length === 3) {
-      orbitControlsRef.current.target.copy(
-        new Vector3(
-          foScene.cameraProps.lookAt[0],
-          foScene.cameraProps.lookAt[1],
-          foScene.cameraProps.lookAt[2]
-        ).normalize()
+      cameraControlsRef.current.setTarget(
+        foScene.cameraProps.lookAt[0],
+        foScene.cameraProps.lookAt[1],
+        foScene.cameraProps.lookAt[2]
       );
       return;
     }
 
     if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
-      orbitControlsRef.current.target.copy(
-        sceneBoundingBox.getCenter(new Vector3())
-      );
+      const center = sceneBoundingBox.getCenter(new Vector3());
+      cameraControlsRef.current.setTarget(center.x, center.y, center.z);
     }
   }, [foScene, sceneBoundingBox]);
 
@@ -347,7 +359,6 @@ export const MediaTypeFo3dComponent = () => {
   return (
     <>
       <Leva />
-
       <Canvas
         id={CANVAS_WRAPPER_ID}
         camera={canvasCameraProps}
@@ -365,12 +376,7 @@ export const MediaTypeFo3dComponent = () => {
           <Suspense fallback={<SpinningCube />}>
             <AdaptiveDpr pixelated />
             <AdaptiveEvents />
-            <OrbitControls
-              ref={orbitControlsRef}
-              makeDefault
-              minPolarAngle={0}
-              maxPolarAngle={Math.PI}
-            />
+            <CameraControls ref={cameraControlsRef} makeDefault />
             <Lights lights={foScene?.lights} />
             <Gizmos />
 
