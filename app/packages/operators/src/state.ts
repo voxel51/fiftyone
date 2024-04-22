@@ -28,6 +28,7 @@ import {
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
+import { ExecutionCallback } from "./types-internal";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -835,6 +836,7 @@ type OperatorExecutorOptions = {
   delegationTarget?: string;
   requestDelegation?: boolean;
   skipOutput?: boolean;
+  callback?: ExecutionCallback;
 };
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
@@ -865,7 +867,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation, skipOutput } = options || {};
+      const { delegationTarget, requestDelegation, skipOutput, callback } =
+        options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -890,7 +893,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
+        callback?.(result);
       } catch (e) {
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         if (!isAbortError) {

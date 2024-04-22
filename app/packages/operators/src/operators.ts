@@ -3,6 +3,7 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
+import { ExecutionCallback } from "./types-internal";
 
 class InvocationRequest {
   constructor(public operatorURI: string, public params: any = {}) {}
@@ -479,11 +480,15 @@ export function resolveOperatorURI(operatorURI) {
   return `@voxel51/operators/${operatorURI}`;
 }
 
-export async function executeOperator(operatorURI, params: any = {}) {
+export async function executeOperator(
+  operatorURI,
+  params: any = {},
+  callback?: ExecutionCallback
+) {
   operatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
   const request = new InvocationRequest(operatorURI, params);
-  queue.add(request);
+  queue.add(request, callback);
 }
 
 export async function validateOperatorInputs(
@@ -747,7 +752,11 @@ enum QueueItemStatus {
 }
 
 class QueueItem {
-  constructor(public id: string, public request: InvocationRequest) {}
+  constructor(
+    public id: string,
+    public request: InvocationRequest,
+    public callback?: ExecutionCallback
+  ) {}
   status: QueueItemStatus = QueueItemStatus.Pending;
   result: OperatorResult;
   toJSON() {
@@ -792,8 +801,8 @@ export class InvocationRequestQueue {
   generateId() {
     return Math.random().toString(36).substr(2, 9);
   }
-  add(request: InvocationRequest) {
-    const item = new QueueItem(this.generateId(), request);
+  add(request: InvocationRequest, callback?: ExecutionCallback) {
+    const item = new QueueItem(this.generateId(), request, callback);
     this._queue.push(item);
     this._notifySubscribers();
   }
@@ -845,6 +854,7 @@ export class InvocationRequestQueue {
       id: d.id,
       status: d.status,
       request: d.request.toJSON(),
+      callback: d.callback,
     }));
   }
 }
