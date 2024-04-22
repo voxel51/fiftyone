@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
 
 export default function OperatorIO(props) {
