@@ -189,8 +189,8 @@ class PlyMesh(Mesh):
             default material for the mesh if PLY file does not contain
             vertex colors. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`. If the PLY
-            file contains vertex colors, the material will be ignored and
-            vertex colors will be used.
+            file contains vertex colors, the material is ignored and vertex
+            colors are used
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
