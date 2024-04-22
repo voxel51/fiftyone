@@ -29,7 +29,7 @@ export const Stl = ({
   const points = useLoader(STLLoader, stl.stlUrl);
   const [mesh, setMesh] = useState(null);
 
-  const { material } = useMeshMaterialControls(name, stl);
+  const { material } = useMeshMaterialControls(name, stl.defaultMaterial);
 
   useEffect(() => {
     if (!material) {

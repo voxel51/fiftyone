@@ -32,7 +32,7 @@ export const Box = ({
       ),
     [box]
   );
-  const { material } = useMeshMaterialControls(name, box);
+  const { material } = useMeshMaterialControls(name, box.defaultMaterial);
 
   const mesh = useMemo(() => {
     if (!material) {
