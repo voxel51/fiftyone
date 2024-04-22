@@ -5,6 +5,7 @@ FiftyOne operator types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import enum
 
 
@@ -1763,3 +1764,38 @@ class ViewTargetProperty(Property):
     @property
     def options(self):
         return self._options
+
+
+class GridView(View):
+    """Displays properties of an object as a grid of components in horizontal
+    or vertical orientation.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+
+    Args:
+        orientation ("horizontal"): the orientation of the stack. Can be either
+            ``"horizontal"`` or ``"vertical"``
+        gap (1): the gap between the components
+        align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
+            or ``"right"``
+        align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
+            or ``"bottom"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = kwargs.get("orientation", "horizontal")
+        self.gap = kwargs.get("gap", 1)
+        self.align_x = kwargs.get("align_x", "left")
+        self.align_y = kwargs.get("align_y", "top")
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "orientation": self.orientation,
+            "gap": self.gap,
+            "align_x": self.align_x,
+            "align_y": self.align_y,
+        }

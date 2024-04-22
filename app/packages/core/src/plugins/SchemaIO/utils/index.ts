@@ -46,6 +46,7 @@ export function getErrorsForView(props) {
 }
 
 export * from "./generate-schema";
+export * from "./layout";
 export { default as autoFocus } from "./auto-focus";
 
 // Views that renders DynamicIO as a child component

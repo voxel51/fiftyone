@@ -28,7 +28,6 @@ export function CustomPanel({
   onViewChange,
   dimensions,
 }) {
-  console.log("CustomPanel", panelId, onLoad);
   const [panelState, setPanelState] = usePanelState(null, panelId);
   const { height, width } = dimensions?.bounds || {};
   const setCustomPanelState = useSetCustomPanelState();
@@ -49,16 +48,19 @@ export function CustomPanel({
     }
 
     return () => {
-      if (onUnLoad) executeOperator(onUnLoad, { panel_id: panelId });
+      if (onUnLoad) {
+        executeOperator(onUnLoad, { panel_id: panelId });
+      }
     };
   }, [panelId, onLoad, onUnLoad]);
 
   useEffect(() => {
-    if (onViewChange)
+    if (onViewChange) {
       executeOperator(onViewChange, {
         panel_id: panelId,
         panel_state: panelState?.state,
       });
+    }
   }, [view]);
 
   useEffect(() => {
@@ -91,24 +93,11 @@ export function CustomPanel({
   return (
     <Box sx={{ height: "100%", width: "100%" }}>
       <OperatorIO
-        schema={{
-          ...schema,
-          view: {
-            ...schema.view,
-            componentsProps: {
-              gridContainer: {
-                spacing: 0,
-                sx: { pl: 0 },
-                height: height,
-                width,
-              },
-            },
-          },
-        }}
+        schema={schema}
         onChange={handlePanelStateChange}
         data={data}
+        layout={{ height, width }}
       />
-      <pre>{JSON.stringify(panelState, null, 2)}</pre>
     </Box>
   );
 }
