@@ -9,6 +9,7 @@ from collections import OrderedDict
 
 from bson import ObjectId
 from pymongo import UpdateOne
+from typing import List
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -582,8 +583,9 @@ class DatasetMixin(object):
             paths: an iterable of field names or ``embedded.field.names``
         """
         is_dataset = isinstance(sample_collection, fod.Dataset)
-
-        simple_paths = []
+        list_type_attribute_paths = ["tags"]
+        simple_list_type_attribute_paths = []
+        simple_other_type_attribute_paths = []
         coll_paths = []
 
         for path in paths:
@@ -596,12 +598,20 @@ class DatasetMixin(object):
                 )
 
             if is_dataset and is_root_field:
-                simple_paths.append(path)
+                if path in list_type_attribute_paths:
+                    simple_list_type_attribute_paths.append(path)
+                else:
+                    simple_other_type_attribute_paths.append(path)
             else:
                 coll_paths.append(path)
 
-        if simple_paths:
-            cls._clear_fields_simple(simple_paths)
+        if simple_list_type_attribute_paths:
+            cls._clear_list_type_fields_simple(
+                simple_list_type_attribute_paths
+            )
+
+        if simple_other_type_attribute_paths:
+            cls._clear_fields_simple(simple_other_type_attribute_paths)
 
         if coll_paths:
             cls._clear_fields_collection(sample_collection, coll_paths)
@@ -877,7 +887,28 @@ class DatasetMixin(object):
         view.save(field_roots)
 
     @classmethod
+    def _clear_list_type_fields_simple(cls, paths):
+        """Clears the list type field(s) of the documents in this collection.
+            Set list[] to each field.
+
+        Args:
+            paths: an iterable of field names or ``embedded.field.names``
+        """
+        if not paths:
+            return
+        _paths = cls._handle_db_fields(paths)
+        coll = get_db_conn()[cls.__name__]
+        coll.update_many({}, {"$set": {p: [] for p in _paths}})
+
+    @classmethod
     def _clear_fields_simple(cls, paths):
+        """Clears the non-list type field(s) of the documents
+            in this collection.
+            Set None to each field.
+
+        Args:
+            paths: an iterable of field names or ``embedded.field.names``
+        """
         if not paths:
             return
 
