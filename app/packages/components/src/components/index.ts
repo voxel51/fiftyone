@@ -27,3 +27,4 @@ export { default as Tooltip } from "./Tooltip";
 export { default as Dialog } from "./Dialog";
 export { default as TextField } from "./TextField";
 export { default as ColoredDot } from "./ColoredDot";
+export { default as JSONViewer } from "./JSONViewer";
