@@ -34,7 +34,9 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName) as string,
-      view: get(fos.view),
+      view: get(fos.view)?.filter(
+        (stage) => stage._cls !== fos.GROUP_BY_VIEW_STAGE
+      ),
       filter: {
         group: {
           slice: get(fos.groupSlice),

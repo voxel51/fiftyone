@@ -7,7 +7,7 @@ import { useRecoilValue } from "recoil";
 export const useDynamicGroupSamples = () => {
   const environment = useRelayEnvironment();
   const slice = useRecoilValue(fos.groupSlice);
-  const view = useRecoilValue(fos.dynamicGroupViewQuery({}));
+  const view = useRecoilValue(fos.dynamicGroupViewQuery(null));
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker);

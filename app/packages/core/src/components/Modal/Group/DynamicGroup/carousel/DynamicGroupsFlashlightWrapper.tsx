@@ -30,7 +30,7 @@ const pageParams = selector({
 
     const params = {
       dataset,
-      view: get(fos.dynamicGroupViewQuery({})),
+      view: get(fos.dynamicGroupViewQuery(null)),
     };
 
     return (page: number, pageSize: number) => {

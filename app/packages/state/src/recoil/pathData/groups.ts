@@ -1,16 +1,24 @@
-import { selector } from "recoil";
+import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
-import { dynamicGroupViewQuery } from "../view";
+import { dynamicGroupViewQuery } from "../dynamicGroups";
 
-export const dynamicGroupsElementCount = selector<number>({
+export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
   key: "dynamicGroupsElementCount",
-  get: ({ get }) =>
-    get(
-      aggregationQuery({
-        customView: get(dynamicGroupViewQuery),
-        extended: false,
-        modal: false,
-        paths: [""],
-      })
-    ).at(0)?.count ?? 0,
+  get:
+    (groupByFieldValueExplicit: string | null = null) =>
+    ({ get }) => {
+      if (groupByFieldValueExplicit === null) {
+        throw new Error("E");
+      }
+      return (
+        get(
+          aggregationQuery({
+            customView: get(dynamicGroupViewQuery(groupByFieldValueExplicit)),
+            extended: false,
+            modal: false,
+            paths: [""],
+          })
+        ).at(0)?.count ?? 0
+      );
+    },
 });
