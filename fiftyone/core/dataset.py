@@ -1775,8 +1775,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the dataset.
 
-        The field will remain in the dataset's schema, and all samples will
-        have the value ``None`` for the field.
+        The field will remain in the dataset's schema, and all samples except
+        list[] type sample will have the value ``None`` for the field.
+        The list[] type sample will have the value [] for the field.
 
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
