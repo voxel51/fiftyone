@@ -1600,6 +1600,8 @@ class SampleCollection(object):
 
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
+            Stop adding tags and log the error if there is a sample's tags
+            type is None.
 
         Args:
             tags: a tag or iterable of tags
@@ -1630,6 +1632,13 @@ class SampleCollection(object):
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
+        """Applies the update operation to the 'tags' field of given
+            samples in this collection.
+
+        Args:
+            update (dict): A dictionary specifying the
+            MongoDB update operations.
+        """
         ids = []
         ops = []
         batch_size = fou.recommend_batch_size_for_value(
@@ -1638,7 +1647,12 @@ class SampleCollection(object):
         for _ids in fou.iter_batches(self.values("_id"), batch_size):
             ids.extend(_ids)
             ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
-
+        coll = self._dataset._sample_collection
+        results = coll.find({"_id": {"$in": ids}}, {"tags": 1})
+        for document in results:
+            if document["tags"] is None:
+                logger.error("Sample's tags type is None, can't add tags.")
+                return
         if ops:
             self._dataset._bulk_write(ops, ids=ids)
 
