@@ -1,4 +1,4 @@
-import { CenteredStack } from "@fiftyone/components";
+import { CenteredStack, CodeBlock } from "@fiftyone/components";
 import {
   PanelSkeleton,
   usePanelState,
@@ -27,11 +27,14 @@ export function CustomPanel({
   onUnLoad,
   onViewChange,
   dimensions,
+  panelName,
+  panelLabel,
 }) {
   const [panelState, setPanelState] = usePanelState(null, panelId);
   const { height, width } = dimensions?.bounds || {};
   const setCustomPanelState = useSetCustomPanelState();
   const panelSchema = panelState?.schema;
+  const onLoadError = panelState?.onLoadError;
   const data = getPanelViewData(panelState);
   const handlePanelStateChange = (newState) => {
     setCustomPanelState((state: any) => ({ ...state, ...newState }));
@@ -42,8 +45,10 @@ export function CustomPanel({
   useEffect(() => {
     if (onLoad) {
       if (!panelState?.loaded) {
-        executeOperator(onLoad, { panel_id: panelId });
-        setPanelState((s) => ({ ...s, loaded: true }));
+        executeOperator(onLoad, { panel_id: panelId }, (result) => {
+          const { error: onLoadError } = result;
+          setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
+        });
       }
     }
 
@@ -71,20 +76,27 @@ export function CustomPanel({
       });
   }, [panelState?.state]);
 
-  if (pending && !panelSchema) {
+  if (pending && !panelSchema && !onLoadError) {
     return <PanelSkeleton />;
   }
 
   if (!panelSchema)
     return (
       <CenteredStack spacing={1}>
-        <Typography variant="h3">Custom Panel</Typography>
+        <Typography variant="h4">{panelLabel || "Operator Panel"}</Typography>
         <Typography color="text.secondary">
-          Custom panel is not configured yet.
+          Operator panel &quot;
+          <Typography component="span">{panelName}</Typography>&quot; is not
+          configured yet.
         </Typography>
         <Typography component="pre" color="text.tertiary">
           {panelId}
         </Typography>
+        {onLoadError && (
+          <Box maxWidth="95%">
+            <CodeBlock text={onLoadError} />
+          </Box>
+        )}
       </CenteredStack>
     );
 
@@ -107,6 +119,8 @@ export function defineCustomPanel({
   on_change,
   on_unload,
   on_view_change,
+  panel_name,
+  panel_label,
 }) {
   return ({ panelNode, dimensions }) => (
     <CustomPanel
@@ -116,6 +130,8 @@ export function defineCustomPanel({
       onChange={on_change}
       onViewChange={on_view_change}
       dimensions={dimensions}
+      panelName={panel_name}
+      panelLabel={panel_label}
     />
   );
 }
