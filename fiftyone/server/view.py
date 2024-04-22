@@ -236,6 +236,7 @@ def handle_group_filter(
     unselected = not any(
         isinstance(stage, fosg.SelectGroupSlices) for stage in stages
     )
+    group_by = any(isinstance(stage, fosg.GroupBy) for stage in stages)
     if unselected and filter.slice:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
@@ -248,6 +249,10 @@ def handle_group_filter(
 
         for stage in stages:
             # add stages after flattening and group match
+            if group_by and isinstance(stage, fosg.GroupBy) and filter.slices:
+                view = view.match(
+                    {group_field + ".name": {"$in": filter.slices}}
+                )
             view = view._add_view_stage(stage, validate=False)
 
     else:
@@ -257,7 +262,7 @@ def handle_group_filter(
         if filter.id:
             view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
-    if filter.slices:
+    if not group_by and filter.slices:
         # use 'match' to select requested slices, and avoid media type
         # validation
         view = view.match({group_field + ".name": {"$in": filter.slices}})
