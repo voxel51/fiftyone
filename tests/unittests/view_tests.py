@@ -3314,6 +3314,20 @@ class ViewStageTests(unittest.TestCase):
         tags = self.dataset.count_values("tags")
         self.assertDictEqual(tags, {})
 
+    def test_cleared_tag_samples(self):
+        view = self.dataset[:1]
+        self.dataset.clear_sample_field("tags")
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {})
+
+        view.tag_samples("test")
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {"test": 1})
+
+        view.untag_samples("test")
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {})
+
     def test_tag_labels(self):
         self._setUp_classification()
         self._setUp_detections()
