@@ -224,7 +224,9 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
             asset = new GltfAsset(
-              getResolvedUrlForFo3dAsset(node["gltfPath"], mediaRoot)
+              getSampleSrc(
+                getResolvedUrlForFo3dAsset(node["gltfPath"], mediaRoot)
+              )
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
