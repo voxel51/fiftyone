@@ -57,6 +57,7 @@ export const useAnimationSelect = (
         },
         {
           order: PANEL_ORDER_ANIMATIONS,
+          render: () => animationClips.length > 0,
         }
       ),
     };
