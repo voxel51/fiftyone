@@ -7,14 +7,24 @@ ARG PYTHON_VERSION=3.10
 FROM python:${PYTHON_VERSION} as wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels slack-sdk encord wandb opencv-python pandas
+RUN pip wheel --wheel-dir=/tmp/wheels \
+  slack_sdk==3.27.1 \
+  encord==0.1.111 \
+  wandb==0.16.4 \
+  opencv-python==4.9.0.80 \
+  pandas==2.2.1
 
 
 FROM ${TORCH_IMAGE_NAME} as protexaiplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels slack-sdk encord wandb opencv-python pandas
+    --find-links=/wheelhouse/tmp/wheels \
+    slack-sdk \
+    encord \
+    wandb \
+    opencv-python \
+    pandas
 
 # run as the voxel51 user
 USER 1000:1000
