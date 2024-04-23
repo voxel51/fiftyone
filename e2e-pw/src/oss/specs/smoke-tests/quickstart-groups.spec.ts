@@ -31,7 +31,6 @@ test.describe("quickstart-groups", () => {
       `
         import fiftyone as fo
         import fiftyone.zoo as foz
-        from fiftyone import ViewField as F
 
         dataset = foz.load_zoo_dataset("quickstart-groups")
         dataset.persistent = True

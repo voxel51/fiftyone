@@ -138,7 +138,6 @@ def get_view(
                 media_types=media_types,
             )
 
-        print(view)
         return view
 
     if awaitable:
