@@ -1758,7 +1758,7 @@ class ViewTargetProperty(Property):
 
 
 class DrawerView(View):
-    """Renders operator prompt as a left or right side drawer.
+    """Renders an operator prompt as a left or right side drawer.
 
     Examples::
 
@@ -1771,10 +1771,11 @@ class DrawerView(View):
         return types.Property(inputs, view=prompt)
 
     Args:
-        placement (None): the placement of the drawer. Can be one of the following:
+        placement (None): the placement of the drawer. Can be one of the
+            following
 
-            -   ``'left'``: display to the left of sidebar on samples grid or sample viewer
-            -   ``'right'``: display to the right of spaces on samples grid or sample viewer
+            -   ``'left'``: display to the left of the main or expanded view
+            -   ``'right'``: display to the right of the main or expanded view
     """
 
     def __init__(self, **kwargs):
