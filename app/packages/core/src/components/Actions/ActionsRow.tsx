@@ -11,7 +11,6 @@ import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick } from "@fiftyone/state";
 import {
-  ArrowDownward,
   Bookmark,
   Check,
   ColorLens,
@@ -45,7 +44,6 @@ import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
-import ExportAction from "./Export";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
@@ -450,27 +448,6 @@ const ToggleSidebar: React.FC<{
     />
   );
 });
-
-const Export = () => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef();
-  useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
-
-  return (
-    <ActionDiv ref={ref}>
-      <PillButton
-        icon={<ArrowDownward />}
-        open={open}
-        onClick={() => setOpen(!open)}
-        highlight={open}
-        ref={mRef}
-        title={"Export CSV"}
-      />
-      {open && <ExportAction close={() => setOpen(false)} bounds={bounds} />}
-    </ActionDiv>
-  );
-};
 
 const ActionsRowDiv = styled.div`
   position: relative;
