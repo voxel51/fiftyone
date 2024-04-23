@@ -1893,6 +1893,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def log_collection(self, sample_collection):
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
+        if sample_collection.media_type == fomm.GROUP:
+            self._metadata[
+                "group_media_types"
+            ] = sample_collection.group_media_types
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema

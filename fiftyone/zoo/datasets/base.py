@@ -3130,10 +3130,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        516.3 MB
+        576 MB
     """
 
-    _GDRIVE_ID = "1mLfmb0Bj9L7SaDwcgpKVetvKEGt-b7Lb"
+    _GDRIVE_ID = "1OcuP2daa_usoinLm64CueObGFxLBwOjE"
     _ARCHIVE_NAME = "quickstart-groups.zip"
     _DIR_IN_ARCHIVE = "quickstart-groups"
 
@@ -3302,7 +3302,7 @@ def _should_patch_pcd(dataset_dir):
         return False
 
     try:
-        # LegacyFiftyOneDataset format
+        # v1 patch: for LegacyFiftyOneDataset format
         config = metadata["info"]["app_config"]["plugins"]["3d"]
         if "itemRotation" in config["overlay"]:
             return True
@@ -3310,8 +3310,16 @@ def _should_patch_pcd(dataset_dir):
         pass
 
     try:
-        # PCD format
-        if metadata["group_media_types"]["pcd"] == "point-cloud":
+        # v1 patch: for FiftyOneDataset format
+        config = metadata["app_config"]["plugins"]["3d"]
+        if "itemRotation" in config["overlay"]:
+            return True
+    except:
+        pass
+
+    try:
+        # v2 patch: point-cloud -> 3D conversion
+        if metadata.get("group_media_types", {}).get("pcd", None) != "3d":
             return True
     except:
         pass
