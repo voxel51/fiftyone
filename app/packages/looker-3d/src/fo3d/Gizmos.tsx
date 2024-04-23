@@ -1,7 +1,7 @@
-import { GizmoHelper, GizmoViewport, Line } from "@react-three/drei";
+import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { Vector3 } from "three";
+import { DoubleSide, Vector3 } from "three";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
 import { useFo3dContext } from "./context";
@@ -10,8 +10,12 @@ const AXIS_RED_COLOR = "#FF2160";
 const AXIS_GREEN_COLOR = "#21DF80";
 const AXIS_BLUE_COLOR = "#2280FF";
 
-const FoAxesHelper = ({ size }) => {
+const GRID_CELL_COLOR = "#6f6f6f";
+const GRID_SECTION_COLOR = "#808080";
+
+const FoAxesHelper = ({ fadeDistance }: { fadeDistance: number }) => {
   const { upVector } = useFo3dContext();
+  const size = useMemo(() => fadeDistance / 10, [fadeDistance]);
 
   const axes = useMemo(
     () => [
@@ -50,8 +54,8 @@ const FoAxesHelper = ({ size }) => {
             key={axis.color}
             points={[axis.start, axis.end]}
             color={axis.color}
-            lineWidth={2}
-            opacity={0.3}
+            lineWidth={1}
+            opacity={0.1}
             transparent
           />
         );
@@ -70,7 +74,7 @@ export const Gizmos = () => {
     [upVector]
   );
 
-  const [gridSize, numGridLines] = useMemo(() => {
+  const [gridSize] = useMemo(() => {
     if (
       !sceneBoundingBox ||
       Math.abs(sceneBoundingBox.max.x) === Infinity ||
@@ -100,20 +104,31 @@ export const Gizmos = () => {
 
     // add 30% padding (arbitrary)
     const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.3);
-    const numLines = Math.ceil(gridSize);
-
-    return [gridSize, numLines];
+    return [gridSize];
   }, [sceneBoundingBox, upVector]);
+
+  // 150 is an arbitrary number that seems to work well
+  const fadeDistance = useMemo(() => gridSize * 150, [gridSize]);
 
   return (
     <>
       {isGridOn && (
         <>
-          <gridHelper
-            args={[gridSize, numGridLines]}
+          <Grid
             quaternion={gridHelperQuarternion}
+            infiniteGrid
+            side={DoubleSide}
+            cellSize={1}
+            sectionSize={5}
+            sectionColor={GRID_SECTION_COLOR}
+            cellColor={GRID_CELL_COLOR}
+            fadeDistance={fadeDistance}
+            followCamera
+            fadeFrom={0}
+            cellThickness={0.3}
+            sectionThickness={0.3}
           />
-          <FoAxesHelper size={gridSize} />
+          <FoAxesHelper fadeDistance={fadeDistance} />
         </>
       )}
       <GizmoHelper alignment="top-left" margin={[80, 100]}>
