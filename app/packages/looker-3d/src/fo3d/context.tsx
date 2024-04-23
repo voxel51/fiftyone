@@ -7,6 +7,7 @@ interface Fo3dContextT {
   upVector: Vector3 | null;
   sceneBoundingBox: Box3 | null;
   pluginSettings: Looker3dPluginSettings | null;
+  fo3dRoot: string | null;
 }
 
 const defaultContext: Fo3dContextT = {
@@ -14,6 +15,7 @@ const defaultContext: Fo3dContextT = {
   upVector: null,
   sceneBoundingBox: null,
   pluginSettings: null,
+  fo3dRoot: null,
 };
 
 export const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);

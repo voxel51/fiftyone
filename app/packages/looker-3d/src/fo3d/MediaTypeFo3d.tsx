@@ -38,7 +38,11 @@ import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
-import { getMediaUrlForFo3dSample, getOrthonormalAxis } from "./utils";
+import {
+  getFo3dRoot,
+  getMediaUrlForFo3dSample,
+  getOrthonormalAxis,
+} from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -55,6 +59,8 @@ export const MediaTypeFo3dComponent = () => {
     () => getMediaUrlForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
+
+  const fo3dRoot = useMemo(() => getFo3dRoot(mediaUrl), [mediaUrl]);
 
   const { foScene, isLoading: isParsingFo3d } = useFo3d(
     mediaUrl,
@@ -369,6 +375,7 @@ export const MediaTypeFo3dComponent = () => {
           value={{
             isSceneInitialized,
             upVector,
+            fo3dRoot,
             sceneBoundingBox,
             pluginSettings: settings,
           }}

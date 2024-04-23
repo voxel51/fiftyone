@@ -1,7 +1,8 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
-import { getFo3dRoot, getResolvedUrlForFo3dAsset } from "../fo3d/utils";
+import { useFo3dContext } from "../fo3d/context";
+import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
 import {
   FiftyoneSceneRawJson,
   FoSceneBackground,
@@ -9,6 +10,16 @@ import {
 } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
 
+export const Fo3dSupportedExtensions = [
+  ".pcd",
+  ".ply",
+  ".stl",
+  ".obj",
+  ".mtl",
+  ".gltf",
+  ".glb",
+  ".fbx",
+];
 export class BoxGeometryAsset {
   constructor(
     readonly width: number,
@@ -201,7 +212,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     });
   }, [url, filepath, fetchFo3d]);
 
-  const mediaRoot = useMemo(() => getFo3dRoot(url), [url]);
+  const { fo3dRoot } = useFo3dContext();
 
   const foScene = useMemo(() => {
     if (!rawData) {
@@ -217,7 +228,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
           if (node["fbxPath"]) {
             asset = new FbxAsset(
               getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["fbxPath"], mediaRoot)
+                getResolvedUrlForFo3dAsset(node["fbxPath"], fo3dRoot)
               )
             );
           }
@@ -225,7 +236,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
           if (node["gltfPath"]) {
             asset = new GltfAsset(
               getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["gltfPath"], mediaRoot)
+                getResolvedUrlForFo3dAsset(node["gltfPath"], fo3dRoot)
               )
             );
           }
@@ -235,13 +246,13 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
             const mtlPath = node["mtlPath"];
             if (mtlPath) {
               asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
-                getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, mediaRoot)),
+                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+                getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
                 material as FoMeshMaterial
               );
             } else {
               asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
+                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
                 undefined,
                 material as FoMeshMaterial
               );
@@ -251,7 +262,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
           if (node["stlPath"]) {
             asset = new StlAsset(
               getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["stlPath"], mediaRoot)
+                getResolvedUrlForFo3dAsset(node["stlPath"], fo3dRoot)
               ),
               material as FoMeshMaterial
             );
@@ -260,7 +271,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
           if (node["plyPath"]) {
             asset = new PlyAsset(
               getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["plyPath"], mediaRoot)
+                getResolvedUrlForFo3dAsset(node["plyPath"], fo3dRoot)
               ),
               material as FoMeshMaterial
             );
@@ -269,9 +280,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
       } else if (node["_type"].endsWith("Pointcloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
-            getSampleSrc(
-              getResolvedUrlForFo3dAsset(node["pcdPath"], mediaRoot)
-            ),
+            getSampleSrc(getResolvedUrlForFo3dAsset(node["pcdPath"], fo3dRoot)),
             material as FoPointcloudMaterialProps
           );
         }
@@ -340,13 +349,13 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     if (rawData.background?.image) {
       rawData.background.image = getResolvedUrlForFo3dAsset(
         rawData.background.image,
-        mediaRoot
+        fo3dRoot
       );
     }
 
     if (rawData.background?.cube) {
       rawData.background.cube = rawData.background.cube.map((cubePath) =>
-        getResolvedUrlForFo3dAsset(cubePath, mediaRoot)
+        getResolvedUrlForFo3dAsset(cubePath, fo3dRoot)
       ) as FoSceneBackground["cube"];
     }
 
@@ -370,7 +379,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     };
 
     return toReturn;
-  }, [rawData, mediaRoot]);
+  }, [rawData, fo3dRoot]);
 
   if (isLoading) {
     return {
