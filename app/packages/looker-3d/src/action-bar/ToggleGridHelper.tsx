@@ -9,7 +9,7 @@ export const ToggleGridHelper = () => {
   const { primary } = useTheme();
 
   return (
-    <ActionItem title="Toggle Grid">
+    <ActionItem title="Toggle Grid (G)">
       <GridOnIcon
         sx={{ fontSize: 24 }}
         style={{

@@ -82,7 +82,7 @@ export const ActionBar = ({
           }
           view={"top"}
           label={"T"}
-          hint="Top View"
+          hint="Top View (T)"
         />
       );
     }
@@ -99,7 +99,7 @@ export const ActionBar = ({
           }
           view={"pov"}
           label={"E"}
-          hint="Ego View"
+          hint="Ego View (E)"
         />
       );
     }
