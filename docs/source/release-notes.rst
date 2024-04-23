@@ -3,6 +3,12 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.10
+--------------------
+*Released April 18, 2024*
+
+- Fixed an issue where video datasets were not loading due to ffmpeg dependency
+
 FiftyOne Teams 1.5.9
 --------------------
 *Released April 15, 2024*
