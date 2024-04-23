@@ -1,7 +1,6 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
-import { useFo3dContext } from "../fo3d/context";
 import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
 import {
   FiftyoneSceneRawJson,
@@ -65,11 +64,17 @@ export class SphereGeometryAsset {
 }
 
 export class FbxAsset {
-  constructor(readonly fbxUrl?: string) {}
+  constructor(
+    readonly fbxUrl?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class GltfAsset {
-  constructor(readonly gltfUrl?: string) {}
+  constructor(
+    readonly gltfUrl?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class ObjAsset {
@@ -231,7 +236,8 @@ export const useFo3d = (
             asset = new FbxAsset(
               getSampleSrc(
                 getResolvedUrlForFo3dAsset(node["fbxPath"], fo3dRoot)
-              )
+              ),
+              material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
@@ -239,7 +245,8 @@ export const useFo3d = (
             asset = new GltfAsset(
               getSampleSrc(
                 getResolvedUrlForFo3dAsset(node["gltfPath"], fo3dRoot)
-              )
+              ),
+              material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
