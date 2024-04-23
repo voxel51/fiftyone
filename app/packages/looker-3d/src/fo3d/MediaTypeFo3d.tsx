@@ -232,7 +232,7 @@ export const MediaTypeFo3dComponent = () => {
       aspect: foScene?.cameraProps.aspect,
       fov: foScene?.cameraProps.fov && 50,
       near: foScene?.cameraProps.near && 0.1,
-      far: foScene?.cameraProps.far && 2000,
+      far: foScene?.cameraProps.far && 5000,
     };
   }, [foScene, upVector, defaultCameraPositionComputed]);
 
