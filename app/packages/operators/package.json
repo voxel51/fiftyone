@@ -25,5 +25,9 @@
         "prettier": "2.2.1",
         "typescript": "4.2.4",
         "vite": "^3.2.10"
+    },
+    "peerDependencies": {
+        "@mui/icons-material": "*",
+        "@mui/material": "*"
     }
 }

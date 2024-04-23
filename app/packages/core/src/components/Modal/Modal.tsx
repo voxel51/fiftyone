@@ -1,4 +1,5 @@
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
+import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
@@ -255,6 +256,7 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
           <TooltipInfo />
           <ContentColumn>
             <ModalNavigation onNavigate={onNavigate} />
@@ -288,6 +290,7 @@ const SampleModal = () => {
             </ErrorBoundary>
           </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
         </Container>
       </ModalWrapper>
     </Fragment>,

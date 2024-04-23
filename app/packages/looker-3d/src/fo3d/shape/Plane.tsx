@@ -30,7 +30,7 @@ export const Plane = ({
       ),
     [plane]
   );
-  const { material } = useMeshMaterialControls(name, plane);
+  const { material } = useMeshMaterialControls(name, plane.defaultMaterial);
 
   const mesh = useMemo(() => {
     if (!material) {

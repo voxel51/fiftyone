@@ -19,7 +19,7 @@ const ObjMeshDefaultMaterial = ({
   const { objUrl } = obj;
   const mesh = useLoader(OBJLoader, objUrl);
 
-  const { material } = useMeshMaterialControls(name, obj);
+  const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
 
   useEffect(() => {
     if (!mesh) {
