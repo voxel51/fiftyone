@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0e53882eaec766b9e68a577cda17ae34>>
+ * @generated SignedSource<<73f5c676c9c54c25dd5291458d73b758>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,13 +9,14 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type SidebarMode = "all" | "best" | "fast" | "%future added value";
+export type SidebarMode = "all" | "best" | "disabled" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
   } | null;
   readonly gridMediaField: string;
+  readonly mediaFallback: boolean;
   readonly mediaFields: ReadonlyArray<string> | null;
   readonly modalMediaField: string;
   readonly plugins: object | null;
@@ -83,12 +84,19 @@ const node: ReaderFragment = {
         }
       ],
       "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaFallback",
+      "storageKey": null
     }
   ],
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
 
-(node as any).hash = "c962e7928367bf9097b33f5970633612";
+(node as any).hash = "6b71b3fc8c5a07b921938d7d0cf03272";
 
 export default node;

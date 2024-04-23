@@ -17,6 +17,7 @@ import eta.core.serial as etas
 
 import fiftyone.core.utils as fou
 
+from .database import ensure_connection
 from .utils import serialize_value, deserialize_value
 
 
@@ -644,6 +645,8 @@ class Document(BaseDocument, mongoengine.Document):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document"
             )
+
+        ensure_connection()
 
         if validate:
             self.validate(clean=clean)

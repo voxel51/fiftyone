@@ -119,6 +119,10 @@ const SidebarMode = () => {
   const setMode = useSetRecoilState(sidebarMode(false));
   const theme = useTheme();
 
+  if (mode === "disabled") {
+    return null;
+  }
+
   return (
     <>
       <ActionOption

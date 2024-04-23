@@ -1,4 +1,5 @@
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
+import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
@@ -66,19 +67,36 @@ const SampleModal = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const is3D = useRecoilValue(fos.is3DDataset);
-  const sampleId = useRecoilValue(fos.currentSampleId);
-
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
   const tooltip = fos.useTooltip();
-
-  const eventHandler = useCallback(
-    (e) => {
-      tooltip.setDetail(e.detail ? e.detail : null);
-      e.detail && tooltip.setCoords(e.detail.coordinates);
-    },
-    [tooltip]
+  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+    fos.isTooltipLocked
   );
+  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+
+  const tooltipEventHandler = useCallback(
+    (e) => {
+      if (e.detail) {
+        setTooltipDetail(e.detail);
+        if (!isTooltipLocked && e.detail?.coordinates) {
+          tooltip.setCoords(e.detail.coordinates);
+        }
+      } else if (!isTooltipLocked) {
+        setTooltipDetail(null);
+      }
+    },
+    [isTooltipLocked, tooltip]
+  );
+
+  useEffect(() => {
+    // reset tooltip state when modal is closed
+    setIsTooltipLocked(false);
+
+    return () => {
+      setTooltipDetail(null);
+    };
+  }, []);
 
   /**
    * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
@@ -87,13 +105,10 @@ const SampleModal = () => {
   const lookerRefCallback = useCallback(
     (looker: fos.Lookers) => {
       lookerRef.current = looker;
-      looker.addEventListener("tooltip", eventHandler);
+      looker.addEventListener("tooltip", tooltipEventHandler);
     },
-    [eventHandler]
+    [tooltipEventHandler]
   );
-
-  const noneValuedPaths = useRecoilValue(fos.noneValuedPaths)?.[sampleId];
-  const hideNoneFields = useRecoilValue(fos.hideNoneValuedFields);
 
   const renderEntry = useCallback(
     (
@@ -115,10 +130,6 @@ const SampleModal = () => {
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
             !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
-
-          if (hideNoneFields && noneValuedPaths?.has(entry?.path)) {
-            return { children: null };
-          }
 
           return {
             children: (
@@ -189,15 +200,15 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, hideNoneFields, labelPaths, mode, noneValuedPaths]
+    [disabled, labelPaths, mode]
   );
 
   useEffect(() => {
     return () => {
       lookerRef.current &&
-        lookerRef.current.removeEventListener("tooltip", eventHandler);
+        lookerRef.current.removeEventListener("tooltip", tooltipEventHandler);
     };
-  }, [eventHandler]);
+  }, [tooltipEventHandler]);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
@@ -245,6 +256,7 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }} data-cy="modal">
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
           <TooltipInfo />
           <ContentColumn>
             <ModalNavigation onNavigate={onNavigate} />
@@ -278,6 +290,7 @@ const SampleModal = () => {
             </ErrorBoundary>
           </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
         </Container>
       </ModalWrapper>
     </Fragment>,

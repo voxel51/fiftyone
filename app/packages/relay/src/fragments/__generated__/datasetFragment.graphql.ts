@@ -1,9 +1,5 @@
 /**
-<<<<<<< HEAD
- * @generated SignedSource<<a267b116905ec39254c306a1c05b32a9>>
-=======
- * @generated SignedSource<<e0795a0616c3848ab74ec3e449ce4d95>>
->>>>>>> main
+ * @generated SignedSource<<d03cac0dcd2c4d8e25f92fd6a1286e20>>
  * @lightSyntaxTransform
  * @nogrep
  */

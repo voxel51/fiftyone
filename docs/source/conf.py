@@ -75,6 +75,7 @@ autodoc_default_options = {
     "inherited-members": True,
     "member-order": "bysource",
     "autosummary": True,
+    "exclude-members": "objects",
 }
 autodoc_inherit_docstrings = True
 autoclass_content = "class"

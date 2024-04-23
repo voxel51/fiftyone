@@ -5,6 +5,7 @@ FiftyOne Server /event route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 
 from starlette.endpoints import HTTPEndpoint

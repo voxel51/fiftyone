@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  mediaFallback: Boolean!
 }
 
 scalar BSON
@@ -252,6 +253,7 @@ type DatasetAppConfig {
   spaces: JSON
   gridMediaField: String!
   modalMediaField: String!
+  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {
@@ -739,6 +741,7 @@ input SidebarGroupInput {
 
 enum SidebarMode {
   all
+  disabled
   best
   fast
 }

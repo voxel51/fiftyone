@@ -14,6 +14,7 @@ import {
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  Field,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -34,13 +35,21 @@ import {
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
+import {
+  activeModalSidebarSample,
+  activePcdSlices,
+  activePcdSlicesToSampleMap,
+  pinned3DSampleSlice,
+} from "./groups";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
+  isOfDocumentFieldList,
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
@@ -505,6 +514,10 @@ export const sidebarEntries = selectorFamily<
     (params) =>
     ({ get }) => {
       const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
+      const hidden =
+        params.modal && !params.loading
+          ? get(hiddenNoneGroups)
+          : { groups: new Set<string>(), paths: new Set<string>() };
       const entries = [
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
@@ -539,7 +552,7 @@ export const sidebarEntries = selectorFamily<
               ...paths.map<PathEntry>((path) => ({
                 path,
                 kind: EntryKind.PATH,
-                shown,
+                shown: shown && !hidden.paths.has(path),
               })),
             ];
           })
@@ -826,3 +839,87 @@ export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",
   default: 300,
 });
+
+export const hiddenNoneGroups = selector({
+  key: "hiddenNoneGroups",
+  get: ({ get }) => {
+    if (!get(atoms.hideNoneValuedFields)) {
+      return { paths: new Set<string>(), groups: new Set<string>() };
+    }
+
+    const groups = get(
+      sidebarGroups({ modal: true, loading: false, filtered: true })
+    ).filter((group) => group.name !== "tags"); // always show tags
+
+    let samples: { [key: string]: { sample: object } } = {
+      default: { sample: get(activeModalSidebarSample) },
+    };
+    let slices = ["default"];
+
+    const multipleSlices =
+      Boolean(get(pinned3DSampleSlice)) &&
+      (get(activePcdSlices)?.length || 1) > 1;
+    if (multipleSlices) {
+      samples = get(activePcdSlicesToSampleMap);
+      slices = Array.from(get(activePcdSlices) || []).sort();
+    }
+
+    const items = groups
+      .map(({ name: group, paths }) => paths.map((path) => ({ group, path })))
+      .flat();
+
+    const result = {
+      groups: new Set(groups.map(({ name }) => name)),
+      paths: new Set<string>(items.map(({ path }) => path)),
+    };
+
+    for (const { group, path } of items) {
+      const isList = get(isOfDocumentFieldList(path));
+      for (const slice of slices) {
+        const keys = path.split(".");
+        const data = pullSidebarValue(
+          get(field(keys[0])),
+          keys,
+          samples[slice]?.sample,
+          isList
+        );
+
+        if (data !== null && data !== undefined) {
+          result.groups.delete(group);
+          result.paths.delete(path);
+        }
+      }
+    }
+
+    return result;
+  },
+});
+
+export const pullSidebarValue = (
+  field: Pick<Field, "dbField" | "fields">,
+  keys: string[],
+  data: null | object | undefined,
+  isList: boolean
+) => {
+  if (isList) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
+  } else {
+    for (let index = 0; index < keys.length; index++) {
+      if (data === null || data === undefined) {
+        break;
+      }
+      const key = keys[index];
+      data = data[field?.dbField || key];
+
+      if (keys[index + 1]) {
+        field = field?.fields?.[keys[index + 1]] || null;
+      }
+    }
+  }
+
+  if (Array.isArray(data)) {
+    return data.some((d) => d !== null && d !== undefined) ? data : null;
+  }
+
+  return data;
+};

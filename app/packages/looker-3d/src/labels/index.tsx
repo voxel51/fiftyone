@@ -32,12 +32,10 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     defaultPluginSettings
   );
   const onSelectLabel = fos.useOnSelectLabel();
-  const getFieldColor = useRecoilValue(fos.colorMap);
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
-  const colorSchemeFields = colorScheme?.fields;
   const labelAlpha = colorScheme.opacity;
 
   const handleSelect = useCallback(

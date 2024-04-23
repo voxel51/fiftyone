@@ -5,6 +5,7 @@ FiftyOne operator types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import enum
 
 
@@ -1754,3 +1755,31 @@ class ViewTargetProperty(Property):
     @property
     def options(self):
         return self._options
+
+
+class DrawerView(View):
+    """Renders an operator prompt as a left or right side drawer.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        inputs.str("message", label="Message")
+        prompt = types.DrawerView(placement="left")
+        return types.Property(inputs, view=prompt)
+
+    Args:
+        placement (None): the placement of the drawer. Can be one of the
+            following
+
+            -   ``'left'``: display to the left of the main or expanded view
+            -   ``'right'``: display to the right of the main or expanded view
+    """
+
+    def __init__(self, **kwargs):
+        placement = kwargs.get("placement", None)
+        if placement not in ["left", "right"]:
+            raise ValueError('placement must be either "left" or "right".')
+        super().__init__(**kwargs)

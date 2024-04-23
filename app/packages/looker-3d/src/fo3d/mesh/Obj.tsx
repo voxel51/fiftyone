@@ -1,10 +1,10 @@
 import { useLoader } from "@react-three/fiber";
 import { useEffect } from "react";
 import { Mesh, MeshStandardMaterial, Quaternion, Vector3 } from "three";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { MTLLoader } from "../../overrides/MtlLoader";
 import { getColorFromPoolBasedOnHash } from "../../utils";
 
 const ObjMeshDefaultMaterial = ({
@@ -19,7 +19,7 @@ const ObjMeshDefaultMaterial = ({
   const { objUrl } = obj;
   const mesh = useLoader(OBJLoader, objUrl);
 
-  const { material } = useMeshMaterialControls(name, obj);
+  const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
 
   useEffect(() => {
     if (!mesh) {

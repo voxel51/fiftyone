@@ -374,7 +374,7 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("fast", "all", "best")``
+            Supported values are ``("fast", "all", "best", "disabled")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
@@ -387,6 +387,9 @@ class DatasetAppConfig(EmbeddedDocument):
             -   ``"point-cloud"``: See the
                 :ref:`3D visualizer docs <app-3d-visualizer-config>` for
                 supported options
+        media_fallback (False): whether to fall back to the default media field
+            (``"filepath"``) when the alternate media field value for a sample
+            is not defined
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -401,6 +404,7 @@ class DatasetAppConfig(EmbeddedDocument):
     )
     color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
     plugins = DictField()
+    media_fallback = BooleanField(default=False)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):

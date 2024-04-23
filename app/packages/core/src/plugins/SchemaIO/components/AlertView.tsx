@@ -1,6 +1,7 @@
 import { Alert, AlertTitle, Typography } from "@mui/material";
 import React from "react";
 import { getComponentProps } from "../utils";
+import Markdown from "./Markdown";
 
 export default function AlertView(props) {
   const { schema } = props;
@@ -12,15 +13,23 @@ export default function AlertView(props) {
       severity={severity || viewToSeverity[name] || "info"}
       {...getComponentProps(props, "container")}
     >
-      <AlertTitle {...getComponentProps(props, "label")}>{label}</AlertTitle>
+      <AlertTitle {...getComponentProps(props, "label")}>
+        <Markdown {...getComponentProps(props, "label.markdown")}>
+          {label}
+        </Markdown>
+      </AlertTitle>
       {description && (
         <Typography {...getComponentProps(props, "description")}>
-          {description}
+          <Markdown {...getComponentProps(props, "description.markdown")}>
+            {description}
+          </Markdown>
         </Typography>
       )}
       {caption && (
         <Typography variant="body2" {...getComponentProps(props, "caption")}>
-          {caption}
+          <Markdown {...getComponentProps(props, "caption.markdown")}>
+            {caption}
+          </Markdown>
         </Typography>
       )}
     </Alert>

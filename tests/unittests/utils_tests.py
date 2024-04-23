@@ -444,16 +444,14 @@ class ConfigTests(unittest.TestCase):
         orig_config = foo.get_db_config()
 
         # Add some duplicate documents
-        d = dict(orig_config.to_dict())
-        for _ in range(2):
-            d.pop("_id", None)
-            db.config.insert_one(d)
+        db.config.insert_one({"version": "0.14.4", "type": "fiftyone"})
+        db.config.insert_one({"version": "0.1.4", "type": "fiftyone"})
 
         # Ensure that duplicate documents are automatically cleaned up
         config = foo.get_db_config()
 
         self.assertEqual(len(list(db.config.aggregate([]))), 1)
-        self.assertEqual(config.id, orig_config.id)
+        self.assertEqual(config, orig_config)
 
 
 from bson import ObjectId

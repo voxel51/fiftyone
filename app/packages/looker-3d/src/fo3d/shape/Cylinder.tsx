@@ -32,7 +32,7 @@ export const Cylinder = ({
       ),
     [cylinder]
   );
-  const { material } = useMeshMaterialControls(name, cylinder);
+  const { material } = useMeshMaterialControls(name, cylinder.defaultMaterial);
 
   const mesh = useMemo(() => {
     if (!material) {

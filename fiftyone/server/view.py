@@ -21,7 +21,7 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
 
@@ -121,7 +121,7 @@ def get_view(
 
         if sample_filter is not None:
             if sample_filter.group:
-                view = _handle_group_filter(dataset, view, sample_filter.group)
+                view = handle_group_filter(dataset, view, sample_filter.group)
 
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -214,43 +214,30 @@ def extend_view(view, extended_stages):
     return view
 
 
-def _add_labels_tags_counts(view):
-    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
-
-    for path, field in foc._iter_label_fields(view):
-        if isinstance(field, fof.ListField) or (
-            isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._HasLabelList)
-        ):
-            if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _add_frame_labels_tags
-            else:
-                add_tags = _add_labels_tags
-        else:
-            if path.startswith(view._FRAMES_PREFIX):
-                add_tags = _add_frame_label_tags
-            else:
-                add_tags = _add_label_tags
-
-        view = add_tags(path, field, view)
-
-    view = _count_list_items(_LABEL_TAGS, view)
-
-    return view
-
-
-def _handle_group_filter(
+def handle_group_filter(
     dataset: fod.Dataset,
     view: foc.SampleCollection,
     filter: GroupElementFilter,
-):
+) -> fov.DatasetView:
+    """Handle a group filter for App view requests.
+
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset`
+        view: the base :class:`fiftyone.core.collections.SampleCollection`
+        filter: the :class:`fiftyone.server.aggregations.GroupElementFilter`
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView` with a group or slice
+        selection
+    """
     stages = view._stages
-    unselected = all(
-        not isinstance(stage, fosg.SelectGroupSlices) for stage in stages
-    )
     group_field = dataset.group_field
+
+    unselected = not any(
+        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
+    )
     if unselected and filter.slice:
-        # flatten the collection if the view has no slice selection
+        # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
         if filter.id:
@@ -274,6 +261,31 @@ def _handle_group_filter(
         # use 'match' to select requested slices, and avoid media type
         # validation
         view = view.match({group_field + ".name": {"$in": filter.slices}})
+
+    return view
+
+
+def _add_labels_tags_counts(view):
+    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
+
+    for path, field in foc._iter_label_fields(view):
+        if isinstance(field, fof.ListField) or (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+        ):
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _add_frame_labels_tags
+            else:
+                add_tags = _add_labels_tags
+        else:
+            if path.startswith(view._FRAMES_PREFIX):
+                add_tags = _add_frame_label_tags
+            else:
+                add_tags = _add_label_tags
+
+        view = add_tags(path, field, view)
+
+    view = _count_list_items(_LABEL_TAGS, view)
 
     return view
 

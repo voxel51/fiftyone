@@ -1,8 +1,9 @@
+import { COLOR_OPTIONS } from "@fiftyone/components";
 import { atom, selectorFamily } from "recoil";
 import {
-  PanelsCloseEffect,
   PanelStateParameter,
   PanelStatePartialParameter,
+  PanelsCloseEffect,
   SpaceNodeJSON,
 } from "./types";
 
@@ -89,6 +90,33 @@ export const previousTabsGroupAtom = atom<HTMLElement | null>({
 });
 
 export const panelsCloseEffect: PanelsCloseEffect = {};
+
+export const workspaceEditorStateAtom = atom({
+  key: "workspaceEditorState",
+  default: {
+    open: false,
+    oldName: "",
+    name: "",
+    description: "",
+    color: COLOR_OPTIONS[0].color,
+    edit: false,
+  },
+});
+
+export interface Workspace {
+  description: string;
+  color: string;
+  name: string;
+}
+
+export const savedWorkspacesAtom = atom({
+  key: "savedWorkspacesAtom",
+  default: {
+    initialized: false,
+    workspaces: [] as Workspace[],
+    dataset: "",
+  },
+});
 
 function getStateAtom(local?: boolean) {
   return local ? panelsLocalStateAtom : panelsStateAtom;

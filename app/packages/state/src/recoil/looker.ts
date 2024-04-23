@@ -45,6 +45,13 @@ export const lookerOptions = selectorFamily<
       const useFrameNumber = get(
         selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
       );
+      const globalMediaFallback = Boolean(
+        get(selectors.appConfigOption({ modal: true, key: "mediaFallback" }))
+      );
+      const datasetMediaFallback = Boolean(
+        get(selectors.datasetAppConfig)?.mediaFallback
+      );
+      const mediaFallback = globalMediaFallback || datasetMediaFallback;
 
       const video = get(selectors.isVideoDataset)
         ? {
@@ -105,6 +112,7 @@ export const lookerOptions = selectorFamily<
           get(dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
         ),
         pointFilter: get(skeletonFilter(modal)),
+        mediaFallback,
       };
     },
 });

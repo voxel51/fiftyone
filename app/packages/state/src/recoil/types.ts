@@ -37,6 +37,7 @@ export namespace State {
     theme: "browser" | "dark" | "light";
     useFrameNumber: boolean;
     mediaFields?: string[];
+    mediaFallback: boolean;
   }
 
   export interface ID {

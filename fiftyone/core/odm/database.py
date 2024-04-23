@@ -6,6 +6,7 @@ Database utilities.
 |
 """
 import atexit
+import dataclasses
 from datetime import datetime, timedelta
 import logging
 from multiprocessing.pool import ThreadPool
@@ -16,7 +17,6 @@ import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 import mongoengine
-import mongoengine.errors as moe
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -28,16 +28,14 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
-import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 from fiftyone.internal.util import is_internal_service
 
 from fiftyone.api import pymongo as fomongo, motor as fomotor
-
-from .document import Document
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -64,26 +62,36 @@ _db_service = None
 #
 # All past and future versions of FiftyOne must be able to deduce the
 # database's current version and type from the `config` collection without an
-# error being raised so that migrations can be properly run and, if necsssary,
+# error being raised so that migrations can be properly run and, if necessary,
 # informative errors can be raised alerting the user that they are using the
 # wrong version or type of client.
 #
 # This is currently guaranteed because:
 #   - `DatabaseConfigDocument` is declared as non-strict, so any past or future
 #     fields that are not currently defined will not cause an error
-#   - All declared fields are optional and we have promised ourselves that
+#   - All declared fields are optional, and we have promised ourselves that
 #     their type and meaning will never change
 #
 
 
-class DatabaseConfigDocument(Document):
+@dataclasses.dataclass(init=False)
+class DatabaseConfigDocument:
     """Backing document for the database config."""
 
-    # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "config", "strict": False}
+    version: str
+    type: str
 
-    version = fof.StringField()
-    type = fof.StringField()
+    def __init__(self, conn, version=None, type=None, *args, **kwargs):
+        # Create our own __init__ so we can ignore extra kwargs / unknown
+        #   fields from other versions
+        self._conn = conn
+        self.version = version
+        self.type = type
+
+    def save(self):
+        self._conn.config.replace_one(
+            {}, dataclasses.asdict(self), upsert=True
+        )
 
 
 def get_db_config():
@@ -92,19 +100,18 @@ def get_db_config():
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    conn = get_db_conn()
     save = False
-
-    try:
-        # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.get()
-    except moe.DoesNotExist:
-        config = DatabaseConfigDocument()
+    config_docs = list(conn.config.find())
+    if not config_docs:
         save = True
-    except moe.MultipleObjectsReturned:
-        cleanup_multiple_config_docs()
-
-        # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.first()
+        config = DatabaseConfigDocument(conn)
+    elif len(config_docs) > 1:
+        config = DatabaseConfigDocument(
+            conn, **cleanup_multiple_config_docs(conn, config_docs)
+        )
+    else:
+        config = DatabaseConfigDocument(conn, **config_docs[0])
 
     if config.version is None:
         #
@@ -138,39 +145,27 @@ def get_db_config():
     return config
 
 
-def cleanup_multiple_config_docs():
+def cleanup_multiple_config_docs(conn, config_docs):
     """Internal utility that ensures that there is only one
     :class:`DatabaseConfigDocument` in the database.
     """
 
-    # We use mongoengine here because `get_db_conn()` will not currently work
-    # until `import fiftyone` succeeds, which requires a single config doc
-    # pylint: disable=no-member
-    docs = list(DatabaseConfigDocument.objects)
-    if len(docs) <= 1:
-        return
+    if not config_docs:
+        return {}
+    elif len(config_docs) <= 1:
+        return config_docs[0]
 
     logger.warning(
         "Unexpectedly found %d documents in the 'config' collection; assuming "
         "the one with latest 'version' is the correct one",
-        len(docs),
+        len(config_docs),
     )
+    # Keep config with latest version. If no version key, use 0.0 so it sorts
+    #   to the bottom.
+    keep_doc = max(config_docs, key=lambda d: Version(d.get("version", "0.0")))
 
-    versions = []
-    for doc in docs:
-        try:
-            versions.append((doc.id, Version(doc.version)))
-        except:
-            pass
-
-    try:
-        keep_id = max(versions, key=lambda kv: kv[1])[0]
-    except:
-        keep_id = docs[0].id
-
-    for doc in docs:
-        if doc.id != keep_id:
-            doc.delete()
+    conn.config.delete_many({"_id": {"$ne": keep_doc["_id"]}})
+    return keep_doc
 
 
 def establish_db_conn(config):
@@ -265,12 +260,15 @@ def establish_db_conn(config):
 
     mongoengine.connect(_database_name, **_connection_kwargs)
 
-    config = get_db_config()
-    if foc.CLIENT_TYPE != config.type:
+    db_config = get_db_config()
+    if foc.CLIENT_TYPE != db_config.type:
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
-            % (config.type, foc.CLIENT_TYPE)
+            % (db_config.type, foc.CLIENT_TYPE)
         )
+
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+        fom.migrate_database_if_necessary(config=db_config)
 
 
 def _connect():
@@ -280,11 +278,14 @@ def _connect():
         global _connection_kwargs
         global _database_name
 
-        _client = _mongo_client_cls(**_connection_kwargs)
-        mongoengine.connect(_database_name, **_connection_kwargs)
+        establish_db_conn(fo.config)
 
 
 def _async_connect(use_global=False):
+    # Regular connect here first, to ensure connection kwargs are established
+    #   for below.
+    _connect()
+
     global _async_client
     if not use_global or _async_client is None:
         global _connection_kwargs
@@ -428,6 +429,11 @@ async def _do_async_aggregate(collection, pipeline):
     return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
+def ensure_connection():
+    """Ensures database connection exists"""
+    _connect()
+
+
 def get_db_client():
     """Returns a database client.
 
@@ -471,13 +477,13 @@ def get_async_db_client(use_global=False):
     return _async_connect(use_global)
 
 
-def get_async_db_conn():
+def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client()[_database_name]
+    db = get_async_db_client(use_global=use_global)[_database_name]
     return _apply_options(db)
 
 

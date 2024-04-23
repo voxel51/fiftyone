@@ -19,7 +19,7 @@ class Shape3D(Mesh):
     Args:
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the shape mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial` if not provided
+            :class:`fiftyone.core.threed.MeshStandardMaterial` if not provided
         **kwargs: keyword arguments for the :class:`fiftyone.core.threed.Mesh`
             parent class
     """
@@ -37,7 +37,7 @@ class BoxGeometry(Shape3D):
         depth (float): the depth of the box. Defaults to 1
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the box. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
@@ -88,7 +88,7 @@ class CylinderGeometry(Shape3D):
             to 2*Math.PI, which makes for a complete cylinder
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the cylinder. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
@@ -152,7 +152,7 @@ class SphereGeometry(Shape3D):
             ``math.pi``, which makes for a complete sphere
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the sphere. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 
@@ -202,7 +202,7 @@ class PlaneGeometry(Shape3D):
         height (float): the height of the plane. Defaults to 1
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the plane. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Shape3D` parent class
     """
 

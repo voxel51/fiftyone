@@ -15,14 +15,18 @@ import fiftyone.core.odm.database as food
 
 class MultiprocessTest(unittest.TestCase):
     def test_multiprocessing(self):
-        with multiprocessing.Pool(1, _check_process) as pool:
-            for _ in pool.imap(_check_process, [None]):
+        food.establish_db_conn(fo.config)
+        port = food._connection_kwargs["port"]
+        with multiprocessing.Pool(2, _check_process, [port]) as pool:
+            for _ in pool.imap(_check_process, [port, port]):
                 pass
 
 
-def _check_process(*args):
+def _check_process(port):
     assert "FIFTYONE_PRIVATE_DATABASE_PORT" in os.environ
-    port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
+    env_port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
+    assert port == int(env_port)
+    food.establish_db_conn(fo.config)
     assert int(port) == food._connection_kwargs["port"]
 
 

@@ -21,7 +21,6 @@ export { default as HelpTooltip } from "./HelpTooltip";
 export { default as HiddenView } from "./HiddenView";
 export { default as ImageView } from "./ImageView";
 export { default as InferredView } from "./InferredView";
-export { default as JSONView } from "./JSONView";
 export { default as KeyValueView } from "./KeyValueView";
 export { default as LabelValueView } from "./LabelValueView";
 export { default as LinkView } from "./LinkView";
