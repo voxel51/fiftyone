@@ -1904,7 +1904,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         def _parse_sample(sd):
             if not os.path.isabs(sd["filepath"]):
-                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
+                sd["filepath"] = os.path.join(rel_dir, sd["filepath"].replace("\\", "/"))
 
             if tags is not None:
                 sd["tags"].extend(tags)
