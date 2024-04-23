@@ -5902,7 +5902,7 @@ class SelectFields(ViewStage):
         field_names=None,
         meta_filter=None,
         _allow_missing=False,
-        _media_types=True,
+        _media_types=None,
     ):
         if etau.is_str(field_names):
             field_names = [field_names]

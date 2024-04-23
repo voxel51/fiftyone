@@ -1043,7 +1043,7 @@ class SampleCollection(object):
 
             # These fields are currently not declared by default on point cloud
             # datasets/slices, but they should be considered as default
-            media_types = media_types or set()
+            media_types = media_types if media_types else set()
             if issubclass(field.document_type, fol.Detection) and (
                 self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
                 or fom.POINT_CLOUD in media_types

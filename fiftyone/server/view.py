@@ -274,11 +274,13 @@ def handle_group_filter(
         # validation
         view = view.match({group_field + ".name": {"$in": filter.slices}})
 
-    media_types = (
-        set(dataset.group_media_types[s] for s in filter.slices)
-        if filter.slices
-        else set(dataset.group_media_types.values())
-    )
+    media_types = None
+    if dataset.group_media_types:
+        media_types = (
+            set(dataset.group_media_types[s] for s in filter.slices)
+            if filter.slices
+            else set(dataset.group_media_types.values())
+        )
     return view, media_types
 
 
