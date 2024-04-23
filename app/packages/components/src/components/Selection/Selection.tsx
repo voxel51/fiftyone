@@ -1,4 +1,4 @@
-import { IconButton, useTheme } from "@fiftyone/components";
+import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
 import { DEFAULT_SELECTED } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -8,12 +8,7 @@ import React, { useCallback, useState } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import {
-  ColoredDot,
-  CustomBox,
-  LastOption,
-  ViewContainer,
-} from "./styledComponents";
+import { CustomBox, LastOption, ViewContainer } from "./styledComponents";
 
 type SelectionProps = {
   id: string;
@@ -34,6 +29,7 @@ type SelectionProps = {
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
   onClear?: () => void;
+  noBorder?: boolean;
 };
 
 export default function Selection(props: SelectionProps) {
@@ -49,6 +45,7 @@ export default function Selection(props: SelectionProps) {
     readonly,
     onEdit,
     onClear,
+    noBorder,
   } = props;
 
   const theme = useTheme();
@@ -115,6 +112,13 @@ export default function Selection(props: SelectionProps) {
         sx={{
           width: "100%",
           background: theme.background.level3,
+          ...(noBorder
+            ? {
+                "& fieldset": {
+                  border: "none",
+                },
+              }
+            : {}),
         }}
         renderValue={() => {
           return (

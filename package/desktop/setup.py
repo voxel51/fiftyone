@@ -2,7 +2,7 @@
 """
 Installs the ``fiftyone-desktop`` package.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,7 +16,7 @@ import os
 import shutil
 
 
-VERSION = "0.33.7"
+VERSION = "0.34.0"
 
 
 def get_version():

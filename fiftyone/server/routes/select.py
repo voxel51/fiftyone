@@ -1,10 +1,11 @@
 """
 FiftyOne Server /select route
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from fiftyone.core.session.events import StateUpdate

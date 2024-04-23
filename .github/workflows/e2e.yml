@@ -34,7 +34,7 @@ jobs:
 
       - name: Install setup dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel build
 
       - name: Install requirements.txt
         run: |

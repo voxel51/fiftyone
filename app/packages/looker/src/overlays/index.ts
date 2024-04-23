@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
@@ -24,6 +24,8 @@ import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
+
+export type { PointInfo } from "./base";
 
 export const fromLabel = (overlayType) => (field, label) =>
   label ? [new overlayType(field, label)] : [];

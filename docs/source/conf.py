@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -75,6 +75,7 @@ autodoc_default_options = {
     "inherited-members": True,
     "member-order": "bysource",
     "autosummary": True,
+    "exclude-members": "objects",
 }
 autodoc_inherit_docstrings = True
 autoclass_content = "class"

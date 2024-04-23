@@ -701,7 +701,8 @@ The FiftyOne App can be configured in the ways described below:
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view.  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `fast`                      | The default loading behavior of the App's sidebar. Supported values are                   |
-|                           |                                        |                             | `{"fast", "all", "best"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
+|                           |                                        |                             | `{"fast", "all", "best", "disabled"}`. See :ref:`this section <app-sidebar-mode>`         |
+|                           |                                        |                             |  more details.                                                                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
 |                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
@@ -711,6 +712,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -766,7 +770,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True
@@ -815,7 +820,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True

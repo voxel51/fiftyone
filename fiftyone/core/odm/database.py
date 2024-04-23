@@ -1,11 +1,12 @@
 """
 Database utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import atexit
+import dataclasses
 from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
@@ -15,7 +16,6 @@ import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 from mongoengine import connect
-import mongoengine.errors as moe
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -27,12 +27,10 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
-import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
-
-from .document import Document
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -54,26 +52,36 @@ _db_service = None
 #
 # All past and future versions of FiftyOne must be able to deduce the
 # database's current version and type from the `config` collection without an
-# error being raised so that migrations can be properly run and, if necsssary,
+# error being raised so that migrations can be properly run and, if necessary,
 # informative errors can be raised alerting the user that they are using the
 # wrong version or type of client.
 #
 # This is currently guaranteed because:
 #   - `DatabaseConfigDocument` is declared as non-strict, so any past or future
 #     fields that are not currently defined will not cause an error
-#   - All declared fields are optional and we have promised ourselves that
+#   - All declared fields are optional, and we have promised ourselves that
 #     their type and meaning will never change
 #
 
 
-class DatabaseConfigDocument(Document):
+@dataclasses.dataclass(init=False)
+class DatabaseConfigDocument:
     """Backing document for the database config."""
 
-    # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "config", "strict": False}
+    version: str
+    type: str
 
-    version = fof.StringField()
-    type = fof.StringField()
+    def __init__(self, conn, version=None, type=None, *args, **kwargs):
+        # Create our own __init__ so we can ignore extra kwargs / unknown
+        #   fields from other versions
+        self._conn = conn
+        self.version = version
+        self.type = type
+
+    def save(self):
+        self._conn.config.replace_one(
+            {}, dataclasses.asdict(self), upsert=True
+        )
 
 
 def get_db_config():
@@ -82,19 +90,18 @@ def get_db_config():
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    conn = get_db_conn()
     save = False
-
-    try:
-        # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.get()
-    except moe.DoesNotExist:
-        config = DatabaseConfigDocument()
+    config_docs = list(conn.config.find())
+    if not config_docs:
         save = True
-    except moe.MultipleObjectsReturned:
-        cleanup_multiple_config_docs()
-
-        # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.first()
+        config = DatabaseConfigDocument(conn)
+    elif len(config_docs) > 1:
+        config = DatabaseConfigDocument(
+            conn, **cleanup_multiple_config_docs(conn, config_docs)
+        )
+    else:
+        config = DatabaseConfigDocument(conn, **config_docs[0])
 
     if config.version is None:
         #
@@ -128,39 +135,27 @@ def get_db_config():
     return config
 
 
-def cleanup_multiple_config_docs():
+def cleanup_multiple_config_docs(conn, config_docs):
     """Internal utility that ensures that there is only one
     :class:`DatabaseConfigDocument` in the database.
     """
 
-    # We use mongoengine here because `get_db_conn()` will not currently work
-    # until `import fiftyone` succeeds, which requires a single config doc
-    # pylint: disable=no-member
-    docs = list(DatabaseConfigDocument.objects)
-    if len(docs) <= 1:
-        return
+    if not config_docs:
+        return {}
+    elif len(config_docs) <= 1:
+        return config_docs[0]
 
     logger.warning(
         "Unexpectedly found %d documents in the 'config' collection; assuming "
         "the one with latest 'version' is the correct one",
-        len(docs),
+        len(config_docs),
     )
+    # Keep config with latest version. If no version key, use 0.0 so it sorts
+    #   to the bottom.
+    keep_doc = max(config_docs, key=lambda d: Version(d.get("version", "0.0")))
 
-    versions = []
-    for doc in docs:
-        try:
-            versions.append((doc.id, Version(doc.version)))
-        except:
-            pass
-
-    try:
-        keep_id = max(versions, key=lambda kv: kv[1])[0]
-    except:
-        keep_id = docs[0].id
-
-    for doc in docs:
-        if doc.id != keep_id:
-            doc.delete()
+    conn.config.delete_many({"_id": {"$ne": keep_doc["_id"]}})
+    return keep_doc
 
 
 def establish_db_conn(config):
@@ -220,12 +215,15 @@ def establish_db_conn(config):
 
     connect(config.database_name, **_connection_kwargs)
 
-    config = get_db_config()
-    if foc.CLIENT_TYPE != config.type:
+    db_config = get_db_config()
+    if foc.CLIENT_TYPE != db_config.type:
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
-            % (config.type, foc.CLIENT_TYPE)
+            % (db_config.type, foc.CLIENT_TYPE)
         )
+
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+        fom.migrate_database_if_necessary(config=db_config)
 
 
 def _connect():
@@ -233,13 +231,14 @@ def _connect():
     if _client is None:
         global _connection_kwargs
 
-        _client = pymongo.MongoClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
-        )
-        connect(fo.config.database_name, **_connection_kwargs)
+        establish_db_conn(fo.config)
 
 
 def _async_connect(use_global=False):
+    # Regular connect here first, to ensure connection kwargs are established
+    #   for below.
+    _connect()
+
     global _async_client
     if not use_global or _async_client is None:
         global _connection_kwargs
@@ -372,6 +371,11 @@ async def _do_async_aggregate(collection, pipeline):
     return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
+def ensure_connection():
+    """Ensures database connection exists"""
+    _connect()
+
+
 def get_db_client():
     """Returns a database client.
 
@@ -405,13 +409,13 @@ def get_async_db_client(use_global=False):
     return _async_connect(use_global)
 
 
-def get_async_db_conn():
+def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client()[fo.config.database_name]
+    db = get_async_db_client(use_global=use_global)[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -830,14 +834,11 @@ def list_datasets():
     return conn.datasets.distinct("name")
 
 
-def patch_saved_views(dataset_name, dry_run=False):
-    """Ensures that the saved view documents in the ``views`` collection for
+def _patch_referenced_docs(
+    dataset_name, collection_name, field_name, dry_run=False
+):
+    """Ensures that the referenced documents in the collection for
     the given dataset exactly match the IDs in its dataset document.
-
-    Args:
-        dataset_name: the name of the dataset
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
     """
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
@@ -848,49 +849,79 @@ def patch_saved_views(dataset_name, dry_run=False):
         return
 
     dataset_id = dataset_dict["_id"]
-    saved_views = dataset_dict.get("saved_views", [])
+    ids_from_dataset_list = dataset_dict.get(field_name, [])
 
-    # {id: name} in `views` collection
-    sd = {}
-    for saved_view_dict in conn.views.find({"_dataset_id": dataset_id}):
+    # {id: name} in collection_name
+    doc_id_to_name = {}
+    for ref_doc_dict in conn[collection_name].find(
+        {"_dataset_id": dataset_id}
+    ):
         try:
-            sd[saved_view_dict["_id"]] = saved_view_dict["name"]
+            doc_id_to_name[ref_doc_dict["_id"]] = ref_doc_dict["name"]
         except:
             pass
 
     # Make sure docs in `views` collection match IDs in `dataset_dict`
-    saved_view_ids = set(saved_views)
-    saved_view_doc_ids = set(sd)
+    ids_from_dataset_set = set(ids_from_dataset_list)
+    ids_from_collection = set(doc_id_to_name)
     made_changes = False
 
-    bad_ids = saved_view_ids - saved_view_doc_ids
+    bad_ids = ids_from_dataset_set - ids_from_collection
     num_bad_ids = len(bad_ids)
     if num_bad_ids > 0:
         _logger.info(
-            "Purging %d bad saved view ID(s) %s from dataset",
+            "Purging %d bad %s view ID(s) %s from dataset",
             num_bad_ids,
+            field_name,
             bad_ids,
         )
-        saved_views = [_id for _id in saved_views if _id not in bad_ids]
+        ids_from_dataset_list = [
+            _id for _id in ids_from_dataset_list if _id not in bad_ids
+        ]
         made_changes = True
 
-    missing_ids = saved_view_doc_ids - saved_view_ids
-    num_missing_views = len(missing_ids)
-    if num_missing_views > 0:
-        missing_views = [(_id, sd[_id]) for _id in missing_ids]
+    missing_ids = ids_from_collection - ids_from_dataset_set
+    num_missing_docs = len(missing_ids)
+    if num_missing_docs > 0:
+        missing_docs = [(_id, doc_id_to_name[_id]) for _id in missing_ids]
         _logger.info(
-            "Adding %d misplaced saved view(s) %s back to dataset",
-            num_missing_views,
-            missing_views,
+            "Adding %d misplaced %s(s) %s back to dataset",
+            num_missing_docs,
+            field_name,
+            missing_docs,
         )
-        saved_views.extend(missing_ids)
+        ids_from_dataset_list.extend(missing_ids)
         made_changes = True
 
     if made_changes and not dry_run:
         conn.datasets.update_one(
             {"name": dataset_name},
-            {"$set": {"saved_views": saved_views}},
+            {"$set": {field_name: ids_from_dataset_list}},
         )
+
+
+def patch_saved_views(dataset_name, dry_run=False):
+    """Ensures that the saved view documents in the ``views`` collection for
+    the given dataset exactly match the IDs in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_referenced_docs(dataset_name, "views", "saved_views", dry_run)
+
+
+def patch_workspaces(dataset_name, dry_run=False):
+    """Ensures that the workspace documents in the ``workspaces`` collection for
+    the given dataset exactly match the IDs in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_referenced_docs(dataset_name, "workspaces", "workspaces", dry_run)
 
 
 def patch_annotation_runs(dataset_name, dry_run=False):

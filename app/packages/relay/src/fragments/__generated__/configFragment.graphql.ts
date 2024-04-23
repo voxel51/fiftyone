@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<15cdc78ae84090b5314f587ba80558b9>>
+ * @generated SignedSource<<e793650aee470e8b9fad177e5178503f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "value" | "%future added value";
-export type SidebarMode = "all" | "best" | "fast" | "%future added value";
+export type SidebarMode = "all" | "best" | "disabled" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type configFragment$data = {
@@ -22,6 +22,7 @@ export type configFragment$data = {
     readonly gridZoom: number;
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
+    readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
     readonly plugins: object | null;
@@ -183,6 +184,13 @@ return {
           "kind": "ScalarField",
           "name": "useFrameNumber",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaFallback",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -194,6 +202,6 @@ return {
 };
 })();
 
-(node as any).hash = "bb8881f0e6c36892097f4168c2c64f79";
+(node as any).hash = "bc14e5070d7a1c87baa60bc81fcccb5d";
 
 export default node;

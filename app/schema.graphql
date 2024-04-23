@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  mediaFallback: Boolean!
 }
 
 scalar BSON
@@ -250,6 +251,7 @@ type DatasetAppConfig {
   spaces: JSON
   gridMediaField: String!
   modalMediaField: String!
+  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {
@@ -474,6 +476,7 @@ enum MediaType {
   image
   group
   point_cloud
+  three_d
   video
 }
 
@@ -669,7 +672,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -736,6 +739,7 @@ input SidebarGroupInput {
 
 enum SidebarMode {
   all
+  disabled
   best
   fast
 }
@@ -796,6 +800,13 @@ enum Theme {
   browser
   dark
   light
+}
+
+type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type ValueColor {

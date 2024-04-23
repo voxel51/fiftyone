@@ -30,7 +30,7 @@ To get started with
 
 .. code-block:: shell
 
-    pip install transformers
+    pip install -U transformers
 
 .. _huggingface-transformers-inference:
 

@@ -75,10 +75,10 @@ export const groupMediaIs3dVisible = selector<boolean>({
   key: "groupMedia3dVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
+    const has3d = set.has("point_cloud") || set.has("three_d");
     const isImaVidInNestedGroup =
       get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
-    return get(groupMedia3dVisibleSetting) && hasPcd && !isImaVidInNestedGroup;
+    return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
   },
 });
 
@@ -114,7 +114,13 @@ export const pinned3d = atom<boolean>({
 
 export const pinned3DSample = selector({
   key: "pinned3DSample",
-  get: ({ get }) => get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)],
+  get: ({ get }) => {
+    if (get(hasFo3dSlice)) {
+      return get(fo3dSample);
+    }
+
+    return get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)];
+  },
 });
 
 export type SliceName = string | undefined | null;
@@ -223,6 +229,26 @@ export const hasGroupSlices = selector<boolean>({
   },
 });
 
+export const has3dSlice = selector<boolean>({
+  key: "has3dSlice",
+  get: ({ get }) => {
+    return (
+      get(groupMediaTypesSet).has("three_d") ||
+      get(groupMediaTypesSet).has("point_cloud")
+    );
+  },
+});
+
+export const hasFo3dSlice = selector<boolean>({
+  key: "hasFo3dSlice",
+  get: ({ get }) => {
+    return (
+      get(groupMediaTypesSet).has("three_d") ||
+      get(groupMediaTypesSet).has("3d")
+    );
+  },
+});
+
 export const activePcdSlices = atom<string[]>({
   key: "activePcdSlices",
   default: [],
@@ -318,10 +344,15 @@ export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
+    const activeFo3dSlice = get(fo3dSlice);
     const activePcdSlicesValue = get(activePcdSlices);
 
     if (!get(pinned3d)) {
       return currentSliceValue;
+    }
+
+    if (activeFo3dSlice) {
+      return activeFo3dSlice;
     }
 
     const numActivePcdSlices = activePcdSlicesValue?.length;
@@ -392,6 +423,39 @@ export const nonPcdSamples = selector({
     get(groupSamples({ slices: get(allNonPcdSlices), count: 1 })),
 });
 
+export const fo3dSlice = selector({
+  key: "fo3dSlice",
+  get: ({ get }) => {
+    const fo3dSlices = get(groupMediaTypes)
+      .filter(({ mediaType }) => mediaType === "three_d" || mediaType === "3d")
+      .map(({ name }) => name);
+
+    if (fo3dSlices?.length > 1)
+      throw new Error("can't have more than one fo3d slice");
+
+    return fo3dSlices[0];
+  },
+});
+
+export const fo3dSample = selector({
+  key: "fo3dSample",
+  get: ({ get }) => {
+    if (!get(isGroup)) return get(modalSample);
+
+    if (!get(hasFo3dSlice)) return null;
+
+    const sample = get(
+      groupSamples({
+        slices: [get(fo3dSlice)],
+        count: 1,
+        paginationData: false,
+      })
+    )[0];
+
+    return sample;
+  },
+});
+
 export const pcdSamples = selector({
   key: "pcdSamples",
   get: ({ get }) =>
@@ -409,6 +473,10 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(pinned3d)) {
+      if (get(hasFo3dSlice)) {
+        return get(fo3dSample).sample;
+      }
+
       const slices = get(activePcdSlices);
       const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
       return get(activePcdSlicesToSampleMap)[key]?.sample;

@@ -11,7 +11,7 @@ export function determinePathType(path: string): PathType {
     return PathType.URL;
   }
   // backslashes = windows
-  if (path.includes("\\")) {
+  if (path?.includes("\\")) {
     return PathType.WINDOWS;
   }
   // linux by default
@@ -52,6 +52,8 @@ export function resolveParent(path: string): string {
     } else {
       return protocol + "://";
     }
+    // remove search params
+    url.search = "";
     return url.toString();
   }
   const parsed =

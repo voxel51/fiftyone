@@ -2,6 +2,7 @@ import { Box, Stack, StackProps, Typography } from "@mui/material";
 import React from "react";
 import { ErrorView, HelpTooltip } from ".";
 import { getComponentProps } from "../utils";
+import Markdown from "./Markdown";
 
 export default function Header(props: HeaderProps) {
   const {
@@ -64,7 +65,9 @@ export default function Header(props: HeaderProps) {
             sx={{ display: "flex", alignItems: "center" }}
             {...getComponentProps(viewProps, "label")}
           >
-            {label}
+            <Markdown {...getComponentProps(viewProps, "label.markdown")}>
+              {label}
+            </Markdown>
             {descriptionView === "tooltip" && (
               <HelpTooltip
                 title={description}
@@ -80,7 +83,9 @@ export default function Header(props: HeaderProps) {
             color="text.secondary"
             {...getComponentProps(viewProps, "description")}
           >
-            {description}
+            <Markdown {...getComponentProps(viewProps, "description.markdown")}>
+              {description}
+            </Markdown>
           </Typography>
         )}
         {caption && !omitCaption && (
@@ -89,7 +94,9 @@ export default function Header(props: HeaderProps) {
             color="text.tertiary"
             {...getComponentProps(viewProps, "caption")}
           >
-            {caption}
+            <Markdown {...getComponentProps(viewProps, "caption.markdown")}>
+              {caption}
+            </Markdown>
           </Typography>
         )}
         {!omitErrors && <ErrorView schema={{}} data={errors} />}

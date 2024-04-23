@@ -1,10 +1,11 @@
 """
 FiftyOne Server coloring
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 from enum import Enum
 import typing as t
@@ -219,21 +220,27 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         multicolor_keypoints=color_scheme.multicolor_keypoints,
         opacity=color_scheme.opacity,
         show_skeletons=color_scheme.show_skeletons,
-        default_mask_targets_colors=[
-            asdict(f) for f in color_scheme.default_mask_targets_colors
-        ]
-        if color_scheme.default_mask_targets_colors
-        else [],
-        fields=[asdict(f) for f in color_scheme.fields]
-        if color_scheme.fields
-        else [],
-        colorscales=[asdict(f) for f in color_scheme.colorscales]
-        if color_scheme.colorscales
-        else [],
-        label_tags=asdict(color_scheme.label_tags)
-        if color_scheme.label_tags
-        else {},
-        default_colorscale=asdict(color_scheme.default_colorscale)
-        if color_scheme.default_colorscale
-        else {},
+        default_mask_targets_colors=(
+            [asdict(f) for f in color_scheme.default_mask_targets_colors]
+            if color_scheme.default_mask_targets_colors
+            else []
+        ),
+        fields=(
+            [asdict(f) for f in color_scheme.fields]
+            if color_scheme.fields
+            else []
+        ),
+        colorscales=(
+            [asdict(f) for f in color_scheme.colorscales]
+            if color_scheme.colorscales
+            else []
+        ),
+        label_tags=(
+            asdict(color_scheme.label_tags) if color_scheme.label_tags else {}
+        ),
+        default_colorscale=(
+            asdict(color_scheme.default_colorscale)
+            if color_scheme.default_colorscale
+            else {}
+        ),
     )

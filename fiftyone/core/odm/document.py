@@ -1,7 +1,7 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,6 +17,7 @@ import eta.core.serial as etas
 
 import fiftyone.core.utils as fou
 
+from .database import ensure_connection
 from .utils import serialize_value, deserialize_value
 
 
@@ -644,6 +645,8 @@ class Document(BaseDocument, mongoengine.Document):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document"
             )
+
+        ensure_connection()
 
         if validate:
             self.validate(clean=clean)

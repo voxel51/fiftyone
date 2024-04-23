@@ -1,7 +1,7 @@
 """
 FiftyOne Server queries.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,10 +10,8 @@ from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import logging
-import os
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
@@ -36,6 +34,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
@@ -211,6 +210,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class SidebarMode(Enum):
     all = "all"
     best = "best"
+    disabled = "disabled"
     fast = "fast"
 
 
@@ -225,6 +225,7 @@ class DatasetAppConfig:
 
     grid_media_field: str = "filepath"
     modal_media_field: str = "filepath"
+    media_fallback: bool = False
 
 
 @gql.type
@@ -373,6 +374,7 @@ class AppConfig:
     timezone: t.Optional[str]
     use_frame_number: bool
     spaces: t.Optional[JSON]
+    media_fallback: bool = False
 
 
 @gql.type
@@ -395,7 +397,8 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 

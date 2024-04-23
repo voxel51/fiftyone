@@ -2,7 +2,7 @@
 Utilities for working with
 `SuperGradients <https://github.com/Deci-AI/super-gradients>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -125,6 +125,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
         class_names = p.class_names
         dp = p.prediction
         img = p.image
+
         bboxes, confs, labels = (
             np.array(dp.bboxes_xyxy),
             dp.confidence,
@@ -134,9 +135,9 @@ class TorchYoloNasModel(fout.TorchImageModel):
 
         if 0 in bboxes.shape:
             return fo.Detections(detections=[])
-
         bboxes = self._convert_bboxes(bboxes, width, height)
         labels = [class_names[l] for l in labels]
+
         detections = [
             fo.Detection(label=l, confidence=c, bounding_box=b)
             for (l, c, b) in zip(labels, confs, bboxes)

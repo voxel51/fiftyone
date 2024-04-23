@@ -1,12 +1,12 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from copy import deepcopy, copy
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import gc
 import os
 import random
@@ -2857,6 +2857,199 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.delete_saved_views()
 
         self.assertListEqual(dataset._doc.saved_views, [])
+
+    def test_workspaces(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_workspaces)
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        samples_panel = fo.Panel(type="Samples", pinned=True)
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+
+        embeddings_panel = fo.Panel(
+            type="Embeddings",
+            state=dict(
+                brainResult="img_viz", colorByField="metadata.size_bytes"
+            ),
+        )
+
+        spaces = fo.Space(
+            children=[
+                fo.Space(
+                    children=[
+                        fo.Space(children=[samples_panel]),
+                        fo.Space(children=[histograms_panel]),
+                    ],
+                    orientation="horizontal",
+                ),
+                fo.Space(children=[embeddings_panel]),
+            ],
+            orientation="vertical",
+        )
+
+        self.assertIsNone(spaces.name)
+
+        workspace_name = "test__workspace"
+        now = datetime.utcnow()
+        description = "a description of the workspace, yo"
+        color = "#FF6D04"
+
+        dataset.save_workspace(
+            workspace_name, spaces, description=description, color=color
+        )
+
+        last_loaded_at1 = dataset._doc.workspaces[0].last_loaded_at
+        last_modified_at1 = dataset._doc.workspaces[0].last_modified_at
+        created_at = dataset._doc.workspaces[0].created_at
+
+        self.assertEqual(spaces.name, workspace_name)
+        self.assertTrue(dataset.has_workspaces)
+        self.assertTrue(dataset.has_workspace(workspace_name))
+        self.assertListEqual(dataset.list_workspaces(), [workspace_name])
+
+        self.assertIsNone(last_loaded_at1)
+        self.assertAlmostEqual(
+            last_modified_at1, now, delta=timedelta(milliseconds=100)
+        )
+        self.assertEqual(last_modified_at1, created_at)
+
+        still_spaces = deepcopy(spaces)
+        self.assertEqual(still_spaces.name, workspace_name)
+        self.assertEqual(still_spaces, spaces)
+
+        # Reload to ensure we actually saved the doc properly, now load
+        #   the workspace back.
+        dataset.reload()
+        also_spaces = dataset.load_workspace(workspace_name)
+        last_loaded_at2 = dataset._doc.workspaces[0].last_loaded_at
+        now = datetime.utcnow()
+
+        self.assertEqual(spaces, also_spaces)
+        self.assertEqual(also_spaces.name, workspace_name)
+        self.assertAlmostEqual(
+            last_loaded_at2, now, delta=timedelta(milliseconds=100)
+        )
+
+        workspace_info = dataset.get_workspace_info(workspace_name)
+        self.assertEqual(workspace_info["name"], workspace_name)
+        self.assertEqual(workspace_info["description"], description)
+        self.assertEqual(workspace_info["color"], color)
+
+        # Update workspace info
+
+        new_workspace_name = "new-name"
+        new_description = "a new description for you"
+        new_info = {"name": new_workspace_name, "description": new_description}
+
+        dataset.update_workspace_info(workspace_name, new_info)
+        last_modified_at2 = dataset._doc.workspaces[0].last_modified_at
+
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertFalse(dataset.has_workspace(workspace_name))
+        self.assertTrue(dataset.has_workspace(new_workspace_name))
+        self.assertEqual(
+            dataset.get_workspace_info(new_workspace_name)["description"],
+            new_description,
+        )
+
+        updated_spaces = dataset.load_workspace(new_workspace_name)
+        self.assertEqual(updated_spaces.name, new_workspace_name)
+        dataset.update_workspace_info(
+            new_workspace_name, {"name": workspace_name}
+        )
+
+        #
+        # Verify that workspaces are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_workspaces)
+        self.assertTrue(dataset2.has_workspace(workspace_name))
+        self.assertListEqual(dataset2.list_workspaces(), [workspace_name])
+
+        spaces2 = dataset2.load_workspace(workspace_name)
+
+        self.assertEqual(spaces, spaces2)
+
+        dataset.delete_workspace(workspace_name)
+
+        self.assertFalse(dataset.has_workspaces)
+        self.assertFalse(dataset.has_workspace(workspace_name))
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        also_spaces2 = dataset2.load_workspace(workspace_name)
+        self.assertIsNotNone(also_spaces2)
+
+        #
+        # Verify that workspaces are deleted when a dataset is deleted
+        #
+
+        workspace_id = dataset2._doc.workspaces[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(
+            len(list(db.workspaces.find({"_id": workspace_id}))), 1
+        )
+
+        dataset2.delete()
+
+        self.assertEqual(
+            len(list(db.workspaces.find({"_id": workspace_id}))), 0
+        )
+
+    def test_workspaces_for_app(self):
+        dataset = self.dataset
+        space = fo.Space()
+
+        names = ["my-ws1", "my_ws2", "My  %&#  Ws3!"]
+        slugs = ["my-ws1", "my-ws2", "my-ws3"]
+
+        for idx, name in enumerate(names, 1):
+            dataset.save_workspace(name, space)
+
+        # Can't use duplicate name when saving a workspace
+        with self.assertRaises(ValueError):
+            dataset.save_workspace("my-ws1", space)
+
+        # Can't use duplicate slug when saving a workspace
+        with self.assertRaises(ValueError):
+            dataset.save_workspace("my   ws1", space)
+
+        # Can't use slug to delete workspace
+        with self.assertRaises(ValueError):
+            dataset.delete_workspace("my-ws3")
+
+        # Can't rename a workspace to an existing name
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-ws1", {"name": "my_ws2"})
+
+        # Can't rename a view to an existing slug
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-ws1", {"name": "my_ws2!"})
+
+        workspace_docs = dataset._doc.workspaces
+
+        self.assertListEqual([ws.name for ws in workspace_docs], names)
+        self.assertListEqual([ws.slug for ws in workspace_docs], slugs)
+
+        dataset.delete_workspace("my_ws2")
+
+        self.assertSetEqual(
+            {ws.name for ws in dataset._doc.workspaces},
+            {names[0], names[2]},
+        )
+
+        dataset.delete_workspaces()
+
+        self.assertListEqual(dataset._doc.workspaces, [])
 
     def test_runs(self):
         dataset = self.dataset

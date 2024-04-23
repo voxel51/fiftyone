@@ -1,10 +1,11 @@
 """
 FiftyOne Server utils.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 
 import cachetools
@@ -12,11 +13,8 @@ from dacite import Config, from_dict as _from_dict
 from dacite.core import T
 from dacite.data import Data
 
-import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds

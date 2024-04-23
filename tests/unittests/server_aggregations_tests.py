@@ -1,10 +1,11 @@
 """
-FiftyOne server aggregation count tests
+FiftyOne Server aggregation count tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 import unittest
 

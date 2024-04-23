@@ -8,15 +8,15 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { PanelContext } from "./contexts";
 import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
+import { PanelContext } from "./contexts";
 import {
-  panelsCloseEffect,
-  panelsStateAtom,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
+  panelsCloseEffect,
+  panelsStateAtom,
   previousTabsGroupAtom,
   spaceSelector,
 } from "./state";

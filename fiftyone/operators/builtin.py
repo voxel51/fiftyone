@@ -1,10 +1,11 @@
 """
 Builtin operators.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 import fiftyone as fo
@@ -418,6 +419,102 @@ def list_files(dirpath):
     return dirs + files
 
 
+class ListSavedWorkspaces(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_saved_workspaces",
+            label="List Saved Workspaces",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        return {"workspaces": ctx.dataset.list_workspaces(info=True)}
+
+
+class LoadWorkspace(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="load_workspace",
+            label="Load Workspace",
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str("name", label="Workspace Name", required=True)
+        return types.Property(inputs)
+
+    def execute(self, ctx):
+        name = ctx.params.get("name", None)
+        spaces = ctx.dataset.load_workspace(name)
+        ctx.trigger("set_spaces", {"spaces": spaces.to_dict()})
+        return {}
+
+
+class SaveWorkspace(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="save_workspace",
+            label="Save Workspace",
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str("name", label="Workspace Name", required=True)
+        inputs.str("description", label="Description")
+        inputs.str("color", label="Color")
+        inputs.obj("spaces", label="Spaces")
+        inputs.bool("edit", label="Edit")
+        if ctx.params.get("edit", False):
+            inputs.str(
+                "current_name", label="Current Workspace Name", required=True
+            )
+        return types.Property(inputs)
+
+    def execute(self, ctx):
+        name = ctx.params.get("name", None)
+        description = ctx.params.get("description", None)
+        color = ctx.params.get("color", None)
+        spaces_dict = ctx.params.get("spaces", None)
+        spaces = fo.Space.from_dict(spaces_dict)
+        edit = ctx.params.get("edit", False)
+        current_name = ctx.params.get("current_name", None)
+        if edit:
+            ctx.dataset.update_workspace_info(
+                current_name,
+                info=dict(name=name, color=color, description=description),
+            )
+        else:
+            ctx.dataset.save_workspace(
+                name, spaces, description=description, color=color
+            )
+        return {}
+
+
+class DeleteWorkspace(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_workspace",
+            label="Delete Workspace",
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str("name", label="Workspace Name", required=True)
+        return types.Property(inputs)
+
+    def execute(self, ctx):
+        name = ctx.params.get("name", None)
+        ctx.dataset.delete_workspace(name)
+        return {}
+
+
 BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
@@ -428,4 +525,8 @@ BUILTIN_OPERATORS = [
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
     ListFiles(_builtin=True),
+    ListSavedWorkspaces(_builtin=True),
+    LoadWorkspace(_builtin=True),
+    SaveWorkspace(_builtin=True),
+    DeleteWorkspace(_builtin=True),
 ]

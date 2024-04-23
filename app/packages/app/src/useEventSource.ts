@@ -8,7 +8,7 @@ import { RoutingContext } from "./routing";
 import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
-import { getDatasetName, getSavedViewName } from "./utils";
+import { getDatasetName, getParam } from "./utils";
 
 const useEventSource = (
   router: RoutingContext<Queries>,
@@ -54,7 +54,8 @@ const useEventSource = (
       {
         initializer: {
           dataset: getDatasetName(),
-          view: getSavedViewName(),
+          view: getParam("view"),
+          workspace: getParam("workspace"),
         },
         subscription,
         events: subscriptions,
