@@ -50,9 +50,9 @@ class DeepSort:
                 "in_field and out_field must not be empty and must start with 'frames.'"
             )
 
-        tracker = dsrt.DeepSort(max_age=max_age)
-
         for sample in dataset.iter_samples(autosave=True, progress=progress):
+            tracker = dsrt.DeepSort(max_age=max_age)
+
             cap = cv2.VideoCapture(sample.filepath)
             frames_list = []
 
