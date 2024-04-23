@@ -14,35 +14,7 @@
   scrollbar-width: none;
   position: relative;
   pointer-events: all;
-}
-
-.searchContainer {
-  position: relative;
-  display: flex;
   padding: 1rem;
-  align-items: center;
-  background-color: var(--fo-palette-background-level2);
-  width: 60%;
-}
-
-.searchInput {
-  padding: 0.25rem 0.5rem;
-  width: 100%;
-  border-radius: 4px;
-  color: var(--fo-palette-text-secondary);
-  border: 1px solid var(--fo-palette-primary-plainBorder);
-  background-color: var(--fo-palette-background-level1);
-}
-
-.searchInput:focus {
-  border: 1px solid var(--fo-palette-primary-softBorder);
-  outline: none;
-}
-
-.searchCloseIcon {
-  position: absolute;
-  right: 1.5rem;
-  cursor: pointer;
 }
 
 .copyBtnClass {
