@@ -35,7 +35,7 @@ export default () => {
           set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
 
         let fallback = r.current;
-        if (map[groupSlice] === "point_cloud") {
+        if (map[fallback] === "point_cloud") {
           fallback = types
             .filter(({ mediaType }) => mediaType !== "point_cloud")
             .map(({ name }) => name)

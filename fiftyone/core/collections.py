@@ -5,6 +5,7 @@ Interface for sample collections.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -1028,6 +1029,7 @@ class SampleCollection(object):
         path=None,
         include_private=False,
         use_db_fields=False,
+        media_types=None,
     ):
         if path is not None:
             field = self.get_field(path, leaf=True)
@@ -1041,9 +1043,11 @@ class SampleCollection(object):
 
             # These fields are currently not declared by default on point cloud
             # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            media_types = media_types or set()
+            if issubclass(field.document_type, fol.Detection) and (
+                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                or fom.POINT_CLOUD in media_types
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
