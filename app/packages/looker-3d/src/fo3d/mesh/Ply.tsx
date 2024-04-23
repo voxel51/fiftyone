@@ -8,6 +8,7 @@ import {
   PlyAsset,
 } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { getBasePathForTextures } from "../utils";
 
 interface PlyProps {
   name: string;
@@ -80,7 +81,14 @@ export const Ply = ({
   scale,
   children,
 }: PlyProps) => {
-  const geometry = useLoader(PLYLoader, ply.plyUrl);
+  const resourcePath = useMemo(
+    () => getBasePathForTextures(ply.plyUrl, ["ply"]),
+    [ply.plyUrl]
+  );
+
+  const geometry = useLoader(PLYLoader, ply.plyUrl, (loader) => {
+    loader.resourcePath = resourcePath;
+  });
 
   const [isUsingVertexColors, setIsUsingVertexColors] = useState(false);
   const [isGeometryResolved, setIsGeometryResolved] = useState(false);

@@ -199,7 +199,11 @@ type UseFo3dReturnType = {
 /**
  * This hook parses the fo3d file into a FiftyOne scene graph.
  */
-export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
+export const useFo3d = (
+  url: string,
+  filepath: string,
+  fo3dRoot: string
+): UseFo3dReturnType => {
   const [isLoading, setIsLoading] = useState(true);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
 
@@ -211,8 +215,6 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
       setIsLoading(false);
     });
   }, [url, filepath, fetchFo3d]);
-
-  const { fo3dRoot } = useFo3dContext();
 
   const foScene = useMemo(() => {
     if (!rawData) {

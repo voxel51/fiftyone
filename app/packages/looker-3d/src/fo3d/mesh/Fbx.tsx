@@ -1,8 +1,10 @@
-import { useFBX } from "@react-three/drei";
+import { useLoader } from "@react-three/fiber";
 import { useMemo } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
+import { FBXLoader } from "three-stdlib";
 import { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
+import { getBasePathForTextures } from "../utils";
 
 export const Fbx = ({
   name,
@@ -19,7 +21,14 @@ export const Fbx = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
-  const fbx = useFBX(fbxUrl);
+  const resourcePath = useMemo(
+    () => getBasePathForTextures(fbxUrl, ["fbx"]),
+    [fbxUrl]
+  );
+
+  const fbx = useLoader(FBXLoader, fbxUrl, (loader) => {
+    loader.setResourcePath(resourcePath);
+  });
 
   const animationClips = useMemo(() => {
     return fbx?.animations || [];

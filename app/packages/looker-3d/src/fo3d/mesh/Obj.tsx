@@ -1,11 +1,12 @@
 import { useLoader } from "@react-three/fiber";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Mesh, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { MTLLoader } from "../../overrides/MtlLoader";
 import { getColorFromPoolBasedOnHash } from "../../utils";
+import { getBasePathForTextures } from "../utils";
 
 const ObjMeshDefaultMaterial = ({
   name,
@@ -45,7 +46,6 @@ const ObjMeshDefaultMaterial = ({
 };
 
 const ObjMeshWithCustomMaterial = ({
-  name,
   obj,
   onLoad,
 }: {
@@ -55,7 +55,16 @@ const ObjMeshWithCustomMaterial = ({
 }) => {
   const { objUrl, mtlUrl } = obj;
 
-  const materials = useLoader(MTLLoader, mtlUrl);
+  const resourcePath = useMemo(
+    () => (mtlUrl ? getBasePathForTextures(mtlUrl, ["mtl"]) : null),
+    [mtlUrl]
+  );
+
+  const materials = useLoader(MTLLoader, mtlUrl, (loader) => {
+    if (resourcePath) {
+      loader.setResourcePath(resourcePath);
+    }
+  });
   const mesh = useLoader(OBJLoader, objUrl, (loader) => {
     if (mtlUrl) {
       materials.preload();
