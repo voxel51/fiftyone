@@ -2,6 +2,7 @@ import { ModalSample, getSampleSrc } from "@fiftyone/state";
 import { resolveParent } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
+  DoubleSide,
   MeshBasicMaterial,
   MeshDepthMaterial,
   MeshLambertMaterial,
@@ -177,6 +178,7 @@ export const getThreeMaterialFromFo3dMaterial = (
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
+  props["side"] = DoubleSide;
 
   if (foMtl._type === "MeshBasicMaterial") {
     return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);
