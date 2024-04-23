@@ -239,3 +239,15 @@ export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
 
   return null;
 };
+
+export const getBasePathForTextures = (
+  primaryAssetUrl: string,
+  extensions: Array<"gltf" | "glb" | "mtl" | "ply" | "fbx">
+) => {
+  const urlDecoded = decodeURIComponent(primaryAssetUrl);
+  const extensionString = extensions.join("|");
+  const regex = new RegExp(`/[^/]*.(${extensionString})`);
+  const filenameIndex = regex.exec(urlDecoded).index;
+  const basePath = urlDecoded.slice(0, filenameIndex) + "/";
+  return basePath;
+};

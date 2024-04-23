@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
 import { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
+import { getBasePathForTextures } from "../utils";
 
 export const Gltf = ({
   name,
@@ -19,7 +20,15 @@ export const Gltf = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
-  const { scene, animations } = useGLTF(gltfUrl, true);
+  const resourcePath = useMemo(
+    () => getBasePathForTextures(gltfUrl, ["glb", "gltf"]),
+    [gltfUrl]
+  );
+
+  const { scene, animations } = useGLTF(gltfUrl, true, undefined, (loader) => {
+    loader.setResourcePath(resourcePath);
+  });
+
   const groupRef = useRef();
 
   let mixer = useMemo(() => new AnimationMixer(scene), [scene]);
