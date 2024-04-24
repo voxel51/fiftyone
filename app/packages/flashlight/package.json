@@ -2,7 +2,7 @@
     "name": "@fiftyone/flashlight",
     "version": "0.0.0",
     "author": "Voxel51, Inc.",
-    "description": "Justified, scrubbable, and virtualized looker grid",
+    "description": "An infinite scrolling justified-layout virtualized grid",
     "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
     "license": "Apache-2.0",
     "bugs": {

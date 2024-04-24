@@ -2,10 +2,13 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import styles from "./styles.module.css";
+
+import type { ItemData, Render } from "./row";
+
 import { closest } from "./closest";
 import { MARGIN } from "./constants";
-import Row, { ItemData, Render } from "./row";
-import { spotlightContainer, spotlightSection } from "./styles.module.css";
+import Row from "./row";
 import tile from "./tile";
 
 export interface Response<K, V> {
@@ -36,9 +39,9 @@ export class Section<K, V> {
   ) {
     this.#end = edge;
     this.#direction = direction;
-    this.#container.classList.add(spotlightContainer);
+    this.#container.classList.add(styles.spotlightContainer);
 
-    this.#section.classList.add(spotlightSection);
+    this.#section.classList.add(styles.spotlightSection);
     this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
   }
@@ -64,7 +67,7 @@ export class Section<K, V> {
   }
 
   set top(top: number) {
-    this.#section.style.top = top + "px";
+    this.#section.style.top = `${top}px`;
   }
 
   attach(element: HTMLDivElement) {
@@ -75,9 +78,6 @@ export class Section<K, V> {
 
   remove() {
     this.#section.remove();
-    this.#rows.forEach((f) => {
-      f.delete();
-    });
     this.#rows = [];
   }
 
@@ -167,8 +167,8 @@ export class Section<K, V> {
       }
     );
 
-    let pageRow;
-    let delta;
+    let pageRow = undefined;
+    let delta = undefined;
 
     const minus =
       this.#direction === "forward"
@@ -221,9 +221,9 @@ export class Section<K, V> {
       requestMore = true;
     }
 
-    hide.forEach((row) => row.hide());
+    for (const row of hide) row.hide();
 
-    this.#container.style.height = this.height + "px";
+    this.#container.style.height = `${this.height}px`;
 
     return {
       more: requestMore && this.ready,
@@ -236,10 +236,12 @@ export class Section<K, V> {
     this.#rows.reverse();
     const old = this.#direction;
     this.#direction = this.#direction === "backward" ? "forward" : "backward";
-    this.#rows.forEach((row) => {
+
+    for (const row of this.#rows) {
       row.from = from - row.from - row.height;
       row.switch(this.#direction === "backward" ? "bottom" : "top");
-    });
+    }
+
     this.#section.classList.remove(old);
 
     this.#section.classList.add(this.#direction);

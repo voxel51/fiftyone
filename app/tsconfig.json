@@ -7,9 +7,7 @@
         "noUnusedParameters": true,
         "noImplicitReturns": true
     },
-    "files": [],
     "references": [
-        { "path": "packages/app" },
         { "path": "packages/aggregations" },
         { "path": "packages/components" },
         { "path": "packages/flashlight" },

@@ -1,10 +1,12 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "target": "ES2022",
-        "module": "ESNext",
+        "composite": true,
         "lib": ["ESNext"],
-        "plugins": [{ "name": "typescript-plugin-css-modules" }]
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "plugins": [{ "name": "typescript-plugin-css-modules" }],
+        "target": "ES2022"
     },
     "include": ["./src"]
 }

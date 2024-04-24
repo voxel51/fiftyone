@@ -5,8 +5,8 @@ import AppsIcon from "@mui/icons-material/Apps";
 import React from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
+import Grid from "../components/Grid/SpotlightGrid";
 import ContainerHeader from "../components/ImageContainerHeader";
-import Grid from "../components/SpotlightGrid";
 
 const Container = styled.div`
   position: relative;

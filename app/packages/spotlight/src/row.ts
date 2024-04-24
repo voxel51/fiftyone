@@ -1,9 +1,9 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import styles from "./styles.module.css";
 
 import { MARGIN } from "./constants";
-import { spotlightRow, spotlightRowHidden } from "./styles.module.css";
 
 export interface ItemData<V> {
   id?: symbol;
@@ -17,7 +17,7 @@ export type Render = (
   dimensions: [number, number],
   soft: boolean,
   disable: boolean
-) => (() => void) | void;
+) => (() => void) | undefined;
 
 export default class Row<V> {
   #hidden: boolean;
@@ -29,7 +29,7 @@ export default class Row<V> {
   readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
 
   constructor(items: ItemData<V>[], from: number, width: number) {
-    this.#container.classList.add(spotlightRow);
+    this.#container.classList.add(styles.spotlightRow);
 
     this.#row = items.map((item) => {
       const element = document.createElement("div");
@@ -43,7 +43,11 @@ export default class Row<V> {
     this.#width = width;
     const height = this.height;
     let left = 0;
-    this.#row.forEach(({ element, item: { aspectRatio } }) => {
+
+    for (const {
+      element,
+      item: { aspectRatio },
+    } of this.#row) {
       const itemWidth = height * aspectRatio;
 
       element.style.height = `${height}px`;
@@ -51,7 +55,7 @@ export default class Row<V> {
       element.style.left = `${left}px`;
 
       left += itemWidth + MARGIN;
-    });
+    }
 
     this.#container.style.height = `${height}px`;
     this.#container.style.width = `${this.#width}px`;
@@ -91,12 +95,6 @@ export default class Row<V> {
     return Boolean(this.#container.parentElement);
   }
 
-  delete() {
-    this.#row.forEach((f) => {
-      delete f.item.data;
-    });
-  }
-
   hide(): void {
     if (!this.attached) {
       throw new Error("row is not attached");
@@ -119,8 +117,8 @@ export default class Row<V> {
   ): void {
     if (hidden !== this.#hidden) {
       hidden
-        ? this.#container.classList.add(spotlightRowHidden)
-        : this.#container.classList.remove(spotlightRowHidden);
+        ? this.#container.classList.add(styles.spotlightRowHidden)
+        : this.#container.classList.remove(styles.spotlightRowHidden);
       this.#hidden = hidden;
     }
 
@@ -130,10 +128,13 @@ export default class Row<V> {
       element.appendChild(this.#container);
     }
 
-    !this.#hidden &&
-      this.#row.forEach(({ element, item }) => {
-        const width = item.aspectRatio * this.height;
-        render(item.id, element, [width, this.height], soft, hidden);
-      });
+    if (this.#hidden) {
+      return;
+    }
+
+    for (const { element, item } of this.#row) {
+      const width = item.aspectRatio * this.height;
+      render(item.id, element, [width, this.height], soft, hidden);
+    }
   }
 }

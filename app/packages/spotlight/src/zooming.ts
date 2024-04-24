@@ -11,11 +11,11 @@ export const createScrollReader = (
   let timer: ReturnType<typeof setTimeout>;
   let zooming = false;
   let destroyed = false;
-  let scrolling;
+  let scrolling = undefined;
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
-    if (threshold === Infinity) {
+    if (threshold === Number.POSITIVE_INFINITY) {
       return false;
     }
 
@@ -30,7 +30,7 @@ export const createScrollReader = (
         clearTimeout(timer);
         timer = undefined;
       }
-      timer = setTimeout(function () {
+      timer = setTimeout(() => {
         zooming = false;
         timer = undefined;
         scrolling = false;

@@ -1,18 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "ESNext",
-        "lib": ["ES2023"],
+        "lib": ["ES2022"],
         "jsx": "preserve",
         "types": ["vite/client"]
     },
-    "include": ["index.ts"],
-    "references": [
-        { "path": "../components" },
-        { "path": "../flashlight" },
-        { "path": "../looker" },
-        { "path": "../map" },
-        { "path": "../state" },
-        { "path": "../utilities" }
-    ]
+    "extends": "../../tsconfig.json"
 }

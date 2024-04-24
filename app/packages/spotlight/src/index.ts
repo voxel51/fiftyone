@@ -1,11 +1,14 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import styles from "./styles.module.css";
 
-import { EventCallback, Load, PageChange } from "./events";
-import { Render } from "./row";
-import { Response, Section } from "./section";
-import { spotlight } from "./styles.module.css";
+import type { EventCallback } from "./events";
+import type { Render } from "./row";
+import type { Response } from "./section";
+
+import { Load, PageChange } from "./events";
+import { Section } from "./section";
 import { createScrollReader } from "./zooming";
 
 export { Load, PageChange } from "./events";
@@ -36,7 +39,7 @@ export default class Spotlight<K, V> extends EventTarget {
     super();
     this.#config = config;
 
-    this.#element.classList.add(spotlight);
+    this.#element.classList.add(styles.spotlight);
 
     this.#page = config.key;
   }
@@ -69,14 +72,15 @@ export default class Spotlight<K, V> extends EventTarget {
     super.removeEventListener(type, callback);
   }
 
-  attach(element: HTMLElement | string): void {
+  attach(elementOrElementId: HTMLElement | string): void {
     if (this.attached) {
       throw new Error("spotlight is attached");
     }
 
-    if (typeof element === "string") {
-      element = document.getElementById(element);
-    }
+    const element =
+      typeof elementOrElementId === "string"
+        ? document.getElementById(elementOrElementId)
+        : elementOrElementId;
 
     element.appendChild(this.#element);
     this.#rect = this.#element.parentElement.getBoundingClientRect();
@@ -247,7 +251,10 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.attach(this.#element);
     }
 
-    result.items.forEach(({ id }) => this.#keys.set(id, key));
+    for (const { id } of result.items) {
+      this.#keys.set(id, key);
+    }
+
     return result;
   }
 

@@ -1,11 +1,12 @@
-import { FlashlightConfig, Response } from "@fiftyone/flashlight";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
+import { Response, SpotlightConfig } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { fetchQuery, useRelayEnvironment, VariablesOf } from "react-relay";
-import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
+import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
+import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import { defaultZoom } from "./useFlashlightPager";
 
 const PAGE_SIZE = 20;
 
@@ -31,11 +32,6 @@ const processSamplePageData = (
     };
   });
 };
-
-const defaultZoom = selector({
-  key: "defaultZoomCallback",
-  get: () => async () => false,
-});
 
 const useFlashlightPager = (
   pageSelector: RecoilValueReadOnly<
@@ -80,7 +76,7 @@ const useFlashlightPager = (
     };
   }, [environment, handleError, page, store, zoom]);
 
-  const ref = useRef<FlashlightConfig<number, object>["get"]>(pager);
+  const ref = useRef<SpotlightConfig<number, object>["get"]>(pager);
   ref.current = pager;
 
   return { page: ref, store };

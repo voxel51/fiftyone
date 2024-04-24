@@ -1,3 +1,3 @@
 # Flashlight
 
-An infinite scrolling flex-layout virtualized grid
+An infinite scrolling justified-layout virtualized grid

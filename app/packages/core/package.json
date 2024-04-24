@@ -13,6 +13,7 @@
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
         "@fiftyone/operators": "*",
+        "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@monaco-editor/react": "^4.5.0",

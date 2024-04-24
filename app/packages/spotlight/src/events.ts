@@ -14,9 +14,7 @@ export class PageChange<K> extends Event {
   }
 }
 
-interface EventListener<E extends Event> {
-  (evt: E): void;
-}
+type EventListener<E extends Event> = (evt: E) => void;
 
 interface EventListenerObject<E extends Event> {
   handleEvent(object: E): void;

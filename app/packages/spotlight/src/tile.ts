@@ -8,6 +8,12 @@ export default (
   threshold: number,
   remainder: boolean
 ): number[] => {
+  if (threshold < 1) {
+    throw new TilingException(
+      `threshold must be greater than 1, received ${threshold}`
+    );
+  }
+
   const row = (start: number, end: number) => {
     const key = `${start}:${end}`;
     if (!cache.has(key)) {
@@ -18,7 +24,7 @@ export default (
 
       cache.set(key, {
         delta,
-        score: Math.pow(Math.abs(delta), 3),
+        score: Math.abs(delta) ** 3,
       });
     }
 
@@ -114,3 +120,5 @@ export default (
 
   return result.reverse();
 };
+
+export class TilingException extends Error {}

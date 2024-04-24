@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import Row from "./row";
+import type Row from "./row";
 
 export function closest<V>(
   rows: Row<V>[],

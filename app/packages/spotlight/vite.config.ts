@@ -1,4 +1,4 @@
-import { UserConfig } from "vite";
+import type { UserConfig } from "vite";
 
 export default <UserConfig>{
   esbuild: {},
@@ -10,4 +10,5 @@ export default <UserConfig>{
     target: "es2022",
     minify: false,
   },
+  test: {},
 };
