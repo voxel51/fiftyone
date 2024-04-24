@@ -51,6 +51,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 
 
 logger = logging.getLogger(__name__)
@@ -262,8 +263,10 @@ def _get_sizes(sample_collection, media_fields, filepaths):
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
-    elif media_fields == ["filepath"] and not sample_collection.exists(
-        "metadata.size_bytes", bool=False
+    elif (
+        sample_collection.media_type != fom.THREE_D
+        and media_fields == ["filepath"]
+        and not sample_collection.exists("metadata.size_bytes", bool=False)
     ):
         # All sizes are already available, so just return them now
         return sample_collection.values("metadata.size_bytes")
@@ -3451,8 +3454,25 @@ class SampleCollection(object):
 
         media_fields = [self._resolve_media_field(f) for f in media_fields]
 
-        # When flat=False, return lists of lists of media paths, one per sample
-        if not flat:
+        if flat:
+            # Generate flat list of all media paths
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            filepaths = view.values(media_fields, unwind=True)
+
+            if len(media_fields) > 1:
+                filepaths = list(itertools.chain.from_iterable(filepaths))
+            else:
+                filepaths = filepaths[0]
+        else:
+            # Generate lists of lists of media paths, one per sample
+            filepaths = []
+
             if self.media_type == fom.GROUP:
                 id_field = self.group_field + ".id"
                 view = self.select_group_slices(
@@ -3463,28 +3483,43 @@ class SampleCollection(object):
                 for _id, _paths in zip(group_ids, zip(*paths)):
                     paths_map[_id].extend(_merge_paths(_paths))
 
-                # Intentionally only returns paths for groups in active slice
-                return [paths_map[_id] for _id in self.values(id_field)]
+                # Intentionally only includes paths for groups in active slice
+                for _id in self.values(id_field):
+                    filepaths.append(paths_map[_id])
             else:
-                paths = self.values(media_fields)
-                return [_merge_paths(p) for p in zip(*paths)]
+                for p in zip(*self.values(media_fields)):
+                    filepaths.append(_merge_paths(p))
 
-        # When flat=True, return flat list of all media paths
-        if self.media_type == fom.GROUP:
-            view = self.select_group_slices(
-                slices=group_slices, _allow_mixed=True
-            )
-        else:
-            view = self
-
-        filepaths = view.values(media_fields, unwind=True)
-
-        if len(media_fields) > 1:
-            filepaths = list(itertools.chain.from_iterable(filepaths))
-        else:
-            filepaths = filepaths[0]
+        if "filepath" in media_fields and self._contains_media_type(
+            fom.THREE_D, any_slice=True
+        ):
+            self._inject_fo3d_asset_paths(filepaths, flat=flat)
 
         return filepaths
+
+    def _inject_fo3d_asset_paths(self, filepaths, flat=True):
+        if flat:
+            _filepaths = filepaths
+        else:
+            _filepaths = itertools.chain.from_iterable(filepaths)
+
+        scene_paths = [p for p in _filepaths if p.endswith(".fo3d")]
+        asset_map = fou3d.get_asset_paths(
+            scene_paths, abs_paths=True, skip_failures=True
+        )
+
+        if flat:
+            asset_paths = itertools.chain.from_iterable(asset_map.values())
+            filepaths.extend(set(asset_paths))
+        else:
+            for sample_paths in filepaths:
+                asset_paths = set()
+                for path in sample_paths:
+                    _asset_paths = asset_map.get(path, None)
+                    if _asset_paths is not None:
+                        asset_paths.update(_asset_paths)
+
+                sample_paths.extend(asset_paths)
 
     @mutates_data
     def apply_model(
