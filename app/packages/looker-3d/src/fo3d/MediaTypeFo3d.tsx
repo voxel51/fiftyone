@@ -205,12 +205,9 @@ export const MediaTypeFo3dComponent = () => {
     return DEFAULT_CAMERA_POSITION();
   }, [settings, isParsingFo3d, foScene, sceneBoundingBox, upVector]);
 
-  const onCanvasCreated = useCallback(
-    (state: RootState) => {
-      cameraRef.current = state.camera as PerspectiveCamera;
-    },
-    [upVector]
-  );
+  const onCanvasCreated = useCallback((state: RootState) => {
+    cameraRef.current = state.camera as PerspectiveCamera;
+  }, []);
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
@@ -223,7 +220,6 @@ export const MediaTypeFo3dComponent = () => {
 
   useEffect(() => {
     if (cameraRef.current) {
-      cameraRef.current.position.copy(defaultCameraPositionComputed);
       setSceneInitialized(true);
     }
   }, [defaultCameraPositionComputed]);
