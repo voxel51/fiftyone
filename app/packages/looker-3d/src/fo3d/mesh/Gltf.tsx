@@ -1,11 +1,11 @@
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
-import { AnimationMixer, Material, Mesh, Quaternion, Vector3 } from "three";
+import { AnimationMixer, Mesh, Quaternion, Vector3 } from "three";
 import { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { useSetSceneTransparency } from "../../hooks/use-set-scene-transparency";
 import { getBasePathForTextures } from "../utils";
-import { invalidate } from "@react-three/fiber";
 
 export const Gltf = ({
   name,
@@ -33,34 +33,42 @@ export const Gltf = ({
     loader.setResourcePath(resourcePath);
   });
 
-  useEffect(() => {
-    const setMtl = (mtl: Material) => {
-      mtl.opacity = material.opacity;
-      if (material.opacity < 1) {
-        mtl["transparent"] = material.opacity < 1;
-        mtl["depthWrite"] = false;
-      }
-      mtl["wireframe"] = material["wireframe"] ?? false;
-    };
+  useSetSceneTransparency(scene, material);
 
-    scene.traverse((node: Mesh) => {
-      if (node instanceof Mesh || (node as Mesh).material) {
-        if (Array.isArray(node.material)) {
-          for (const mtl of node.material) {
-            setMtl(mtl);
-          }
-        } else {
-          setMtl(node.material);
+  useEffect(() => {
+    scene.traverse((node) => {
+      if (node instanceof Mesh && node.material) {
+        if (!node.userData.foOriginalMaterialConfig) {
+          node.userData.foOriginalMaterialConfig = {
+            transparent: node.material.transparent,
+            depthWrite: node.material.depthWrite,
+            alphaTest: node.material.alphaTest,
+          };
         }
+
+        if (material.opacity < 1) {
+          // set all materials to transparent so we can control opacity
+          node.material.transparent = true;
+          node.material.depthWrite = false;
+          node.material.alphaTest = Number.EPSILON;
+        } else {
+          node.material.transparent =
+            node.userData.foOriginalMaterialConfig.transparent;
+          node.material.depthWrite =
+            node.userData.foOriginalMaterialConfig.depthWrite;
+          node.material.alphaTest =
+            node.userData.foOriginalMaterialConfig.alphaTest;
+        }
+
+        node.material.opacity = material.opacity;
+        node.material.wireframe = material["wireframe"] ?? false;
       }
     });
-    // todo: investigate not triggering rerender as we expect
-    invalidate();
   }, [scene, material]);
 
   const groupRef = useRef();
 
-  let mixer = useMemo(() => new AnimationMixer(scene), [scene]);
+  const mixer = useMemo(() => new AnimationMixer(scene), [scene]);
 
   useAnimationSelect(name, animations, mixer);
 
