@@ -26,14 +26,6 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   ],
 });
 
-export const actionRenderListAtomFamily = atomFamily<
-  [string, any][],
-  "pcd" | "fo3d"
->({
-  key: "fo3d-actionRenderListAtomFamily",
-  default: [],
-});
-
 export const currentActionAtom = atom<Actions>({
   key: "fo3d-openAction",
   default: null,
@@ -68,6 +60,11 @@ export const isGridOnAtom = atom<boolean>({
       valueClass: "boolean",
     }),
   ],
+});
+
+export const fo3dContainsBackground = atom<boolean>({
+  key: "fo3d-containsBackground",
+  default: false,
 });
 
 export const isFo3dBackgroundOnAtom = atom<boolean>({

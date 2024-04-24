@@ -10,29 +10,18 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { PerspectiveCamera, Vector3 } from "three";
 import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
-import {
-  ACTION_GRID,
-  ACTION_SET_EGO_VIEW,
-  ACTION_SET_TOP_VIEW,
-  ACTION_VIEW_HELP,
-  ACTION_VIEW_JSON,
-  DEFAULT_CAMERA_POSITION,
-} from "../constants";
+import { DEFAULT_CAMERA_POSITION } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
-import {
-  actionRenderListAtomFamily,
-  activeNodeAtom,
-  isFo3dBackgroundOnAtom,
-} from "../state";
+import { activeNodeAtom, isFo3dBackgroundOnAtom } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
@@ -213,7 +202,6 @@ export const MediaTypeFo3dComponent = () => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
-        set(actionRenderListAtomFamily("fo3d"), []);
       },
     []
   );
@@ -238,10 +226,6 @@ export const MediaTypeFo3dComponent = () => {
       far: foScene?.cameraProps.far && 2500,
     };
   }, [foScene, upVector, defaultCameraPositionComputed]);
-
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("fo3d")
-  );
 
   const onChangeView = useCallback(
     (view: "pov" | "top", useAnimation = true) => {
@@ -298,38 +282,6 @@ export const MediaTypeFo3dComponent = () => {
     },
     [onChangeView]
   );
-
-  useEffect(() => {
-    if (!isSceneInitialized) {
-      return;
-    }
-
-    // todo: find a better way of setting action bar items
-    const addUniqueItems = (currentItems, newItems) => {
-      const existingKeys = currentItems.map((item) => item[0]);
-      return newItems
-        .filter((item) => !existingKeys.includes(item[0]))
-        .concat(currentItems);
-    };
-
-    setActionBarItems((items) => {
-      const newItems = [
-        [ACTION_GRID, []],
-        [ACTION_SET_TOP_VIEW, [onChangeView]],
-        [ACTION_SET_EGO_VIEW, [onChangeView]],
-        [ACTION_VIEW_JSON, [jsonPanel, sample]],
-        [ACTION_VIEW_HELP, [helpPanel]],
-      ];
-      return addUniqueItems(items, newItems);
-    });
-  }, [
-    isSceneInitialized,
-    onChangeView,
-    jsonPanel,
-    sample,
-    helpPanel,
-    setActionBarItems,
-  ]);
 
   useEffect(() => {
     if (!cameraControlsRef.current) {

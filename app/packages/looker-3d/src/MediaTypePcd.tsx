@@ -14,22 +14,11 @@ import {
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import { Screenshot } from "./action-bar/Screenshot";
-import {
-  ACTION_GRID,
-  ACTION_SET_EGO_VIEW,
-  ACTION_SET_PCDS,
-  ACTION_SET_POINT_SIZE,
-  ACTION_SET_TOP_VIEW,
-  ACTION_SHADE_BY,
-  ACTION_VIEW_HELP,
-  ACTION_VIEW_JSON,
-} from "./constants";
 import { Container } from "./containers";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
 import { PointCloudMesh } from "./renderables";
 import {
-  actionRenderListAtomFamily,
   currentActionAtom,
   currentPointSizeAtom,
   customColorMapAtom,
@@ -53,10 +42,6 @@ export const MediaTypePcdComponent = () => {
     defaultPluginSettings
   );
   const dataset = useRecoilValue(fos.dataset);
-
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("pcd")
-  );
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
@@ -184,31 +169,6 @@ export const MediaTypePcdComponent = () => {
 
   useHotkey("KeyT", () => onChangeView("top"));
   useHotkey("KeyE", () => onChangeView("pov"));
-
-  const hasMultiplePcdSlices = useMemo(
-    () =>
-      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
-        .length > 1,
-    [dataset]
-  );
-
-  useEffect(() => {
-    const actionItems = [
-      [ACTION_GRID, []],
-      [ACTION_SET_POINT_SIZE, []],
-      [ACTION_SHADE_BY, []],
-      [ACTION_SET_TOP_VIEW, [onChangeView]],
-      [ACTION_SET_EGO_VIEW, [onChangeView]],
-      [ACTION_VIEW_JSON, [jsonPanel, sampleMap]],
-      [ACTION_VIEW_HELP, [helpPanel]],
-    ];
-
-    if (hasMultiplePcdSlices) {
-      actionItems.splice(0, 0, [ACTION_SET_PCDS, []]);
-    }
-
-    setActionBarItems(actionItems);
-  }, [hasMultiplePcdSlices, jsonPanel, helpPanel, sampleMap]);
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;

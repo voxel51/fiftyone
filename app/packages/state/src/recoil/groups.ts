@@ -299,6 +299,13 @@ export const allPcdSlices = selector<string[]>({
   },
 });
 
+export const hasMultiplePcdSlices = selector<boolean>({
+  key: "hasMultiplePcdSlices",
+  get: ({ get }) => {
+    return get(allPcdSlices).length > 1;
+  },
+});
+
 export const allNonPcdSlices = selector<string[]>({
   key: "allNonPcdSlices",
   get: ({ get }) => {

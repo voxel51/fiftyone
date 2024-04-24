@@ -1,7 +1,7 @@
 import { useControls } from "leva";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
+import { PANEL_ORDER_VISIBILITY } from "../constants";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -16,7 +16,7 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
-import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
+import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { Fo3dBackground } from "./Background";
 import { Stl } from "./Stl";
@@ -254,20 +254,17 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [defaultVisibilityMap]
   );
 
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("fo3d")
-  );
-
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
+
+  const setFo3dContainsBackground = useSetRecoilState(fo3dContainsBackground);
 
   useEffect(() => {
     if (isSceneInitialized && scene?.background !== null) {
-      setActionBarItems((items) => [
-        [ACTION_TOGGLE_BACKGROUND, null],
-        ...items,
-      ]);
+      setFo3dContainsBackground(true);
+    } else {
+      setFo3dContainsBackground(false);
     }
-  }, [scene, isSceneInitialized, setActionBarItems]);
+  }, [scene, isSceneInitialized]);
 
   return (
     <>
