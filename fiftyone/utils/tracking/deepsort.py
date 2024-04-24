@@ -26,6 +26,7 @@ class DeepSort:
         in_field,
         out_field="frames.ds_tracks",
         max_age=5,
+        keep_confidence=False,
         progress=None,
     ):
         """Performs object tracking using the DeepSort algorithm on a video dataset.
@@ -41,6 +42,8 @@ class DeepSort:
                 information of the detections
             max_age (5): the maximum number of missed misses before a track
                 is deleted.
+            keep_confidence (False): whether to store the detection confidence
+                of the tracked objects in the out_field
             progress (None): whether to display a progress bar (True/False)
         """
         if not in_field.startswith("frames.") or not out_field.startswith(
@@ -109,14 +112,23 @@ class DeepSort:
                     rel_w = w / frame_width
                     rel_h = h / frame_height
 
-                    tracked_detections.append(
-                        fo.Detection(
-                            label=track.get_det_class(),
-                            confidence=track.get_det_conf(),
-                            bounding_box=[rel_x, rel_y, rel_w, rel_h],
-                            index=track.track_id,
+                    if keep_confidence:
+                        tracked_detections.append(
+                            fo.Detection(
+                                label=track.get_det_class(),
+                                confidence=track.get_det_conf(),
+                                bounding_box=[rel_x, rel_y, rel_w, rel_h],
+                                index=track.track_id,
+                            )
                         )
-                    )
+                    else:
+                        tracked_detections.append(
+                            fo.Detection(
+                                label=track.get_det_class(),
+                                bounding_box=[rel_x, rel_y, rel_w, rel_h],
+                                index=track.track_id,
+                            )
+                        )
 
                 frame[out_field[len("frames.") :]] = fo.Detections(
                     detections=tracked_detections
