@@ -33,9 +33,9 @@ const setOpacity = (
 };
 
 /**
- * This hook traverses the scene graph and sets opacity for all materials.
+ * This hook traverses the scene graph and sets opacity and wireframe for all materials.
  */
-export const useSetSceneTransparency = (
+export const usePercolateMaterial = (
   scene: Object3D,
   newMaterial: ReturnType<typeof useMeshMaterialControls>["material"]
 ) => {

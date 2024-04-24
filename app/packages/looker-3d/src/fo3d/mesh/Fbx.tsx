@@ -4,11 +4,13 @@ import { AnimationMixer, Quaternion, Vector3 } from "three";
 import { FBXLoader } from "three-stdlib";
 import { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
+import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
 import { getBasePathForTextures } from "../utils";
 
 export const Fbx = ({
   name,
-  fbx: { fbxUrl },
+  fbx: { fbxUrl, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -26,9 +28,13 @@ export const Fbx = ({
     [fbxUrl]
   );
 
+  const { material } = useMeshMaterialControls(name, defaultMaterial, true);
+
   const fbx = useLoader(FBXLoader, fbxUrl, (loader) => {
     loader.setResourcePath(resourcePath);
   });
+
+  usePercolateMaterial(fbx, material);
 
   const animationClips = useMemo(() => {
     return fbx?.animations || [];

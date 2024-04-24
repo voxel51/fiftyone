@@ -4,7 +4,7 @@ import { AnimationMixer, Mesh, Quaternion, Vector3 } from "three";
 import { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { useSetSceneTransparency } from "../../hooks/use-set-scene-transparency";
+import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
 import { getBasePathForTextures } from "../utils";
 
 export const Gltf = ({
@@ -33,7 +33,7 @@ export const Gltf = ({
     loader.setResourcePath(resourcePath);
   });
 
-  useSetSceneTransparency(scene, material);
+  usePercolateMaterial(scene, material);
 
   useEffect(() => {
     scene.traverse((node) => {
