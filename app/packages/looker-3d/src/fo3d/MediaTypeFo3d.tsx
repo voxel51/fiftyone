@@ -239,7 +239,7 @@ export const MediaTypeFo3dComponent = () => {
       aspect: foScene?.cameraProps.aspect,
       fov: foScene?.cameraProps.fov && 50,
       near: foScene?.cameraProps.near && 0.1,
-      far: foScene?.cameraProps.far && 10000,
+      far: foScene?.cameraProps.far && 2500,
     };
   }, [foScene, upVector, defaultCameraPositionComputed]);
 
@@ -248,7 +248,7 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const onChangeView = useCallback(
-    (view: "pov" | "top") => {
+    (view: "pov" | "top", useAnimation = true) => {
       if (
         !sceneBoundingBox ||
         !cameraRef.current ||
@@ -281,7 +281,7 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.setLookAt(
         ...newCameraPosition,
         ...newLookAt,
-        true
+        useAnimation
       );
     },
     [sceneBoundingBox, topCameraPosition, defaultCameraPositionComputed]
@@ -347,13 +347,10 @@ export const MediaTypeFo3dComponent = () => {
         foScene.cameraProps.lookAt[2]
       );
       return;
+    } else {
+      onChangeView("pov", false);
     }
-
-    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
-      const center = sceneBoundingBox.getCenter(new Vector3());
-      cameraControlsRef.current.setTarget(center.x, center.y, center.z);
-    }
-  }, [foScene, sceneBoundingBox]);
+  }, [foScene, onChangeView]);
 
   if (isParsingFo3d) {
     return (
