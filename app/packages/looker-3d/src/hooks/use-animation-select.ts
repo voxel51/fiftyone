@@ -61,5 +61,5 @@ export const useAnimationSelect = (
         }
       ),
     };
-  });
+  }, [animationClips, currentAnimationIndex, animationNameEntries]);
 };
