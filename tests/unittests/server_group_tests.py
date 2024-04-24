@@ -81,3 +81,12 @@ class ServerGroupTests(unittest.TestCase):
                 fo.FilterLabels("label", expr),
             ],
         )
+
+        # noop
+        first = dataset.first().id
+        view, _ = fosv.handle_group_filter(
+            dataset,
+            dataset.select(first),
+            GroupElementFilter(),
+        )
+        self.assertEqual(view._all_stages, [fo.Select(first)])

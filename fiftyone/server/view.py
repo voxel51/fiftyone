@@ -236,6 +236,10 @@ def handle_group_filter(
         a :class:`fiftyone.core.view.DatasetView` with a group or slice
         selection
     """
+    if not filter.id and not filter.slice and not filter.slices:
+        # nothing to do
+        return view, None
+
     stages = view._stages
     group_field = dataset.group_field
 
