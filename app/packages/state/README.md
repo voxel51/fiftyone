@@ -7,7 +7,7 @@ FiftyOne App state APIs
 This package can be used in the following contexts
 
 -   internal - for interacting with the app state within the core app modules
--   external - for interacting with the state of an embeded app aka the
+-   external - for interacting with the state of an embedded app aka the
     `<Dataset />` component
 -   plugin - for interacting with app state in your plugin
 
