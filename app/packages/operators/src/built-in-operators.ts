@@ -782,16 +782,26 @@ class ClearPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const setPanelStateById = useSetPanelStateById();
-    return { setPanelStateById };
+    return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
-      return {
-        ...current,
-        state: {},
-      };
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", clear: true });
+  }
+}
+
+class ClearPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_panel_data",
+      label: "Clear panel data",
+      unlisted: true,
     });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", clear: true });
   }
 }
 
@@ -804,18 +814,10 @@ class SetPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const setPanelStateById = useSetPanelStateById();
-    return { setPanelStateById };
+    return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    setTimeout(() => {
-      ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
-        return {
-          ...current,
-          state: ctx.params.state,
-        };
-      });
-    }, 1);
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state" });
   }
 }
 
@@ -828,19 +830,50 @@ class SetPanelData extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const setPanelStateById = useSetPanelStateById();
-    return { setPanelStateById };
+    return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data" });
+  }
+}
+
+class PatchPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "patch_panel_data",
+      label: "Patch panel data",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", patch: true });
+  }
+}
+
+function useUpdatePanelStatePartial() {
+  const setPanelStateById = useSetPanelStateById();
+  return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
+    targetParam = targetParam || targetPartial;
     setTimeout(() => {
-      ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
-        return {
-          ...current,
-          data: ctx.params.data,
-        };
+      setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+        const currentCustomPanelState = current[targetPartial] || {};
+        let updatedState;
+        const param = ctx.params[targetParam];
+        if (patch) {
+          updatedState = merge({ ...currentCustomPanelState }, param);
+        } else if (clear) {
+          updatedState = {};
+        } else {
+          updatedState = param;
+        }
+
+        return { ...current, [targetPartial]: updatedState };
       });
     }, 1);
-  }
+  };
 }
 
 class PatchPanelState extends Operator {
@@ -852,15 +885,10 @@ class PatchPanelState extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    const setPanelStateById = useSetPanelStateById();
-    return { setPanelStateById };
+    return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
-      current = current || {};
-      const mergedState = merge(current.state, ctx.params.state);
-      return mergedState;
-    });
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", patch: true });
   }
 }
 
@@ -899,19 +927,13 @@ class ShowPanelOutput extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): any {
-    const setPanelStateById = useSetPanelStateById();
-
-    return {
-      setPanelStateById,
-    };
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
-      return {
-        ...current,
-        schema: ctx.params.output,
-      };
+    ctx.hooks.updatePanelState(ctx, {
+      targetPartial: "schema",
+      targetParam: "output",
     });
   }
 }
@@ -996,6 +1018,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowPanelOutput);
     _registerBuiltInOperator(ReducePanelState);
     _registerBuiltInOperator(SetPanelData);
+    _registerBuiltInOperator(ClearPanelData);
+    _registerBuiltInOperator(PatchPanelData);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

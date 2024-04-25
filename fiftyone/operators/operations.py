@@ -155,6 +155,17 @@ class Operations(object):
             "clear_panel_state", params=self._create_panel_params(panel_id)
         )
 
+    def clear_panel_data(self, panel_id=None):
+        """Clear the data of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "clear_panel_data", params=self._create_panel_params(panel_id)
+        )
+
     def set_panel_state(self, state, panel_id=None):
         """Set the state of the specified panel in the App.
 
@@ -179,7 +190,7 @@ class Operations(object):
             params=self._create_panel_params(panel_id, data=data),
         )
 
-    def patch_panel_state(self, panel_id=None, state=None):
+    def patch_panel_state(self, state, panel_id=None):
         """Patch the state of the specified panel in the App.
 
         Args:
@@ -189,6 +200,18 @@ class Operations(object):
         return self._ctx.trigger(
             "patch_panel_state",
             params=self._create_panel_params(panel_id, state=state),
+        )
+
+    def patch_panel_data(self, data, panel_id=None):
+        """Patch the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "patch_panel_data",
+            params=self._create_panel_params(panel_id, data=data),
         )
 
     def reduce_panel_state(self, reducer, panel_id=None):

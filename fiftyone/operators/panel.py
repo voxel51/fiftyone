@@ -60,7 +60,7 @@ class PanelOperatorConfig(OperatorConfig):
 class Panel(Operator):
     """A panel operator."""
 
-    def render(self, ctx, state):
+    def render(self, ctx):
         raise NotImplementedError("Subclasses must implement render()")
 
     def resolve_input(self, ctx):
@@ -96,9 +96,71 @@ class Panel(Operator):
         # trigger the event
         method = getattr(self, method_name)
         ctx.event_args = event_args
-        method(ctx, state)
+        method(ctx)
 
         # render
-        panel_output = self.render(ctx, state)
+        panel_output = self.render(ctx)
         print("render() -=-=-=-=-=->")
         ctx.ops.show_panel_output(panel_output)
+
+
+class VirtualPanelState:
+    def __init__(self, ctx):
+        self._data = ctx.panel_state
+        self._ctx = ctx
+
+    def __setattr__(self, key, value):
+        if key.startswith("_"):
+            super().__setattr__(key, value)
+        else:
+            self._data[key] = value
+            self._ctx.ops.patch_panel_state({key: value})
+
+    def __getattr__(self, key):
+        return self._data.get(key, None)
+
+    def clear(self):
+        self._data = {}
+        self._ctx.ops.clear_panel_state()
+
+
+class VirtualPanelData:
+    def __init__(self, ctx):
+        self._data = {}
+        self._ctx = ctx
+
+    def __setattr__(self, key, value):
+        if key.startswith("_"):
+            super().__setattr__(key, value)
+        else:
+            self._data[key] = value
+            self._ctx.ops.patch_panel_data({key: value})
+
+    def __getattr__(self, key):
+        raise KeyError("Cannot read panel data")
+
+    def clear(self):
+        self._data = {}
+        self._ctx.ops.clear_panel_data()
+
+
+class VirtualPanel:
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self._state = VirtualPanelState(ctx)
+        self._data = VirtualPanelData(ctx)
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def id(self):
+        return self._ctx.panel_id
+
+    def close(self):
+        self._ctx.ops.close_panel()
