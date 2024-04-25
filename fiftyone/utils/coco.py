@@ -410,7 +410,7 @@ class COCODetectionDatasetImporter(
 
         self._label_types = _label_types
         self._info = None
-        self._classes = None
+        self._classes_map = None
         self._license_map = None
         self._supercategory_map = None
         self._image_paths_map = None
@@ -453,15 +453,16 @@ class COCODetectionDatasetImporter(
             frame_size = (width, height)
 
             if self.classes is not None and self.only_matching:
+                all_classes = list(self._classes_map.values())
                 coco_objects = _get_matching_objects(
-                    coco_objects, self.classes, self._classes
+                    coco_objects, self.classes, all_classes
                 )
 
             if "detections" in self._label_types:
                 detections = _coco_objects_to_detections(
                     coco_objects,
                     frame_size,
-                    self._classes,
+                    self._classes_map,
                     self._supercategory_map,
                     False,  # no segmentations
                     self.include_annotation_id,
@@ -474,7 +475,7 @@ class COCODetectionDatasetImporter(
                     segmentations = _coco_objects_to_polylines(
                         coco_objects,
                         frame_size,
-                        self._classes,
+                        self._classes_map,
                         self._supercategory_map,
                         self.tolerance,
                         self.include_annotation_id,
@@ -483,7 +484,7 @@ class COCODetectionDatasetImporter(
                     segmentations = _coco_objects_to_detections(
                         coco_objects,
                         frame_size,
-                        self._classes,
+                        self._classes_map,
                         self._supercategory_map,
                         True,  # load segmentations
                         self.include_annotation_id,
@@ -496,7 +497,7 @@ class COCODetectionDatasetImporter(
                 keypoints = _coco_objects_to_keypoints(
                     coco_objects,
                     frame_size,
-                    self._classes,
+                    self._classes_map,
                     self._supercategory_map,
                     self.include_annotation_id,
                 )
@@ -603,7 +604,7 @@ class COCODetectionDatasetImporter(
             license_map = None
 
         self._info = info
-        self._classes = classes_map
+        self._classes_map = classes_map
         self._license_map = license_map
         self._supercategory_map = supercategory_map
         self._image_paths_map = image_paths_map
