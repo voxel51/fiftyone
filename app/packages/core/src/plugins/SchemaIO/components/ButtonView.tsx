@@ -5,6 +5,7 @@ import Button from "./Button";
 import { getComponentProps } from "../utils";
 import { useCustomPanelState, usePanelId } from "@fiftyone/spaces";
 import { usePromptOperatorInput } from "@fiftyone/operators/src/state";
+import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 
 export default function ButtonView(props) {
   return props?.schema?.view?.operator ? (
@@ -33,25 +34,15 @@ function BaseButtonView(props) {
 }
 
 function OperatorButtonView(props) {
-  const { operator, params = {} } = props.schema.view;
-  const panel_state = useCustomPanelState();
-  const operatorExecutor = useOperatorExecutor(operator);
-  const promptForOperator = usePromptOperatorInput();
+  let { operator, params = {}, prompt } = props.schema.view;
+  const panelState = useCustomPanelState();
   const panelId = usePanelId();
+  const handleClick = usePanelEvent({ panelId, panelState });
   return (
     <BaseButtonView
       {...props}
       onClick={() => {
-        const actualParams = {
-          panel_id: panelId,
-          panel_state,
-          ...params,
-        };
-        if (props.schema.view.prompt) {
-          promptForOperator(operator, actualParams);
-        } else {
-          operatorExecutor.execute(actualParams);
-        }
+        handleClick({ params, operator, prompt });
       }}
     />
   );

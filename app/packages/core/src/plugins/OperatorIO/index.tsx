@@ -4,13 +4,14 @@ import { SchemaIOComponent } from "../SchemaIO";
 import { getErrorsByPath, operatorToIOSchema } from "./utils";
 
 function OperatorIOComponent(props) {
-  const { schema, onChange, type, data, errors } = props;
+  const { schema, onChange, type, data, errors, onPathChange } = props;
   const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
 
   return (
     <SchemaIOComponent
       schema={ioSchema}
       onChange={onChange}
+      onPathChange={onPathChange}
       data={data}
       errors={getErrorsByPath(errors)}
     />

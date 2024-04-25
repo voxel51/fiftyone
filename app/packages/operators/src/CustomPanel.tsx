@@ -1,66 +1,31 @@
-import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { useEffect, useState } from "react";
-import { executeOperator } from "./operators";
-import OperatorIO from "./OperatorIO";
-import * as types from "./types";
-import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { merge } from "lodash";
 
-function getPanelViewData(panelState) {
-  const state = panelState?.state;
-  const data = panelState?.data;
-  return merge({ ...state }, { ...data });
-}
+import OperatorIO from "./OperatorIO";
+import * as types from "./types";
+import * as fos from "@fiftyone/state";
 
-export function CustomPanel({
-  panelId,
-  onLoad,
-  onChange,
-  onUnLoad,
-  onViewChange,
-  dimensions,
-}) {
-  console.log("CustomPanel", panelId, onLoad);
-  const [panelState, setPanelState] = usePanelState(null, panelId);
-  const { height, width } = dimensions;
-  const setCustomPanelState = useSetCustomPanelState();
-  const renderableSchema = panelState?.schema;
-  const data = getPanelViewData(panelState);
-  const handlePanelStateChange = (newState) => {
-    setCustomPanelState((state: any) => ({ ...state, ...newState }));
-  };
-  const [loaded, setLoaded] = useState(false);
-  const view = useRecoilValue(fos.view);
+import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 
-  useEffect(() => {
-    if (onLoad) {
-      if (!panelState?.loaded) {
-        executeOperator(onLoad, { panel_id: panelId });
-        setPanelState((s) => ({ ...s, loaded: true }));
-      }
-    }
+import {
+  useCustomPanelHooks,
+  CustomPanelHooks,
+  CustomPanelProps,
+} from "./useCustomPanelHooks";
 
-    return () => {
-      if (onUnLoad) executeOperator(onUnLoad, { panel_id: panelId });
-    };
-  }, [panelId, onLoad, onUnLoad]);
+export function CustomPanel(props: CustomPanelProps) {
+  const { panelId, onLoad, onChange, onUnLoad, onViewChange, dimensions } =
+    props;
 
-  useEffect(() => {
-    if (onViewChange)
-      executeOperator(onViewChange, {
-        panel_id: panelId,
-        panel_state: panelState?.state,
-      });
-  }, [view]);
-
-  useEffect(() => {
-    if (onChange && panelState?.state)
-      executeOperator(onChange, {
-        panel_id: panelId,
-        panel_state: panelState.state,
-      });
-  }, [panelState?.state]);
+  const {
+    panelState,
+    handlePanelStateChange,
+    handlePanelStatePathChange,
+    data,
+    renderableSchema,
+    loaded,
+  } = useCustomPanelHooks(props);
 
   if (!renderableSchema)
     return (
@@ -84,15 +49,17 @@ export function CustomPanel({
               gridContainer: {
                 spacing: 0,
                 sx: { pl: 0 },
-                height: height || 750,
-                width,
+                height: dimensions.height || 750,
+                width: dimensions.width,
               },
             },
           },
         }}
+        onPathChange={handlePanelStatePathChange}
         onChange={handlePanelStateChange}
         data={data}
       />
+      <pre>{JSON.stringify({ schema, data }, null, 2)}</pre>
     </div>
   );
 }

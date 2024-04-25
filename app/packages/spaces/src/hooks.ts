@@ -144,7 +144,9 @@ export function usePanelState<T>(
   return [computedState, setState];
 }
 
-export function useSetPanelStateById<T>(local = false) {
+// TODO - look into the default local=true - which works around the
+//        session infinite loop issue
+export function useSetPanelStateById<T>(local = true) {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (panelId: string, fn: (state: any) => any) => {
@@ -164,7 +166,7 @@ export function usePanelId() {
   return panelId;
 }
 
-export function useSetCustomPanelState<T>(local = false) {
+export function useSetCustomPanelState<T>(local = true) {
   const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
@@ -175,7 +177,7 @@ export function useSetCustomPanelState<T>(local = false) {
   };
 }
 
-export function useCustomPanelState(panelId?: string, local = false) {
+export function useCustomPanelState(panelId?: string, local = true) {
   const [panelState] = usePanelState(null, panelId, local);
   return panelState.state || {};
 }

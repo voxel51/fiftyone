@@ -5,7 +5,7 @@ import DynamicIO from "./components/DynamicIO";
 import { clearUseKeyStores } from "./hooks";
 
 export function SchemaIOComponent(props) {
-  const { onChange } = props;
+  const { onChange, onPathChange } = props;
   const stateRef = useRef({});
   const autoFocused = useRef(false);
 
@@ -14,7 +14,10 @@ export function SchemaIOComponent(props) {
   }, []);
 
   const onIOChange = useCallback(
-    (path, value) => {
+    (path, value, schema) => {
+      if (onPathChange) {
+        onPathChange(path, value, schema);
+      }
       const currentState = stateRef.current;
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(value));

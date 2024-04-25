@@ -1,0 +1,104 @@
+# class ExamplePanelOperator(foo.PanelOperator):
+#     @property
+#     def config(self):
+#         return foo.PanelOperatorConfig(
+#             name="example_panel_operator",
+#             label="Examples: Panel Operator",
+#             icon="cube",
+#             allow_multiple=True,
+#         )
+
+#     def on_load(self, ctx, state):
+#         ctx.ops.set_panel_state({"message": "Panel loaded!"})
+
+#     def render(self, ctx, state):
+#         panel = types.Object()
+#         panel.message('msg', default=state.get('message', ''))
+#         panel.btn('btn', label='Click me', on_click=self.on_click)
+#         return types.Property(panel)
+
+#     def on_click(self, ctx, state):
+#         ctx.ops.set_panel_state({"message": "Button clicked!"})
+
+
+"""
+FiftyOne operators.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import fiftyone.operators.types as types
+from fiftyone.operators.operator import OperatorConfig, Operator
+
+
+class PanelOperatorConfig(OperatorConfig):
+    """A configuration for a panel operator."""
+
+    def __init__(self, name, label, icon=None, allow_multiple=False, **kwargs):
+        super().__init__(name)
+        self.name = name
+        self.label = label
+        self.icon = icon
+        self.allow_multiple = allow_multiple
+        self.unlisted = True
+        self.on_startup = True
+        self.kwargs = kwargs  # unused, placeholder for future extensibility
+
+    def to_json(self):
+        d = super().to_json()
+        return {
+            **d,
+            "name": self.name,
+            "label": self.label,
+            "icon": self.icon,
+            "allow_multiple": self.allow_multiple,
+        }
+
+
+class Panel(Operator):
+    """A panel operator."""
+
+    def render(self, ctx, state):
+        raise NotImplementedError("Subclasses must implement render()")
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.obj("state", default={})
+        inputs.obj("event_args", default={})
+        inputs.str("__method__")
+        inputs.str("panel_id")
+        return types.Property(inputs)
+
+    def on_startup(self, ctx):
+        panel_config = {
+            "name": self.config.name,
+            "label": self.config.label,
+            "allow_duplicates": self.config.allow_multiple,
+        }
+        methods = ["on_load", "on_unload", "on_change", "on_view_change"]
+        for method in methods:
+            if hasattr(self, method) and callable(getattr(self, method)):
+                panel_config[method] = self.method_to_uri(method)
+
+        ctx.ops.register_panel(**panel_config)
+
+    def execute(self, ctx):
+        print("PanelOperator.execute", ctx.params)
+        panel_id = ctx.params.get("panel_id", None)
+        method_name = ctx.params.get("__method__", None)
+        state = ctx.params.get("state", {})
+        event_args = ctx.params.get("event_args", {})
+        if method_name is None or method_name == "on_startup":
+            return self.on_startup(ctx)
+
+        # trigger the event
+        method = getattr(self, method_name)
+        ctx.event_args = event_args
+        method(ctx, state)
+
+        # render
+        panel_output = self.render(ctx, state)
+        print("render() -=-=-=-=-=->")
+        ctx.ops.show_panel_output(panel_output)
