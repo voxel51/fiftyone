@@ -4431,7 +4431,7 @@ to a FiftyOne 3D scene is shown below:
 
     import fiftyone as fo
 
-    fo_pcd = fo.Pointcloud(
+    fo_pcd = fo.PointCloud(
         "my-pcd", "/path/to/point-cloud.pcd", flag_for_projection=True
     )
 
@@ -4446,7 +4446,7 @@ to a FiftyOne 3D scene is shown below:
 
 You can customize the appearance of a point cloud by setting the
 `default_material` attribute of the point cloud object, or dynamically from
-the app. Please refer to the :class:`fiftyone.core.threed.PointcloudMaterial`
+the app. Please refer to the :class:`fiftyone.core.threed.PointCloudMaterial`
 class for more details.
 
 Initializing the point cloud with `flag_for_projection=True` allows 

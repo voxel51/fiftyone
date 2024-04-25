@@ -209,7 +209,7 @@ export const getThreeMaterialFromFo3dMaterial = (
     });
   } else if (foMtl._type === "MeshDepthMaterial") {
     return new MeshDepthMaterial(props);
-  } else if (foMtl._type === "PointcloudMaterial") {
+  } else if (foMtl._type === "PointCloudMaterial") {
     return new PointsMaterial(props);
   } else {
     throw new Error("Unknown material " + JSON.stringify(foMtl, null, 2));

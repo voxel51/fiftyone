@@ -171,7 +171,7 @@ export type FoMeshMaterial =
   | FoMeshDepthMaterialProps;
 
 export type FoPointcloudMaterialProps = FoMaterial3D & {
-  _type: "PointcloudMaterial";
+  _type: "PointCloudMaterial";
   shadingMode: "height" | "intensity" | "rgb" | "custom";
   customColor: string;
   pointSize: number;
@@ -286,7 +286,7 @@ export const useFo3d = (
             );
           }
         }
-      } else if (node["_type"].endsWith("Pointcloud")) {
+      } else if (node["_type"].endsWith("PointCloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
             getSampleSrc(getResolvedUrlForFo3dAsset(node["pcdPath"], fo3dRoot)),

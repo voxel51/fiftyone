@@ -18,7 +18,7 @@ from .camera import PerspectiveCamera
 from .lights import Light
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
-from .pointcloud import Pointcloud
+from .pointcloud import PointCloud
 from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
 
@@ -93,7 +93,7 @@ class Scene(Object3D):
                 "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
             )
             gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
-            pcd = Pointcloud("pcd_name", "/path/to/pcd")
+            pcd = PointCloud("pcd_name", "/path/to/pcd")
 
             scene.add(obj_mesh)
             scene.add(gltf_mesh)
@@ -233,7 +233,7 @@ class Scene(Object3D):
         total_shapes = 0
 
         for node in self.traverse():
-            if isinstance(node, Pointcloud):
+            if isinstance(node, PointCloud):
                 total_point_clouds += 1
             elif isinstance(node, GltfMesh):
                 total_gltfs += 1
@@ -265,7 +265,7 @@ class Scene(Object3D):
         asset_paths = []
 
         for node in self.traverse():
-            if isinstance(node, Pointcloud):
+            if isinstance(node, PointCloud):
                 asset_paths.append(node.pcd_path)
             elif isinstance(node, GltfMesh):
                 asset_paths.append(node.gltf_path)

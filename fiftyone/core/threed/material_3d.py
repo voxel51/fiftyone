@@ -47,7 +47,7 @@ class Material3D:
 
 
 @dataclass
-class PointcloudMaterial(Material3D):
+class PointCloudMaterial(Material3D):
     """Represents a point cloud material.
 
     Args:
