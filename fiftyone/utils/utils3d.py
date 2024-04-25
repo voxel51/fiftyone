@@ -6,7 +6,7 @@
 |
 """
 import contextlib
-import itertools
+import json
 import logging
 import os
 import warnings
@@ -439,35 +439,63 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     height = fof.IntField()
 
 
-def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
-    explicitly_flagged_pcd_path = None
-    fallover_pcd_path = None
+def _get_scene_paths(scene_paths):
+    """Return Tuple of scene paths to use and whether all are local
+    This function is a no-op here but could be different in a repo fork.
+    """
+    return scene_paths, True
 
-    def _visit_node_dfs(node):
-        nonlocal explicitly_flagged_pcd_path
-        nonlocal fallover_pcd_path
 
-        if hasattr(node, "pcd_path") and node.flag_for_projection:
-            explicitly_flagged_pcd_path = node.pcd_path
-        else:
-            if hasattr(node, "pcd_path"):
-                fallover_pcd_path = node.pcd_path
+def get_scene_asset_paths(
+    scene_paths, abs_paths=False, skip_failures=True, progress=None
+):
+    """Extracts all asset paths for the specified 3D scenes.
 
-            for child in node.children:
-                _visit_node_dfs(child)
+    Args:
+        scene_paths: an iterable of ``.fo3d`` paths
+        abs_paths (False): whether to return absolute paths
+        skip_failures (True): whether to gracefully continue without raising an
+            error if metadata cannot be computed for a file
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
-    _visit_node_dfs(scene)
+    Returns:
+        a dict mapping scene paths to lists of asset paths
+    """
+    if not scene_paths:
+        return {}
 
-    pcd_path = (
-        explicitly_flagged_pcd_path
-        if explicitly_flagged_pcd_path
-        else fallover_pcd_path
+    asset_map = {}
+
+    _scene_paths, all_local = _get_scene_paths(scene_paths)
+
+    if all_local:
+        if progress is None:
+            progress = False
+    else:
+        logger.info("Getting asset paths...")
+
+    scene_strs = fos.read_files(
+        _scene_paths,
+        binary=False,
+        skip_failures=skip_failures,
+        progress=progress,
     )
 
-    if pcd_path is None or os.path.isabs(pcd_path):
-        return pcd_path
+    for scene_path, scene_str in zip(scene_paths, scene_strs):
+        scene = Scene._from_fo3d_dict(json.loads(scene_str))
+        asset_paths = scene.get_asset_paths()
 
-    return os.path.join(os.path.dirname(scene_path), pcd_path)
+        if abs_paths:
+            scene_dir = os.path.dirname(scene_path)
+            for i, asset_path in enumerate(asset_paths):
+                if not fos.isabs(asset_path):
+                    asset_paths[i] = fos.join(scene_dir, asset_path)
+
+        asset_map[scene_path] = asset_paths
+
+    return asset_map
 
 
 def compute_orthographic_projection_images(
@@ -569,28 +597,26 @@ def compute_orthographic_projection_images(
 
     fov.validate_collection(view, media_type={fom.POINT_CLOUD, fom.THREE_D})
 
+    if out_group_slice is not None:
+        out_samples = []
+
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir
     )
 
-    if out_group_slice is not None:
-        out_samples = []
-
     for sample in view.iter_samples(autosave=True, progress=progress):
-        projection_pcd_filepath = sample.filepath
-
         if view.media_type == fom.THREE_D:
-            projection_pcd_filepath = _get_pcd_filepath_from_fo3d_scene(
-                Scene.from_fo3d(sample.filepath), sample.filepath
-            )
+            pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
+        else:
+            pcd_filepath = sample.filepath
 
         image_path = filename_maker.get_output_path(
-            projection_pcd_filepath, output_ext=".png"
+            pcd_filepath, output_ext=".png"
         )
 
         try:
             img, metadata = compute_orthographic_projection_image(
-                projection_pcd_filepath,
+                pcd_filepath,
                 size,
                 shading_mode=shading_mode,
                 colormap=colormap,
@@ -736,6 +762,42 @@ def compute_orthographic_projection_image(
     image = np.rot90(image, k=1, axes=(0, 1))
 
     return image, metadata
+
+
+def _get_pcd_filepath_from_scene(scene_path: str):
+    scene = Scene.from_fo3d(scene_path)
+
+    explicitly_flagged_pcd_path = None
+    fallover_pcd_path = None
+
+    def _visit_node_dfs(node):
+        nonlocal explicitly_flagged_pcd_path
+        nonlocal fallover_pcd_path
+
+        if hasattr(node, "pcd_path") and node.flag_for_projection:
+            explicitly_flagged_pcd_path = node.pcd_path
+        else:
+            if hasattr(node, "pcd_path"):
+                fallover_pcd_path = node.pcd_path
+
+            for child in node.children:
+                _visit_node_dfs(child)
+
+    _visit_node_dfs(scene)
+
+    pcd_path = (
+        explicitly_flagged_pcd_path
+        if explicitly_flagged_pcd_path
+        else fallover_pcd_path
+    )
+
+    if pcd_path is None:
+        return None
+
+    if not fos.isabs(pcd_path):
+        return pcd_path
+
+    return fos.join(os.path.dirname(scene_path), pcd_path)
 
 
 def _parse_point_cloud(
