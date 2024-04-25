@@ -100,6 +100,7 @@ export const Gizmos = () => {
   }, [sceneBoundingBox, upVector]);
 
   // cell size is based on max bounding box size
+  // following multipliers (0.5, 10, 30) are arbitrary and can be adjusted
   const cellSize = useMemo(
     () => maxInOrthonormalPlane * 0.5,
     [maxInOrthonormalPlane]
