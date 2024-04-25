@@ -129,7 +129,8 @@ def add_coco_labels(
             will be created if necessary
         labels_or_path: a list of COCO annotations or the path to a JSON file
             containing such data on disk
-        classes: the list of class label strings
+        classes: the list of class label strings or a dict mapping class IDs to
+            class labels
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
         coco_id_field (None): this parameter determines how to map the
@@ -194,7 +195,10 @@ def add_coco_labels(
     view.compute_metadata()
     widths, heights = view.values(["metadata.width", "metadata.height"])
 
-    classes_map = {i: label for i, label in enumerate(classes)}
+    if isinstance(classes, dict):
+        classes_map = classes
+    else:
+        classes_map = {i: label for i, label in enumerate(classes)}
 
     labels = []
     for _coco_objects, width, height in zip(coco_objects, widths, heights):
@@ -1433,7 +1437,7 @@ def parse_coco_categories(categories):
     Returns:
         a tuple of
 
-        -   classes_map: a dict mapping class ids to labels
+        -   classes_map: a dict mapping class IDs to labels
         -   supercategory_map: a dict mapping class labels to category dicts
     """
     classes_map = {
