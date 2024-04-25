@@ -17,6 +17,7 @@ export const LOOKER3D_HELP_ITEMS = [
   { shortcut: "C", title: "Controls", detail: "Toggle controls" },
   { shortcut: "G", title: "Grid", detail: "Toggle grid" },
   { shortcut: "F", title: "Full-screen", detail: "Toggle full-screen" },
+  { shortcut: "J", title: "Json ", detail: "Toggle JSON view" },
   { shortcut: "?", title: "Display help", detail: "Display this help window" },
   { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
 ];

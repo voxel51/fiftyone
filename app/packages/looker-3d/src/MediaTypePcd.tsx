@@ -14,6 +14,7 @@ import {
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import { Screenshot } from "./action-bar/Screenshot";
+import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "./constants";
 import { Container } from "./containers";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
@@ -41,7 +42,6 @@ export const MediaTypePcdComponent = () => {
     "3d",
     defaultPluginSettings
   );
-  const dataset = useRecoilValue(fos.dataset);
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
@@ -155,8 +155,14 @@ export const MediaTypePcdComponent = () => {
     [topCameraPosition]
   );
 
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
+  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
+    onChangeView("top");
+  });
+
+  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
+    onChangeView("pov");
+  });
+
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const minZ = _.get(settings, "pointCloud.minZ", null);
 
@@ -167,8 +173,8 @@ export const MediaTypePcdComponent = () => {
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
 
-  useHotkey("KeyT", () => onChangeView("top"));
-  useHotkey("KeyE", () => onChangeView("pov"));
+  useHotkey("KeyT", () => onChangeView("top"), [onChangeView], false);
+  useHotkey("KeyE", () => onChangeView("pov"), [onChangeView], false);
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;
@@ -271,6 +277,7 @@ export const MediaTypePcdComponent = () => {
       pointCloudBounds,
       customColorMap,
       isPointcloudDataset,
+      upVectorNormalized,
     ]
   );
 

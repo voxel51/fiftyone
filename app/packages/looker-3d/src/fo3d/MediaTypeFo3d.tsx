@@ -16,7 +16,11 @@ import { PerspectiveCamera, Vector3 } from "three";
 import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
-import { DEFAULT_CAMERA_POSITION } from "../constants";
+import {
+  DEFAULT_CAMERA_POSITION,
+  SET_EGO_VIEW_EVENT,
+  SET_TOP_VIEW_EVENT,
+} from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
@@ -38,9 +42,6 @@ const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
 
   const settings = usePluginSettings<Looker3dPluginSettings>("3d");
 
@@ -266,6 +267,14 @@ export const MediaTypeFo3dComponent = () => {
     },
     [sceneBoundingBox, topCameraPosition, defaultCameraPositionComputed]
   );
+
+  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
+    onChangeView("top");
+  });
+
+  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
+    onChangeView("pov");
+  });
 
   useHotkey(
     "KeyT",
