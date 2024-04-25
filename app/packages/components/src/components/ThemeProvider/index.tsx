@@ -222,6 +222,16 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiSlider: {
+      styleOverrides: {
+        root: {
+          ".MuiSlider-thumb": {
+            transform: "translate(-50%, -50%)",
+            top: "50%",
+          },
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
