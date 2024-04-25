@@ -1,7 +1,7 @@
 """
 FiftyOne 3D utilities unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -237,6 +237,46 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
             dataset.first()["orthographic_projection_metadata"],
             get_abs_path("specs/3d/100x100_seed_10_height.png"),
         )
+
+
+class ParsePointCloudTests(BaseOrthographicProjectionTests):
+    def test_rotation_matrix_from_projection_normal(self):
+
+        # By default, the projection normal is set to (0, 0, 1)
+        test_cases = [
+            (0, 1, 0),  # 90º rotation
+            (0, 0, 1),  # 0º rotation
+            (0, 0, 1),  # 180º rotation
+            (1, 2, 3),  # arbitrary rotation
+        ]
+
+        for projection_normal in test_cases:
+            with self.subTest(projection_normal=projection_normal):
+
+                # because the rotation is ambiguous, we can't compare original and rotated arbitrary points
+                # we can only ensure that points along the user specified projection normal vector
+                # will invariably be aligned with the z-axis after rotation
+                points = np.array([projection_normal])
+
+                pc = o3d.geometry.PointCloud()
+                pc.points = o3d.utility.Vector3dVector(points)
+                o3d.io.write_point_cloud(
+                    self.test_pcd_path, pc, write_ascii=True
+                )
+
+                points_rotated = fou3d._parse_point_cloud(
+                    self.test_pcd_path,
+                    bounds=[(-1, -1, 0), (1, 1, 10)],
+                    projection_normal=projection_normal,
+                )[0]
+
+                # After the point is rotated, it's translated so that the minimum bound lies at the origin
+                # this is why we add 1 to the x and y coordinates
+                np.testing.assert_allclose(
+                    (1, 1, np.linalg.norm(projection_normal)),
+                    points_rotated[0],
+                    atol=1e-15,
+                )
 
 
 class DataModelTests(unittest.TestCase):

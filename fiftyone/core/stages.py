@@ -1,10 +1,12 @@
 """
 View stages.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import builtins
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
@@ -755,7 +757,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_sample_fields(
                 include_private=True
             )
@@ -787,7 +789,7 @@ class ExcludeFields(ViewStage):
                 sample_collection, self._meta_filter, frames=True
             )
 
-            # Cannnot exclude default fields
+            # Cannot exclude default fields
             default_paths = sample_collection._get_default_frame_fields(
                 include_private=True
             )
@@ -941,8 +943,8 @@ def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
             base, leaf = key.split(".", 1)
             info_filter[leaf] = val
 
-    matcher = (
-        lambda q, v: q.lower() in v.lower()
+    matcher = lambda q, v: (
+        q.lower() in v.lower()
         if isinstance(v, str) and isinstance(q, str)
         else (
             q.lower() in str(v).lower()
@@ -951,8 +953,8 @@ def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
         )
     )
 
-    type_matcher = (
-        lambda query, field: (
+    type_matcher = lambda query, field: (
+        (
             type(field.document_type).__name__ == query
             or field.document_type.__name__ == query
             if isinstance(field, EmbeddedDocumentField)
@@ -4711,7 +4713,12 @@ class SelectGroupSlices(ViewStage):
         }
 
     def _kwargs(self):
-        return [["slices", self._slices], ["media_type", self._media_type]]
+        return [
+            ["slices", self._slices],
+            ["media_type", self._media_type],
+            ["_allow_mixed", self._allow_mixed],
+            ["_force_mixed", self._force_mixed],
+        ]
 
     @classmethod
     def _params(cls):
@@ -4726,6 +4733,16 @@ class SelectGroupSlices(ViewStage):
                 "name": "media_type",
                 "type": "NoneType|str",
                 "placeholder": "media_type (default=None)",
+                "default": "None",
+            },
+            {
+                "name": "_allow_mixed",
+                "type": "NoneType|bool",
+                "default": "None",
+            },
+            {
+                "name": "_force_mixed",
+                "type": "NoneType|bool",
                 "default": "None",
             },
         ]
@@ -5339,6 +5356,11 @@ class MatchTags(ViewStage):
             tags = [tags]
         else:
             tags = list(tags)
+            if not builtins.all(etau.is_str(t) for t in tags):
+                raise ValueError(
+                    "The `tags` argument must be a string or iterable of "
+                    "strings."
+                )
 
         if bool is None:
             bool = True
@@ -6669,7 +6691,7 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def seed(self):
@@ -7011,11 +7033,11 @@ def _parse_sort_order(order):
 
 
 class SortBySimilarity(ViewStage):
-    """Sorts a collection by similiarity to a specified query.
+    """Sorts a collection by similarity to a specified query.
 
     In order to use this stage, you must first use
     :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-    similiarity.
+    similarity.
 
     Examples::
 
@@ -7112,7 +7134,7 @@ class SortBySimilarity(ViewStage):
 
     @property
     def reverse(self):
-        """Whether to sort by least similiarity."""
+        """Whether to sort by least similarity."""
         return self._reverse
 
     @property
@@ -7217,7 +7239,7 @@ class SortBySimilarity(ViewStage):
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
-                context.enter_context(results)  # pylint: disable=no-member
+                context.enter_context(results)
 
             return results.sort_by_similarity(
                 self._query,
@@ -7322,7 +7344,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def size(self):

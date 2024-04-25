@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Scale AI format <https://docs.scale.com/reference/introduction>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,6 +20,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
@@ -36,6 +37,7 @@ def import_from_scale(
     labels_dir_or_json,
     label_prefix=None,
     scale_id_field="scale_id",
+    progress=None,
 ):
     """Imports the Scale AI labels into the FiftyOne dataset.
 
@@ -186,6 +188,9 @@ def import_from_scale(
             that are created, separated by an underscore
         scale_id_field ("scale_id"): the sample field to use to associate Scale
             task IDs with FiftyOne samples
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -203,7 +208,9 @@ def import_from_scale(
     else:
         label_key = lambda k: k
 
-    with fou.ProgressBar(total=len(labels)) as pb:
+    pb = fou.ProgressBar(total=len(labels), progress=progress)
+    ctx = foc.SaveContext(dataset)
+    with pb, ctx:
         for task_id, task_labels in pb(labels.items()):
             if task_id not in id_map:
                 logger.info(
@@ -242,7 +249,7 @@ def import_from_scale(
                     {label_key(k): v for k, v in labels_dict.items()}
                 )
 
-            sample.save()
+            ctx.save(sample)
 
 
 # @todo add support for `duration_time`, `frame_rate`, and `start_time`
@@ -255,6 +262,7 @@ def export_to_scale(
     video_playback=False,
     label_field=None,
     frame_labels_field=None,
+    progress=None,
 ):
     """Exports labels from the FiftyOne samples to Scale AI format.
 
@@ -393,6 +401,9 @@ def export_to_scale(
                 when constructing the exported frame labels
 
             By default, no frame labels are exported
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
@@ -424,13 +435,12 @@ def export_to_scale(
                 "when exporting labels for video datasets"
             )
 
-    # Compute metadata if necessary
     sample_collection.compute_metadata()
 
     # Export the labels
     labels = {}
     anno_dict = {}
-    for sample in sample_collection.iter_samples(progress=True):
+    for sample in sample_collection.iter_samples(progress=progress):
         metadata = sample.metadata
 
         # Get frame size

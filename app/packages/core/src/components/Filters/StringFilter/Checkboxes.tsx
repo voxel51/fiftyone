@@ -1,6 +1,6 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { MutableRefObject } from "react";
+import React from "react";
 import {
   RecoilState,
   selectorFamily,
@@ -14,6 +14,7 @@ import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
+import { pathSearchCount } from "./state";
 import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
@@ -23,7 +24,6 @@ interface CheckboxesProps {
   isMatchingAtom: RecoilState<boolean>;
   modal: boolean;
   path: string;
-  selectedMap: MutableRefObject<Map<string | null, number | null>>;
 }
 
 const isSkeleton = selectorFamily({
@@ -86,13 +86,11 @@ const useValues = ({
   path,
   results,
   selected,
-  selectedMap,
 }: {
   modal: boolean;
   path: string;
   results: Result[] | null;
   selected: (string | null)[];
-  selectedMap: Map<string | null, number | null>;
 }) => {
   const name = path.split(".").slice(-1)[0];
   const unlocked = fos.useLightingUnlocked();
@@ -106,7 +104,7 @@ const useValues = ({
 
   let allValues = selected.map((value) => ({
     value,
-    count: hasCount ? counts.get(value) || selectedMap.get(value) || 0 : null,
+    count: hasCount ? counts.get(value) ?? null : null,
     loading: unlocked && loading,
   }));
   const objectId = useRecoilValue(fos.isObjectIdField(path));
@@ -142,6 +140,25 @@ const useValues = ({
   };
 };
 
+const useGetCount = (modal: boolean, path: string) => {
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const keypoints = useRecoilValue(isInKeypointsField(path));
+  const lightning = useRecoilValue(fos.isLightningPath(path));
+  return (count: number | null, value: string | null) => {
+    // show no count for the 'points' field of a Keypoint, and visibility mode
+    if (!isFilterMode || keypoints) {
+      return undefined;
+    }
+
+    // request subcount for non-lightning paths
+    if (typeof count !== "number" && !lightning) {
+      return pathSearchCount({ modal, path, value: value as string });
+    }
+
+    return count ?? undefined;
+  };
+};
+
 const Checkboxes = ({
   results,
   selectedAtom,
@@ -149,22 +166,19 @@ const Checkboxes = ({
   isMatchingAtom,
   modal,
   path,
-  selectedMap,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
     path,
     results,
     selected,
-    selectedMap: selectedMap.current,
   });
 
   const show = useRecoilValue(showSearchSelector({ modal, path }));
-  const keypoints = useRecoilValue(isInKeypointsField(path));
+  const getCount = useGetCount(modal, path);
 
   if (loading) {
     return <LoadingDots text={"Loading"} />;
@@ -189,11 +203,7 @@ const Checkboxes = ({
             forceColor={value === null}
             name={value === null ? "None" : value}
             loading={loading}
-            count={
-              typeof count !== "number" || !isFilterMode || keypoints
-                ? undefined
-                : selectedMap.current.get(value) ?? count
-            }
+            count={getCount(count, value)}
             setValue={(checked: boolean) => {
               if (checked) {
                 selectedSet.add(value);

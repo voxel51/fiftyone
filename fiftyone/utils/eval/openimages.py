@@ -1,7 +1,7 @@
 """
 Open Images-style detection evaluation.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -55,7 +55,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0
-        hierarchy (None): an optional dict containing a hierachy of classes for
+        hierarchy (None): an optional dict containing a hierarchy of classes for
             evaluation following the structure
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
         pos_label_field (None): the name of a field containing image-level
@@ -219,7 +219,13 @@ class OpenImagesEvaluation(DetectionEvaluation):
         )
 
     def generate_results(
-        self, samples, matches, eval_key=None, classes=None, missing=None
+        self,
+        samples,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+        progress=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -238,6 +244,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`OpenImagesDetectionResults`
@@ -864,7 +873,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
             keyed_parent, keyed_child, children = _build_plain_hierarchy(node)
 
             # Update is not done through dict.update() since some children have
-            # multiple parents in the hiearchy
+            # multiple parents in the hierarchy
             _update_dict(all_keyed_parent, keyed_parent)
             _update_dict(all_keyed_child, keyed_child)
             all_children.update(children)

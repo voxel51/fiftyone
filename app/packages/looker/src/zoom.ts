@@ -1,3 +1,9 @@
+import {
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  Schema,
+  getCls,
+  getFieldInfo,
+} from "@fiftyone/utilities";
 import { MIN_PIXELS } from "./constants";
 import { POINTS_FROM_FO } from "./overlays";
 import { Overlay } from "./overlays/base";
@@ -96,19 +102,36 @@ export const zoomToContent = <
 
   pan = snapBox(scale, pan, [ww, wh], [iw, ih], !state.config.thumbnail);
 
-  return mergeUpdates(state, { scale: scale, pan });
+  return mergeUpdates(state, { scale: scale, pan } as Partial<State>);
 };
 
 export const zoomAspectRatio = (
   sample: object,
+  schema: Schema,
   mediaAspectRatio: number
 ): number => {
   let points = [];
-  Object.entries(sample).forEach(([_, label]) => {
-    if (label && label._cls in POINTS_FROM_FO) {
-      points = [...points, ...POINTS_FROM_FO[label._cls](label)];
-    }
-  });
+
+  const recurse = (data: object, follow: boolean, prefix = "") => {
+    Object.entries(data).forEach(([field, label]) => {
+      const docType = getCls(prefix + field, schema);
+      if (label && docType in POINTS_FROM_FO) {
+        points = [...points, ...POINTS_FROM_FO[docType](label)];
+        return;
+      }
+
+      if (
+        follow &&
+        getFieldInfo(prefix + field, schema)?.ftype ===
+          DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+      ) {
+        recurse(label, false, `${field}.`);
+      }
+    });
+  };
+
+  recurse(sample, true);
+
   let [_, __, width, height] = getContainingBox(points);
 
   if (width === 0 || height === 0) {

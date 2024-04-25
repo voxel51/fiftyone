@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -409,7 +409,7 @@ def parse_bdd100k_dataset(
                 data/
 
     Args:
-        source_dir: the source directory containing the manually dowloaded
+        source_dir: the source directory containing the manually downloaded
             BDD100K files
         dataset_dir: the directory to construct the output split directories
         copy_files (True): whether to move (False) or create copies (True) of
@@ -519,7 +519,7 @@ def _parse_bdd_annotation(d, frame_size, extra_attrs):
     # Frame attributes
     #
     # @todo problems may occur if frame attributes have names "detections" or
-    # "polylines", but we cross our fingers and proceeed
+    # "polylines", but we cross our fingers and proceed
     #
     frame_labels = _parse_frame_labels(d.get("attributes", {}))
     labels.update(frame_labels)

@@ -55,14 +55,11 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100,000`                     | Batch size to use for bulk writing MongoDB operations. Must be <= 100,000.             |
-|                               |                                     |                               |                                                                                        |
-|                               |                                     |                               | Default changes to 10,000 for the FiftyOne Teams SDK in                                |
-|                               |                                     |                               | :ref:`API connection mode <teams-api-connection>`.                                     |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
-|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`. Supported values    |
-|                               |                                     |                               | are `latency`, `size`, and `static`.                                                   |
+|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,                     |
+|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`, and      |
+|                               |                                     |                               | :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`.      |
+|                               |                                     |                               | Supported values are `latency`, `size`, and `static`.                                  |
 |                               |                                     |                               |                                                                                        |
 |                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
 |                               |                                     |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
@@ -127,10 +124,10 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
-|                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
+|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
 |                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
 |                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -161,7 +158,6 @@ and the CLI:
             "batcher_static_size": 100,
             "batcher_target_latency": 0.2,
             "batcher_target_size_bytes": 1048576,
-            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -212,7 +208,6 @@ and the CLI:
             "batcher_static_size": 100,
             "batcher_target_latency": 0.2,
             "batcher_target_size_bytes": 1048576,
-            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -485,7 +480,7 @@ Restricting migrations
 
 You can use the `database_admin` config setting to control whether a client is
 allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
-which means that upgrades are automatically peformed when you connect to your
+which means that upgrades are automatically performed when you connect to your
 database with newer Python client versions.
 
 If you set `database_admin` to `False`, your client will **never** cause the
@@ -706,7 +701,8 @@ The FiftyOne App can be configured in the ways described below:
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view.  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `fast`                      | The default loading behavior of the App's sidebar. Supported values are                   |
-|                           |                                        |                             | `{"fast", "all", "best"}`. See :ref:`this section <app-sidebar-mode>` for more details.   |
+|                           |                                        |                             | `{"fast", "all", "best", "disabled"}`. See :ref:`this section <app-sidebar-mode>`         |
+|                           |                                        |                             |  more details.                                                                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
 |                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
@@ -716,6 +712,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -771,7 +770,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True
@@ -820,7 +820,8 @@ You can print your App config at any time via the Python library and the CLI:
             "sidebar_mode": "fast",
             "theme": "browser",
             "use_frame_number": false,
-            "plugins": {}
+            "plugins": {},
+            "media_fallback": false
         }
 
         True

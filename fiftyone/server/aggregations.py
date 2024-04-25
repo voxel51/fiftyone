@@ -1,10 +1,11 @@
 """
 FiftyOne Server aggregations
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import typing as t
 
@@ -113,25 +114,19 @@ async def aggregate_resolver(
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
-    view = fosv.get_view(
-        form.dataset,
-        view_name=form.view_name or None,
-        stages=form.view,
-        filters=form.filters,
-        extended_stages=form.extended_stages,
-        sample_filter=SampleFilter(
-            group=GroupElementFilter(
-                id=form.group_id, slice=form.slice, slices=form.slices
-            )
-            if not form.sample_ids
-            else None
-        ),
-    )
+    view = await _load_view(form, form.slices)
 
-    slice_view = view if form.mixed and "" in form.paths else None
+    slice_view = None
+
+    if form.mixed and "" in form.paths:
+        slice_view = await _load_view(form, [form.slice])
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
+
+    if form.mixed and view.media_type == fom.GROUP and view.group_slices:
+        view = view.select_group_slices(_force_mixed=True)
+        view = fosv.get_extended_view(view, form.filters)
 
     if form.hidden_labels:
         view = view.exclude_labels(
@@ -145,9 +140,6 @@ async def aggregate_resolver(
                 for l in form.hidden_labels
             ]
         )
-
-    if form.mixed and view.media_type == fom.GROUP and view.group_slices:
-        view = view.select_group_slices(_force_mixed=True)
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
@@ -195,6 +187,26 @@ RESULT_MAPPING = {
     fof.ObjectIdField: StringAggregation,
     fof.StringField: StringAggregation,
 }
+
+
+async def _load_view(form: AggregationForm, slices: t.List[str]):
+    return await fosv.get_view(
+        form.dataset,
+        view_name=form.view_name or None,
+        stages=form.view,
+        filters=form.filters,
+        extended_stages=form.extended_stages,
+        sample_filter=SampleFilter(
+            group=(
+                GroupElementFilter(
+                    id=form.group_id, slice=form.slice, slices=slices
+                )
+                if not form.sample_ids
+                else None
+            )
+        ),
+        awaitable=True,
+    )
 
 
 def _resolve_path_aggregation(

@@ -1,7 +1,7 @@
 """
 CLIP model wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -90,7 +90,9 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             _,
             self.preprocess,
         ) = open_clip.create_model_and_transforms(
-            config.clip_model, pretrained=config.pretrained
+            config.clip_model,
+            pretrained=config.pretrained,
+            device=self.device,
         )
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         return self._model
@@ -102,6 +104,8 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             ]
             # Tokenize text
             text = self._tokenizer(prompts)
+            if self._using_gpu:
+                text = text.cuda()
             self._text_features = self._model.encode_text(text)
 
         return self._text_features

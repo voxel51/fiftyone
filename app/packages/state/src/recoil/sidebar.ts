@@ -9,12 +9,12 @@ import {
   setSidebarGroups,
   setSidebarGroupsMutation,
   sidebarGroupsFragment,
-  sidebarGroupsFragment$data,
   sidebarGroupsFragment$key,
 } from "@fiftyone/relay";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  Field,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -35,13 +35,21 @@ import {
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
+import {
+  activeModalSidebarSample,
+  activePcdSlices,
+  activePcdSlicesToSampleMap,
+  pinned3DSampleSlice,
+} from "./groups";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {
   buildSchema,
+  field,
   fieldPaths,
   fields,
   filterPaths,
+  isOfDocumentFieldList,
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
@@ -164,14 +172,14 @@ export const RESERVED_GROUPS = new Set([
 
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
-const DEFAULT_IMAGE_GROUPS = [
+const DEFAULT_IMAGE_GROUPS: State.SidebarGroup[] = [
   { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
 ];
 
-const DEFAULT_VIDEO_GROUPS = [
+const DEFAULT_VIDEO_GROUPS: State.SidebarGroup[] = [
   { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
@@ -184,17 +192,18 @@ const NONE = [null, undefined];
 export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
-  sidebarGroups?: State.SidebarGroup[],
-  config: NonNullable<
-    sidebarGroupsFragment$data["appConfig"]
-  >["sidebarGroups"] = []
+  currentGroups: State.SidebarGroup[],
+  configGroups: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  let groups = sidebarGroups?.length
-    ? sidebarGroups
+  let groups = currentGroups.length
+    ? currentGroups
+    : configGroups.length
+    ? configGroups
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
-  const expanded = config.reduce((map, { name, expanded }) => {
+
+  const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
     return map;
   }, {});
@@ -205,6 +214,23 @@ export const resolveGroups = (
       : { ...group };
   });
 
+  const metadata = groups.find(({ name }) => name === "metadata");
+  if (!metadata) {
+    groups.unshift({
+      name: "metadata",
+      expanded: true,
+      paths: [],
+    });
+  }
+
+  const tags = groups.find(({ name }) => name === "tags");
+  groups = groups.filter(({ name }) => name !== "tags");
+  groups.unshift({
+    name: "tags",
+    expanded: tags?.expanded,
+    paths: [],
+  });
+
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
   const updater = groupUpdater(
     groups,
@@ -212,17 +238,23 @@ export const resolveGroups = (
     present
   );
 
-  updater("labels", fieldsMatcher(sampleFields, labelsMatcher(), present));
+  updater(
+    "labels",
+    fieldsMatcher(sampleFields, labelsMatcher(), present),
+    true
+  );
 
   frameFields.length &&
     updater(
       "frame labels",
-      fieldsMatcher(frameFields, labelsMatcher(), present, "frames.")
+      fieldsMatcher(frameFields, labelsMatcher(), present, "frames."),
+      true
     );
 
   updater(
     "primitives",
-    fieldsMatcher(sampleFields, primitivesMatcher, present)
+    fieldsMatcher(sampleFields, primitivesMatcher, present),
+    true
   );
 
   sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
@@ -237,7 +269,8 @@ export const resolveGroups = (
       present.add(`frames.${name}`);
       updater(
         `frames.${name}`,
-        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`)
+        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
+        true
       );
     });
 
@@ -262,13 +295,13 @@ const groupUpdater = (
     groups[i].paths = filterPaths(groups[i].paths, schema);
   }
 
-  return (name: string, paths: string[]) => {
+  return (name: string, paths: string[], expanded = false) => {
     if (paths.length === 0) return;
     paths.forEach((path) => present.add(path));
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push({ name, paths, expanded: false });
+      groups.push({ name, paths, expanded });
       groupNames.push(name);
       return;
     }
@@ -279,13 +312,11 @@ const groupUpdater = (
 };
 
 export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
-  let config: NonNullable<
-    sidebarGroupsFragment$data["appConfig"]
-  >["sidebarGroups"] = [];
+  let configGroups: State.SidebarGroup[] = [];
   let current: State.SidebarGroup[] = [];
   return [
     (sampleFields: StrictField[], frameFields: StrictField[]) => {
-      return resolveGroups(sampleFields, frameFields, current, config);
+      return resolveGroups(sampleFields, frameFields, current, configGroups);
     },
     graphQLSyncFragmentAtomFamily<
       sidebarGroupsFragment$key,
@@ -297,7 +328,10 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
         keys: ["dataset"],
         sync: (modal) => !modal,
         read: (data, prev) => {
-          config = data.appConfig?.sidebarGroups || [];
+          configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
+            ...group,
+            paths: [...group.paths],
+          }));
           current = resolveGroups(
             collapseFields(
               readFragment(
@@ -310,7 +344,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
                 .frameFields
             ),
             data.name === prev?.name ? current : [],
-            config
+            configGroups
           );
 
           return current;
@@ -480,6 +514,10 @@ export const sidebarEntries = selectorFamily<
     (params) =>
     ({ get }) => {
       const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
+      const hidden =
+        params.modal && !params.loading
+          ? get(hiddenNoneGroups)
+          : { groups: new Set<string>(), paths: new Set<string>() };
       const entries = [
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
@@ -514,7 +552,7 @@ export const sidebarEntries = selectorFamily<
               ...paths.map<PathEntry>((path) => ({
                 path,
                 kind: EntryKind.PATH,
-                shown,
+                shown: shown && !hidden.paths.has(path),
               })),
             ];
           })
@@ -801,3 +839,87 @@ export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",
   default: 300,
 });
+
+export const hiddenNoneGroups = selector({
+  key: "hiddenNoneGroups",
+  get: ({ get }) => {
+    if (!get(atoms.hideNoneValuedFields)) {
+      return { paths: new Set<string>(), groups: new Set<string>() };
+    }
+
+    const groups = get(
+      sidebarGroups({ modal: true, loading: false, filtered: true })
+    ).filter((group) => group.name !== "tags"); // always show tags
+
+    let samples: { [key: string]: { sample: object } } = {
+      default: { sample: get(activeModalSidebarSample) },
+    };
+    let slices = ["default"];
+
+    const multipleSlices =
+      Boolean(get(pinned3DSampleSlice)) &&
+      (get(activePcdSlices)?.length || 1) > 1;
+    if (multipleSlices) {
+      samples = get(activePcdSlicesToSampleMap);
+      slices = Array.from(get(activePcdSlices) || []).sort();
+    }
+
+    const items = groups
+      .map(({ name: group, paths }) => paths.map((path) => ({ group, path })))
+      .flat();
+
+    const result = {
+      groups: new Set(groups.map(({ name }) => name)),
+      paths: new Set<string>(items.map(({ path }) => path)),
+    };
+
+    for (const { group, path } of items) {
+      const isList = get(isOfDocumentFieldList(path));
+      for (const slice of slices) {
+        const keys = path.split(".");
+        const data = pullSidebarValue(
+          get(field(keys[0])),
+          keys,
+          samples[slice]?.sample,
+          isList
+        );
+
+        if (data !== null && data !== undefined) {
+          result.groups.delete(group);
+          result.paths.delete(path);
+        }
+      }
+    }
+
+    return result;
+  },
+});
+
+export const pullSidebarValue = (
+  field: Pick<Field, "dbField" | "fields">,
+  keys: string[],
+  data: null | object | undefined,
+  isList: boolean
+) => {
+  if (isList) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
+  } else {
+    for (let index = 0; index < keys.length; index++) {
+      if (data === null || data === undefined) {
+        break;
+      }
+      const key = keys[index];
+      data = data[field?.dbField || key];
+
+      if (keys[index + 1]) {
+        field = field?.fields?.[keys[index + 1]] || null;
+      }
+    }
+  }
+
+  if (Array.isArray(data)) {
+    return data.some((d) => d !== null && d !== undefined) ? data : null;
+  }
+
+  return data;
+};

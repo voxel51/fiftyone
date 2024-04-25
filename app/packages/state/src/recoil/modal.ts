@@ -1,10 +1,15 @@
-import { AbstractLooker, type Sample } from "@fiftyone/looker";
-import { BaseState } from "@fiftyone/looker/src/state";
+import {
+  AbstractLooker,
+  BaseState,
+  PointInfo,
+  type Sample,
+} from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
+import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ResponseFrom } from "../utils";
 import {
   activeModalSidebarSample,
@@ -46,8 +51,9 @@ export const sidebarSampleId = selector({
           return id;
         }
       }
-      // suspend
-      return new Promise(() => null);
+
+      // if we are playing or seeking, we don't want to change the sidebar sample and fire agg query
+      return null;
     }
 
     const override = get(pinned3DSampleSlice);
@@ -200,6 +206,21 @@ export const modalSample = graphQLSelector<
       },
     };
   },
+});
+
+export const tooltipCoordinates = atom<ComputeCoordinatesReturnType | null>({
+  key: "tooltipCoordinates",
+  default: null,
+});
+
+export const tooltipDetail = atom<PointInfo | null>({
+  key: "tooltipDetail",
+  default: null,
+});
+
+export const isTooltipLocked = atom<boolean>({
+  key: "isTooltipLocked",
+  default: false,
 });
 
 export class SampleNotFound extends Error {}

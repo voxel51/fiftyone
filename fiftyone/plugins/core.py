@@ -1,7 +1,7 @@
 """
 Core plugin methods.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -302,12 +302,12 @@ def ensure_plugin_requirements(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         log_success (False): whether to generate a log message if a requirement
-            is satisifed
+            is satisfied
     """
 
     req_path = _find_requirements(plugin_name)
@@ -330,15 +330,15 @@ def _find_requirements(plugin_name):
 def ensure_plugin_compatibility(
     plugin_name, error_level=None, log_success=False
 ):
-    """Ensures that the given plugin is compatibile with your current FiftyOne
-    pacakge version.
+    """Ensures that the given plugin is compatible with your current FiftyOne
+    package version.
 
     Args:
         plugin_name: the plugin name
         error_level (None): the error level to use, defined as:
 
-            -   0: raise error if plugin is not compatibile
-            -   1: log warning if plugin is not satisifed
+            -   0: raise error if plugin is not compatible
+            -   1: log warning if plugin is not satisfied
             -   2: ignore fiftyone compatibility requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used

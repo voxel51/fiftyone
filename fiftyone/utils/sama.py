@@ -1,7 +1,7 @@
 """
 Sama utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -282,7 +282,7 @@ def download_sama_coco_dataset_split(
     num_samples = len(downloaded_filenames)  # total downloaded
 
     #
-    # Write usable annotations file to `anno_path`, if necesary
+    # Write usable annotations file to `anno_path`, if necessary
     #
 
     if not os.path.isfile(anno_path):

@@ -1,11 +1,10 @@
-import { DETECTIONS } from "@fiftyone/utilities";
+import { DETECTIONS, getCls, Schema } from "@fiftyone/utilities";
 import { POINTCLOUD_OVERLAY_PADDING } from "../constants";
 import { DetectionLabel } from "../overlays/detection";
 import { OrthogrpahicProjectionMetadata, Sample } from "../state";
 import { mapId } from "./shared";
 
 type DetectionsLabel = {
-  _cls: "Detections";
   detections: DetectionLabel[];
 };
 
@@ -61,7 +60,10 @@ const inferredParamsCache: Record<
 /**
  * Use label attributes to infer width, height, and bounds.
  */
-const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
+const getInferredParamsForUndefinedProjection = (
+  schema: Schema,
+  sample: Readonly<Sample>
+) => {
   if (inferredParamsCache[sample.id]) {
     return inferredParamsCache[sample.id];
   }
@@ -71,12 +73,13 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
   let minY = Infinity;
   let maxY = -Infinity;
 
-  for (const [_, label] of Object.entries(sample)) {
-    if (typeof label !== "object" || !("_cls" in label)) {
+  for (const [field, label] of Object.entries(sample)) {
+    const cls = getCls(field, schema);
+    if (typeof label !== "object" || !cls) {
       continue; // skip non-labels like "filepath", "id"
     }
 
-    if (label._cls === DETECTIONS) {
+    if (cls === DETECTIONS) {
       for (const detection of label.detections as DetectionLabel[]) {
         const [x, y] = detection.location;
         const [lx, ly] = detection.dimensions;
@@ -86,7 +89,7 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
         minY = Math.min(minY, y - ly / 2);
         maxY = Math.max(maxY, y + ly / 2);
       }
-    } else if (label._cls === "Detection") {
+    } else if (cls === "Detection") {
       const [x, y] = label.location as DetectionLabel["location"];
       const [lx, ly] = label.dimensions as DetectionLabel["dimensions"];
 
@@ -170,44 +173,47 @@ const PainterFactory3D = (
 
 const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 
-export const process3DLabels = async (sample: Sample) => {
-  const orthographicProjectionField = Object.entries(sample)
-    .find((el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata")
-    ?.at(0) as string | undefined;
+export const process3DLabels = async (schema: Schema, sample: Sample) => {
+  const orthographicProjectionField = Object.entries(schema)
+    .find(([_, d]) =>
+      d.embeddedDocType?.endsWith(".OrthographicProjectionMetadata")
+    )
+    ?.at(0) as string;
 
   const painterFactory = PainterFactory3D(
     orthographicProjectionField
       ? (sample[orthographicProjectionField] as OrthogrpahicProjectionMetadata)
-      : getInferredParamsForUndefinedProjection(sample)
+      : getInferredParamsForUndefinedProjection(schema, sample)
   );
 
   const paintJobPromises = [];
 
   for (const field in sample) {
     const label = sample[field] as ThreeDLabel;
+    const cls = getCls(field, schema);
 
-    if (
-      !label ||
-      typeof label !== "object" ||
-      !VALID_THREE_D_LABELS.has(label._cls)
-    ) {
+    if (!label || typeof label !== "object" || !VALID_THREE_D_LABELS.has(cls)) {
       continue;
     }
 
-    if (COLLECTION_TYPES.has(label._cls)) {
-      label[label._cls.toLocaleLowerCase()].forEach((label: ThreeDLabel) => {
+    if (COLLECTION_TYPES.has(cls)) {
+      label[cls.toLocaleLowerCase()].forEach((label: ThreeDLabel) => {
         mapId(label);
       });
     } else {
       mapId(label);
     }
 
-    switch (label._cls) {
+    switch (cls) {
       case "Detections":
-        paintJobPromises.push(painterFactory.Detections(label));
+        paintJobPromises.push(
+          painterFactory.Detections(label as DetectionsLabel)
+        );
         break;
       case "Detection":
-        paintJobPromises.push(painterFactory.Detection(label));
+        paintJobPromises.push(
+          painterFactory.Detection(label as DetectionLabel)
+        );
         break;
       default:
         throw new Error("Invalid label type");

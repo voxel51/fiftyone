@@ -1,18 +1,17 @@
 """
 FiftyOne Server queries.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import logging
-import os
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
@@ -35,6 +34,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
@@ -210,6 +210,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class SidebarMode(Enum):
     all = "all"
     best = "best"
+    disabled = "disabled"
     fast = "fast"
 
 
@@ -224,6 +225,7 @@ class DatasetAppConfig:
 
     grid_media_field: str = "filepath"
     modal_media_field: str = "filepath"
+    media_fallback: bool = False
 
 
 @gql.type
@@ -335,6 +337,7 @@ class Dataset:
             serialized_view=view,
             saved_view_slug=saved_view_slug,
             dicts=False,
+            update_last_loaded_at=True,
         )
 
 
@@ -371,6 +374,7 @@ class AppConfig:
     timezone: t.Optional[str]
     use_frame_number: bool
     spaces: t.Optional[JSON]
+    media_fallback: bool = False
 
 
 @gql.type
@@ -393,7 +397,8 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 
@@ -408,6 +413,10 @@ class Query(fosa.AggregateQuery):
     @gql.field
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
+
+    @gql.field
+    async def estimated_dataset_count(self, info: Info = None) -> int:
+        return await info.context.db.datasets.estimated_document_count()
 
     dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
@@ -461,16 +470,6 @@ class Query(fosa.AggregateQuery):
         return None
 
     stage_definitions = gql.field(stage_definitions)
-
-    @gql.field
-    def teams_submission(self) -> bool:
-        isfile = os.path.isfile(foc.TEAMS_PATH)
-        if isfile:
-            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
-        else:
-            submitted = False
-
-        return submitted
 
     @gql.field
     def uid(self) -> str:
@@ -573,12 +572,17 @@ async def serialize_dataset(
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
     dicts=True,
+    update_last_loaded_at=False,
 ) -> Dataset:
     def run():
         if not fod.dataset_exists(dataset_name):
             return None
 
         dataset = fod.load_dataset(dataset_name)
+
+        if update_last_loaded_at:
+            dataset._update_last_loaded_at(force=True)
+
         dataset.reload()
         view_name = None
         try:
@@ -676,9 +680,11 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
     setattr(
         dataset,
         "estimated_frame_count",
-        fo_dataset._frame_collection.estimated_document_count()
-        if fo_dataset._frame_collection_name
-        else None,
+        (
+            fo_dataset._frame_collection.estimated_document_count()
+            if fo_dataset._frame_collection_name
+            else None
+        ),
     )
 
 

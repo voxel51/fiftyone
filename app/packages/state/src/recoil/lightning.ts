@@ -103,6 +103,8 @@ const indexesByPath = selector({
     ) => {
       const projection = frames ? framesProjection : samplesProjection;
 
+      fields = fields.map((field) => get(schemaAtoms.dbPath(field)));
+
       if (field === "$**") {
         if (!projection) {
           return fields;
@@ -143,8 +145,7 @@ export const pathIndex = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const indexes = get(indexesByPath);
-
-      return indexes.has(path);
+      return indexes.has(get(schemaAtoms.dbPath(path)));
     },
 });
 

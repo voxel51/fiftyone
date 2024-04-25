@@ -1,10 +1,11 @@
 """
-FiftyOne server lightning tests
+FiftyOne Server lightning tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 from datetime import date, datetime
 import typing as t

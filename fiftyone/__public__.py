@@ -1,19 +1,17 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone.core.config as _foc
-import fiftyone.core.odm as _foo
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 evaluation_config = _foc.load_evaluation_config()
 app_config = _foc.load_app_config()
-
-_foo.establish_db_conn(config)
 
 from .core.aggregations import (
     Aggregation,
@@ -133,7 +131,9 @@ from .core.odm import (
     DynamicEmbeddedDocument,
     EmbeddedDocument,
     KeypointSkeleton,
+    Panel,
     SidebarGroupDocument,
+    Space,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -157,9 +157,32 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-from .core.spaces import (
-    Space,
-    Panel,
+from .core.threed import (
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
+    FbxMesh,
+    GltfMesh,
+    ObjMesh,
+    PlyMesh,
+    StlMesh,
+    PerspectiveCamera,
+    PointLight,
+    DirectionalLight,
+    AmbientLight,
+    SpotLight,
+    Pointcloud,
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointcloudMaterial,
+    Scene,
+    SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
 )
 from .core.stages import (
     Concat,
@@ -213,6 +236,7 @@ from .core.utils import (
     disable_progress_bars,
     pprint,
     pformat,
+    report_progress,
     ProgressBar,
 )
 from .core.view import DatasetView

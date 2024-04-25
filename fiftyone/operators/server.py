@@ -1,10 +1,11 @@
 """
 FiftyOne operator server.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -34,12 +35,7 @@ class ListOperators(HTTPEndpoint):
         )
         operators_as_json = []
         for operator in registry.list_operators():
-
-            ctx = ExecutionContext(
-                operator_uri=operator.uri,
-                required_secrets=operator._plugin_secrets,
-            )
-            serialized_op = operator.to_json(ctx)
+            serialized_op = operator.to_json()
             config = serialized_op["config"]
             config["can_execute"] = registry.can_execute(serialized_op["uri"])
             operators_as_json.append(serialized_op)
@@ -188,7 +184,7 @@ class ResolveType(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = resolve_type(registry, operator_uri, data)
+        result = await resolve_type(registry, operator_uri, data)
         return result.to_json() if result else {}
 
 
@@ -214,7 +210,7 @@ class ResolveExecutionOptions(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = resolve_execution_options(registry, operator_uri, data)
+        result = await resolve_execution_options(registry, operator_uri, data)
         return result.to_dict() if result else {}
 
 

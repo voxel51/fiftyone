@@ -26,7 +26,7 @@ export const PainterFactory = (requestColor) => ({
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
-    if (!label.mask) {
+    if (!label?.mask) {
       return;
     }
 
@@ -135,12 +135,17 @@ export const PainterFactory = (requestColor) => ({
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
+    if (!labels?.detections) {
+      return;
+    }
+
     const promises = labels.detections.map((label) =>
-      PainterFactory(requestColor)[label._cls](
+      PainterFactory(requestColor).Detection(
         field,
         label,
         coloring,
         customizeColorSetting,
+        colorscale,
         labelTagColors,
         selectedLabelTags
       )
@@ -157,7 +162,7 @@ export const PainterFactory = (requestColor) => ({
     selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
-    if (!label.map) {
+    if (!label?.map) {
       return;
     }
 
@@ -229,7 +234,7 @@ export const PainterFactory = (requestColor) => ({
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {
-    if (!label.mask) {
+    if (!label?.mask) {
       return;
     }
 

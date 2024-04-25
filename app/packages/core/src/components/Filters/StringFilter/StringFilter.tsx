@@ -69,7 +69,7 @@ const StringFilter = ({
     path,
     resultsAtom
   );
-  const { onSelect, selectedMap } = useOnSelect(modal, path, selectedAtom);
+  const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
   const theme = useTheme();
@@ -106,6 +106,7 @@ const StringFilter = ({
             placeholder={`+ ${
               isFilterMode ? "filter" : "set visibility"
             } by ${name}`}
+            cy={`sidebar-search-${path}`}
             component={ResultComponent}
             onSelect={onSelect}
             inputStyle={{
@@ -126,7 +127,6 @@ const StringFilter = ({
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
           modal={modal}
-          selectedMap={selectedMap}
         />
       </StringFilterContainer>
     </NamedStringFilterContainer>

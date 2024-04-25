@@ -5,23 +5,29 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import itertools
 import logging
+import os
 import warnings
 
 import numpy as np
 import scipy.spatial as sp
 
 import eta.core.numutils as etan
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-from fiftyone.core.odm import DynamicEmbeddedDocument
+import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
+from fiftyone.core.odm import DynamicEmbeddedDocument
+from fiftyone.core.sample import Sample
+from fiftyone.core.threed import Pointcloud, Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -185,7 +191,7 @@ class _Box(object):
         return _Box(new_rotation, new_translation, self.scale)
 
     def _scaled_axis_aligned_vertices(self, scale):
-        """Returns axis-aligned verticies for a box of the given scale."""
+        """Returns axis-aligned vertices for a box of the given scale."""
         x = scale[0] / 2.0
         y = scale[1] / 2.0
         z = scale[2] / 2.0
@@ -433,6 +439,37 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     height = fof.IntField()
 
 
+def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
+    explicitly_flagged_pcd_path = None
+    fallover_pcd_path = None
+
+    def _visit_node_dfs(node):
+        nonlocal explicitly_flagged_pcd_path
+        nonlocal fallover_pcd_path
+
+        if hasattr(node, "pcd_path") and node.flag_for_projection:
+            explicitly_flagged_pcd_path = node.pcd_path
+        else:
+            if hasattr(node, "pcd_path"):
+                fallover_pcd_path = node.pcd_path
+
+            for child in node.children:
+                _visit_node_dfs(child)
+
+    _visit_node_dfs(scene)
+
+    pcd_path = (
+        explicitly_flagged_pcd_path
+        if explicitly_flagged_pcd_path
+        else fallover_pcd_path
+    )
+
+    if pcd_path is None or os.path.isabs(pcd_path):
+        return pcd_path
+
+    return os.path.join(os.path.dirname(scene_path), pcd_path)
+
+
 def compute_orthographic_projection_images(
     samples,
     size,
@@ -446,6 +483,8 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    skip_failures=False,
+    progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
     given collection.
@@ -509,24 +548,26 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a projection fails
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if in_group_slice is None and samples.media_type == fom.GROUP:
-        in_group_slice = _get_point_cloud_slice(samples)
+        in_group_slice = _get_3d_slice(samples)
 
     if in_group_slice is not None or out_group_slice is not None:
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-        point_cloud_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(point_cloud_view, media_type=fom.POINT_CLOUD)
-
-        filepaths, groups = point_cloud_view.values(["filepath", group_field])
+        view = samples.select_group_slices(in_group_slice).select_fields(
+            group_field
+        )
     else:
-        fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
-        point_cloud_view = samples
+        view = samples.select_fields()
 
-        filepaths = point_cloud_view.values("filepath")
-        groups = itertools.repeat(None)
+    fov.validate_collection(view, media_type={fom.POINT_CLOUD, fom.THREE_D})
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir
@@ -535,16 +576,21 @@ def compute_orthographic_projection_images(
     if out_group_slice is not None:
         out_samples = []
 
-    all_metadata = []
+    for sample in view.iter_samples(autosave=True, progress=progress):
+        projection_pcd_filepath = sample.filepath
 
-    with fou.ProgressBar(total=len(filepaths)) as pb:
-        for filepath, group in pb(zip(filepaths, groups)):
-            image_path = filename_maker.get_output_path(
-                filepath, output_ext=".png"
+        if view.media_type == fom.THREE_D:
+            projection_pcd_filepath = _get_pcd_filepath_from_fo3d_scene(
+                Scene.from_fo3d(sample.filepath), sample.filepath
             )
 
+        image_path = filename_maker.get_output_path(
+            projection_pcd_filepath, output_ext=".png"
+        )
+
+        try:
             img, metadata = compute_orthographic_projection_image(
-                filepath,
+                projection_pcd_filepath,
                 size,
                 shading_mode=shading_mode,
                 colormap=colormap,
@@ -552,22 +598,28 @@ def compute_orthographic_projection_images(
                 projection_normal=projection_normal,
                 bounds=bounds,
             )
+        except Exception as e:
+            if not skip_failures:
+                raise
 
-            foui.write(img, image_path)
-            metadata.filepath = image_path
+            if skip_failures != "ignore":
+                logger.warning(e)
 
-            if out_group_slice is not None:
-                sample = Sample(filepath=image_path)
-                sample[group_field] = group.element(out_group_slice)
-                sample[metadata_field] = metadata
-                out_samples.append(sample)
+            continue
 
-            all_metadata.append(metadata)
+        foui.write(img, image_path)
+        metadata.filepath = image_path
+
+        sample[metadata_field] = metadata
+
+        if out_group_slice is not None:
+            s = Sample(filepath=image_path)
+            s[group_field] = sample[group_field].element(out_group_slice)
+            s[metadata_field] = metadata
+            out_samples.append(s)
 
     if out_group_slice is not None:
-        samples.add_samples(out_samples)
-
-    point_cloud_view.set_values(metadata_field, all_metadata)
+        samples._root_dataset.add_samples(out_samples)
 
 
 def compute_orthographic_projection_image(
@@ -700,7 +752,18 @@ def _parse_point_cloud(
     ):
         # rotate points so that they are perpendicular to the projection plane
         # as opposed to the default XY plane
-        R = _rotation_matrix_from_vectors(projection_normal, [0, 0, 1])
+        normal = np.asarray(projection_normal).reshape((1, 3))
+        with warnings.catch_warnings():
+            # There are multiple rotations that can align two vectors. This is known
+            # and accepted, so we suppress the warning.
+            warnings.filterwarnings(
+                "ignore",
+                message="Optimal rotation is not uniquely or poorly defined for the given sets of vectors\.",
+                category=UserWarning,
+            )
+            R = sp.transform.Rotation.align_vectors([[0, 0, 1]], normal)[
+                0
+            ].as_matrix()
         pc = pc.rotate(R, center=[0, 0, 0])
 
     if bounds is None:
@@ -744,19 +807,19 @@ def _parse_point_cloud(
     return points, colors, metadata
 
 
-def _get_point_cloud_slice(samples):
-    point_cloud_slices = {
-        s for s, m in samples.group_media_types.items() if m == fom.POINT_CLOUD
+def _get_3d_slice(samples):
+    three_d_slices = {
+        s
+        for s, m in samples.group_media_types.items()
+        if m == fom.POINT_CLOUD or m == fom.THREE_D
     }
-    if not point_cloud_slices:
-        raise ValueError("%s has no point cloud slices" % type(samples))
+    if not three_d_slices:
+        raise ValueError("%s has no 3d / pcd slices" % type(samples))
 
-    slice_name = next(iter(point_cloud_slices))
+    slice_name = next(iter(three_d_slices))
 
-    if len(point_cloud_slices) > 1:
-        logger.warning(
-            "Found multiple point cloud slices; using '%s'", slice_name
-        )
+    if len(three_d_slices) > 1:
+        logger.warning("Found multiple 3d slices; using '%s'", slice_name)
 
     return slice_name
 
@@ -768,18 +831,6 @@ def _clamp_to_discrete(arr, discrete):
     clamp_list = np.sort(np.array(discrete))
     idx = np.searchsorted(clamp_list, arr - 1e-8)
     return clamp_list[np.clip(idx, 0, len(clamp_list) - 1)]
-
-
-# Reference: https://math.stackexchange.com/q/180418
-def _rotation_matrix_from_vectors(vec1, vec2):
-    """Returns the rotation matrix that aligns vec1 to vec2."""
-    a = (np.asarray(vec1) / np.linalg.norm(vec1)).reshape(3)
-    b = (np.asarray(vec2) / np.linalg.norm(vec2)).reshape(3)
-    v = np.cross(a, b)
-    c = np.dot(a, b)
-    s = np.linalg.norm(v)
-    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    return np.eye(3) + K + K.dot(K) * ((1 - c) / (s**2))
 
 
 def _parse_size(size, bounds):
@@ -814,3 +865,193 @@ def _fill_none(values, ref_values):
         return ref_values
 
     return [v if v is not None else r for v, r in zip(values, ref_values)]
+
+
+def pcd_to_3d(
+    dataset,
+    slices=None,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    """Converts the point cloud samples in the given dataset to 3D samples.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset` containing point
+            clouds
+        slices (None): point cloud slice(s) to convert. Only applicable when
+            the dataset is grouped, in which case you can provide:
+
+            -   a slice or iterable of point cloud slices to convert in-place
+            -   a dict mapping point cloud slices to desired 3D slice names
+            -   None (default): all point cloud slices are converted in-place
+        output_dir (None): an optional output directory for the ``.fo3d`` files
+        assets_dir (None): an optional directory to copy the ``.pcd`` files
+            into. Can be either an absolute directory, a subdirectory of
+            ``output_dir``, or None if you do not wish to copy point clouds
+        rel_dir (None): an optional relative directory to strip from each point
+            cloud path to generate a unique identifier for each scene, which is
+            joined with ``output_dir`` to generate an output path for each
+            ``.fo3d`` file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
+        abs_paths (False): whether to store absolute paths to the point cloud
+            files in the exported ``.fo3d`` files
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_collection(dataset, media_type=(fom.POINT_CLOUD, fom.GROUP))
+
+    if dataset.media_type == fom.GROUP:
+        _pcd_slices_to_3d_slices(
+            dataset,
+            slices=slices,
+            output_dir=output_dir,
+            assets_dir=assets_dir,
+            rel_dir=rel_dir,
+            abs_paths=abs_paths,
+            progress=progress,
+        )
+        return
+
+    _pcd_to_3d(
+        dataset,
+        output_dir=output_dir,
+        assets_dir=assets_dir,
+        rel_dir=rel_dir,
+        abs_paths=abs_paths,
+        progress=progress,
+    )
+
+    dataset._doc.media_type = fom.THREE_D
+    dataset.save()
+
+
+def _pcd_slices_to_3d_slices(
+    dataset,
+    slices=None,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    if isinstance(slices, dict):
+        pass
+    elif etau.is_container(slices):
+        slices = {s: s for s in slices}
+    elif slices is not None:
+        slices = {slices: slices}
+    else:
+        slices = {
+            k: k
+            for k, v in dataset.group_media_types.items()
+            if v == fom.POINT_CLOUD
+        }
+
+    curr_slice = slices.get(dataset.group_slice, dataset.group_slice)
+
+    try:
+        for in_slice, out_slice in slices.items():
+            dataset.group_slice = in_slice
+
+            _pcd_to_3d(
+                dataset,
+                output_dir=output_dir,
+                assets_dir=assets_dir,
+                rel_dir=rel_dir,
+                abs_paths=abs_paths,
+                progress=progress,
+            )
+
+            dataset._doc.group_media_types[in_slice] = fom.THREE_D
+            dataset.save()
+
+            if in_slice != out_slice:
+                dataset.rename_group_slice(in_slice, out_slice)
+    finally:
+        dataset.group_slice = curr_slice
+
+
+def _pcd_to_3d(
+    dataset,
+    output_dir=None,
+    assets_dir=None,
+    rel_dir=None,
+    abs_paths=False,
+    progress=None,
+):
+    filename_maker = None
+    media_exporter = None
+
+    if output_dir is not None:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=True,
+        )
+
+        if assets_dir is not None:
+            if not fos.isabs(assets_dir):
+                assets_dir = fos.join(output_dir, assets_dir)
+
+            media_exporter = foud.MediaExporter(
+                True,
+                export_path=assets_dir,
+                rel_dir=rel_dir,
+            )
+
+    ids, pcd_paths = dataset.values(["id", "filepath"])
+
+    scene_paths = []
+    with contextlib.ExitStack() as context:
+        if media_exporter is not None:
+            context.enter_context(media_exporter)
+
+        pb = context.enter_context(fou.ProgressBar(progress=progress))
+
+        for pcd_path in pb(pcd_paths):
+            scene_path = _make_scene(
+                pcd_path,
+                filename_maker=filename_maker,
+                media_exporter=media_exporter,
+                abs_paths=abs_paths,
+            )
+            scene_paths.append(scene_path)
+
+    dataset.set_values(
+        "filepath", dict(zip(ids, scene_paths)), key_field="id", validate=False
+    )
+    dataset.set_field("_media_type", fom.THREE_D, _allow_missing=True).save()
+
+
+def _make_scene(
+    pcd_path,
+    filename_maker=None,
+    media_exporter=None,
+    abs_paths=False,
+):
+    if filename_maker is not None:
+        scene_path = filename_maker.get_output_path(
+            input_path=pcd_path, output_ext=".fo3d"
+        )
+    else:
+        scene_path = os.path.splitext(pcd_path)[0] + ".fo3d"
+
+    if media_exporter is not None:
+        pcd_path, _ = media_exporter.export(pcd_path)
+
+    if not abs_paths:
+        rel_path = os.path.relpath(pcd_path, os.path.dirname(scene_path))
+        if not rel_path.startswith(".."):
+            pcd_path = rel_path
+
+    scene = Scene()
+    scene.add(Pointcloud("point cloud", pcd_path))
+    scene.write(scene_path)
+
+    return scene_path

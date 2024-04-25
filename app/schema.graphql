@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  mediaFallback: Boolean!
 }
 
 scalar BSON
@@ -250,6 +251,7 @@ type DatasetAppConfig {
   spaces: JSON
   gridMediaField: String!
   modalMediaField: String!
+  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {
@@ -474,6 +476,7 @@ enum MediaType {
   image
   group
   point_cloud
+  three_d
   video
 }
 
@@ -533,7 +536,6 @@ type Mutation {
     savedViewSlug: String = null
     form: StateForm = null
   ): BSONArray
-  storeTeamsSubmission: Boolean!
   createSavedView(
     subscription: String!
     session: String
@@ -600,6 +602,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
+  estimatedDatasetCount: Int!
   samples(
     dataset: String!
     view: BSONArray!
@@ -617,7 +620,6 @@ type Query {
     filters: JSON = null
   ): SampleItem
   stageDefinitions: [StageDefinition!]!
-  teamsSubmission: Boolean!
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]
@@ -670,7 +672,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -737,6 +739,7 @@ input SidebarGroupInput {
 
 enum SidebarMode {
   all
+  disabled
   best
   fast
 }
@@ -797,6 +800,13 @@ enum Theme {
   browser
   dark
   light
+}
+
+type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type ValueColor {

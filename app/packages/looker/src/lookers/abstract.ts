@@ -181,7 +181,7 @@ export abstract class AbstractLooker<
   }
 
   loadOverlays(sample: Sample): void {
-    this.sampleOverlays = loadOverlays(sample);
+    this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
 
   pluckOverlays(state: Readonly<State>): Overlay<State>[] {
@@ -362,9 +362,9 @@ export abstract class AbstractLooker<
         }
         ctx.globalAlpha = 1;
 
-        ctx.canvas.setAttribute("sample-loaded", "true");
+        ctx.canvas.setAttribute("canvas-loaded", "true");
         ctx.canvas.dispatchEvent(
-          new CustomEvent("sample-loaded", {
+          new CustomEvent("canvas-loaded", {
             detail: { sampleFilepath: this.sample.filepath },
             bubbles: true,
           })
@@ -700,6 +700,7 @@ export abstract class AbstractLooker<
       labelTagColors: this.state.options.labelTagColors,
       selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,
+      schema: this.state.config.fieldSchema,
       uuid: messageUUID,
     } as ProcessSample);
   }

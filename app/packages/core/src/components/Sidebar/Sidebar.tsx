@@ -1,16 +1,14 @@
-import { useTheme } from "@fiftyone/components";
+import { useTheme, Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
-import { Resizable } from "re-resizable";
 import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
-import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
 const MARGIN = 3;
@@ -199,12 +197,12 @@ const measureGroups = (
   data: { top: number; height: number; key: string }[];
   activeHeight: number;
 } => {
-  const data = [];
   let current = {
     top: -MARGIN,
     height: 0,
     key: getEntryKey(items[order[0]].entry),
   };
+  const data: typeof current[] = [];
   let activeHeight = -MARGIN;
 
   for (let i = 0; i < order.length; i++) {
@@ -264,24 +262,25 @@ const isDisabledEntry = (
 };
 
 const getAfterKey = (
-  activeKey: string,
+  activeKey: string | null,
   items: InteractiveItems,
   order: string[],
   direction: Direction,
   disabled: Set<string>
 ): string | null => {
-  if (!items[activeKey]) {
-    return;
+  if (activeKey === null || !items[activeKey]) {
+    return null;
   }
 
   const up = direction === Direction.UP;
-  const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
+  const baseTop =
+    items[order[0]].el.parentElement?.getBoundingClientRect().y || 0;
   const isGroup = items[activeKey].entry.kind === fos.EntryKind.GROUP;
-  let { data, activeHeight } = isGroup
+  const measurement = isGroup
     ? measureGroups(activeKey, items, order)
     : measureEntries(activeKey, items, order);
 
-  data = data.filter(
+  const data = measurement.data.filter(
     ({ key }) => !isDisabledEntry(items[key].entry, disabled, !isGroup)
   );
 
@@ -289,7 +288,7 @@ const getAfterKey = (
   let y = top - baseTop;
 
   if (!up) {
-    y += activeHeight;
+    y += measurement.activeHeight;
   }
 
   let filtered = data
@@ -382,7 +381,7 @@ const SidebarColumn = styled.div`
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 0.25rem 0 1rem;
+  margin: 0 1rem;
 
   & > div {
     position: absolute;
@@ -435,7 +434,7 @@ const InteractiveSidebar = ({
     throw entries;
   }
 
-  let group = null;
+  let group: string | null = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
     const key = getEntryKey(entry);
@@ -694,7 +693,6 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
-  const resizableSide = modal ? "left" : "right";
 
   return shown ? (
     <Resizable
@@ -702,38 +700,12 @@ const InteractiveSidebar = ({
       size={{ height: "100%", width }}
       minWidth={200}
       maxWidth={600}
-      enable={{
-        top: false,
-        right: !modal,
-        bottom: false,
-        left: modal,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
+      direction={modal ? "left" : "right"}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
-        // reset sidebar to default width on double click
-        if (e.detail === 2) resetWidth();
       }}
-      style={{
-        borderLeft: modal
-          ? `1px solid ${theme.primary.plainBorder}`
-          : undefined,
-        borderRight: !modal
-          ? `1px solid ${theme.primary.plainBorder}`
-          : undefined,
-        borderTopRightRadius: 8,
-        display: "flex",
-        flexDirection: "column",
-      }}
-      handleStyles={{
-        [resizableSide]: { right: 0, width: 4 },
-      }}
-      handleClasses={{
-        [resizableSide]: resizeHandle,
-      }}
+      onResizeReset={resetWidth}
+      style={{ borderTopRightRadius: 8 }}
     >
       <SchemaSettings />
       {!modal && (

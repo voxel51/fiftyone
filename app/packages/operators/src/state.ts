@@ -83,6 +83,7 @@ const globalContextSelector = selector({
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
     const currentSample = get(fos.currentSampleId);
+    const viewName = get(fos.viewName);
 
     return {
       datasetName,
@@ -92,6 +93,7 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       currentSample,
+      viewName,
     };
   },
 });
@@ -121,6 +123,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     currentSample,
+    viewName,
   } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -133,6 +136,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedSamples,
         selectedLabels,
         currentSample,
+        viewName,
       },
       hooks
     );
@@ -145,6 +149,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     selectedLabels,
     hooks,
+    viewName,
+    currentSample,
   ]);
 
   return ctx;
@@ -298,7 +304,15 @@ export const useOperatorPrompt = () => {
   const [inputFields, setInputFields] = useState();
   const [resolving, setResolving] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
+  const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
   const notify = fos.useNotification();
+  const isDynamic = useMemo(() => Boolean(operator.config.dynamic), [operator]);
+  const cachedResolvedInput = useMemo(() => {
+    return isDynamic ? null : resolvedIO.input;
+  }, [isDynamic, resolvedIO.input]);
+  const promptView = useMemo(() => {
+    return inputFields?.view;
+  }, [inputFields]);
 
   const resolveInput = useCallback(
     debounce(
@@ -308,10 +322,13 @@ export const useOperatorPrompt = () => {
           if (operator.config.resolveExecutionOptionsOnChange) {
             execDetails.fetch(ctx);
           }
-          const resolved = await operator.resolveInput(ctx);
+          const resolved =
+            cachedResolvedInput || (await operator.resolveInput(ctx));
+
           validateThrottled(ctx, resolved);
           if (resolved) {
             setInputFields(resolved.toProps());
+            setResolvedIO((state) => ({ ...state, input: resolved }));
           } else {
             setInputFields(null);
           }
@@ -325,7 +342,7 @@ export const useOperatorPrompt = () => {
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
       { leading: true }
     ),
-    []
+    [cachedResolvedInput, setResolvedCtx, operator.uri]
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
@@ -399,14 +416,15 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = null) => {
-      const resolved = await operator.resolveInput(ctx);
-      const { invalid, errors } = await validate(ctx, resolved);
+      const resolved =
+        cachedResolvedInput || (await operator.resolveInput(ctx));
+      const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
       executor.execute(promptingOperator.params, options);
     },
-    [operator, promptingOperator]
+    [operator, promptingOperator, cachedResolvedInput]
   );
   const close = () => {
     setPromptingOperator(null);
@@ -494,6 +512,8 @@ export const useOperatorPrompt = () => {
     pendingResolve,
     execDetails,
     submitOptions,
+    promptView,
+    resolvedIO,
   };
 };
 
@@ -809,6 +829,7 @@ export function useOperatorBrowser() {
 type OperatorExecutorOptions = {
   delegationTarget?: string;
   requestDelegation?: boolean;
+  skipOutput?: boolean;
 };
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
@@ -827,6 +848,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [needsOutput, setNeedsOutput] = useState(false);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
+  const notify = fos.useNotification();
 
   const clear = useCallback(() => {
     setIsExecuting(false);
@@ -838,7 +860,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation } = options || {};
+      const { delegationTarget, requestDelegation, skipOutput } = options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -856,7 +878,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
-        setNeedsOutput(await operator.needsOutput(ctx, result));
+        setNeedsOutput(
+          skipOutput ? false : await operator.needsOutput(ctx, result)
+        );
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
@@ -870,6 +894,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           handlers.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
+          notify({ msg: e.message, variant: "error" });
         }
       }
       setHasExecuted(true);

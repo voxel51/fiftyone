@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c6397c5dfcc30760635c7a8f6bbeacc9>>
+ * @generated SignedSource<<71edb5ac87b47af3f7d703b59fffb591>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,9 +17,7 @@ export type IndexPageQuery$variables = {
   search?: string | null;
 };
 export type IndexPageQuery$data = {
-  readonly allDatasets: {
-    readonly total: number | null;
-  };
+  readonly allDatasets: number;
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
@@ -86,31 +84,13 @@ v7 = {
   "storageKey": null
 },
 v8 = {
-  "alias": null,
+  "alias": "allDatasets",
   "args": null,
   "kind": "ScalarField",
-  "name": "total",
+  "name": "estimatedDatasetCount",
   "storageKey": null
 },
-v9 = {
-  "alias": "allDatasets",
-  "args": [
-    {
-      "kind": "Literal",
-      "name": "search",
-      "value": ""
-    }
-  ],
-  "concreteType": "DatasetStrConnection",
-  "kind": "LinkedField",
-  "name": "datasets",
-  "plural": false,
-  "selections": [
-    (v8/*: any*/)
-  ],
-  "storageKey": "datasets(search:\"\")"
-},
-v10 = [
+v9 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -154,7 +134,7 @@ return {
         ],
         "storageKey": null
       },
-      (v9/*: any*/),
+      (v8/*: any*/),
       {
         "args": null,
         "kind": "FragmentSpread",
@@ -282,20 +262,33 @@ return {
             "kind": "ScalarField",
             "name": "useFrameNumber",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "mediaFallback",
+            "storageKey": null
           }
         ],
         "storageKey": null
       },
-      (v9/*: any*/),
+      (v8/*: any*/),
       {
         "alias": null,
-        "args": (v10/*: any*/),
+        "args": (v9/*: any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
         "plural": false,
         "selections": [
-          (v8/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "total",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -376,7 +369,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v10/*: any*/),
+        "args": (v9/*: any*/),
         "filters": [
           "search"
         ],
@@ -420,27 +413,20 @@ return {
         "name": "version",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "teamsSubmission",
-        "storageKey": null
-      },
       (v5/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "48daf769c05cc9baadf930a245bcdfaa",
+    "cacheID": "4be27983cf9d8ad6ba5448771ba43f28",
     "id": null,
     "metadata": {},
     "name": "IndexPageQuery",
     "operationKind": "query",
-    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: datasets(search: \"\") {\n    total\n  }\n  ...NavFragment\n  ...configFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    lightningThreshold\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
+    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: estimatedDatasetCount\n  ...NavFragment\n  ...configFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    lightningThreshold\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n    mediaFallback\n  }\n  colorscale\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d84cfaac426f2730610de9dd1814da58";
+(node as any).hash = "0e29568fa34b45baaa1d820d64dbe63f";
 
 export default node;

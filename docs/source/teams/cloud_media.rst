@@ -76,8 +76,9 @@ Media cache config
 __________________
 
 By default, your local media cache is located at `~/fiftyone/__cache__`, has
-a size of 32GB, and will use a thread pool whose size equals the number of
-virtual CPU cores on your machine to download media files.
+a size of 32GB, will download media in batches of 128MB when using
+`download_context()`, and will use a thread pool whose size equals the number
+of virtual CPU cores on your machine to download media files.
 
 When the cache is full, local files are automatically deleted in reverse order
 of when they were last accessed (i.e., oldest deleted first).
@@ -91,7 +92,8 @@ following environment variables (default values shown):
 .. code-block:: shell
 
     export FIFTYONE_MEDIA_CACHE_DIR=/path/for/media-cache
-    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=137438953472
+    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=34359738368  # 32GB
+    export FIFTYONE_MEDIA_CACHE_DOWNLOAD_SIZE_BYTES=134217728  # 128MB
     export FIFTYONE_MEDIA_CACHE_NUM_WORKERS=16
     export FIFTYONE_MEDIA_CACHE_APP_IMAGES=false
 
@@ -102,7 +104,8 @@ that contains any of the following keys (default values shown):
 
     {
         "cache_dir": "/path/for/media-cache",
-        "cache_size_bytes": 137438953472,
+        "cache_size_bytes": 34359738368,
+        "download_size_bytes": 134217728,
         "num_workers": 16,
         "cache_app_images": false
     }
@@ -178,12 +181,23 @@ when iterating over samples in a collection:
 
     dataset = fo.load_dataset("a-teams-dataset")
 
-    # Pre-download in batches of 50
-    with dataset.download_context(batch_size=50):
+    # Download media using the default batching strategy
+    with dataset.download_context():
         for sample in dataset:
             sample.local_path  # already downloaded
 
-This context provides a middle ground between the two extremes:
+    # Download media in batches of 50MB
+    with dataset.download_context(target_size_bytes=50 * 1024**2):
+        for sample in dataset:
+            sample.local_path  # already downloaded
+
+.. note::
+
+    You can configure the default size of each download batch via the
+    ``download_size_bytes`` parameter of your
+    :ref:`media cache config <teams-media-cache-config>`.
+
+Download contexts provide a middle ground between the two extremes:
 
 .. code-block:: python
     :linenos:
@@ -385,7 +399,12 @@ _____________
 .. code-block:: python
 
     fo.Dataset.download_media(
-        self, media_fields=None, update=False, skip_failures=True
+        self,
+        media_fields=None,
+        group_slices=None,
+        update=False,
+        skip_failures=True,
+        progress=None,
     ):
         """Downloads the source media files for all samples in the collection.
 
@@ -398,28 +417,58 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices for which
+                to download media. Only applicable when the collection contains
+                groups
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
         """
 
 .. code-block:: python
 
     fo.Dataset.download_context(
-        self, batch_size=100, clear=False, quiet=None, **kwargs
+        self,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        group_slices=None,
+        update=False,
+        skip_failures=True,
+        clear=False,
+        progress=None,
     ):
-        """Returns a context that can be used to automatically pre-download
-        media when iterating over samples in this collection.
+        """Returns a context that can be used to pre-download media in batches
+        when iterating over samples in this collection.
+
+        If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+        downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
 
         Args:
-            batch_size (100): the sample batch size to use when downloading
-                media
+            batch_size (None): a sample batch size to use for each download
+            target_size_bytes (None): a target content size, in bytes, for each
+                download batch. If negative, all media is downloaded in one
+                batch
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices to download
+                media for. Only applicable when the collection contains groups
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
             clear (False): whether to clear the media from the cache when the
                 context exits
-            quiet (None): whether to display (False) or not display (True) a
-                progress bar tracking the status of any downloads. By default,
-                ``fiftyone.config.show_progress_bars`` is used to set this
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
             **kwargs: valid keyword arguments for :meth:`download_media`
 
         Returns:
@@ -429,7 +478,11 @@ _____________
 .. code-block:: python
 
     fo.Dataset.get_local_paths(
-        self, media_field="filepath", download=True, skip_failures=True
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+        progress=None,
     ):
         """Returns a list of local paths to the media files in this collection.
 
@@ -440,6 +493,10 @@ _____________
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
 
         Returns:
             a list of local filepaths
@@ -447,7 +504,7 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.cache_stats(self, media_fields=None):
+    fo.Dataset.cache_stats(self, media_fields=None, group_slices=None):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
@@ -457,6 +514,8 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 paths. By default, all media fields in the collection's
                 :meth:`app_config` are included
+            group_slices (None): an optional subset of group slices to include.
+                Only applicable when the collection contains groups
 
         Returns:
             a stats dict
@@ -464,7 +523,7 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.clear_media(self, media_fields=None):
+    fo.Dataset.clear_media(self, media_fields=None, group_slices=None):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
@@ -474,6 +533,9 @@ _____________
             media_fields (None): a field or iterable of fields containing media
                 paths to clear from the cache. By default, all media fields
                 in the collection's :meth:`app_config` are cleared
+            group_slices (None): an optional subset of group slices for which
+                to clear media. Only applicable when the collection contains
+                groups
         """
 
 `fiftyone.core.storage`
@@ -515,7 +577,7 @@ _____________
 
 .. code-block:: python
 
-    fos.copy_files(inpaths, outpaths, skip_failures=False, progress=False):
+    fos.copy_files(inpaths, outpaths, skip_failures=False, progress=None):
         """Copies the files to the given locations.
 
         Args:
@@ -523,13 +585,14 @@ _____________
             outpaths: a list of output paths
             skip_failures (False): whether to gracefully continue without
                 raising an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the
-                status of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
 
-    fos.move_files(inpaths, outpaths, skip_failures=False, progress=False):
+    fos.move_files(inpaths, outpaths, skip_failures=False, progress=None):
         """Moves the files to the given locations.
 
         Args:
@@ -537,13 +600,14 @@ _____________
             outpaths: a list of output paths
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
 
-    fos.delete_files(paths, skip_failures=False, progress=False):
+    fos.delete_files(paths, skip_failures=False, progress=None):
         """Deletes the files from the given locations.
 
         For local paths, any empty directories are also recursively deleted from
@@ -553,8 +617,9 @@ _____________
             paths: a list of paths
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
@@ -568,7 +633,7 @@ _____________
         cache=False,
         overwrite=False,
         skip_failures=False,
-        progress=False,
+        progress=None,
     ):
         """Uploads the source media files for the given collection to the given
         remote directory.
@@ -597,8 +662,9 @@ _____________
                 remote files
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the upload
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
 
         Returns:
             the list of remote paths
@@ -652,16 +718,44 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
     The cloud manifest file must contain all media files in the sample
     collection being annotated.
 
+.. _teams-annotating-cloud-media-v7:
+
+Annotating cloud-backed datasets with V7 Darwin
+_______________________________________________
+
+When using FiftyOne to :ref:`annotate data with V7 Darwin <v7-integration>`,
+you can optionally follow the instructions below to instruct V7 to load media
+directly from S3, GCS, or Azure buckets rather than the default behavior of
+uploading copies of the media from your local machine.
+
+First, follow
+`these instructions <https://docs.v7labs.com/docs/external-storage-configuration>`_
+to configure external storage for V7. Then, simply provide the
+`external_storage` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+specify the sluggified external storage name:
+
+.. code-block:: python
+    :linenos:
+
+    anno_key = "cloud_annotations"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        external_storage="example-darwin-storage-slug",
+        ...
+    )
+
 .. _teams-annotating-cloud-media-labelbox:
 
 Annotating cloud-backed datasets with Labelbox
 ______________________________________________
 
 When using FiftyOne to
-:ref:`annotate data with Labelbox <labelbox-integration>`,
-you can optionally follow the instructions below to instruct Labelbox to load media
-directly from S3 rather than the default behavior of uploading copies of the
-media.
+:ref:`annotate data with Labelbox <labelbox-integration>`, you can optionally
+follow the instructions below to instruct Labelbox to load media directly from
+S3 rather than the default behavior of uploading copies of the media.
 
 This assumes that you have configured the
 `S3 integration for Labelbox <https://docs.labelbox.com/docs/import-aws-s3-data>`_.

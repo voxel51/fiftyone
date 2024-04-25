@@ -17,6 +17,13 @@ let theme = extendMuiTheme({
   cssVarPrefix: "fo",
   typography: {
     fontFamily: "Palanquin, sans-serif",
+    button: {
+      textTransform: "none",
+    },
+  },
+  zIndex: {
+    // Samples modal zIndex is set to 1000
+    operatorPalette: 1001,
   },
   colorSchemes: {
     light: {
@@ -171,6 +178,22 @@ let theme = extendMuiTheme({
         disableRipple: true,
       },
     },
+    MuiModal: {
+      styleOverrides: {
+        root: {
+          // Relative to MuiMenu. Without it, Playwright will not be
+          // able to click on Mui-Select component without force=true
+          zIndex: 99,
+        },
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          zIndex: 999,
+        },
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
@@ -190,6 +213,15 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          "&:hover": {
+            backgroundColor: dynamicTheme("palette.background.level2"),
+          },
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
@@ -201,6 +233,10 @@ let theme = extendMuiTheme({
 
 export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
+};
+
+export const useFont = () => {
+  return theme.typography.fontFamily;
 };
 
 const ThemeProvider: React.FC<
@@ -220,32 +256,3 @@ const ThemeProvider: React.FC<
 };
 
 export default ThemeProvider;
-
-// DEPRECATED
-import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
-
-export const joyTheme = extendJoyTheme({
-  colorSchemes: {
-    dark: theme.colorSchemes.dark,
-    light: theme.colorSchemes.light,
-  },
-  fontFamily: {
-    body: "Palanquin, sans-serif",
-  },
-  opacity: {
-    inputPlaceholder: 0.5,
-  },
-});
-
-export const JoyThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  const current = useRecoilValue(fos.theme);
-  return (
-    <LegacyTheme.Provider value={joyTheme.colorSchemes[current].palette}>
-      <CssVarsProvider theme={joyTheme} defaultMode={current}>
-        {children}
-      </CssVarsProvider>
-    </LegacyTheme.Provider>
-  );
-};

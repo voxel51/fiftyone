@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { isMatchingAtom, stringExcludeAtom } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { atomFamily, selectorFamily } from "recoil";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
@@ -13,18 +14,49 @@ export const stringSearch = atomFamily<
   default: "",
 });
 
+const pathSearchFilters = selectorFamily({
+  key: "pathSearchFilters",
+  get:
+    ({ modal, path }: { modal: boolean; path: string }) =>
+    ({ get }) => {
+      const filters = { ...get(modal ? fos.modalFilters : fos.filters) };
+
+      // omit the path being searched, but include coinciding filters
+      delete filters[path];
+
+      return filters;
+    },
+});
+
+export const pathSearchCount = selectorFamily({
+  key: "pathSearchCount",
+  get:
+    ({ modal, path, value }: { modal: boolean; path: string; value: string }) =>
+    ({ get }) => {
+      return (
+        get(
+          stringSearchResults({
+            modal,
+            path,
+            filter: { path, value },
+          })
+        )?.values?.[0]?.count || 0
+      );
+    },
+});
+
 export const stringSearchResults = selectorFamily<
   {
     values?: Result[];
     count?: number;
   },
-  { path: string; modal: boolean }
+  { path: string; modal: boolean; filter?: { path: string; value: string } }
 >({
   key: "stringSearchResults",
   get:
-    ({ path, modal }) =>
+    ({ path, modal, filter }) =>
     async ({ get }) => {
-      const search = get(stringSearch({ modal, path }));
+      const search = filter ? "" : get(stringSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
       const mixed = get(fos.groupStatistics(modal)) === "group";
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
@@ -61,8 +93,16 @@ export const stringSearchResults = selectorFamily<
           view: get(fos.view),
           path,
           search,
-          selected,
-          filters: !modal ? get(fos.lightningFilters) : null,
+          selected: filter ? [] : selected,
+          filters: filter
+            ? {
+                [filter.path]: {
+                  exclude: get(stringExcludeAtom({ path, modal })),
+                  isMatching: get(isMatchingAtom({ path, modal })),
+                  values: [filter.value],
+                },
+              }
+            : get(pathSearchFilters({ modal, path })),
           group_id: modal ? get(fos.groupId) || null : null,
           mixed,
           slice: get(fos.groupSlice),

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
@@ -11,7 +11,6 @@ import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
-  _cls: "Detection";
   mask?: {
     data: OverlayMask;
     image: ArrayBuffer;
@@ -169,6 +168,10 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+    if (!this.canvas) {
+      return;
+    }
+
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;

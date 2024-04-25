@@ -117,7 +117,7 @@ description, and tags for the dataset:
 
 .. note::
 
-   A dataset's name, desription, and tags can be edited later from the
+   A dataset's name, description, and tags can be edited later from the
    dataset's :ref:`Manage tab <teams-managing-datasets>`.
 
 .. image:: /images/teams/create_dataset.png

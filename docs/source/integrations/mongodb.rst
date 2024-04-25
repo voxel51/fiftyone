@@ -134,15 +134,8 @@ and following the instructions there to configure your cluster.
     create vector search indexes
     (`source <https://www.mongodb.com/docs/manual/release-notes/7.0/#atlas-search-index-management>`_).
 
-    Or, if you are willing to :ref:`manually create <mongodb-manual-index>` the
-    vector search index, you can use MongoDB Atlas 6.0.11
-    (`source <https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview>`_).
-
-    As of this writing, Atlas' shared tier (M0, M2, M5) is running MongoDB 6.
-    So, if you want to use this feature for free (M0), you'll have to manually
-    create vector search indexes as described
-    :ref:`here <mongodb-manual-index>`. In order to use MongoDB 7, you must
-    upgrade to an M10 cluster, which starts at $0.08/hour.
+    As of this writing, Atlas' shared tier (M0, M2, M5) is running MongoDB 6. In order 
+    to use MongoDB 7, you must upgrade to an M10 cluster, which starts at $0.08/hour.
 
 Configuring your connection string
 ----------------------------------
@@ -611,6 +604,12 @@ stage to any dataset or view. The query can be any of the following:
     :ref:`constructing views <using-views>` that contain the images of
     interest.
 
+.. note::
+
+    Currently, when performing a similarity search on a view with the MongoDB backend,
+    the full index is queried and the resulting samples are restricted to the desired view. 
+    This may result in fewer samples than requested being returned by the search.
+
 .. _mongodb-index-ready:
 
 Checking if an index is ready
@@ -639,73 +638,6 @@ created vector search index is ready for querying:
     # Wait for the index to be ready for querying...
     assert mongodb_index.ready
 
-.. _mongodb-manual-index:
-
-Manually creating a vector search index
----------------------------------------
-
-If you are running MongoDB Atlas 6.0.11, you must manually create your vector
-search indexes in Atlas prior to using them.
-
-First add embeddings to your dataset:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    # Store embeddings in the `embeddings` field of the dataset
-    # Note that MongoDB vector indexes require list fields
-    model = foz.load_zoo_model("clip-vit-base32-torch")
-    embeddings = dataset.compute_embeddings(model)
-    dataset.set_values("embeddings", embeddings.tolist())
-
-Now create a
-`vector search index <https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector>`_
-on the `embeddings` field by pasting the following definition into the Atlas
-UI's JSON editor:
-
-.. code:: json
-    :linenos:
-
-    {
-      "mappings": {
-        "name": "embeddings-index",
-        "dynamic": true,
-        "fields": {
-          "embeddings": {
-            "type": "knnVector",
-            "dimensions": 512,
-            "similarity": "cosine"
-          }
-        }
-      }
-    }
-
-Now we can define the similarity index in FiftyOne:
-
-.. code:: python
-    :linenos:
-
-    index = fob.compute_similarity(
-        dataset,
-        model="clip-vit-base32-torch",
-        backend="mongodb",
-        brain_key="img_sim",
-        embeddings="embeddings",        # the field that contains the embeddings
-        index_name="embeddings-index",  # the name of the vector search index
-    )
-
-    print(index.total_index_size)  # 200
-
-    # Wait for index to be ready for querying...
-    assert mongodb_index.ready
-
-    view = dataset.sort_by_similarity("kites high in the sky", k=5)
 
 .. _mongodb-advanced-usage:
 

@@ -235,7 +235,7 @@ Alternatively, you can more permanently configure your backend(s) via your
 Annotation config
 _________________
 
-FiftyOne provides an annnotation config that you can use to either temporarily
+FiftyOne provides an annotation config that you can use to either temporarily
 or permanently configure the behavior of the annotation API.
 
 Viewing your config
@@ -331,7 +331,7 @@ server without changing any other default config settings:
     }
 
 When `fiftyone` is imported, any options from your JSON config are merged into
-the default config, as per the order of precendence described above.
+the default config, as per the order of precedence described above.
 
 .. note::
 
@@ -746,8 +746,8 @@ types like lists, dictionaries, and arrays will be omitted.
 Restricting additions, deletions, and edits
 -------------------------------------------
 
-When you create annotation runs that invovle editing existing label fields, you
-can optionally specify that certain changes are not alllowed by passing the
+When you create annotation runs that involve editing existing label fields, you
+can optionally specify that certain changes are not allowed by passing the
 following flags to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
 

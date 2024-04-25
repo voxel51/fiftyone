@@ -1,10 +1,11 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import collections
 import inspect
@@ -17,12 +18,14 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.operators.decorators import coroutine_timeout
+from fiftyone.operators.message import GeneratedMessage, MessageType
+from fiftyone.operators.operations import Operations
+from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
-import fiftyone.server.view as fosv
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
-from .decorators import coroutine_timeout
-from .message import GeneratedMessage, MessageType
-from .registry import OperatorRegistry
+import fiftyone.server.view as fosv
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,20 +141,33 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             as keyword arguments rather than including them in ``ctx``
 
     Returns:
-        an :class:`ExecutionResult`
+        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+        method in a notebook context
 
     Raises:
         ExecutionError: if an error occurred while immediately executing an
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
-
-    result = asyncio.run(
-        execute_or_delegate_operator(
-            operator_uri, request_params, exhaust=True
-        )
+    coroutine = execute_or_delegate_operator(
+        operator_uri, request_params, exhaust=True
     )
-    result.raise_exceptions()
+
+    try:
+        # Some contexts like notebooks already have event loops running, so we
+        # must use the existing loop
+        loop = asyncio.get_running_loop()
+    except:
+        loop = None
+
+    if loop is not None:
+        # @todo is it possible to await result here?
+        # Sadly, run_until_complete() is not allowed in Jupyter notebooks
+        # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
+        result = loop.create_task(coroutine)
+    else:
+        result = asyncio.run(coroutine)
+        result.raise_exceptions()
 
     return result
 
@@ -320,7 +336,7 @@ async def do_execute_operator(operator, ctx, exhaust=False):
         return result
 
 
-def resolve_type(registry, operator_uri, request_params):
+async def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
@@ -341,6 +357,7 @@ def resolve_type(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -349,7 +366,7 @@ def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_execution_options(registry, operator_uri, request_params):
+async def resolve_execution_options(registry, operator_uri, request_params):
     """Resolves the execution options of the operator with the given name.
 
     Args:
@@ -369,6 +386,7 @@ def resolve_execution_options(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_execution_options(ctx)
     except Exception as e:
@@ -429,6 +447,7 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
+        self._ops = Operations(self)
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -487,19 +506,50 @@ class ExecutionContext(object):
 
         # Always derive the view from the context's dataset
         dataset = self.dataset
+        view_name = self.request_params.get("view_name", None)
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
-        self._view = fosv.get_view(
-            dataset,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended,
-            reload=False,
-        )
+        if dataset is None:
+            return None
+
+        if view_name is None:
+            self._view = fosv.get_view(
+                dataset,
+                stages=stages,
+                filters=filters,
+                extended_stages=extended,
+                reload=False,
+            )
+        else:
+            self._view = dataset.load_saved_view(view_name)
 
         return self._view
+
+    def target_view(self, param_name="view_target"):
+        """The target :class:`fiftyone.core.view.DatasetView` for the operator
+        being executed.
+        """
+        target = self.params.get(param_name, None)
+        if target == "SELECTED_SAMPLES":
+            return self.view.select(self.selected)
+        if target == "DATASET":
+            return self.dataset
+        return self.view
+
+    @property
+    def has_custom_view(self):
+        """Whether the operator has a custom view."""
+        stages = self.request_params.get("view", None)
+        filters = self.request_params.get("filters", None)
+        extended = self.request_params.get("extended", None)
+        has_stages = stages is not None and stages != [] and stages != {}
+        has_filters = filters is not None and filters != [] and filters != {}
+        has_extended = (
+            extended is not None and extended != [] and extended != {}
+        )
+        return has_stages or has_filters or has_extended
 
     @property
     def selected(self):
@@ -558,6 +608,13 @@ class ExecutionContext(object):
             resolver_fn=self._secrets_client.get_secret_sync,
             required_keys=self._required_secret_keys,
         )
+
+    @property
+    def ops(self):
+        """A :class:`fiftyone.operators.operations.Operations` instance that
+        you can use to trigger builtin operations on the current context.
+        """
+        return self._ops
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -747,9 +804,9 @@ class ExecutionResult(object):
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
             "delegated": self.delegated,
-            "validation_ctx": self.validation_ctx.to_json()
-            if self.validation_ctx
-            else None,
+            "validation_ctx": (
+                self.validation_ctx.to_json() if self.validation_ctx else None
+            ),
         }
 
 

@@ -1,9 +1,13 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import {
-  DYNAMIC_EMBEDDED_DOCUMENT,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
+  getCls,
+  getFieldInfo,
   LABEL_LISTS_MAP,
+  Schema,
 } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
@@ -21,11 +25,13 @@ import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
-const fromLabel = (overlayType) => (field, label) =>
-  [new overlayType(field, label)];
+export type { PointInfo } from "./base";
 
-const fromLabelList = (overlayType, list_key) => (field, labels) =>
-  labels[list_key].map((label) => new overlayType(field, label));
+export const fromLabel = (overlayType) => (field, label) =>
+  label ? [new overlayType(field, label)] : [];
+
+export const fromLabelList = (overlayType, list_key) => (field, labels) =>
+  labels?.[list_key].map((label) => new overlayType(field, label)) ?? [];
 
 export { ClassificationsOverlay };
 
@@ -41,23 +47,26 @@ export const FROM_FO = {
 };
 
 export const POINTS_FROM_FO = {
-  Detection: (label) => getDetectionPoints([label]),
-  Detections: (label) => getDetectionPoints(label.detections),
-  Heatmap: (label) => getHeatmapPoints([label]),
-  Keypoint: (label) => getKeypointPoints([label]),
-  Keypoints: (label) => getKeypointPoints(label.keypoints),
-  Polyline: (label) => getPolylinePoints([label]),
-  Poylines: (label) => getPolylinePoints(label.polylines),
-  Segmentation: (label) => getSegmentationPoints([label]),
+  Detection: (label) => getDetectionPoints(label ? [label] : []),
+  Detections: (label) => getDetectionPoints(label?.detections ?? []),
+  Heatmap: (label) => getHeatmapPoints(label ? [label] : []),
+  Keypoint: (label) => getKeypointPoints(label ? [label] : []),
+  Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
+  Polyline: (label) => getPolylinePoints(label ? [label] : []),
+  Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
+  Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
 };
+
+const LABEL_LISTS = LABEL_LISTS_MAP;
 
 export const loadOverlays = <State extends BaseState>(
   sample: {
     [key: string]: any;
   },
+  schema: Schema,
   video = false
 ): Overlay<State>[] => {
-  const { classifications, overlays } = accumulateOverlays(sample);
+  const { classifications, overlays } = accumulateOverlays(sample, schema);
 
   if (classifications.length > 0) {
     const overlay = video
@@ -69,11 +78,18 @@ export const loadOverlays = <State extends BaseState>(
   return overlays;
 };
 
+const TAGS = new Set(LABEL_TAGS_CLASSES);
+
+const EMBEDDED_FIELDS = Object.freeze(
+  new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD])
+);
+
 const accumulateOverlays = <State extends BaseState>(
   data: {
     [key: string]: any;
   },
-  prefix = "",
+  schema: Schema,
+  prefix = [],
   depth = 1
 ): {
   classifications: Labels<TemporalDetectionLabel | ClassificationLabel>;
@@ -88,27 +104,31 @@ const accumulateOverlays = <State extends BaseState>(
       continue;
     }
 
-    if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
-      const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
-      classifications.push(...nestedResult.classifications);
-      overlays.push(...nestedResult.overlays);
+    const path = [...prefix, field].join(".");
+    const fieldInfo = getFieldInfo(path, schema);
+    const docType = getCls(path, schema);
+
+    if (docType in FROM_FO) {
+      overlays.push(...FROM_FO[docType](path, label));
+      continue;
+    }
+    if (TAGS.has(docType)) {
+      classifications.push([
+        path,
+        docType in LABEL_LISTS ? label[LABEL_LISTS[docType]] : [label],
+      ]);
       continue;
     }
 
-    if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](
-        `${prefix}${field}`,
+    if (depth && EMBEDDED_FIELDS.has(fieldInfo?.ftype)) {
+      const nestedResult = accumulateOverlays(
         label,
-        this
+        schema,
+        [...prefix, field],
+        depth - 1
       );
-      overlays.push(...labelOverlays);
-    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
-      classifications.push([
-        `${prefix}${field}`,
-        label._cls in LABEL_LISTS_MAP
-          ? label[LABEL_LISTS_MAP[label._cls]]
-          : [label],
-      ]);
+      classifications.push(...nestedResult.classifications);
+      overlays.push(...nestedResult.overlays);
     }
   }
 

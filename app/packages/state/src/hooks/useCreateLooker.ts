@@ -3,8 +3,8 @@ import {
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
-  PcdLooker,
   Sample,
+  ThreeDLooker,
   VideoLooker,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
@@ -14,6 +14,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
+  isNullish,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRef } from "react";
@@ -81,7 +82,7 @@ export default <T extends AbstractLooker>(
           | typeof FrameLooker
           | typeof ImageLooker
           | typeof ImaVidLooker
-          | typeof PcdLooker
+          | typeof ThreeDLooker
           | typeof VideoLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
@@ -91,10 +92,12 @@ export default <T extends AbstractLooker>(
         // todo: investigate why this is the case
         const urls = getStandardizedUrls(rawUrls);
 
-        // checking for pcd extension instead of media_type because this also applies for group slices
         // split("?")[0] is to remove query params, if any, from signed urls
-        if (urls.filepath?.split("?")[0].endsWith(".pcd")) {
-          constructor = PcdLooker;
+        const filePath =
+          urls.filepath?.split("?")[0] ?? (sample.filepath as string);
+
+        if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
+          constructor = ThreeDLooker;
         } else if (mimeType !== null) {
           const isVideo = mimeType.startsWith("video/");
 
@@ -113,22 +116,6 @@ export default <T extends AbstractLooker>(
           constructor = ImageLooker;
         }
 
-        let sampleMediaFilePath = urls[mediaField];
-
-        if (constructor === PcdLooker) {
-          const orthographicProjectionField = Object.entries(sample)
-            .find(
-              (el) =>
-                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
-            )
-            ?.at(0) as string | undefined;
-          if (orthographicProjectionField) {
-            sampleMediaFilePath = urls[
-              `${orthographicProjectionField}.filepath`
-            ] as string;
-          }
-        }
-
         let config: ConstructorParameters<T>[1] = {
           fieldSchema: {
             ...fieldSchema,
@@ -145,13 +132,38 @@ export default <T extends AbstractLooker>(
           frameNumber: constructor === FrameLooker ? frameNumber : undefined,
           frameRate,
           sampleId: sample._id,
-          src: getSampleSrc(sampleMediaFilePath),
           support: isClip ? sample["support"] : undefined,
           dataset,
           mediaField,
           thumbnail,
           view,
         };
+
+        let sampleMediaFilePath = urls[mediaField];
+        if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
+          sampleMediaFilePath = urls["filepath"];
+        }
+
+        if (constructor === ThreeDLooker) {
+          config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");
+
+          const orthographicProjectionField = Object.entries(sample)
+            .find(
+              (el) =>
+                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+            )
+            ?.at(0) as string | undefined;
+          if (orthographicProjectionField) {
+            sampleMediaFilePath = urls[
+              `${orthographicProjectionField}.filepath`
+            ] as string;
+            config.isOpmAvailable = true;
+          } else {
+            config.isOpmAvailable = false;
+          }
+        }
+
+        config.src = getSampleSrc(sampleMediaFilePath);
 
         if (sample.group?.name) {
           config.group = {
@@ -164,15 +176,21 @@ export default <T extends AbstractLooker>(
           const { groupBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
             .valueMaybe();
-          const groupByFieldValue = String(
-            get(sample, getSanitizedGroupByExpression(groupBy))
+          const groupByFieldValue = get(
+            sample,
+            getSanitizedGroupByExpression(groupBy)
           );
+          const groupByFieldValueTransformed = groupByFieldValue
+            ? String(groupByFieldValue)
+            : null;
 
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount(groupByFieldValue)
+            dynamicGroupsElementCount(groupByFieldValueTransformed)
           );
           const page = snapshot
-            .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
+            .getLoadable(
+              groupAtoms.dynamicGroupPageSelector(groupByFieldValueTransformed)
+            )
             .valueMaybe();
 
           const firstFrameNumber = isModal
@@ -183,7 +201,10 @@ export default <T extends AbstractLooker>(
 
           const imavidKey = snapshot
             .getLoadable(
-              groupAtoms.imaVidStoreKey({ groupByFieldValue, modal: isModal })
+              groupAtoms.imaVidStoreKey({
+                groupByFieldValue: groupByFieldValueTransformed,
+                modal: isModal,
+              })
             )
             .valueOrThrow();
 

@@ -1,7 +1,7 @@
 """
 FiftyOne Server JIT metadata utilities
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -42,13 +42,14 @@ class MediaType(Enum):
     image = "image"
     group = "group"
     point_cloud = "point-cloud"
+    three_d = "3d"
     video = "video"
 
 
 async def get_metadata(
     collection: SampleCollection,
     sample: t.Dict,
-    media_type: t.Dict[str, t.Dict],
+    media_type: str,
     metadata_cache: t.Dict[str, t.Dict[str, str]],
     url_cache: t.Dict[str, str],
 ):
@@ -70,6 +71,7 @@ async def get_metadata(
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
         sample,
+        media_type,
         url_cache,
         additional_fields=additional_fields,
         opm_field=opm_field,
@@ -289,7 +291,7 @@ async def get_image_dimensions(input):
             height = abs(int(h))
         else:
             raise MetadataException(
-                "Unkown DIB header size: %s" % str(headersize)
+                "Unknown DIB header size: %s" % str(headersize)
             )
     elif (size >= 8) and data[:4] in (b"II\052\000", b"MM\000\052"):
         # Standard TIFF, big- or little-endian
@@ -381,6 +383,7 @@ class FFmpegNotFoundException(RuntimeError):
 def _create_media_urls(
     collection: SampleCollection,
     sample: t.Dict,
+    sample_media_type: str,
     cache: t.Dict,
     additional_fields: t.Optional[t.List[str]] = None,
     opm_field: t.Optional[str] = None,
@@ -391,10 +394,14 @@ def _create_media_urls(
     if additional_fields is not None:
         media_fields.extend(additional_fields)
 
-    use_opm = (
-        collection.media_type == fom.POINT_CLOUD
-        or collection.media_type == fom.GROUP
-    )
+    if (
+        sample_media_type == fom.POINT_CLOUD
+        or sample_media_type == fom.THREE_D
+    ):
+        use_opm = True
+    else:
+        use_opm = False
+
     opm_filepath = (
         f"{opm_field}.{_ADDITIONAL_MEDIA_FIELDS[OrthographicProjectionMetadata]}"
         if use_opm

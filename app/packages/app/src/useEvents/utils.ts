@@ -1,5 +1,5 @@
 import { ColorSchemeInput, subscribeBefore } from "@fiftyone/relay";
-import { ensureColorScheme, Session, State } from "@fiftyone/state";
+import { Session, State, ensureColorScheme } from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
@@ -34,7 +34,6 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
-
     session.sessionPage = parseInt(params.get("page") || "") || 0;
 
     unsubscribe();
@@ -44,7 +43,8 @@ export const processState = (
     return { view: [], fieldVisibility: undefined };
   }
   return {
-    view: state.view || [],
     fieldVisibility: state.field_visibility_stage,
+    view: state.view || [],
+    workspace: state.spaces,
   };
 };

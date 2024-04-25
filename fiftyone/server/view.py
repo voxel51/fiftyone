@@ -1,10 +1,11 @@
 """
 FiftyOne Server view.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from typing import List, Optional
 
 from bson import ObjectId
@@ -20,7 +21,7 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
 
@@ -54,9 +55,7 @@ async def load_view(
                 stages=serialized_view,
                 filters=form.filters,
                 sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slices=[form.slice] if form.slice else None
-                    )
+                    group=GroupElementFilter(slice=form.slice)
                 ),
             )
 
@@ -65,6 +64,7 @@ async def load_view(
 
             if form.mixed and view.media_type == fom.GROUP:
                 view = view.select_group_slices(_force_mixed=True)
+                view = get_extended_view(view, form.filters)
 
             return view
 
@@ -80,6 +80,7 @@ def get_view(
     extended_stages=None,
     sample_filter=None,
     reload=True,
+    awaitable=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -93,60 +94,52 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        reload (None): whether to reload the dataset
+        reload (True): whether to reload the dataset
+        awaitable (False): whether to return an awaitable coroutine
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    if isinstance(dataset, str):
-        dataset = fod.load_dataset(dataset)
 
-    if reload:
-        dataset.reload()
+    def run(dataset, stages):
+        if isinstance(dataset, str):
+            dataset = fod.load_dataset(dataset)
 
-    if view_name is not None:
-        return dataset.load_saved_view(view_name)
+        if reload:
+            dataset.reload()
 
-    if stages:
-        view = fov.DatasetView._build(dataset, stages)
-    else:
-        view = dataset.view()
+        if view_name is not None:
+            return dataset.load_saved_view(view_name)
 
-    if sample_filter is not None:
-        if sample_filter.group:
-            if sample_filter.group.slice:
-                view.group_slice = sample_filter.group.slice
+        if stages:
+            view = fov.DatasetView._build(dataset, stages)
+        else:
+            view = dataset.view()
 
-            if sample_filter.group.id:
-                view = fov.make_optimized_select_view(
-                    view, sample_filter.group.id, groups=True
-                )
-            if sample_filter.group.slices:
-                view = view.select_group_slices(
-                    sample_filter.group.slices,
-                    _force_mixed=len(sample_filter.group.slices) > 1,
-                )
+        if sample_filter is not None:
+            if sample_filter.group:
+                view = handle_group_filter(dataset, view, sample_filter.group)
 
-        elif sample_filter.id:
-            view = fov.make_optimized_select_view(view, sample_filter.id)
+            elif sample_filter.id:
+                view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view)
+        if filters or extended_stages or pagination_data:
+            view = get_extended_view(
+                view,
+                filters,
+                pagination_data=pagination_data,
+                extended_stages=extended_stages,
+            )
 
-    if filters or extended_stages or pagination_data:
-        view = get_extended_view(
-            view,
-            filters,
-            pagination_data=pagination_data,
-            extended_stages=extended_stages,
-        )
-    return view
+        return view
+
+    if awaitable:
+        return fou.run_sync_task(run, dataset, stages)
+
+    return run(dataset, stages)
 
 
 def get_extended_view(
@@ -169,7 +162,12 @@ def get_extended_view(
     label_tags = None
 
     if extended_stages:
+        # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
+
+    if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view)
 
     if filters:
         if "tags" in filters:
@@ -212,6 +210,57 @@ def extend_view(view, extended_stages):
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": _cls, "kwargs": kwargs})
         view = view.add_stage(stage)
+
+    return view
+
+
+def handle_group_filter(
+    dataset: fod.Dataset,
+    view: foc.SampleCollection,
+    filter: GroupElementFilter,
+) -> fov.DatasetView:
+    """Handle a group filter for App view requests.
+
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset`
+        view: the base :class:`fiftyone.core.collections.SampleCollection`
+        filter: the :class:`fiftyone.server.aggregations.GroupElementFilter`
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView` with a group or slice
+        selection
+    """
+    stages = view._stages
+    group_field = dataset.group_field
+
+    unselected = not any(
+        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
+    )
+    if unselected and filter.slice:
+        # flatten the collection if the view has no slice(s) selected
+        view = dataset.select_group_slices(_force_mixed=True)
+
+        if filter.id:
+            # use 'match' to select a group by 'id'
+            view = view.match(
+                {group_field + "._id": {"$in": [ObjectId(filter.id)]}}
+            )
+
+        for stage in stages:
+            # add stages after flattening and group match
+            view = view._add_view_stage(stage, validate=False)
+
+    else:
+        if filter.slice:
+            view.group_slice = filter.slice
+
+        if filter.id:
+            view = fov.make_optimized_select_view(view, filter.id, groups=True)
+
+    if filter.slices:
+        # use 'match' to select requested slices, and avoid media type
+        # validation
+        view = view.match({group_field + ".name": {"$in": filter.slices}})
 
     return view
 
@@ -705,10 +754,12 @@ def _count_list_items(path, view):
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):
     label_paths = [
-        f"{path}.{field.document_type._LABEL_LIST_FIELD}"
-        if isinstance(field, fof.EmbeddedDocumentField)
-        and issubclass(field.document_type, fol._HasLabelList)
-        else path
+        (
+            f"{path}.{field.document_type._LABEL_LIST_FIELD}"
+            if isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+            else path
+        )
         for path, field in foc._iter_label_fields(view)
     ]
     values = label_tags["values"]

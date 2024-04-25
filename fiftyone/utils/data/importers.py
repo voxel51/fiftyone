@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,8 +27,8 @@ import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
 from fiftyone.core.sample import Sample
@@ -57,6 +57,7 @@ def import_samples(
     expand_schema=True,
     dynamic=False,
     add_info=True,
+    progress=None,
 ):
     """Adds the samples from the given :class:`DatasetImporter` to the dataset.
 
@@ -87,6 +88,9 @@ def import_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if
             any) to the dataset
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -114,7 +118,9 @@ def import_samples(
             )
 
         with dataset_importer:
-            return dataset_importer.import_samples(dataset, tags=tags)
+            return dataset_importer.import_samples(
+                dataset, tags=tags, progress=progress
+            )
 
     #
     # Non-batch imports
@@ -130,11 +136,6 @@ def import_samples(
             dynamic,
         )
 
-        try:
-            num_samples = len(dataset_importer)
-        except:
-            num_samples = None
-
         if isinstance(dataset_importer, GroupDatasetImporter):
             samples = _generate_group_samples(dataset_importer, parse_sample)
         else:
@@ -144,7 +145,8 @@ def import_samples(
             samples,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            num_samples=num_samples,
+            progress=progress,
+            num_samples=dataset_importer,
         )
 
         if add_info and dataset_importer.has_dataset_info:
@@ -174,6 +176,7 @@ def merge_samples(
     expand_schema=True,
     dynamic=False,
     add_info=True,
+    progress=None,
 ):
     """Merges the samples from the given :class:`DatasetImporter` into the
     dataset.
@@ -265,6 +268,9 @@ def merge_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if any)
             to the dataset
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if etau.is_str(tags):
         tags = [tags]
@@ -282,7 +288,9 @@ def merge_samples(
 
         try:
             with dataset_importer:
-                dataset_importer.import_samples(tmp, tags=tags)
+                dataset_importer.import_samples(
+                    tmp, tags=tags, progress=progress
+                )
 
             dataset.merge_samples(
                 tmp,
@@ -317,11 +325,6 @@ def merge_samples(
             dynamic,
         )
 
-        try:
-            num_samples = len(dataset_importer)
-        except:
-            num_samples = None
-
         if isinstance(dataset_importer, GroupDatasetImporter):
             samples = _generate_group_samples(dataset_importer, parse_sample)
         else:
@@ -339,7 +342,8 @@ def merge_samples(
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
-            num_samples=num_samples,
+            progress=progress,
+            num_samples=dataset_importer,
         )
 
         if add_info and dataset_importer.has_dataset_info:
@@ -982,12 +986,15 @@ class BatchDatasetImporter(DatasetImporter):
     def has_dataset_info(self):
         return False
 
-    def import_samples(self, dataset, tags=None):
+    def import_samples(self, dataset, tags=None, progress=None):
         """Imports the samples into the given dataset.
 
         Args:
             dataset: a :class:`fiftyone.core.dataset.Dataset`
             tags (None): an optional list of tags to attach to each sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -1444,6 +1451,8 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
             runs in the import. Only applicable when importing full datasets
+        import_workspaces (True): whether to include saved workspaces in the
+            import. Only applicable when importing full datasets
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1457,6 +1466,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         rel_dir=None,
         import_saved_views=True,
         import_runs=True,
+        import_workspaces=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -1471,6 +1481,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self.rel_dir = rel_dir
         self.import_saved_views = import_saved_views
         self.import_runs = import_runs
+        self.import_workspaces = import_workspaces
 
         self._metadata = None
         self._rel_dir = None
@@ -1581,6 +1592,11 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             and self.max_samples is None
         ):
             _import_saved_views(dataset, saved_views)
+
+        # Import workspaces
+        workspaces = self._metadata.get("workspaces", None)
+        if workspaces and self.import_workspaces and self.max_samples is None:
+            _import_workspaces(dataset, workspaces)
 
         # Import annotation runs
         annotation_runs = self._metadata.get("annotation_runs", None)
@@ -1693,6 +1709,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
             runs in the import. Only applicable when importing full datasets
+        import_workspaces (True): whether to include saved workspaces in the
+            import. Only applicable when importing full datasets
         ordered (True): whether to preserve document order when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1707,6 +1725,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir=None,
         import_saved_views=True,
         import_runs=True,
+        import_workspaces=True,
         ordered=True,
         shuffle=False,
         seed=None,
@@ -1722,6 +1741,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self.rel_dir = rel_dir
         self.import_saved_views = import_saved_views
         self.import_runs = import_runs
+        self.import_workspaces = import_workspaces
         self.ordered = ordered
 
         self._data_dir = None
@@ -1764,7 +1784,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             else:
                 self._has_frames = False
 
-    def import_samples(self, dataset, tags=None):
+    def import_samples(self, dataset, tags=None, progress=None):
         dataset_dict = foo.import_document(self._metadata_path)
 
         if len(dataset) > 0 and fomi.needs_migration(
@@ -1778,7 +1798,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             try:
                 sample_ids = self._import_samples(
-                    tmp_dataset, dataset_dict, tags=tags
+                    tmp_dataset, dataset_dict, tags=tags, progress=progress
                 )
                 dataset.add_collection(tmp_dataset)
             finally:
@@ -1786,9 +1806,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             return sample_ids
 
-        return self._import_samples(dataset, dataset_dict, tags=tags)
+        return self._import_samples(
+            dataset, dataset_dict, tags=tags, progress=progress
+        )
 
-    def _import_samples(self, dataset, dataset_dict, tags=None):
+    def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name
         empty_import = not bool(dataset)
 
@@ -1801,6 +1823,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         views = dataset_dict.pop("saved_views", [])
+        workspaces = dataset_dict.pop("workspaces", [])
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
@@ -1896,7 +1919,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             map(_parse_sample, samples),
             dataset._sample_collection,
             ordered=self.ordered,
-            progress=True,
+            progress=progress,
             num_docs=num_samples,
         )
 
@@ -1924,7 +1947,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 map(_parse_frame, frames),
                 dataset._frame_collection,
                 ordered=self.ordered,
-                progress=True,
+                progress=progress,
                 num_docs=num_frames,
             )
 
@@ -1938,6 +1961,17 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             and self.max_samples is None
         ):
             _import_saved_views(dataset, views)
+
+        #
+        # Import workspaces
+        #
+
+        if (
+            empty_import
+            and self.import_workspaces
+            and self.max_samples is None
+        ):
+            _import_workspaces(dataset, workspaces)
 
         #
         # Import runs
@@ -1978,8 +2012,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
-
-        logger.info("Import complete")
 
         return sample_ids
 
@@ -2040,6 +2072,26 @@ def _import_saved_views(dataset, views):
         view_doc.save(upsert=True)
 
         dataset._doc.saved_views.append(view_doc)
+
+    dataset.save()
+
+
+def _import_workspaces(dataset, workspaces):
+    for d in workspaces:
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        name = d["name"]
+        if dataset.has_workspace(name):
+            logger.warning("Overwriting existing workspace '%s'", name)
+            dataset.delete_workspace(name)
+
+        d.pop("_id", None)
+        workspace_doc = foo.WorkspaceDocument.from_dict(d)
+        workspace_doc.dataset_id = str(dataset._doc.id)
+        workspace_doc.save(upsert=True)
+
+        dataset._doc.workspaces.append(workspace_doc)
 
     dataset.save()
 

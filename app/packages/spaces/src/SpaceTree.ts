@@ -1,8 +1,8 @@
-import { Layout } from "./enums";
+import { isEqual } from "lodash";
 import SpaceNode from "./SpaceNode";
+import { Layout } from "./enums";
 import { SpaceNodeJSON } from "./types";
 import { spaceNodeFromJSON } from "./utils";
-import { isEqual } from "lodash";
 
 type SpaceTreeUpdateCallback = (rootNode: SpaceNodeJSON) => void;
 
@@ -26,6 +26,10 @@ export default class SpaceTree {
       ? spaceNodeFromJSON(serializedTree)
       : new SpaceNode("root");
     if (onTreeUpdate) this.onUpdate = onTreeUpdate;
+
+    if (!this.root.hasActiveChild() && this.root.hasChildren()) {
+      this.setNodeActive(this.root.firstChild());
+    }
   }
 
   updateTree(node: SpaceNode) {
@@ -62,6 +66,7 @@ export default class SpaceTree {
     let ancestorNode = parentNode;
     if (parentNode?.parent && parentNode?.children.length === 1) {
       ancestorNode = parentNode?.parent;
+      ancestorNode.sizes = undefined;
       parentNode?.remove();
       this.joinNode(ancestorNode);
     } else if (ancestorNode) {
@@ -79,6 +84,11 @@ export default class SpaceTree {
       node.parent.activeChild = node.id;
       this.updateTree(node);
     }
+  }
+
+  setNodeSizes(node: SpaceNode, sizes: number[]) {
+    node.sizes = sizes;
+    this.updateTree(node);
   }
 
   // a method for moving a node in the tree

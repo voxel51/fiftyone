@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { Duration } from "src/oss/utils";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -22,7 +21,7 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter:
     process.env.CI || process.env.IS_UTILITY_DOCKER
-      ? [["dot"], ["html", { open: "never" }]]
+      ? [["line"], ["html", { open: "never" }], ["github"]]
       : [["line", { printSteps: true }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {

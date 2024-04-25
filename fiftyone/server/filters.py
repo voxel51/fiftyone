@@ -1,10 +1,11 @@
 """
 FiftyOne Server filter inputs
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import strawberry as gql
 from strawberry.schema_directive import Location
 import typing as t

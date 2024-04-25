@@ -1,7 +1,8 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { getCls } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
 import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
@@ -19,7 +20,7 @@ export interface BaseLabel {
   index?: number;
 }
 
-export interface PointInfo<Label extends BaseLabel> {
+export interface PointInfo<Label extends BaseLabel = BaseLabel> {
   color: string;
   field: string;
   label: Label;
@@ -98,6 +99,7 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({
+    config,
     options: {
       coloring,
       customizeColorSetting,
@@ -112,6 +114,7 @@ export abstract class CoordinateOverlay<
       isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
+      embeddedDocType: getCls(this.field, config.fieldSchema),
     });
   }
 

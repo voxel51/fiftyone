@@ -1,10 +1,11 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import json
 
@@ -16,6 +17,7 @@ import eta.core.serial as etas
 
 import fiftyone.core.utils as fou
 
+from .database import ensure_connection
 from .utils import serialize_value, deserialize_value
 
 
@@ -306,9 +308,12 @@ class MongoEngineBaseDocument(SerializableDocument):
     def get_field(self, field_name):
         chunks = field_name.split(".", 1)
         if len(chunks) > 1:
-            value = getattr(self, chunks[0])
-            if value is not None:
-                return value.get_field(chunks[1])
+            try:
+                value = getattr(self, chunks[0])
+                if value is not None:
+                    return value.get_field(chunks[1])
+            except AttributeError:
+                pass
 
             if self.has_field(field_name):
                 return None
@@ -641,8 +646,7 @@ class Document(BaseDocument, mongoengine.Document):
                 "Cannot save an abstract document"
             )
 
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
+        ensure_connection()
 
         if validate:
             self.validate(clean=clean)

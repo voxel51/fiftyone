@@ -21,7 +21,7 @@ following packages:
 
 .. code-block:: shell
 
-    pip install ultralytics "torch>=1.8"
+    pip install "ultralytics>=8.1.0" "torch>=1.8"
 
 .. _ultralytics-inference:
 
@@ -70,6 +70,10 @@ You can directly pass Ultralytics YOLO detection models to
     # model = YOLO("yolov5l.pt")
     # model = YOLO("yolov5x.pt")
 
+    # YOLOv9
+    # model = YOLO("yolov9c.pt")
+    # model = YOLO("yolov9e.pt")
+
     dataset.apply_model(model, label_field="boxes")
 
     session = fo.launch_app(dataset)
@@ -90,6 +94,40 @@ manually convert Ultralytics predictions to
 .. image:: /images/integrations/ultralytics_boxes.jpg
    :alt: ultralytics-boxes
    :align: center
+
+You can also load any of these models directly from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov5l-coco-torch"
+    # model_name = "yolov8m-coco-torch"
+    # model_name = "yolov9e-coco-torch"
+
+    model = foz.load_zoo_model(
+        model_name,
+        label_field="boxes", 
+        confidence_thresh=0.5, 
+        iou_thresh=0.5,
+    )
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
+
+You can use :func:`list_zoo_models() <fiftyone.zoo.list_zoo_models>` to see all
+available YOLO models that are compatible with Ultralytics or SuperGradients:
+
+.. code-block:: python
+    :linenos:
+
+    print(foz.list_zoo_models(tags="yolo"))
+
+In general, model names will contain "yolov", followed by the version number,
+then the model size ("n", "s", "m",  "l", or "x"), and an indicator of the
+label classes ("coco" for MS COCO or "world" for open-world), followed by
+"torch".
 
 .. _ultralytics-instance-segmentation:
 
@@ -130,6 +168,27 @@ manually convert Ultralytics predictions into the desired
 .. image:: /images/integrations/ultralytics_instances.jpg
    :alt: ultralytics-instances
    :align: center
+
+
+You can also load YOLOv8 and YOLOv9 segmentation models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov9c-seg-coco-torch"
+    # model_name = "yolov9e-seg-coco-torch"
+    # model_name = "yolov8x-seg-coco-torch"
+    # model_name = "yolov8l-seg-coco-torch"
+    # model_name = "yolov8m-seg-coco-torch"
+    # model_name = "yolov8s-seg-coco-torch"
+    # model_name = "yolov8n-seg-coco-torch"
+
+    model = foz.load_zoo_model(model_name, label_field="yolo_seg")
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
 
 .. _ultralytics-keypoints:
 
@@ -181,6 +240,126 @@ manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
 .. image:: /images/integrations/ultralytics_keypoints.jpg
    :alt: ultralytics-keypoints
    :align: center
+
+
+.. _ultralytics-oriented-bounding-boxes:
+
+Oriented bounding boxes
+-----------------------
+
+You can directly pass Ultralytics YOLO oriented bounding box models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
+
+.. code-block:: python
+    :linenos:
+
+    model = YOLO("yolov8n-obb.pt")
+    # model = YOLO("yolov8s-obb.pt")
+    # model = YOLO("yolov8m-obb.pt")
+    # model = YOLO("yolov8l-obb.pt")
+    # model = YOLO("yolov8x-obb.pt")
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+You can also load YOLOv8 oriented bounding box models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov8n-obb-dotav1-torch"
+    # model_name = "yolov8s-obb-dotav1-torch"
+    # model_name = "yolov8m-obb-dotav1-torch"
+    # model_name = "yolov8l-obb-dotav1-torch"
+    # model_name = "yolov8x-obb-dotav1-torch"
+
+    model = foz.load_zoo_model(model_name)
+
+    dataset.apply_model(model, label_field="oriented_boxes")
+
+    session = fo.launch_app(dataset)
+
+
+.. note::
+
+    The oriented bounding box models are trained on the `DOTA dataset
+    <https://captain-whu.github.io/DOTA/index.html>`_, which consists of
+    drone images with oriented bounding boxes. The models are trained to
+    predict on bird's eye view images, so applying them to regular images
+    may not yield good results.
+
+.. _ultralytics-open-vocabulary-object-detection:
+
+Open vocabulary detection
+-------------------------
+
+FiftyOne's Ultralytics integration also supports real-time open vocabulary
+object detection via
+`YOLO World <https://docs.ultralytics.com/models/yolo-world/>`_.
+
+The usage syntax is the same as for regular object detection, with the caveat
+that you can set the classes that the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    from ultralytics import YOLO
+
+    ## Load dataset
+    dataset = foz.load_zoo_dataset(
+        "voc-2007", split="validation", max_samples=100
+    )
+    dataset.select_fields().keep_fields()
+
+    ## Load model
+    model = YOLO("yolov8l-world.pt")
+    # model = YOLO("yolov8s-world.pt")
+    # model =  YOLO("yolov8m-world.pt")
+    # model =  YOLO("yolov8x-world.pt")
+
+    ## Set open vocabulary classes
+    model.set_classes(
+        ["plant", "window", "keyboard", "human baby", "computer monitor"]
+    )
+
+    label_field = "yolo_world_detections"
+
+    ## Apply model
+    dataset.apply_model(model, label_field=label_field)
+
+    ## Visualize the detection patches
+    patches = dataset.to_patches(label_field)
+    session = fo.launch_app(patches)
+
+.. image:: /images/integrations/ultralytics_open_world_boxes.png
+   :alt: ultralytics-open-world-boxes
+   :align: center
+
+You can also load these open-vocabulary models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`, optionally specifying the classes that
+the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov8l-world-torch"
+    # model_name = "yolov8m-world-torch"
+    # model_name = "yolov8x-world-torch"
+
+    model = foz.load_zoo_model(
+        model_name,
+        classes=["plant", "window", "keyboard", "human baby", "computer monitor"],
+    )
+
+    dataset.apply_model(model, label_field="yolo_world_detections")
+
+    session = fo.launch_app(dataset)
 
 .. _ultralytics-batch-inference:
 

@@ -1,7 +1,7 @@
 """
 FiftyOne import/export-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2136,7 +2136,6 @@ class DICOMDatasetTests(ImageDatasetTests):
 
     @drop_datasets
     def test_dicom_dataset(self):
-
         dataset_dir = self._new_dir()
         images_dir = self._new_dir()
 
@@ -2949,6 +2948,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
+        # Test import/export of workspaces
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+        workspace = fo.Space(
+            children=[histograms_panel], orientation="vertical"
+        )
+
+        workspace_name = "my-workspace"
+        workspace_desc = "very nice, high five!"
+
+        dataset.save_workspace(
+            workspace_name, workspace, description=workspace_desc
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue(workspace_name in dataset.list_workspaces())
+        self.assertTrue(workspace_name in dataset2.list_workspaces())
+
+        workspace_doc = dataset2._get_workspace_doc(workspace_name)
+        self.assertEqual(str(dataset2._doc.id), workspace_doc.dataset_id)
+
+        workspace2 = dataset2.load_workspace(workspace_name)
+        self.assertEqual(workspace, workspace2)
+        self.assertEqual(
+            dataset.get_workspace_info(workspace_name),
+            dataset2.get_workspace_info(workspace_name),
+        )
+
         # Test import/export of evaluations
 
         dataset.clone_sample_field("predictions", "ground_truth")
@@ -3256,6 +3297,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
+
+        # Test import/export of workspaces
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+        workspace = fo.Space(
+            children=[histograms_panel], orientation="vertical"
+        )
+
+        workspace_name = "my-workspace"
+        workspace_desc = "very nice, high five!"
+
+        dataset.save_workspace(
+            workspace_name, workspace, description=workspace_desc
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue(workspace_name in dataset.list_workspaces())
+        self.assertTrue(workspace_name in dataset2.list_workspaces())
+
+        workspace_doc = dataset2._get_workspace_doc(workspace_name)
+        self.assertEqual(str(dataset2._doc.id), workspace_doc.dataset_id)
+
+        workspace2 = dataset2.load_workspace(workspace_name)
+        self.assertEqual(workspace, workspace2)
+        self.assertEqual(
+            dataset.get_workspace_info(workspace_name),
+            dataset2.get_workspace_info(workspace_name),
+        )
 
         # Test import/export of evaluations
 

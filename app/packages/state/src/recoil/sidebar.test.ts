@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("recoil");
+vi.mock("recoil-relay");
+
+import { Field } from "@fiftyone/utilities";
+import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
 import * as sidebar from "./sidebar";
 
 const mockFields = {
@@ -185,9 +190,9 @@ const mockFields = {
   ],
 };
 
-describe("ResolveGroups works", () => {
-  it("dataset groups should resolve when curent is undefined", () => {
-    const test = sidebar.resolveGroups(mockFields.sampleFields, []);
+describe("test sidebar groups resolution", () => {
+  it("resolves with sample fields", () => {
+    const test = sidebar.resolveGroups(mockFields.sampleFields, [], [], []);
 
     expect(test.length).toBe(5);
     expect(test[0].name).toBe("tags");
@@ -202,7 +207,7 @@ describe("ResolveGroups works", () => {
     expect(test[4].paths.length).toBe(2);
   });
 
-  it("when dataset appconfig does not have sidebarGroups settings, use default settings", () => {
+  it("resolves merges of current client setting", () => {
     const mockSidebarGroups = [
       { name: "tags", paths: [], expanded: true },
       {
@@ -234,7 +239,8 @@ describe("ResolveGroups works", () => {
     const test = sidebar.resolveGroups(
       mockFields.sampleFields,
       [],
-      mockSidebarGroups
+      mockSidebarGroups,
+      []
     );
 
     expect(test.length).toBe(7);
@@ -244,5 +250,319 @@ describe("ResolveGroups works", () => {
     expect(test[5].expanded).toBeFalsy();
     expect(test[6].name).toBe("test group b");
     expect(test[6].expanded).toBeFalsy();
+  });
+
+  it("resolves merges with dataset app config", () => {
+    const mockSidebarGroups = [
+      {
+        name: "labels",
+        paths: ["predictions", "ground_truth"],
+        expanded: true,
+      },
+      {
+        name: "primitives",
+        paths: ["id", "filepath", "uniqueness"],
+        expanded: true,
+      },
+      { name: "other", paths: ["dict_field", "list_field"] },
+      { name: "test group a", paths: [] },
+      { name: "test group b", paths: [] },
+      {
+        name: "metadata",
+        paths: [],
+        expanded: true,
+      },
+      { name: "tags", paths: [], expanded: true },
+    ];
+
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      [],
+      mockSidebarGroups
+    );
+
+    expect(test.length).toBe(7);
+
+    const tags = test[0];
+    expect(tags.name).toBe("tags");
+    expect(tags.paths).toEqual([]);
+
+    const labels = test[1];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions", "ground_truth"]);
+
+    const primitives = test[2];
+    expect(primitives.name).toEqual("primitives");
+    expect(primitives.paths).toEqual(["id", "filepath", "uniqueness"]);
+    expect(primitives.expanded).toBe(true);
+
+    const other = test[3];
+    expect(other.name).toEqual("other");
+    expect(other.paths).toEqual(["dict_field", "list_field"]);
+
+    const testA = test[4];
+    expect(testA.name).toBe("test group a");
+
+    const testB = test[5];
+    expect(testB.name).toBe("test group b");
+
+    const metadata = test[6];
+    expect(metadata.name).toBe("metadata");
+    expect(metadata.expanded).toBe(true);
+    expect(metadata.paths).toEqual([
+      "metadata.size_types",
+      "metadata.mime_type",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+    ]);
+  });
+
+  it("resolves merges with improper dataset app config", () => {
+    const mockSidebarGroups = [
+      {
+        name: "improper",
+        paths: ["ground_truth"],
+        expanded: true,
+      },
+    ];
+
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      [],
+      mockSidebarGroups
+    );
+
+    const tags = test[0];
+    expect(tags.name).toBe("tags");
+    expect(tags.paths).toEqual([]);
+
+    const metadata = test[1];
+    expect(metadata.name).toBe("metadata");
+    expect(metadata.expanded).toBe(true);
+    expect(metadata.paths).toEqual([
+      "metadata.size_types",
+      "metadata.mime_type",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+    ]);
+
+    const improper = test[2];
+    expect(improper.name).toBe("improper");
+    expect(improper.paths).toEqual(["ground_truth"]);
+    expect(improper.expanded).toBe(true);
+
+    const labels = test[3];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions"]);
+    expect(labels.expanded).toBe(true);
+  });
+});
+
+const TEST_FIELD_DATA: Field = {
+  name: "unused",
+  path: "unused",
+  embeddedDocType: null,
+  dbField: null,
+  description: null,
+  ftype: null,
+  info: {},
+  subfield: null,
+};
+
+describe("test pullSidebarValue", () => {
+  it("handles dbField values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        { ...TEST_FIELD_DATA, dbField: "_id" },
+        ["id"],
+        { _id: "idValue" },
+        false
+      )
+    ).toBe("idValue");
+  });
+
+  it("handles embedded list values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["nested", "field"],
+        { nested: [{ field: "nestedListValue" }] },
+        true
+      )
+    ).toStrictEqual(["nestedListValue"]);
+  });
+
+  it("handles nested values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["nested", "field"],
+        { nested: { field: "nestedValue" } },
+        false
+      )
+    ).toBe("nestedValue");
+  });
+
+  it("handles undefined values", () => {
+    expect(
+      sidebar.pullSidebarValue(
+        TEST_FIELD_DATA,
+        ["undefined", "value"],
+        {},
+        false
+      )
+    ).toBe(undefined);
+  });
+});
+
+describe("hiddenNoneGroups selector", () => {
+  const assertSidebarGroupsRequest = (
+    filtered: boolean,
+    loading: boolean,
+    modal: boolean
+  ) => {
+    if (!filtered) {
+      throw new Error("'filtered' should be 'true'");
+    }
+
+    if (loading) {
+      throw new Error("'loading' should be 'false'");
+    }
+
+    if (!modal) {
+      throw new Error("'modal' should be 'true'");
+    }
+  };
+
+  const testHiddenNoneGroups = <TestSelector<typeof sidebar.hiddenNoneGroups>>(
+    (<unknown>sidebar.hiddenNoneGroups)
+  );
+
+  const present = {
+    paths: new Set<string>(),
+    groups: new Set<string>(),
+  };
+
+  const hidden = {
+    paths: new Set(["my_field", "my_list_field.subfield"]),
+    groups: new Set(["field", "list_field"]),
+  };
+
+  const base = {
+    hideNoneValuedFields: true,
+    isOfDocumentFieldList: (p) => p === "my_list_field.subfield",
+    sidebarGroups: ({ filtered, loading, modal }) => {
+      assertSidebarGroupsRequest(filtered, loading, modal);
+
+      return [
+        {
+          name: "tags",
+          paths: [],
+        },
+        {
+          name: "field",
+          paths: ["my_field"],
+        },
+        {
+          name: "list_field",
+          paths: ["my_list_field.subfield"],
+        },
+      ];
+    },
+    field: () => TEST_FIELD_DATA,
+  };
+
+  it("tests disabled", () => {
+    setMockAtoms({
+      hideNoneValuedFields: false,
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("tests single slice enabled", () => {
+    setMockAtoms(base);
+    // test null
+    setMockAtoms({
+      activeModalSidebarSample: {
+        field: null,
+        my_list_field: null,
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test empty list
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: null,
+        my_list_field: [],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test null list value
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: null,
+        my_list_field: [{ subfield: null }],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test values
+    setMockAtoms({
+      activeModalSidebarSample: {
+        my_field: "value",
+        my_list_field: [{ subfield: "value" }],
+      },
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("tests multiple slices enabled", () => {
+    setMockAtoms(base);
+
+    // test null
+    setMockAtoms({
+      activePcdSlices: ["one", "two"],
+      activePcdSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {},
+        },
+      },
+      pinned3DSampleSlice: "one",
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(hidden);
+
+    // test null and present
+    setMockAtoms({
+      activePcdSlices: ["one", "two"],
+      activePcdSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {
+            my_field: "value",
+            my_list_field: [{ subfield: "value" }],
+          },
+        },
+      },
+      pinned3DSampleSlice: "one",
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
   });
 });

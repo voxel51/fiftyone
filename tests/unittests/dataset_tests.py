@@ -1,12 +1,12 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from copy import deepcopy, copy
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import gc
 import os
 import random
@@ -2431,6 +2431,30 @@ class DatasetTests(unittest.TestCase):
             frame.predictions.detections[0].field_copy
 
     @drop_datasets
+    def test_clear_cache(self):
+        samples = [fo.Sample(filepath=f"{i}.mp4") for i in range(10)]
+        sample1 = samples[0]
+        sample1.frames[1] = fo.Frame()
+        frame1 = sample1.frames[1]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        also_sample1 = dataset.first()
+        also_frame1 = also_sample1.frames[1]
+
+        self.assertTrue(also_sample1 is sample1)
+        self.assertTrue(also_frame1 is frame1)
+
+        dataset.clear_cache()
+
+        not_sample1 = dataset.first()
+        not_frame1 = not_sample1.frames[1]
+
+        self.assertFalse(not_sample1 is sample1)
+        self.assertFalse(not_frame1 is frame1)
+
+    @drop_datasets
     def test_classes(self):
         dataset = fo.Dataset()
 
@@ -2833,6 +2857,199 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.delete_saved_views()
 
         self.assertListEqual(dataset._doc.saved_views, [])
+
+    def test_workspaces(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_workspaces)
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        samples_panel = fo.Panel(type="Samples", pinned=True)
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+
+        embeddings_panel = fo.Panel(
+            type="Embeddings",
+            state=dict(
+                brainResult="img_viz", colorByField="metadata.size_bytes"
+            ),
+        )
+
+        spaces = fo.Space(
+            children=[
+                fo.Space(
+                    children=[
+                        fo.Space(children=[samples_panel]),
+                        fo.Space(children=[histograms_panel]),
+                    ],
+                    orientation="horizontal",
+                ),
+                fo.Space(children=[embeddings_panel]),
+            ],
+            orientation="vertical",
+        )
+
+        self.assertIsNone(spaces.name)
+
+        workspace_name = "test__workspace"
+        now = datetime.utcnow()
+        description = "a description of the workspace, yo"
+        color = "#FF6D04"
+
+        dataset.save_workspace(
+            workspace_name, spaces, description=description, color=color
+        )
+
+        last_loaded_at1 = dataset._doc.workspaces[0].last_loaded_at
+        last_modified_at1 = dataset._doc.workspaces[0].last_modified_at
+        created_at = dataset._doc.workspaces[0].created_at
+
+        self.assertEqual(spaces.name, workspace_name)
+        self.assertTrue(dataset.has_workspaces)
+        self.assertTrue(dataset.has_workspace(workspace_name))
+        self.assertListEqual(dataset.list_workspaces(), [workspace_name])
+
+        self.assertIsNone(last_loaded_at1)
+        self.assertAlmostEqual(
+            last_modified_at1, now, delta=timedelta(milliseconds=100)
+        )
+        self.assertEqual(last_modified_at1, created_at)
+
+        still_spaces = deepcopy(spaces)
+        self.assertEqual(still_spaces.name, workspace_name)
+        self.assertEqual(still_spaces, spaces)
+
+        # Reload to ensure we actually saved the doc properly, now load
+        #   the workspace back.
+        dataset.reload()
+        also_spaces = dataset.load_workspace(workspace_name)
+        last_loaded_at2 = dataset._doc.workspaces[0].last_loaded_at
+        now = datetime.utcnow()
+
+        self.assertEqual(spaces, also_spaces)
+        self.assertEqual(also_spaces.name, workspace_name)
+        self.assertAlmostEqual(
+            last_loaded_at2, now, delta=timedelta(milliseconds=100)
+        )
+
+        workspace_info = dataset.get_workspace_info(workspace_name)
+        self.assertEqual(workspace_info["name"], workspace_name)
+        self.assertEqual(workspace_info["description"], description)
+        self.assertEqual(workspace_info["color"], color)
+
+        # Update workspace info
+
+        new_workspace_name = "new-name"
+        new_description = "a new description for you"
+        new_info = {"name": new_workspace_name, "description": new_description}
+
+        dataset.update_workspace_info(workspace_name, new_info)
+        last_modified_at2 = dataset._doc.workspaces[0].last_modified_at
+
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertFalse(dataset.has_workspace(workspace_name))
+        self.assertTrue(dataset.has_workspace(new_workspace_name))
+        self.assertEqual(
+            dataset.get_workspace_info(new_workspace_name)["description"],
+            new_description,
+        )
+
+        updated_spaces = dataset.load_workspace(new_workspace_name)
+        self.assertEqual(updated_spaces.name, new_workspace_name)
+        dataset.update_workspace_info(
+            new_workspace_name, {"name": workspace_name}
+        )
+
+        #
+        # Verify that workspaces are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_workspaces)
+        self.assertTrue(dataset2.has_workspace(workspace_name))
+        self.assertListEqual(dataset2.list_workspaces(), [workspace_name])
+
+        spaces2 = dataset2.load_workspace(workspace_name)
+
+        self.assertEqual(spaces, spaces2)
+
+        dataset.delete_workspace(workspace_name)
+
+        self.assertFalse(dataset.has_workspaces)
+        self.assertFalse(dataset.has_workspace(workspace_name))
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        also_spaces2 = dataset2.load_workspace(workspace_name)
+        self.assertIsNotNone(also_spaces2)
+
+        #
+        # Verify that workspaces are deleted when a dataset is deleted
+        #
+
+        workspace_id = dataset2._doc.workspaces[0].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(
+            len(list(db.workspaces.find({"_id": workspace_id}))), 1
+        )
+
+        dataset2.delete()
+
+        self.assertEqual(
+            len(list(db.workspaces.find({"_id": workspace_id}))), 0
+        )
+
+    def test_workspaces_for_app(self):
+        dataset = self.dataset
+        space = fo.Space()
+
+        names = ["my-ws1", "my_ws2", "My  %&#  Ws3!"]
+        slugs = ["my-ws1", "my-ws2", "my-ws3"]
+
+        for idx, name in enumerate(names, 1):
+            dataset.save_workspace(name, space)
+
+        # Can't use duplicate name when saving a workspace
+        with self.assertRaises(ValueError):
+            dataset.save_workspace("my-ws1", space)
+
+        # Can't use duplicate slug when saving a workspace
+        with self.assertRaises(ValueError):
+            dataset.save_workspace("my   ws1", space)
+
+        # Can't use slug to delete workspace
+        with self.assertRaises(ValueError):
+            dataset.delete_workspace("my-ws3")
+
+        # Can't rename a workspace to an existing name
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-ws1", {"name": "my_ws2"})
+
+        # Can't rename a view to an existing slug
+        with self.assertRaises(ValueError):
+            dataset.update_saved_view_info("my-ws1", {"name": "my_ws2!"})
+
+        workspace_docs = dataset._doc.workspaces
+
+        self.assertListEqual([ws.name for ws in workspace_docs], names)
+        self.assertListEqual([ws.slug for ws in workspace_docs], slugs)
+
+        dataset.delete_workspace("my_ws2")
+
+        self.assertSetEqual(
+            {ws.name for ws in dataset._doc.workspaces},
+            {names[0], names[2]},
+        )
+
+        dataset.delete_workspaces()
+
+        self.assertListEqual(dataset._doc.workspaces, [])
 
     def test_runs(self):
         dataset = self.dataset
@@ -3268,6 +3485,171 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(
             dataset5.distinct("frames.dataset_id"), [dataset_id5]
+        )
+
+    @drop_datasets
+    def test_clone_image(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "image"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_video(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        sample.frames[1] = fo.Frame(spam="eggs")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+        dataset.create_index("frames.spam")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertIn("frames.spam", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertIn("frames.spam", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertNotIn("frames.spam", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_group(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group")
+
+        self.assertEqual(dataset.media_type, "group")
+
+        default_indexes = dataset.list_indexes()
+
+        self.assertIn("group.id", default_indexes)
+        self.assertIn("group.name", default_indexes)
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            group=fo.Group().element("slice"),
+            foo="bar",
+        )
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
         )
 
 

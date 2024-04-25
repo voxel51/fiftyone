@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3506,6 +3506,13 @@ class ViewStageTests(unittest.TestCase):
             set(view1.values("id") + view2.values("id")),
         )
 
+        # Test query syntax
+
+        view = dataset.match(
+            {"frames.test_clfs.classifications.label": "friend"}
+        )
+        self.assertEqual(len(view), 1)
+
     def test_match_tags(self):
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -4219,8 +4226,8 @@ class ViewStageTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertNotIn("field", dataset2.list_indexes())
-        self.assertNotIn("foo_1_field_1", dataset2.list_indexes())
+        self.assertIn("field", dataset2.list_indexes())
+        self.assertIn("foo_1_field_1", dataset2.list_indexes())
 
         view3 = dataset2.sort_by(F("field"))
 
@@ -4262,8 +4269,9 @@ class ViewStageTests(unittest.TestCase):
         optimized_view = fov.make_optimized_select_view(
             dataset, sample_ids[0], flatten=True
         )
+
         expected_stages = [
-            fosg.SelectGroupSlices(),
+            fosg.SelectGroupSlices(_allow_mixed=True),
             fosg.Select(sample_ids[0]),
         ]
         self.assertEqual(optimized_view._all_stages, expected_stages)

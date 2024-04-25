@@ -1,3 +1,4 @@
+import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { State } from "@fiftyone/state";
 import { Key, pathToRegexp } from "path-to-regexp";
 import { OperationType, VariablesOf } from "relay-runtime";
@@ -23,10 +24,11 @@ const compilePath = (path: string): CompilePathResult => {
   return result;
 };
 
-export type LocationState<T extends OperationType> = {
+export type LocationState<T extends OperationType = OperationType> = {
   view?: State.Stage[];
   savedViewSlug?: string;
   fieldVisibility?: State.FieldVisibilityStage;
+  workspace?: SpaceNodeJSON;
 } & VariablesOf<T>;
 
 interface MatchPathOptions<T extends OperationType> {
@@ -54,9 +56,10 @@ export const matchPath = <T extends OperationType>(
 
   const params = new URLSearchParams(search);
 
-  const proxy = params.get("proxy");
+  const proxy = decodeURIComponent(params.get("proxy") || "");
+
   if (proxy) {
-    pathname = pathname.replace(proxy, "").replace("//", "/");
+    pathname = `/${pathname.slice(proxy.length)}`.replace("//", "/");
   }
 
   const { regexp, keys } = compilePath(path);

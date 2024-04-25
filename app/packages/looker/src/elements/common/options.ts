@@ -1,11 +1,11 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { BaseState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { lookerOptionsPanel, lookerOptionsInput } from "./options.module.css";
+import { lookerOptionsInput, lookerOptionsPanel } from "./options.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class OptionsPanelElement<
@@ -33,7 +33,7 @@ export class OptionsPanelElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
-    element.setAttribute("data-cy", "looker-video-options-panel");
+    element.setAttribute("data-cy", "looker-options-panel");
     element.classList.add(lookerOptionsPanel);
     return element;
   }

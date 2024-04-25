@@ -20,9 +20,10 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.7 - 3.10**.
+**Python 3.7 - 3.12**
 
-On Linux, we recommended installing Python through your system package manager
+
+On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
 a suitable Python version is installed and accessible, run `python --version`.
@@ -143,7 +144,7 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
     .. code-block:: shell
 
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip setuptools wheel build
         pip install fiftyone
 
 **Mac users:**

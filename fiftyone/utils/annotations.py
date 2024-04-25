@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -216,9 +216,10 @@ def annotate(
     anno_backend.ensure_requirements()
 
     supported_media_types = anno_backend.supported_media_types
-    if samples.media_type == fomm.GROUP:
-        raise fomm.SelectGroupSlicesError(supported_media_types)
-    elif samples.media_type not in supported_media_types:
+    if samples.media_type not in supported_media_types:
+        if samples.media_type == fomm.GROUP:
+            raise fomm.SelectGroupSlicesError(supported_media_types)
+
         raise fomm.MediaTypeError(
             "The '%s' backend does not supported annotating '%s' collections"
             % (anno_backend.config.name, samples.media_type)
@@ -991,6 +992,7 @@ def load_annotations(
     dest_field=None,
     unexpected="prompt",
     cleanup=False,
+    progress=None,
     **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
@@ -1005,7 +1007,7 @@ def load_annotations(
         anno_key: an annotation key
         dest_field (None): an optional name of a new destination field
             into which to load the annotations, or a dict mapping field names
-            in the run's label schema to new desination field names
+            in the run's label schema to new destination field names
         unexpected ("prompt"): how to deal with any unexpected labels that
             don't match the run's label schema when importing. The supported
             values are:
@@ -1019,6 +1021,9 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for the run's
             :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
             method
@@ -1068,6 +1073,7 @@ def load_annotations(
                         results,
                         label_field,
                         label_info=label_info,
+                        progress=progress,
                     )
                 else:
                     _merge_labels(
@@ -1079,6 +1085,7 @@ def load_annotations(
                         label_info=label_info,
                         global_attrs=global_attrs,
                         class_attrs=class_attrs,
+                        progress=progress,
                     )
             else:
                 # Unexpected labels
@@ -1107,10 +1114,21 @@ def load_annotations(
                     )
 
                     if anno_type == "scalar":
-                        _merge_scalars(dataset, annos, results, new_field)
+                        _merge_scalars(
+                            dataset,
+                            annos,
+                            results,
+                            new_field,
+                            progress=progress,
+                        )
                     else:
                         _merge_labels(
-                            dataset, annos, results, new_field, anno_type
+                            dataset,
+                            annos,
+                            results,
+                            new_field,
+                            anno_type,
+                            progress=progress,
                         )
                 else:
                     if label_field:
@@ -1256,7 +1274,9 @@ def _prompt_field(dataset, label_type, label_field, label_schema):
     return new_field
 
 
-def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
+def _merge_scalars(
+    dataset, anno_dict, results, label_field, label_info=None, progress=None
+):
     if label_info is None:
         label_info = {}
 
@@ -1290,7 +1310,7 @@ def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
     num_deletions = 0
 
     logger.info("Loading scalars for field '%s'...", label_field)
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress, autosave=True):
         sample_annos = anno_dict.get(sample.id, None)
 
         if is_frame_field:
@@ -1327,8 +1347,6 @@ def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
                     # Edit value
                     image[field] = new_value
 
-        sample.save()
-
     if num_additions > 0 and not allow_additions:
         logger.warning(
             "Ignored %d added scalars in field '%s' because "
@@ -1355,6 +1373,7 @@ def _merge_labels(
     label_info=None,
     global_attrs=None,
     class_attrs=None,
+    progress=None,
 ):
     if label_info is None:
         label_info = {}
@@ -1472,7 +1491,7 @@ def _merge_labels(
     # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
     view = view.select(sample_ids).select_fields(label_field)
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress, autosave=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
 
@@ -1557,8 +1576,6 @@ def _merge_labels(
                             added_id_map[sample_id][frame_id].append(label_id)
                         else:
                             added_id_map[sample_id].append(label_id)
-
-        sample.save()
 
     if new_ids and not allow_additions:
         logger.warning(
@@ -2258,7 +2275,7 @@ class AnnotationAPI(object):
             prefix = "FIFTYONE_%s_" % backend.upper()
             logger.info(
                 "Please enter your API key.\nYou can avoid this in the future "
-                "by setting your `%sKEY` environment variable",
+                "by setting your `%sAPI_KEY` environment variable",
                 prefix,
             )
 
@@ -2294,7 +2311,13 @@ class DrawConfig(etaa.AnnotationConfig):
 
 
 def draw_labeled_images(
-    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
+    samples,
+    output_dir,
+    rel_dir=None,
+    label_fields=None,
+    config=None,
+    progress=None,
+    **kwargs,
 ):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
@@ -2316,9 +2339,12 @@ def draw_labeled_images(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 
@@ -2335,7 +2361,7 @@ def draw_labeled_images(
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(progress=progress):
         outpath = filename_maker.get_output_path(
             sample.filepath, output_ext=output_ext
         )
@@ -2357,7 +2383,7 @@ def draw_labeled_image(
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
@@ -2375,7 +2401,13 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
+    samples,
+    output_dir,
+    rel_dir=None,
+    label_fields=None,
+    config=None,
+    progress=None,
+    **kwargs,
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2397,9 +2429,12 @@ def draw_labeled_videos(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 
@@ -2419,7 +2454,7 @@ def draw_labeled_videos(
     num_videos = len(samples)
 
     outpaths = []
-    for idx, sample in enumerate(samples, 1):
+    for idx, sample in enumerate(samples.iter_samples(progress=progress), 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
             base, ext = os.path.splitext(sample.filepath)
@@ -2450,7 +2485,7 @@ def draw_labeled_video(
         support (None): an optional ``[first, last]`` range of frames to
             render
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the

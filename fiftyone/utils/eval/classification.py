@@ -1,7 +1,7 @@
 """
 Classification evaluation.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -35,6 +35,7 @@ def evaluate_classifications(
     classes=None,
     missing=None,
     method=None,
+    progress=None,
     **kwargs,
 ):
     """Evaluates the classification predictions in the given collection with
@@ -81,12 +82,16 @@ def evaluate_classifications(
             supported values are
             ``fo.evaluation_config.classification_backends.keys()`` and the
             default is ``fo.evaluation_config.default_classification_backend``
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`ClassificationEvaluationConfig` being used
 
     Returns:
         a :class:`ClassificationResults`
     """
+    fov.validate_non_grouped_collection(samples)
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Classification, same_type=True
     )
@@ -99,7 +104,11 @@ def evaluate_classifications(
     eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
-        samples, eval_key=eval_key, classes=classes, missing=missing
+        samples,
+        eval_key=eval_key,
+        classes=classes,
+        missing=missing,
+        progress=progress,
     )
     eval_method.save_run_results(samples, eval_key, results)
 
@@ -148,7 +157,7 @@ class ClassificationEvaluation(foe.EvaluationMethod):
         raise NotImplementedError("subclass must implement register_samples()")
 
     def evaluate_samples(
-        self, samples, eval_key=None, classes=None, missing=None
+        self, samples, eval_key=None, classes=None, missing=None, progress=None
     ):
         """Evaluates the predicted classifications in the given samples with
         respect to the specified ground truth labels.
@@ -161,6 +170,9 @@ class ClassificationEvaluation(foe.EvaluationMethod):
                 purposes
             missing (None): a missing label string. Any None-valued labels are
                 given this label for results purposes
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`ClassificationResults` instance
@@ -256,7 +268,7 @@ class SimpleEvaluation(ClassificationEvaluation):
             dataset.add_sample_field(eval_key, fof.BooleanField)
 
     def evaluate_samples(
-        self, samples, eval_key=None, classes=None, missing=None
+        self, samples, eval_key=None, classes=None, missing=None, progress=None
     ):
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
@@ -371,7 +383,7 @@ class TopKEvaluation(ClassificationEvaluation):
             dataset.add_sample_field(eval_key, fof.BooleanField)
 
     def evaluate_samples(
-        self, samples, eval_key=None, classes=None, missing=None
+        self, samples, eval_key=None, classes=None, missing=None, progress=None
     ):
         if classes is None:
             raise ValueError(
@@ -573,7 +585,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             dataset.add_sample_field(eval_key, fof.StringField)
 
     def evaluate_samples(
-        self, samples, eval_key=None, classes=None, missing=None
+        self, samples, eval_key=None, classes=None, missing=None, progress=None
     ):
         if classes is None or len(classes) != 2:
             raise ValueError(

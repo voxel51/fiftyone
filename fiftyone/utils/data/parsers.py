@@ -1,7 +1,7 @@
 """
 Sample parsers.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,7 +24,7 @@ import fiftyone.utils.image as foui
 import fiftyone.utils.video as fouv
 
 
-def add_images(dataset, samples, sample_parser, tags=None):
+def add_images(dataset, samples, sample_parser, tags=None, progress=None):
     """Adds the given images to the dataset.
 
     This operation does not read the images.
@@ -40,6 +40,9 @@ def add_images(dataset, samples, sample_parser, tags=None):
             parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -76,14 +79,12 @@ def add_images(dataset, samples, sample_parser, tags=None):
 
         return Sample(filepath=image_path, metadata=metadata, tags=tags)
 
-    try:
-        num_samples = len(samples)
-    except:
-        num_samples = None
-
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, num_samples=num_samples, expand_schema=False
+        _samples,
+        expand_schema=False,
+        progress=progress,
+        num_samples=samples,
     )
 
 
@@ -95,6 +96,7 @@ def add_labeled_images(
     tags=None,
     expand_schema=True,
     dynamic=False,
+    progress=None,
 ):
     """Adds the given labeled images to the dataset.
 
@@ -127,6 +129,9 @@ def add_labeled_images(
             if a sample's schema is not a subset of the dataset schema
         dynamic (False): whether to declare dynamic attributes of embedded
             document fields that are encountered
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -191,21 +196,17 @@ def add_labeled_images(
         dataset._ensure_label_field(label_field, sample_parser.label_cls)
         expand_schema = False
 
-    try:
-        num_samples = len(samples)
-    except:
-        num_samples = None
-
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
         _samples,
         expand_schema=expand_schema,
         dynamic=dynamic,
-        num_samples=num_samples,
+        progress=progress,
+        num_samples=samples,
     )
 
 
-def add_videos(dataset, samples, sample_parser, tags=None):
+def add_videos(dataset, samples, sample_parser, tags=None, progress=None):
     """Adds the given videos to the dataset.
 
     This operation does not read the videos.
@@ -221,6 +222,9 @@ def add_videos(dataset, samples, sample_parser, tags=None):
             parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -251,16 +255,13 @@ def add_videos(dataset, samples, sample_parser, tags=None):
 
         return Sample(filepath=video_path, metadata=metadata, tags=tags)
 
-    try:
-        num_samples = len(samples)
-    except:
-        num_samples = None
-
-    _samples = map(parse_sample, samples)
-
     # @todo: skip schema expansion and set media type before adding samples
+    _samples = map(parse_sample, samples)
     return dataset.add_samples(
-        _samples, num_samples=num_samples, expand_schema=True
+        _samples,
+        expand_schema=True,
+        progress=progress,
+        num_samples=samples,
     )
 
 
@@ -272,6 +273,7 @@ def add_labeled_videos(
     tags=None,
     expand_schema=True,
     dynamic=False,
+    progress=None,
 ):
     """Adds the given labeled videos to the dataset.
 
@@ -303,6 +305,9 @@ def add_labeled_videos(
             if a sample's schema is not a subset of the dataset schema
         dynamic (False): whether to declare dynamic attributes of embedded
             document fields that are encountered
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -365,17 +370,13 @@ def add_labeled_videos(
 
         return sample
 
-    try:
-        num_samples = len(samples)
-    except:
-        num_samples = None
-
     _samples = map(parse_sample, samples)
     return dataset.add_samples(
         _samples,
         expand_schema=expand_schema,
         dynamic=dynamic,
-        num_samples=num_samples,
+        progress=progress,
+        num_samples=samples,
     )
 
 
@@ -1677,8 +1678,8 @@ class ExtractClipsMixin(object):
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             when no pre-computed metadata is available
-        export_media (True): whether to actually write clips when their paths
-            are requested
+        write_clips (True): whether to write clips when their paths are
+            requested
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
         video_format (None): the video format to use when writing video clips
@@ -1688,7 +1689,7 @@ class ExtractClipsMixin(object):
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1696,7 +1697,7 @@ class ExtractClipsMixin(object):
             video_format = fo.config.default_video_ext
 
         self.compute_metadata = compute_metadata
-        self.export_media = export_media
+        self.write_clips = write_clips
         self.clip_dir = clip_dir
         self.video_format = video_format
 
@@ -1706,7 +1707,7 @@ class ExtractClipsMixin(object):
         video_path = sample.filepath
         basename, ext = os.path.splitext(os.path.basename(video_path))
 
-        if self.export_media:
+        if self.write_clips:
             if self.clip_dir is None:
                 self.clip_dir = etau.make_temp_dir()
 
@@ -1723,7 +1724,7 @@ class ExtractClipsMixin(object):
         )
         clip_path = os.path.join(dirname, clip_name)
 
-        if self.export_media:
+        if self.write_clips:
             self._curr_clip_path = clip_path
             fouv.extract_clip(
                 video_path,
@@ -1756,7 +1757,7 @@ class FiftyOneUnlabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether to write clips when :meth:`get_video_path`
+        write_clips (True): whether to write clips when :meth:`get_video_path`
             is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
@@ -1767,14 +1768,14 @@ class FiftyOneUnlabeledVideoSampleParser(
     def __init__(
         self,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )
@@ -1829,7 +1830,7 @@ class FiftyOneLabeledVideoSampleParser(
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
             if :meth:`get_video_metadata` is called and no metadata is
             available
-        export_media (True): whether to write clips when :meth:`get_video_path`
+        write_clips (True): whether to write clips when :meth:`get_video_path`
             is called
         clip_dir (None): a directory to write clips. Only applicable when
             parsing :class:`fiftyone.core.clips.ClipView` instances
@@ -1844,7 +1845,7 @@ class FiftyOneLabeledVideoSampleParser(
         label_fcn=None,
         frame_labels_fcn=None,
         compute_metadata=False,
-        export_media=True,
+        write_clips=True,
         clip_dir=None,
         video_format=None,
     ):
@@ -1855,7 +1856,7 @@ class FiftyOneLabeledVideoSampleParser(
         ExtractClipsMixin.__init__(
             self,
             compute_metadata=compute_metadata,
-            export_media=export_media,
+            write_clips=write_clips,
             clip_dir=clip_dir,
             video_format=video_format,
         )

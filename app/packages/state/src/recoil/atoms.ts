@@ -83,15 +83,6 @@ export const showOverlays = atom<boolean>({
   default: true,
 });
 
-export const teams = atom({
-  key: "teams",
-  default: {
-    open: false,
-    submitted: false,
-    minimized: false,
-  },
-});
-
 export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
@@ -213,11 +204,6 @@ export const colorSeed = atom<number>({
   default: 0,
 });
 
-export const appTeamsIsOpen = atom({
-  key: "appTeamsIsOpen",
-  default: false,
-});
-
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
@@ -319,6 +305,11 @@ export const theme = atom<"dark" | "light">({
 
 export const canEditSavedViews = sessionAtom({
   key: "canEditSavedViews",
+  default: true,
+});
+
+export const canEditWorkspaces = sessionAtom({
+  key: "canEditWorkspaces",
   default: true,
 });
 

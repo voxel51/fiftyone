@@ -8,8 +8,11 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
+import { useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
+import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import {
   ExecutionContext,
   Operator,
@@ -457,20 +460,39 @@ class SetView extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
+    const refetchableSavedViews = useRefetchableSavedViews();
+
     return {
+      refetchableSavedViews,
       setView: fos.useSetView(),
+      setViewName: useSetRecoilState(fos.viewName),
     };
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.obj("view", {
-      label: "View",
-      required: true,
-    });
+    inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
+    inputs.str("name", { label: "Name or slug of a saved view" });
     return new types.Property(inputs);
   }
-  async execute({ state, hooks, params }: ExecutionContext) {
-    hooks.setView(params.view);
+  async execute({ hooks, params }: ExecutionContext) {
+    const { view, name } = params || {};
+    if (view) {
+      hooks.setView(view);
+    } else if (name) {
+      const slug = toSlug(name);
+      const savedViews = hooks.refetchableSavedViews?.[0]?.savedViews;
+      const savedView =
+        Array.isArray(savedViews) &&
+        savedViews.find((view) => slug === view.slug);
+      if (!savedView) {
+        throw new Error(
+          `Saved view with name or slug "${name}" does not exist`
+        );
+      }
+      hooks.setViewName(slug);
+    } else {
+      throw new Error('Param "view" or "name" is required to set a view');
+    }
   }
 }
 
@@ -713,7 +735,18 @@ class SetSelectedLabels extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.labels);
+    const labels = params?.labels;
+    const formattedLabels = Array.isArray(labels)
+      ? labels.map((label) => {
+          return {
+            field: label.field,
+            sampleId: label.sampleId ?? label.sample_id,
+            labelId: label.labelId ?? label.label_id,
+            frameNumber: label.frameNumber ?? label.frame_number,
+          };
+        })
+      : [];
+    hooks.setSelected(formattedLabels);
   }
 }
 
@@ -726,6 +759,19 @@ class ClearSelectedLabels extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.set(fos.selectedLabels, []);
+  }
+}
+
+class SetSpaces extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+  }
+  useHooks() {
+    const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
+    return { setSessionSpacesState };
+  }
+  async execute(ctx: ExecutionContext) {
+    ctx.hooks.setSessionSpacesState(ctx.params.spaces);
   }
 }
 
@@ -758,6 +804,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SplitPanel);
     _registerBuiltInOperator(SetSelectedLabels);
     _registerBuiltInOperator(ClearSelectedLabels);
+    _registerBuiltInOperator(SetSpaces);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

@@ -1,10 +1,11 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 from bson import DBRef, ObjectId
@@ -30,17 +31,19 @@ from fiftyone.core.fields import (
 import fiftyone.core.utils as fou
 
 from .database import (
-    patch_saved_views,
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
     patch_runs,
+    patch_saved_views,
+    patch_workspaces,
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
 from .utils import create_field
 from .views import SavedViewDocument
+from .workspace import WorkspaceDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -290,7 +293,7 @@ class ColorScheme(EmbeddedDocument):
 
     id = ObjectIdField(
         required=True,
-        default=ObjectId,
+        default=lambda: str(ObjectId()),
         db_field="_id",
     )
     color_pool = ListField(ColorField(), null=True)
@@ -304,17 +307,13 @@ class ColorScheme(EmbeddedDocument):
     colorscales = ListField(DictField(), null=True)
     default_colorscale = DictField(null=True)
 
-    def to_dict(self, extended=False):
-        d = super().to_dict(extended)
-        d["id"] = str(d.pop("_id"))
+    @property
+    def _id(self):
+        return ObjectId(self.id)
 
-        return d
-
-    @classmethod
-    def from_dict(cls, d):
-        d = dict(**d)
-        d["_id"] = ObjectId(d["id"])
-        return super().from_dict(d)
+    @_id.setter
+    def _id(self, value):
+        self.id = str(value)
 
 
 class KeypointSkeleton(EmbeddedDocument):
@@ -375,7 +374,7 @@ class DatasetAppConfig(EmbeddedDocument):
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
         sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("fast", "all", "best")``
+            Supported values are ``("fast", "all", "best", "disabled")``
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
@@ -388,6 +387,9 @@ class DatasetAppConfig(EmbeddedDocument):
             -   ``"point-cloud"``: See the
                 :ref:`3D visualizer docs <app-3d-visualizer-config>` for
                 supported options
+        media_fallback (False): whether to fall back to the default media field
+            (``"filepath"``) when the alternate media field value for a sample
+            is not defined
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -402,6 +404,7 @@ class DatasetAppConfig(EmbeddedDocument):
     )
     color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
     plugins = DictField()
+    media_fallback = BooleanField(default=False)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):
@@ -604,7 +607,10 @@ class DatasetDocument(Document):
     """Backing document for datasets."""
 
     # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "datasets", "strict": False}
+    meta = {
+        "collection": "datasets",
+        "strict": False,
+    }
 
     name = StringField(unique=True, required=True)
     slug = StringField()
@@ -633,6 +639,7 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
+    workspaces = ListField(ReferenceField(WorkspaceDocument))
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
@@ -652,6 +659,21 @@ class DatasetDocument(Document):
                 )
 
         return saved_views
+
+    def get_workspaces(self):
+        workspaces = []
+        for workspace_doc in self.workspaces:
+            if not isinstance(workspace_doc, DBRef):
+                workspaces.append(workspace_doc)
+            else:
+                logger.warning(
+                    "This dataset's workspace references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_workspaces),
+                    self.name,
+                )
+
+        return workspaces
 
     def get_annotation_runs(self):
         annotation_runs = {}

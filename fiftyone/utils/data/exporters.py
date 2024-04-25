@@ -1,32 +1,33 @@
 """
 Dataset exporters.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+
 import inspect
 import logging
 import os
 import warnings
-
-from bson import json_util
+from collections import defaultdict
 
 import eta.core.datasets as etad
 import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import json_util
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.storage as fos
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
@@ -34,14 +35,13 @@ import fiftyone.utils.patches as foup
 
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
+    FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledImageSampleParser,
     FiftyOneUnlabeledMediaSampleParser,
-    FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledVideoSampleParser,
-    ImageSampleParser,
     ImageClassificationSampleParser,
+    ImageSampleParser,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ def export_samples(
     dataset_exporter=None,
     label_field=None,
     frame_labels_field=None,
+    progress=None,
     num_samples=None,
     **kwargs,
 ):
@@ -192,8 +193,12 @@ def export_samples(
             or a dictionary mapping field names to output keys describing the
             frame label fields to export. Only applicable if
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
+            this is computed (if possible) via ``len(samples)`` if needed for
+            progress tracking
         **kwargs: optional keyword arguments to pass to the dataset exporter's
             constructor. If you are exporting image patches, this can also
             contain keyword arguments for
@@ -234,7 +239,7 @@ def export_samples(
     sample_collection = samples
 
     if isinstance(dataset_exporter, BatchDatasetExporter):
-        _write_batch_dataset(dataset_exporter, samples)
+        _write_batch_dataset(dataset_exporter, samples, progress=progress)
         return
 
     if isinstance(
@@ -252,7 +257,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
-            num_samples = len(samples)
+            num_samples = samples
         else:
             sample_parser = FiftyOneUnlabeledImageSampleParser(
                 compute_metadata=True
@@ -262,7 +267,7 @@ def export_samples(
         if found_clips and not samples._is_clips:
             # Export unlabeled video clips
             samples = samples.to_clips(label_field)
-            num_samples = len(samples)
+            num_samples = samples
 
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
@@ -280,7 +285,9 @@ def export_samples(
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
-            compute_metadata=True, export_media=_export_media, **clips_kwargs
+            compute_metadata=True,
+            write_clips=_export_media,
+            **clips_kwargs,
         )
 
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
@@ -298,7 +305,7 @@ def export_samples(
                 **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
-            num_samples = len(samples)
+            num_samples = samples
         else:
             label_fcn = _make_label_coercion_functions(
                 label_field, samples, dataset_exporter
@@ -313,7 +320,7 @@ def export_samples(
         if found_clips and not samples._is_clips:
             # Export labeled video clips
             samples = samples.to_clips(label_field)
-            num_samples = len(samples)
+            num_samples = samples
 
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
@@ -345,7 +352,7 @@ def export_samples(
             label_fcn=label_fcn,
             frame_labels_fcn=frame_labels_fcn,
             compute_metadata=True,
-            export_media=_export_media,
+            write_clips=_export_media,
             **clips_kwargs,
         )
 
@@ -358,8 +365,9 @@ def export_samples(
         samples,
         sample_parser,
         dataset_exporter,
-        num_samples=num_samples,
         sample_collection=sample_collection,
+        progress=progress,
+        num_samples=num_samples,
     )
 
 
@@ -367,8 +375,9 @@ def write_dataset(
     samples,
     sample_parser,
     dataset_exporter,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     """Writes the samples to disk as a dataset in the specified format.
 
@@ -378,20 +387,21 @@ def write_dataset(
             use to parse the samples
         dataset_exporter: a :class:`DatasetExporter` to use to write the
             dataset
-        num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
         sample_collection (None): the
             :class:`fiftyone.core.collections.SampleCollection` from which
             ``samples`` were extracted. If ``samples`` is itself a
             :class:`fiftyone.core.collections.SampleCollection`, this parameter
             defaults to ``samples``. This parameter is optional and is only
             passed to :meth:`DatasetExporter.log_collection`
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)`` if needed for
+            progress tracking
     """
     if num_samples is None:
-        try:
-            num_samples = len(samples)
-        except:
-            pass
+        num_samples = samples
 
     if sample_collection is None and isinstance(samples, foc.SampleCollection):
         sample_collection = samples
@@ -400,15 +410,17 @@ def write_dataset(
         _write_generic_sample_dataset(
             dataset_exporter,
             samples,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(dataset_exporter, GroupDatasetExporter):
         _write_group_dataset(
             dataset_exporter,
             samples,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(
         dataset_exporter,
@@ -418,8 +430,9 @@ def write_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(
         dataset_exporter,
@@ -429,16 +442,18 @@ def write_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
         _write_unlabeled_dataset(
             dataset_exporter,
             samples,
             sample_parser,
-            num_samples=num_samples,
             sample_collection=sample_collection,
+            progress=progress,
+            num_samples=num_samples,
         )
     else:
         raise ValueError(
@@ -803,7 +818,7 @@ def _classification_to_detections(label):
     )
 
 
-def _write_batch_dataset(dataset_exporter, samples):
+def _write_batch_dataset(dataset_exporter, samples, progress=None):
     if not isinstance(samples, foc.SampleCollection):
         raise ValueError(
             "%s can only export %s instances"
@@ -811,16 +826,17 @@ def _write_batch_dataset(dataset_exporter, samples):
         )
 
     with dataset_exporter:
-        dataset_exporter.export_samples(samples)
+        dataset_exporter.export_samples(samples, progress=progress)
 
 
 def _write_generic_sample_dataset(
     dataset_exporter,
     samples,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -838,8 +854,9 @@ def _write_generic_sample_dataset(
 def _write_group_dataset(
     dataset_exporter,
     samples,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     if not isinstance(samples, foc.SampleCollection):
         raise ValueError(
@@ -853,7 +870,7 @@ def _write_group_dataset(
             % (type(dataset_exporter), samples.media_type)
         )
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -866,12 +883,13 @@ def _write_image_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -919,12 +937,13 @@ def _write_video_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
     labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
 
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -967,10 +986,11 @@ def _write_unlabeled_dataset(
     dataset_exporter,
     samples,
     sample_parser,
-    num_samples=None,
     sample_collection=None,
+    progress=None,
+    num_samples=None,
 ):
-    with fou.ProgressBar(total=num_samples) as pb:
+    with fou.ProgressBar(total=num_samples, progress=progress) as pb:
         with dataset_exporter:
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
@@ -1137,6 +1157,93 @@ class MediaExporter(object):
         self._manifest = None
         self._manifest_path = None
 
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
+        if export_mode in (False, "manifest"):
+            return
+
+        scene = fo3d.Scene.from_fo3d(fo3d_path)
+        asset_paths = scene.get_asset_paths()
+
+        for asset_path in asset_paths:
+            if not os.path.isabs(asset_path):
+                absolute_asset_path = os.path.join(
+                    os.path.dirname(fo3d_path), asset_path
+                )
+            else:
+                absolute_asset_path = asset_path
+
+            seen = self._filename_maker.seen_input_path(absolute_asset_path)
+
+            if seen:
+                continue
+
+            asset_output_path = self._filename_maker.get_output_path(
+                absolute_asset_path
+            )
+
+            if export_mode is True:
+                etau.copy_file(absolute_asset_path, asset_output_path)
+            elif export_mode == "move":
+                etau.move_file(absolute_asset_path, asset_output_path)
+            elif export_mode == "symlink":
+                etau.symlink_file(absolute_asset_path, asset_output_path)
+
+        is_scene_modified = False
+
+        for node in scene.traverse():
+            path_attribute = next(
+                (
+                    attr
+                    for attr in fo3d.fo3d_path_attributes
+                    if hasattr(node, attr)
+                ),
+                None,
+            )
+
+            if path_attribute is not None:
+                asset_path = getattr(node, path_attribute)
+
+                is_nested_path = os.path.split(asset_path)[0] != ""
+
+                if asset_path is not None and is_nested_path:
+                    setattr(node, path_attribute, os.path.basename(asset_path))
+                    is_scene_modified = True
+
+        # modify scene background paths, if any
+        if scene.background is not None:
+            if scene.background.image is not None:
+                scene.background.image = os.path.basename(
+                    scene.background.image
+                )
+                is_scene_modified = True
+
+            if scene.background.cube is not None:
+                scene.background.cube = [
+                    os.path.basename(face_path)
+                    for face_path in scene.background.cube
+                ]
+                is_scene_modified = True
+
+        if is_scene_modified:
+            # note: we can't have different behavior for "symlink" because
+            # scene is modified, so we just copy the file regardless
+            scene.write(fo3d_output_path)
+        else:
+            if export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
+            else:
+                etau.copy_file(fo3d_path, fo3d_output_path)
+
+        if export_mode == "move":
+            etau.delete_file(fo3d_path)
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def _write_media(self, media, outpath):
         raise NotImplementedError("subclass must implement _write_media()")
 
@@ -1203,6 +1310,7 @@ class MediaExporter(object):
             outpath = fos.normalize_path(outpath)
 
         if etau.is_str(media_or_path):
+            seen = False
             media_path = fos.normalize_path(media_or_path)
 
             if outpath is not None:
@@ -1211,17 +1319,26 @@ class MediaExporter(object):
                 outpath = media_or_path
                 uuid = self._get_uuid(media_path)
             else:
+                seen = self._filename_maker.seen_input_path(media_path)
                 outpath = self._filename_maker.get_output_path(media_path)
                 uuid = self._get_uuid(outpath)
 
-            if self.export_mode is True:
-                etau.copy_file(media_path, outpath)
-            elif self.export_mode == "move":
-                etau.move_file(media_path, outpath)
-            elif self.export_mode == "symlink":
-                etau.symlink_file(media_path, outpath)
-            elif self.export_mode == "manifest":
-                self._manifest[uuid] = media_path
+            if not seen:
+                is_fo3d_file = media_path.endswith(".fo3d")
+
+                if self.export_mode is True and not is_fo3d_file:
+                    etau.copy_file(media_path, outpath)
+                elif self.export_mode == "move" and not is_fo3d_file:
+                    etau.move_file(media_path, outpath)
+                elif self.export_mode == "symlink" and not is_fo3d_file:
+                    etau.symlink_file(media_path, outpath)
+                elif self.export_mode == "manifest":
+                    self._manifest[uuid] = media_path
+
+                if is_fo3d_file:
+                    self._handle_fo3d_file(
+                        media_path, outpath, self.export_mode
+                    )
         else:
             media = media_or_path
 
@@ -1280,7 +1397,7 @@ class VideoExporter(MediaExporter):
 
 
 class DatasetExporter(object):
-    """Base interface for exporting datsets.
+    """Base interface for exporting datasets.
 
     See :ref:`this page <writing-a-custom-dataset-exporter>` for information
     about implementing/using dataset exporters.
@@ -1377,12 +1494,15 @@ class BatchDatasetExporter(DatasetExporter):
             % type(self)
         )
 
-    def export_samples(self, sample_collection):
+    def export_samples(self, sample_collection, progress=None):
         """Exports the given sample collection.
 
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         raise NotImplementedError("subclass must implement export_samples()")
 
@@ -1704,6 +1824,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1716,6 +1838,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         abs_paths=False,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         pretty_print=False,
     ):
         if export_media is None:
@@ -1728,6 +1851,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.abs_paths = abs_paths
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1832,6 +1956,12 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self._metadata["saved_views"] = [
                 json_util.dumps(v.to_dict())
                 for v in dataset._doc.get_saved_views()
+            ]
+
+        if dataset.has_workspaces and self.export_workspaces:
+            self._metadata["workspaces"] = [
+                json_util.dumps(w.to_dict())
+                for w in dataset._doc.get_workspaces()
             ]
 
         if dataset.has_annotation_runs and self.export_runs:
@@ -1984,6 +2114,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         use_dirs (False): whether to export metadata into directories of per
             sample/frame files
         ordered (True): whether to preserve the order of the exported
@@ -1997,6 +2129,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         rel_dir=None,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         use_dirs=False,
         ordered=True,
     ):
@@ -2012,6 +2145,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self.rel_dir = rel_dir
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.use_dirs = use_dirs
         self.ordered = ordered
 
@@ -2052,7 +2186,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         )
         self._media_exporter.setup()
 
-    def export_samples(self, sample_collection):
+    def export_samples(self, sample_collection, progress=None):
         etau.ensure_dir(self.export_dir)
 
         if sample_collection.media_type == fomm.GROUP:
@@ -2102,6 +2236,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self._samples_path,
             key="samples",
             patt=patt,
+            progress=progress,
             num_docs=num_samples,
         )
 
@@ -2129,6 +2264,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 key="frames",
                 patt=patt,
                 num_docs=num_frames,
+                progress=progress,
             )
 
         dataset = sample_collection._dataset
@@ -2139,22 +2275,19 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}
         dataset_dict["runs"] = {}
+        dataset_dict["workspaces"] = []
 
         #
-        # Exporting saved views/runs only makes sense if the entire dataset is
-        # being exported, otherwise the view for the run cannot be
+        # Exporting saved views/runs/workspaces only makes sense if the entire
+        # dataset is being exported, otherwise the view for the run cannot be
         # reconstructed based on the information encoded in the run's document
         #
 
-        _export_saved_views = (
-            self.export_saved_views
-            and sample_collection == sample_collection._root_dataset
-        )
+        is_full_dataset = sample_collection == sample_collection._root_dataset
 
-        _export_runs = (
-            self.export_runs
-            and sample_collection == sample_collection._root_dataset
-        )
+        _export_saved_views = self.export_saved_views and is_full_dataset
+        _export_runs = self.export_runs and is_full_dataset
+        _export_workspaces = self.export_workspaces and is_full_dataset
 
         if _export_saved_views and dataset.has_saved_views:
             dataset_dict["saved_views"] = [
@@ -2187,6 +2320,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 k: v.to_dict() for k, v in dataset._doc.get_runs().items()
             }
             _export_run_results(dataset, self._runs_dir)
+
+        if _export_workspaces and dataset.has_workspaces:
+            dataset_dict["workspaces"] = [
+                v.to_dict() for v in dataset._doc.get_workspaces()
+            ]
 
         foo.export_document(dataset_dict, self._metadata_path)
 

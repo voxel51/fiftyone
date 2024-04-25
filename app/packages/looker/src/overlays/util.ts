@@ -1,8 +1,8 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
+import { COLOR_BY, getColor, REGRESSION } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import {
@@ -162,6 +162,7 @@ type LabelColorProps = {
   labelTagColors: LabelTagColor;
   customizeColorSetting: CustomizeColor[];
   is3D?: boolean;
+  embeddedDocType: string;
 };
 
 export const getLabelColor = ({
@@ -172,6 +173,7 @@ export const getLabelColor = ({
   labelTagColors,
   customizeColorSetting,
   is3D = false,
+  embeddedDocType,
 }: LabelColorProps): string => {
   const field = customizeColorSetting.find((s) => s.path === path);
 
@@ -217,7 +219,13 @@ export const getLabelColor = ({
       }
     } else {
       // if the field has custom color rules, use the field/value specific rules
-      return getLabelColorByValue({ field, label, coloring, is3D });
+      return getLabelColorByValue({
+        field,
+        label,
+        coloring,
+        is3D,
+        embeddedDocType,
+      });
     }
   }
 
@@ -242,7 +250,8 @@ const getLabelColorByField = ({
 const getLabelColorKey = (
   field: CustomizeColor,
   label: RegularLabel,
-  is3D: boolean
+  is3D: boolean,
+  embeddedDocType: string
 ) => {
   let key;
   if (field.colorByAttribute) {
@@ -256,7 +265,7 @@ const getLabelColorKey = (
       key = field.colorByAttribute;
     }
   } else {
-    key = label._cls === REGRESSION ? "value" : "label";
+    key = embeddedDocType === REGRESSION ? "value" : "label";
   }
   return key;
 };
@@ -266,15 +275,17 @@ const getLabelColorByValue = ({
   label,
   coloring,
   is3D,
+  embeddedDocType,
 }: {
   field?: CustomizeColor;
   label: RegularLabel;
   coloring: Coloring;
   is3D: boolean;
+  embeddedDocType: string;
 }) => {
   let key;
   if (field) {
-    key = getLabelColorKey(field, label, is3D);
+    key = getLabelColorKey(field, label, is3D, embeddedDocType);
     // use the first value as the fallback value to get color,
     // if it's a listField
     const fallbackValue =
@@ -306,7 +317,7 @@ const getLabelColorByValue = ({
       ? valueColor
       : getColor(coloring.pool, coloring.seed, fallbackValue);
   } else {
-    key = label._cls === REGRESSION ? "value" : "label";
+    key = embeddedDocType === REGRESSION ? "value" : "label";
     return getColor(coloring.pool, coloring.seed, label[key]);
   }
 };

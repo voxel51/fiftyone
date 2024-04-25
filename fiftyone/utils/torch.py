@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -231,12 +231,12 @@ def ensure_torch_hub_requirements(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         log_success (False): whether to generate a log message if a requirement
-            is satisifed
+            is satisfied
     """
     for req_str in load_torch_hub_requirements(repo_or_dir, source=source):
         fou.ensure_package(
@@ -643,7 +643,7 @@ class TorchImageModel(
         return self._skeleton
 
     def predict(self, img):
-        """Peforms prediction on the given image.
+        """Performs prediction on the given image.
 
         Args:
             img: the image to process, which can be any of the following:
@@ -665,7 +665,7 @@ class TorchImageModel(
         return self._predict_all(imgs)[0]
 
     def predict_all(self, imgs):
-        """Peforms prediction on the given batch of images.
+        """Performs prediction on the given batch of images.
 
         Args:
             imgs: the batch of images to process, which can be any of the
