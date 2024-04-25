@@ -107,10 +107,11 @@ class DeepSort:
                     ltrb = track.to_ltrb()
                     x1, y1, x2, y2 = ltrb
                     w, h = x2 - x1, y2 - y1
-                    rel_x = x1 / frame_width
-                    rel_y = y1 / frame_height
-                    rel_w = w / frame_width
-                    rel_h = h / frame_height
+
+                    rel_x = max(0, min(x1 / frame_width, 1))
+                    rel_y = max(0, min(y1 / frame_height, 1))
+                    rel_w = min(w / frame_width, 1 - rel_x)
+                    rel_h = min(h / frame_height, 1 - rel_y)
 
                     if keep_confidence:
                         tracked_detections.append(
