@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import OperatorIO from "../OperatorIO";
-import { ErrorView } from "../../../core/src/plugins/SchemaIO/components";
+import ErrorView from "../../../core/src/plugins/SchemaIO/components/ErrorView";
 import { stringifyError } from "../utils";
 
 export default function OperatorPromptOutput({ operatorPrompt, outputFields }) {

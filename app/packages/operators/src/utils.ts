@@ -1,9 +1,6 @@
 import { getFetchParameters } from "@fiftyone/utilities";
 import { KeyboardEventHandler } from "react";
-import { OPERATOR_PROMPT_AREAS, types } from ".";
-import OperatorDrawerPrompt from "./OperatorPrompt/OperatorDrawerPrompt";
-import OperatorModalPrompt from "./OperatorPrompt/OperatorModalPrompt";
-import { ValidationErrorsType, OperatorPromptType } from "./types";
+import { ValidationErrorsType, OperatorPromptType, PromptView } from "./types";
 
 export function stringifyError(error, fallback?) {
   if (typeof error === "string") return error;
@@ -60,7 +57,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   let onSubmit, onCancel;
 
   if (customPromptName == "PromptView") {
-    const prompt = types.PromptView.fromJSON(customPrompt);
+    const prompt = PromptView.fromJSON(customPrompt);
     if (prompt.submitButtonLabel) {
       submitButtonText = prompt.submitButtonLabel;
     }
@@ -110,32 +107,4 @@ function getPromptTitle(operatorPrompt) {
     ? operatorPrompt?.inputFields
     : operatorPrompt?.outputFields;
   return definition?.view?.label;
-}
-
-const defaultTargetResolver = () => document.body;
-const targetResolverByName = {
-  DrawerView: (promptView: OperatorPromptType["promptView"]) => {
-    const promptArea =
-      promptView.placement === "left"
-        ? OPERATOR_PROMPT_AREAS.DRAWER_LEFT
-        : OPERATOR_PROMPT_AREAS.DRAWER_RIGHT;
-    return document.getElementById(promptArea);
-  },
-};
-export function getPromptTarget(operatorPrompt: OperatorPromptType) {
-  const { promptView } = operatorPrompt;
-  const targetResolver =
-    targetResolverByName[promptView?.name] || defaultTargetResolver;
-  return targetResolver(promptView);
-}
-
-const defaultPromptComponentResolver = () => OperatorModalPrompt;
-const promptComponentByName = {
-  DrawerView: () => OperatorDrawerPrompt,
-};
-export function getPromptComponent(operatorPrompt: OperatorPromptType) {
-  const { promptView } = operatorPrompt;
-  const targetResolver =
-    promptComponentByName[promptView?.name] || defaultPromptComponentResolver;
-  return targetResolver(promptView);
 }
