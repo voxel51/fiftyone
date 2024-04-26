@@ -381,6 +381,8 @@ def _extract_number(filename):
 
 def _is_already_uploaded(api, repo_id, folder_path):
     filenames = os.listdir(folder_path)
+    if len(filenames) == 0:
+        return False
     sorted_filenames = sorted(filenames, key=_extract_number)
     first_last = [sorted_filenames[0], sorted_filenames[-1]]
     first_last = [os.path.join(folder_path, f) for f in first_last]
