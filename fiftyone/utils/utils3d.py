@@ -457,7 +457,9 @@ def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
             raise
 
         if skip_failures != "ignore":
-            logger.warning(e)
+            logger.warning(
+                "Failed to process scene at '%s': %s", original_scene_path, e
+            )
         return []
 
     asset_paths = scene.get_asset_paths()
