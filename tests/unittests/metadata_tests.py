@@ -11,7 +11,6 @@ import tempfile
 import unittest
 
 import fiftyone.core.metadata as fom
-import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 
 
