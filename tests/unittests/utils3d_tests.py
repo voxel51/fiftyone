@@ -14,6 +14,7 @@ import open3d as o3d
 from PIL import Image
 
 import fiftyone as fo
+import fiftyone.core.threed as fo3d
 import fiftyone.utils.utils3d as fou3d
 
 from decorators import drop_datasets
@@ -241,7 +242,6 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
 
 class ParsePointCloudTests(BaseOrthographicProjectionTests):
     def test_rotation_matrix_from_projection_normal(self):
-
         # By default, the projection normal is set to (0, 0, 1)
         test_cases = [
             (0, 1, 0),  # 90º rotation
@@ -252,7 +252,6 @@ class ParsePointCloudTests(BaseOrthographicProjectionTests):
 
         for projection_normal in test_cases:
             with self.subTest(projection_normal=projection_normal):
-
                 # because the rotation is ambiguous, we can't compare original and rotated arbitrary points
                 # we can only ensure that points along the user specified projection normal vector
                 # will invariably be aligned with the z-axis after rotation
@@ -319,6 +318,73 @@ class HelperMethodTests(unittest.TestCase):
         )
         actual = fou3d._clamp_to_discrete(arr, discrete)
         self.assertTrue(np.array_equal(expected, actual))
+
+
+class GetSceneAssetPaths(unittest.TestCase):
+    def test_get_scene_asset_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scene_paths = [
+                os.path.join(temp_dir, f"scene{i}.fo3d") for i in range(2)
+            ]
+
+            scene1 = fo3d.Scene()
+            scene1.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene1.add(fo3d.ObjMesh("blah-obj", "relative.obj"))
+            scene1.add(fo3d.Pointcloud("blah-pcd", f"{temp_dir}/absolute.pcd"))
+            scene1.write(scene_paths[0])
+
+            scene2 = fo3d.Scene()
+            scene2.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene2.add(fo3d.StlMesh("blah-obj", "relative2.stl"))
+            scene2.write(scene_paths[1])
+
+            # Don't convert absolute paths
+            asset_paths = fou3d.get_scene_asset_paths(
+                scene_paths,
+                progress=False,
+                skip_failures=False,
+                abs_paths=False,
+            )
+            self.assertListEqual(scene_paths, list(asset_paths.keys()))
+            self.assertSetEqual(
+                set(asset_paths[scene_paths[0]]),
+                {
+                    "back/ground.jpeg",
+                    "relative.obj",
+                    f"{temp_dir}/absolute.pcd",
+                },
+            )
+            self.assertSetEqual(
+                set(asset_paths[scene_paths[1]]),
+                {
+                    "back/ground.jpeg",
+                    "relative2.stl",
+                },
+            )
+
+            # Do convert absolute paths
+            asset_paths = fou3d.get_scene_asset_paths(
+                scene_paths,
+                progress=False,
+                skip_failures=False,
+                abs_paths=True,
+            )
+            self.assertListEqual(scene_paths, list(asset_paths.keys()))
+            self.assertSetEqual(
+                set(asset_paths[scene_paths[0]]),
+                {
+                    f"{temp_dir}/back/ground.jpeg",
+                    f"{temp_dir}/relative.obj",
+                    f"{temp_dir}/absolute.pcd",
+                },
+            )
+            self.assertSetEqual(
+                set(asset_paths[scene_paths[1]]),
+                {
+                    f"{temp_dir}/back/ground.jpeg",
+                    f"{temp_dir}/relative2.stl",
+                },
+            )
 
 
 if __name__ == "__main__":
