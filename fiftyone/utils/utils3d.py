@@ -6,7 +6,7 @@
 |
 """
 import contextlib
-import json
+import functools
 import logging
 import os
 import warnings
@@ -446,6 +446,32 @@ def _get_scene_paths(scene_paths):
     return scene_paths, True
 
 
+def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
+    scene_path, original_scene_path = task
+
+    # Read scene file which is JSON
+    try:
+        scene = Scene.from_fo3d(scene_path)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+        return []
+
+    asset_paths = scene.get_asset_paths()
+
+    if abs_paths:
+        # Convert any relative-to-scene paths to absolute
+        scene_dir = os.path.dirname(original_scene_path)
+        for i, asset_path in enumerate(asset_paths):
+            if not fos.isabs(asset_path):
+                asset_paths[i] = fos.join(scene_dir, asset_path)
+
+    return asset_paths
+
+
 def get_scene_asset_paths(
     scene_paths, abs_paths=False, skip_failures=True, progress=None
 ):
@@ -466,8 +492,6 @@ def get_scene_asset_paths(
     if not scene_paths:
         return {}
 
-    asset_map = {}
-
     _scene_paths, all_local = _get_scene_paths(scene_paths)
 
     if all_local:
@@ -476,24 +500,18 @@ def get_scene_asset_paths(
     else:
         logger.info("Getting asset paths...")
 
-    scene_strs = fos.read_files(
-        _scene_paths,
-        binary=False,
+    _get_scene_asset_paths_single_bound = functools.partial(
+        _get_scene_asset_paths_single,
+        abs_paths=abs_paths,
         skip_failures=skip_failures,
+    )
+    all_asset_paths = fos.run(
+        _get_scene_asset_paths_single_bound,
+        list(zip(_scene_paths, scene_paths)),
         progress=progress,
     )
 
-    for scene_path, scene_str in zip(scene_paths, scene_strs):
-        scene = Scene._from_fo3d_dict(json.loads(scene_str))
-        asset_paths = scene.get_asset_paths()
-
-        if abs_paths:
-            scene_dir = os.path.dirname(scene_path)
-            for i, asset_path in enumerate(asset_paths):
-                if not fos.isabs(asset_path):
-                    asset_paths[i] = fos.join(scene_dir, asset_path)
-
-        asset_map[scene_path] = asset_paths
+    asset_map = dict(zip(scene_paths, all_asset_paths))
 
     return asset_map
 
