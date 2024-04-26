@@ -110,15 +110,19 @@ class SceneMetadata(Metadata):
         asset_counts = collections.defaultdict(int)
         mime_type = "application/octet-stream"
 
+        # Get asset paths and resolve all to absolute
         asset_paths = scene.get_asset_paths()
         scene_dir = os.path.dirname(scene_path)
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
-                asset_paths[i] = fos.join(scene_dir, asset_path)
+                asset_paths[i] = fos.resolve(fos.join(scene_dir, asset_path))
             file_type = pathlib.Path(asset_path).suffix[1:]
             asset_counts[file_type] += 1
+
+        # Dedupe asset paths within this single scene
         asset_paths = list(set(asset_paths))
 
+        # compute metadata for all asset paths
         asset_metadatas = fos.run(
             _do_compute_metadata,
             [

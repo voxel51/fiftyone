@@ -281,6 +281,19 @@ def join(a, *p):
     return os.path.join(a, *p)
 
 
+def resolve(path):
+    """Resolves path to absolute, resolving symlinks and relative path
+        indicators such as `.` and `..`.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the resolved path
+    """
+    return os.path.realpath(path)
+
+
 def isabs(path):
     """Determines whether the given path is absolute.
 
