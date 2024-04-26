@@ -8,6 +8,7 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+import inspect
 import logging
 import math
 import os
@@ -943,26 +944,38 @@ def _download_images(urls_and_filepaths, num_workers):
             executor.map(_download_image, urls_and_filepaths)
 
 
-def _build_media_field_converter(
-    media_field_key, media_field_name, feature, download_dir
-):
-    def convert_media_field(sample_dict, row):
+class MediaFieldConverter:
+    def __init__(
+        self, media_field_key, media_field_name, feature, download_dir
+    ):
+        self.media_field_key = media_field_key
+        self.media_field_name = media_field_name
+        self.feature = feature
+        self.download_dir = download_dir
+
+    def convert_media_field(self, sample_dict, row):
         row_content = row["row"]
         row_index = row["row_idx"]
 
-        filename = f"{media_field_name}_{row_index}.png"
-        filepath = os.path.join(download_dir, filename)
+        filename = f"{self.media_field_name}_{row_index}.png"
+        filepath = os.path.join(self.download_dir, filename)
 
-        if feature["_type"] == "Image":
-            url = row_content[media_field_name]["src"]
+        if self.feature["_type"] == "Image":
+            url = row_content[self.media_field_name]["src"]
         else:
-            url = row_content[media_field_name]
+            url = row_content[self.media_field_name]
 
-        sample_dict[media_field_key] = filepath
+        sample_dict[self.media_field_key] = filepath
 
         return (url, filepath)
 
-    return convert_media_field
+
+def _build_media_field_converter(
+    media_field_key, media_field_name, feature, download_dir
+):
+    return MediaFieldConverter(
+        media_field_key, media_field_name, feature, download_dir
+    ).convert_media_field
 
 
 def _get_image_shape(image_path):
@@ -998,7 +1011,7 @@ def _convert_bounding_box(hf_bbox, img_size):
 
 
 def _build_label_field_converter(
-    field_name, field_type, feature, config, download_dir
+    field_name, field_type, feature, download_dir
 ):
     def convert_classification_field(sample_dict, row):
         row_content = row["row"]
@@ -1124,7 +1137,7 @@ def _build_parquet_to_fiftyone_conversion(config, split, subset, **kwargs):
     for lfn, lft in zip(lf_names, lf_types):
         feature = features[lfn]
         feature_converters[lfn] = _build_label_field_converter(
-            lfn, lft.replace("_fields", ""), feature, config, download_dir
+            lfn, lft.replace("_fields", ""), feature, download_dir
         )
 
     for feature_name, feature in features.items():
@@ -1186,6 +1199,18 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
                 revision=config._revision,
             )
 
+            ## get urls and filepaths for media fields
+            for row in rows:
+                for convert in feature_converters.values():
+                    if inspect.ismethod(convert) and isinstance(
+                        convert.__self__, MediaFieldConverter
+                    ):
+                        res = convert({}, row)
+                        if res is not None:
+                            urls_and_filepaths.append(res)
+
+            _download_images(urls_and_filepaths, num_workers)
+
             samples = []
             for row in rows:
                 sample_dict = {}
@@ -1200,8 +1225,6 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
                 samples.append(sample)
 
             dataset.add_samples(samples, progress=False)
-
-            _download_images(urls_and_filepaths, num_workers)
 
             pb.update(count=len(samples))
 
