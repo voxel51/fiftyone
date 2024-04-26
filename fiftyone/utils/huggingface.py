@@ -1160,7 +1160,10 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
     )
     max_samples = kwargs.get("max_samples", None)
     if max_samples is not None:
-        num_rows = min(num_rows, max_samples)
+        curr_num_rows = dataset.count()
+        if max_samples == curr_num_rows:
+            return
+        num_rows = min(num_rows, max_samples - curr_num_rows)
 
     num_workers = fou.recommend_thread_pool_workers(
         kwargs.get("num_workers", None)
