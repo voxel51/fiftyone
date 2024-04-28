@@ -139,7 +139,7 @@ These steps are only required to run FiftyOne Teams in
 
 1. Configure your Identity Provider
 1. Login to the SuperUser UI by navigating to
-   `https://≤YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and in the top right,
+   `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and in the top right,
    and provide the `FIFTYONE_AUTH_SECRET` to login.
 1. Create an Admin
     1. Click on the “Admins” tab
@@ -155,7 +155,7 @@ These steps are only required to run FiftyOne Teams in
     1. In the “Profile callback” field, set the mapping that your Identity
        Provider expects
 1. Login with the admin user
-    1. Navigate to `https://≤YOUR_FIFTYONE_TEAMS_URL>/datasets`
+    1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`
     1. You should see the login screen for your newly configured authentication
        provider
     1. Before logging in, set the admin user (in step 5). Otherwise, you will
@@ -277,7 +277,7 @@ real-world authentication and authorization scenarios.
 ## REST API
 
 You can view the REST API Documentation by logging into the Super Admin UI (see
-above) or by directly visiting `https://≤YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
+above) or by directly visiting `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
 
 ## Configuration
 
