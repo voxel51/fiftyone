@@ -47,6 +47,7 @@ from fiftyone.server.samples import (
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
+from fiftyone.server.workspace import Workspace
 
 
 ID = gql.scalar(
@@ -294,6 +295,20 @@ class Dataset:
             return await info.context.db[
                 self.frame_collection_name
             ].estimated_document_count()
+
+    @gql.field
+    async def workspace(
+        self, slug: t.Optional[str], info: Info
+    ) -> t.Optional[Workspace]:
+        if slug:
+            doc = await info.context.db["workspaces"].find_one({"slug": slug})
+
+            if doc:
+                doc["id"] = doc.pop("_id")
+                doc["dataset_id"] = doc.pop("_dataset_id")
+                return from_dict(Workspace, doc)
+
+        return None
 
     @staticmethod
     def modifier(doc: dict) -> dict:

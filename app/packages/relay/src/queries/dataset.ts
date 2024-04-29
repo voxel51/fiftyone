@@ -2,10 +2,11 @@ import { graphql } from "relay-runtime";
 
 export default graphql`
   query datasetQuery(
-    $savedViewSlug: String
-    $name: String!
-    $view: BSONArray!
     $extendedView: BSONArray!
+    $name: String!
+    $savedViewSlug: String
+    $view: BSONArray!
+    $workspaceSlug: String
   ) {
     config {
       colorBy
@@ -71,6 +72,13 @@ export default graphql`
           }
         }
       }
+
+      workspace(slug: $workspaceSlug) {
+        id
+        child
+        slug
+      }
+
       ...datasetFragment
     }
     ...savedViewsFragment
