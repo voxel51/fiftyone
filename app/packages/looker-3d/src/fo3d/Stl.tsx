@@ -1,9 +1,12 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mesh, Quaternion, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import { StlAsset } from "../hooks";
 import { useMeshMaterialControls } from "../hooks/use-mesh-material-controls";
+import { useFo3dContext } from "./context";
+import { getResolvedUrlForFo3dAsset } from "./utils";
 
 /**
  *  Renders a single STL mesh.
@@ -13,7 +16,7 @@ import { useMeshMaterialControls } from "../hooks/use-mesh-material-controls";
  */
 export const Stl = ({
   name,
-  stl,
+  stl: { stlPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -26,10 +29,17 @@ export const Stl = ({
   scale: Vector3;
   children?: React.ReactNode;
 }) => {
-  const points = useLoader(STLLoader, stl.stlUrl);
+  const { fo3dRoot } = useFo3dContext();
+
+  const stlUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(stlPath, fo3dRoot)),
+    [stlPath, fo3dRoot]
+  );
+
+  const points = useLoader(STLLoader, stlUrl);
   const [mesh, setMesh] = useState(null);
 
-  const { material } = useMeshMaterialControls(name, stl.defaultMaterial);
+  const { material } = useMeshMaterialControls(name, defaultMaterial);
 
   useEffect(() => {
     if (!material) {
@@ -42,7 +52,7 @@ export const Stl = ({
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);
     }
-  }, [points, stl, material]);
+  }, [points, stlUrl, material]);
 
   if (mesh) {
     return (

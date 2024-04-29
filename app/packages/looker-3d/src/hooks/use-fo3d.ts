@@ -101,7 +101,7 @@ export class PlyAsset {
 
 export class StlAsset {
   constructor(
-    readonly stlUrl?: string,
+    readonly stlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -247,12 +247,7 @@ export const useFo3d = (
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {
-            asset = new StlAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["stlPath"], fo3dRoot)
-              ),
-              material as FoMeshMaterial
-            );
+            asset = new StlAsset(node["stlPath"], material as FoMeshMaterial);
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
