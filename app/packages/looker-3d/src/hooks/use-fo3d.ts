@@ -72,7 +72,7 @@ export class FbxAsset {
 
 export class GltfAsset {
   constructor(
-    readonly gltfUrl?: string,
+    readonly gltfPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -237,12 +237,7 @@ export const useFo3d = (
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
-            asset = new GltfAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["gltfPath"], fo3dRoot)
-              ),
-              material as FoMeshMaterial
-            );
+            asset = new GltfAsset(node["gltfPath"], material as FoMeshMaterial);
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
           if (node["objPath"]) {

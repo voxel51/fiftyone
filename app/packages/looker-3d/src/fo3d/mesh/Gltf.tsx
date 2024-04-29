@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import { AnimationMixer, Mesh, Quaternion, Vector3 } from "three";
@@ -5,11 +6,12 @@ import { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
-import { getBasePathForTextures } from "../utils";
+import { useFo3dContext } from "../context";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Gltf = ({
   name,
-  gltf: { gltfUrl, defaultMaterial },
+  gltf: { gltfPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -22,6 +24,13 @@ export const Gltf = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
+  const { fo3dRoot } = useFo3dContext();
+
+  const gltfUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(gltfPath, fo3dRoot)),
+    [gltfPath, fo3dRoot]
+  );
+
   const resourcePath = useMemo(
     () => getBasePathForTextures(gltfUrl, ["glb", "gltf"]),
     [gltfUrl]
