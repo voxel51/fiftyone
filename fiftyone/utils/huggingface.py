@@ -45,6 +45,7 @@ DATASETS_SERVER_URL = "https://datasets-server.huggingface.co"
 DEFAULT_MEDIA_TYPE = "image"
 DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 DATASETS_MAX_BATCH_SIZE = 100
+DEFAULT_BATCH_SIZE = 100
 DEFAULT_IMAGE_FILEPATH_FEATURE = "image"
 FIFTYONE_BUILTIN_FIELDS = ("id", "filepath", "tags", "metadata")
 SUPPORTED_DTYPES = (
@@ -1287,6 +1288,8 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     batch_size = kwargs.get("batch_size", None)
     splits = _parse_split_kwargs(**kwargs)
 
+    batch_size = DEFAULT_BATCH_SIZE if batch_size is None else batch_size
+
     download_dir = _get_download_dir(config._repo_id, **kwargs)
 
     init_download_kwargs = {
@@ -1297,7 +1300,7 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset_type_name = config._format.strip()
 
-    if dataset_type_name != "FiftyOneDataset" and max_samples is not None:
+    if dataset_type_name == "FiftyOneDataset":
         # If the dataset is a FiftyOneDataset, download only the necessary files
         with _no_progress_bars():
             hfh.snapshot_download(
