@@ -19,6 +19,7 @@ export default graphql`
       name
       defaultGroupSlice
       viewName
+      savedViewSlug
       appConfig {
         colorScheme {
           id

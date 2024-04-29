@@ -1387,6 +1387,36 @@ def join(a, *p):
     return posixpath.join(a, *p)
 
 
+def resolve(path):
+    """Resolves path to absolute, resolving symlinks and relative path
+        indicators such as `.` and `..`.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the resolved path
+    """
+    if is_local(path):
+        return os.path.realpath(path)
+
+    # Remote path but doesn't have ./ or ../
+    if "./" not in path and "../" not in path:
+        return path
+
+    # Remote path, handle . and ..
+    prefix, blob_locator = path.split("://")
+    remote_folders = blob_locator.split(posixpath.sep)
+    resolved_folders = []
+    for folder in remote_folders:
+        print(folder)
+        if folder == "..":
+            resolved_folders.pop()
+        elif folder != ".":
+            resolved_folders.append(folder)
+    return prefix + "://" + posixpath.sep.join(resolved_folders)
+
+
 def isabs(path):
     """Determines whether the given path is absolute.
 
