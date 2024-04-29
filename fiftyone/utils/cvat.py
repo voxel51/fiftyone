@@ -284,6 +284,7 @@ def import_annotations(
                     **kwargs,
                 )
     finally:
+        dataset.reload()
         anno_backend.delete_run(dataset, anno_key)
         api.close()
 
