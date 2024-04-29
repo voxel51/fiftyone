@@ -84,7 +84,8 @@ class SceneMetadata(Metadata):
     Args:
         size_bytes (None): the size of scene definition and all children
             assets on disk, in bytes
-        mime_type (None): the MIME type of the image
+        mime_type (None): the MIME type of the scene media. Always set to
+            application/octet-stream
         asset_counts (None): dict of child asset file type to count
     """
 
@@ -96,7 +97,8 @@ class SceneMetadata(Metadata):
 
         Args:
             scene_path: a scene path or URL
-            mime_type (None): Ignored
+            mime_type (None): Ignored. mime_type always set to
+                application/octet-stream
 
         Returns:
             a :class:`SceneMetadata`
@@ -122,7 +124,6 @@ class SceneMetadata(Metadata):
 
         # Dedupe asset paths within this single scene
         asset_paths = list(set(asset_paths))
-        print(asset_paths)
 
         # compute metadata for all asset paths
         asset_metadatas = fos.run(
