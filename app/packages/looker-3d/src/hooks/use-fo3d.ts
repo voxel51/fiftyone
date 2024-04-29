@@ -79,8 +79,8 @@ export class GltfAsset {
 
 export class ObjAsset {
   constructor(
-    readonly objUrl?: string,
-    readonly mtlUrl?: string,
+    readonly objPath?: string,
+    readonly mtlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -243,19 +243,7 @@ export const useFo3d = (
           if (node["objPath"]) {
             const objPath = node["objPath"];
             const mtlPath = node["mtlPath"];
-            if (mtlPath) {
-              asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-                getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
-                material as FoMeshMaterial
-              );
-            } else {
-              asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-                undefined,
-                material as FoMeshMaterial
-              );
-            }
+            asset = new ObjAsset(objPath, mtlPath, material as FoMeshMaterial);
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {

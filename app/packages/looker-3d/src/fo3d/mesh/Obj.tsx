@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Mesh, MeshStandardMaterial, Quaternion, Vector3 } from "three";
@@ -6,7 +7,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { getColorFromPoolBasedOnHash } from "../../utils";
-import { getBasePathForTextures } from "../utils";
+import { useFo3dContext } from "../context";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 const ObjMeshDefaultMaterial = ({
   name,
@@ -17,7 +19,15 @@ const ObjMeshDefaultMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objUrl } = obj;
+  const { objPath } = obj;
+
+  const { fo3dRoot } = useFo3dContext();
+
+  const objUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, fo3dRoot]
+  );
+
   const mesh = useLoader(OBJLoader, objUrl);
 
   const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
@@ -53,7 +63,19 @@ const ObjMeshWithCustomMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objUrl, mtlUrl } = obj;
+  const { objPath, mtlPath } = obj;
+
+  const { fo3dRoot } = useFo3dContext();
+
+  const objUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, fo3dRoot]
+  );
+
+  const mtlUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
+    [mtlPath, fo3dRoot]
+  );
 
   const resourcePath = useMemo(
     () => (mtlUrl ? getBasePathForTextures(mtlUrl, ["mtl"]) : null),
@@ -98,7 +120,7 @@ export const Obj = ({
 }) => {
   return (
     <group position={position} quaternion={quaternion} scale={scale}>
-      {obj.mtlUrl ? (
+      {obj.mtlPath ? (
         <ObjMeshWithCustomMaterial name={name} obj={obj} />
       ) : (
         <ObjMeshDefaultMaterial name={name} obj={obj} />
