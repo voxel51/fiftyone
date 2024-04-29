@@ -5,7 +5,7 @@ vi.mock("recoil-relay");
 import { setMockAtoms, TestSelectorFamily } from "../../../../__mocks__/recoil";
 import * as filters from "./filters";
 
-describe.skip("filter resolves correctly", () => {
+describe("filter resolves correctly", () => {
   const testModal = <TestSelectorFamily<typeof filters.filter>>(
     (<unknown>filters.filter({ path: "test", modal: true }))
   );
@@ -28,7 +28,7 @@ describe.skip("filter resolves correctly", () => {
   });
 });
 
-describe.skip("hasFilter resolves correctly", () => {
+describe("hasFilter resolves correctly", () => {
   const test = <TestSelectorFamily<typeof filters.hasFilters>>(
     (<unknown>filters.hasFilters(false))
   );
@@ -59,7 +59,9 @@ describe("setting a filter does not use async state", () => {
 
   it("does not use lightningUnlocked ", () => {
     setMockAtoms({
+      granularSidebarExpandedStore: {},
       lightning: true,
+      lightningPaths: () => new Set(["my_field"]),
       lightningUnlocked: () => {
         throw new Error("do not call me");
       },

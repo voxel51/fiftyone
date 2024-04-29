@@ -23,9 +23,8 @@ export const getValue = (atom) => {
   if (atom.params !== undefined) {
     return mockValues[atom.key](atom.params);
   }
-  const mockValue = mockValues[atom.key];
 
-  console.log(atom.key, mockValue);
+  const mockValue = mockValues[atom.key];
   if (mockValue instanceof Function) {
     return mockValue();
   }
@@ -44,9 +43,12 @@ const resetValue = (atom) => {
 const setValue = (atom, value) => {
   if (atom.params) {
     if (!mockValuesStore[atom.key]) mockValuesStore[atom.key] = {};
-    mockValuesStore[atom.key][JSON.stringify(atom.params)] = value;
+    const current = mockValuesStore[atom.key][JSON.stringify(atom.params)];
+    mockValuesStore[atom.key][JSON.stringify(atom.params)] =
+      value instanceof Function ? value(current) : value;
   } else {
-    mockValues[atom.key] = value;
+    const current = mockValues[atom.key];
+    mockValues[atom.key] = value instanceof Function ? value(current) : value;
   }
 };
 
