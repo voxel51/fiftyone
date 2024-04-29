@@ -230,6 +230,7 @@ export const useFo3d = (
     }
 
     // recursively remove all attributes that start with "preTransformed" from the raw data
+    // `preTransformed` is not relevant in OSS
     const removePreTransformedAttributes = (node: FoSceneRawNode) => {
       for (const key in node) {
         if (key.startsWith("preTransformed")) {
