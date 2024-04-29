@@ -66,14 +66,16 @@ export class SphereGeometryAsset {
 
 export class FbxAsset {
   constructor(
-    readonly fbxPath?: string,
+    readonly fbxPath: string,
+    readonly preTransformedFbxPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
 
 export class GltfAsset {
   constructor(
-    readonly gltfPath?: string,
+    readonly gltfPath: string,
+    readonly preTransformedGltfPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -82,6 +84,8 @@ export class ObjAsset {
   constructor(
     readonly objPath?: string,
     readonly mtlPath?: string,
+    readonly preTransformedObjPath?: string,
+    readonly preTransformedMtlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -89,6 +93,7 @@ export class ObjAsset {
 export class PcdAsset {
   constructor(
     readonly pcdPath?: string,
+    readonly preTransformedPcdPath?: string,
     readonly defaultMaterial?: FoPointcloudMaterialProps
   ) {}
 }
@@ -96,6 +101,7 @@ export class PcdAsset {
 export class PlyAsset {
   constructor(
     readonly plyPath?: string,
+    readonly preTransformedPlyPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -103,6 +109,7 @@ export class PlyAsset {
 export class StlAsset {
   constructor(
     readonly stlPath?: string,
+    readonly preTransformedStlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -260,31 +267,52 @@ export const useFo3d = (
       if (node["_type"].toLocaleLowerCase().endsWith("mesh")) {
         if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
           if (node["fbxPath"]) {
-            asset = new FbxAsset(node["fbxPath"], material as FoMeshMaterial);
+            asset = new FbxAsset(
+              node["fbxPath"],
+              node["preTransformedFbxPath"],
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
-            asset = new GltfAsset(node["gltfPath"], material as FoMeshMaterial);
+            asset = new GltfAsset(
+              node["gltfPath"],
+              node["preTransformedGltfPath"],
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
           if (node["objPath"]) {
-            const objPath = node["objPath"];
-            const mtlPath = node["mtlPath"];
-            asset = new ObjAsset(objPath, mtlPath, material as FoMeshMaterial);
+            asset = new ObjAsset(
+              node["objPath"],
+              node["mtlPath"],
+              node["preTransformedObjPath"],
+              node["preTransformedMtlPath"],
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {
-            asset = new StlAsset(node["stlPath"], material as FoMeshMaterial);
+            asset = new StlAsset(
+              node["stlPath"],
+              node["preTransformedStlPath"],
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
-            asset = new PlyAsset(node["plyPath"], material as FoMeshMaterial);
+            asset = new PlyAsset(
+              node["plyPath"],
+              node["preTransformedPlyPath"],
+              material as FoMeshMaterial
+            );
           }
         }
       } else if (node["_type"].endsWith("PointCloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
             node["pcdPath"],
+            node["preTransformedPcdPath"],
             material as FoPointcloudMaterialProps
           );
         }
