@@ -281,17 +281,19 @@ def join(a, *p):
     return os.path.join(a, *p)
 
 
-def resolve(path):
-    """Resolves path to absolute, resolving symlinks and relative path
-        indicators such as `.` and `..`.
+def join_resolve(a, *p):
+    """Joins the given path components into a single path. Also resolves path
+    to absolute, resolving symlinks and relative path indicators such as
+    ``.`` and ``..``
 
     Args:
-        path: the filepath
+        a: the root
+        *p: additional path components
 
     Returns:
-        the resolved path
+        the joined and resolved absolute path
     """
-    return os.path.realpath(path)
+    return os.path.realpath(os.path.join(a, *p))
 
 
 def isabs(path):
