@@ -94,7 +94,7 @@ export class PcdAsset {
 
 export class PlyAsset {
   constructor(
-    readonly plyUrl?: string,
+    readonly plyPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -251,12 +251,7 @@ export const useFo3d = (
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
-            asset = new PlyAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["plyPath"], fo3dRoot)
-              ),
-              material as FoMeshMaterial
-            );
+            asset = new PlyAsset(node["plyPath"], material as FoMeshMaterial);
           }
         }
       } else if (node["_type"].endsWith("PointCloud")) {

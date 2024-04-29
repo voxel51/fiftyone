@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import { BufferGeometry, Mesh, Quaternion, Vector3 } from "three";
@@ -8,7 +9,8 @@ import {
   PlyAsset,
 } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { getBasePathForTextures } from "../utils";
+import { useFo3dContext } from "../context";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 interface PlyProps {
   name: string;
@@ -75,18 +77,25 @@ const PlyWithNoMaterialOverride = ({
 
 export const Ply = ({
   name,
-  ply,
+  ply: { plyPath, defaultMaterial },
   position,
   quaternion,
   scale,
   children,
 }: PlyProps) => {
-  const resourcePath = useMemo(
-    () => getBasePathForTextures(ply.plyUrl, ["ply"]),
-    [ply.plyUrl]
+  const { fo3dRoot } = useFo3dContext();
+
+  const plyUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
+    [plyPath, fo3dRoot]
   );
 
-  const geometry = useLoader(PLYLoader, ply.plyUrl, (loader) => {
+  const resourcePath = useMemo(
+    () => getBasePathForTextures(plyUrl, ["ply"]),
+    [plyUrl]
+  );
+
+  const geometry = useLoader(PLYLoader, plyUrl, (loader) => {
     loader.resourcePath = resourcePath;
   });
 
@@ -123,7 +132,7 @@ export const Ply = ({
         <PlyWithMaterialOverride
           name={name}
           geometry={geometry}
-          defaultMaterial={ply.defaultMaterial}
+          defaultMaterial={defaultMaterial}
         />
       );
     }
@@ -132,7 +141,7 @@ export const Ply = ({
       <PlyWithNoMaterialOverride
         name={name}
         geometry={geometry}
-        defaultMaterial={ply.defaultMaterial}
+        defaultMaterial={defaultMaterial}
       />
     );
   }, [
@@ -140,7 +149,7 @@ export const Ply = ({
     isUsingVertexColors,
     geometry,
     name,
-    ply.defaultMaterial,
+    defaultMaterial,
   ]);
 
   if (!mesh) {
