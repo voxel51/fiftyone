@@ -23,7 +23,14 @@ export const getValue = (atom) => {
   if (atom.params !== undefined) {
     return mockValues[atom.key](atom.params);
   }
-  return mockValues[atom.key];
+  const mockValue = mockValues[atom.key];
+
+  console.log(atom.key, mockValue);
+  if (mockValue instanceof Function) {
+    return mockValue();
+  }
+
+  return mockValue;
 };
 
 const resetValue = (atom) => {
@@ -103,7 +110,10 @@ export function selectorFamily<
     resolver.key = options.key;
     resolver.params = params;
     resolver.set = (value) =>
-      options.set({ set: setValue, get: getValue, reset: resetValue }, value);
+      options.set(params)(
+        { set: setValue, get: getValue, reset: resetValue },
+        value
+      );
     return resolver;
   };
 }

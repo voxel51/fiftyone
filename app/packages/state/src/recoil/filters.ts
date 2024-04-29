@@ -4,7 +4,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import { atom, DefaultValue, selector, selectorFamily } from "recoil";
 import { lightning, lightningPaths, lightningUnlocked } from "./lightning";
 import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
