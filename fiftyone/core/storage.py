@@ -1923,6 +1923,41 @@ def _is_root(path):
     return False
 
 
+def _list_buckets(fs, client):
+    """Lists buckets that are visible to a given client."""
+    prefix = None
+
+    buckets = set()
+    if fs == FileSystem.S3:
+        if client is not None:
+            resp = client._client.list_buckets()
+            buckets = set(r["Name"] for r in resp.get("Buckets", []))
+
+        prefix = S3_PREFIX
+    elif fs == FileSystem.GCS:
+        if client is not None:
+            buckets = set(b.name for b in client._client.list_buckets())
+
+        prefix = GCS_PREFIX
+    elif fs == FileSystem.AZURE:
+        if client is not None:
+            buckets = set(c["name"] for c in client._client.list_containers())
+
+        if azure_prefixes:
+            alias_prefix, endpoint_prefix = sorted(azure_prefixes)[0]
+            prefix = alias_prefix or endpoint_prefix
+    elif fs == FileSystem.MINIO:
+        if client is not None:
+            resp = client._client.list_buckets()
+            buckets = set(r["Name"] for r in resp.get("Buckets", []))
+
+        if minio_prefixes:
+            alias_prefix, endpoint_prefix = sorted(minio_prefixes)[0]
+            prefix = alias_prefix or endpoint_prefix
+
+    return buckets, prefix
+
+
 def list_buckets(fs, abs_paths=False):
     """Lists the available buckets in the given file system.
 
@@ -1958,41 +1993,41 @@ def list_buckets(fs, abs_paths=False):
         else:
             buckets.update(_get_bucket_name(b) for b in managed_buckets)
 
+    prefix = None
+    # We can't use our bucket-keyed credentials cache since these are
+    #   pattern-based, so we'll just have to make the client every time.
+    if creds_manager is not None:
+        patterned_creds = creds_manager.get_patterned_credentials(fs)
+        for creds_path in patterned_creds:
+            # Make client out of credentials and list buckets
+            client = _make_client_with_credentials_path(fs, creds_path)
+            found_buckets, local_prefix = _list_buckets(fs, client)
+
+            # Filter buckets on whether they actually match one of the patterns
+            # @todo: fix imprecision in a subtle case:
+            #   credsA can see bucketA, credsB cannot see bucketA.
+            #   bucketA matches credsB pattern but not credsA pattern.
+            #   bucketA incorrectly returned since credsB would normally be used
+            found_buckets = [
+                b for b in found_buckets if _has_managed_credentials(fs, b)
+            ]
+            if abs_paths and prefix:
+                found_buckets = [
+                    local_prefix + b if "/" not in b else b
+                    for b in found_buckets
+                ]
+            buckets.update(found_buckets)
+
     # Also include any buckets accessible by default credentials
     try:
         client = get_client(fs=fs)
     except:
         client = None
 
-    prefix = None
+    default_client_buckets, prefix = _list_buckets(fs, client)
+    buckets.update(default_client_buckets)
 
-    if fs == FileSystem.S3:
-        if client is not None:
-            resp = client._client.list_buckets()
-            buckets.update(r["Name"] for r in resp.get("Buckets", []))
-
-        prefix = S3_PREFIX
-    elif fs == FileSystem.GCS:
-        if client is not None:
-            buckets.update(b.name for b in client._client.list_buckets())
-
-        prefix = GCS_PREFIX
-    elif fs == FileSystem.AZURE:
-        if client is not None:
-            buckets.update(c["name"] for c in client._client.list_containers())
-
-        if azure_prefixes:
-            alias_prefix, endpoint_prefix = sorted(azure_prefixes)[0]
-            prefix = alias_prefix or endpoint_prefix
-    elif fs == FileSystem.MINIO:
-        if client is not None:
-            resp = client._client.list_buckets()
-            buckets.update(r["Name"] for r in resp.get("Buckets", []))
-
-        if minio_prefixes:
-            alias_prefix, endpoint_prefix = sorted(minio_prefixes)[0]
-            prefix = alias_prefix or endpoint_prefix
-
+    # Set to sorted list
     buckets = sorted(buckets)
     if abs_paths and prefix:
         buckets = [prefix + b if "/" not in b else b for b in buckets]
@@ -2526,37 +2561,53 @@ def _make_client(fs, bucket=None, region=None, num_workers=None):
         kwargs["max_pool_connections"] = num_workers
 
     if fs == FileSystem.S3:
-        credentials = _load_s3_credentials(bucket=bucket)
-        if region is not None:
-            if credentials is None:
-                credentials = {}
-
-            credentials["region"] = region
-
-        return S3StorageClient(credentials=credentials, **kwargs)
+        credentials_path, profile = _load_s3_credentials(bucket=bucket)
+        return _make_s3_client(credentials_path, profile, region, **kwargs)
 
     if fs == FileSystem.GCS:
-        credentials = _load_gcs_credentials(bucket=bucket)
-        return GoogleCloudStorageClient(credentials=credentials, **kwargs)
+        credentials_path = _load_gcs_credentials(bucket=bucket)
+        return _make_gcs_client(credentials_path, **kwargs)
 
     if fs == FileSystem.AZURE:
-        credentials = _load_azure_credentials(bucket=bucket)
-        return AzureStorageClient(credentials=credentials, **kwargs)
+        credentials_path, profile = _load_azure_credentials(bucket=bucket)
+        return _make_azure_client(credentials_path, profile, **kwargs)
 
     if fs == FileSystem.MINIO:
-        credentials = _load_minio_credentials(bucket=bucket)
-        if region is not None:
-            if credentials is None:
-                credentials = {}
-
-            credentials["region"] = region
-
-        return MinIOStorageClient(credentials=credentials, **kwargs)
+        credentials_path, profile = _load_minio_credentials(bucket=bucket)
+        return _make_minio_client(credentials_path, profile, region, **kwargs)
 
     if fs == FileSystem.HTTP:
         return HTTPStorageClient(**kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def _make_client_with_credentials_path(
+    fs, credentials_path, region=None, num_workers=None
+):
+    if region is not None and fs not in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
+        region = None
+        logger.debug("Ignoring region for non-regional file system '%s'", fs)
+
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    kwargs = (fo.media_cache_config.extra_client_kwargs or {}).get(fs, {})
+
+    if num_workers is not None and num_workers > 10:
+        kwargs["max_pool_connections"] = num_workers
+
+    if fs == FileSystem.S3:
+        return _make_s3_client(credentials_path, None, region, **kwargs)
+
+    if fs == FileSystem.GCS:
+        return _make_gcs_client(credentials_path, **kwargs)
+
+    if fs == FileSystem.AZURE:
+        return _make_azure_client(credentials_path, None, **kwargs)
+
+    if fs == FileSystem.MINIO:
+        return _make_minio_client(credentials_path, None, region, **kwargs)
 
 
 def _refresh_managed_credentials_if_necessary():
@@ -2633,11 +2684,20 @@ def _load_s3_credentials(bucket=None):
         profile = fo.media_cache_config.aws_profile
         logger.debug("Loaded S3 credentials from environment")
 
+    return credentials_path, profile
+
+
+def _make_s3_client(credentials_path, profile, region, **client_kwargs):
     credentials, _ = S3StorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
     )
+    if region is not None:
+        if credentials is None:
+            credentials = {}
 
-    return credentials
+        credentials["region"] = region
+
+    return S3StorageClient(credentials=credentials, **client_kwargs)
 
 
 def _load_gcs_credentials(bucket=None):
@@ -2649,11 +2709,14 @@ def _load_gcs_credentials(bucket=None):
         credentials_path = fo.media_cache_config.google_application_credentials
         logger.debug("Loaded GCP credentials from environment")
 
+    return credentials_path
+
+
+def _make_gcs_client(credentials_path, **client_kwargs):
     credentials, _ = GoogleCloudStorageClient.load_credentials(
         credentials_path=credentials_path
     )
-
-    return credentials
+    return GoogleCloudStorageClient(credentials=credentials, **client_kwargs)
 
 
 def _load_azure_credentials(bucket=None):
@@ -2669,11 +2732,14 @@ def _load_azure_credentials(bucket=None):
         profile = fo.media_cache_config.azure_profile
         logger.debug("Loaded Azure credentials from environment")
 
+    return credentials_path, profile
+
+
+def _make_azure_client(credentials_path, profile, **client_kwargs):
     credentials, _ = AzureStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
     )
-
-    return credentials
+    return AzureStorageClient(credentials=credentials, **client_kwargs)
 
 
 def _load_minio_credentials(bucket=None):
@@ -2689,11 +2755,20 @@ def _load_minio_credentials(bucket=None):
         profile = fo.media_cache_config.minio_profile
         logger.debug("Loaded MinIO credentials from environment")
 
+    return credentials_path, profile
+
+
+def _make_minio_client(credentials_path, profile, region, **client_kwargs):
     credentials, _ = MinIOStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
     )
+    if region is not None:
+        if credentials is None:
+            credentials = {}
 
-    return credentials
+        credentials["region"] = region
+
+    return MinIOStorageClient(credentials=credentials, **client_kwargs)
 
 
 def _copy_files(

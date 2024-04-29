@@ -171,9 +171,23 @@ class CloudCredentialsManager(object):
         for creds_path in self._bucket_creds_exact[fs].values():
             creds_paths.add(creds_path)
 
-        for _, creds_path in self._bucket_creds_regex[fs]:
-            creds_paths.add(creds_path)
+        creds_paths.update(self.get_patterned_credentials(fs))
 
+        return list(creds_paths)
+
+    def get_patterned_credentials(self, fs):
+        """Returns credentials for the given file system, which have a bucket
+        pattern/regex associated with them.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of credential paths
+        """
+        creds_paths = {
+            creds_path for _, creds_path in self._bucket_creds_regex[fs]
+        }
         return list(creds_paths)
 
     def _refresh_credentials(self):
