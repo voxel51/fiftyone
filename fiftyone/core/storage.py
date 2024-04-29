@@ -1409,7 +1409,6 @@ def resolve(path):
     remote_folders = blob_locator.split(posixpath.sep)
     resolved_folders = []
     for folder in remote_folders:
-        print(folder)
         if folder == "..":
             resolved_folders.pop()
         elif folder != ".":
