@@ -15,9 +15,7 @@ from strawberry.schema.config import StrawberryConfig
 import fiftyone as fo
 
 from fiftyone.server.constants import SCALAR_OVERRIDES
-from fiftyone.server.context import get_context
 from fiftyone.server.query import Dataset
-from fiftyone.server.aggregations import aggregate_resolver
 
 from decorators import drop_async_dataset
 from utils.graphql import execute
