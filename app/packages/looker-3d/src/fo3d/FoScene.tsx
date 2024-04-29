@@ -245,7 +245,7 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [scene]
   );
 
-  const { isSceneInitialized } = useFo3dContext();
+  const { isSceneInitialized, fo3dRoot } = useFo3dContext();
 
   const visibilityMap = useControls(
     "Visibility",
@@ -265,6 +265,10 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
       setFo3dContainsBackground(false);
     }
   }, [scene, isSceneInitialized]);
+
+  if (!fo3dRoot) {
+    return null;
+  }
 
   return (
     <>

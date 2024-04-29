@@ -6,11 +6,13 @@ import { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
-import { getBasePathForTextures } from "../utils";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { useFo3dContext } from "../context";
+import { getSampleSrc } from "@fiftyone/state";
 
 export const Fbx = ({
   name,
-  fbx: { fbxUrl, defaultMaterial },
+  fbx: { fbxPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -23,6 +25,13 @@ export const Fbx = ({
   scale: Vector3;
   children: React.ReactNode;
 }) => {
+  const { fo3dRoot } = useFo3dContext();
+
+  const fbxUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(fbxPath, fo3dRoot)),
+    [fbxPath, fo3dRoot]
+  );
+
   const resourcePath = useMemo(
     () => getBasePathForTextures(fbxUrl, ["fbx"]),
     [fbxUrl]

@@ -65,7 +65,7 @@ export class SphereGeometryAsset {
 
 export class FbxAsset {
   constructor(
-    readonly fbxUrl?: string,
+    readonly fbxPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -233,12 +233,7 @@ export const useFo3d = (
       if (node["_type"].toLocaleLowerCase().endsWith("mesh")) {
         if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
           if (node["fbxPath"]) {
-            asset = new FbxAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["fbxPath"], fo3dRoot)
-              ),
-              material as FoMeshMaterial
-            );
+            asset = new FbxAsset(node["fbxPath"], material as FoMeshMaterial);
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
