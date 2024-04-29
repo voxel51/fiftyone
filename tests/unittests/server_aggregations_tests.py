@@ -6,7 +6,6 @@ FiftyOne Server aggregation count tests.
 |
 """
 
-import typing as t
 import unittest
 
 import strawberry as gql
@@ -15,11 +14,11 @@ from strawberry.schema.config import StrawberryConfig
 import fiftyone as fo
 
 from fiftyone.server.constants import SCALAR_OVERRIDES
-from fiftyone.server.context import get_context
 from fiftyone.server.aggregate import AggregateQuery
 from fiftyone.server.aggregations import aggregate_resolver
 
 from decorators import drop_async_dataset
+from utils.graphql import execute
 
 
 @gql.type
@@ -55,7 +54,8 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
             }
         """
 
-        result = await _execute(
+        result = await execute(
+            schema,
             query,
             {
                 "form": {
@@ -127,7 +127,8 @@ class TestGroupModeHistogramCounts(unittest.IsolatedAsyncioTestCase):
             }
         """
 
-        result = await _execute(
+        result = await execute(
+            schema,
             query,
             {
                 "dataset": dataset.name,
@@ -172,12 +173,4 @@ def _add_samples(dataset: fo.Dataset):
                 label=fo.Classification(label="other"),
             ),
         ]
-    )
-
-
-async def _execute(query: str, variables: t.Dict):
-    return await schema.execute(
-        query,
-        variable_values=variables,
-        context_value=get_context(use_global_db_client=False),
     )
