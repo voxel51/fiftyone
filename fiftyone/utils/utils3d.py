@@ -473,9 +473,7 @@ def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
                 asset_path = fos.join(scene_dir, asset_path)
-            asset_paths[i] = foc.media_cache.use_cached_path(
-                fos.resolve(asset_path)
-            )
+            asset_paths[i] = fos.resolve(asset_path)
 
     return asset_paths
 
