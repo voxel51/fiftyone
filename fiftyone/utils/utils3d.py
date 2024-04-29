@@ -469,7 +469,8 @@ def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
         scene_dir = os.path.dirname(original_scene_path)
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
-                asset_paths[i] = fos.resolve(fos.join(scene_dir, asset_path))
+                asset_path = fos.join(scene_dir, asset_path)
+            asset_paths[i] = fos.resolve(asset_path)
 
     return asset_paths
 
@@ -815,9 +816,9 @@ def _get_pcd_filepath_from_scene(scene_path: str):
         return None
 
     if not fos.isabs(pcd_path):
-        return pcd_path
+        pcd_path = fos.join(os.path.dirname(scene_path), pcd_path)
 
-    return fos.resolve(fos.join(os.path.dirname(scene_path), pcd_path))
+    return fos.resolve(pcd_path)
 
 
 def _parse_point_cloud(

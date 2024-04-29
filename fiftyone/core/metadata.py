@@ -115,12 +115,14 @@ class SceneMetadata(Metadata):
         scene_dir = os.path.dirname(scene_path)
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
-                asset_paths[i] = fos.resolve(fos.join(scene_dir, asset_path))
+                asset_path = fos.join(scene_dir, asset_path)
+            asset_paths[i] = fos.resolve(asset_path)
             file_type = pathlib.Path(asset_path).suffix[1:]
             asset_counts[file_type] += 1
 
         # Dedupe asset paths within this single scene
         asset_paths = list(set(asset_paths))
+        print(asset_paths)
 
         # compute metadata for all asset paths
         asset_metadatas = fos.run(
