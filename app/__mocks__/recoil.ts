@@ -119,6 +119,7 @@ export type TestSelectorFamily<
   P = any
 > = {
   (): ReturnType<T>["__tag"][0];
+  set: (params: ReturnType<T>["__tag"][0]) => void;
   key: string;
   params: P;
 };
