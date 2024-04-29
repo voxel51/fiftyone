@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useCallback, useMemo, useRef } from "react";
 import { Quaternion, Vector3 } from "three";
@@ -20,10 +21,11 @@ import {
 } from "../../renderables/pcd/shaders";
 import { computeMinMaxForColorBufferAttribute } from "../../utils";
 import { useFo3dContext } from "../context";
+import { getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Pcd = ({
   name,
-  pcd,
+  pcd: { pcdPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -36,13 +38,18 @@ export const Pcd = ({
   scale: Vector3;
   children?: React.ReactNode;
 }) => {
-  const points = useLoader(PCDLoader, pcd.pcdUrl);
+  const { upVector, pluginSettings, fo3dRoot } = useFo3dContext();
+
+  const pcdUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(pcdPath, fo3dRoot)),
+    [pcdPath, fo3dRoot]
+  );
+
+  const points = useLoader(PCDLoader, pcdUrl);
   const pcdContainerRef = useRef();
 
   const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
-    usePcdMaterialControls(name, pcd.defaultMaterial);
-
-  const { upVector, pluginSettings } = useFo3dContext();
+    usePcdMaterialControls(name, defaultMaterial);
 
   const pcdBoundingBox = useFo3dBounds(
     pcdContainerRef,

@@ -87,7 +87,7 @@ export class ObjAsset {
 
 export class PcdAsset {
   constructor(
-    readonly pcdUrl?: string,
+    readonly pcdPath?: string,
     readonly defaultMaterial?: FoPointcloudMaterialProps
   ) {}
 }
@@ -257,7 +257,7 @@ export const useFo3d = (
       } else if (node["_type"].endsWith("PointCloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
-            getSampleSrc(getResolvedUrlForFo3dAsset(node["pcdPath"], fo3dRoot)),
+            node["pcdPath"],
             material as FoPointcloudMaterialProps
           );
         }
