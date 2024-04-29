@@ -1098,7 +1098,16 @@ def _build_dtype_field_converter(field_name, feature, config):
             fo_field_name = f"hf_{field_name}"
         sample_dict[fo_field_name] = row_content[field_name]
 
-    if (
+    def convert_list_field(sample_dict, row):
+        row_content = row["row"]
+        fo_field_name = field_name
+        if field_name in FIFTYONE_BUILTIN_FIELDS:
+            fo_field_name = f"hf_{field_name}"
+        sample_dict[fo_field_name] = row_content[field_name]
+
+    if isinstance(feature, list):
+        return convert_list_field
+    elif (
         feature["_type"] == "Value"
         and feature["dtype"] not in SUPPORTED_DTYPES
     ):
