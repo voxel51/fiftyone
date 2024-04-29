@@ -268,6 +268,14 @@ def to_detections(results, id2label, image_sizes):
     ]
 
 
+def _get_class(label, id2label):
+    # if the label is not in the id2label mapping, return the first label
+    l = label.item()
+    if l not in id2label:
+        return id2label[0]
+    return id2label[l]
+
+
 def _to_detections(result, id2label, image_size):
     detections = []
 
@@ -279,7 +287,7 @@ def _to_detections(result, id2label, image_size):
         box = _convert_bounding_box(box, image_size)
         detections.append(
             fol.Detection(
-                label=id2label[label.item()],
+                label=_get_class(label, id2label),
                 bounding_box=box,
                 confidence=score.item(),
             )
@@ -763,7 +771,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         with torch.no_grad():
             outputs = self.model(**inputs)
 
-        results = self.processor.post_process_object_detection(
+        results = self.processor.image_processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
         )
         image_shapes = [i[::-1] for i in target_sizes]
