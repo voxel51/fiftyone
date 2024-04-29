@@ -376,7 +376,9 @@ def _extract_number(filename):
     match = re.search(r"\d+", filename)
     if match:
         return int(match.group(0))
-    return None
+    return float(
+        "inf"
+    )  # Return a very large number for filenames without numbers
 
 
 def _is_already_uploaded(api, repo_id, folder_path):
