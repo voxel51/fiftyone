@@ -447,6 +447,11 @@ export const fo3dSlice = selector({
   },
 });
 
+export const fo3dContent = atom({
+  key: "fo3dContent",
+  default: null,
+});
+
 export const fo3dSample = selector({
   key: "fo3dSample",
   get: ({ get }) => {

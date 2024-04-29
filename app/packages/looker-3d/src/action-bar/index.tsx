@@ -12,6 +12,7 @@ import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleFo3dBackground } from "./ToggleBackground";
 import { ToggleGridHelper } from "./ToggleGridHelper";
+import { ViewFo3d } from "./ViewFo3d";
 import { ViewHelp } from "./ViewHelp";
 import { ViewJSON } from "./ViewJson";
 
@@ -113,6 +114,7 @@ export const ActionBar = ({
       onMouseLeave={onMouseLeave}
     >
       {hasMultiplePcdSlices && <SliceSelector />}
+      {isFo3d && <ViewFo3d jsonPanel={jsonPanel} />}
       <ActionsBar>
         {componentsToRender}
         <FullScreenToggler />

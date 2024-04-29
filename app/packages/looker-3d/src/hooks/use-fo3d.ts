@@ -1,5 +1,6 @@
-import { getSampleSrc } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
+import { useSetRecoilState } from "recoil";
 import { Quaternion, Vector3 } from "three";
 import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
 import {
@@ -212,6 +213,8 @@ export const useFo3d = (
   const [isLoading, setIsLoading] = useState(true);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
 
+  const setFo3dContent = useSetRecoilState(fos.fo3dContent);
+
   const fetchFo3d = useFo3dFetcher();
 
   useEffect(() => {
@@ -220,6 +223,29 @@ export const useFo3d = (
       setIsLoading(false);
     });
   }, [url, filepath, fetchFo3d]);
+
+  useEffect(() => {
+    if (!rawData) {
+      return;
+    }
+
+    // recursively remove all attributes that start with "preTransformed" from the raw data
+    const removePreTransformedAttributes = (node: FoSceneRawNode) => {
+      for (const key in node) {
+        if (key.startsWith("preTransformed")) {
+          delete node[key];
+        }
+      }
+
+      if (node.children) {
+        node.children.forEach(removePreTransformedAttributes);
+      }
+    };
+
+    removePreTransformedAttributes(rawData);
+
+    setFo3dContent(rawData);
+  }, [rawData]);
 
   const foScene = useMemo(() => {
     if (!rawData) {
