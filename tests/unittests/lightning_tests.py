@@ -17,7 +17,6 @@ from strawberry.schema.config import StrawberryConfig
 import fiftyone as fo
 
 from fiftyone.server.constants import SCALAR_OVERRIDES
-from fiftyone.server.context import get_context
 from fiftyone.server.lightning import (
     lightning_resolver,
     LightningInput,
@@ -25,6 +24,7 @@ from fiftyone.server.lightning import (
 )
 
 from decorators import drop_async_dataset
+from utils.graphql import execute
 
 
 @gql.type
@@ -711,9 +711,10 @@ def _add_samples(dataset: fo.Dataset, lower: t.Dict, upper: t.Dict):
 async def _execute(
     query: str, dataset: fo.Dataset, field: fo.Field, keys: t.Set[str]
 ):
-    return await schema.execute(
+    return await execute(
+        schema,
         query,
-        variable_values={
+        {
             "input": asdict(
                 LightningInput(
                     dataset=dataset.name,
@@ -721,7 +722,6 @@ async def _execute(
                 )
             )
         },
-        context_value=get_context(use_global_db_client=False),
     )
 
 
