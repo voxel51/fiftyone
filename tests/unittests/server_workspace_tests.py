@@ -6,7 +6,6 @@ FiftyOne Server workspace tests.
 |
 """
 
-import typing as t
 import unittest
 
 import strawberry as gql
