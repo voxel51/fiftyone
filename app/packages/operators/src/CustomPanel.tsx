@@ -31,7 +31,7 @@ export function CustomPanel(props: CustomPanelProps) {
     panelName,
     panelLabel,
   } = props;
-  const { height, width } = dimensions;
+  const { height, width } = dimensions?.bounds || {};
 
   const {
     panelState,
