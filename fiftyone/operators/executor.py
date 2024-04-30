@@ -462,7 +462,7 @@ class ExecutionContext(object):
                 required_secrets=self._required_secret_keys,
             )
         if self.panel_id:
-            self._panel_state = request_params.get("panel_state", {})
+            self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
 
     @property

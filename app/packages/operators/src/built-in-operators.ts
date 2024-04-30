@@ -995,44 +995,37 @@ class PromptUserForOperation extends Operator {
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("operator_uri", { label: "Operator URI", required: true });
-    inputs.str("params", { label: "Params" });
+    inputs.obj("params", { label: "Params" });
     inputs.str("on_success", { label: "On success" });
     inputs.str("on_error", { label: "On error" });
-    inputs.str("on_cancel", { label: "On cancel" });
     return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
     const panelId = ctx.getCurrentPanelId();
     const [panelState] = usePanelState(panelId);
-    const triggerEvent = usePanelEvent({ panelId, panelState });
+    const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     const { params, operator_uri, on_success, on_error, on_cancel } =
       ctx.params;
     const { triggerEvent } = ctx.hooks;
-    const panel_id = ctx.getCurrentPanelId();
+    const panelId = ctx.getCurrentPanelId();
 
-    triggerEvent({
+    triggerEvent(panelId, {
       operator: operator_uri,
-      params: {
-        ...params,
-        panel_id,
-      },
+      params,
       prompt: true,
       callback: (result: OperatorResult) => {
         if (result.error) {
-          triggerEvent({
+          triggerEvent(panelId, {
             operator: on_error,
-            params: { error: result.error, panel_id },
+            params: { error: result.error },
           });
         } else {
-          triggerEvent({
+          triggerEvent(panelId, {
             operator: on_success,
-            params: {
-              ...result.result,
-              panel_id,
-            },
+            params: result.result,
           });
         }
       },
