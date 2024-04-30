@@ -3502,7 +3502,7 @@ class SampleCollection(object):
             _filepaths = itertools.chain.from_iterable(filepaths)
 
         scene_paths = [p for p in _filepaths if p.endswith(".fo3d")]
-        asset_map = fou3d.get_asset_paths(
+        asset_map = fou3d.get_scene_asset_paths(
             scene_paths, abs_paths=True, skip_failures=True
         )
 
