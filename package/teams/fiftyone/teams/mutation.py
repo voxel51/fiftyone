@@ -6,24 +6,20 @@ FiftyOne Teams mutations.
 |
 """
 import logging
-from dacite import Config, from_dict
-from fiftyone.teams.authentication import (
-    IsAuthenticated,
-    authenticate_gql_class,
-)
-import motor.motor_asyncio as mtr
-from pymongo import ReturnDocument
+
 import strawberry as gql
 import typing as t
 
 from fiftyone.server.data import Info
 import fiftyone.core.dataset as fod
-
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.mutation as fosm
 from fiftyone.server.scalars import BSONArray
 
-from fiftyone.teams.query import User
+from fiftyone.teams.authorize import (
+    IsAuthenticated,
+    authorize_gql_class,
+)
 
 from fiftyone.internal.requests import make_request
 from fiftyone.internal.util import get_api_url
@@ -32,41 +28,10 @@ logger = logging.getLogger(__name__)
 
 _API_URL = get_api_url()
 
-
-@gql.input
-class UserInput:
-    email: str
-    sub: t.Optional[str]
-    family_name: t.Optional[str] = None
-    given_name: t.Optional[str] = None
-
-
-authenticate_gql_class(fosm.Mutation)
-
+authorize_gql_class(fosm.Mutation)
 
 @gql.type
 class Mutation(fosm.Mutation):
-    @gql.mutation
-    async def login(self, user: UserInput, info: Info) -> User:
-        db = info.context.db
-        users: mtr.AsyncIOMotorCollection = db.users
-        updated_user = await users.find_one_and_update(
-            {"sub": user.sub},
-            {
-                "$set": {
-                    "email": user.email,
-                    "family_name": user.family_name,
-                    "given_name": user.given_name,
-                    "sub": user.sub,
-                }
-            },
-            return_document=ReturnDocument.AFTER,
-            upsert=True,
-        )
-
-        updated_user["id"] = updated_user.pop("_id")
-        return from_dict(User, updated_user, config=Config(check_types=False))
-
     @gql.mutation(permission_classes=[IsAuthenticated])
     async def set_view(
         self,
