@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { merge } from "lodash";
-
-import OperatorIO from "./OperatorIO";
-import * as types from "./types";
+import { CenteredStack, CodeBlock } from "@fiftyone/components";
+import {
+  PanelSkeleton,
+  usePanelState,
+  useSetCustomPanelState,
+} from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-
-import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
+import { Box, Typography } from "@mui/material";
+import { merge } from "lodash";
+import OperatorIO from "./OperatorIO";
+import { PANEL_LOAD_TIMEOUT } from "./constants";
+import { executeOperator } from "./operators";
+import * as types from "./types";
 
 import {
   useCustomPanelHooks,
@@ -15,52 +21,59 @@ import {
 } from "./useCustomPanelHooks";
 
 export function CustomPanel(props: CustomPanelProps) {
-  const { panelId, onLoad, onChange, onUnLoad, onViewChange, dimensions } =
-    props;
-
   const {
-    panelState,
-    handlePanelStateChange,
-    handlePanelStatePathChange,
-    data,
-    renderableSchema,
-    loaded,
-  } = useCustomPanelHooks(props);
+    panelId,
+    onLoad,
+    onChange,
+    onUnLoad,
+    onViewChange,
+    dimensions,
+    panelName,
+    panelLabel,
+  } = props;
+  const { height, width } = dimensions;
 
-  if (!renderableSchema)
+  const { panelState, handlePanelStateChange, data } =
+    useCustomPanelHooks(props);
+  const panelSchema = panelState?.schema;
+  const onLoadError = panelState?.onLoadError;
+  const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
+
+  if (pending && !panelSchema && !onLoadError) {
+    return <PanelSkeleton />;
+  }
+
+  if (!panelSchema)
     return (
-      <div>
-        <h1>Custom Panel</h1>
-        <p>Custom panel is not configured yet.</p>
-        <pre>{panelId}</pre>
-      </div>
+      <CenteredStack spacing={1}>
+        <Typography variant="h4">{panelLabel || "Operator Panel"}</Typography>
+        <Typography color="text.secondary">
+          Operator panel &quot;
+          <Typography component="span">{panelName}</Typography>&quot; is not
+          configured yet.
+        </Typography>
+        <Typography component="pre" color="text.tertiary">
+          {panelId}
+        </Typography>
+        {onLoadError && (
+          <Box maxWidth="95%">
+            <CodeBlock text={onLoadError} />
+          </Box>
+        )}
+      </CenteredStack>
     );
 
-  const schema = types.Property.fromJSON(renderableSchema);
+  const schema = types.Property.fromJSON(panelSchema);
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <Box sx={{ height: "100%", width: "100%" }}>
       <OperatorIO
-        schema={{
-          ...schema,
-          view: {
-            ...schema.view,
-            componentsProps: {
-              gridContainer: {
-                spacing: 0,
-                sx: { pl: 0 },
-                height: dimensions.height || 750,
-                width: dimensions.width,
-              },
-            },
-          },
-        }}
-        onPathChange={handlePanelStatePathChange}
+        schema={schema}
         onChange={handlePanelStateChange}
         data={data}
+        layout={{ height, width }}
       />
-      <pre>{JSON.stringify({ schema, data }, null, 2)}</pre>
-    </div>
+    </Box>
   );
 }
 
@@ -69,6 +82,8 @@ export function defineCustomPanel({
   on_change,
   on_unload,
   on_view_change,
+  panel_name,
+  panel_label,
 }) {
   return ({ panelNode, dimensions }) => (
     <CustomPanel
@@ -78,6 +93,8 @@ export function defineCustomPanel({
       onChange={on_change}
       onViewChange={on_view_change}
       dimensions={dimensions}
+      panelName={panel_name}
+      panelLabel={panel_label}
     />
   );
 }

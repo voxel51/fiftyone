@@ -17,6 +17,8 @@ export interface CustomPanelProps {
     height?: number;
     width?: number;
   };
+  panelName?: string;
+  panelLabel?: string;
 }
 
 export interface CustomPanelHooks {
