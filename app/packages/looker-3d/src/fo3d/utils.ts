@@ -1,4 +1,5 @@
 import { ModalSample } from "@fiftyone/state";
+import { PathType, determinePathType } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
   DoubleSide,
@@ -215,13 +216,24 @@ export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
 };
 
 export const getBasePathForTextures = (
-  primaryAssetUrl: string,
-  extensions: Array<"gltf" | "glb" | "mtl" | "ply" | "fbx">
+  fo3dRoot: string,
+  primaryAssetUrl: string
 ) => {
-  const urlDecoded = decodeURIComponent(primaryAssetUrl);
-  const extensionString = extensions.join("|");
-  const regex = new RegExp(`/[^/]*.(${extensionString})`);
-  const filenameIndex = regex.exec(urlDecoded).index;
-  const basePath = urlDecoded.slice(0, filenameIndex) + "/";
-  return basePath;
+  const assetUrlDecoded = new URL(decodeURIComponent(primaryAssetUrl));
+  const assetUrlSearchParams = assetUrlDecoded.searchParams;
+
+  const fo3dRootPathType = determinePathType(fo3dRoot);
+
+  if (
+    fo3dRootPathType !== PathType.URL &&
+    assetUrlSearchParams.has("filepath")
+  ) {
+    const assetFilePath = assetUrlSearchParams.get("filepath");
+    const assetFilePathWithFilenameStripped = assetFilePath.replace(
+      /[^/]*$/,
+      ""
+    );
+
+    return `${assetUrlDecoded.origin}${assetUrlDecoded.pathname}?filepath=${assetFilePathWithFilenameStripped}`;
+  }
 };

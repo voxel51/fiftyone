@@ -32,8 +32,8 @@ export const Gltf = ({
   );
 
   const resourcePath = useMemo(
-    () => getBasePathForTextures(gltfUrl, ["glb", "gltf"]),
-    [gltfUrl]
+    () => getBasePathForTextures(fo3dRoot, gltfUrl),
+    [fo3dRoot, gltfUrl]
   );
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);

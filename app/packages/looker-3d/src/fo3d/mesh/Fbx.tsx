@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useMemo } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
@@ -6,9 +7,8 @@ import { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
-import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 import { useFo3dContext } from "../context";
-import { getSampleSrc } from "@fiftyone/state";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Fbx = ({
   name,
@@ -33,8 +33,8 @@ export const Fbx = ({
   );
 
   const resourcePath = useMemo(
-    () => getBasePathForTextures(fbxUrl, ["fbx"]),
-    [fbxUrl]
+    () => getBasePathForTextures(fo3dRoot, fbxUrl),
+    [fo3dRoot, fbxUrl]
   );
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);

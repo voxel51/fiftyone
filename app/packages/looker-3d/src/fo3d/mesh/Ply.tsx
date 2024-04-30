@@ -91,8 +91,8 @@ export const Ply = ({
   );
 
   const resourcePath = useMemo(
-    () => getBasePathForTextures(plyUrl, ["ply"]),
-    [plyUrl]
+    () => getBasePathForTextures(fo3dRoot, plyUrl),
+    [fo3dRoot, plyUrl]
   );
 
   const geometry = useLoader(PLYLoader, plyUrl, (loader) => {

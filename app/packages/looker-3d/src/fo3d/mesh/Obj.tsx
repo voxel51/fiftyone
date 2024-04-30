@@ -78,8 +78,8 @@ const ObjMeshWithCustomMaterial = ({
   );
 
   const resourcePath = useMemo(
-    () => (mtlUrl ? getBasePathForTextures(mtlUrl, ["mtl"]) : null),
-    [mtlUrl]
+    () => (mtlUrl ? getBasePathForTextures(fo3dRoot, mtlUrl) : null),
+    [fo3dRoot, mtlUrl]
   );
 
   const materials = useLoader(MTLLoader, mtlUrl, (loader) => {
