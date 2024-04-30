@@ -501,11 +501,13 @@ class BaseRun(Configurable):
 
         # Update run doc
         run_docs = getattr(dataset._doc, cls._runs_field())
-        run_doc = run_docs.pop(key)
+        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+        run_doc = run_docs[key]
+        del run_docs[key]
         run_doc.key = new_key
         run_docs[new_key] = run_doc
         run_doc.save()
-        dataset._doc.save()
+        dataset.save()
 
         # Update results cache
         results_cache = getattr(dataset, cls._results_cache_field())
@@ -822,7 +824,11 @@ class BaseRun(Configurable):
 
         # Delete run from dataset
         run_docs = getattr(dataset._doc, cls._runs_field())
-        run_docs.pop(key, None)
+        try:
+            # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+            del run_docs[key]
+        except KeyError:
+            pass
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
         if run_results is not None:
