@@ -5018,33 +5018,9 @@ of the samples in the dataset, `annotations/` contains any serialized
 |AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
 `evaluations/` contains any serialized |EvaluationResults|.
 
-The data directories may also have nested subdirectories, which may be
-useful for organizing large datasets.
-
-As an example, the following a dataset with the following structure can also be
-imported as a FiftyOneDataset:
-
-.. code-block:: text
-
-    <dataset_dir>/
-        metadata.json
-        samples.json
-        data/
-            data_0/
-                <filename1>.<ext>
-                <filename2>.<ext>
-                ...
-            data_1/
-                <filename1>.<ext>
-                <filename2>.<ext>
-                ...
-            ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
-            ...
-
-
+The contents of the `data/` directory may also be organized in nested
+subfolders, depending on how the dataset was exported, in which case the
+filepaths in `samples.json` should contain corerspondingly nested paths.
 
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.

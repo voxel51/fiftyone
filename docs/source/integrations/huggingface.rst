@@ -1021,10 +1021,10 @@ and then passing that in to
 
     import fiftyone.utils.huggingface as fouh
 
-    # create view with high confidence predictions
+    # Create view with high confidence predictions
     view = dataset.filter_labels("predictions", F("confidence") > 0.95)
 
-    # push view to the Hub as a new dataset
+    # Push view to the Hub as a new dataset
     fouh.push_to_hub(view, "my-quickstart-high-conf")
 
 When you do so, note that the view is exported as a new dataset, and other 
@@ -1047,7 +1047,8 @@ either a relative or absolute path to the preview file on your local machine:
     dataset = foz.load_zoo_dataset("quickstart")
 
     session = fo.launch_app(dataset)
-    # Screenshot and save the preview image to a file
+
+    # Screenshot and save the preview image to a file...
 
     fouh.push_to_hub(
         dataset,
@@ -1062,7 +1063,6 @@ displayed on the dataset card!
    :alt: Pushing a dataset to the Hugging Face Hub with a preview image
    :align: center
 
-
 .. _huggingface-hub-push-large-dataset:
 
 Pushing large datasets
@@ -1072,22 +1072,22 @@ Large datasets with many samples require a bit more care when pushing to the
 Hub. Hugging Face limits the number of files that can be uploaded in a single
 directory to 10000, so if your dataset contains more than 10000 samples, the
 data will need to be split into multiple directories. FiftyOne handles this
-automatically when pushing large datasets to the Hub, but you can also control
-the number of samples per directory by passing the `chunk_size` argument to
-:func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`. To limit the
-number of samples per directory to 100, you can do the following:
+automatically when pushing large datasets to the Hub, but you can manually
+configure the number of samples per directory by passing the `chunk_size`
+argument to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone.utils.huggingface as fouh
 
+    # Limit to 100 images per directory
     fouh.push_to_hub(dataset, "my-large-dataset", chunk_size=100)
 
+.. note::
 
-This argument currently only works when exporting to the
-:ref:`FiftyOneDataset <FiftyOneDataset-import>` format.
-   
+    The `chunk_size` argument is currently only supported when exporting in
+    :ref:`FiftyOneDataset format <FiftyOneDataset-export>` (the default).
 
 .. _huggingface-hub-push-dataset-advanced:
 
@@ -1196,11 +1196,10 @@ Creative Commons Attribution 4.0 license, you can do the following:
     label fields, you can set `label_fields="*"`. If you want to convert specific
     label fields, you can pass a list of field names.
 
-
 Additionally, you can specify the minimum version of FiftyOne required to load
 the dataset by passing the `min_fiftyone_version` argument. This is useful when
 the dataset utilizes features that are only available in versions above a certain
-release. For example, to specify that the dataset requires FiftyOne version `0.23.0`:
+release. For example, to specify that the dataset requires `fiftyone>=0.23.0`:
 
 .. code-block:: python
     :linenos:
@@ -1216,8 +1215,6 @@ release. For example, to specify that the dataset requires FiftyOne version `0.2
         "quickstart-min-version",
         min_fiftyone_version="0.23.0",
     )
-
-
 
 .. _huggingface-hub-load-dataset:
 

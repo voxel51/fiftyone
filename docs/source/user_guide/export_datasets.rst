@@ -3903,14 +3903,23 @@ image's filepath, and then provide the new `rel_dir` when
                 export_media=False \
                 rel_dir=/common/images/dir
 
+.. note::
+
+    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
+    using the `export_media=False` and `rel_dir` parameters is a convenient way
+    to transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value when
+    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
+    new environment.
 
 You can also pass in a `chunk_size` parameter to create nested directories of
 media files with a maximum number of files per directory. This can be useful
 when exporting large datasets to avoid filesystem limits on the number of files
 in a single directory.
 
-As an example, the following code exports a dataset with a maximum of 1000 media
-files per directory:
+As an example, the following code exports a dataset with a maximum of 1000
+media files per directory:
 
 .. code-block:: python
     :linenos:
@@ -3945,18 +3954,6 @@ This will create a directory structure like the following:
                 <filename1>.<ext>
                 <filename2>.<ext>
             ...
-
-
-.. note::
-
-    Exporting in :class:`fiftyone.types.FiftyOneDataset` format as shown above
-    using the `export_media=False` and `rel_dir` parameters is a convenient way
-    to transfer datasets between work environments, since this enables you to
-    store the media files wherever you wish in each environment and then simply
-    provide the appropriate `rel_dir` value when
-    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
-    new environment.
-
 
 .. _custom-dataset-exporter:
 
