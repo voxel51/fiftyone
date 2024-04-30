@@ -23,11 +23,11 @@ from starlette.requests import Request
 
 class Encoder(JSONEncoder):
     def default(self, o):
-        if issubclass(o.dtype.type, np.floating):
-            return o.astype(float)
+        if isinstance(o, np.floating):
+            return float(o)
 
-        if issubclass(o.dtype.type, np.integer):
-            return o.astype(int)
+        if isinstance(o, np.integer):
+            return int(o)
 
         return JSONEncoder.default(self, o)
 
