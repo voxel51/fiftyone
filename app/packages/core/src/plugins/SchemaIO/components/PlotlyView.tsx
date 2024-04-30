@@ -11,7 +11,6 @@ import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { snakeCase } from "lodash";
 
 export default function PlotlyView(props) {
-  console.log(props);
   const { data, schema } = props;
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
@@ -21,8 +20,6 @@ export default function PlotlyView(props) {
   const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
     // TODO: add more interesting/useful event data
-    console.log("event", event);
-    console.log("event_data", e);
     const data = EventDataMappers[event]?.(e) || {};
     const x_data_source = view.x_data_source;
     if (event === "onClick") {

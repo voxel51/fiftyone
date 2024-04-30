@@ -19,9 +19,6 @@ type HandlerOptions = {
 export default function usePanelEvent() {
   const promptForOperator = usePromptOperatorInput();
   return usePanelStateByIdCallback((panelId, panelState, args) => {
-    console.log("...............");
-    console.log("panelId", panelId);
-    console.log("panelState", panelState);
     const options = args[0] as HandlerOptions;
     const { params, operator, prompt } = options;
     const actualParams = {
@@ -29,7 +26,6 @@ export default function usePanelEvent() {
       panel_id: panelId,
       panel_state: panelState?.state || {},
     };
-    // console.log(options, actualParams)
     if (prompt) {
       promptForOperator(operator, actualParams, { callback: options.callback });
     } else {
