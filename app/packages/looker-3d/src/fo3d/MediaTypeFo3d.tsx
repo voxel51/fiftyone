@@ -52,7 +52,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
 
-  const fo3dRoot = useMemo(() => getFo3dRoot(mediaPath), [mediaPath]);
+  const fo3dRoot = useMemo(() => getFo3dRoot(sample.sample.filepath), [sample]);
 
   const { foScene, isLoading: isParsingFo3d } = useFo3d(
     mediaUrl,
