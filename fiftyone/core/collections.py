@@ -263,10 +263,8 @@ def _get_sizes(sample_collection, media_fields, filepaths):
         sample_collection = sample_collection.select_group_slices(
             _allow_mixed=True
         )
-    elif (
-        sample_collection.media_type != fom.THREE_D
-        and media_fields == ["filepath"]
-        and not sample_collection.exists("metadata.size_bytes", bool=False)
+    elif media_fields == ["filepath"] and not sample_collection.exists(
+        "metadata.size_bytes", bool=False
     ):
         # All sizes are already available, so just return them now
         return sample_collection.values("metadata.size_bytes")
