@@ -37,6 +37,7 @@ function MainSpace() {
     const panelsStateUpdated =
       !isEqual(sessionPanelsState, panelsState) &&
       !isEqual(panelsState, oldPanelsState.current);
+    console.log({ panelsState, old: oldPanelsState.current });
     if (spacesUpdated || panelsStateUpdated) {
       setSessionSpaces(serializedSpaces, panelsState);
     }

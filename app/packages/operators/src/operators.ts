@@ -345,6 +345,7 @@ export async function loadOperatorsFromServer(datasetName: string) {
 export function getLocalOrRemoteOperator(operatorURI) {
   let operator;
   let isRemote = false;
+  operatorURI = resolveOperatorURI(operatorURI);
   if (localRegistry.operatorExists(operatorURI)) {
     operator = localRegistry.getOperator(operatorURI);
   } else if (remoteRegistry.operatorExists(operatorURI)) {
@@ -486,17 +487,38 @@ async function executeOperatorAsGenerator(
   return result;
 }
 
-export function resolveOperatorURI(operatorURI) {
+const HASH = "#";
+
+export function resolveOperatorURI(operatorURI, { keepMethod = false } = {}) {
+  if (!keepMethod && operatorURI.includes(HASH))
+    operatorURI = operatorURI.split(HASH)[0];
   if (operatorURI.includes("/")) return operatorURI;
   return `@voxel51/operators/${operatorURI}`;
 }
 
+export function getTargetOperatorMethod(operatorURI) {
+  if (operatorURI && operatorURI.includes(HASH)) {
+    const parts = operatorURI.split(HASH);
+    return parts[1];
+  }
+  return null;
+}
+
+function resolveOperatorURIWithMethod(operatorURI, params) {
+  const targetMethod = getTargetOperatorMethod(operatorURI);
+  operatorURI = resolveOperatorURI(operatorURI);
+  if (targetMethod) {
+    params = { ...params, __method__: targetMethod };
+  }
+  return { operatorURI, params };
+}
+
 export async function executeOperator(
-  operatorURI,
-  params: any = {},
+  uri,
+  p: any = {},
   callback?: ExecutionCallback
 ) {
-  operatorURI = resolveOperatorURI(operatorURI);
+  const { operatorURI, params } = resolveOperatorURIWithMethod(uri, p);
   const queue = getInvocationRequestQueue();
   const request = new InvocationRequest(operatorURI, params);
   queue.add(request, callback);
@@ -513,10 +535,12 @@ export async function validateOperatorInputs(
 }
 
 export async function executeOperatorWithContext(
-  operatorURI,
+  uri: string,
   ctx: ExecutionContext
 ) {
-  operatorURI = resolveOperatorURI(operatorURI);
+  console.log("executeOperatorWithContext", uri);
+  const { operatorURI, params } = resolveOperatorURIWithMethod(uri, ctx.params);
+  ctx.params = params;
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorURI);
   const currentContext = ctx._currentContext;
 
@@ -607,6 +631,7 @@ export async function resolveRemoteType(
   target: "inputs" | "outputs",
   results: OperatorResult = null
 ) {
+  operatorURI = resolveOperatorURI(operatorURI);
   const currentContext = ctx._currentContext;
   const typeAsJSON = await getFetchFunction()(
     "POST",
@@ -679,6 +704,7 @@ export async function resolveExecutionOptions(
   operatorURI,
   ctx: ExecutionContext
 ) {
+  operatorURI = resolveOperatorURI(operatorURI);
   const currentContext = ctx._currentContext;
   const executionOptionsAsJSON = await getFetchFunction()(
     "POST",

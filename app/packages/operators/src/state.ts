@@ -25,6 +25,7 @@ import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
   resolveExecutionOptions,
+  resolveOperatorURI,
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
@@ -829,9 +830,7 @@ type OperatorExecutorOptions = {
 };
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
-  if (!uri.includes("/")) {
-    uri = `@voxel51/operators/${uri}`;
-  }
+  uri = resolveOperatorURI(uri, { keepMethod: true });
 
   const { operator } = getLocalOrRemoteOperator(uri);
   const [isExecuting, setIsExecuting] = useState(false);

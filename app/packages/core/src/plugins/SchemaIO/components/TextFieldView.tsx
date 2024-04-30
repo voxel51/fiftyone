@@ -26,7 +26,7 @@ export default function TextFieldView(props) {
         type={type}
         onChange={(e) => {
           const value = e.target.value;
-          onChange(path, type === "number" ? parseFloat(value) : value);
+          onChange(path, type === "number" ? parseFloat(value) : value, schema);
           setUserChanged();
         }}
         inputProps={{ min, max, step: multipleOf, ...inputProps }}

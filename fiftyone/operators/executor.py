@@ -21,6 +21,7 @@ import fiftyone.core.view as fov
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
@@ -460,6 +461,8 @@ class ExecutionContext(object):
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
             )
+        if self.panel_id:
+            self._panel = PanelRef(self)
 
     @property
     def dataset(self):
@@ -701,6 +704,26 @@ class ExecutionContext(object):
             instructions for the FiftyOne App to invoke the operator
         """
         return self.trigger("console_log", {"message": message})
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        #
+        # TODO: move panel_id to top level params
+        #
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        return self.params.get("panel_state", {})
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can use
+        to read and write the state and data of the corresponding panel.
+
+        Only available when the operator is invoked from a panel."""
+        return self._panel
 
     def serialize(self):
         """Serializes the execution context.

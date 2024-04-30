@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { CenteredStack, CodeBlock } from "@fiftyone/components";
 import {
   PanelSkeleton,
@@ -7,74 +9,39 @@ import {
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
 import { merge } from "lodash";
-import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { executeOperator } from "./operators";
 import * as types from "./types";
 
-function getPanelViewData(panelState) {
-  const state = panelState?.state;
-  const data = panelState?.data;
-  return merge({ ...state }, { ...data });
-}
+import {
+  useCustomPanelHooks,
+  CustomPanelHooks,
+  CustomPanelProps,
+} from "./useCustomPanelHooks";
 
-export function CustomPanel({
-  panelId,
-  onLoad,
-  onChange,
-  onUnLoad,
-  onViewChange,
-  dimensions,
-  panelName,
-  panelLabel,
-}) {
-  const [panelState, setPanelState] = usePanelState(null, panelId);
-  const { height, width } = dimensions?.bounds || {};
-  const setCustomPanelState = useSetCustomPanelState();
+export function CustomPanel(props: CustomPanelProps) {
+  const {
+    panelId,
+    onLoad,
+    onChange,
+    onUnLoad,
+    onViewChange,
+    dimensions,
+    panelName,
+    panelLabel,
+  } = props;
+  const { height, width } = dimensions;
+
+  const {
+    panelState,
+    handlePanelStateChange,
+    handlePanelStatePathChange,
+    data,
+  } = useCustomPanelHooks(props);
   const panelSchema = panelState?.schema;
   const onLoadError = panelState?.onLoadError;
-  const data = getPanelViewData(panelState);
-  const handlePanelStateChange = (newState) => {
-    setCustomPanelState((state: any) => ({ ...state, ...newState }));
-  };
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
-  const view = useRecoilValue(fos.view);
-
-  useEffect(() => {
-    if (onLoad) {
-      if (!panelState?.loaded) {
-        executeOperator(onLoad, { panel_id: panelId }, (result) => {
-          const { error: onLoadError } = result;
-          setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
-        });
-      }
-    }
-
-    return () => {
-      if (onUnLoad) {
-        executeOperator(onUnLoad, { panel_id: panelId });
-      }
-    };
-  }, [panelId, onLoad, onUnLoad]);
-
-  useEffect(() => {
-    if (onViewChange) {
-      executeOperator(onViewChange, {
-        panel_id: panelId,
-        panel_state: panelState?.state,
-      });
-    }
-  }, [view]);
-
-  useEffect(() => {
-    if (onChange && panelState?.state)
-      executeOperator(onChange, {
-        panel_id: panelId,
-        panel_state: panelState.state,
-      });
-  }, [panelState?.state]);
 
   if (pending && !panelSchema && !onLoadError) {
     return <PanelSkeleton />;
@@ -109,6 +76,7 @@ export function CustomPanel({
         onChange={handlePanelStateChange}
         data={data}
         layout={{ height, width }}
+        onPathChange={handlePanelStatePathChange}
       />
     </Box>
   );

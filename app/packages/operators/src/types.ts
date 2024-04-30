@@ -226,6 +226,7 @@ export class Property {
     this.invalid = options?.invalid;
     this.errorMessage = options?.errorMessage;
     this.view = options?.view;
+    this.onChange = options?.on_change;
   }
   type: ANY_TYPE;
   description?: string;
@@ -234,6 +235,7 @@ export class Property {
   view?: View;
   invalid?: boolean;
   errorMessage?: string;
+  onChange?: string;
 
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
@@ -249,6 +251,7 @@ export class Property {
       view: this.view,
       invalid: this.invalid,
       errorMessage: this.errorMessage,
+      onChange: this.onChange,
     };
   }
 }

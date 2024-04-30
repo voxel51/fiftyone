@@ -374,17 +374,21 @@ class Property(BaseType):
         self.choices = kwargs.get("choices", None)
         self.error_message = kwargs.get("error_message", "")
         self.view = kwargs.get("view", None)
+        self.on_change = kwargs.get("on_change", None)
 
     def to_json(self):
-        return {
-            "type": self.type.to_json(),
-            "default": self.default,
-            "required": self.required,
-            "choices": self.choices,
-            "invalid": self.invalid,
-            "error_message": self.error_message,
-            "view": self.view.to_json() if self.view else None,
-        }
+        return _convert_callables_to_operator_uris(
+            {
+                "type": self.type.to_json(),
+                "default": self.default,
+                "required": self.required,
+                "choices": self.choices,
+                "invalid": self.invalid,
+                "error_message": self.error_message,
+                "on_change": self.on_change,
+                "view": self.view.to_json() if self.view else None,
+            }
+        )
 
 
 class String(BaseType):
@@ -631,6 +635,14 @@ class UploadedFile(Object):
         )
 
 
+def _convert_callables_to_operator_uris(d):
+    updated = {**d}
+    for key, value in updated.items():
+        if callable(value):
+            updated[key] = f"{value.__self__.uri}#{value.__name__}"
+    return updated
+
+
 class View(object):
     """Represents a view of a :class:`Property`.
 
@@ -663,6 +675,10 @@ class View(object):
     def clone(self):
         return self.__class__(**self._kwargs)
 
+    def kwargs_to_json(self):
+        view_kwargs = {**self._kwargs}
+        return _convert_callables_to_operator_uris(view_kwargs)
+
     def to_json(self):
         return {
             "name": self.__class__.__name__,
@@ -674,7 +690,7 @@ class View(object):
             "read_only": self.read_only,
             "component": self.component,
             "componentsProps": self.componentsProps,
-            **self._kwargs,
+            **self.kwargs_to_json(),
         }
 
 
@@ -956,13 +972,15 @@ class Button(View):
         self.params = kwargs.get("params", None)
 
     def to_json(self):
-        return {
-            **super().to_json(),
-            "href": self.href,
-            "operator": self.operator,
-            "params": self.params,
-            "prompt": self.prompt,
-        }
+        return _convert_callables_to_operator_uris(
+            {
+                **super().to_json(),
+                "href": self.href,
+                "operator": self.operator,
+                "params": self.params,
+                "prompt": self.prompt,
+            }
+        )
 
 
 class OneOfView(View):
