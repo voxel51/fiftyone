@@ -1,6 +1,7 @@
 import {
   Layout,
   SpaceNode,
+  usePanel,
   usePanelState,
   usePanels,
   useSetPanelStateById,
@@ -19,14 +20,16 @@ import {
   ExecutionContext,
   Operator,
   OperatorConfig,
+  OperatorResult,
   _registerBuiltInOperator,
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./operators";
-import { useShowOperatorIO } from "./state";
+import { usePromptOperatorInput, useShowOperatorIO } from "./state";
 import { merge } from "lodash";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import CustomPanel, { defineCustomPanel } from "./CustomPanel";
+import usePanelEvent from "./usePanelEvent";
 
 //
 // BUILT-IN OPERATORS
@@ -981,6 +984,62 @@ class RegisterPanel extends Operator {
   }
 }
 
+class PromptUserForOperation extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "prompt_user_for_operation",
+      label: "Prompt user for operation",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("operator_uri", { label: "Operator URI", required: true });
+    inputs.str("params", { label: "Params" });
+    inputs.str("on_success", { label: "On success" });
+    inputs.str("on_error", { label: "On error" });
+    inputs.str("on_cancel", { label: "On cancel" });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const panelId = ctx.getCurrentPanelId();
+    const [panelState] = usePanelState(panelId);
+    const triggerEvent = usePanelEvent({ panelId, panelState });
+    return { triggerEvent };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { params, operator_uri, on_success, on_error, on_cancel } =
+      ctx.params;
+    const { triggerEvent } = ctx.hooks;
+    const panel_id = ctx.getCurrentPanelId();
+
+    triggerEvent({
+      operator: operator_uri,
+      params: {
+        ...params,
+        panel_id,
+      },
+      prompt: true,
+      callback: (result: OperatorResult) => {
+        if (result.error) {
+          triggerEvent({
+            operator: on_error,
+            params: { error: result.error, panel_id },
+          });
+        } else {
+          triggerEvent({
+            operator: on_success,
+            params: {
+              ...result.result,
+              panel_id,
+            },
+          });
+        }
+      },
+    });
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1020,6 +1079,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetPanelData);
     _registerBuiltInOperator(ClearPanelData);
     _registerBuiltInOperator(PatchPanelData);
+    _registerBuiltInOperator(PromptUserForOperation);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

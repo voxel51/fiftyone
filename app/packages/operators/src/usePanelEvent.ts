@@ -1,11 +1,13 @@
 import { usePanelId } from "@fiftyone/spaces";
 import { executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
+import { ExecutionCallback } from "./types-internal";
 
 type HandlerOptions = {
   params: any;
   operator: string;
   prompt?: boolean;
+  callback?: ExecutionCallback;
 };
 
 export default function usePanelEvent({
@@ -24,9 +26,9 @@ export default function usePanelEvent({
       ...params,
     };
     if (prompt) {
-      promptForOperator(operator, actualParams);
+      promptForOperator(operator, actualParams, { callback: options.callback });
     } else {
-      executeOperator(operator, actualParams);
+      executeOperator(operator, actualParams, options.callback);
     }
   };
   return handler;

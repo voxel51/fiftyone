@@ -30,6 +30,7 @@ import {
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
 import { ExecutionCallback } from "./types-internal";
+import usePanelEvent from "./usePanelEvent";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -63,13 +64,13 @@ export const usePromptOperatorInput = () => {
   );
   const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
-  const prompt = (operatorName, params = {}) => {
+  const prompt = (operatorName, params = {}, options = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
       const update = new Set([...recentlyUsedOperators, operatorName]);
       return Array.from(update).slice(-5);
     });
 
-    setPromptingOperator({ operatorName, params });
+    setPromptingOperator({ operatorName, params, options });
   };
 
   return prompt;
@@ -414,14 +415,16 @@ export const useOperatorPrompt = () => {
       }
   );
   const execute = useCallback(
-    async (options = null) => {
+    async (options = {}) => {
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
-      executor.execute(promptingOperator.params, options);
+      executor.execute(promptingOperator.params, {
+        ...promptingOperator.options,
+      });
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
