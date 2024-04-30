@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.6.0
 --------------------
-*Released April 16, 2024*
+*Released April 30, 2024*
 
 What's New
 
@@ -22,6 +22,12 @@ What's New
 - Added a :ref:`Super Admin UI <super-admin-ui>` for administering FiftyOne
   Teams deployments
 - Added the ability to search for users on the Users page
+
+FiftyOne Teams 1.5.10
+--------------------
+*Released April 18, 2024*
+
+- Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
 FiftyOne Teams 1.5.9
 --------------------
