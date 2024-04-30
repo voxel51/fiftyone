@@ -69,8 +69,13 @@ class PointCloud(Object3D):
 
     def _to_dict_extra(self):
         """Extra properties to include in dictionary representation."""
-        return {
+        r = {
             "pcdPath": self.pcd_path,
             "defaultMaterial": self.default_material.as_dict(),
             "flagForProjection": self.flag_for_projection,
         }
+
+        if hasattr(self, "_pre_transformed_pcd_path"):
+            r["preTransformedPcdPath"] = self._pre_transformed_pcd_path
+
+        return r

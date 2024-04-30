@@ -12,7 +12,7 @@ import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Fbx = ({
   name,
-  fbx: { fbxPath, defaultMaterial },
+  fbx: { fbxPath, preTransformedFbxPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -28,8 +28,10 @@ export const Fbx = ({
   const { fo3dRoot } = useFo3dContext();
 
   const fbxUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(fbxPath, fo3dRoot)),
-    [fbxPath, fo3dRoot]
+    () =>
+      preTransformedFbxPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(fbxPath, fo3dRoot)),
+    [fbxPath, preTransformedFbxPath, fo3dRoot]
   );
 
   const resourcePath = useMemo(

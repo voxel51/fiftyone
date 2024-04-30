@@ -63,18 +63,23 @@ const ObjMeshWithCustomMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objPath, mtlPath } = obj;
+  const { objPath, mtlPath, preTransformedObjPath, preTransformedMtlPath } =
+    obj;
 
   const { fo3dRoot } = useFo3dContext();
 
   const objUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-    [objPath, fo3dRoot]
+    () =>
+      preTransformedObjPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, preTransformedObjPath, fo3dRoot]
   );
 
   const mtlUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
-    [mtlPath, fo3dRoot]
+    () =>
+      preTransformedMtlPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
+    [mtlPath, preTransformedMtlPath, fo3dRoot]
   );
 
   const resourcePath = useMemo(

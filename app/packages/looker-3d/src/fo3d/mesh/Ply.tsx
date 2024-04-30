@@ -77,7 +77,7 @@ const PlyWithNoMaterialOverride = ({
 
 export const Ply = ({
   name,
-  ply: { plyPath, defaultMaterial },
+  ply: { plyPath, preTransformedPlyPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -86,8 +86,10 @@ export const Ply = ({
   const { fo3dRoot } = useFo3dContext();
 
   const plyUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
-    [plyPath, fo3dRoot]
+    () =>
+      preTransformedPlyPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
+    [plyPath, preTransformedPlyPath, fo3dRoot]
   );
 
   const resourcePath = useMemo(

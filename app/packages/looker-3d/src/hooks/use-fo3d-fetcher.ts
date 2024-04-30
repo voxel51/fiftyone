@@ -10,3 +10,7 @@ export default () => {
 
   return fetcher;
 };
+
+export const useUrlModifier = (_fo3dRoot: string) => {
+  // no-op in OSS
+};

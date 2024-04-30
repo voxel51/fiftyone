@@ -25,7 +25,7 @@ import { getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Pcd = ({
   name,
-  pcd: { pcdPath, defaultMaterial },
+  pcd: { pcdPath, preTransformedPcdPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -41,8 +41,10 @@ export const Pcd = ({
   const { upVector, pluginSettings, fo3dRoot } = useFo3dContext();
 
   const pcdUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(pcdPath, fo3dRoot)),
-    [pcdPath, fo3dRoot]
+    () =>
+      preTransformedPcdPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(pcdPath, fo3dRoot)),
+    [pcdPath, preTransformedPcdPath, fo3dRoot]
   );
 
   const points = useLoader(PCDLoader, pcdUrl);

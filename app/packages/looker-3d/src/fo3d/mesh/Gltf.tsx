@@ -11,7 +11,7 @@ import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 export const Gltf = ({
   name,
-  gltf: { gltfPath, defaultMaterial },
+  gltf: { gltfPath, preTransformedGltfPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -27,8 +27,10 @@ export const Gltf = ({
   const { fo3dRoot } = useFo3dContext();
 
   const gltfUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(gltfPath, fo3dRoot)),
-    [gltfPath, fo3dRoot]
+    () =>
+      preTransformedGltfPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(gltfPath, fo3dRoot)),
+    [gltfPath, preTransformedGltfPath, fo3dRoot]
   );
 
   const resourcePath = useMemo(

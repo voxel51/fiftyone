@@ -16,15 +16,16 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
+import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
 import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { Fo3dBackground } from "./Background";
-import { Stl } from "./Stl";
 import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
+import { Stl } from "./mesh/Stl";
 import { Pcd } from "./point-cloud/Pcd";
 import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
@@ -246,6 +247,8 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   );
 
   const { isSceneInitialized, fo3dRoot } = useFo3dContext();
+
+  useUrlModifier(fo3dRoot);
 
   const visibilityMap = useControls(
     "Visibility",

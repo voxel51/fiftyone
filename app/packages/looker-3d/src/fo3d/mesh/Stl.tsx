@@ -3,10 +3,10 @@ import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import { Mesh, Quaternion, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
-import { StlAsset } from "../hooks";
-import { useMeshMaterialControls } from "../hooks/use-mesh-material-controls";
-import { useFo3dContext } from "./context";
-import { getResolvedUrlForFo3dAsset } from "./utils";
+import { StlAsset } from "../../hooks";
+import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { useFo3dContext } from "../context";
+import { getResolvedUrlForFo3dAsset } from "../utils";
 
 /**
  *  Renders a single STL mesh.
@@ -16,7 +16,7 @@ import { getResolvedUrlForFo3dAsset } from "./utils";
  */
 export const Stl = ({
   name,
-  stl: { stlPath, defaultMaterial },
+  stl: { stlPath, preTransformedStlPath, defaultMaterial },
   position,
   quaternion,
   scale,
@@ -32,8 +32,10 @@ export const Stl = ({
   const { fo3dRoot } = useFo3dContext();
 
   const stlUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(stlPath, fo3dRoot)),
-    [stlPath, fo3dRoot]
+    () =>
+      preTransformedStlPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(stlPath, fo3dRoot)),
+    [stlPath, preTransformedStlPath, fo3dRoot]
   );
 
   const points = useLoader(STLLoader, stlUrl);

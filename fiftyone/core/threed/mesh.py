@@ -90,13 +90,21 @@ class ObjMesh(Mesh):
         self.mtl_path = mtl_path
 
     def _to_dict_extra(self):
-        return {
+        r = {
             **super()._to_dict_extra(),
             **{
                 "objPath": self.obj_path,
                 "mtlPath": self.mtl_path,
             },
         }
+
+        if hasattr(self, "_pre_transformed_obj_path"):
+            r["preTransformedObjPath"] = self._pre_transformed_obj_path
+
+        if hasattr(self, "_pre_transformed_mtl_path"):
+            r["preTransformedMtlPath"] = self._pre_transformed_mtl_path
+
+        return r
 
 
 class FbxMesh(Mesh):
@@ -129,10 +137,18 @@ class FbxMesh(Mesh):
         if not (fbx_path.lower().endswith(".fbx")):
             raise ValueError("FBX mesh must be a .fbx file")
 
-        self.gltf_path = fbx_path
+        self.fbx_path = fbx_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"fbxPath": self.gltf_path}}
+        r = {
+            **super()._to_dict_extra(),
+            **{"fbxPath": self.fbx_path},
+        }
+
+        if hasattr(self, "_pre_transformed_fbx_path"):
+            r["preTransformedFbxPath"] = self._pre_transformed_fbx_path
+
+        return r
 
 
 class GltfMesh(Mesh):
@@ -172,7 +188,12 @@ class GltfMesh(Mesh):
         self.gltf_path = gltf_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"gltfPath": self.gltf_path}}
+        r = {**super()._to_dict_extra(), **{"gltfPath": self.gltf_path}}
+
+        if hasattr(self, "_pre_transformed_gltf_path"):
+            r["preTransformedGltfPath"] = self._pre_transformed_gltf_path
+
+        return r
 
 
 class PlyMesh(Mesh):
@@ -214,7 +235,12 @@ class PlyMesh(Mesh):
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
+        r = {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
+
+        if hasattr(self, "_pre_transformed_ply_path"):
+            r["preTransformedPlyPath"] = self._pre_transformed_ply_path
+
+        return r
 
 
 class StlMesh(Mesh):
@@ -250,4 +276,9 @@ class StlMesh(Mesh):
         self.stl_path = stl_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"stlPath": self.stl_path}}
+        r = {**super()._to_dict_extra(), **{"stlPath": self.stl_path}}
+
+        if hasattr(self, "_pre_transformed_stl_path"):
+            r["preTransformedStlPath"] = self._pre_transformed_stl_path
+
+        return r

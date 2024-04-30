@@ -236,4 +236,14 @@ export const getBasePathForTextures = (
 
     return `${assetUrlDecoded.origin}${assetUrlDecoded.pathname}?filepath=${assetFilePathWithFilenameStripped}`;
   }
+
+  const assetPathname = assetUrlDecoded.pathname;
+  const assetPathnameWithFilenameStripped = assetPathname.replace(/[^/]*$/, "");
+
+  const fo3dOrigin = fo3dRoot.slice(
+    0,
+    fo3dRoot.lastIndexOf(assetPathnameWithFilenameStripped)
+  );
+
+  return `${fo3dOrigin}${assetPathnameWithFilenameStripped}`;
 };
