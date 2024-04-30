@@ -21,7 +21,7 @@ import fiftyone.core.view as fov
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
-from fiftyone.operators.panel import VirtualPanel
+from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
@@ -462,7 +462,7 @@ class ExecutionContext(object):
                 required_secrets=self._required_secret_keys,
             )
         if self.panel_id:
-            self._panel = VirtualPanel(self)
+            self._panel = PanelRef(self)
 
     @property
     def dataset(self):
@@ -719,7 +719,7 @@ class ExecutionContext(object):
 
     @property
     def panel(self):
-        """A :class:`fiftyone.operators.panel.VirtualPanel` instance that you can use
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can use
         to read and write the state and data of the corresponding panel.
 
         Only available when the operator is invoked from a panel."""

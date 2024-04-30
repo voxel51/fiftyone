@@ -104,7 +104,7 @@ class Panel(Operator):
         ctx.ops.show_panel_output(panel_output)
 
 
-class VirtualPanelState:
+class PanelRefState:
     def __init__(self, ctx):
         self._data = ctx.panel_state
         self._ctx = ctx
@@ -124,7 +124,7 @@ class VirtualPanelState:
         self._ctx.ops.clear_panel_state()
 
 
-class VirtualPanelData:
+class PanelRefData:
     def __init__(self, ctx):
         self._data = {}
         self._ctx = ctx
@@ -144,11 +144,11 @@ class VirtualPanelData:
         self._ctx.ops.clear_panel_data()
 
 
-class VirtualPanel:
+class PanelRef:
     def __init__(self, ctx):
         self._ctx = ctx
-        self._state = VirtualPanelState(ctx)
-        self._data = VirtualPanelData(ctx)
+        self._state = PanelRefState(ctx)
+        self._data = PanelRefData(ctx)
 
     @property
     def data(self):
