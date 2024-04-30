@@ -33,8 +33,12 @@ export function CustomPanel(props: CustomPanelProps) {
   } = props;
   const { height, width } = dimensions;
 
-  const { panelState, handlePanelStateChange, data } =
-    useCustomPanelHooks(props);
+  const {
+    panelState,
+    handlePanelStateChange,
+    handlePanelStatePathChange,
+    data,
+  } = useCustomPanelHooks(props);
   const panelSchema = panelState?.schema;
   const onLoadError = panelState?.onLoadError;
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
@@ -72,6 +76,7 @@ export function CustomPanel(props: CustomPanelProps) {
         onChange={handlePanelStateChange}
         data={data}
         layout={{ height, width }}
+        onPathChange={handlePanelStatePathChange}
       />
     </Box>
   );
