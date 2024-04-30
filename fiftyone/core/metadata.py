@@ -5,14 +5,13 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-import itertools
+import collections
+import json
 import logging
 import multiprocessing.dummy
 import os
-import re
+import pathlib
 import requests
-import multiprocessing.dummy
 
 import backoff
 from PIL import ExifTags, Image
@@ -27,6 +26,7 @@ from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 
 
@@ -92,6 +92,71 @@ class Metadata(DynamicEmbeddedDocument):
             size_bytes = int(r.headers["Content-Length"])
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
+
+
+class SceneMetadata(Metadata):
+    """Class for storing metadata about 3D scene samples.
+
+    Args:
+        size_bytes (None): the size of scene definition and all children
+            assets on disk, in bytes
+        mime_type (None): the MIME type of the scene media. Always set to
+            application/octet-stream
+        asset_counts (None): dict of child asset file type to count
+    """
+
+    asset_counts = fof.DictField
+
+    @classmethod
+    def build_for(cls, scene_path, mime_type=None):
+        """Builds a :class:`SceneMetadata` object for the given 3D Scene.
+
+        Args:
+            scene_path: a scene path or URL
+            mime_type (None): Ignored. mime_type always set to
+                application/octet-stream
+
+        Returns:
+            a :class:`SceneMetadata`
+        """
+        if not etau.is_str(scene_path):
+            raise ValueError("Invalid scene or path:", scene_path)
+
+        scene = fo3d.Scene.from_fo3d(scene_path)
+        scene_dict = scene.as_dict()
+        total_size = len(json.dumps(scene_dict))
+        asset_counts = collections.defaultdict(int)
+        mime_type = "application/octet-stream"
+
+        # Get asset paths and resolve all to absolute
+        asset_paths = scene.get_asset_paths()
+        scene_dir = os.path.dirname(scene_path)
+        for i, asset_path in enumerate(asset_paths):
+            if not fos.isabs(asset_path):
+                asset_path = fos.join(scene_dir, asset_path)
+            asset_paths[i] = fos.resolve(asset_path)
+            file_type = pathlib.Path(asset_path).suffix[1:]
+            asset_counts[file_type] += 1
+
+        # Dedupe asset paths within this single scene
+        asset_paths = list(set(asset_paths))
+
+        # compute metadata for all asset paths
+        asset_metadatas = fos.run(
+            _do_compute_metadata,
+            [
+                (i, asset_path, fom.MIXED)
+                for i, asset_path in enumerate(asset_paths)
+            ],
+            progress=False,
+        )
+        total_size += sum(m[1].size_bytes for m in asset_metadatas)
+
+        return cls(
+            size_bytes=total_size,
+            mime_type=mime_type,
+            asset_counts=asset_counts,
+        )
 
 
 class ImageMetadata(Metadata):
@@ -604,9 +669,12 @@ def _do_get_metadata(args):
 
 def _get_metadata(filepath, media_type):
     if media_type == fom.IMAGE:
-        return ImageMetadata.build_for(filepath)
+        metadata = ImageMetadata.build_for(filepath)
+    elif media_type == fom.VIDEO:
+        metadata = VideoMetadata.build_for(filepath)
+    elif media_type == fom.THREE_D:
+        metadata = SceneMetadata.build_for(filepath)
+    else:
+        metadata = Metadata.build_for(filepath)
 
-    if media_type == fom.VIDEO:
-        return VideoMetadata.build_for(filepath)
-
-    return Metadata.build_for(filepath)
+    return metadata

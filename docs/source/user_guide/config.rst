@@ -734,7 +734,7 @@ You can print your App config at any time via the Python library and the CLI:
         print(fo.app_config)
 
         # Print a specific App config field
-        print(fo.app_config.show_attributes)
+        print(fo.app_config.show_label)
 
     .. code-block:: text
 
@@ -784,7 +784,7 @@ You can print your App config at any time via the Python library and the CLI:
         fiftyone app config
 
         # Print a specific App config field
-        fiftyone app config show_attributes
+        fiftyone app config show_label
 
     .. code-block:: text
 
@@ -875,7 +875,7 @@ via the following pattern:
     # Create a custom App config
     app_config = fo.app_config.copy()
     app_config.show_confidence = False
-    app_config.show_attributes = False
+    app_config.show_label = False
 
     session = fo.launch_app(dataset, config=app_config)
 
@@ -889,7 +889,7 @@ apply the changes:
 
     # Customize the config of a live session
     session.config.show_confidence = True
-    session.config.show_attributes = True
+    session.config.show_label = True
     session.refresh()  # must refresh after edits
 
 Editing your JSON App config
@@ -905,7 +905,7 @@ For example, a valid App config JSON file is:
 
     {
         "show_confidence": false,
-        "show_attributes": false
+        "show_label": false
     }
 
 When `fiftyone` is imported, any options from your JSON App config are applied,
@@ -931,7 +931,7 @@ issuing the following commands prior to launching your Python interpreter:
 .. code-block:: shell
 
     export FIFTYONE_APP_SHOW_CONFIDENCE=false
-    export FIFTYONE_APP_SHOW_ATTRIBUTES=false
+    export FIFTYONE_APP_SHOW_LABEL=false
 
 Modifying your App config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -949,7 +949,7 @@ current session.
     import fiftyone as fo
 
     fo.app_config.show_confidence = False
-    fo.app_config.show_attributes = False
+    fo.app_config.show_label = False
 
 .. _configuring-plugins:
 
