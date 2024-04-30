@@ -2366,6 +2366,7 @@ def upload_media(
                             in_asset_path
                         )
 
+                out_asset_path = resolve(out_asset_path)
                 if in_asset_path not in paths_map:
                     paths_map[in_asset_path] = out_asset_path
 
