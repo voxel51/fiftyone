@@ -1,5 +1,4 @@
-import { ModalSample, getSampleSrc } from "@fiftyone/state";
-import { resolveParent } from "@fiftyone/utilities";
+import { ModalSample } from "@fiftyone/state";
 import { folder } from "leva";
 import {
   DoubleSide,
@@ -107,50 +106,25 @@ export const getVisibilityMapFromFo3dParsed = (
     .reduce((acc, curr) => ({ ...acc, ...curr }), {});
 };
 
-export const getMediaUrlForFo3dSample = (
+export const getMediaPathForFo3dSample = (
   sample: ModalSample,
   mediaField: string
 ) => {
-  let mediaUrlUnresolved: string;
+  let mediaPath: string;
 
   if (Array.isArray(sample.urls)) {
     const mediaFieldObj = sample.urls.find((url) => url.field === mediaField);
-    mediaUrlUnresolved = mediaFieldObj?.url ?? sample.urls[0].url;
+    mediaPath = mediaFieldObj?.url ?? sample.urls[0].url;
   } else {
-    mediaUrlUnresolved = sample.urls[mediaField];
+    mediaPath = sample.urls[mediaField];
   }
 
-  return getSampleSrc(mediaUrlUnresolved);
+  return mediaPath;
 };
 
-export const getFo3dRoot = (fo3dUrl: string) => {
-  const decodedUrl = decodeURIComponent(fo3dUrl);
-
-  // extract the filepath from the URL
-  const filepathMatch = decodedUrl.match(/filepath=([^&]+)/);
-  if (!filepathMatch) {
-    try {
-      // might be a URL, if not, following will throw
-      new URL(decodedUrl);
-      const parent = resolveParent(fo3dUrl);
-      if (parent.endsWith("/")) {
-        return parent;
-      }
-      return parent + "/";
-    } catch {
-      throw new Error("Filepath not found in URL");
-    }
-  }
-  let filepath = filepathMatch[1];
-
-  // remove the query string if present
-  const queryStringIndex = filepath.indexOf("?");
-  if (queryStringIndex !== -1) {
-    filepath = filepath.substring(0, queryStringIndex);
-  }
-
+export const getFo3dRoot = (fo3dPath: string) => {
   // remove filename and the last slash to get the root
-  const root = filepath.replace(/\/[^\/]*\.fo3d$/, "/");
+  const root = fo3dPath.replace(/\/[^/]*\.fo3d$/, "/");
 
   return root;
 };

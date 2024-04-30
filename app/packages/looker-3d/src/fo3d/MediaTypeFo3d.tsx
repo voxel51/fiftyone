@@ -33,7 +33,7 @@ import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
 import {
   getFo3dRoot,
-  getMediaUrlForFo3dSample,
+  getMediaPathForFo3dSample,
   getOrthonormalAxis,
 } from "./utils";
 
@@ -45,12 +45,14 @@ export const MediaTypeFo3dComponent = () => {
 
   const settings = usePluginSettings<Looker3dPluginSettings>("3d");
 
-  const mediaUrl = useMemo(
-    () => getMediaUrlForFo3dSample(sample, mediaField),
+  const mediaPath = useMemo(
+    () => getMediaPathForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
 
-  const fo3dRoot = useMemo(() => getFo3dRoot(mediaUrl), [mediaUrl]);
+  const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
+
+  const fo3dRoot = useMemo(() => getFo3dRoot(mediaPath), [mediaPath]);
 
   const { foScene, isLoading: isParsingFo3d } = useFo3d(
     mediaUrl,
