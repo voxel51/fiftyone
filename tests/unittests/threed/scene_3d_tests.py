@@ -10,7 +10,7 @@ import json
 import unittest
 from unittest.mock import mock_open, patch
 
-from fiftyone.core.threed import GltfMesh, Pointcloud, Scene
+from fiftyone.core.threed import GltfMesh, PointCloud, Scene
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
@@ -18,7 +18,7 @@ class TestScene(unittest.TestCase):
     def setUp(self):
         self.scene = Scene()
         self.scene.add(GltfMesh("gltf", gltf_path="/path/to/gltf.gltf"))
-        self.scene.add(Pointcloud("pcd", pcd_path="/path/to/pcd.pcd"))
+        self.scene.add(PointCloud("pcd", pcd_path="/path/to/pcd.pcd"))
 
     def test_export_invalid_extension(self):
         with self.assertRaises(ValueError):

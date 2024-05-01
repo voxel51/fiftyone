@@ -27,7 +27,7 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 from fiftyone.core.odm import DynamicEmbeddedDocument
 from fiftyone.core.sample import Sample
-from fiftyone.core.threed import Pointcloud, Scene
+from fiftyone.core.threed import PointCloud, Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -1134,7 +1134,7 @@ def _make_scene(
             pcd_path = rel_path
 
     scene = Scene()
-    scene.add(Pointcloud("point cloud", pcd_path))
+    scene.add(PointCloud("point cloud", pcd_path))
     scene.write(scene_path)
 
     return scene_path

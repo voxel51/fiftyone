@@ -18,7 +18,7 @@ from .camera import PerspectiveCamera
 from .lights import Light
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
-from .pointcloud import Pointcloud
+from .pointcloud import PointCloud
 from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
 
@@ -93,7 +93,7 @@ class Scene(Object3D):
                 "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
             )
             gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
-            pcd = Pointcloud("pcd_name", "/path/to/pcd")
+            pcd = PointCloud("pcd_name", "/path/to/pcd")
 
             scene.add(obj_mesh)
             scene.add(gltf_mesh)
@@ -146,7 +146,9 @@ class Scene(Object3D):
         """Returns a deep copy of the scene."""
         return Scene._from_fo3d_dict(self.as_dict())
 
-    def write(self, fo3d_path: str, resolve_relative_paths=False):
+    def write(
+        self, fo3d_path: str, resolve_relative_paths=False, pprint=False
+    ):
         """Export the scene to a ``.fo3d`` file.
 
         Args:
@@ -155,6 +157,8 @@ class Scene(Object3D):
                 scene to absolute paths. If ``True``, all asset paths in the
                 scene are resolved to absolute paths. If ``False``, asset
                 paths are left as-is. Defaults to ``False``.
+            pprint: whether to pretty-print the JSON output. Defaults to
+                ``False``.
         """
         if not fo3d_path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
@@ -202,7 +206,9 @@ class Scene(Object3D):
                         fo3d_path_dir, node.ply_path
                     )
 
-        fos.write_json(validated_scene.as_dict(), fo3d_path, pretty_print=True)
+        fos.write_json(
+            validated_scene.as_dict(), fo3d_path, pretty_print=pprint
+        )
 
     def traverse(self, include_self=False):
         """Traverse the scene graph.
@@ -227,7 +233,7 @@ class Scene(Object3D):
         total_shapes = 0
 
         for node in self.traverse():
-            if isinstance(node, Pointcloud):
+            if isinstance(node, PointCloud):
                 total_point_clouds += 1
             elif isinstance(node, GltfMesh):
                 total_gltfs += 1
@@ -259,7 +265,7 @@ class Scene(Object3D):
         asset_paths = []
 
         for node in self.traverse():
-            if isinstance(node, Pointcloud):
+            if isinstance(node, PointCloud):
                 asset_paths.append(node.pcd_path)
             elif isinstance(node, GltfMesh):
                 asset_paths.append(node.gltf_path)
