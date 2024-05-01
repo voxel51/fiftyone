@@ -178,34 +178,13 @@ class Scene(Object3D):
             visited_nodes.add(node.name)
 
             if resolve_relative_paths:
-                if hasattr(node, "pcd_path"):
-                    node.pcd_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.pcd_path
-                    )
-                if hasattr(node, "obj_path"):
-                    node.obj_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.obj_path
-                    )
-                if hasattr(node, "mtl_path"):
-                    node.mtl_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.mtl_path
-                    )
-                if hasattr(node, "gltf_path"):
-                    node.gltf_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.gltf_path
-                    )
-                if hasattr(node, "fbx_path"):
-                    node.fbx_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.fbx_path
-                    )
-                if hasattr(node, "stl_path"):
-                    node.stl_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.stl_path
-                    )
-                if hasattr(node, "ply_path"):
-                    node.ply_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.ply_path
-                    )
+                for asset_path_field in node._asset_path_fields:
+                    asset_path = getattr(node, asset_path_field, None)
+                    if asset_path:
+                        resolved_asset_path = self._resolve_asset_path(
+                            fo3d_path_dir, asset_path
+                        )
+                        setattr(node, asset_path_field, resolved_asset_path)
 
         fos.write_json(
             validated_scene.as_dict(), fo3d_path, pretty_print=pprint
@@ -258,10 +237,10 @@ class Scene(Object3D):
         if path is None:
             return None
 
-        if not os.path.isabs(path):
-            path = os.path.join(root, path)
+        if not fos.isabs(path):
+            path = fos.join(root, path)
 
-        return path
+        return fos.resolve(path)
 
     def _to_dict_extra(self):
         return {
