@@ -46,37 +46,6 @@ export const Gltf = ({
 
   usePercolateMaterial(scene, material);
 
-  useEffect(() => {
-    scene.traverse((node) => {
-      if (node instanceof Mesh && node.material) {
-        if (!node.userData.foOriginalMaterialConfig) {
-          node.userData.foOriginalMaterialConfig = {
-            transparent: node.material.transparent,
-            depthWrite: node.material.depthWrite,
-            alphaTest: node.material.alphaTest,
-          };
-        }
-
-        if (material.opacity < 1) {
-          // set all materials to transparent so we can control opacity
-          node.material.transparent = true;
-          node.material.depthWrite = false;
-          node.material.alphaTest = Number.EPSILON;
-        } else {
-          node.material.transparent =
-            node.userData.foOriginalMaterialConfig.transparent;
-          node.material.depthWrite =
-            node.userData.foOriginalMaterialConfig.depthWrite;
-          node.material.alphaTest =
-            node.userData.foOriginalMaterialConfig.alphaTest;
-        }
-
-        node.material.opacity = material.opacity;
-        node.material.wireframe = material["wireframe"] ?? false;
-      }
-    });
-  }, [scene, material]);
-
   const groupRef = useRef();
 
   const mixer = useMemo(() => new AnimationMixer(scene), [scene]);
