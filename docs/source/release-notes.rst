@@ -11,8 +11,6 @@ What's New
 
 - Added :ref:`Groups <teams-groups>` for managing and dataset access for groups
   of users
-- Introduced a :ref:`Central Authentication Service <central-auth-service>` for
-  managing user authentication
 - Introduced a new :ref:`Pluggable Authentication <pluggable-auth>` system for
   customizing FiftyOne Teams authentication
 - Removed Auth0 as a hard dependency for Teams deployments with the
@@ -24,7 +22,7 @@ What's New
 - Added the ability to search for users on the Users page
 
 FiftyOne Teams 1.5.10
---------------------
+---------------------
 *Released April 18, 2024*
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
