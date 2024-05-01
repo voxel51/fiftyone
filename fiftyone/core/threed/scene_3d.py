@@ -178,13 +178,24 @@ class Scene(Object3D):
             visited_nodes.add(node.name)
 
             if resolve_relative_paths:
-                for asset_path_field in node._asset_path_fields:
+                for asset_path_field in node._asset_path_fields or []:
                     asset_path = getattr(node, asset_path_field, None)
                     if asset_path:
                         resolved_asset_path = self._resolve_asset_path(
                             fo3d_path_dir, asset_path
                         )
                         setattr(node, asset_path_field, resolved_asset_path)
+
+        if resolve_relative_paths and validated_scene.background is not None:
+            if validated_scene.background.image is not None:
+                validated_scene.background.image = self._resolve_asset_path(
+                    fo3d_path_dir, validated_scene.background.image
+                )
+            if validated_scene.background.cube is not None:
+                validated_scene.background.cube = [
+                    self._resolve_asset_path(fo3d_path_dir, ci)
+                    for ci in validated_scene.background.cube
+                ]
 
         fos.write_json(
             validated_scene.as_dict(), fo3d_path, pretty_print=pprint
