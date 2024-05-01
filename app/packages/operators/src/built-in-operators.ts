@@ -871,7 +871,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
-        const currentCustomPanelState = current[targetPartial] || {};
+        const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
         const param = ctx.params[targetParam];
         if (patch) {
@@ -1002,8 +1002,13 @@ class PromptUserForOperation extends Operator {
     return { triggerEvent };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    const { params, operator_uri, on_success, on_error, on_cancel } =
-      ctx.params;
+    const {
+      params,
+      operator_uri,
+      on_success,
+      on_error,
+      on_cancel,
+    } = ctx.params;
     const { triggerEvent } = ctx.hooks;
     const panelId = ctx.getCurrentPanelId();
 
