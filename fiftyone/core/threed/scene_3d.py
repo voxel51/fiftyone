@@ -64,7 +64,7 @@ class SceneBackground:
         }
 
     @staticmethod
-    def _from_dict(d):
+    def _from_dict(d: dict):
         return SceneBackground(
             color=d.get("color"),
             image=d.get("image"),
