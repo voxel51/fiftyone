@@ -433,8 +433,13 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
                 repo_type="dataset",
             )
 
-    num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
-    chunk_size = len(os.listdir(os.path.join(tmp_dir, "data", "data_0")))
+    first_chunk_dir = os.path.join(tmp_dir, "data", "data_0")
+    if os.path.exists(first_chunk_dir):
+        chunk_size = len(os.listdir(first_chunk_dir))
+        num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
+    else:
+        chunk_size = None
+        num_chunks = 1
     if os.path.exists(os.path.join(tmp_dir, "fields")):
         field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
     else:
@@ -444,40 +449,62 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
 
     num_total_chunks = num_chunks * (len(field_dirs) + 1)
 
+    message = "Uploading media files"
+    if num_total_chunks > 1:
+        message += f" in {num_total_chunks} batches  of size {chunk_size}"
+
+    def _upload_media_dir(i):
+        path_in_repo = (
+            os.path.join("data", f"data_{i}")
+            if chunk_size is not None
+            else "data"
+        )
+        media_dir = os.path.join(tmp_dir, path_in_repo)
+
+        if not os.path.exists(media_dir):
+            return
+        if _is_already_uploaded(api, repo_id, media_dir):
+            return
+        api.upload_folder(
+            folder_path=media_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo=path_in_repo,
+            commit_message=f"Adding media files in dir {path_in_repo}",
+        )
+
+    def _upload_field_dir(field_dir, i):
+        path_in_repo = (
+            os.path.join("fields", field_dir, f"{field_dir}_{i}")
+            if chunk_size is not None
+            else os.path.join("fields", field_dir)
+        )
+        field_media_dir = os.path.join(tmp_dir, path_in_repo)
+
+        if not os.path.exists(field_media_dir):
+            return
+        if _is_already_uploaded(api, repo_id, field_media_dir):
+            return
+        api.upload_folder(
+            folder_path=field_media_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo=path_in_repo,
+            commit_message=f"Adding media field files in dir {path_in_repo}",
+        )
+
     for n in tqdm(
         range(num_total_chunks),
-        desc=f"Uploading media files in {num_total_chunks} batches of size {chunk_size}",
+        desc=message,
     ):
         i = n // (len(field_dirs) + 1)
         j = n % (len(field_dirs) + 1)
 
         if j == 0:
-            media_chunk_dir = os.path.join(tmp_dir, "data", f"data_{i}")
-            if _is_already_uploaded(api, repo_id, media_chunk_dir):
-                continue
-            api.upload_folder(
-                folder_path=media_chunk_dir,
-                repo_id=repo_id,
-                repo_type="dataset",
-                path_in_repo=f"data/data_{i}",
-                commit_message=f"Adding media files in dir data_{i}",
-            )
+            _upload_media_dir(i)
         else:
             field_dir = field_dirs[j - 1]
-            field_chunk_dir = os.path.join(
-                tmp_dir, "fields", field_dir, f"{field_dir}_{i}"
-            )
-            if not os.path.exists(field_chunk_dir):
-                continue
-            if _is_already_uploaded(api, repo_id, field_chunk_dir):
-                continue
-            api.upload_folder(
-                folder_path=field_chunk_dir,
-                repo_id=repo_id,
-                repo_type="dataset",
-                path_in_repo=f"fields/{field_dir}/{field_dir}_{i}",
-                commit_message=f"Adding media field files in dir {field_dir}_{i}",
-            )
+            _upload_field_dir(field_dir, i)
 
 
 def _populate_config_file(
