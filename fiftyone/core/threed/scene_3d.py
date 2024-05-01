@@ -8,6 +8,7 @@
 
 import json
 import os
+from collections import Counter
 from typing import List, Optional
 
 from pydantic.dataclasses import dataclass
@@ -224,38 +225,15 @@ class Scene(Object3D):
 
     def get_scene_summary(self):
         """Returns a summary of the scene."""
-        total_objs = 0
-        total_point_clouds = 0
-        total_gltfs = 0
-        total_fbxs = 0
-        total_stls = 0
-        total_plys = 0
-        total_shapes = 0
-
-        for node in self.traverse():
-            if isinstance(node, PointCloud):
-                total_point_clouds += 1
-            elif isinstance(node, GltfMesh):
-                total_gltfs += 1
-            elif isinstance(node, FbxMesh):
-                total_fbxs += 1
-            elif isinstance(node, StlMesh):
-                total_stls += 1
-            elif isinstance(node, PlyMesh):
-                total_plys += 1
-            elif isinstance(node, ObjMesh):
-                total_objs += 1
-            elif isinstance(node, Shape3D):
-                total_shapes += 1
-
+        node_types = Counter(map(type, self.traverse()))
         return {
-            "objs": total_objs,
-            "point clouds": total_point_clouds,
-            "gltfs": total_gltfs,
-            "fbxs": total_fbxs,
-            "stls": total_stls,
-            "plys": total_plys,
-            "shapes": total_shapes,
+            "objs": node_types[ObjMesh],
+            "point clouds": node_types[PointCloud],
+            "gltfs": node_types[GltfMesh],
+            "fbxs": node_types[FbxMesh],
+            "stls": node_types[StlMesh],
+            "plys": node_types[PlyMesh],
+            "shapes": node_types[Shape3D],
         }
 
     def get_asset_paths(self):
