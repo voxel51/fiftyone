@@ -462,6 +462,7 @@ class ExecutionContext(object):
                 required_secrets=self._required_secret_keys,
             )
         if self.panel_id:
+            self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
 
     @property
@@ -619,6 +620,41 @@ class ExecutionContext(object):
         """
         return self._ops
 
+    def prompt(
+        self,
+        operator_uri,
+        params=None,
+        on_success=None,
+        on_error=None,
+        on_cancel=None,
+    ):
+        """Prompts the user to execute the operator with the given URI.
+
+        Args:
+            operator_uri: the URI of the operator
+            params (None): a dictionary of parameters for the operator
+            on_success (None): a callback to invoke if the user successfully executes the operator
+            on_error (None): a callback to invoke if the execution fails
+            on_cancel (None): a callback to invoke if the user cancels the operation
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to prompt the user
+        """
+
+        return self.trigger(
+            "prompt_user_for_operation",
+            params=_convert_callables_to_operator_uris(
+                {
+                    "operator_uri": operator_uri,
+                    "panel_id": self.panel_id,
+                    "params": params,
+                    "on_success": on_success,
+                    "on_error": on_error,
+                }
+            ),
+        )
+
     def secret(self, key):
         """Retrieves the secret with the given key.
 
@@ -715,7 +751,7 @@ class ExecutionContext(object):
 
     @property
     def panel_state(self):
-        return self.params.get("panel_state", {})
+        return self._panel_state
 
     @property
     def panel(self):
@@ -1062,6 +1098,15 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+# TODO: move to utils
+def _convert_callables_to_operator_uris(d):
+    updated = {**d}
+    for key, value in updated.items():
+        if callable(value):
+            updated[key] = f"{value.__self__.uri}#{value.__name__}"
+    return updated
 
 
 class ExecutionOptions(object):

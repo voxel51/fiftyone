@@ -1,26 +1,3 @@
-# class ExamplePanelOperator(foo.PanelOperator):
-#     @property
-#     def config(self):
-#         return foo.PanelOperatorConfig(
-#             name="example_panel_operator",
-#             label="Examples: Panel Operator",
-#             icon="cube",
-#             allow_multiple=True,
-#         )
-
-#     def on_load(self, ctx, state):
-#         ctx.ops.set_panel_state({"message": "Panel loaded!"})
-
-#     def render(self, ctx, state):
-#         panel = types.Object()
-#         panel.message('msg', default=state.get('message', ''))
-#         panel.btn('btn', label='Click me', on_click=self.on_click)
-#         return types.Property(panel)
-
-#     def on_click(self, ctx, state):
-#         ctx.ops.set_panel_state({"message": "Button clicked!"})
-
-
 """
 FiftyOne operators.
 

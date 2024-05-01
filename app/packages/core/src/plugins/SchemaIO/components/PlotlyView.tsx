@@ -7,52 +7,54 @@ import { getComponentProps } from "../utils";
 import { merge } from "lodash";
 import { usePanelState } from "@fiftyone/spaces";
 import { executeOperator } from "@fiftyone/operators";
+import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { snakeCase } from "lodash";
 
 export default function PlotlyView(props) {
-  console.log(props);
   const { data, schema } = props;
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
   const [selectedpoints, setSelectedPoints] = React.useState(null);
   let range = [0, 0];
+  const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
-    if (view.controller) {
-      // TODO: add more interesting/useful event data
-      console.log("event", event);
-      console.log("event_data", e);
-      const data = EventDataMappers[event]?.(e) || {};
-      const x_data_source = view.x_data_source;
-      if (event === "onClick") {
-        const values = e.points[0];
-        let selected = [];
-        let xBinsSize = null;
-        let xValue = null;
-        for (const p of e.points) {
-          const { data, fullData } = p;
-          const { x, y } = data;
-          xBinsSize = fullData.xbins.size;
-          selected = selected.concat(p.pointIndices);
-          xValue = p.x;
-        }
-        //
-        // TODO: histogram only
-        //
-        range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
-        console.log("range", range);
-        if (selected.length === 0) {
-          selected = null;
-        }
-        setSelectedPoints(selected);
+    // TODO: add more interesting/useful event data
+    const data = EventDataMappers[event]?.(e) || {};
+    const x_data_source = view.x_data_source;
+    if (event === "onClick") {
+      const values = e.points[0];
+      let selected = [];
+      let xBinsSize = null;
+      let xValue = null;
+      for (const p of e.points) {
+        const { data, fullData } = p;
+        const { x, y } = data;
+        xBinsSize = fullData.xbins.size;
+        selected = selected.concat(p.pointIndices);
+        xValue = p.x;
       }
-      executeOperator(view.controller, {
+      //
+      // TODO: histogram only
+      //
+      range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
+      console.log("range", range);
+      if (selected.length === 0) {
+        selected = null;
+      }
+      setSelectedPoints(selected);
+    }
+    const eventHandlerOperator = view[snakeCase(event)];
+
+    triggerPanelEvent(view.panel_id, {
+      operator: eventHandlerOperator,
+      params: {
         event,
-        panel_id: view.panel_id,
         data,
         x_data_source,
         range,
-      });
-    }
+      },
+    });
   };
   const eventHandlers = createPlotlyHandlers(handleEvent);
 

@@ -68,10 +68,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       });
   }, [panelState?.state]);
 
-  const triggerPanelPropertyChange = usePanelEvent({
-    panelId,
-    panelState: panelState?.state,
-  });
+  const triggerPanelPropertyChange = usePanelEvent();
 
   const handlePanelStateChange = (newState) => {
     setCustomPanelState((state: any) => ({ ...state, ...newState }));
@@ -80,7 +77,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const handlePanelStatePathChange = (path, value, schema) => {
     log("handlePanelStatePathChange", path, value, schema);
     if (schema?.onChange) {
-      triggerPanelPropertyChange({
+      triggerPanelPropertyChange(panelId, {
         operator: schema.onChange,
         params: { path, value },
       });

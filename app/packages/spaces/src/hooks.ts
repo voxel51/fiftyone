@@ -218,6 +218,22 @@ export function usePanelStateCallback<T>(
   );
 }
 
+export function usePanelStateByIdCallback<T>(
+  callback: (panelId: string, panelState: T, args: any[]) => void,
+  local?: boolean
+) {
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      async (panelId: string, ...args) => {
+        const panelState = await snapshot.getPromise(
+          panelStateSelector({ panelId, local })
+        );
+        callback(panelId, panelState, args as any[]);
+      },
+    []
+  );
+}
+
 /**
  * Lazily read panel state on demand
  * @returns a state resolver function which return promise that resolves to the

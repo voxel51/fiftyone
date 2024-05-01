@@ -37,12 +37,12 @@ function OperatorButtonView(props) {
   let { operator, params = {}, prompt } = props.schema.view;
   const panelState = useCustomPanelState();
   const panelId = usePanelId();
-  const handleClick = usePanelEvent({ panelId, panelState });
+  const handleClick = usePanelEvent();
   return (
     <BaseButtonView
       {...props}
       onClick={() => {
-        handleClick({ params, operator, prompt });
+        handleClick(panelId, { params, operator, prompt });
       }}
     />
   );
