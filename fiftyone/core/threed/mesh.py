@@ -69,6 +69,8 @@ class ObjMesh(Mesh):
         ValueError: if ``mtl_path`` does not end with ``.mtl``
     """
 
+    _asset_path_fields = ["obj_path", "mtl_path"]
+
     def __init__(
         self,
         name: str,
@@ -125,6 +127,8 @@ class FbxMesh(Mesh):
         ValueError: If ``fbx_path`` does not end with ``.fbx``
     """
 
+    _asset_path_fields = ["fbx_path"]
+
     def __init__(
         self,
         name: str,
@@ -169,6 +173,8 @@ class GltfMesh(Mesh):
     Raises:
         ValueError: if ``gltf_path`` does not end with '.gltf' or ``.glb``
     """
+
+    _asset_path_fields = ["gltf_path"]
 
     def __init__(
         self,
@@ -218,6 +224,8 @@ class PlyMesh(Mesh):
         ValueError: if ``ply_path`` does not end with ``.ply``
     """
 
+    _asset_path_fields = ["ply_path"]
+
     def __init__(
         self,
         name: str,
@@ -260,6 +268,8 @@ class StlMesh(Mesh):
     Raises:
         ValueError: if ``stl_path`` does not end with ``.stl``
     """
+
+    _asset_path_fields = ["stl_path"]
 
     def __init__(
         self,

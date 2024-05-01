@@ -5,7 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import itertools
 import json
 import os
 from collections import Counter
@@ -240,23 +240,11 @@ class Scene(Object3D):
         """Collect all asset paths in the scene. Asset paths aren't resolved to
         absolute paths.
         """
-        asset_paths = []
-
-        for node in self.traverse():
-            if isinstance(node, PointCloud):
-                asset_paths.append(node.pcd_path)
-            elif isinstance(node, GltfMesh):
-                asset_paths.append(node.gltf_path)
-            elif isinstance(node, FbxMesh):
-                asset_paths.append(node.fbx_path)
-            elif isinstance(node, StlMesh):
-                asset_paths.append(node.stl_path)
-            elif isinstance(node, PlyMesh):
-                asset_paths.append(node.ply_path)
-            elif isinstance(node, ObjMesh):
-                asset_paths.append(node.obj_path)
-                if node.mtl_path is not None:
-                    asset_paths.append(node.mtl_path)
+        asset_paths = list(
+            itertools.chain.from_iterable(
+                node._get_asset_paths() for node in self.traverse()
+            )
+        )
 
         # append paths in scene background, if any
         if self.background is not None:
