@@ -499,11 +499,13 @@ class BaseRun(Configurable):
 
         dataset = samples._root_dataset
 
+        # Reload to protect against concurrent edits
+        runs_field = cls._runs_field()
+        dataset._doc.reload(runs_field)
+
         # Update run doc
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
-        run_doc = run_docs[key]
-        del run_docs[key]
+        run_docs = getattr(dataset._doc, runs_field)
+        run_doc = run_docs.pop(key)
         run_doc.key = new_key
         run_docs[new_key] = run_doc
         run_doc.save()
@@ -822,13 +824,13 @@ class BaseRun(Configurable):
 
         dataset = samples._root_dataset
 
+        # Reload to protect against concurrent edits
+        runs_field = cls._runs_field()
+        dataset._doc.reload(runs_field)
+
         # Delete run from dataset
-        run_docs = getattr(dataset._doc, cls._runs_field())
-        try:
-            # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
-            del run_docs[key]
-        except KeyError:
-            pass
+        run_docs = getattr(dataset._doc, runs_field)
+        run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         run_results = results_cache.pop(key, None)
         if run_results is not None:
