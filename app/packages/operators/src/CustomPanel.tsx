@@ -78,6 +78,7 @@ export function CustomPanel(props: CustomPanelProps) {
         layout={{ height, width }}
         onPathChange={handlePanelStatePathChange}
       />
+      <pre>{JSON.stringify(data, null, 2)}</pre>
     </Box>
   );
 }

@@ -22,23 +22,31 @@ export default function PlotlyView(props) {
     // TODO: add more interesting/useful event data
     const data = EventDataMappers[event]?.(e) || {};
     const x_data_source = view.x_data_source;
+    let xValue = null;
+    let yValue = null;
     if (event === "onClick") {
       const values = e.points[0];
       let selected = [];
       let xBinsSize = null;
-      let xValue = null;
       for (const p of e.points) {
         const { data, fullData } = p;
         const { x, y } = data;
-        xBinsSize = fullData.xbins.size;
-        selected = selected.concat(p.pointIndices);
-        xValue = p.x;
+        const { type } = fullData;
+        if (type === "histogram") {
+          xBinsSize = fullData.xbins.size;
+          selected = selected.concat(p.pointIndices);
+          xValue = p.x;
+          range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
+        } else if (type === "scatter") {
+          selected.push(p.pointIndex);
+        } else if (type === "bar") {
+          xValue = p.x;
+          yValue = p.y;
+        } else if (type === "heatmap") {
+          xValue = p.x;
+          yValue = p.y;
+        }
       }
-      //
-      // TODO: histogram only
-      //
-      range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
-      console.log("range", range);
       if (selected.length === 0) {
         selected = null;
       }
@@ -53,6 +61,9 @@ export default function PlotlyView(props) {
         data,
         x_data_source,
         range,
+        type: view.type,
+        x: xValue,
+        y: yValue,
       },
     });
   };
@@ -62,13 +73,8 @@ export default function PlotlyView(props) {
     selectedpoints,
   };
   const layoutDefaults = {
-    // dragmode: "lasso",
-    // uirevision: 1,
     font: { family: "var(--fo-fontFamily-body)", size: 14 },
     showlegend: false,
-    // width: "100%",
-    // height: 700,
-    // hovermode: false,
     xaxis: {
       showgrid: true,
       zeroline: false,
@@ -106,6 +112,8 @@ export default function PlotlyView(props) {
   const mergedLayout = merge({}, layoutDefaults, layout);
   const mergedConfig = merge({}, configDefaults, config);
   const mergedData = mergeData(data, dataDefaults);
+
+  console.log(mergedLayout);
 
   return (
     <Box

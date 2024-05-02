@@ -62,7 +62,6 @@ class Panel(Operator):
         ctx.ops.register_panel(**panel_config)
 
     def execute(self, ctx):
-        print("PanelOperator.execute", ctx.params)
         panel_id = ctx.params.get("panel_id", None)
         method_name = ctx.params.get("__method__", None)
         state = ctx.params.get("state", {})
@@ -77,7 +76,6 @@ class Panel(Operator):
 
         # render
         panel_output = self.render(ctx)
-        print("render() -=-=-=-=-=->")
         ctx.ops.show_panel_output(panel_output)
 
 
