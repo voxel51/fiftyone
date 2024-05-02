@@ -7,7 +7,7 @@ Fiftyone 3D Scene.
 """
 from typing import Optional, Union
 
-from pydantic import field_validator
+from pydantic import validator as field_validator
 
 from .transformation import Vec3UnionType, Vector3
 
