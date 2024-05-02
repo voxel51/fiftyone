@@ -177,6 +177,7 @@ class Scene(Object3D):
 
             visited_nodes.add(node.name)
 
+            # Resolve child's asset paths
             if resolve_relative_paths:
                 for asset_path_field in node._asset_path_fields or []:
                     asset_path = getattr(node, asset_path_field, None)
@@ -186,6 +187,7 @@ class Scene(Object3D):
                         )
                         setattr(node, asset_path_field, resolved_asset_path)
 
+        # Now resolve any asset paths in scene background
         if resolve_relative_paths and validated_scene.background is not None:
             if validated_scene.background.image is not None:
                 validated_scene.background.image = self._resolve_asset_path(
