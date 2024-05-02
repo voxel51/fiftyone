@@ -872,7 +872,9 @@ def _parse_point_cloud(
 
     # Ensure bbox will not have 0 volume by adding a small value if max_bound
     #   and min_bound are close to each other
-    delta = np.isclose(max_bound - min_bound, 0) * np.repeat(0.000001, 3)
+    delta = np.isclose(
+        np.asarray(max_bound) - np.asarray(min_bound), 0
+    ) * np.repeat(0.000001, 3)
     max_bound += delta
 
     bbox = o3d.geometry.AxisAlignedBoundingBox(
