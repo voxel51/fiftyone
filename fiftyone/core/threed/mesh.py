@@ -16,6 +16,7 @@ class Mesh(Object3D):
     """Represents an abstract 3D mesh.
 
     Args:
+        name (str): the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
@@ -24,8 +25,10 @@ class Mesh(Object3D):
             :class:`fiftyone.core.threed.Object3D` parent class
     """
 
-    def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, name: str, material: Optional[MeshMaterial] = None, **kwargs
+    ):
+        super().__init__(name, **kwargs)
 
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)

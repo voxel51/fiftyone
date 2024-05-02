@@ -208,6 +208,9 @@ class Object3D:
 
     def add(self, *objs: "Object3D") -> None:
         """Add one or more objects as children of this one."""
+        if any(o is self for o in objs):
+            raise ValueError("Loop detected; can't add self as a child")
+
         self.children.extend(objs)
 
     def clear(self) -> None:

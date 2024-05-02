@@ -6,7 +6,6 @@
 |
 """
 import itertools
-import json
 import os
 from collections import Counter
 from typing import List, Optional
@@ -147,6 +146,15 @@ class Scene(Object3D):
         """Returns a deep copy of the scene."""
         return Scene._from_fo3d_dict(self.as_dict())
 
+    def _resolve_node_asset_paths(self, node, fo3d_path_dir):
+        for asset_path_field in node._asset_path_fields or []:
+            asset_path = getattr(node, asset_path_field, None)
+            if asset_path:
+                resolved_asset_path = self._resolve_asset_path(
+                    fo3d_path_dir, asset_path
+                )
+                setattr(node, asset_path_field, resolved_asset_path)
+
     def write(
         self, fo3d_path: str, resolve_relative_paths=False, pprint=False
     ):
@@ -179,13 +187,7 @@ class Scene(Object3D):
 
             # Resolve child's asset paths
             if resolve_relative_paths:
-                for asset_path_field in node._asset_path_fields or []:
-                    asset_path = getattr(node, asset_path_field, None)
-                    if asset_path:
-                        resolved_asset_path = self._resolve_asset_path(
-                            fo3d_path_dir, asset_path
-                        )
-                        setattr(node, asset_path_field, resolved_asset_path)
+                self._resolve_node_asset_paths(node, fo3d_path_dir)
 
         # Now resolve any asset paths in scene background
         if resolve_relative_paths and validated_scene.background is not None:
