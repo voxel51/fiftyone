@@ -116,8 +116,9 @@ docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/ba
 # if playwright version was updated,
 npx playwright install chromium
 
-. /e2e/venv/bin/activate
 npx playwright test --update-snapshots -g "description of my test"
+
+Note: `PYTHONPATH` and virtual env setup is done automatically.
 ```
 
 ### Known Issues
