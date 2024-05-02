@@ -66,10 +66,7 @@ test.describe("fo3d", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("orthographic projections are rendered correctly", async ({
-    modal,
-    grid,
-  }) => {
+  test("scene is rendered correctly", async ({ modal, grid }) => {
     const mask = getScreenshotMasks(modal);
 
     await expect(grid.firstFlashlightSection).toHaveScreenshot(
