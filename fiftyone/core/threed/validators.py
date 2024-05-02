@@ -7,6 +7,8 @@ Fiftyone 3D Scene.
 """
 from typing import Optional, Union
 
+# Note, this function is deprecated in pydantic V2, however, for backwards
+#   compatibility with V1, we'll use it for now.
 from pydantic import validator as field_validator
 
 from .transformation import Vec3UnionType, Vector3
