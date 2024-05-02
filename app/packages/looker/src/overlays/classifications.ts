@@ -2,7 +2,12 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getCls, REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
+import {
+  getCls,
+  REGRESSION,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
+} from "@fiftyone/utilities";
 
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
@@ -353,7 +358,11 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
         field,
         labels.filter((label) => {
           const shown = isShown(state, field, label) && label.label;
-          if (this.getCls(field, state) === TEMPORAL_DETECTION) {
+          if (
+            [TEMPORAL_DETECTION, TEMPORAL_DETECTIONS].includes(
+              this.getCls(field, state)
+            )
+          ) {
             return (
               shown &&
               label.support[0] <= state.frameNumber &&
