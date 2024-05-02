@@ -28,6 +28,6 @@ def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
 
 
 def vec3_normalizing_validator(field: str) -> classmethod:
-    decorator = field_validator(field)
+    decorator = field_validator(field, allow_reuse=True)
     validator_class_method = decorator(normalize_to_vec3)
     return validator_class_method
