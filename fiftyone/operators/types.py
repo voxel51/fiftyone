@@ -268,6 +268,13 @@ class Object(BaseType):
         view = kwargs.get("view", Notice(label=label))
         return self.view(name, view, **kwargs)
 
+    def grid(self, name, **kwargs):
+        """Defines a grid view as a :class:`View`."""
+        grid = GridView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=grid)
+        return obj
+
     def clone(self):
         """Clones the definition of the object.
 

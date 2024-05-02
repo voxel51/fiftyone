@@ -71,7 +71,9 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const triggerPanelPropertyChange = usePanelEvent();
 
   const handlePanelStateChange = (newState) => {
-    setCustomPanelState((state: any) => ({ ...state, ...newState }));
+    setCustomPanelState((state: any) => {
+      return merge({}, state, newState);
+    });
   };
 
   const handlePanelStatePathChange = (path, value, schema) => {
