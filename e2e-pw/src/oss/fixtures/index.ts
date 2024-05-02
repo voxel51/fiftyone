@@ -20,7 +20,7 @@ export type CustomFixturesWithPage = {
 
 const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   fiftyoneServerPort: [
-    async (_, use, workerInfo) => {
+    async ({}, use, workerInfo) => {
       if (process.env.USE_DEV_BUILD) {
         await use(8787);
         return;
@@ -45,7 +45,7 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
     { scope: "worker" },
   ],
   mediaFactory: [
-    async (_, use) => {
+    async ({}, use) => {
       await use(MediaFactory);
     },
     { scope: "worker" },
@@ -71,4 +71,4 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
-export { Locator, Page, expect, Browser } from "@playwright/test";
+export { Browser, Locator, Page, expect } from "@playwright/test";
