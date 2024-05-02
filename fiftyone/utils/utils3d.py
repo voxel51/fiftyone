@@ -835,13 +835,21 @@ def _parse_point_cloud(
     ):
         # rotate points so that they are perpendicular to the projection plane
         # as opposed to the default XY plane
-        normal = np.asarray(projection_normal).reshape((1, 3))
+        try:
+            normal = np.asarray(projection_normal).reshape((1, 3))
+        except Exception as e:
+            raise ValueError(
+                f"Invalid projection normal argument. Must be an XYZ vector of"
+                f" shape (1,3): {projection_normal}"
+            ) from e
+
+        # There are multiple rotations that can align two vectors. This is known
+        # and accepted, so we suppress the warning.
         with warnings.catch_warnings():
-            # There are multiple rotations that can align two vectors. This is known
-            # and accepted, so we suppress the warning.
             warnings.filterwarnings(
                 "ignore",
-                message="Optimal rotation is not uniquely or poorly defined for the given sets of vectors\.",
+                message="Optimal rotation is not uniquely or poorly defined "
+                "for the given sets of vectors",
                 category=UserWarning,
             )
             R = sp.transform.Rotation.align_vectors([[0, 0, 1]], normal)[
