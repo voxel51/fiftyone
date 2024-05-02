@@ -13,10 +13,12 @@ RUN python -m venv /e2e/venv \
     && . /e2e/venv/bin/activate \
     && cd /e2e/fiftyone \
     && pip install --upgrade pip \
-    && pip install -r requirements/github.txt \
+    && pip install -r requirements/prod.txt \
+    && pip install open3d>=0.16.0 \
     && pip install -e .
 
 ENV IS_UTILITY_DOCKER=true
 ENV FIFTYONE_ROOT_DIR=/e2e/fiftyone
 ENV FIFTYONE_DATABASE_ADMIN=true
 ENV FIFTYONE_DATABASE_URI=mongodb://host.docker.internal:27017/
+ENV PYTHONPATH=/e2e/fiftyone
