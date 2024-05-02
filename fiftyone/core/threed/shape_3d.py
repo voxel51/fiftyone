@@ -17,6 +17,7 @@ class Shape3D(Mesh):
     """Represents an abstract 3D shape.
 
     Args:
+        name (str): the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the shape mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial` if not provided

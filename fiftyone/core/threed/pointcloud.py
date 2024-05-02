@@ -35,6 +35,8 @@ class PointCloud(Object3D):
         ValueError: if ``pcd_path`` does not end with ``.pcd``
     """
 
+    _asset_path_fields = ["pcd_path"]
+
     def __init__(
         self,
         name: str,

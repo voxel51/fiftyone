@@ -31,6 +31,8 @@ class Object3D:
         scale (None): the scale of the object in object space
     """
 
+    _asset_path_fields = None
+
     def __init__(
         self,
         name: str,
@@ -206,11 +208,22 @@ class Object3D:
 
     def add(self, *objs: "Object3D") -> None:
         """Add one or more objects as children of this one."""
+        if any(o is self for o in objs):
+            raise ValueError("Loop detected; can't add self as a child")
+
         self.children.extend(objs)
 
     def clear(self) -> None:
         """Remove all children from this object."""
         self.children = []
+
+    def _get_asset_paths(self) -> List[str]:
+        """Get asset paths for this node"""
+        return [
+            getattr(self, f, None)
+            for f in (self._asset_path_fields or [])
+            if getattr(self, f, None) is not None
+        ]
 
     def traverse(self, include_self=True):
         """Traverse the scene graph."""

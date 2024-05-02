@@ -16,6 +16,7 @@ class Mesh(Object3D):
     """Represents an abstract 3D mesh.
 
     Args:
+        name (str): the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
@@ -24,8 +25,10 @@ class Mesh(Object3D):
             :class:`fiftyone.core.threed.Object3D` parent class
     """
 
-    def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, name: str, material: Optional[MeshMaterial] = None, **kwargs
+    ):
+        super().__init__(name, **kwargs)
 
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)
@@ -68,6 +71,8 @@ class ObjMesh(Mesh):
         ValueError: if ``obj_path`` does not end with ``.obj``
         ValueError: if ``mtl_path`` does not end with ``.mtl``
     """
+
+    _asset_path_fields = ["obj_path", "mtl_path"]
 
     def __init__(
         self,
@@ -125,6 +130,8 @@ class FbxMesh(Mesh):
         ValueError: If ``fbx_path`` does not end with ``.fbx``
     """
 
+    _asset_path_fields = ["fbx_path"]
+
     def __init__(
         self,
         name: str,
@@ -169,6 +176,8 @@ class GltfMesh(Mesh):
     Raises:
         ValueError: if ``gltf_path`` does not end with '.gltf' or ``.glb``
     """
+
+    _asset_path_fields = ["gltf_path"]
 
     def __init__(
         self,
@@ -218,6 +227,8 @@ class PlyMesh(Mesh):
         ValueError: if ``ply_path`` does not end with ``.ply``
     """
 
+    _asset_path_fields = ["ply_path"]
+
     def __init__(
         self,
         name: str,
@@ -260,6 +271,8 @@ class StlMesh(Mesh):
     Raises:
         ValueError: if ``stl_path`` does not end with ``.stl``
     """
+
+    _asset_path_fields = ["stl_path"]
 
     def __init__(
         self,
