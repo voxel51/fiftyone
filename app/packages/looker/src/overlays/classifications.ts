@@ -38,6 +38,8 @@ export type ClassificationLabel = Classification & Regression;
 
 export type Labels<T> = [string, T[]][];
 
+const TEMPORAL_LABELS = new Set([TEMPORAL_DETECTION, TEMPORAL_DETECTIONS]);
+
 export class ClassificationsOverlay<
   State extends BaseState,
   Label extends Classification = ClassificationLabel
@@ -358,24 +360,33 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
         field,
         labels.filter((label) => {
           const shown = isShown(state, field, label) && label.label;
-          if (
-            [TEMPORAL_DETECTION, TEMPORAL_DETECTIONS].includes(
-              this.getCls(field, state)
-            )
-          ) {
-            return (
-              shown &&
-              label.support[0] <= state.frameNumber &&
-              label.support[1] >= state.frameNumber
-            );
+
+          if (!shown) {
+            return false;
           }
 
-          return shown;
+          const cls = this.getCls(field, state);
+          return filterTemporalLabel(cls, label, state.frameNumber);
         }),
       ];
     });
   }
 }
+
+export const filterTemporalLabel = (
+  cls,
+  label: ClassificationLabel | TemporalDetectionLabel,
+  frameNumber: number
+) => {
+  if (!TEMPORAL_LABELS.has(cls)) {
+    return true;
+  }
+
+  const temporal = label as TemporalDetectionLabel;
+  return (
+    temporal.support[0] <= frameNumber && temporal.support[1] >= frameNumber
+  );
+};
 
 export const getClassificationPoints = (
   labels: ClassificationLabel[]
