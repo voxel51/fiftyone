@@ -16,15 +16,23 @@ def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
     if v is None:
         return None
 
-    if isinstance(v, (int, float)):
-        v = Vector3(v, v, v)
-    elif isinstance(v, (list, tuple)) and len(v) == 3:
+    if isinstance(v, (list, tuple)) and len(v) == 3:
         v = Vector3(*v)
 
     if not isinstance(v, Vector3):
         raise ValueError("Expected a list / tuple of length 3 or a Vector3")
 
     return v
+
+
+def coerce_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
+    if v is None:
+        return None
+
+    if isinstance(v, (int, float)):
+        return Vector3(v, v, v)
+
+    return normalize_to_vec3(v)
 
 
 def vec3_normalizing_validator(field: str) -> classmethod:

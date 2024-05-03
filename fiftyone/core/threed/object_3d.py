@@ -15,7 +15,7 @@ import fiftyone.core.utils as fou
 
 from .transformation import Euler, Quaternion, Vec3UnionType, Vector3
 from .utils import FO3D_VERSION_KEY
-from .validators import normalize_to_vec3
+from .validators import coerce_to_vec3, normalize_to_vec3
 
 threed = fou.lazy_import("fiftyone.core.threed")
 
@@ -46,7 +46,7 @@ class Object3D:
 
         self._position = normalize_to_vec3(position) if position else Vector3()
         self._scale = (
-            normalize_to_vec3(scale) if scale else Vector3(1.0, 1.0, 1.0)
+            coerce_to_vec3(scale) if scale else Vector3(1.0, 1.0, 1.0)
         )
         self._quaternion = quaternion or Quaternion()
 
@@ -132,7 +132,7 @@ class Object3D:
 
     @scale.setter
     def scale(self, value: Vec3UnionType):
-        self._scale = normalize_to_vec3(value)
+        self._scale = coerce_to_vec3(value)
         self._update_matrix()
 
     @property

@@ -251,3 +251,96 @@ class TestObject3DSerialization(unittest.TestCase):
             obj.rotation.to_arr(), np.array([1.5708, 0, 0]), decimal=5
         )
         np.testing.assert_equal(obj.scale.to_arr(), np.array([1, 1, 1]))
+
+
+class TestObject3DBasics(unittest.TestCase):
+    def test_position_init(self):
+        self.assertRaises(ValueError, Object3D, "invalid", position=1)
+        self.assertEqual(
+            Object3D("astuple", position=(1, 2, 3)).position,
+            Vector3(1.0, 2.0, 3.0),
+        )
+        self.assertEqual(
+            Object3D("aslist", position=[1, 2, 3]).position,
+            Vector3(1.0, 2.0, 3.0),
+        )
+
+    def test_position_setter(self):
+        obj = Object3D("instance")
+        self.assertRaises(ValueError, obj.__setattr__, "position", 1)
+
+        obj.position = (1.0, 2.0, 3.0)
+        self.assertEqual(
+            obj.position,
+            Vector3(1.0, 2.0, 3.0),
+        )
+        obj.position = [3.0, 2.0, 1]
+        self.assertEqual(
+            obj.position,
+            Vector3(3.0, 2.0, 1.0),
+        )
+
+    def test_scale_init(self):
+        self.assertEqual(
+            Object3D("asfloat", scale=0.5).scale,
+            Vector3(0.5, 0.5, 0.5),
+        )
+        self.assertEqual(
+            Object3D("asint", scale=3).scale,
+            Vector3(3, 3, 3),
+        )
+        self.assertEqual(
+            Object3D("astuple", scale=(1, 2, 3)).scale,
+            Vector3(1.0, 2.0, 3.0),
+        )
+        self.assertEqual(
+            Object3D("aslist", scale=[1, 2, 3]).scale,
+            Vector3(1.0, 2.0, 3.0),
+        )
+
+    def test_scale_setter(self):
+        obj = Object3D("instance")
+
+        obj.scale = 0.5
+        self.assertEqual(
+            obj.scale,
+            Vector3(0.5, 0.5, 0.5),
+        )
+        obj.scale = 3
+        self.assertEqual(
+            obj.scale,
+            Vector3(3, 3, 3),
+        )
+
+        obj.scale = (1.0, 2.0, 3.0)
+        self.assertEqual(
+            obj.scale,
+            Vector3(1.0, 2.0, 3.0),
+        )
+        obj.scale = [3.0, 2.0, 1]
+        self.assertEqual(
+            obj.scale,
+            Vector3(3.0, 2.0, 1.0),
+        )
+
+    def test_cant_add_self(self):
+        obj = Object3D("looper")
+        self.assertRaises(ValueError, obj.add, obj)
+
+    def test_traverse(self):
+        objects = [Object3D(f"object{i}") for i in range(5)]
+        root = objects[0]
+        sub = objects[1]
+        sub.add(objects[2], objects[3])
+        root.add(sub, objects[4])
+
+        self.assertListEqual(list(root.traverse(include_self=True)), objects)
+        self.assertListEqual(
+            list(root.traverse(include_self=False)), objects[1:]
+        )
+
+        root.clear()
+        self.assertListEqual(list(root.traverse(include_self=False)), [])
+        self.assertListEqual(
+            list(sub.traverse(include_self=False)), objects[2:4]
+        )
