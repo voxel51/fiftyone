@@ -12,6 +12,10 @@ export const useDynamicGroupSamples = () => {
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker);
 
+  const filter = useMemo(
+    () => (slice ? { group: { slice, slices: [slice] } } : {}),
+    [slice]
+  );
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
       if (!dataset) {
@@ -29,16 +33,12 @@ export const useDynamicGroupSamples = () => {
         {
           after: cursor ? String(cursor) : null,
           dataset,
-          filter: {
-            group: {
-              slice,
-            },
-          },
+          filter,
           view,
         }
       );
     },
-    [dataset, environment, slice, shouldRenderImavid, view]
+    [dataset, environment, filter, shouldRenderImavid, view]
   );
 
   const queryRef = useMemo(

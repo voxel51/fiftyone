@@ -31,7 +31,7 @@ export default () => {
 
         reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
-        groupByFieldValue &&
+        groupByFieldValue !== undefined &&
           set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
 
         let fallback = r.current;
