@@ -458,6 +458,19 @@ class Operations(object):
         """Clear the selected labels in the App."""
         return self._ctx.trigger("clear_selected_labels")
 
+    def notify(self, message, variant="info"):
+        """Show a notification in the App.
+
+        Variants are "info", "success", "warning", and "error".
+
+        Args:
+            message: the message to show
+            variant ("info"): the type of notification
+        """
+        return self._ctx.trigger(
+            "notify", params={"message": message, "variant": variant}
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

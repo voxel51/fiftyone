@@ -866,7 +866,7 @@ function useUpdatePanelStatePartial() {
         let updatedState;
         const param = ctx.params[targetParam];
         if (patch) {
-          updatedState = merge({ ...currentCustomPanelState }, param);
+          updatedState = merge({}, currentCustomPanelState, param);
         } else if (clear) {
           updatedState = {};
         } else {
@@ -1033,6 +1033,34 @@ class PromptUserForOperation extends Operator {
   }
 }
 
+class Notify extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "notify",
+      label: "Notify",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("message", { label: "Message", required: true });
+    inputs.enum("type", ["info", "success", "warning", "error"], {
+      label: "Type",
+      default: "info",
+    });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { notify: fos.useNotification() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.notify({
+      msg: ctx.params.message,
+      type: ctx.params.type,
+    });
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1073,6 +1101,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ClearPanelData);
     _registerBuiltInOperator(PatchPanelData);
     _registerBuiltInOperator(PromptUserForOperation);
+    _registerBuiltInOperator(Notify);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
