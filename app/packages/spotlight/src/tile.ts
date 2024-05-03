@@ -14,17 +14,47 @@ export default (
     );
   }
 
+  if (!items.length) {
+    return [];
+  }
+
+  const findCursor = () => {
+    const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
+
+    if (!remainder) return keys[0];
+
+    let cursor: number;
+    let score = Number.POSITIVE_INFINITY;
+    let length: number;
+
+    for (const next of keys) {
+      const node = nodes.get(next);
+      const nextScore = node.score();
+
+      if (node.length() < length) {
+        break;
+      }
+
+      if (score === undefined || nextScore < score) {
+        score = nextScore;
+        cursor = next;
+        length = node.length();
+      } else break;
+    }
+
+    return cursor;
+  };
+
   const row = (start: number, end: number) => {
     const key = `${start}:${end}`;
     if (!cache.has(key)) {
       const aspectRatio = items
         .slice(start, end)
         .reduce((sum, aspectRatio) => sum + aspectRatio, 0);
-      const delta = 2 + threshold - aspectRatio;
-
+      const delta = threshold - aspectRatio;
       cache.set(key, {
         delta,
-        score: Math.abs(delta) ** 3,
+        score: (1 + Math.abs(delta)) ** 3,
       });
     }
 
@@ -35,82 +65,58 @@ export default (
 
   const nodes = new Map<
     number,
-    { parent: number; score: () => number; length: () => number }
+    { length: () => number; parent: number; score: () => number }
   >();
-  const search = (item: number, parent?: number) => {
+  const search = (parent: number, item: number) => {
     const score = () => {
-      if (parent === undefined) {
-        return 0;
+      if (parent === 0) {
+        return row(parent, item).score;
       }
 
-      return row(parent, item).score + nodes.get(parent).score();
+      return row(parent, item).score + nodes.get(parent)?.score() || 0;
     };
 
     const length = () => {
-      if (parent === undefined) {
+      if (parent === 0) {
         return 1;
       }
 
       return 1 + nodes.get(parent).length();
     };
 
-    const exists = nodes.has(item);
-    if (!exists || nodes.get(item).score() >= score()) {
+    const node = nodes.get(item);
+    if (!node) {
       nodes.set(item, {
+        length,
         parent,
         score,
-        length,
       });
-    }
-
-    if (exists) {
+    } else {
+      if (node.score() >= score()) {
+        nodes.set(item, {
+          length,
+          parent,
+          score,
+        });
+      }
       return;
     }
 
     let end = item + 1;
     while (end <= items.length) {
       const edge = row(item, end);
-
-      if (edge.delta < 0 && end - item > 1) {
-        break;
+      if (edge.delta <= 0) {
+        search(item, end);
       }
 
-      if (edge.delta < 0 && end - item === 1) {
-        search(end, item);
-      }
-
-      if (edge.delta > 0) {
-        search(end, item);
-      }
       end++;
     }
 
     return;
   };
 
-  search(0);
-
-  const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
-
-  let cursor = keys[0];
-  let score = nodes.get(keys[0]).score();
-  const length = nodes.get(keys[0]).length();
-
-  if (remainder) {
-    for (const next of keys.slice(1)) {
-      const nextScore = nodes.get(next).score();
-      const nextLength = nodes.get(next).length();
-
-      if (nextLength < length - 1) {
-        break;
-      }
-
-      if (nextScore < score) {
-        score = nextScore;
-        cursor = next;
-      }
-    }
-  }
+  search(0, 0);
+  let cursor = findCursor();
 
   const result = [];
   while (cursor) {
@@ -118,7 +124,13 @@ export default (
     cursor = nodes.get(cursor)?.parent;
   }
 
-  return result.reverse();
+  result.reverse();
+
+  if (!remainder && !result.includes(items.length)) {
+    result.push(items.length);
+  }
+
+  return result;
 };
 
 export class TilingException extends Error {}
