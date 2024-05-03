@@ -99,7 +99,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 function getPanelViewData(panelState) {
   const state = panelState?.state;
   const data = panelState?.data;
-  return merge({ ...state }, { ...data });
+  return merge({}, { ...state }, { ...data });
 }
 
 function log(message: string, ...data: any[]) {
