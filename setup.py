@@ -59,7 +59,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pydantic",
+    "pydantic>=1.2",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
