@@ -2492,7 +2492,7 @@ __metadata:
     "@fiftyone/plugins": "*"
     "@fiftyone/state": "*"
     "@vitest/ui": ^0.34.6
-    plotly.js: ^2.30.1
+    plotly.js: ^2.32.0
     react-plotly.js: ^2.6.0
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
@@ -3809,7 +3809,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@plotly/mapbox-gl@npm:v1.13.4":
+"@plotly/mapbox-gl@npm:1.13.4":
   version: 1.13.4
   resolution: "@plotly/mapbox-gl@npm:1.13.4"
   dependencies:
@@ -10328,9 +10328,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"gl-text@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "gl-text@npm:1.3.1"
+"gl-text@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "gl-text@npm:1.4.0"
   dependencies:
     bit-twiddle: ^1.0.2
     color-normalize: ^1.5.0
@@ -10349,7 +10349,7 @@ __metadata:
     regl: ^2.0.0
     to-px: ^1.0.1
     typedarray-pool: ^1.1.0
-  checksum: fb78872ba09eee6bfc5a2b96074a037428b739cc91d6bb6db933bfe5a75e2fc52244fa7d779f9b25c42231b0765ba24eaf75dd7f63122f4a981fed448bc556be
+  checksum: d728b89481dca5e7edc5993dcf0f3894eac362c704d489583da096d08d18a844fe9195fd094e97a9bc545f8ef0dac8037d8c8f7d46e7cf6faebcdf3f746d442f
   languageName: node
   linkType: hard
 
@@ -14826,14 +14826,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"plotly.js@npm:^2.30.1":
-  version: 2.30.1
-  resolution: "plotly.js@npm:2.30.1"
+"plotly.js@npm:^2.32.0":
+  version: 2.32.0
+  resolution: "plotly.js@npm:2.32.0"
   dependencies:
     "@plotly/d3": 3.8.1
     "@plotly/d3-sankey": 0.7.2
     "@plotly/d3-sankey-circular": 0.33.1
-    "@plotly/mapbox-gl": v1.13.4
+    "@plotly/mapbox-gl": 1.13.4
     "@turf/area": ^6.4.0
     "@turf/bbox": ^6.4.0
     "@turf/centroid": ^6.0.2
@@ -14854,7 +14854,7 @@ __metadata:
     d3-time-format: ^2.2.3
     fast-isnumeric: ^1.1.4
     gl-mat4: ^1.2.0
-    gl-text: ^1.3.1
+    gl-text: ^1.4.0
     has-hover: ^1.0.1
     has-passive-events: ^1.0.0
     is-mobile: ^4.0.0
@@ -14879,7 +14879,7 @@ __metadata:
     topojson-client: ^3.1.0
     webgl-context: ^2.2.0
     world-calendars: ^1.0.3
-  checksum: c0672c6feaad8482dba50bcd519a571c47a4ba84a0762c7d492b46c46268a270c49e02481a7b6a7eae87e90b96eb181d4403b5e6572a22051d92e965891477b7
+  checksum: c6dbb022b45f265b881cea9e0fb08aabe5397496f502a2083aaff5703aeffd5fbc27cc7df8885eac1d82742d47747483c71ef16755b00cf483b8e4f5b99d17dc
   languageName: node
   linkType: hard
 
