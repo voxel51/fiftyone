@@ -10,14 +10,14 @@ FiftyOne integrates natively with Hugging Face's
 you can load, fine-tune, and run inference with your favorite Transformers
 models on your FiftyOne datasets with just a few lines of code!
 
-FiftyOne also integrates with the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_, 
-so you can push datasets to and load datasets from the Hub with ease.
+FiftyOne also integrates with the
+`Hugging Face Hub <https://huggingface.co/docs/hub/index>`_,  so you can push
+datasets to and load datasets from the Hub with ease.
 
 .. _huggingface-transformers:
 
 Transformers Library
 ____________________
-
 
 .. _huggingface-transformers-setup:
 
@@ -31,7 +31,6 @@ To get started with
 .. code-block:: shell
 
     pip install -U transformers
-
 
 .. _huggingface-transformers-inference:
 
@@ -569,6 +568,31 @@ FiftyOne format:
 
     Some zero-shot models are compatible with multiple tasks, so it is
     recommended that you specify the task type when converting the model.
+
+As of `transformers>=4.40.0` and `fiftyone>=0.24.0`, you can also use
+`Grounding DINO <https://huggingface.co/docs/transformers/main/en/model_doc/grounding-dino>`_
+models for zero-shot object detection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model = foz.load_zoo_model(
+        "zero-shot-detection-transformer-torch",
+        name_or_path="IDEA-Research/grounding-dino-tiny",
+        classes=["cat"],
+    )
+
+    dataset.apply_model(model, label_field="cats", confidence_thresh=0.2)
+
+.. note::
+
+    The `confidence_thresh` parameter is optional and can be used to filter out
+    predictions with confidence scores below the specified threshold. You may
+    need to adjust this value based on the model and dataset you are working. 
+    Also note that whereas OwlViT models accept multiple classes, Grounding DINO
+    models only accept a single class.
 
 .. _huggingface-transformers-batch-inference:
 

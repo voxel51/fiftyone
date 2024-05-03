@@ -2,33 +2,97 @@ import { folder, useControls } from "leva";
 import { useMemo, useState } from "react";
 import { PANEL_ORDER_PCD_CONTROLS } from "../constants";
 import { getThreeMaterialFromFo3dMaterial } from "../fo3d/utils";
-import { ObjAsset } from "./use-fo3d";
+import { FoMeshMaterial } from "./use-fo3d";
 
-export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
-  const { defaultMaterial } = node;
-
-  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
+export const useMeshMaterialControls = (
+  name: string,
+  foMeshMaterial: FoMeshMaterial,
+  omitColorControls = false
+) => {
+  const [opacity, setOpacity] = useState(foMeshMaterial.opacity);
   const [renderAsWireframe, setRenderAsWireframe] = useState(
-    defaultMaterial.wireframe
+    foMeshMaterial.wireframe
   );
-  const [color, setColor] = useState(defaultMaterial["color"] ?? "#ffffff");
-  const [metalness, setMetalness] = useState(defaultMaterial["metalness"] ?? 0);
-  const [roughness, setRoughness] = useState(defaultMaterial["roughness"] ?? 1);
+  const [color, setColor] = useState(foMeshMaterial["color"] ?? "#ffffff");
+  const [metalness, setMetalness] = useState(foMeshMaterial["metalness"] ?? 0);
+  const [roughness, setRoughness] = useState(foMeshMaterial["roughness"] ?? 1);
   const [emissiveColor, setEmissiveColor] = useState(
-    defaultMaterial["emissive"] ?? "#000000"
+    foMeshMaterial["emissive"] ?? "#000000"
   );
   const [emissiveIntensity, setEmissiveIntensity] = useState(
-    defaultMaterial["emissiveIntensity"] ?? 0.1
+    foMeshMaterial["emissiveIntensity"] ?? 0.1
   );
 
   // note: we're not making attributes like reflectivity, IOR, etc. configurable
+  const colorControls = useMemo(() => {
+    if (omitColorControls) {
+      return {};
+    }
+    return {
+      color: {
+        value: color,
+        label: "Color",
+        onChange: setColor,
+        render: () => foMeshMaterial._type !== "MeshDepthMaterial",
+        order: 1004,
+      },
+      metalness: {
+        value: metalness,
+        min: 0,
+        max: 1,
+        step: 0.1,
+        label: "Metalness",
+        onChange: setMetalness,
+        render: () => foMeshMaterial._type === "MeshStandardMaterial",
+        order: 1005,
+      },
+      roughness: {
+        value: roughness,
+        min: 0,
+        max: 1,
+        step: 0.1,
+        label: "Roughness",
+        onChange: setRoughness,
+        render: () => foMeshMaterial._type === "MeshStandardMaterial",
+        order: 1006,
+      },
+      emissiveIntensity: {
+        value: emissiveIntensity,
+        min: 0,
+        max: 1,
+        step: 0.1,
+        label: "Emissive Intensity",
+        onChange: setEmissiveIntensity,
+        render: () =>
+          foMeshMaterial._type !== "MeshDepthMaterial" &&
+          foMeshMaterial._type !== "MeshBasicMaterial",
+        order: 1007,
+      },
+      emissiveColor: {
+        value: emissiveColor,
+        label: "Emissive Color",
+        onChange: setEmissiveColor,
+        render: (get) => get(`${name}.emissiveIntensity`) > 0,
+        order: 1008,
+      },
+    };
+  }, [
+    color,
+    emissiveColor,
+    emissiveIntensity,
+    foMeshMaterial._type,
+    metalness,
+    roughness,
+    name,
+    omitColorControls,
+  ]);
 
   useControls(
     () => ({
       [name]: folder(
         {
           materialTypeLabel: {
-            value: defaultMaterial._type,
+            value: omitColorControls ? "Custom" : foMeshMaterial._type,
             label: "Material Type",
             editable: false,
             order: -1,
@@ -48,52 +112,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             onChange: setRenderAsWireframe,
             order: 1002,
           },
-          color: {
-            value: color,
-            label: "Color",
-            onChange: setColor,
-            render: () => defaultMaterial._type !== "MeshDepthMaterial",
-            order: 1004,
-          },
-          metalness: {
-            value: metalness,
-            min: 0,
-            max: 1,
-            step: 0.1,
-            label: "Metalness",
-            onChange: setMetalness,
-            render: () => defaultMaterial._type === "MeshStandardMaterial",
-            order: 1005,
-          },
-          roughness: {
-            value: roughness,
-            min: 0,
-            max: 1,
-            step: 0.1,
-            label: "Roughness",
-            onChange: setRoughness,
-            render: () => defaultMaterial._type === "MeshStandardMaterial",
-            order: 1006,
-          },
-          emissiveIntensity: {
-            value: emissiveIntensity,
-            min: 0,
-            max: 1,
-            step: 0.1,
-            label: "Emissive Intensity",
-            onChange: setEmissiveIntensity,
-            render: () =>
-              defaultMaterial._type !== "MeshDepthMaterial" &&
-              defaultMaterial._type !== "MeshBasicMaterial",
-            order: 1007,
-          },
-          emissiveColor: {
-            value: emissiveColor,
-            label: "Emissive Color",
-            onChange: setEmissiveColor,
-            render: (get) => get(`${name}.emissiveIntensity`) > 0,
-            order: 1008,
-          },
+          ...colorControls,
         },
 
         {
@@ -103,21 +122,18 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       ),
     }),
     [
-      defaultMaterial,
+      omitColorControls,
+      foMeshMaterial,
       opacity,
-      metalness,
-      roughness,
-      emissiveColor,
-      emissiveIntensity,
       renderAsWireframe,
-      color,
       name,
+      colorControls,
     ]
   );
 
   const material = useMemo(() => {
     return getThreeMaterialFromFo3dMaterial({
-      ...defaultMaterial,
+      ...foMeshMaterial,
       opacity,
       wireframe: renderAsWireframe,
       color,
@@ -127,7 +143,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       emissiveIntensity,
     });
   }, [
-    defaultMaterial,
+    foMeshMaterial,
     opacity,
     renderAsWireframe,
     color,

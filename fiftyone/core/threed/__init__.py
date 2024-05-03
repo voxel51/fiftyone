@@ -13,7 +13,7 @@ from .material_3d import (
     MeshLambertMaterial,
     MeshStandardMaterial,
     MeshPhongMaterial,
-    PointcloudMaterial,
+    PointCloudMaterial,
 )
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D

@@ -31,7 +31,7 @@ export const Sphere = ({
       ),
     [sphere]
   );
-  const { material } = useMeshMaterialControls(name, sphere);
+  const { material } = useMeshMaterialControls(name, sphere.defaultMaterial);
 
   const mesh = useMemo(() => {
     if (!material) {

@@ -478,7 +478,7 @@ class SetView extends Operator {
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.list("view", { view: new types.HiddenView({}) });
+    inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
     inputs.str("name", { label: "Name or slug of a saved view" });
     return new types.Property(inputs);
   }
@@ -743,7 +743,18 @@ class SetSelectedLabels extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.labels);
+    const labels = params?.labels;
+    const formattedLabels = Array.isArray(labels)
+      ? labels.map((label) => {
+          return {
+            field: label.field,
+            sampleId: label.sampleId ?? label.sample_id,
+            labelId: label.labelId ?? label.label_id,
+            frameNumber: label.frameNumber ?? label.frame_number,
+          };
+        })
+      : [];
+    hooks.setSelected(formattedLabels);
   }
 }
 

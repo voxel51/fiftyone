@@ -16,16 +16,19 @@ class Mesh(Object3D):
     """Represents an abstract 3D mesh.
 
     Args:
+        name (str): the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
             if not provided
         **kwargs: keyword arguments for the
             :class:`fiftyone.core.threed.Object3D` parent class
     """
 
-    def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, name: str, material: Optional[MeshMaterial] = None, **kwargs
+    ):
+        super().__init__(name, **kwargs)
 
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)
@@ -61,13 +64,15 @@ class ObjMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh if ``mtl_path`` is not provided
             or if material in ``mtl_path`` is not found. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
         ValueError: if ``obj_path`` does not end with ``.obj``
         ValueError: if ``mtl_path`` does not end with ``.mtl``
     """
+
+    _asset_path_fields = ["obj_path", "mtl_path"]
 
     def __init__(
         self,
@@ -90,13 +95,21 @@ class ObjMesh(Mesh):
         self.mtl_path = mtl_path
 
     def _to_dict_extra(self):
-        return {
+        r = {
             **super()._to_dict_extra(),
             **{
                 "objPath": self.obj_path,
                 "mtlPath": self.mtl_path,
             },
         }
+
+        if hasattr(self, "_pre_transformed_obj_path"):
+            r["preTransformedObjPath"] = self._pre_transformed_obj_path
+
+        if hasattr(self, "_pre_transformed_mtl_path"):
+            r["preTransformedMtlPath"] = self._pre_transformed_mtl_path
+
+        return r
 
 
 class FbxMesh(Mesh):
@@ -117,6 +130,8 @@ class FbxMesh(Mesh):
         ValueError: If ``fbx_path`` does not end with ``.fbx``
     """
 
+    _asset_path_fields = ["fbx_path"]
+
     def __init__(
         self,
         name: str,
@@ -129,10 +144,18 @@ class FbxMesh(Mesh):
         if not (fbx_path.lower().endswith(".fbx")):
             raise ValueError("FBX mesh must be a .fbx file")
 
-        self.gltf_path = fbx_path
+        self.fbx_path = fbx_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"fbxPath": self.gltf_path}}
+        r = {
+            **super()._to_dict_extra(),
+            **{"fbxPath": self.fbx_path},
+        }
+
+        if hasattr(self, "_pre_transformed_fbx_path"):
+            r["preTransformedFbxPath"] = self._pre_transformed_fbx_path
+
+        return r
 
 
 class GltfMesh(Mesh):
@@ -147,12 +170,14 @@ class GltfMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh if gLTF file does not contain
             material information. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
         ValueError: if ``gltf_path`` does not end with '.gltf' or ``.glb``
     """
+
+    _asset_path_fields = ["gltf_path"]
 
     def __init__(
         self,
@@ -172,7 +197,12 @@ class GltfMesh(Mesh):
         self.gltf_path = gltf_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"gltfPath": self.gltf_path}}
+        r = {**super()._to_dict_extra(), **{"gltfPath": self.gltf_path}}
+
+        if hasattr(self, "_pre_transformed_gltf_path"):
+            r["preTransformedGltfPath"] = self._pre_transformed_gltf_path
+
+        return r
 
 
 class PlyMesh(Mesh):
@@ -188,12 +218,16 @@ class PlyMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh if PLY file does not contain
             vertex colors. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`. If the PLY
+            file contains vertex colors, the material is ignored and vertex
+            colors are used
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
         ValueError: if ``ply_path`` does not end with ``.ply``
     """
+
+    _asset_path_fields = ["ply_path"]
 
     def __init__(
         self,
@@ -212,7 +246,12 @@ class PlyMesh(Mesh):
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
+        r = {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
+
+        if hasattr(self, "_pre_transformed_ply_path"):
+            r["preTransformedPlyPath"] = self._pre_transformed_ply_path
+
+        return r
 
 
 class StlMesh(Mesh):
@@ -226,12 +265,14 @@ class StlMesh(Mesh):
             file
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`
+            :class:`fiftyone.core.threed.MeshStandardMaterial`
         **kwargs: keyword arguments for the :class:`Mesh` parent class
 
     Raises:
         ValueError: if ``stl_path`` does not end with ``.stl``
     """
+
+    _asset_path_fields = ["stl_path"]
 
     def __init__(
         self,
@@ -248,4 +289,9 @@ class StlMesh(Mesh):
         self.stl_path = stl_path
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"stlPath": self.stl_path}}
+        r = {**super()._to_dict_extra(), **{"stlPath": self.stl_path}}
+
+        if hasattr(self, "_pre_transformed_stl_path"):
+            r["preTransformedStlPath"] = self._pre_transformed_stl_path
+
+        return r

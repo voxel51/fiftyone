@@ -1824,3 +1824,31 @@ class GridView(View):
             "align_x": self.align_x,
             "align_y": self.align_y,
         }
+
+
+class DrawerView(View):
+    """Renders an operator prompt as a left or right side drawer.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        inputs.str("message", label="Message")
+        prompt = types.DrawerView(placement="left")
+        return types.Property(inputs, view=prompt)
+
+    Args:
+        placement (None): the placement of the drawer. Can be one of the
+            following
+
+            -   ``'left'``: display to the left of the main or expanded view
+            -   ``'right'``: display to the right of the main or expanded view
+    """
+
+    def __init__(self, **kwargs):
+        placement = kwargs.get("placement", None)
+        if placement not in ["left", "right"]:
+            raise ValueError('placement must be either "left" or "right".')
+        super().__init__(**kwargs)

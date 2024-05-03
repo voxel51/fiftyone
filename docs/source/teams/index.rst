@@ -146,3 +146,4 @@ pages on this site apply to Teams deployments as well.
     Plugins <teams_plugins>
     Secrets <secrets>
     Migrations <migrations>
+    Pluggable Auth <pluggable_auth>

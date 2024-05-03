@@ -1,59 +1,167 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
-import { useEffect, useState } from "react";
-import { Mesh, Quaternion, Vector3 } from "three";
+import { useEffect, useMemo, useState } from "react";
+import { BufferGeometry, Mesh, Quaternion, Vector3 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
-import { PlyAsset } from "../../hooks";
+import {
+  FoMeshBasicMaterialProps,
+  FoMeshMaterial,
+  PlyAsset,
+} from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
+import { useFo3dContext } from "../context";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
-export const Ply = ({
-  name,
-  ply,
-  position,
-  quaternion,
-  scale,
-  children,
-}: {
+interface PlyProps {
   name: string;
   ply: PlyAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
   children?: React.ReactNode;
-}) => {
-  const geometry = useLoader(PLYLoader, ply.plyUrl);
-  const [mesh, setMesh] = useState(null);
+}
 
-  const { material } = useMeshMaterialControls(name, ply);
+const PlyWithMaterialOverride = ({
+  name,
+  geometry,
+  defaultMaterial,
+}: {
+  name: string;
+  geometry: BufferGeometry;
+  defaultMaterial: FoMeshMaterial;
+}) => {
+  const basicMaterial = useMemo(
+    () =>
+      ({
+        ...defaultMaterial,
+        vertexColors: true,
+        color: "#ffffff",
+      } as FoMeshBasicMaterialProps),
+    [defaultMaterial]
+  );
+
+  const { material } = useMeshMaterialControls(name, basicMaterial);
+
+  const mesh = useMemo(() => {
+    return new Mesh(geometry, material);
+  }, [geometry, material]);
+
+  if (!mesh) {
+    return null;
+  }
+
+  return <primitive object={mesh} />;
+};
+
+const PlyWithNoMaterialOverride = ({
+  name,
+  geometry,
+  defaultMaterial,
+}: {
+  name: string;
+  geometry: BufferGeometry;
+  defaultMaterial: FoMeshMaterial;
+}) => {
+  const { material } = useMeshMaterialControls(name, defaultMaterial);
+
+  const mesh = useMemo(() => {
+    return new Mesh(geometry, material);
+  }, [geometry, material]);
+
+  if (!mesh) {
+    return null;
+  }
+
+  return <primitive object={mesh} />;
+};
+
+export const Ply = ({
+  name,
+  ply: { plyPath, preTransformedPlyPath, defaultMaterial },
+  position,
+  quaternion,
+  scale,
+  children,
+}: PlyProps) => {
+  const { fo3dRoot } = useFo3dContext();
+
+  const plyUrl = useMemo(
+    () =>
+      preTransformedPlyPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
+    [plyPath, preTransformedPlyPath, fo3dRoot]
+  );
+
+  const resourcePath = useMemo(
+    () => getBasePathForTextures(fo3dRoot, plyUrl),
+    [fo3dRoot, plyUrl]
+  );
+
+  const geometry = useLoader(PLYLoader, plyUrl, (loader) => {
+    loader.resourcePath = resourcePath;
+  });
+
+  const [isUsingVertexColors, setIsUsingVertexColors] = useState(false);
+  const [isGeometryResolved, setIsGeometryResolved] = useState(false);
 
   useEffect(() => {
-    if (!material) {
+    if (!geometry) {
       return;
     }
 
-    if (geometry) {
-      // todo: check if geometry is meshes or points
-      // todo: no need to compute vertex normals for points
+    if (
+      geometry.attributes?.position?.count &&
+      !geometry.attributes.normal?.count
+    ) {
       geometry.computeVertexNormals();
       geometry.center();
-
-      // todo: use points material for points
-      const newMesh = new Mesh(geometry, material);
-      setMesh(newMesh);
     }
-  }, [geometry, material]);
 
-  if (mesh) {
+    if (geometry.attributes?.color?.count) {
+      setIsUsingVertexColors(true);
+    }
+
+    setIsGeometryResolved(true);
+  }, [geometry]);
+
+  const mesh = useMemo(() => {
+    if (!isGeometryResolved) {
+      return null;
+    }
+
+    if (isUsingVertexColors) {
+      return (
+        <PlyWithMaterialOverride
+          name={name}
+          geometry={geometry}
+          defaultMaterial={defaultMaterial}
+        />
+      );
+    }
+
     return (
-      <primitive
-        object={mesh}
-        position={position}
-        quaternion={quaternion}
-        scale={scale}
-      >
-        {children ?? null}
-      </primitive>
+      <PlyWithNoMaterialOverride
+        name={name}
+        geometry={geometry}
+        defaultMaterial={defaultMaterial}
+      />
     );
+  }, [
+    isGeometryResolved,
+    isUsingVertexColors,
+    geometry,
+    name,
+    defaultMaterial,
+  ]);
+
+  if (!mesh) {
+    return null;
   }
 
-  return null;
+  return (
+    <group position={position} quaternion={quaternion} scale={scale}>
+      {mesh}
+      <group>{children ?? null}</group>
+    </group>
+  );
 };

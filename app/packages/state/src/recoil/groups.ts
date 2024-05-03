@@ -299,6 +299,13 @@ export const allPcdSlices = selector<string[]>({
   },
 });
 
+export const hasMultiplePcdSlices = selector<boolean>({
+  key: "hasMultiplePcdSlices",
+  get: ({ get }) => {
+    return get(allPcdSlices).length > 1;
+  },
+});
+
 export const allNonPcdSlices = selector<string[]>({
   key: "allNonPcdSlices",
   get: ({ get }) => {
@@ -438,6 +445,11 @@ export const fo3dSlice = selector({
 
     return fo3dSlices[0];
   },
+});
+
+export const fo3dContent = atom({
+  key: "fo3dContent",
+  default: null,
 });
 
 export const fo3dSample = selector({

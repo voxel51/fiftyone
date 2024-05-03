@@ -240,6 +240,7 @@ type Dataset {
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  workspace(slug: String): Workspace
 }
 
 type DatasetAppConfig {
@@ -740,6 +741,7 @@ input SidebarGroupInput {
 enum SidebarMode {
   all
   best
+  disabled
   fast
 }
 
@@ -830,6 +832,19 @@ type VideoSample implements Sample {
 type WildcardProjection {
   fields: [String!]!
   inclusion: Boolean!
+}
+
+type Workspace {
+  id: ID!
+  color: String
+  child: BSON!
+  datasetId: ID!
+  createdAt: datetime
+  description: String
+  name: String
+  lastModifiedAt: datetime
+  lastLoadedAt: datetime
+  slug: String
 }
 
 scalar date

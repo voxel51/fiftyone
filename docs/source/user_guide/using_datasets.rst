@@ -1,4 +1,4 @@
-parameter.. _using-datasets:
+.. _using-datasets:
 
 Using FiftyOne Datasets
 =======================
@@ -4431,7 +4431,7 @@ to a FiftyOne 3D scene is shown below:
 
     import fiftyone as fo
 
-    fo_pcd = fo.Pointcloud(
+    fo_pcd = fo.PointCloud(
         "my-pcd", "/path/to/point-cloud.pcd", flag_for_projection=True
     )
 
@@ -4446,7 +4446,7 @@ to a FiftyOne 3D scene is shown below:
 
 You can customize the appearance of a point cloud by setting the
 `default_material` attribute of the point cloud object, or dynamically from
-the app. Please refer to the :class:`fiftyone.core.threed.PointcloudMaterial`
+the app. Please refer to the :class:`fiftyone.core.threed.PointCloudMaterial`
 class for more details.
 
 Initializing the point cloud with `flag_for_projection=True` allows 
@@ -4968,9 +4968,11 @@ update strategy:
     As the above snippet shows, you should also optimize your iteration by
     :ref:`selecting only <efficient-iteration-views>` the required fields.
 
-By default, updates are batched and submitted every 0.2 seconds, but you can
-configure the batching strategy by passing the optional ``batch_size`` argument
-to :meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
+You can configure the default batching strategy that is used via your
+:ref:`FiftyOne config <configuring-fiftyone>`, or you can configure the
+batching strategy on a per-method call basis by passing the optional
+``batch_size`` and ``batching_strategy`` arguments to
+:meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>`.
 
 You can also use the
 :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`

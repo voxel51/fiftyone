@@ -1,19 +1,10 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import {
-  ACTION_GRID,
-  ACTION_SET_EGO_VIEW,
-  ACTION_SET_PCDS,
-  ACTION_SET_POINT_SIZE,
-  ACTION_SET_TOP_VIEW,
-  ACTION_SHADE_BY,
-  ACTION_TOGGLE_BACKGROUND,
-  ACTION_VIEW_HELP,
-  ACTION_VIEW_JSON,
-} from "../constants";
+import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
-import { actionRenderListAtomFamily } from "../state";
+import { useHotkey } from "../hooks";
+import { fo3dContainsBackground as fo3dContainsBackgroundAtom } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
 import { FullScreenToggler } from "./FullScreenToggler";
 import { SetPointSizeButton } from "./PointSize";
@@ -21,6 +12,7 @@ import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleFo3dBackground } from "./ToggleBackground";
 import { ToggleGridHelper } from "./ToggleGridHelper";
+import { ViewFo3d } from "./ViewFo3d";
 import { ViewHelp } from "./ViewHelp";
 import { ViewJSON } from "./ViewJson";
 
@@ -37,95 +29,83 @@ export const ActionBar = ({
     () => isFo3dSlice || mediaType === "three_d",
     [isFo3dSlice, mediaType]
   );
-  const actionBarRenderList = useRecoilValue(
-    actionRenderListAtomFamily(isFo3d ? "fo3d" : "pcd")
-  );
-  const actionNames = useMemo(
-    () =>
-      actionBarRenderList.map((actionCallbackPair) => actionCallbackPair[0]),
-    [actionBarRenderList]
-  );
-  const isSliceSelectorOn = useMemo(
-    () => actionNames.includes(ACTION_SET_PCDS),
-    [actionNames]
-  );
-  const componentsToRender = useMemo(() => {
-    if (actionBarRenderList.length === 0) return null;
+  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiplePcdSlices);
 
-    const components = [];
+  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+  const sample = useRecoilValue(fos.fo3dSample);
 
-    if (actionNames.includes(ACTION_GRID)) {
-      components.push(<ToggleGridHelper key="grid-helper" />);
+  const sampleForJsonView = useMemo(() => {
+    if (isFo3d) {
+      return sample;
     }
 
-    if (actionNames.includes(ACTION_TOGGLE_BACKGROUND)) {
+    return sampleMap;
+  }, [sampleMap, sample, isFo3d]);
+
+  const fo3dContainsBackground = useRecoilValue(fo3dContainsBackgroundAtom);
+
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+
+  useHotkey(
+    "KeyJ",
+    () => {
+      jsonPanel.toggle(sampleForJsonView);
+    },
+    [sampleForJsonView],
+    false
+  );
+
+  const componentsToRender = useMemo(() => {
+    const components = [];
+
+    components.push(<ToggleGridHelper key="grid-helper" />);
+
+    if (fo3dContainsBackground) {
       components.push(<ToggleFo3dBackground key="toggle-background" />);
     }
 
-    if (actionNames.includes(ACTION_SET_POINT_SIZE)) {
+    if (!isFo3d) {
       components.push(<SetPointSizeButton key="set-point-size" />);
-    }
-
-    if (actionNames.includes(ACTION_SHADE_BY)) {
       components.push(<ChooseColorSpace key="choose-color-space" />);
     }
 
-    if (actionNames.includes(ACTION_SET_TOP_VIEW)) {
-      components.push(
-        <SetViewButton
-          key="set-top-view"
-          onChangeView={
-            actionBarRenderList.find(
-              (actionCallbackPair) =>
-                actionCallbackPair[0] === ACTION_SET_TOP_VIEW
-            )[1][0]
-          }
-          view={"top"}
-          label={"T"}
-          hint="Top View"
-        />
-      );
-    }
+    components.push(
+      <SetViewButton
+        key="set-top-view"
+        onChangeView={() => {
+          window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+        }}
+        view={"top"}
+        label={"T"}
+        hint="Top View (T)"
+      />
+    );
 
-    if (actionNames.includes(ACTION_SET_EGO_VIEW)) {
-      components.push(
-        <SetViewButton
-          key="set-ego-view"
-          onChangeView={
-            actionBarRenderList.find(
-              (actionCallbackPair) =>
-                actionCallbackPair[0] === ACTION_SET_EGO_VIEW
-            )[1][0]
-          }
-          view={"pov"}
-          label={"E"}
-          hint="Ego View"
-        />
-      );
-    }
+    components.push(
+      <SetViewButton
+        key="set-ego-view"
+        onChangeView={() => {
+          window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+        }}
+        view={"pov"}
+        label={"E"}
+        hint="Ego View (E)"
+      />
+    );
 
-    if (actionNames.includes(ACTION_VIEW_JSON)) {
-      const args = actionBarRenderList.find(
-        (actionCallbackPair) => actionCallbackPair[0] === ACTION_VIEW_JSON
-      )[1];
-      const jsonPanel = args[0];
-      const sample = args[1];
+    components.push(
+      <ViewJSON
+        key="view-json"
+        jsonPanel={jsonPanel}
+        sample={sampleForJsonView}
+      />
+    );
 
-      components.push(
-        <ViewJSON key="view-json" jsonPanel={jsonPanel} sample={sample} />
-      );
-    }
+    components.push(<ViewHelp key="view-help" helpPanel={helpPanel} />);
 
-    if (actionNames.includes(ACTION_VIEW_HELP)) {
-      const args = actionBarRenderList.find(
-        (actionCallbackPair) => actionCallbackPair[0] === ACTION_VIEW_HELP
-      )[1];
-      const helpPanel = args[0];
-
-      components.push(<ViewHelp key="view-help" helpPanel={helpPanel} />);
-    }
     return components;
-  }, [actionBarRenderList, actionNames]);
+  }, [fo3dContainsBackground, isFo3d, jsonPanel, helpPanel, sampleForJsonView]);
 
   return (
     <ActionBarContainer
@@ -133,7 +113,8 @@ export const ActionBar = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {isSliceSelectorOn && <SliceSelector />}
+      {hasMultiplePcdSlices && <SliceSelector />}
+      {isFo3d && <ViewFo3d jsonPanel={jsonPanel} />}
       <ActionsBar>
         {componentsToRender}
         <FullScreenToggler />

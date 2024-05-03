@@ -5,6 +5,7 @@ FiftyOne Server routes
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
@@ -13,7 +14,6 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .plugins import Plugins
-from .select import Select
 from .sort import Sort
 from .screenshot import Screenshot
 from .tag import Tag
@@ -33,7 +33,6 @@ routes = (
         ("/frames", Frames),
         ("/media", Media),
         ("/plugins", Plugins),
-        ("/select", Select),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),

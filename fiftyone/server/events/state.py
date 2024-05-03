@@ -45,6 +45,16 @@ def get_state() -> fos.StateDescription:
     return _state
 
 
+def set_state(state: fos.StateDescription):
+    """Set the current state.
+
+    Args:
+        state: a :class:`fiftyone.core.state.StateDescription` instance
+    """
+    global _state
+    _state = state
+
+
 def get_app_count():
     return _app_count
 

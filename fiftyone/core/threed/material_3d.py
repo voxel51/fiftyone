@@ -26,17 +26,14 @@ class Material3D:
 
     Args:
         opacity (1.0): the opacity of the material, in the range ``[0, 1]``
-        vertex_colors (False): whether the material uses vertex colors
     """
 
     opacity: float = 1.0
-    vertex_colors: bool = False
 
     def as_dict(self):
         return {
             "_type": self.__class__.__name__,
             "opacity": self.opacity,
-            "vertexColors": self.vertex_colors,
         }
 
     @staticmethod
@@ -50,7 +47,7 @@ class Material3D:
 
 
 @dataclass
-class PointcloudMaterial(Material3D):
+class PointCloudMaterial(Material3D):
     """Represents a point cloud material.
 
     Args:

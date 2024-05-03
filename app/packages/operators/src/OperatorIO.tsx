@@ -1,4 +1,4 @@
-import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
 export default function OperatorIO(props) {
   const { schema } = props;

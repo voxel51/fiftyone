@@ -11,7 +11,7 @@ export const ToggleFo3dBackground = () => {
   const { primary } = useTheme();
 
   return (
-    <ActionItem title="Toggle Background">
+    <ActionItem title="Toggle Background (B)">
       <WallpaperIcon
         sx={{ fontSize: 24 }}
         style={{

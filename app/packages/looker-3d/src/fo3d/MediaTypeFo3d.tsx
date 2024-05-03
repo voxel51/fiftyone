@@ -1,6 +1,6 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { AdaptiveDpr, AdaptiveEvents, OrbitControls } from "@react-three/drei";
+import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
 import {
   Suspense,
@@ -10,39 +10,32 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { PerspectiveCamera, Vector3 } from "three";
-import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import {
-  Looker3dPluginSettings,
-  defaultPluginSettings,
-} from "../Looker3dPlugin";
+import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
-  ACTION_GRID,
-  ACTION_SET_EGO_VIEW,
-  ACTION_SET_TOP_VIEW,
-  ACTION_VIEW_HELP,
-  ACTION_VIEW_JSON,
   DEFAULT_CAMERA_POSITION,
+  SET_EGO_VIEW_EVENT,
+  SET_TOP_VIEW_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
-import {
-  actionRenderListAtomFamily,
-  activeNodeAtom,
-  isFo3dBackgroundOnAtom,
-} from "../state";
+import { activeNodeAtom, isFo3dBackgroundOnAtom } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
-import { getMediaUrlForFo3dSample } from "./utils";
+import {
+  getFo3dRoot,
+  getMediaPathForFo3dSample,
+  getOrthonormalAxis,
+} from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -50,22 +43,21 @@ export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
+  const settings = usePluginSettings<Looker3dPluginSettings>("3d");
 
-  const settings = usePluginSettings<Looker3dPluginSettings>(
-    "3d",
-    defaultPluginSettings
-  );
-
-  const mediaUrl = useMemo(
-    () => getMediaUrlForFo3dSample(sample, mediaField),
+  const mediaPath = useMemo(
+    () => getMediaPathForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
 
+  const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
+
+  const fo3dRoot = useMemo(() => getFo3dRoot(sample.sample.filepath), [sample]);
+
   const { foScene, isLoading: isParsingFo3d } = useFo3d(
     mediaUrl,
-    sample.sample.filepath
+    sample.sample.filepath,
+    fo3dRoot
   );
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
@@ -92,12 +84,24 @@ export const MediaTypeFo3dComponent = () => {
       }
     }
 
+    if (settings.defaultUp) {
+      const maybeOrthonormalAxis = getOrthonormalAxis(settings.defaultUp);
+
+      if (maybeOrthonormalAxis) {
+        return new Vector3(
+          settings.defaultUp[0],
+          settings.defaultUp[1],
+          settings.defaultUp[2]
+        );
+      }
+    }
+
     // default to y-up
     return new Vector3(0, 1, 0);
-  }, [foScene]);
+  }, [foScene, settings]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const orbitControlsRef = useRef<OrbitControlsImpl>();
+  const cameraControlsRef = useRef<CameraControls>();
 
   const assetsGroupRef = useRef<THREE.Group>();
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
@@ -193,25 +197,20 @@ export const MediaTypeFo3dComponent = () => {
     return DEFAULT_CAMERA_POSITION();
   }, [settings, isParsingFo3d, foScene, sceneBoundingBox, upVector]);
 
-  const onCanvasCreated = useCallback(
-    (state: RootState) => {
-      cameraRef.current = state.camera as PerspectiveCamera;
-    },
-    [upVector]
-  );
+  const onCanvasCreated = useCallback((state: RootState) => {
+    cameraRef.current = state.camera as PerspectiveCamera;
+  }, []);
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
-        set(actionRenderListAtomFamily("fo3d"), []);
       },
     []
   );
 
   useEffect(() => {
     if (cameraRef.current) {
-      cameraRef.current.position.copy(defaultCameraPositionComputed);
       setSceneInitialized(true);
     }
   }, [defaultCameraPositionComputed]);
@@ -227,37 +226,57 @@ export const MediaTypeFo3dComponent = () => {
       aspect: foScene?.cameraProps.aspect,
       fov: foScene?.cameraProps.fov && 50,
       near: foScene?.cameraProps.near && 0.1,
-      far: foScene?.cameraProps.far && 2000,
+      far: foScene?.cameraProps.far && 2500,
     };
   }, [foScene, upVector, defaultCameraPositionComputed]);
 
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("fo3d")
-  );
-
   const onChangeView = useCallback(
-    (view: "pov" | "top") => {
+    (view: "pov" | "top", useAnimation = true) => {
       if (
         !sceneBoundingBox ||
         !cameraRef.current ||
-        !orbitControlsRef.current
+        !cameraControlsRef.current
       ) {
         return;
       }
 
+      let newCameraPosition = [
+        defaultCameraPositionComputed.x,
+        defaultCameraPositionComputed.y,
+        defaultCameraPositionComputed.z,
+      ] as const;
+
       if (view === "top") {
-        cameraRef.current.position.copy(topCameraPosition);
-      } else {
-        cameraRef.current.position.copy(defaultCameraPositionComputed);
+        newCameraPosition = [
+          topCameraPosition.x,
+          topCameraPosition.y,
+          topCameraPosition.z,
+        ];
       }
 
-      const newLookAt = sceneBoundingBox.getCenter(new Vector3());
+      const boundingBoxCenter = sceneBoundingBox.getCenter(new Vector3());
+      const newLookAt = [
+        boundingBoxCenter.x,
+        boundingBoxCenter.y,
+        boundingBoxCenter.z,
+      ] as const;
 
-      orbitControlsRef.current.target.copy(newLookAt);
-      orbitControlsRef.current.update();
+      cameraControlsRef.current.setLookAt(
+        ...newCameraPosition,
+        ...newLookAt,
+        useAnimation
+      );
     },
     [sceneBoundingBox, topCameraPosition, defaultCameraPositionComputed]
   );
+
+  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
+    onChangeView("top");
+  });
+
+  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
+    onChangeView("pov");
+  });
 
   useHotkey(
     "KeyT",
@@ -276,59 +295,21 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   useEffect(() => {
-    if (!isSceneInitialized) {
-      return;
-    }
-
-    // todo: find a better way of setting action bar items
-    const addUniqueItems = (currentItems, newItems) => {
-      const existingKeys = currentItems.map((item) => item[0]);
-      return newItems
-        .filter((item) => !existingKeys.includes(item[0]))
-        .concat(currentItems);
-    };
-
-    setActionBarItems((items) => {
-      const newItems = [
-        [ACTION_GRID, []],
-        [ACTION_SET_TOP_VIEW, [onChangeView]],
-        [ACTION_SET_EGO_VIEW, [onChangeView]],
-        [ACTION_VIEW_JSON, [jsonPanel, sample]],
-        [ACTION_VIEW_HELP, [helpPanel]],
-      ];
-      return addUniqueItems(items, newItems);
-    });
-  }, [
-    isSceneInitialized,
-    onChangeView,
-    jsonPanel,
-    sample,
-    helpPanel,
-    setActionBarItems,
-  ]);
-
-  useEffect(() => {
-    if (!orbitControlsRef.current) {
+    if (!cameraControlsRef.current) {
       return;
     }
 
     if (foScene?.cameraProps.lookAt?.length === 3) {
-      orbitControlsRef.current.target.copy(
-        new Vector3(
-          foScene.cameraProps.lookAt[0],
-          foScene.cameraProps.lookAt[1],
-          foScene.cameraProps.lookAt[2]
-        ).normalize()
+      cameraControlsRef.current.setTarget(
+        foScene.cameraProps.lookAt[0],
+        foScene.cameraProps.lookAt[1],
+        foScene.cameraProps.lookAt[2]
       );
       return;
+    } else {
+      onChangeView("pov", false);
     }
-
-    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
-      orbitControlsRef.current.target.copy(
-        sceneBoundingBox.getCenter(new Vector3())
-      );
-    }
-  }, [foScene, sceneBoundingBox]);
+  }, [foScene, onChangeView]);
 
   if (isParsingFo3d) {
     return (
@@ -341,7 +322,6 @@ export const MediaTypeFo3dComponent = () => {
   return (
     <>
       <Leva />
-
       <Canvas
         id={CANVAS_WRAPPER_ID}
         camera={canvasCameraProps}
@@ -352,6 +332,7 @@ export const MediaTypeFo3dComponent = () => {
           value={{
             isSceneInitialized,
             upVector,
+            fo3dRoot,
             sceneBoundingBox,
             pluginSettings: settings,
           }}
@@ -359,12 +340,7 @@ export const MediaTypeFo3dComponent = () => {
           <Suspense fallback={<SpinningCube />}>
             <AdaptiveDpr pixelated />
             <AdaptiveEvents />
-            <OrbitControls
-              ref={orbitControlsRef}
-              makeDefault
-              minPolarAngle={0}
-              maxPolarAngle={Math.PI}
-            />
+            <CameraControls ref={cameraControlsRef} makeDefault />
             <Lights lights={foScene?.lights} />
             <Gizmos />
 

@@ -5,17 +5,23 @@ FiftyOne repository factory.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import pymongo
+
 from pymongo.database import Database
 
-import fiftyone as fo
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
     MongoDelegatedOperationRepo,
 )
 
-db: Database = foo.get_db_conn()
+_db: Database = None
+
+
+def _get_db():
+    global _db
+    if _db is None:
+        _db = foo.get_db_conn()
+    return _db
 
 
 class RepositoryFactory(object):
@@ -30,7 +36,9 @@ class RepositoryFactory(object):
             RepositoryFactory.repos[
                 MongoDelegatedOperationRepo.COLLECTION_NAME
             ] = MongoDelegatedOperationRepo(
-                collection=db[MongoDelegatedOperationRepo.COLLECTION_NAME]
+                collection=_get_db()[
+                    MongoDelegatedOperationRepo.COLLECTION_NAME
+                ]
             )
 
         return RepositoryFactory.repos[

@@ -6,7 +6,7 @@
 |
 """
 import contextlib
-import itertools
+import functools
 import logging
 import os
 import warnings
@@ -27,7 +27,7 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 from fiftyone.core.odm import DynamicEmbeddedDocument
 from fiftyone.core.sample import Sample
-from fiftyone.core.threed import Pointcloud, Scene
+from fiftyone.core.threed import PointCloud, Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -439,23 +439,84 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     height = fof.IntField()
 
 
-def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
-    pcd_path = None
+def _get_scene_paths(scene_paths):
+    """Return Tuple of scene paths to use and whether all are local
+    This function is a no-op here but could be different in a repo fork.
+    """
+    return scene_paths, True
 
-    def _visit_node_dfs(node):
-        nonlocal pcd_path
-        if hasattr(node, "pcd_path") and node.flag_for_projection:
-            pcd_path = node.pcd_path
-        else:
-            for child in node.children:
-                _visit_node_dfs(child)
 
-    _visit_node_dfs(scene)
+def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
+    scene_path, original_scene_path = task
 
-    if pcd_path is None or os.path.isabs(pcd_path):
-        return pcd_path
+    # Read scene file which is JSON
+    try:
+        scene = Scene.from_fo3d(scene_path)
+    except Exception as e:
+        if not skip_failures:
+            raise
 
-    return os.path.join(os.path.dirname(scene_path), pcd_path)
+        if skip_failures != "ignore":
+            logger.warning(
+                "Failed to process scene at '%s': %s", original_scene_path, e
+            )
+        return []
+
+    asset_paths = scene.get_asset_paths()
+
+    if abs_paths:
+        # Convert any relative-to-scene paths to absolute
+        scene_dir = os.path.dirname(original_scene_path)
+        for i, asset_path in enumerate(asset_paths):
+            if not fos.isabs(asset_path):
+                asset_path = fos.join(scene_dir, asset_path)
+            asset_paths[i] = fos.resolve(asset_path)
+
+    return asset_paths
+
+
+def get_scene_asset_paths(
+    scene_paths, abs_paths=False, skip_failures=True, progress=None
+):
+    """Extracts all asset paths for the specified 3D scenes.
+
+    Args:
+        scene_paths: an iterable of ``.fo3d`` paths
+        abs_paths (False): whether to return absolute paths
+        skip_failures (True): whether to gracefully continue without raising an
+            error if metadata cannot be computed for a file
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+
+    Returns:
+        a dict mapping scene paths to lists of asset paths
+    """
+    if not scene_paths:
+        return {}
+
+    _scene_paths, all_local = _get_scene_paths(scene_paths)
+
+    if all_local:
+        if progress is None:
+            progress = False
+    else:
+        logger.info("Getting asset paths...")
+
+    _get_scene_asset_paths_single_bound = functools.partial(
+        _get_scene_asset_paths_single,
+        abs_paths=abs_paths,
+        skip_failures=skip_failures,
+    )
+    all_asset_paths = fos.run(
+        _get_scene_asset_paths_single_bound,
+        list(zip(_scene_paths, scene_paths)),
+        progress=progress,
+    )
+
+    asset_map = dict(zip(scene_paths, all_asset_paths))
+
+    return asset_map
 
 
 def compute_orthographic_projection_images(
@@ -471,6 +532,7 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    skip_failures=False,
     progress=None,
 ):
     """Computes orthographic projection images for the point clouds in the
@@ -535,6 +597,8 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a projection fails
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -546,51 +610,34 @@ def compute_orthographic_projection_images(
         fov.validate_collection(samples, media_type=fom.GROUP)
         group_field = samples.group_field
 
-        three_d_view = samples.select_group_slices(in_group_slice)
-        fov.validate_collection(
-            three_d_view, media_type={fom.POINT_CLOUD, fom.THREE_D}
+        view = samples.select_group_slices(in_group_slice).select_fields(
+            group_field
         )
-        filepaths, groups = three_d_view.values(["filepath", group_field])
     else:
-        try:
-            fov.validate_collection(samples, media_type=fom.THREE_D)
-        except ValueError:
-            fov.validate_collection(samples, media_type=fom.POINT_CLOUD)
+        view = samples.select_fields()
 
-        three_d_view = samples
+    fov.validate_collection(view, media_type={fom.POINT_CLOUD, fom.THREE_D})
 
-        filepaths = three_d_view.values("filepath")
-        groups = itertools.repeat(None)
-
-    if three_d_view.media_type == fom.THREE_D:
-        # read through all the fo3d files, and collect point cloud filepaths
-        scenes = [Scene.from_fo3d(filepath) for filepath in filepaths]
-        scenes_filepaths = list(zip(scenes, filepaths))
-        filepaths = [
-            _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
-            for scene, scene_path in scenes_filepaths
-        ]
+    if out_group_slice is not None:
+        out_samples = []
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir
     )
 
-    if out_group_slice is not None:
-        out_samples = []
+    for sample in view.iter_samples(autosave=True, progress=progress):
+        if view.media_type == fom.THREE_D:
+            pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
+        else:
+            pcd_filepath = sample.filepath
 
-    all_metadata = []
+        image_path = filename_maker.get_output_path(
+            pcd_filepath, output_ext=".png"
+        )
 
-    with fou.ProgressBar(total=len(filepaths), progress=progress) as pb:
-        for filepath, group in pb(zip(filepaths, groups)):
-            if filepath is None:
-                continue
-
-            image_path = filename_maker.get_output_path(
-                filepath, output_ext=".png"
-            )
-
+        try:
             img, metadata = compute_orthographic_projection_image(
-                filepath,
+                pcd_filepath,
                 size,
                 shading_mode=shading_mode,
                 colormap=colormap,
@@ -598,22 +645,28 @@ def compute_orthographic_projection_images(
                 projection_normal=projection_normal,
                 bounds=bounds,
             )
+        except Exception as e:
+            if not skip_failures:
+                raise
 
-            foui.write(img, image_path)
-            metadata.filepath = image_path
+            if skip_failures != "ignore":
+                logger.warning(e)
 
-            if out_group_slice is not None:
-                sample = Sample(filepath=image_path)
-                sample[group_field] = group.element(out_group_slice)
-                sample[metadata_field] = metadata
-                out_samples.append(sample)
+            continue
 
-            all_metadata.append(metadata)
+        foui.write(img, image_path)
+        metadata.filepath = image_path
+
+        sample[metadata_field] = metadata
+
+        if out_group_slice is not None:
+            s = Sample(filepath=image_path)
+            s[group_field] = sample[group_field].element(out_group_slice)
+            s[metadata_field] = metadata
+            out_samples.append(s)
 
     if out_group_slice is not None:
-        samples.add_samples(out_samples)
-
-    three_d_view.set_values(metadata_field, all_metadata)
+        samples._root_dataset.add_samples(out_samples)
 
 
 def compute_orthographic_projection_image(
@@ -732,6 +785,42 @@ def compute_orthographic_projection_image(
     return image, metadata
 
 
+def _get_pcd_filepath_from_scene(scene_path: str):
+    scene = Scene.from_fo3d(scene_path)
+
+    explicitly_flagged_pcd_path = None
+    fallover_pcd_path = None
+
+    def _visit_node_dfs(node):
+        nonlocal explicitly_flagged_pcd_path
+        nonlocal fallover_pcd_path
+
+        if hasattr(node, "pcd_path") and node.flag_for_projection:
+            explicitly_flagged_pcd_path = node.pcd_path
+        else:
+            if hasattr(node, "pcd_path"):
+                fallover_pcd_path = node.pcd_path
+
+            for child in node.children:
+                _visit_node_dfs(child)
+
+    _visit_node_dfs(scene)
+
+    pcd_path = (
+        explicitly_flagged_pcd_path
+        if explicitly_flagged_pcd_path
+        else fallover_pcd_path
+    )
+
+    if pcd_path is None:
+        return None
+
+    if not fos.isabs(pcd_path):
+        pcd_path = fos.join(os.path.dirname(scene_path), pcd_path)
+
+    return fos.resolve(pcd_path)
+
+
 def _parse_point_cloud(
     filepath,
     size=None,
@@ -746,13 +835,21 @@ def _parse_point_cloud(
     ):
         # rotate points so that they are perpendicular to the projection plane
         # as opposed to the default XY plane
-        normal = np.asarray(projection_normal).reshape((1, 3))
+        try:
+            normal = np.asarray(projection_normal).reshape((1, 3))
+        except Exception as e:
+            raise ValueError(
+                f"Invalid projection normal argument. Must be an XYZ vector of"
+                f" shape (1,3): {projection_normal}"
+            ) from e
+
+        # There are multiple rotations that can align two vectors. This is known
+        # and accepted, so we suppress the warning.
         with warnings.catch_warnings():
-            # There are multiple rotations that can align two vectors. This is known
-            # and accepted, so we suppress the warning.
             warnings.filterwarnings(
                 "ignore",
-                message="Optimal rotation is not uniquely or poorly defined for the given sets of vectors\.",
+                message="Optimal rotation is not uniquely or poorly defined "
+                "for the given sets of vectors",
                 category=UserWarning,
             )
             R = sp.transform.Rotation.align_vectors([[0, 0, 1]], normal)[
@@ -766,12 +863,19 @@ def _parse_point_cloud(
         min_bound, max_bound = bounds
 
     if _contains_none(min_bound):
-        _min_bound = np.nanmin(np.asarray(pc.points), axis=0)
+        _min_bound = pc.get_min_bound()
         min_bound = _fill_none(min_bound, _min_bound)
 
     if _contains_none(max_bound):
-        _max_bound = np.nanmax(np.asarray(pc.points), axis=0)
+        _max_bound = pc.get_max_bound()
         max_bound = _fill_none(max_bound, _max_bound)
+
+    # Ensure bbox will not have 0 volume by adding a small value if max_bound
+    #   and min_bound are close to each other
+    delta = np.isclose(
+        np.asarray(max_bound) - np.asarray(min_bound), 0
+    ) * np.repeat(0.000001, 3)
+    max_bound += delta
 
     bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=min_bound, max_bound=max_bound
@@ -1045,7 +1149,7 @@ def _make_scene(
             pcd_path = rel_path
 
     scene = Scene()
-    scene.add(Pointcloud("point cloud", pcd_path))
+    scene.add(PointCloud("point cloud", pcd_path))
     scene.write(scene_path)
 
     return scene_path

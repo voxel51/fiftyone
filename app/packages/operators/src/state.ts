@@ -313,6 +313,9 @@ export const useOperatorPrompt = () => {
   const cachedResolvedInput = useMemo(() => {
     return isDynamic ? null : resolvedIO.input;
   }, [isDynamic, resolvedIO.input]);
+  const promptView = useMemo(() => {
+    return inputFields?.view;
+  }, [inputFields]);
 
   const resolveInput = useCallback(
     debounce(
@@ -342,7 +345,7 @@ export const useOperatorPrompt = () => {
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
       { leading: true }
     ),
-    [cachedResolvedInput, setResolvedCtx, ctx]
+    [cachedResolvedInput, setResolvedCtx, operator.uri]
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
@@ -514,6 +517,8 @@ export const useOperatorPrompt = () => {
     pendingResolve,
     execDetails,
     submitOptions,
+    promptView,
+    resolvedIO,
   };
 };
 
@@ -830,6 +835,7 @@ type OperatorExecutorOptions = {
   delegationTarget?: string;
   requestDelegation?: boolean;
   callback?: ExecutionCallback;
+  skipOutput?: boolean;
 };
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
@@ -858,7 +864,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation, callback } = options || {};
+      const { delegationTarget, requestDelegation, callback, skipOutput } =
+        options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -876,7 +883,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         ctx.hooks = hooks;
         ctx.state = state;
         const result = await executeOperatorWithContext(uri, ctx);
-        setNeedsOutput(await operator.needsOutput(ctx, result));
+        setNeedsOutput(
+          skipOutput ? false : await operator.needsOutput(ctx, result)
+        );
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);

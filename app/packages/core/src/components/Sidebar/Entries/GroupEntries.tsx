@@ -128,9 +128,10 @@ const GroupEntry = React.memo(
   }: GroupEntryProps) => {
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
-    const ref = useRef<HTMLInputElement>();
+    const ref = useRef<HTMLInputElement>(null);
     const canCommit = useRef(false);
     const theme = useTheme();
+    const notify = fos.useNotification();
 
     return (
       <div
@@ -175,20 +176,28 @@ const GroupEntry = React.memo(
                 }}
                 defaultValue={title}
                 onKeyDown={(event) => {
+                  const inputElem = event.target as HTMLInputElement;
+                  const updatedTitle = inputElem.value;
+                  const unchanged = updatedTitle === title;
                   if (event.key === "Enter") {
-                    setValue(event.target.value).then((success) => {
+                    if (unchanged) {
+                      return inputElem.blur();
+                    }
+                    setValue?.(updatedTitle).then((success) => {
                       if (!success) {
-                        event.target.value = title;
+                        inputElem.value = title;
+                        notify({
+                          msg: "Failed to rename the group",
+                          variant: "error",
+                        });
                       }
-
-                      setEditing(false);
-                      event.target.blur();
+                      inputElem.blur();
                     });
 
                     return;
                   }
                   if (event.key === "Escape") {
-                    event.target.blur();
+                    inputElem.blur();
                   }
                 }}
                 onFocus={() => !editing && setEditing(true)}
@@ -277,10 +286,8 @@ interface PathGroupProps {
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
     const [expanded, setExpanded] = useShown(name, modal);
-
-    const renameGroup = useRenameGroup(modal, name);
-    const onDelete = !modal ? useDeleteGroup(modal, name) : null;
-    const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));
+    const renameGroup = useRenameGroup(!modal, name);
+    const onDelete = useDeleteGroup(!modal && mutable, name);
 
     return (
       <GroupEntry
@@ -288,8 +295,8 @@ export const PathGroupEntry = React.memo(
         title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
-        setValue={modal || !mutable ? null : (value) => renameGroup(value)}
-        onDelete={!empty ? null : onDelete}
+        setValue={renameGroup}
+        onDelete={onDelete}
         pills={
           <Pills
             entries={[

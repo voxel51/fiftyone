@@ -1,4 +1,9 @@
-import { Popout, scrollable } from "@fiftyone/components";
+import {
+  ColoredDot,
+  DEFAULT_COLOR,
+  Popout,
+  scrollable,
+} from "@fiftyone/components";
 import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
@@ -14,11 +19,12 @@ import {
 } from "@mui/material";
 import "allotment/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
-import { useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
 import SavedSpace from "./SavedSpace";
 import WorkspaceEditor from "./WorkspaceEditor";
 import { useSavedSpaces, useWorkspacePermission } from "./hooks";
+import { sessionSpaces } from "@fiftyone/state";
 
 export default function SavedSpaces() {
   const [open, setOpen] = useState(false);
@@ -27,6 +33,12 @@ export default function SavedSpaces() {
     useSavedSpaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const { canEdit, disabledInfo } = useWorkspacePermission();
+  const sessionSpacesState = useRecoilValue(sessionSpaces);
+  const currentWorkspaceName = sessionSpacesState._name;
+
+  const currentWorkspace = useMemo(() => {
+    return savedSpaces.find((space) => space.name === currentWorkspaceName);
+  }, [savedSpaces, currentWorkspaceName]);
 
   const items = useMemo(() => {
     return savedSpaces.filter((space) =>
@@ -35,7 +47,7 @@ export default function SavedSpaces() {
   }, [savedSpaces, input]);
 
   useEffect(() => {
-    if (open && !initialized) {
+    if (!initialized) {
       listWorkspace();
     }
   }, [open, initialized, listWorkspace]);
@@ -63,7 +75,11 @@ export default function SavedSpaces() {
           />
         }
       >
-        Unsaved
+        {!initialized && <Skeleton width={64} />}
+        {initialized && (
+          <ColoredDot color={currentWorkspace?.color || DEFAULT_COLOR} />
+        )}
+        {initialized && (currentWorkspace?.name || "Unsaved")}
       </Button>
       {open && (
         <Popout

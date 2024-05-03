@@ -7,32 +7,121 @@ FiftyOne Scene3D unit tests.
 """
 
 import json
+import os
+import tempfile
 import unittest
 from unittest.mock import mock_open, patch
 
-from fiftyone.core.threed import GltfMesh, Pointcloud, Scene
+from fiftyone.core import threed
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 class TestScene(unittest.TestCase):
     def setUp(self):
-        self.scene = Scene()
-        self.scene.add(GltfMesh("gltf", gltf_path="/path/to/gltf.gltf"))
-        self.scene.add(Pointcloud("pcd", pcd_path="/path/to/pcd.pcd"))
+        self.scene = threed.Scene()
+        self.scene.add(threed.GltfMesh("gltf", gltf_path="/path/to/gltf.gltf"))
+        self.scene.add(threed.GltfMesh("gltf2", gltf_path="relative.gltf"))
+        self.scene.add(threed.PointCloud("pcd", pcd_path="/path/to/pcd.pcd"))
+        self.scene.add(threed.Shape3D(name="shape"))
+        self.scene.add(threed.StlMesh("stl", stl_path="/path/to/stl.stl"))
+        self.scene.add(threed.PlyMesh("ply", ply_path="/path/to/ply.ply"))
+        self.scene.add(threed.FbxMesh("fbx", fbx_path="/path/to/fbx.fbx"))
+        self.scene.add(threed.ObjMesh("obj", obj_path="/path/to/obj.obj"))
+        self.scene.background = threed.SceneBackground(
+            image="../background.jpeg",
+            cube=[
+                "n1.jpeg",
+                "n2.jpeg",
+                "n3.jpeg",
+                "n4.jpeg",
+                "n5.jpeg",
+                "n6.jpeg",
+            ],
+        )
 
     def test_export_invalid_extension(self):
         with self.assertRaises(ValueError):
             self.scene.write("/path/to/scene.invalid")
 
+    def test_get_asset_paths(self):
+        asset_paths = set(self.scene.get_asset_paths())
+        self.assertSetEqual(
+            asset_paths,
+            {
+                "/path/to/gltf.gltf",
+                "/path/to/pcd.pcd",
+                "../background.jpeg",
+                "/path/to/stl.stl",
+                "/path/to/fbx.fbx",
+                "/path/to/ply.ply",
+                "/path/to/obj.obj",
+                "relative.gltf",
+                "n1.jpeg",
+                "n2.jpeg",
+                "n3.jpeg",
+                "n4.jpeg",
+                "n5.jpeg",
+                "n6.jpeg",
+            },
+        )
+
+    def test_write(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "blah.fo3d")
+            self.scene.write(path)
+            scene2 = threed.Scene.from_fo3d(path)
+            self.assertDictEqual(scene2.as_dict(), self.scene.as_dict())
+
+    def test_write_resolve_relative(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "blah.fo3d")
+            self.scene.write(
+                path,
+                resolve_relative_paths=True,
+            )
+            scene2 = threed.Scene.from_fo3d(path)
+            real_background = os.path.realpath(
+                os.path.join(temp_dir, "../background.jpeg")
+            )
+            self.assertEqual(scene2.background.image, real_background)
+            real_cubes = [
+                os.path.realpath(os.path.join(temp_dir, ci))
+                for ci in self.scene.background.cube
+            ]
+            self.assertListEqual(scene2.background.cube, real_cubes)
+            for node in scene2.traverse():
+                if node.name == "gltf2":
+                    self.assertEqual(
+                        node.gltf_path,
+                        os.path.realpath(
+                            os.path.join(temp_dir, "relative.gltf")
+                        ),
+                    )
+
+    def test_get_scene_summary(self):
+        summary = self.scene.get_scene_summary()
+        self.assertDictEqual(
+            summary,
+            {
+                "point clouds": 1,
+                "gltfs": 2,
+                "fbxs": 1,
+                "plys": 1,
+                "objs": 1,
+                "shapes": 1,
+                "stls": 1,
+            },
+        )
+
     def test_from_fo3d(self):
         mock_file = mock_open(read_data=json.dumps(self.scene.as_dict()))
 
         with patch("builtins.open", mock_file):
-            scene_from_file = Scene.from_fo3d("/path/to/scene.fo3d")
+            scene_from_file = threed.Scene.from_fo3d("/path/to/scene.fo3d")
 
         mock_file.assert_called_once_with("/path/to/scene.fo3d", "r")
 
-        self.assertEqual(scene_from_file.as_dict(), self.scene.as_dict())
+        self.assertDictEqual(scene_from_file.as_dict(), self.scene.as_dict())
 
     def test_snake_case_conversion(self):
         # test simple dict
