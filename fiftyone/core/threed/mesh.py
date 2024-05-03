@@ -235,7 +235,10 @@ class PlyMesh(Mesh):
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
-        r = {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
+        r = {
+            **super()._to_dict_extra(),
+            **{"plyPath": self.ply_path, "isPointCloud": self.is_point_cloud},
+        }
 
         if hasattr(self, "_pre_transformed_ply_path"):
             r["preTransformedPlyPath"] = self._pre_transformed_ply_path
