@@ -2,12 +2,12 @@
 
 -   Install playwright extension for VSCode.
 -   Copy `.env.dev.template` into `.env.dev` and fill in the values.
--   Run `yarn` to install dependencies. Make sure you're using node 18.x.
-    `nvm install 18 && nvm use 18`.
+-   Run `yarn` to install dependencies. Make sure you're using at least node
+    18.x (preferably 20.x). `nvm install 20 && nvm use 20`.
 -   Run tests directly from VSCode or from the command line with `yarn e2e`, or
     start the UI mode using `yarn e2e:ui` command. If you're using a local dev
     build, read the following section.
--   If you upgrade the version of Playwright, you'll need to run
+-   If Playwright version was upgraded, you'll need to run
     `yarn playwright install` to update the browser binaries.
 
 ### To use the local dev server of the app
@@ -23,8 +23,10 @@
 ### Tips
 
 1. Install the eslint extension. Also set `estlint.options` to
-   `{"overrideConfigFile": ".eslintrc.js"}` in VSCode settings to get linting
-   in the editor.
+   `{"overrideConfigFile": "eslint.config.cjs"}` in VSCode settings to get
+   linting in the editor in case it doesn't work. We use eslint's new flat
+   config format, so you might have to update your eslint extension to support
+   that.
 
 ### Patterns
 
@@ -32,8 +34,8 @@
     grid, modal, sidebar.
 -   Do not use assertion logic directly in POMs, instead use composition to
     create POMs that contain the assertion class.
--   Refrain from using `page.waitForTimeout()`. There is always a better
-    alternative.
+-   Refrain from using `page.waitForTimeout()`. There is almost always a better
+    alternative, like using custom events.
 
 #### Check for flakiness
 
@@ -114,8 +116,9 @@ docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/ba
 # if playwright version was updated,
 npx playwright install chromium
 
-. /e2e/venv/bin/activate
 npx playwright test --update-snapshots -g "description of my test"
+
+Note: `PYTHONPATH` and virtual env setup is done automatically.
 ```
 
 ### Known Issues

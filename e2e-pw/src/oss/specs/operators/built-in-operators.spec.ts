@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";

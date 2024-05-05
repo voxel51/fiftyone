@@ -6,6 +6,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -208,6 +209,14 @@ export const MediaTypeFo3dComponent = () => {
       },
     []
   );
+
+  useLayoutEffect(() => {
+    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
+
+    if (canvas) {
+      canvas.querySelector("canvas")?.setAttribute("canvas-loaded", "true");
+    }
+  }, [isSceneInitialized]);
 
   useEffect(() => {
     if (cameraRef.current) {
