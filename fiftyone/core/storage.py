@@ -12,6 +12,7 @@ import itertools
 import json
 import logging
 import multiprocessing.dummy
+import ntpath
 import os
 import posixpath
 import re
@@ -1451,7 +1452,11 @@ def abspath(path):
 
 
 def normpath(path):
-    """Normalizes the given filepath.
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
 
     Args:
         path: the filepath
@@ -1460,7 +1465,10 @@ def normpath(path):
         the normalized path
     """
     if is_local(path):
-        return os.path.normpath(path)
+        if os.name == "nt":
+            return ntpath.normpath(path)
+
+        return posixpath.normpath(path.replace("\\", "/"))
 
     prefix, path = split_prefix(path)
 
