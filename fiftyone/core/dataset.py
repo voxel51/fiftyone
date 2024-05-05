@@ -2118,7 +2118,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_path = self.group_field + ".name"
         self.select_group_slices(name).set_field(group_path, new_name).save()
 
-        new_media_type = self._doc.group_media_types.pop(name)
+        # Reload these fields to be safer against concurrent edits. Because
+        #   the default_group_slice could've been changed elsewhere so we need
+        #   to know we have the latest values.
+        self._doc.reload("group_media_types", "default_group_slice")
+
+        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+        new_media_type = self._doc.group_media_types[name]
+        del self._doc.group_media_types[name]
+
         self._doc.group_media_types[new_name] = new_media_type
 
         if self._doc.default_group_slice == name:
@@ -2143,7 +2151,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.delete_samples(self.select_group_slices(name))
 
-        self._doc.group_media_types.pop(name)
+        # Reload these fields to be safer against concurrent edits. Because
+        #   the default_group_slice could've been changed elsewhere so we need
+        #   to know we have the latest values.
+        self._doc.reload("group_media_types", "default_group_slice")
+
+        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+        if name in self._doc.group_media_types:
+            del self._doc.group_media_types[name]
 
         new_default = next(iter(self._doc.group_media_types.keys()), None)
 

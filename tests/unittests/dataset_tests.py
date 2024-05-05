@@ -3095,7 +3095,7 @@ class DatasetExtrasTests(unittest.TestCase):
         also_dataset = fo.load_dataset(dataset.name)
         self.assertIsNot(dataset, also_dataset)
 
-        # Test add save view safety
+        # Test add workspace safety
         dataset.save_workspace("ws1", space)
         also_dataset.save_workspace("ws2", space)
 
@@ -3104,14 +3104,14 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.reload()
         self.assertListEqual(dataset.list_workspaces(), ["ws1", "ws2"])
 
-        # Test delete saved view safety
+        # Test delete workspace safety
         also_dataset.reload()
         dataset.delete_workspace("ws1")
         also_dataset.delete_workspace("ws2")
         dataset.reload()
         self.assertListEqual(dataset.list_workspaces(), [])
 
-        # Test delete all saved views safety
+        # Test delete all workspaces safety
         also_dataset.reload()
         dataset.save_workspace("ws1", space)
         also_dataset.delete_workspaces()
