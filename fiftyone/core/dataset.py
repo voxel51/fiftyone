@@ -3588,6 +3588,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         view_doc.save(upsert=True)
 
+        # Targeted reload of saved views for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload(["saved_views"])
+
         self._doc.saved_views.append(view_doc)
         self.save()
 
@@ -3703,6 +3707,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
+
+        # Targeted reload of saved views for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload(["saved_views"])
+
         for view_doc in self._doc.saved_views:
             if isinstance(view_doc, DBRef):
                 continue
@@ -3727,6 +3736,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
         key = "slug" if slug else "name"
+
+        if pop:
+            # Targeted reload of saved views for better concurrency safety.
+            # @todo improve list field updates in general so this
+            #   isn't necessary
+            self._doc.reload(["saved_views"])
 
         for i, view_doc in enumerate(self._doc.get_saved_views()):
             if name == getattr(view_doc, key):
@@ -3878,6 +3893,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         workspace_doc.save(upsert=True)
 
+        # Targeted reload of workspaces for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload(["workspaces"])
+
         self._doc.workspaces.append(workspace_doc)
         self.save()
 
@@ -4016,6 +4035,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_workspaces(self):
         """Deletes all saved workspaces from this dataset."""
+
+        # Targeted reload of workspaces for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload(["workspaces"])
+
         for workspace_doc in self._doc.workspaces:
             if isinstance(workspace_doc, DBRef):
                 continue
@@ -4047,6 +4071,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _get_workspace_doc(self, name, pop=False, slug=False):
         idx = None
         key = "slug" if slug else "name"
+
+        if pop:
+            # Targeted reload of workspaces for better concurrency safety.
+            # @todo improve list field updates in general so this
+            #   isn't necessary
+            self._doc.reload(["workspaces"])
 
         for i, workspace_doc in enumerate(self._doc.get_workspaces()):
             if name == getattr(workspace_doc, key):
