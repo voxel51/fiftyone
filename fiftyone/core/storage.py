@@ -1455,6 +1455,8 @@ def normpath(path):
     """Normalizes the given path by converting all slashes to forward slashes
     on Unix and backslashes on Windows and removing duplicate slashes.
 
+    Remote paths are converted to forward slashes on all platforms.
+
     Use this function when you need a version of ``os.path.normpath`` that
     converts ``\\`` to ``/`` on Unix.
 
