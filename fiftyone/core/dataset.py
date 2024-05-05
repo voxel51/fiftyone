@@ -3590,7 +3590,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Targeted reload of saved views for better concurrency safety.
         # @todo improve list field updates in general so this isn't necessary
-        self._doc.reload(["saved_views"])
+        self._doc.reload("saved_views")
 
         self._doc.saved_views.append(view_doc)
         self.save()
@@ -3710,7 +3710,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Targeted reload of saved views for better concurrency safety.
         # @todo improve list field updates in general so this isn't necessary
-        self._doc.reload(["saved_views"])
+        self._doc.reload("saved_views")
 
         for view_doc in self._doc.saved_views:
             if isinstance(view_doc, DBRef):
@@ -3741,7 +3741,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Targeted reload of saved views for better concurrency safety.
             # @todo improve list field updates in general so this
             #   isn't necessary
-            self._doc.reload(["saved_views"])
+            self._doc.reload("saved_views")
 
         for i, view_doc in enumerate(self._doc.get_saved_views()):
             if name == getattr(view_doc, key):
@@ -3895,7 +3895,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Targeted reload of workspaces for better concurrency safety.
         # @todo improve list field updates in general so this isn't necessary
-        self._doc.reload(["workspaces"])
+        self._doc.reload("workspaces")
 
         self._doc.workspaces.append(workspace_doc)
         self.save()
@@ -4038,7 +4038,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Targeted reload of workspaces for better concurrency safety.
         # @todo improve list field updates in general so this isn't necessary
-        self._doc.reload(["workspaces"])
+        self._doc.reload("workspaces")
 
         for workspace_doc in self._doc.workspaces:
             if isinstance(workspace_doc, DBRef):
@@ -4076,7 +4076,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Targeted reload of workspaces for better concurrency safety.
             # @todo improve list field updates in general so this
             #   isn't necessary
-            self._doc.reload(["workspaces"])
+            self._doc.reload("workspaces")
 
         for i, workspace_doc in enumerate(self._doc.get_workspaces()):
             if name == getattr(workspace_doc, key):
