@@ -1,33 +1,81 @@
-from typing import List, Literal, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 
 import numpy as np
-from pydantic.dataclasses import dataclass
 from scipy.spatial.transform import Rotation
 
+from .validators import BaseValidatedDataClass, validate_choice, validate_list
 
-@dataclass(frozen=True)
-class Vector3:
+
+EULER_AXES_SEQUENCES = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
+EulerAxesSequence = Literal["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
+
+
+class Vector3(BaseValidatedDataClass):
     """Represents a three-dimensional vector."""
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
+    def __init__(
+        self,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+    ):
+        self._x = float(x)
+        self._y = float(y)
+        self._z = float(z)
+
+    @property
+    def x(self) -> float:
+        return self._x
+
+    @property
+    def y(self) -> float:
+        return self._y
+
+    @property
+    def z(self) -> float:
+        return self._z
 
     def to_arr(self):
         """Converts the vector to a numpy array."""
         return np.array([self.x, self.y, self.z])
 
 
-@dataclass(frozen=True)
-class Euler:
+class Euler(BaseValidatedDataClass):
     """Represents intrinsic rotations about the object's own principal axes."""
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
+    def __init__(
+        self,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        degrees: bool = False,
+        sequence: EulerAxesSequence = "XYZ",
+    ):
+        self._x = float(x)
+        self._y = float(y)
+        self._z = float(z)
+        self._degrees = bool(degrees)
+        self._sequence = validate_choice(sequence, EULER_AXES_SEQUENCES, False)
 
-    degrees: bool = False
-    sequence: Literal["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"] = "XYZ"
+    @property
+    def x(self) -> float:
+        return self._x
+
+    @property
+    def y(self) -> float:
+        return self._y
+
+    @property
+    def z(self) -> float:
+        return self._z
+
+    @property
+    def degrees(self) -> bool:
+        return self._degrees
+
+    @property
+    def sequence(self) -> EulerAxesSequence:
+        return self._sequence
 
     def to_quaternion(self):
         """Converts the euler angles to a quaternion."""
@@ -41,14 +89,36 @@ class Euler:
         return np.array([self.x, self.y, self.z])
 
 
-@dataclass(frozen=True)
-class Quaternion:
+class Quaternion(BaseValidatedDataClass):
     """Represents a quaternion."""
 
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    w: float = 1.0
+    def __init__(
+        self,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        w: float = 1.0,
+    ):
+        self._x = float(x)
+        self._y = float(y)
+        self._z = float(z)
+        self._w = float(w)
+
+    @property
+    def x(self) -> float:
+        return self._x
+
+    @property
+    def y(self) -> float:
+        return self._y
+
+    @property
+    def z(self) -> float:
+        return self._z
+
+    @property
+    def w(self) -> float:
+        return self._w
 
     def to_euler(self, degrees=False, sequence="XYZ"):
         """Converts the quaternion into euler angles."""
@@ -60,4 +130,29 @@ class Quaternion:
         return np.array([self.x, self.y, self.z, self.w])
 
 
-Vec3UnionType = Union[Vector3, List[float], Tuple[float]]
+Vec3UnionType = Union[Vector3, List[float], Tuple[float], np.array]
+
+
+def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
+    if v is None or isinstance(v, Vector3):
+        return v
+
+    try:
+        item_list = validate_list(v, 3)
+
+    except ValueError as e:
+        raise ValueError(
+            "Expected a list / tuple of length 3 or a Vector3"
+        ) from e
+
+    return Vector3(*item_list)
+
+
+def coerce_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
+    if v is None:
+        return None
+
+    if isinstance(v, (int, float)):
+        return Vector3(v, v, v)
+
+    return normalize_to_vec3(v)

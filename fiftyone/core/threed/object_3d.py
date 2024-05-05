@@ -13,9 +13,15 @@ from scipy.spatial.transform import Rotation
 
 import fiftyone.core.utils as fou
 
-from .transformation import Euler, Quaternion, Vec3UnionType, Vector3
+from .transformation import (
+    Euler,
+    Quaternion,
+    Vec3UnionType,
+    Vector3,
+    coerce_to_vec3,
+    normalize_to_vec3,
+)
 from .utils import FO3D_VERSION_KEY
-from .validators import coerce_to_vec3, normalize_to_vec3
 
 threed = fou.lazy_import("fiftyone.core.threed")
 
