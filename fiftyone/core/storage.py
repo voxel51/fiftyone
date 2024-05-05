@@ -2315,7 +2315,9 @@ def upload_media(
 
     if sample_collection._contains_media_type(fom.THREE_D):
         scene_paths = [p for p in filepaths if p.endswith(".fo3d")]
-        asset_map = fou3d.get_asset_paths(scene_paths, skip_failures=True)
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, skip_failures=True
+        )
     else:
         asset_map = None
 
