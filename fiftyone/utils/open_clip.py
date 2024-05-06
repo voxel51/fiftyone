@@ -116,6 +116,8 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         ]
         # Tokenize text
         text = self._tokenizer(formatted_prompts)
+        if self._using_gpu:
+                text = text.cuda()
         return self._model.encode_text(text)
 
     def _get_class_logits(self, text_features, image_features):
