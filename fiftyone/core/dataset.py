@@ -1778,8 +1778,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's schema, and all samples will
         have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
-        frame fields.
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1792,8 +1792,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's schema, and all samples will
         have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
-        frame fields.
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
 
         Args:
             field_names: the field name or iterable of field names
@@ -1807,7 +1807,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's frame schema, and all frames
         will have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
+        You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
         Only applicable to datasets that contain videos.
@@ -1824,7 +1824,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The fields will remain in the dataset's frame schema, and all frames
         will have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
+        You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
         Only applicable to datasets that contain videos.

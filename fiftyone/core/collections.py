@@ -1611,7 +1611,27 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-        view._edit_sample_tags(update)
+
+        try:
+            view._edit_sample_tags(update)
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                none_tags = self.exists("tags", bool=False)
+                none_tags.set_field("tags", []).save()
+
+                view._edit_sample_tags(update)
+            else:
+                raise e
 
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
@@ -1680,9 +1700,31 @@ class SampleCollection(object):
             tags = list(tags)
             update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
 
-        return self._edit_label_tags(
-            update_fcn, label_field, ids=ids, label_ids=label_ids
-        )
+        try:
+            return self._edit_label_tags(
+                update_fcn, label_field, ids=ids, label_ids=label_ids
+            )
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                _, tags_path = self._get_label_field_path(label_field, "tags")
+                none_tags = self.filter_labels(label_field, F("tags") == None)
+                none_tags.set_field(tags_path, []).save()
+
+                return self._edit_label_tags(
+                    update_fcn, label_field, ids=ids, label_ids=label_ids
+                )
+            else:
+                raise e
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
