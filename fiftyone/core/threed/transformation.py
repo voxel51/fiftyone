@@ -3,7 +3,13 @@ from typing import List, Literal, Optional, Tuple, Union
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .validators import BaseValidatedDataClass, validate_choice, validate_list
+from .validators import (
+    BaseValidatedDataClass,
+    validate_bool,
+    validate_choice,
+    validate_float,
+    validate_list,
+)
 
 
 EULER_AXES_SEQUENCES = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
@@ -19,9 +25,9 @@ class Vector3(BaseValidatedDataClass):
         y: float = 0.0,
         z: float = 0.0,
     ):
-        self._x = float(x)
-        self._y = float(y)
-        self._z = float(z)
+        self._x = validate_float(x)
+        self._y = validate_float(y)
+        self._z = validate_float(z)
 
     @property
     def x(self) -> float:
@@ -40,7 +46,7 @@ class Vector3(BaseValidatedDataClass):
         return np.array([self.x, self.y, self.z])
 
 
-class Euler(BaseValidatedDataClass):
+class Euler(Vector3):
     """Represents intrinsic rotations about the object's own principal axes."""
 
     def __init__(
@@ -51,23 +57,9 @@ class Euler(BaseValidatedDataClass):
         degrees: bool = False,
         sequence: EulerAxesSequence = "XYZ",
     ):
-        self._x = float(x)
-        self._y = float(y)
-        self._z = float(z)
-        self._degrees = bool(degrees)
+        super().__init__(x, y, z)
+        self._degrees = validate_bool(degrees)
         self._sequence = validate_choice(sequence, EULER_AXES_SEQUENCES, False)
-
-    @property
-    def x(self) -> float:
-        return self._x
-
-    @property
-    def y(self) -> float:
-        return self._y
-
-    @property
-    def z(self) -> float:
-        return self._z
 
     @property
     def degrees(self) -> bool:
@@ -84,10 +76,6 @@ class Euler(BaseValidatedDataClass):
         )
         return Quaternion(*q.as_quat())
 
-    def to_arr(self):
-        """Converts the euler angles to a numpy array."""
-        return np.array([self.x, self.y, self.z])
-
 
 class Quaternion(BaseValidatedDataClass):
     """Represents a quaternion."""
@@ -99,10 +87,10 @@ class Quaternion(BaseValidatedDataClass):
         z: float = 0.0,
         w: float = 1.0,
     ):
-        self._x = float(x)
-        self._y = float(y)
-        self._z = float(z)
-        self._w = float(w)
+        self._x = validate_float(x)
+        self._y = validate_float(y)
+        self._z = validate_float(z)
+        self._w = validate_float(w)
 
     @property
     def x(self) -> float:

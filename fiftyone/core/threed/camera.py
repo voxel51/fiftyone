@@ -7,10 +7,12 @@ Camera definition for 3D visualization.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
-from .validators import BaseValidatedDataClass, validate_choice
+from .validators import BaseValidatedDataClass, validate_choice, validate_float
+
+UpDirection = Literal["X", "Y", "Z"]
 
 
 @dataclass
@@ -36,13 +38,13 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     def __init__(
         self,
-        position=None,
-        look_at=None,
-        up=None,
-        aspect=None,
-        fov=50.0,
-        near=0.1,
-        far=2000.0,
+        position: Optional[Vector3] = None,
+        look_at: Optional[Vector3] = None,
+        up: Optional[UpDirection] = None,
+        aspect: Optional[float] = None,
+        fov: float = 50.0,
+        near: float = 0.1,
+        far: float = 2000.0,
     ):
         self.position = position
         self.look_at = look_at
@@ -82,7 +84,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     @aspect.setter
     def aspect(self, value: Optional[float]) -> None:
-        self._aspect = None if value is None else float(value)
+        self._aspect = validate_float(value, nullable=True)
 
     @property
     def fov(self) -> float:
@@ -90,7 +92,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     @fov.setter
     def fov(self, value: float) -> None:
-        self._fov = float(value)
+        self._fov = validate_float(value)
 
     @property
     def near(self) -> float:
@@ -98,7 +100,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     @near.setter
     def near(self, value: float) -> None:
-        self._near = float(value)
+        self._near = validate_float(value)
 
     @property
     def far(self) -> float:
@@ -106,7 +108,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     @far.setter
     def far(self, value: float) -> None:
-        self._far = float(value)
+        self._far = validate_float(value)
 
     def as_dict(self) -> dict:
         return {

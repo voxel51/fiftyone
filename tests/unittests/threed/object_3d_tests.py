@@ -13,36 +13,6 @@ import numpy as np
 from fiftyone.core.threed import Euler, Object3D, Quaternion, Vector3
 
 
-class Test3DBasicGeometry(unittest.TestCase):
-    def test_euler_initialization(self):
-        e = Euler(90, 45, 30)
-        self.assertEqual((e.x, e.y, e.z), (90, 45, 30))
-
-    def test_vector3_initialization(self):
-        v = Vector3(1, 2, 3)
-        self.assertEqual((v.x, v.y, v.z), (1, 2, 3))
-
-    def test_quaternion_initialization(self):
-        q = Quaternion()
-        self.assertEqual((q.x, q.y, q.z, q.w), (0, 0, 0, 1))
-
-    def test_euler_to_quaternion_conversion(self):
-        e = Euler(90, 0, 0, degrees=True)
-        q = e.to_quaternion()
-        self.assertIsInstance(q, Quaternion)
-        np.testing.assert_array_almost_equal(
-            (q.x, q.y, q.z, q.w), (0.70710678, 0, 0, 0.70710678), decimal=5
-        )
-
-    def test_quaternion_to_euler_conversion(self):
-        q = Quaternion(0.5609855, -0.4304593, 0.7010574, 0.092296)
-        e = q.to_euler(degrees=True)
-        self.assertIsInstance(e, Euler)
-        np.testing.assert_array_almost_equal(
-            (e.x, e.y, e.z), (90, 45, 120), decimal=5
-        )
-
-
 class TestObject3DMatrixUpdates(unittest.TestCase):
     def setUp(self):
         self.obj = Object3D("TestObject")

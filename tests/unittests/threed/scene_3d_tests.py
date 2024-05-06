@@ -181,3 +181,6 @@ class TestSceneBackground(unittest.TestCase):
         self.assertRaises(ValueError, setattr, obj, "cube", ["1", "2"])
         obj.cube = ["1", "2", "3", "4", "5", "6"]
         self.assertListEqual(obj.cube, ["1", "2", "3", "4", "5", "6"])
+
+        obj2 = threed.SceneBackground._from_dict(obj.as_dict())
+        self.assertEqual(obj, obj2)

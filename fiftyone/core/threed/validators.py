@@ -9,6 +9,15 @@ import re
 from typing import Any, Iterable, Optional
 
 
+def validate_bool(v: Any, nullable: bool = False):
+    if v is None:
+        if nullable:
+            return None
+        else:
+            raise ValueError("Field cannot be None")
+    return bool(v)
+
+
 def validate_choice(v: Any, options: Iterable, nullable: bool = False):
     if nullable and v is None:
         return None
@@ -30,6 +39,15 @@ def validate_color(v: Optional[str], nullable: bool = False):
         raise ValueError(f"Color string '{v}' must be in the form #ffffff")
 
     return v
+
+
+def validate_float(v: Any, nullable: bool = False):
+    if nullable and v is None:
+        return None
+    try:
+        return float(v)
+    except TypeError as e:
+        raise ValueError(e.args)
 
 
 def validate_list(
@@ -70,10 +88,9 @@ class BaseValidatedDataClass(object):
     def __repr__(self):
         # Looks like:
         #   ClassName(prop1="foo", prop2=3.14159)
-        attribute_strings = []
-        for attribute, value in vars(self).items():
-            if isinstance(value, str):
-                value = '"' + value + '"'
-            attribute_strings.append(f"{attribute.lstrip('_')}={str(value)}")
+        attribute_strings = [
+            f"{attribute.lstrip('_')}={repr(value)}"
+            for attribute, value in vars(self).items()
+        ]
 
         return f"{self.__class__.__name__}({', '.join(attribute_strings)})"

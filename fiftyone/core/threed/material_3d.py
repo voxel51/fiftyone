@@ -10,7 +10,13 @@ from typing import Literal
 
 import fiftyone.core.utils as fou
 
-from .validators import BaseValidatedDataClass, validate_choice, validate_color
+from .validators import (
+    BaseValidatedDataClass,
+    validate_bool,
+    validate_choice,
+    validate_color,
+    validate_float,
+)
 
 threed = fou.lazy_import("fiftyone.core.threed")
 
@@ -36,7 +42,7 @@ class Material3D(BaseValidatedDataClass):
 
     @opacity.setter
     def opacity(self, value: float) -> None:
-        self._opacity = float(value)
+        self._opacity = validate_float(value)
 
     def as_dict(self):
         return {
@@ -109,7 +115,7 @@ class PointCloudMaterial(Material3D):
 
     @point_size.setter
     def point_size(self, value: float) -> None:
-        self._point_size = float(value)
+        self._point_size = validate_float(value)
 
     @property
     def attenuate_by_distance(self) -> bool:
@@ -117,7 +123,7 @@ class PointCloudMaterial(Material3D):
 
     @attenuate_by_distance.setter
     def attenuate_by_distance(self, value: bool) -> None:
-        self._attenuate_by_distance = bool(value)
+        self._attenuate_by_distance = validate_float(value)
 
     def as_dict(self):
         return {
@@ -149,7 +155,7 @@ class MeshMaterial(Material3D):
 
     @wireframe.setter
     def wireframe(self, value: bool) -> None:
-        self._wireframe = bool(value)
+        self._wireframe = validate_bool(value)
 
     def as_dict(self):
         return {**super().as_dict(), **{"wireframe": self.wireframe}}
@@ -239,7 +245,7 @@ class MeshStandardMaterial(MeshMaterial):
 
     @emissive_intensity.setter
     def emissive_intensity(self, value: float) -> None:
-        self._emissive_intensity = float(value)
+        self._emissive_intensity = validate_float(value)
 
     @property
     def metalness(self) -> float:
@@ -247,7 +253,7 @@ class MeshStandardMaterial(MeshMaterial):
 
     @metalness.setter
     def metalness(self, value: float) -> None:
-        self._metalness = float(value)
+        self._metalness = validate_float(value)
 
     @property
     def roughness(self) -> float:
@@ -255,7 +261,7 @@ class MeshStandardMaterial(MeshMaterial):
 
     @roughness.setter
     def roughness(self, value: float) -> None:
-        self._roughness = float(value)
+        self._roughness = validate_float(value)
 
     def as_dict(self):
         return {
@@ -328,7 +334,7 @@ class MeshLambertMaterial(MeshMaterial):
 
     @emissive_intensity.setter
     def emissive_intensity(self, value: float) -> None:
-        self._emissive_intensity = float(value)
+        self._emissive_intensity = validate_float(value)
 
     @property
     def reflectivity(self) -> float:
@@ -336,7 +342,7 @@ class MeshLambertMaterial(MeshMaterial):
 
     @reflectivity.setter
     def reflectivity(self, value: float) -> None:
-        self._reflectivity = float(value)
+        self._reflectivity = validate_float(value)
 
     @property
     def refraction_ratio(self) -> float:
@@ -344,7 +350,7 @@ class MeshLambertMaterial(MeshMaterial):
 
     @refraction_ratio.setter
     def refraction_ratio(self, value: float) -> None:
-        self._refraction_ratio = float(value)
+        self._refraction_ratio = validate_float(value)
 
     def as_dict(self):
         return {
@@ -410,7 +416,7 @@ class MeshPhongMaterial(MeshLambertMaterial):
 
     @shininess.setter
     def shininess(self, value: float) -> None:
-        self._shininess = float(value)
+        self._shininess = validate_float(value)
 
     @property
     def specular_color(self) -> str:
