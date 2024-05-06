@@ -1006,3 +1006,8 @@ export function useOperatorPlacements(place: Places) {
 
   return { placements };
 }
+
+export const panelsStateUpdatesCountAtom = atom({
+  key: "panelsStateUpdatesCountAtom",
+  default: 0,
+});

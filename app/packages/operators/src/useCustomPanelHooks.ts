@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { merge } from "lodash";
+import { merge, isEqual } from "lodash";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { executeOperator } from "./operators";
 import * as fos from "@fiftyone/state";
 import usePanelEvent from "./usePanelEvent";
+import { panelsStateUpdatesCountAtom } from "./state";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -14,9 +15,11 @@ export interface CustomPanelProps {
   onUnLoad?: Function;
   onViewChange?: Function;
   dimensions: {
-    height?: number;
-    width?: number;
-  };
+    bounds: {
+      height?: number;
+      width?: number;
+    };
+  } | null;
   panelName?: string;
   panelLabel?: string;
 }
@@ -32,12 +35,17 @@ export interface CustomPanelHooks {
 
 export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const { panelId } = props;
-  const [panelState, setPanelState] = usePanelState(null, panelId, true);
+  const [panelState, setPanelState] = usePanelState(null, panelId);
   const setCustomPanelState = useSetCustomPanelState();
   const data = getPanelViewData(panelState);
   const renderableSchema = panelState?.schema;
-  const [loaded, setLoaded] = useState(false);
+  const [loaded] = useState(false);
   const view = useRecoilValue(fos.view);
+  const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
+  const lastPanelLoadState = useRef({
+    count: panelsStateUpdatesCount,
+    state: panelState,
+  });
 
   useEffect(() => {
     if (props.onLoad && !panelState?.loaded) {
@@ -50,6 +58,20 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
         executeOperator(props.onUnLoad, { panel_id: panelId });
     };
   }, [panelId, props.onLoad, props.onUnLoad]);
+
+  // Trigger panel "onLoad" operator when panel state changes externally
+  useEffect(() => {
+    if (
+      lastPanelLoadState.current?.count !== panelsStateUpdatesCount &&
+      !isEqual(lastPanelLoadState.current?.state, panelState)
+    ) {
+      executeOperator(props.onLoad, { panel_id: panelId });
+    }
+    lastPanelLoadState.current = {
+      count: panelsStateUpdatesCount,
+      state: panelState,
+    };
+  }, [panelsStateUpdatesCount, panelState, panelId, props.onLoad]);
 
   useEffect(() => {
     if (props.onViewChange)
