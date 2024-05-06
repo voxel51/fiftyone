@@ -538,7 +538,6 @@ export async function executeOperatorWithContext(
   uri: string,
   ctx: ExecutionContext
 ) {
-  console.log("executeOperatorWithContext", uri);
   const { operatorURI, params } = resolveOperatorURIWithMethod(uri, ctx.params);
   ctx.params = params;
   const { operator, isRemote } = getLocalOrRemoteOperator(operatorURI);

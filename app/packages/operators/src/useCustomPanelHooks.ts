@@ -40,7 +40,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const view = useRecoilValue(fos.view);
 
   useEffect(() => {
-    log("CustomPanel loaded", panelId, props.onLoad);
     if (props.onLoad && !panelState?.loaded) {
       executeOperator(props.onLoad, { panel_id: panelId });
       setPanelState((s) => ({ ...s, loaded: true }));
@@ -77,7 +76,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   };
 
   const handlePanelStatePathChange = (path, value, schema) => {
-    log("handlePanelStatePathChange", path, value, schema);
     if (schema?.onChange) {
       triggerPanelPropertyChange(panelId, {
         operator: schema.onChange,
@@ -100,8 +98,4 @@ function getPanelViewData(panelState) {
   const state = panelState?.state;
   const data = panelState?.data;
   return merge({}, { ...state }, { ...data });
-}
-
-function log(message: string, ...data: any[]) {
-  console.log(message, ...data);
 }
