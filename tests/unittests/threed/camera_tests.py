@@ -10,7 +10,13 @@ import unittest
 
 from fiftyone.core import threed
 
-from tests.unittests.threed.dataclass_test_utils import *
+from fiftyone.core.threed.utils import convert_keys_to_snake_case
+
+from tests.unittests.threed.dataclass_test_utils import (
+    assert_choice_prop,
+    assert_float_prop,
+    assert_vec3_prop,
+)
 
 
 class TestCamera(unittest.TestCase):
@@ -32,5 +38,7 @@ class TestCamera(unittest.TestCase):
         assert_float_prop(self, obj, "near")
         assert_float_prop(self, obj, "far")
 
-        obj2 = threed.PerspectiveCamera._from_dict(obj.as_dict())
+        obj2 = threed.PerspectiveCamera._from_dict(
+            convert_keys_to_snake_case(obj.as_dict())
+        )
         self.assertEqual(obj, obj2)

@@ -122,7 +122,7 @@ class PointCloudMaterial(Material3D):
 
     @attenuate_by_distance.setter
     def attenuate_by_distance(self, value: bool) -> None:
-        self._attenuate_by_distance = validate_float(value)
+        self._attenuate_by_distance = validate_bool(value)
 
     def as_dict(self):
         return {

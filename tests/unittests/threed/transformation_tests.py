@@ -12,8 +12,6 @@ import numpy as np
 
 from fiftyone.core import threed
 
-from tests.unittests.threed.dataclass_test_utils import *
-
 
 class Test3DBasicGeometry(unittest.TestCase):
     def test_euler_initialization(self):
@@ -21,7 +19,7 @@ class Test3DBasicGeometry(unittest.TestCase):
         self.assertEqual((e.x, e.y, e.z), (90, 45, 30))
 
     def test_vector3_initialization(self):
-        v = Vector3(1, 2, 3)
+        v = threed.Vector3(1, 2, 3)
         self.assertEqual((v.x, v.y, v.z), (1, 2, 3))
 
     def test_quaternion_initialization(self):
