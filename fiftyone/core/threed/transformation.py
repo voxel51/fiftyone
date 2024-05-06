@@ -140,7 +140,7 @@ def coerce_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
     if v is None:
         return None
 
-    if isinstance(v, (int, float)):
+    if isinstance(v, (int, float, np.number)):
         return Vector3(v, v, v)
 
     return normalize_to_vec3(v)

@@ -9,20 +9,24 @@ import re
 from typing import Any, Iterable, Optional
 
 
-def validate_bool(v: Any, nullable: bool = False):
+def validate_bool(v: Optional[bool], nullable: bool = False):
     if v is None:
         if nullable:
             return None
         else:
             raise ValueError("Field cannot be None")
-    return bool(v)
+
+    if not isinstance(v, bool):
+        raise ValueError(f"Invalid boolean value '{v}' of type: {type(v)}")
+
+    return v
 
 
 def validate_choice(v: Any, options: Iterable, nullable: bool = False):
     if nullable and v is None:
         return None
 
-    if v not in options:
+    if v not in frozenset(options):
         raise ValueError(f"Value '{v}' not in options: {options}")
 
     return v
@@ -35,13 +39,13 @@ def validate_color(v: Optional[str], nullable: bool = False):
     if not isinstance(v, str):
         raise ValueError(f"Color must be of string type: {v}")
 
-    if not re.fullmatch(r"#[0-9a-f]{6}", v):
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
         raise ValueError(f"Color string '{v}' must be in the form #ffffff")
 
     return v
 
 
-def validate_float(v: Any, nullable: bool = False):
+def validate_float(v: Optional[float], nullable: bool = False):
     if nullable and v is None:
         return None
     try:

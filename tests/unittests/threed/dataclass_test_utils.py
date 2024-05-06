@@ -3,7 +3,6 @@ import unittest
 import numpy as np
 
 from fiftyone.core.threed.transformation import Vector3
-from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 def _none_check(tester, obj, attribute, nullable):
@@ -17,6 +16,10 @@ def _none_check(tester, obj, attribute, nullable):
 def assert_bool_prop(
     tester: unittest.TestCase, obj, attribute, nullable=False
 ):
+    tester.assertRaises(ValueError, setattr, obj, attribute, 1)
+    tester.assertRaises(ValueError, setattr, obj, attribute, "true")
+    tester.assertRaises(ValueError, setattr, obj, attribute, "1")
+
     _none_check(tester, obj, attribute, nullable)
     setattr(obj, attribute, True)
     tester.assertEqual(getattr(obj, attribute), True)
@@ -43,12 +46,13 @@ def assert_color_prop(
     tester.assertRaises(ValueError, setattr, obj, attribute, "000000")
     tester.assertRaises(ValueError, setattr, obj, attribute, "#00001")
     tester.assertRaises(ValueError, setattr, obj, attribute, "#10000g")
+    tester.assertRaises(ValueError, setattr, obj, attribute, "#GGGFFF")
 
     _none_check(tester, obj, attribute, nullable)
 
     # Happy path
-    setattr(obj, attribute, "#ff6d04")
-    tester.assertEqual(getattr(obj, attribute), "#ff6d04")
+    setattr(obj, attribute, "#ff6D04")
+    tester.assertEqual(getattr(obj, attribute), "#ff6D04")
 
 
 def assert_float_prop(
