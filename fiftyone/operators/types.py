@@ -276,7 +276,7 @@ class Object(BaseType):
         return obj
 
     def plot(self, name, **kwargs):
-        """Defines a plot view as a :class:`View`.
+        """Defines an object property displayed as a plot.
 
         Args:
             name: the name of the property
