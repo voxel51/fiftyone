@@ -60,6 +60,7 @@ class Material3D(BaseValidatedDataClass):
         return clz(**d)
 
 
+SHADING_MODES = frozenset(["height", "intensity", "rgb", "custom"])
 ShadingMode = Literal["height", "intensity", "rgb", "custom"]
 
 
@@ -97,9 +98,7 @@ class PointCloudMaterial(Material3D):
 
     @shading_mode.setter
     def shading_mode(self, value: ShadingMode) -> None:
-        self._shading_mode = validate_choice(
-            value, ["height", "intensity", "rgb", "custom"]
-        )
+        self._shading_mode = validate_choice(value, SHADING_MODES)
 
     @property
     def custom_color(self) -> str:

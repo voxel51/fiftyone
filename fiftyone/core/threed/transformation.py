@@ -12,7 +12,7 @@ from .validators import (
 )
 
 
-EULER_AXES_SEQUENCES = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
+EULER_AXES_SEQUENCES = frozenset(["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"])
 EulerAxesSequence = Literal["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
 
 

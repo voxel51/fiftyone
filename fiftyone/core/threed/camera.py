@@ -12,6 +12,8 @@ from typing import Literal, Optional, Union
 from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
 from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
+
+UP_DIRECTIONS = frozenset(["X", "Y", "Z"])
 UpDirection = Literal["X", "Y", "Z"]
 
 
@@ -76,7 +78,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
 
     @up.setter
     def up(self, value):
-        self._up = validate_choice(value, frozenset(["X", "Y", "Z"]), True)
+        self._up = validate_choice(value, UP_DIRECTIONS, True)
 
     @property
     def aspect(self):
