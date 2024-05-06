@@ -31,5 +31,5 @@ export default function usePanelEvent() {
     } else {
       executeOperator(operator, actualParams, options.callback);
     }
-  }, true); // local true since all custom panels are local
+  });
 }
