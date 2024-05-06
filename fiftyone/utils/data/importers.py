@@ -1557,7 +1557,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         sd = next(self._iter_samples)
 
         if not fos.isabs(sd["filepath"]):
-            sd["filepath"] = fos.join(self._rel_dir, sd["filepath"])
+            sd["filepath"] = fos.normpath(
+                fos.join(self._rel_dir, sd["filepath"])
+            )
 
         if self._media_fields:
             _parse_media_fields(sd, self._media_fields, self._rel_dir)
@@ -1566,7 +1568,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             self._media_type == fomm.GROUP
             and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
         ):
-            labels_path = fos.join(self.dataset_dir, sd.pop("frames"))
+            labels_path = fos.normpath(
+                fos.join(self.dataset_dir, sd.pop("frames"))
+            )
 
             sample = Sample.from_dict(sd)
             self._import_frame_labels(sample, labels_path)
@@ -1954,7 +1958,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         def _parse_sample(sd):
             if not fos.isabs(sd["filepath"]):
-                sd["filepath"] = fos.join(rel_dir, sd["filepath"])
+                sd["filepath"] = fos.normpath(
+                    fos.join(rel_dir, sd["filepath"])
+                )
 
             if tags is not None:
                 sd["tags"].extend(tags)
