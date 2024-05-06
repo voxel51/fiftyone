@@ -171,8 +171,13 @@ class MeshBasicMaterial(MeshMaterial):
         opacity (1.0): the opacity of the material, in the range ``[0, 1]``
     """
 
-    def __init__(self, color: str = COLOR_DEFAULT_GRAY, opacity: float = 1.0):
-        super().__init__(opacity=opacity)
+    def __init__(
+        self,
+        color: str = COLOR_DEFAULT_GRAY,
+        wireframe: bool = False,
+        opacity: float = 1.0,
+    ):
+        super().__init__(wireframe=wireframe, opacity=opacity)
         self.color = color
 
     @property
