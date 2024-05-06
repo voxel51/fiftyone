@@ -1779,7 +1779,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         have the value ``None`` for the field.
 
         You can use dot notation (``embedded.field.name``) to clear embedded
-        frame fields.
+        fields.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1793,7 +1793,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         have the value ``None`` for the field.
 
         You can use dot notation (``embedded.field.name``) to clear embedded
-        frame fields.
+        fields.
 
         Args:
             field_names: the field name or iterable of field names
