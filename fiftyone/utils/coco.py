@@ -902,7 +902,12 @@ class COCODetectionDatasetExporter(
 
         licenses = _info.get("licenses", [])
 
-        categories = _info.get("categories", None)
+        try:
+            categories = _info.get("categories", None)
+            parse_coco_categories(categories)
+        except:
+            categories = None
+
         if categories is None:
             categories = [
                 {
