@@ -1499,16 +1499,63 @@ You can reset your spaces to their default state by setting
     # Reset spaces layout in the App
     session.spaces = None
 
-.. _app-saving-spaces-python:
+.. _app-workspaces:
+
+Saving workspaces
+_________________
+
+If you find yourself frequently using/recreating a certain
+:ref:`spaces layout <app-spaces>`, you can save it as a workspace with a name
+of your choice and then load it later via the App or programmatically!
+
+.. _app-saving-workspaces:
+
+Saving workspaces in the App
+----------------------------
+
+Continuing from the :ref:`example above <app-spaces-layout>`, once you've
+configured a spaces layout of interest, click the "Unsaved workspace" icon in
+the upper right corner to open the workspaces menu and save your current
+workspace with a name and optional description/color of your choice:
+
+.. image:: /images/app/app-save-workspace.gif
+    :alt: app-save-workspace
+    :align: center
+
+.. note::
+
+    Saved workspaces include all aspects of your current spaces layout,
+    including panel types, layouts, sizes, and even the current state of each
+    panel!
+
+You can load saved workspaces at any time later via this same menu:
+
+.. image:: /images/app/app-load-workspace.gif
+    :alt: app-load-workspace
+    :align: center
+
+You can also edit the details of an existing saved workspace at any time by
+clicking on its pencil icon in the workspace menu:
+
+.. image:: /images/app/app-update-workspace.gif
+    :alt: app-update-workspace
+    :align: center
+
+.. note::
+
+    If you want to modify the layout of an existing saved workspace, you must
+    delete the existing workspace and then re-save it under the same name after
+    modifying the layout in the App.
+
+.. _app-saving-workspaces-python:
 
 Saving workspaces in Python
 ---------------------------
 
-If you find yourself frequently using/recreating a certain spaces layout, you
-can save it as a workspace with a name of your choice, using
-:meth:`save_workspace() <fiftyone.core.dataset.Dataset.save_workspace>`.
-For example, to save the workspace defined in the
-:ref:`example above <app-spaces-python>`:
+You can also programmatically create and manage saved workspaces!
+
+Use :meth:`save_workspace() <fiftyone.core.dataset.Dataset.save_workspace>`
+to create a new saved workspace with a name of your choice:
 
 .. code-block:: python
     :linenos:
@@ -1544,15 +1591,22 @@ For example, to save the workspace defined in the
         orientation="vertical",
     )
 
-    workspace_name = "my-workspace"
-    description = "Samples, embeddings, histograms, oh my!"
-    color = "#FF6D04"
     dataset.save_workspace(
-        workspace_name,
+        "my-workspace",
         workspace,
-        description=description,
-        color=color
+        description="Samples, embeddings, histograms, oh my!",
+        color="#FF6D04",
     )
+
+.. note::
+
+    Pro tip! You can save your current spaces layout in the App via
+    :meth:`session.spaces <fiftyone.core.session.Session.spaces>`:
+
+    .. code-block:: python
+
+        workspace = session.spaces
+        dataset.save_workspace("my-workspace", workspace, ...)
 
 Then in a future session you can load the workspace by name with
 :meth:`load_workspace() <fiftyone.core.dataset.Dataset.load_workspace>`:
@@ -1568,11 +1622,11 @@ Then in a future session you can load the workspace by name with
     workspace = dataset.load_workspace("my-workspace")
     session = fo.launch_app(dataset, spaces=workspace)
 
-    # Or, set via session later on
+    # Or, load a workspace on an existing session
     session.spaces = workspace
 
 Saved workspaces have certain editable metadata such as a name, description,
-and color, that you can view via
+and color that you can view via
 :meth:`get_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`
 and update via
 :meth:`update_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`:
