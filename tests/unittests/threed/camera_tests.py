@@ -12,7 +12,7 @@ from fiftyone.core import threed
 
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
-from tests.unittests.threed.dataclass_test_utils import (
+from dataclass_test_utils import (
     assert_choice_prop,
     assert_float_prop,
     assert_vec3_prop,
