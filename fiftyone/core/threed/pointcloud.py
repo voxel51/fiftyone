@@ -29,7 +29,6 @@ class PointCloud(Object3D):
             :class:`fiftyone.core.threed.Scene` can have at most one asset
             flagged for orthographic projection. Defaults to ``False``. If
             multiple assets are flagged, the first one will be chosen
-                name: the name of the object
         visible (True): default visibility of the point cloud in the scene
         position (None): the position of the object in point cloud space
         quaternion (None): the quaternion of the point cloud in object space
