@@ -16,6 +16,7 @@ export function SchemaIOComponent(props) {
   const onIOChange = useCallback(
     (path, value, schema) => {
       if (onPathChange) {
+        console.log("onPathChange", path, value, schema);
         onPathChange(path, value, schema);
       }
       const currentState = stateRef.current;
