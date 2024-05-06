@@ -415,6 +415,7 @@ class COCODetectionDatasetImporter(
         self._label_types = _label_types
         self._info = None
         self._classes_map = None
+        self._class_ids = None
         self._license_map = None
         self._supercategory_map = None
         self._image_paths_map = None
@@ -456,10 +457,9 @@ class COCODetectionDatasetImporter(
             coco_objects = self._annotations.get(image_id, [])
             frame_size = (width, height)
 
-            if self.classes is not None and self.only_matching:
-                all_classes = list(self._classes_map.values())
+            if self.only_matching and self._class_ids is not None:
                 coco_objects = _get_matching_objects(
-                    coco_objects, self.classes, all_classes
+                    coco_objects, self._class_ids
                 )
 
             if "detections" in self._label_types:
@@ -565,7 +565,7 @@ class COCODetectionDatasetImporter(
 
             classes = None
             if classes_map is not None:
-                classes = list(classes_map.values())
+                classes = _to_classes(classes_map)
 
             if classes is not None:
                 info["classes"] = classes
@@ -607,8 +607,14 @@ class COCODetectionDatasetImporter(
         else:
             license_map = None
 
+        if self.only_matching and self.classes is not None:
+            class_ids = _get_class_ids(self.classes, classes_map)
+        else:
+            class_ids = None
+
         self._info = info
         self._classes_map = classes_map
+        self._class_ids = class_ids
         self._license_map = license_map
         self._supercategory_map = supercategory_map
         self._image_paths_map = image_paths_map
@@ -760,7 +766,7 @@ class COCODetectionDatasetExporter(
         self._images = None
         self._annotations = None
         self._classes = None
-        self._dynamic_classes = classes is None
+        self._dynamic_classes = None
         self._labels_map_rev = None
         self._has_labels = None
         self._media_exporter = None
@@ -793,6 +799,8 @@ class COCODetectionDatasetExporter(
     def log_collection(self, sample_collection):
         if self.info is None:
             self.info = sample_collection.info
+            if "categories" in self.info:
+                self._parse_classes()
 
     def export_sample(self, image_or_path, label, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -881,30 +889,29 @@ class COCODetectionDatasetExporter(
         else:
             classes = self.classes
 
-        date_created = datetime.now().replace(microsecond=0).isoformat()
+        _info = self.info or {}
+        _date_created = datetime.now().replace(microsecond=0).isoformat()
+
         info = {
-            "year": self.info.get("year", ""),
-            "version": self.info.get("version", ""),
-            "contributor": self.info.get("contributor", ""),
-            "url": self.info.get("url", "https://voxel51.com/fiftyone"),
-            "date_created": self.info.get("date_created", date_created),
+            "year": _info.get("year", ""),
+            "version": _info.get("version", ""),
+            "contributor": _info.get("contributor", ""),
+            "url": _info.get("url", "https://voxel51.com/fiftyone"),
+            "date_created": _info.get("date_created", _date_created),
         }
 
-        licenses = self.info.get("licenses", [])
+        licenses = _info.get("licenses", [])
 
-        supercategory_map = {
-            c["name"]: c.get("supercategory", None)
-            for c in self.info.get("categories", [])
-        }
-
-        categories = [
-            {
-                "id": i,
-                "name": l,
-                "supercategory": supercategory_map.get(l, None),
-            }
-            for i, l in enumerate(classes)
-        ]
+        categories = _info.get("categories", None)
+        if categories is None:
+            categories = [
+                {
+                    "id": i,
+                    "name": l,
+                    "supercategory": None,
+                }
+                for i, l in enumerate(classes)
+            ]
 
         labels = {
             "info": info,
@@ -921,10 +928,20 @@ class COCODetectionDatasetExporter(
         self._media_exporter.close()
 
     def _parse_classes(self):
-        if self._dynamic_classes:
+        if self.info is not None:
+            labels_map_rev = _parse_categories(self.info, self.classes)
+        else:
+            labels_map_rev = None
+
+        if labels_map_rev is not None:
+            self._labels_map_rev = labels_map_rev
+            self._dynamic_classes = False
+        elif self.classes is None:
             self._classes = set()
+            self._dynamic_classes = True
         else:
             self._labels_map_rev = _to_labels_map_rev(self.classes)
+            self._dynamic_classes = False
 
 
 class COCOObject(object):
@@ -1058,7 +1075,8 @@ class COCOObject(object):
             visible.append(v)
         if "visible" in attributes:
             logger.debug(
-                "Found a custom attribute named 'visible' which is a reserved name. Ignoring the custom attribute"
+                "Found a custom attribute named 'visible' which is a "
+                "reserved name. Ignoring the custom attribute"
             )
             attributes.pop("visible")
 
@@ -1628,7 +1646,7 @@ def download_coco_dataset_split(
         ) = _parse_coco_detection_annotations(d, extra_attrs=True)
 
         if all_classes_map is not None:
-            all_classes = list(all_classes_map.values())
+            all_classes = _to_classes(all_classes_map)
 
         if image_ids is not None:
             # Start with specific images
@@ -1719,7 +1737,7 @@ def download_coco_dataset_split(
             categories = d.get("categories", None)
             if categories is not None:
                 all_classes_map, _ = parse_coco_categories(categories)
-                all_classes = list(all_classes_map.values())
+                all_classes = _to_classes(all_classes_map)
             else:
                 all_classes = None
 
@@ -1991,14 +2009,44 @@ def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
 
-def _get_matching_objects(coco_objects, target_classes, all_classes):
-    if etau.is_str(target_classes):
-        target_classes = [target_classes]
+def _to_classes(classes_map):
+    return [classes_map[i] for i in sorted(classes_map.keys())]
 
-    labels_map_rev = _to_labels_map_rev(all_classes)
-    class_ids = {labels_map_rev[c] for c in target_classes}
 
+def _get_class_ids(classes, classes_map):
+    if etau.is_str(classes):
+        classes = [classes]
+
+    labels_map_rev = {c: i for i, c in classes_map.items()}
+    class_ids = {labels_map_rev[c] for c in classes}
+
+    return class_ids
+
+
+def _get_matching_objects(coco_objects, class_ids):
     return [obj for obj in coco_objects if obj.category_id in class_ids]
+
+
+def _parse_categories(info, classes):
+    categories = info.get("categories", None)
+    if categories is None:
+        return None
+
+    try:
+        classes_map, _ = parse_coco_categories(categories)
+    except:
+        logger.debug("Failed to parse categories from info")
+        return None
+
+    if classes is None:
+        return {c: i for i, c in classes_map.items()}
+
+    if etau.is_str(classes):
+        classes = {classes}
+    else:
+        classes = set(classes)
+
+    return {c: i for i, c in classes_map.items() if c in classes}
 
 
 def _coco_objects_to_polylines(
