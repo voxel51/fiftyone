@@ -587,7 +587,7 @@ points that demonstrates how
     o3d.io.write_point_cloud("/tmp/toy.pcd", pc)
 
     scene = fo.Scene()
-    scene.add(fo.Pointcloud("point cloud", "/tmp/toy.pcd"))
+    scene.add(fo.PointCloud("point cloud", "/tmp/toy.pcd"))
     scene.write("/tmp/toy.fo3d")
 
     group = fo.Group()

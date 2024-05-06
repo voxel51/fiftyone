@@ -1139,7 +1139,7 @@ def _write_fo3d_files(pcd_dir, fo3d_dir, overwrite=False, abs_paths=False):
 
             scene = fo3d.Scene(camera=fo3d.PerspectiveCamera(up="Z"))
             scene.add(
-                fo3d.Pointcloud(
+                fo3d.PointCloud(
                     "point cloud", pcd_filepath, flag_for_projection=True
                 )
             )
