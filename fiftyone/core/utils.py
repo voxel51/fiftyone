@@ -1739,7 +1739,6 @@ class UniqueFilenameMaker(object):
                 chunk_root = "chunk"
 
             self._chunk_root = chunk_root
-            self._chunk_num = 1
 
         if not self.output_dir:
             return

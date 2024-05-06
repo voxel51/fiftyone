@@ -435,7 +435,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
                 repo_type="dataset",
             )
 
-    first_chunk_dir = os.path.join(tmp_dir, "data", "data_1")
+    first_chunk_dir = os.path.join(tmp_dir, "data", "data_0")
     if os.path.exists(first_chunk_dir):
         chunk_size = len(os.listdir(first_chunk_dir))
         num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
