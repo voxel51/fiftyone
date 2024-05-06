@@ -29,16 +29,24 @@ export interface CustomPanelHooks {
   handlePanelStateChange: Function;
   handlePanelStatePathChange: Function;
   data: any;
-  renderableSchema: any;
+  panelSchema: any;
   loaded: boolean;
 }
 
 export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const { panelId } = props;
   const [panelState, setPanelState] = usePanelState(null, panelId);
+  const [panelStateLocal, setPanelStateLocal] = usePanelState(
+    null,
+    panelId,
+    true
+  );
   const setCustomPanelState = useSetCustomPanelState();
-  const data = getPanelViewData(panelState);
-  const renderableSchema = panelState?.schema;
+  const data = getPanelViewData({
+    state: panelState?.state,
+    data: panelStateLocal?.data,
+  });
+  const panelSchema = panelStateLocal?.schema;
   const [loaded] = useState(false);
   const view = useRecoilValue(fos.view);
   const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
@@ -47,10 +55,19 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     state: panelState,
   });
 
+  function onLoad() {
+    if (props.onLoad) {
+      executeOperator(props.onLoad, {
+        panel_id: panelId,
+        panel_state: panelState?.state,
+      });
+    }
+  }
+
   useEffect(() => {
     if (props.onLoad && !panelState?.loaded) {
-      executeOperator(props.onLoad, { panel_id: panelId });
-      setPanelState((s) => ({ ...s, loaded: true }));
+      onLoad();
+      setPanelStateLocal((s) => ({ ...s, loaded: true }));
     }
 
     return () => {
@@ -65,7 +82,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       lastPanelLoadState.current?.count !== panelsStateUpdatesCount &&
       !isEqual(lastPanelLoadState.current?.state, panelState)
     ) {
-      executeOperator(props.onLoad, { panel_id: panelId });
+      onLoad();
     }
     lastPanelLoadState.current = {
       count: panelsStateUpdatesCount,
@@ -111,7 +128,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     handlePanelStateChange,
     handlePanelStatePathChange,
     data,
-    renderableSchema,
+    panelSchema,
     loaded,
   };
 }
