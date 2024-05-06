@@ -42,7 +42,7 @@ const PlyWithPointsMaterial = ({
 
   const pointsContainerRef = useRef();
 
-  const pointsMaterialJsx = usePcdMaterial(
+  const pointsMaterialElement = usePcdMaterial(
     name,
     geometry,
     overrideMaterial,
@@ -51,13 +51,13 @@ const PlyWithPointsMaterial = ({
 
   const mesh = useMemo(() => new Points(geometry), [geometry]);
 
-  if (!geometry || !pointsMaterialJsx) {
+  if (!geometry || !pointsMaterialElement) {
     return null;
   }
 
   return (
     <primitive ref={pointsContainerRef} object={mesh}>
-      {pointsMaterialJsx}
+      {pointsMaterialElement}
     </primitive>
   );
 };

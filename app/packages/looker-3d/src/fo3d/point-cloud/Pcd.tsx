@@ -35,7 +35,7 @@ export const Pcd = ({
   const points = useLoader(PCDLoader, pcdUrl);
   const pcdContainerRef = useRef();
 
-  const pointsMaterialJsx = usePcdMaterial(
+  const pointsMaterialElement = usePcdMaterial(
     name,
     points.geometry,
     defaultMaterial,
@@ -54,7 +54,7 @@ export const Pcd = ({
       quaternion={quaternion}
       scale={scale}
     >
-      {pointsMaterialJsx}
+      {pointsMaterialElement}
       {children ?? null}
     </primitive>
   );
