@@ -374,7 +374,7 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
 }
 
 export const filterTemporalLabel = (
-  cls,
+  cls: string,
   label: ClassificationLabel | TemporalDetectionLabel,
   frameNumber: number
 ) => {
@@ -383,6 +383,11 @@ export const filterTemporalLabel = (
   }
 
   const temporal = label as TemporalDetectionLabel;
+
+  if (temporal.support?.length !== 2) {
+    return false;
+  }
+
   return (
     temporal.support[0] <= frameNumber && temporal.support[1] >= frameNumber
   );
