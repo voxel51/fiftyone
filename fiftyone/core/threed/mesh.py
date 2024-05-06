@@ -10,25 +10,40 @@ from typing import Optional
 
 from .material_3d import MeshMaterial, MeshStandardMaterial
 from .object_3d import Object3D
+from .transformation import Quaternion, Vec3UnionType
 
 
 class Mesh(Object3D):
     """Represents an abstract 3D mesh.
 
     Args:
-        name (str): the name of the mesh
+        name: the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
             if not provided
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.core.threed.Object3D` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     def __init__(
-        self, name: str, material: Optional[MeshMaterial] = None, **kwargs
+        self,
+        name: str,
+        material: Optional[MeshMaterial] = None,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name, **kwargs)
+        super().__init__(
+            name=name,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)
@@ -65,7 +80,10 @@ class ObjMesh(Mesh):
             the default material for the mesh if ``mtl_path`` is not provided
             or if material in ``mtl_path`` is not found. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Mesh` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
 
     Raises:
         ValueError: if ``obj_path`` does not end with ``.obj``
@@ -80,9 +98,19 @@ class ObjMesh(Mesh):
         obj_path: str,
         mtl_path: Optional[str] = None,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not obj_path.lower().endswith(".obj"):
             raise ValueError("OBJ mesh must be a .obj file")
@@ -124,7 +152,10 @@ class FbxMesh(Mesh):
             the default material for the mesh if FBX file does not contain
             material information. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Mesh` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
 
     Raises:
         ValueError: If ``fbx_path`` does not end with ``.fbx``
@@ -137,9 +168,19 @@ class FbxMesh(Mesh):
         name: str,
         fbx_path: str,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not (fbx_path.lower().endswith(".fbx")):
             raise ValueError("FBX mesh must be a .fbx file")
@@ -171,7 +212,10 @@ class GltfMesh(Mesh):
             the default material for the mesh if gLTF file does not contain
             material information. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Mesh` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
 
     Raises:
         ValueError: if ``gltf_path`` does not end with '.gltf' or ``.glb``
@@ -184,9 +228,19 @@ class GltfMesh(Mesh):
         name: str,
         gltf_path: str,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not (
             gltf_path.lower().endswith(".gltf")
@@ -221,7 +275,10 @@ class PlyMesh(Mesh):
             :class:`fiftyone.core.threed.MeshStandardMaterial`. If the PLY
             file contains vertex colors, the material is ignored and vertex
             colors are used
-        **kwargs: keyword arguments for the :class:`Mesh` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
 
     Raises:
         ValueError: if ``ply_path`` does not end with ``.ply``
@@ -235,9 +292,19 @@ class PlyMesh(Mesh):
         ply_path: str,
         is_point_cloud: bool = False,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not ply_path.lower().endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
@@ -266,7 +333,10 @@ class StlMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Mesh` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
 
     Raises:
         ValueError: if ``stl_path`` does not end with ``.stl``
@@ -279,9 +349,19 @@ class StlMesh(Mesh):
         name: str,
         stl_path: str,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not stl_path.lower().endswith(".stl"):
             raise ValueError("STL mesh must be a .stl file")

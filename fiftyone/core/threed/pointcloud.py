@@ -10,6 +10,7 @@ from typing import Optional
 
 from .material_3d import PointCloudMaterial
 from .object_3d import Object3D
+from .transformation import Quaternion, Vec3UnionType
 
 
 class PointCloud(Object3D):
@@ -28,8 +29,10 @@ class PointCloud(Object3D):
             :class:`fiftyone.core.threed.Scene` can have at most one asset
             flagged for orthographic projection. Defaults to ``False``. If
             multiple assets are flagged, the first one will be chosen
-        **kwargs: keyword arguments for the
-            :class:`fiftyone.core.threed.Object3D` parent class
+        visible (True): default visibility of the point cloud in the scene
+        position (None): the position of the object in point cloud space
+        quaternion (None): the quaternion of the point cloud in object space
+        scale (None): the scale of the point cloud in object space
 
     Raises:
         ValueError: if ``pcd_path`` does not end with ``.pcd``
@@ -43,9 +46,18 @@ class PointCloud(Object3D):
         pcd_path: str,
         material: Optional[PointCloudMaterial] = None,
         flag_for_projection: bool = False,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, **kwargs)
+        super().__init__(
+            name=name,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
         if not pcd_path.lower().endswith(".pcd"):
             raise ValueError("Point cloud must be a .pcd file")

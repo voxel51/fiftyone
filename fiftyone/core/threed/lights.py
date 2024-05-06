@@ -7,9 +7,10 @@ Lights definition for 3D visualization.
 """
 
 from math import pi as PI
+from typing import Optional
 
 from .object_3d import Object3D
-from .transformation import Vec3UnionType, Vector3
+from .transformation import Quaternion, Vec3UnionType, Vector3
 from .validators import normalize_to_vec3
 
 COLOR_DEFAULT_WHITE = "#ffffff"
@@ -21,17 +22,28 @@ class Light(Object3D):
     Args:
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
+        visible (True): default visibility of the object in the scene
+        position (None): the position of the light in object space
+        quaternion (None): the quaternion of the light in object space
+        scale (None): the scale of the light in object space
     """
 
     def __init__(
         self,
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
-        **kwargs,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        # remove 'name' from kwargs, if present
-        kwargs = {k: v for k, v in kwargs.items() if k != "name"}
-        super().__init__(name=self.__class__.__name__, **kwargs)
+        super().__init__(
+            name=self.__class__.__name__,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.color = color
         self.intensity = intensity
 
@@ -53,16 +65,29 @@ class AmbientLight(Light):
     Args:
         intensity (0.1): the intensity of the light in the range ``[0, 1]``
         color ("#ffffff"): the color of the light
-        kwargs: keyword arguments for the :class:`Light` parent class
+        visible (True): default visibility of the object in the scene
+        position (None): the position of the light in object space
+        quaternion (None): the quaternion of the light in object space
+        scale (None): the scale of the light in object space
     """
 
     def __init__(
         self,
         intensity: float = 0.1,
         color: str = COLOR_DEFAULT_WHITE,
-        **kwargs,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(intensity=intensity, color=color, **kwargs)
+        super().__init__(
+            intensity=intensity,
+            color=color,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
 
     def __repr__(self):
         kwargs_list = []
@@ -71,7 +96,7 @@ class AmbientLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
 
@@ -86,7 +111,10 @@ class DirectionalLight(Light):
         target ([0,0,0]): the target of the light
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for the :class:`Light` parent class
+        visible (True): default visibility of the object in the scene
+        position (None): the position of the light in object space
+        quaternion (None): the quaternion of the light in object space
+        scale (None): the scale of the light in object space
     """
 
     target: Vec3UnionType = Vector3(0, 0, 0)
@@ -96,9 +124,19 @@ class DirectionalLight(Light):
         target: Vec3UnionType = Vector3(0, 0, 0),
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
-        **kwargs,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(color=color, intensity=intensity, **kwargs)
+        super().__init__(
+            color=color,
+            intensity=intensity,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.target = normalize_to_vec3(target)
 
     def __repr__(self):
@@ -109,7 +147,7 @@ class DirectionalLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
@@ -127,7 +165,10 @@ class PointLight(Light):
         decay (2.0): the amount the light dims along the distance of the light
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for the :class:`Light` parent class
+        visible (True): default visibility of the object in the scene
+        position (None): the position of the light in object space
+        quaternion (None): the quaternion of the light in object space
+        scale (None): the scale of the light in object space
     """
 
     def __init__(
@@ -136,9 +177,19 @@ class PointLight(Light):
         decay: float = 2.0,
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
-        **kwargs,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(color=color, intensity=intensity, **kwargs)
+        super().__init__(
+            color=color,
+            intensity=intensity,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.distance = distance
         self.decay = decay
 
@@ -151,7 +202,7 @@ class PointLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
@@ -175,8 +226,10 @@ class SpotLight(Light):
         penumbra (0.0): the angle of the penumbra of the light's spotlight, in radians
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
-        **kwargs: keyword arguments for the :class:`Light` parent class
-    """
+        visible (True): default visibility of the object in the scene
+        position (None): the position of the light in object space
+        quaternion (None): the quaternion of the light in object space
+        scale (None): the scale of the light in object space"""
 
     def __init__(
         self,
@@ -187,9 +240,19 @@ class SpotLight(Light):
         penumbra: float = 0.0,
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
-        **kwargs,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(color=color, intensity=intensity, **kwargs)
+        super().__init__(
+            color=color,
+            intensity=intensity,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.target = normalize_to_vec3(target) if target else Vector3(0, 0, 0)
         self.distance = distance
         self.decay = decay
@@ -208,7 +271,7 @@ class SpotLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
