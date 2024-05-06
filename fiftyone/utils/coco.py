@@ -693,6 +693,9 @@ class COCODetectionDatasetExporter(
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
         classes (None): the list of possible class labels
+        categories (None): a list of category dicts in the format of
+            :meth:`parse_coco_categories` specifying the classes and their
+            category IDs
         info (None): a dict of info as returned by
             :meth:`load_coco_detection_annotations` to include in the exported
             JSON. If not provided, this info will be extracted when
@@ -725,6 +728,7 @@ class COCODetectionDatasetExporter(
         abs_paths=False,
         image_format=None,
         classes=None,
+        categories=None,
         info=None,
         extra_attrs=True,
         annotation_id=None,
@@ -754,6 +758,7 @@ class COCODetectionDatasetExporter(
         self.abs_paths = abs_paths
         self.image_format = image_format
         self.classes = classes
+        self.categories = categories
         self.info = info
         self.extra_attrs = extra_attrs
         self.annotation_id = annotation_id
@@ -799,8 +804,6 @@ class COCODetectionDatasetExporter(
     def log_collection(self, sample_collection):
         if self.info is None:
             self.info = sample_collection.info
-            if "categories" in self.info:
-                self._parse_classes()
 
     def export_sample(self, image_or_path, label, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -902,13 +905,9 @@ class COCODetectionDatasetExporter(
 
         licenses = _info.get("licenses", [])
 
-        try:
-            categories = _info.get("categories", None)
-            parse_coco_categories(categories)
-        except:
-            categories = None
-
-        if categories is None:
+        if self.categories is not None:
+            categories = self.categories
+        else:
             categories = [
                 {
                     "id": i,
@@ -933,13 +932,10 @@ class COCODetectionDatasetExporter(
         self._media_exporter.close()
 
     def _parse_classes(self):
-        if self.info is not None:
-            labels_map_rev = _parse_categories(self.info, self.classes)
-        else:
-            labels_map_rev = None
-
-        if labels_map_rev is not None:
-            self._labels_map_rev = labels_map_rev
+        if self.categories is not None:
+            self._labels_map_rev = _parse_categories(
+                self.categories, classes=self.classes
+            )
             self._dynamic_classes = False
         elif self.classes is None:
             self._classes = set()
@@ -2032,16 +2028,8 @@ def _get_matching_objects(coco_objects, class_ids):
     return [obj for obj in coco_objects if obj.category_id in class_ids]
 
 
-def _parse_categories(info, classes):
-    categories = info.get("categories", None)
-    if categories is None:
-        return None
-
-    try:
-        classes_map, _ = parse_coco_categories(categories)
-    except:
-        logger.debug("Failed to parse categories from info")
-        return None
+def _parse_categories(categories, classes=None):
+    classes_map, _ = parse_coco_categories(categories)
 
     if classes is None:
         return {c: i for i, c in classes_map.items()}
