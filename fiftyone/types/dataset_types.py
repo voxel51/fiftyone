@@ -824,28 +824,6 @@ class FiftyOneDataset(Dataset):
         return foud.FiftyOneDatasetExporter
 
 
-class FiftyOneChunkedDataset(ImageClassificationDataset):
-    """A disk representation of an entire
-    :class:`fiftyone.core.dataset.Dataset` stored on disk in a serialized JSON
-    format along with its source media split into chunks of `chunk_size` samples.
-
-    See :ref:`this page <FiftyOneChunkedDataset-import>` for
-    importing datasets of this type, and see
-    :ref:`this page <FiftyOneChunkedDataset-export>` for exporting
-    datasets of this type.
-    """
-
-    def get_dataset_importer_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneChunkedDatasetImporter
-
-    def get_dataset_exporter_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneChunkedDatasetExporter
-
-
 class LegacyFiftyOneDataset(Dataset):
     """Legacy disk representation of an entire
     :class:`fiftyone.core.dataset.Dataset` stored on disk in a serialized JSON

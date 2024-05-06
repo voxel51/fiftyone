@@ -152,16 +152,18 @@ def push_to_hub(
     with etau.TempDir() as tmp_dir:
         config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
 
-        export_kwargs = {
-            "export_dir": tmp_dir,
-            "dataset_type": dataset_type,
-            "label_field": label_field,
-            "frame_labels_field": frame_labels_field,
-            "export_media": True,
-        }
+        export_kwargs = {}
         if dataset_type == fot.FiftyOneDataset:
             export_kwargs["chunk_size"] = chunk_size
-        dataset.export(**export_kwargs)
+
+        dataset.export(
+            export_dir=tmp_dir,
+            dataset_type=dataset_type,
+            label_field=label_field,
+            frame_labels_field=frame_labels_field,
+            export_media=True,
+            **export_kwargs,
+        )
 
         _populate_config_file(
             config_filepath,
@@ -424,7 +426,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
                 repo_type="dataset",
             )
 
-    for runtype in ["annotations", "brain", "evaluations", "runs"]:
+    for runtype in ("annotations", "brain", "evaluations", "runs"):
         if runtype in subdirs:
             api.upload_folder(
                 folder_path=os.path.join(tmp_dir, runtype),
@@ -433,13 +435,14 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
                 repo_type="dataset",
             )
 
-    first_chunk_dir = os.path.join(tmp_dir, "data", "data_0")
+    first_chunk_dir = os.path.join(tmp_dir, "data", "data_1")
     if os.path.exists(first_chunk_dir):
         chunk_size = len(os.listdir(first_chunk_dir))
         num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
     else:
         chunk_size = None
         num_chunks = 1
+
     if os.path.exists(os.path.join(tmp_dir, "fields")):
         field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
     else:

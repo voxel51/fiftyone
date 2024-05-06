@@ -5139,7 +5139,6 @@ into FiftyOne to prepend the appropriate prefix to each media path:
     provide the appropriate `rel_dir` value as shown above when importing the
     dataset into FiftyOne in a new environment.
 
-
 .. _custom-dataset-importer:
 
 Custom formats

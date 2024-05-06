@@ -1112,18 +1112,16 @@ class MediaExporter(object):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when generating
             UUIDs for files
-        chunk_size (None): an optional chunk size to use when exporting media
-            files. If provided, the media files will be nested in subdirectories
-            of the output directory to prevent any one directory from becoming
-            too large. This parameter is only used when ``export_mode`` is
-            "move" or "symlink"
-
     """
 
     def __init__(
@@ -1131,10 +1129,10 @@ class MediaExporter(object):
         export_mode,
         export_path=None,
         rel_dir=None,
+        chunk_size=None,
         supported_modes=None,
         default_ext=None,
         ignore_exts=False,
-        chunk_size=None,
     ):
         if supported_modes is None:
             supported_modes = (True, False, "move", "symlink", "manifest")
@@ -1150,21 +1148,19 @@ class MediaExporter(object):
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         self.export_mode = export_mode
         self.export_path = export_path
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.supported_modes = supported_modes
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
-        self.chunk_size = chunk_size
 
         self._filename_maker = None
         self._manifest = None
         self._manifest_path = None
-        if self.chunk_size is not None:
-            self._chunk_num = 0
-            self._chunk_count = 0
 
     def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
         if export_mode in (False, "manifest"):
@@ -1266,13 +1262,6 @@ class MediaExporter(object):
 
         if rel_dir is not None:
             uuid = fou.safe_relpath(path, rel_dir)
-
-            ## add chunk num directory
-            if self.chunk_size is not None:
-                last_dir = os.path.basename(rel_dir)
-                chunk_dir = last_dir + "_" + str(self._chunk_num)
-                rel_dir = os.path.join(rel_dir, chunk_dir)
-                uuid = os.path.join(chunk_dir, uuid)
         else:
             uuid = os.path.basename(path)
 
@@ -1300,27 +1289,13 @@ class MediaExporter(object):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             default_ext=self.default_ext,
             ignore_exts=self.ignore_exts,
             ignore_existing=True,
         )
         self._manifest_path = manifest_path
         self._manifest = manifest
-
-    def _handle_not_seen(self, media_path, outpath, uuid):
-        is_fo3d_file = media_path.endswith(".fo3d")
-
-        if self.export_mode is True and not is_fo3d_file:
-            etau.copy_file(media_path, outpath)
-        elif self.export_mode == "move" and not is_fo3d_file:
-            etau.move_file(media_path, outpath)
-        elif self.export_mode == "symlink" and not is_fo3d_file:
-            etau.symlink_file(media_path, outpath)
-        elif self.export_mode == "manifest":
-            self._manifest[uuid] = media_path
-
-        if is_fo3d_file:
-            self._handle_fo3d_file(media_path, outpath, self.export_mode)
 
     def export(self, media_or_path, outpath=None):
         """Exports the given media.
@@ -1354,15 +1329,22 @@ class MediaExporter(object):
                 outpath = self._filename_maker.get_output_path(media_path)
                 uuid = self._get_uuid(outpath)
 
-                if self.chunk_size is not None:
-                    ## add chunk dir to outpath
-                    chunk_dir = os.path.dirname(uuid)
-                    common_dir = os.path.dirname(outpath)
-                    filename = os.path.basename(outpath)
-                    outpath = os.path.join(common_dir, chunk_dir, filename)
-
             if not seen:
-                self._handle_not_seen(media_path, outpath, uuid)
+                is_fo3d_file = media_path.endswith(".fo3d")
+
+                if self.export_mode is True and not is_fo3d_file:
+                    etau.copy_file(media_path, outpath)
+                elif self.export_mode == "move" and not is_fo3d_file:
+                    etau.move_file(media_path, outpath)
+                elif self.export_mode == "symlink" and not is_fo3d_file:
+                    etau.symlink_file(media_path, outpath)
+                elif self.export_mode == "manifest":
+                    self._manifest[uuid] = media_path
+
+                if is_fo3d_file:
+                    self._handle_fo3d_file(
+                        media_path, outpath, self.export_mode
+                    )
         else:
             media = media_or_path
 
@@ -1379,12 +1361,6 @@ class MediaExporter(object):
                     "Cannot export in-memory media when 'export_mode=%s'"
                     % self.export_mode
                 )
-
-        if self.chunk_size is not None:
-            self._chunk_count += 1
-            if self._chunk_count == self.chunk_size:
-                self._chunk_num += 1
-                self._chunk_count = 0
 
         return outpath, uuid
 
@@ -2140,6 +2116,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
@@ -2150,8 +2130,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             sample/frame files
         ordered (True): whether to preserve the order of the exported
             collections
-        chunk_size (None): the number of samples to put in each subdirectory
-            when exporting media. If ``None``, no chunking is performed.
     """
 
     def __init__(
@@ -2159,29 +2137,30 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
+        chunk_size=None,
         export_saved_views=True,
         export_runs=True,
         export_workspaces=True,
         use_dirs=False,
         ordered=True,
-        chunk_size=None,
     ):
         if export_media is None:
             export_media = True
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
         self.export_workspaces = export_workspaces
         self.use_dirs = use_dirs
         self.ordered = ordered
-        self.chunk_size = chunk_size
 
         self._data_dir = None
         self._fields_dir = None
@@ -2195,7 +2174,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
-        self._export_kwargs = {}
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -2213,15 +2191,12 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self._samples_path = os.path.join(self.export_dir, "samples.json")
             self._frames_path = os.path.join(self.export_dir, "frames.json")
 
-        self._setup_media_exporter()
-
-    def _setup_media_exporter(self):
         self._media_exporter = MediaExporter(
             self.export_media,
             export_path=self._data_dir,
             rel_dir=self.rel_dir,
-            supported_modes=(True, False, "move", "symlink"),
             chunk_size=self.chunk_size,
+            supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
 
@@ -2249,9 +2224,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             filepath = sd["filepath"]
             if self.export_media is not False:
                 # Store relative path
-                _, uuid = self._media_exporter.export(
-                    filepath, **self._export_kwargs
-                )
+                _, uuid = self._media_exporter.export(filepath)
                 sd["filepath"] = os.path.join("data", uuid)
             elif self.rel_dir is not None:
                 # Remove `rel_dir` prefix from filepath
@@ -2397,21 +2370,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if self.export_media is not False:
             # Store relative path
             media_exporter = self._get_media_field_exporter(field_name)
-            _, uuid = media_exporter.export(value, **self._export_kwargs)
+            _, uuid = media_exporter.export(value)
             d[key] = os.path.join("fields", field_name, uuid)
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from path
             d[key] = fou.safe_relpath(value, self.rel_dir, default=value)
-
-    def _create_media_field_exporter(self, field_dir):
-        media_exporter = MediaExporter(
-            self.export_media,
-            export_path=field_dir,
-            rel_dir=self.rel_dir,
-            supported_modes=(True, False, "move", "symlink"),
-            chunk_size=self.chunk_size,
-        )
-        return media_exporter
 
     def _get_media_field_exporter(self, field_name):
         media_exporter = self._media_field_exporters.get(field_name, None)
@@ -2419,7 +2382,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             return media_exporter
 
         field_dir = os.path.join(self._fields_dir, field_name)
-        media_exporter = self._create_media_field_exporter(field_dir)
+        media_exporter = MediaExporter(
+            self.export_media,
+            export_path=field_dir,
+            rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
+            supported_modes=(True, False, "move", "symlink"),
+        )
         media_exporter.setup()
         self._media_field_exporters[field_name] = media_exporter
 

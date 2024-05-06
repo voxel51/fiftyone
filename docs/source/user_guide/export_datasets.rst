@@ -3946,11 +3946,11 @@ This will create a directory structure like the following:
         metadata.json
         samples.json
         data/
-            data_0/
+            data_1/
                 <filename1>.<ext>
                 <filename2>.<ext>
                 ...
-            data_1/
+            data_2/
                 <filename1>.<ext>
                 <filename2>.<ext>
             ...
