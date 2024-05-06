@@ -129,7 +129,8 @@ def add_coco_labels(
             will be created if necessary
         labels_or_path: a list of COCO annotations or the path to a JSON file
             containing such data on disk
-        classes: the list of class label strings
+        classes: the list of class label strings or a dict mapping class IDs to
+            class labels
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
         coco_id_field (None): this parameter determines how to map the
@@ -194,6 +195,11 @@ def add_coco_labels(
     view.compute_metadata()
     widths, heights = view.values(["metadata.width", "metadata.height"])
 
+    if isinstance(classes, dict):
+        classes_map = classes
+    else:
+        classes_map = {i: label for i, label in enumerate(classes)}
+
     labels = []
     for _coco_objects, width, height in zip(coco_objects, widths, heights):
         frame_size = (width, height)
@@ -202,7 +208,7 @@ def add_coco_labels(
             _labels = _coco_objects_to_detections(
                 _coco_objects,
                 frame_size,
-                classes,
+                classes_map,
                 None,
                 False,
                 include_annotation_id,
@@ -212,7 +218,7 @@ def add_coco_labels(
                 _labels = _coco_objects_to_polylines(
                     _coco_objects,
                     frame_size,
-                    classes,
+                    classes_map,
                     None,
                     tolerance,
                     include_annotation_id,
@@ -221,7 +227,7 @@ def add_coco_labels(
                 _labels = _coco_objects_to_detections(
                     _coco_objects,
                     frame_size,
-                    classes,
+                    classes_map,
                     None,
                     True,
                     include_annotation_id,
@@ -230,7 +236,7 @@ def add_coco_labels(
             _labels = _coco_objects_to_keypoints(
                 _coco_objects,
                 frame_size,
-                classes,
+                classes_map,
                 None,
                 include_annotation_id,
             )
@@ -408,7 +414,7 @@ class COCODetectionDatasetImporter(
 
         self._label_types = _label_types
         self._info = None
-        self._classes = None
+        self._classes_map = None
         self._license_map = None
         self._supercategory_map = None
         self._image_paths_map = None
@@ -451,15 +457,16 @@ class COCODetectionDatasetImporter(
             frame_size = (width, height)
 
             if self.classes is not None and self.only_matching:
+                all_classes = list(self._classes_map.values())
                 coco_objects = _get_matching_objects(
-                    coco_objects, self.classes, self._classes
+                    coco_objects, self.classes, all_classes
                 )
 
             if "detections" in self._label_types:
                 detections = _coco_objects_to_detections(
                     coco_objects,
                     frame_size,
-                    self._classes,
+                    self._classes_map,
                     self._supercategory_map,
                     False,  # no segmentations
                     self.include_annotation_id,
@@ -472,7 +479,7 @@ class COCODetectionDatasetImporter(
                     segmentations = _coco_objects_to_polylines(
                         coco_objects,
                         frame_size,
-                        self._classes,
+                        self._classes_map,
                         self._supercategory_map,
                         self.tolerance,
                         self.include_annotation_id,
@@ -481,7 +488,7 @@ class COCODetectionDatasetImporter(
                     segmentations = _coco_objects_to_detections(
                         coco_objects,
                         frame_size,
-                        self._classes,
+                        self._classes_map,
                         self._supercategory_map,
                         True,  # load segmentations
                         self.include_annotation_id,
@@ -494,7 +501,7 @@ class COCODetectionDatasetImporter(
                 keypoints = _coco_objects_to_keypoints(
                     coco_objects,
                     frame_size,
-                    self._classes,
+                    self._classes_map,
                     self._supercategory_map,
                     self.include_annotation_id,
                 )
@@ -548,13 +555,17 @@ class COCODetectionDatasetImporter(
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
                 info,
-                classes,
+                classes_map,
                 supercategory_map,
                 images,
                 annotations,
             ) = load_coco_detection_annotations(
                 self.labels_path, extra_attrs=self.extra_attrs
             )
+
+            classes = None
+            if classes_map is not None:
+                classes = list(classes_map.values())
 
             if classes is not None:
                 info["classes"] = classes
@@ -582,7 +593,7 @@ class COCODetectionDatasetImporter(
             }
         else:
             info = {}
-            classes = None
+            classes_map = None
             supercategory_map = None
             image_dicts_map = {}
             annotations = None
@@ -597,7 +608,7 @@ class COCODetectionDatasetImporter(
             license_map = None
 
         self._info = info
-        self._classes = classes
+        self._classes_map = classes_map
         self._license_map = license_map
         self._supercategory_map = supercategory_map
         self._image_paths_map = image_paths_map
@@ -960,7 +971,7 @@ class COCOObject(object):
     def to_polyline(
         self,
         frame_size,
-        classes=None,
+        classes_map=None,
         supercategory_map=None,
         tolerance=None,
         include_id=False,
@@ -970,7 +981,7 @@ class COCOObject(object):
 
         Args:
             frame_size: the ``(width, height)`` of the image
-            classes (None): the list of classes
+            classes_map (None): a dict mapping class IDs to class labels
             supercategory_map (None): a dict mapping class names to category
                 dicts
             tolerance (None): a tolerance, in pixels, when generating
@@ -987,7 +998,7 @@ class COCOObject(object):
             return None
 
         label, attributes = self._get_object_label_and_attributes(
-            classes, supercategory_map, include_id
+            classes_map, supercategory_map, include_id
         )
         attributes.update(self.attributes)
 
@@ -1007,7 +1018,7 @@ class COCOObject(object):
     def to_keypoints(
         self,
         frame_size,
-        classes=None,
+        classes_map=None,
         supercategory_map=None,
         include_id=False,
     ):
@@ -1016,7 +1027,7 @@ class COCOObject(object):
 
         Args:
             frame_size: the ``(width, height)`` of the image
-            classes (None): the list of classes
+            classes_map (None): a dict mapping class IDs to class labels
             supercategory_map (None): a dict mapping class names to category
                 dicts
             include_id (False): whether to include the COCO ID of the object as
@@ -1030,7 +1041,7 @@ class COCOObject(object):
             return None
 
         label, attributes = self._get_object_label_and_attributes(
-            classes, supercategory_map, include_id
+            classes_map, supercategory_map, include_id
         )
         attributes.update(self.attributes)
 
@@ -1058,7 +1069,7 @@ class COCOObject(object):
     def to_detection(
         self,
         frame_size,
-        classes=None,
+        classes_map=None,
         supercategory_map=None,
         load_segmentation=False,
         include_id=False,
@@ -1068,7 +1079,7 @@ class COCOObject(object):
 
         Args:
             frame_size: the ``(width, height)`` of the image
-            classes (None): the list of classes
+            classes_map (None): a dict mapping class IDs to class labels
             supercategory_map (None): a dict mapping class names to category
                 dicts
             load_segmentation (False): whether to load the segmentation mask
@@ -1084,7 +1095,7 @@ class COCOObject(object):
             return None
 
         label, attributes = self._get_object_label_and_attributes(
-            classes, supercategory_map, include_id
+            classes_map, supercategory_map, include_id
         )
         attributes.update(self.attributes)
 
@@ -1310,10 +1321,10 @@ class COCOObject(object):
         return str(self.category_id)
 
     def _get_object_label_and_attributes(
-        self, classes, supercategory_map, include_id
+        self, classes_map, supercategory_map, include_id
     ):
-        if classes:
-            label = classes[self.category_id]
+        if classes_map:
+            label = classes_map[self.category_id]
         else:
             label = str(self.category_id)
 
@@ -1354,7 +1365,7 @@ def load_coco_detection_annotations(json_path, extra_attrs=True):
         a tuple of
 
         -   info: a dict of dataset info
-        -   classes: a list of classes
+        -   classes_map: a dict mapping class IDs to labels
         -   supercategory_map: a dict mapping class labels to category dicts
         -   images: a dict mapping image IDs to image dicts
         -   annotations: a dict mapping image IDs to list of
@@ -1381,9 +1392,9 @@ def _parse_coco_detection_annotations(d, extra_attrs=True):
 
     # Load classes
     if categories is not None:
-        classes, supercategory_map = parse_coco_categories(categories)
+        classes_map, supercategory_map = parse_coco_categories(categories)
     else:
-        classes = None
+        classes_map = None
         supercategory_map = None
 
     # Load image metadata
@@ -1402,17 +1413,14 @@ def _parse_coco_detection_annotations(d, extra_attrs=True):
     else:
         annotations = None
 
-    return info, classes, supercategory_map, images, annotations
+    return info, classes_map, supercategory_map, images, annotations
 
 
 def parse_coco_categories(categories):
     """Parses the COCO categories list.
 
-    The returned ``classes`` contains all class IDs from ``[0, max_id]``,
-    inclusive.
-
     Args:
-        categories: a dict of the form::
+        categories: a list of dict of the form::
 
             [
                 ...
@@ -1429,25 +1437,15 @@ def parse_coco_categories(categories):
     Returns:
         a tuple of
 
-        -   classes: a list of classes
+        -   classes_map: a dict mapping class IDs to labels
         -   supercategory_map: a dict mapping class labels to category dicts
     """
-    cat_map = {c["id"]: c for c in categories}
+    classes_map = {
+        c["id"]: c["name"] if "name" in c else str(c["id"]) for c in categories
+    }
+    supercategory_map = {c["name"]: c for c in categories}
 
-    classes = []
-    supercategory_map = {}
-    for cat_id in range(max(cat_map, default=-1) + 1):
-        category = cat_map.get(cat_id, None)
-        try:
-            name = category["name"]
-        except:
-            name = str(cat_id)
-
-        classes.append(name)
-        if category is not None:
-            supercategory_map[name] = category
-
-    return classes, supercategory_map
+    return classes_map, supercategory_map
 
 
 def download_coco_dataset_split(
@@ -1623,11 +1621,14 @@ def download_coco_dataset_split(
         d = etas.load_json(full_anno_path)
         (
             _,
-            all_classes,
+            all_classes_map,
             _,
             images,
             annotations,
         ) = _parse_coco_detection_annotations(d, extra_attrs=True)
+
+        if all_classes_map is not None:
+            all_classes = list(all_classes_map.values())
 
         if image_ids is not None:
             # Start with specific images
@@ -1717,7 +1718,8 @@ def download_coco_dataset_split(
 
             categories = d.get("categories", None)
             if categories is not None:
-                all_classes, _ = parse_coco_categories(categories)
+                all_classes_map, _ = parse_coco_categories(categories)
+                all_classes = list(all_classes_map.values())
             else:
                 all_classes = None
 
@@ -2002,7 +2004,7 @@ def _get_matching_objects(coco_objects, target_classes, all_classes):
 def _coco_objects_to_polylines(
     coco_objects,
     frame_size,
-    classes,
+    classes_map,
     supercategory_map,
     tolerance,
     include_id,
@@ -2011,7 +2013,7 @@ def _coco_objects_to_polylines(
     for coco_obj in coco_objects:
         polyline = coco_obj.to_polyline(
             frame_size,
-            classes=classes,
+            classes_map=classes_map,
             supercategory_map=supercategory_map,
             tolerance=tolerance,
             include_id=include_id,
@@ -2029,7 +2031,7 @@ def _coco_objects_to_polylines(
 def _coco_objects_to_detections(
     coco_objects,
     frame_size,
-    classes,
+    classes_map,
     supercategory_map,
     load_segmentations,
     include_id,
@@ -2038,7 +2040,7 @@ def _coco_objects_to_detections(
     for coco_obj in coco_objects:
         detection = coco_obj.to_detection(
             frame_size,
-            classes=classes,
+            classes_map=classes_map,
             supercategory_map=supercategory_map,
             load_segmentation=load_segmentations,
             include_id=include_id,
@@ -2058,7 +2060,7 @@ def _coco_objects_to_detections(
 def _coco_objects_to_keypoints(
     coco_objects,
     frame_size,
-    classes,
+    classes_map,
     supercategory_map,
     include_id,
 ):
@@ -2066,7 +2068,7 @@ def _coco_objects_to_keypoints(
     for coco_obj in coco_objects:
         keypoint = coco_obj.to_keypoints(
             frame_size,
-            classes=classes,
+            classes_map=classes_map,
             supercategory_map=supercategory_map,
             include_id=include_id,
         )
