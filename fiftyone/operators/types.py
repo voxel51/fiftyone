@@ -275,6 +275,19 @@ class Object(BaseType):
         self.define_property(name, obj, view=grid)
         return obj
 
+    def plot(self, name, **kwargs):
+        """Defines an object property displayed as a plot.
+
+        Args:
+            name: the name of the property
+            config (None): the chart config
+            layout (None): the chart layout
+        """
+        plot = PlotlyView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=plot)
+        return obj
+
     def clone(self):
         """Clones the definition of the object.
 

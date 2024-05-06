@@ -113,8 +113,6 @@ export default function PlotlyView(props) {
   const mergedConfig = merge({}, configDefaults, config);
   const mergedData = mergeData(data, dataDefaults);
 
-  console.log(mergedLayout);
-
   return (
     <Box
       {...getComponentProps(props, "container")}
@@ -188,6 +186,9 @@ const EventDataMappers = {
 };
 
 function mergeData(data, defaults) {
+  if (!Array.isArray(data)) {
+    data = [data];
+  }
   return (data || []).map((trace) => {
     return {
       ...trace,
