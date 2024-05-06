@@ -812,7 +812,7 @@ class ClearPanelData extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    return { updatePanelState: useUpdatePanelStatePartial() };
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.updatePanelState(ctx, { targetPartial: "data", clear: true });
@@ -844,7 +844,7 @@ class SetPanelData extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    return { updatePanelState: useUpdatePanelStatePartial() };
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.updatePanelState(ctx, { targetPartial: "data" });
@@ -860,19 +860,19 @@ class PatchPanelData extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    return { updatePanelState: useUpdatePanelStatePartial() };
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.updatePanelState(ctx, { targetPartial: "data", patch: true });
   }
 }
 
-function useUpdatePanelStatePartial() {
-  const setPanelStateById = useSetPanelStateById();
+function useUpdatePanelStatePartial(local?: boolean) {
+  const setPanelStateById = useSetPanelStateById(local);
   return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
-      setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
         const currentCustomPanelState = current[targetPartial] || {};
         let updatedState;
         const param = ctx.params[targetParam];
@@ -942,7 +942,7 @@ class ShowPanelOutput extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
-    return { updatePanelState: useUpdatePanelStatePartial() };
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.updatePanelState(ctx, {

@@ -37,9 +37,9 @@ export function CustomPanel(props: CustomPanelProps) {
     panelState,
     handlePanelStateChange,
     handlePanelStatePathChange,
+    panelSchema,
     data,
   } = useCustomPanelHooks(props);
-  const panelSchema = panelState?.schema;
   const onLoadError = panelState?.onLoadError;
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
 
