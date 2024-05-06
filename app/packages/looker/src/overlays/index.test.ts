@@ -37,7 +37,7 @@ describe("label overlay processing", () => {
       index: 1,
     } as RegularLabel);
 
-    const hashLabelWithUndefindedIndex = getHashLabel({
+    const hashLabelWithUndefinedIndex = getHashLabel({
       id: "id-no-index",
       label: "label-no-index",
     } as RegularLabel);
@@ -48,7 +48,7 @@ describe("label overlay processing", () => {
 
     expect(hashLabelWithIndex0).toEqual("zero-index-label.0");
     expect(hashLabelWithIndex1).toEqual("one-index-label.1");
-    expect(hashLabelWithUndefindedIndex).toEqual("label-no-index.id-no-index");
+    expect(hashLabelWithUndefinedIndex).toEqual("label-no-index.id-no-index");
     expect(hashLabelWithUndefinedIndexUndefinedId).toEqual(
       "only-label-no-index-no-id"
     );
