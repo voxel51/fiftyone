@@ -377,11 +377,8 @@ session = fo.launch_app(dataset)
 
 def _extract_number(filename):
     match = re.search(r"\d+", filename)
-    if match:
-        return int(match.group(0))
-    return float(
-        "inf"
-    )  # Return a very large number for filenames without numbers
+    # Return a very large number for filenames without numbers
+    return int(match.group(0)) if match else float("inf")
 
 
 def _is_already_uploaded(api, repo_id, folder_path):
