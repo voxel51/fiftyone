@@ -96,7 +96,7 @@ class AmbientLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, str) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
 
@@ -147,7 +147,7 @@ class DirectionalLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
@@ -202,7 +202,7 @@ class PointLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
@@ -271,7 +271,7 @@ class SpotLight(Light):
             ("color", self.color),
             ("intensity", self.intensity),
         ]:
-            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+            kwargs_list.append(f"{k}={repr(v)}")
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
