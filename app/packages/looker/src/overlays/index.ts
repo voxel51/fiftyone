@@ -31,7 +31,7 @@ export const fromLabel = (overlayType) => (field, label) =>
   label ? [new overlayType(field, label)] : [];
 
 export const fromLabelList = (overlayType, list_key) => (field, labels) =>
-  labels?.[list_key].map((label) => new overlayType(field, label)) ?? [];
+  labels?.[list_key]?.map((label) => new overlayType(field, label)) ?? [];
 
 export { ClassificationsOverlay };
 

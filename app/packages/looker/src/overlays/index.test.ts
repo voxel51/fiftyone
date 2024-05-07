@@ -15,4 +15,10 @@ describe("label overlay processing", () => {
       index.fromLabelList(DetectionOverlay, "detections")("field", undefined)
     ).toStrictEqual([]);
   });
+
+  it("resolves empty object label lists", () => {
+    expect(
+      index.fromLabelList(DetectionOverlay, "detections")("field", {})
+    ).toStrictEqual([]);
+  });
 });
