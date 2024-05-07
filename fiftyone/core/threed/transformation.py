@@ -1,3 +1,4 @@
+import numbers
 from typing import List, Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -140,7 +141,7 @@ def coerce_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
     if v is None:
         return None
 
-    if isinstance(v, (int, float, np.number)):
+    if isinstance(v, (int, float, numbers.Real)):
         return Vector3(v, v, v)
 
     return normalize_to_vec3(v)

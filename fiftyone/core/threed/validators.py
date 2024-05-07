@@ -6,7 +6,9 @@ Simple validator utilities
 |
 """
 import re
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
+
+import matplotlib.colors as mcolors
 
 
 def validate_bool(v: Optional[bool], nullable: bool = False):
@@ -22,11 +24,11 @@ def validate_bool(v: Optional[bool], nullable: bool = False):
     return v
 
 
-def validate_choice(v: Any, options: Iterable, nullable: bool = False):
+def validate_choice(v: Any, options: frozenset, nullable: bool = False):
     if nullable and v is None:
         return None
 
-    if v not in frozenset(options):
+    if v not in options:
         raise ValueError(f"Value '{v}' not in options: {options}")
 
     return v
@@ -39,10 +41,17 @@ def validate_color(v: Optional[str], nullable: bool = False):
     if not isinstance(v, str):
         raise ValueError(f"Color must be of string type: {v}")
 
-    if not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
-        raise ValueError(f"Color string '{v}' must be in the form #ffffff")
+    lowered = v.strip().replace("_", "").lower()
+    if lowered in mcolors.CSS4_COLORS:
+        return lowered
 
-    return v
+    if re.fullmatch(r"(0x|#)[0-9a-fA-F]{6}", lowered):
+        return lowered
+
+    raise ValueError(
+        f"Color string '{v}' must be in the form '#ffffff', '0xffffff', or"
+        " web color name such as 'red'"
+    )
 
 
 def validate_float(v: Optional[float], nullable: bool = False):

@@ -47,12 +47,18 @@ def assert_color_prop(
     tester.assertRaises(ValueError, setattr, obj, attribute, "#00001")
     tester.assertRaises(ValueError, setattr, obj, attribute, "#10000g")
     tester.assertRaises(ValueError, setattr, obj, attribute, "#GGGFFF")
+    tester.assertRaises(ValueError, setattr, obj, attribute, "0xGGGFFF")
+    tester.assertRaises(ValueError, setattr, obj, attribute, "majesticunknown")
 
     _none_check(tester, obj, attribute, nullable)
 
     # Happy path
     setattr(obj, attribute, "#ff6D04")
-    tester.assertEqual(getattr(obj, attribute), "#ff6D04")
+    tester.assertEqual(getattr(obj, attribute), "#ff6d04")
+    setattr(obj, attribute, "0xff6D04")
+    tester.assertEqual(getattr(obj, attribute), "0xff6d04")
+    setattr(obj, attribute, "red")
+    tester.assertEqual(getattr(obj, attribute), "red")
 
 
 def assert_float_prop(
