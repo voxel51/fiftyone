@@ -1,35 +1,35 @@
 import {
   COLOR_OPTIONS,
   Dialog,
+  MuiButton,
   Selection,
   TextField,
 } from "@fiftyone/components";
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { executeOperator, useOperatorExecutor } from "@fiftyone/operators";
 import { sessionSpaces } from "@fiftyone/state";
 import { Delete } from "@mui/icons-material";
 import {
   Box,
-  Button,
   DialogActions,
   DialogContent,
   DialogTitle,
   Stack,
   Typography,
 } from "@mui/material";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback, useRecoilState, useResetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import { useSavedSpaces } from "./hooks";
+import { useWorkspaces } from "./hooks";
+import { LOAD_WORKSPACE_OPERATOR } from "./constants";
+
+const SAVE_WORKSPACE_OPERATOR = "@voxel51/operators/save_workspace";
+const DELETE_WORKSPACE_OPERATOR = "@voxel51/operators/delete_workspace";
 
 export default function WorkspaceEditor() {
-  const { reset } = useSavedSpaces();
+  const { reset } = useWorkspaces();
   const [state, setState] = useRecoilState(workspaceEditorStateAtom);
   const resetEditor = useResetRecoilState(workspaceEditorStateAtom);
   const { open, name, description, color, edit } = state;
-  const saveOperator = useOperatorExecutor("@voxel51/operators/save_workspace");
-  const deleteOperator = useOperatorExecutor(
-    "@voxel51/operators/delete_workspace"
-  );
   const getSessionSpaces = useRecoilCallback(({ snapshot }) => async () => {
     const spaces = await snapshot.getPromise(sessionSpaces);
     return spaces;
@@ -37,8 +37,12 @@ export default function WorkspaceEditor() {
   const colorObject = useMemo(() => {
     return COLOR_OPTIONS.find((c) => c.color === color);
   }, [color]);
+  const [status, setStatus] = useState("");
 
   const handleClose = useCallback(resetEditor, [resetEditor]);
+
+  const isSaving = status === "saving";
+  const isDeleting = status === "deleting";
 
   return (
     <Dialog open={open} onClose={handleClose}>
@@ -96,40 +100,64 @@ export default function WorkspaceEditor() {
       <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
         <Box>
           {edit && (
-            <Button
-              startIcon={<Delete color="error" />}
+            <MuiButton
+              startIcon={<Delete color={isDeleting ? "disabled" : "error"} />}
               color="error"
               onClick={() => {
-                deleteOperator.execute({ name }, { skipOutput: true });
-                reset();
-                handleClose();
+                setStatus("deleting");
+                executeOperator(
+                  DELETE_WORKSPACE_OPERATOR,
+                  { name },
+                  (result) => {
+                    if (!result.error) {
+                      reset();
+                      handleClose();
+                      setStatus("");
+                    }
+                  }
+                );
               }}
+              disabled={isDeleting}
+              loading={isDeleting}
             >
               Delete
-            </Button>
+            </MuiButton>
           )}
         </Box>
         <Stack spacing={2} direction="row">
-          <Button onClick={handleClose} color="secondary" variant="outlined">
+          <MuiButton onClick={handleClose} color="secondary" variant="outlined">
             Cancel
-          </Button>
-          <Button
+          </MuiButton>
+          <MuiButton
             variant="contained"
             onClick={async () => {
-              saveOperator.execute(
+              setStatus("saving");
+              executeOperator(
+                SAVE_WORKSPACE_OPERATOR,
                 {
                   ...state,
                   current_name: edit ? state.oldName : undefined,
                   spaces: await getSessionSpaces(),
                 },
-                { skipOutput: true }
+                (result) => {
+                  if (!result.error) {
+                    reset();
+                    handleClose();
+                    setStatus("");
+                    if (!edit) {
+                      executeOperator(LOAD_WORKSPACE_OPERATOR, {
+                        name: state.name,
+                      });
+                    }
+                  }
+                }
               );
-              reset();
-              handleClose();
             }}
+            disabled={isSaving}
+            loading={isSaving}
           >
             Save
-          </Button>
+          </MuiButton>
         </Stack>
       </DialogActions>
     </Dialog>

@@ -13,7 +13,7 @@ import { useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
 import { useWorkspacePermission } from "./hooks";
 
-export default function SavedSpace(props: SavedSpacePropsType) {
+export default function Workspace(props: WorkspacePropsType) {
   const { name, description, color, onClick, onEdit } = props;
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const { canEdit, disabledInfo } = useWorkspacePermission();
@@ -79,7 +79,7 @@ export default function SavedSpace(props: SavedSpacePropsType) {
   );
 }
 
-type SavedSpacePropsType = {
+type WorkspacePropsType = {
   name: string;
   color: string;
   description: string;

@@ -419,13 +419,11 @@ def list_files(dirpath):
     return dirs + files
 
 
-class ListSavedWorkspaces(foo.Operator):
+class ListWorkspaces(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="list_saved_workspaces",
-            label="List Saved Workspaces",
-            unlisted=True,
+            name="list_workspaces", label="List Workspaces", unlisted=True
         )
 
     def execute(self, ctx):
@@ -525,7 +523,7 @@ BUILTIN_OPERATORS = [
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
     ListFiles(_builtin=True),
-    ListSavedWorkspaces(_builtin=True),
+    ListWorkspaces(_builtin=True),
     LoadWorkspace(_builtin=True),
     SaveWorkspace(_builtin=True),
     DeleteWorkspace(_builtin=True),
