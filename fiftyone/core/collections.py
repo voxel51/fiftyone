@@ -1041,7 +1041,7 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
+            # These fields are currently not declared by default on 3D
             # datasets/slices, but they should be considered as default
             media_types = media_types if media_types else set()
             if issubclass(field.document_type, fol.Detection) and (
@@ -1102,11 +1102,12 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
-            # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            # These fields are currently not declared by default on 3D
+            # datasets/slices, but they should be
+            if issubclass(field.document_type, fol.Detection) and (
+                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                or self._contains_media_type(fom.THREE_D, any_slice=True)
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
