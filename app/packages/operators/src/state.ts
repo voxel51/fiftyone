@@ -27,8 +27,8 @@ import {
   resolveExecutionOptions,
 } from "./operators";
 import { Places } from "./types";
+import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
-import { ExecutionCallback } from "./types-internal";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -831,13 +831,6 @@ export function useOperatorBrowser() {
     query,
   };
 }
-
-type OperatorExecutorOptions = {
-  delegationTarget?: string;
-  requestDelegation?: boolean;
-  skipOutput?: boolean;
-  callback?: ExecutionCallback;
-};
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
   if (!uri.includes("/")) {

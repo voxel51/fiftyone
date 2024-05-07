@@ -15,24 +15,31 @@ export function useWorkspaces() {
   const listWorkspace = useCallback(() => {
     if (listWorkspaceExecuting) return;
     setListWorkspaceExecuting(true);
-    executeOperator(LIST_WORKSPACES_OPERATOR, {}, (result) => {
-      setState((state) => {
-        return {
-          ...state,
-          initialized: true,
-          workspaces: result?.result?.workspaces,
-          dataset: currentDataset,
-        };
-      });
-      setListWorkspaceExecuting(false);
-      if (result.error) {
-        console.error(result.error);
+    executeOperator(
+      LIST_WORKSPACES_OPERATOR,
+      {},
+      {
+        callback: (result) => {
+          setState((state) => {
+            return {
+              ...state,
+              initialized: true,
+              workspaces: result?.result?.workspaces,
+              dataset: currentDataset,
+            };
+          });
+          setListWorkspaceExecuting(false);
+          if (result.error) {
+            console.error(result.error);
+          }
+        },
+        skipOutput: true,
       }
-    });
+    );
   }, [listWorkspaceExecuting, setState, currentDataset]);
 
   const loadWorkspace = useCallback((name: string) => {
-    executeOperator(LOAD_WORKSPACE_OPERATOR, { name });
+    executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
   }, []);
 
   const existingSlugs = useMemo(() => {
