@@ -1,9 +1,4 @@
-import {
-  ColoredDot,
-  DEFAULT_COLOR,
-  Popout,
-  scrollable,
-} from "@fiftyone/components";
+import { ColoredDot, Popout, scrollable } from "@fiftyone/components";
 import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
@@ -66,7 +61,7 @@ export default function Workspaces() {
           zIndex: 1,
           color: (theme) => theme.palette.text.secondary,
           fontSize: 14,
-          pr: "20px",
+          pr: "19px",
         }}
         endIcon={<AutoAwesomeMosaicOutlined sx={{ fontSize: 18 }} />}
       >

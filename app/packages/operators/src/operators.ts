@@ -3,20 +3,26 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
-import { ExecutionCallback } from "./types-internal";
+import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 
 class InvocationRequest {
-  constructor(public operatorURI: string, public params: any = {}) {}
+  constructor(
+    public operatorURI: string,
+    public params: unknown = {},
+    public options?: OperatorExecutorOptions
+  ) {}
   static fromJSON(json: any) {
     return new InvocationRequest(
       json.operator_uri || json.operator_name,
-      json.params
+      json.params,
+      json.options
     );
   }
   toJSON() {
     return {
       operatorURI: this.operatorURI,
       params: this.params,
+      options: this.options,
     };
   }
 }
@@ -481,14 +487,14 @@ export function resolveOperatorURI(operatorURI) {
 }
 
 export async function executeOperator(
-  operatorURI,
-  params: any = {},
-  callback?: ExecutionCallback
+  operatorURI: string,
+  params: unknown = {},
+  options?: OperatorExecutorOptions
 ) {
   operatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
-  const request = new InvocationRequest(operatorURI, params);
-  queue.add(request, callback);
+  const request = new InvocationRequest(operatorURI, params, options);
+  queue.add(request);
 }
 
 export async function validateOperatorInputs(
@@ -801,8 +807,8 @@ export class InvocationRequestQueue {
   generateId() {
     return Math.random().toString(36).substr(2, 9);
   }
-  add(request: InvocationRequest, callback?: ExecutionCallback) {
-    const item = new QueueItem(this.generateId(), request, callback);
+  add(request: InvocationRequest) {
+    const item = new QueueItem(this.generateId(), request);
     this._queue.push(item);
     this._notifySubscribers();
   }

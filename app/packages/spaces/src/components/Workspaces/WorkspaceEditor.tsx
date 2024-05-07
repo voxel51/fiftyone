@@ -108,12 +108,15 @@ export default function WorkspaceEditor() {
                 executeOperator(
                   DELETE_WORKSPACE_OPERATOR,
                   { name },
-                  (result) => {
-                    if (!result.error) {
-                      reset();
-                      handleClose();
-                      setStatus("");
-                    }
+                  {
+                    callback: (result) => {
+                      if (!result.error) {
+                        reset();
+                        handleClose();
+                        setStatus("");
+                      }
+                    },
+                    skipOutput: true,
                   }
                 );
               }}
@@ -139,17 +142,24 @@ export default function WorkspaceEditor() {
                   current_name: edit ? state.oldName : undefined,
                   spaces: await getSessionSpaces(),
                 },
-                (result) => {
-                  if (!result.error) {
-                    reset();
-                    handleClose();
-                    setStatus("");
-                    if (!edit) {
-                      executeOperator(LOAD_WORKSPACE_OPERATOR, {
-                        name: state.name,
-                      });
+                {
+                  callback: (result) => {
+                    if (!result.error) {
+                      reset();
+                      handleClose();
+                      setStatus("");
+                      if (!edit) {
+                        executeOperator(
+                          LOAD_WORKSPACE_OPERATOR,
+                          {
+                            name: state.name,
+                          },
+                          { skipOutput: true }
+                        );
+                      }
                     }
-                  }
+                  },
+                  skipOutput: true,
                 }
               );
             }}

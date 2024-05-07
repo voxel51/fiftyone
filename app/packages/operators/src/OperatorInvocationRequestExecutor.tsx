@@ -31,6 +31,7 @@ function RequestExecutor({ queueItem, onSuccess, onError }) {
   useEffect(() => {
     executor.execute(queueItem.request.params, {
       callback: queueItem.callback,
+      ...(queueItem?.request?.options || {}),
     });
   }, []);
 
