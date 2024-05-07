@@ -1045,8 +1045,12 @@ class SampleCollection(object):
             # datasets/slices, but they should be considered as default
             media_types = media_types if media_types else set()
             if issubclass(field.document_type, fol.Detection) and (
-                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
-                or fom.POINT_CLOUD in media_types
+                (
+                    self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                    or self._contains_media_type(fom.THREE_D, any_slice=True)
+                    or fom.POINT_CLOUD in media_types
+                    or fom.THREE_D in media_types
+                )
             ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
