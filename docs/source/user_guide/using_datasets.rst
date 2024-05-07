@@ -4345,7 +4345,7 @@ Any |Sample| whose `filepath` is a file with extension `.fo3d` is
 recognized as a 3D sample, and datasets composed of 3D
 samples have media type `3d`.
 
-An FO3D file encapsulates a FiftyOne 3D scene constructed using the
+An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
 to add, remove, and manipulate 3D objects in the scene. A scene is 
 internally represented as a n-ary tree of 3D objects, where each 
@@ -4370,6 +4370,11 @@ serializes the scene into an FO3D file.
     import fiftyone as fo
 
     scene = fo.Scene()
+    scene.camera = fo.PerspectiveCamera(up="Z")
+
+    mesh = fo.GltfMesh("mesh", "mesh.glb")
+    mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
+
     sphere1 = fo.SphereGeometry("sphere1", radius=2.0)
     sphere1.position = [-1, 0, 0]
     sphere1.default_material.color = "red"
@@ -4378,15 +4383,14 @@ serializes the scene into an FO3D file.
     sphere2.position = [-1, 0, 0]
     sphere2.default_material.color = "blue"
 
-    mesh = fo.GltfMesh("mesh", "mesh.glb")
-    mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
-
-    scene.add(sphere1, sphere2, mesh)
+    scene.add(mesh, sphere1, sphere2)
 
     scene.write("/path/to/scene.fo3d")
 
+    sample = fo.Sample(filepath="/path/to/scene.fo3d")
+
     dataset = fo.Dataset()
-    dataset.add_sample(fo.Sample(filepath="/path/to/scene.fo3d"))
+    dataset.add_sample(sample)
 
     print(dataset.media_type)  # 3d
 
@@ -4422,6 +4426,25 @@ FiftyOne currently supports
     3D meshes where possible, as it is the most compact, efficient, and
     web-friendly format for storing and transmitting 3D models.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+
+    mesh1 = fo.GltfMesh("mesh1", "mesh.glb")
+    mesh1.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    mesh2 = fo.ObjMesh("mesh2", "mesh.obj")
+    mesh3 = fo.PlyMesh("mesh3", "mesh.ply")
+    mesh4 = fo.StlMesh("mesh4", "mesh.stl")
+    mesh5 = fo.FbxMesh("mesh5", "mesh.fbx")
+
+    scene.add(mesh1, mesh2, mesh3, mesh4, mesh5)
+
+    scene.write("/path/to/scene.fo3d")
+
 .. _3d-point-clouds:
 
 3D point clouds
@@ -4437,18 +4460,13 @@ to a FiftyOne 3D scene is shown below:
 
     import fiftyone as fo
 
-    fo_pcd = fo.PointCloud(
-        "my-pcd",
-        "/path/to/point-cloud.pcd",
-        flag_for_projection=True,
-    )
-
-    fo_pcd.default_material.shading_mode = "custom"
-    fo_pcd.default_material.custom_color = "red"
-    fo_pcd.default_material.point_size = 2
+    pcd = fo.PointCloud("my-pcd", "point-cloud.pcd")
+    pcd.default_material.shading_mode = "custom"
+    pcd.default_material.custom_color = "red"
+    pcd.default_material.point_size = 2
 
     scene = fo.Scene()
-    scene.add(fo_pcd)
+    scene.add(pcd)
 
     scene.write("/path/to/scene.fo3d")
 
@@ -4460,11 +4478,10 @@ class for more details.
 
 .. note::
 
-    Initializing a point cloud with `flag_for_projection=True` allows
-    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-    to generate
-    :ref:`orthographic projection images <orthographic-projection-images>` of
-    the point cloud.
+    If your scene contains multiple point clouds, you can control which point
+    cloud is included in
+    :ref:`orthographic projections <orthographic-projection-images>` by
+    initializing it with `flag_for_projection=True`.
 
 Here's how a typical PCD file is structured:
 
@@ -4480,6 +4497,7 @@ Here's how a typical PCD file is structured:
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     pcd.colors = o3d.utility.Vector3dVector(colors)
+
     o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
 
 .. note::
@@ -4510,6 +4528,31 @@ position, rotation, and scale. Their appearance can be customized either by
 setting the `default_material` attribute of the shape object, or dynamically
 from the app.
 
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+
+    box = fo.BoxGeometry("box", width=0.5, height=0.5, depth=0.5)
+    box.position = [0, 0, 1]
+    box.default_material.color = "red"
+
+    sphere = fo.SphereGeometry("sphere", radius=2.0)
+    sphere.position = [-1, 0, 0]
+    sphere.default_material.color = "blue"
+
+    cylinder = fo.CylinderGeometry("cylinder", radius_top=0.5, height=1)
+    cylinder.position = [0, 1, 0]
+
+    plane = fo.PlaneGeometry("plane", width=2, height=2)
+    plane.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    scene.add(box, sphere, cylinder, plane)
+
+    scene.write("/path/to/scene.fo3d")
+
 .. _3d-annotations:
 
 3D annotations
@@ -4524,6 +4567,27 @@ Because 3D annotations are stored in dedicated fields of datasets rather than
 being embedded in FO3D files, they can be queried and filtered via
 :ref:`dataset views <view-filtering>` and :ref:`in the App <app-filtering>`
 just like other primitive/label fields.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+    scene.add(fo.GltfMesh("mesh", "mesh.gltf"))
+    scene.write("/path/to/scene.fo3d")
+
+    detection = fo.Detection(
+        label="vehicle",
+        location=[0.47, 1.49, 69.44],
+        dimensions=[2.85, 2.63, 12.34],
+        rotation=[0, -1.56, 0],
+    )
+
+    sample = fo.Sample(
+        filepath="/path/to/scene.fo3d",
+        ground_truth=fo.Detections(detections=[detection]),
+    )
 
 .. _orthographic-projection-images:
 
@@ -4555,8 +4619,9 @@ to generate orthographic projection images of each scene:
 
 .. note::
 
-    You must set `flag_for_projection=True` on any
-    :ref:`point clouds <3d-point-clouds>` that you wish to be projected.
+    If a scene contains multiple :ref:`point clouds <3d-point-clouds>`, you can
+    control which point cloud to project by initializing it with
+    `flag_for_projection=True`.
 
 The above method populates an |OrthographicProjectionMetadata| field on each
 sample that contains the path to its projection image and other necessary
