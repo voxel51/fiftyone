@@ -7,7 +7,7 @@ export const LOOKER3D_HELP_ITEMS = [
   { shortcut: "Left mouse drag", title: "Rotate", detail: "Rotate the camera" },
   { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
   {
-    shortcut: "Middle mouse drag",
+    shortcut: "Shift + drag",
     title: "Translate",
     detail: "Translate the camera",
   },

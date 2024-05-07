@@ -2,6 +2,7 @@ import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
+import CameraControlsImpl from "camera-controls";
 import {
   Suspense,
   useCallback,
@@ -103,6 +104,42 @@ export const MediaTypeFo3dComponent = () => {
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
+
+  const keyState = useRef({
+    shiftRight: false,
+    shiftLeft: false,
+    controlRight: false,
+    controlLeft: false,
+  });
+
+  const updateCameraControlsConfig = useCallback(() => {
+    if (keyState.current.shiftRight || keyState.current.shiftLeft) {
+      cameraControlsRef.current.mouseButtons.left =
+        CameraControlsImpl.ACTION.TRUCK;
+    } else if (keyState.current.controlRight || keyState.current.controlLeft) {
+      cameraControlsRef.current.mouseButtons.left =
+        CameraControlsImpl.ACTION.DOLLY;
+    } else {
+      cameraControlsRef.current.mouseButtons.left =
+        CameraControlsImpl.ACTION.ROTATE;
+    }
+  }, [keyState]);
+
+  fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
+    if (e.code === "ShiftRight") keyState.current.shiftRight = true;
+    if (e.code === "ShiftLeft") keyState.current.shiftLeft = true;
+    if (e.code === "ControlRight") keyState.current.controlRight = true;
+    if (e.code === "ControlLeft") keyState.current.controlLeft = true;
+    updateCameraControlsConfig();
+  });
+
+  fos.useEventHandler(document, "keyup", (e: KeyboardEvent) => {
+    if (e.code === "ShiftRight") keyState.current.shiftRight = false;
+    if (e.code === "ShiftLeft") keyState.current.shiftLeft = false;
+    if (e.code === "ControlRight") keyState.current.controlRight = false;
+    if (e.code === "ControlLeft") keyState.current.controlLeft = false;
+    updateCameraControlsConfig();
+  });
 
   const assetsGroupRef = useRef<THREE.Group>();
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
