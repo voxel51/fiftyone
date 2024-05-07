@@ -1171,6 +1171,7 @@ class MediaExporter(object):
         scene = fo3d.Scene.from_fo3d(fo3d_path)
         asset_paths = scene.get_asset_paths()
 
+        input_to_output_paths = {}
         for asset_path in asset_paths:
             if not os.path.isabs(asset_path):
                 absolute_asset_path = os.path.join(
@@ -1181,12 +1182,15 @@ class MediaExporter(object):
 
             seen = self._filename_maker.seen_input_path(absolute_asset_path)
 
-            if seen:
-                continue
-
             asset_output_path = self._filename_maker.get_output_path(
                 absolute_asset_path
             )
+            input_to_output_paths[asset_path] = os.path.relpath(
+                asset_output_path, os.path.dirname(fo3d_output_path)
+            )
+
+            if seen:
+                continue
 
             if export_mode is True:
                 etau.copy_file(absolute_asset_path, asset_output_path)
@@ -1198,38 +1202,39 @@ class MediaExporter(object):
         is_scene_modified = False
 
         for node in scene.traverse():
-            path_attribute = next(
-                (
-                    attr
-                    for attr in fo3d.fo3d_path_attributes
-                    if hasattr(node, attr)
-                ),
-                None,
-            )
+            for path_attribute in node._asset_path_fields:
+                asset_path = getattr(node, path_attribute, None)
+                new_asset_path = input_to_output_paths.get(asset_path)
 
-            if path_attribute is not None:
-                asset_path = getattr(node, path_attribute)
-
-                is_nested_path = os.path.split(asset_path)[0] != ""
-
-                if asset_path is not None and is_nested_path:
-                    setattr(node, path_attribute, os.path.basename(asset_path))
+                if asset_path is not None and asset_path != new_asset_path:
+                    setattr(node, path_attribute, new_asset_path)
                     is_scene_modified = True
 
         # modify scene background paths, if any
         if scene.background is not None:
             if scene.background.image is not None:
-                scene.background.image = os.path.basename(
+                new_asset_path = input_to_output_paths.get(
                     scene.background.image
                 )
-                is_scene_modified = True
+                if new_asset_path != scene.background.image:
+                    scene.background.image = new_asset_path
+                    is_scene_modified = True
 
             if scene.background.cube is not None:
-                scene.background.cube = [
-                    os.path.basename(face_path)
-                    for face_path in scene.background.cube
+                new_asset_path = input_to_output_paths.get(
+                    scene.background.image
+                )
+                if new_asset_path != scene.background.image:
+                    scene.background.image = new_asset_path
+                    is_scene_modified = True
+
+                new_cube = [
+                    input_to_output_paths.get(face)
+                    for face in scene.background.cube
                 ]
-                is_scene_modified = True
+                if new_cube != scene.background.cube:
+                    scene.background.cube = new_cube
+                    is_scene_modified = True
 
         if is_scene_modified:
             # note: we can't have different behavior for "symlink" because
