@@ -4897,7 +4897,6 @@ class ThreeDMediaTests(unittest.TestCase):
             self.assertEqual(scene3.background.image, "../../image.jpeg")
 
             for file in scene3.get_asset_paths():
-                print(file)
                 with open(os.path.join(export_dir, "label2/test/", file)) as f:
                     self.assertEqual(
                         f.read(),
