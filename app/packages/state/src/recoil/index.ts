@@ -6,6 +6,7 @@ export * from "./config";
 export * from "./customEffects";
 export * from "./dataset";
 export * from "./distributions";
+export * from "./dynamicGroups";
 export * from "./filters";
 export * from "./groupEntries";
 export * from "./groups";

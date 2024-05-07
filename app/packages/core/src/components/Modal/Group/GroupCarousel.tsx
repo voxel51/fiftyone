@@ -40,7 +40,7 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName) as string,
-      view: get(fos.view),
+      view: get(fos.groupView),
       filter: {
         group: {
           slice: get(fos.groupSlice),
