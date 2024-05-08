@@ -1199,35 +1199,7 @@ class MediaExporter(object):
             elif export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
-        is_scene_modified = False
-
-        for node in scene.traverse():
-            for path_attribute in node._asset_path_fields:
-                asset_path = getattr(node, path_attribute, None)
-                new_asset_path = input_to_output_paths.get(asset_path)
-
-                if asset_path is not None and asset_path != new_asset_path:
-                    setattr(node, path_attribute, new_asset_path)
-                    is_scene_modified = True
-
-        # modify scene background paths, if any
-        if scene.background is not None:
-            if scene.background.image is not None:
-                new_asset_path = input_to_output_paths.get(
-                    scene.background.image
-                )
-                if new_asset_path != scene.background.image:
-                    scene.background.image = new_asset_path
-                    is_scene_modified = True
-
-            if scene.background.cube is not None:
-                new_cube = [
-                    input_to_output_paths.get(face)
-                    for face in scene.background.cube
-                ]
-                if new_cube != scene.background.cube:
-                    scene.background.cube = new_cube
-                    is_scene_modified = True
+        is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
             # note: we can't have different behavior for "symlink" because
