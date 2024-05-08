@@ -1871,7 +1871,7 @@ class UniqueFilenameMaker(object):
 
         if self.chunk_size is not None:
             chunk_dir = self._chunk_root + "_" + str(self._chunk_num)
-            filename = os.path.join(chunk_dir, filename)
+            filename = fos.join(chunk_dir, filename)
 
             self._chunk_count += 1
             if self._chunk_count >= self.chunk_size:
