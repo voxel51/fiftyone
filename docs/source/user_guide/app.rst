@@ -1181,19 +1181,10 @@ Using the 3D visualizer
 _______________________
 
 The 3D visualizer allows you to interactively visualize
-:ref:`fo3d samples <three-d-datasets>` or
+:ref:`3D samples <3d-datasets>` or
 :ref:`point cloud samples <point-cloud-datasets>`
 along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
-
-.. note::
-
-    Deprecation notice:
-
-    The `point-cloud` media type has been deprecated in favor of the
-    `3d` media type. While we'll keep supporting the `point-cloud` media type
-    for backward compatibility, we recommend using the `3d` media type for new
-    datasets.
 
 .. image:: /images/app/app-new-3d-visualizer.gif
    :alt: 3d-visualizer
@@ -1268,7 +1259,7 @@ dataset, the projection images will be rendered for each sample in the grid:
     import fiftyone.utils.utils3d as fou3d
     import fiftyone.zoo as foz
 
-    # Load an example point cloud dataset
+    # Load an example 3D dataset
     dataset = (
         foz.load_zoo_dataset("quickstart-groups")
         .select_group_slices("pcd")
