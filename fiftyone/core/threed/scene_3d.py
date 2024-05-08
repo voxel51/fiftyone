@@ -13,7 +13,6 @@ from typing import List, Optional, Union
 
 import fiftyone as fo
 import fiftyone.core.storage as fos
-from pydantic.dataclasses import dataclass
 
 from .camera import PerspectiveCamera
 from .lights import Light
