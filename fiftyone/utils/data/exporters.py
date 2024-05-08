@@ -1221,13 +1221,6 @@ class MediaExporter(object):
                     is_scene_modified = True
 
             if scene.background.cube is not None:
-                new_asset_path = input_to_output_paths.get(
-                    scene.background.image
-                )
-                if new_asset_path != scene.background.image:
-                    scene.background.image = new_asset_path
-                    is_scene_modified = True
-
                 new_cube = [
                     input_to_output_paths.get(face)
                     for face in scene.background.cube
