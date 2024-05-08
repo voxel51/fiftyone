@@ -68,9 +68,9 @@ class DeepSort(object):
             sample_collection, _in_field, fo.Detections
         )
 
-        for sample in sample_collection.iter_samples(
-            autosave=True, progress=progress
-        ):
+        view = sample_collection.select_fields(_in_field)
+
+        for sample in view.iter_samples(autosave=True, progress=progress):
             try:
                 DeepSort.track_sample(
                     sample,
