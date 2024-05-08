@@ -50,7 +50,7 @@ def route(func):
             if isinstance(response, Response):
                 return response
 
-            return create_response(response)
+            return await create_response(response)
 
         except Exception as e:
             logging.exception(e)
