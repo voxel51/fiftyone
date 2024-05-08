@@ -4,7 +4,7 @@ on:
     inputs:
       deployer-branch:
         default: 'main'
-        description: 'Which cloud-build-and-deploy branch to use'
+        description: 'cloud-build-and-deploy branch to use'
         type: string
   schedule:
     # jobs run at UTC time, this should be 7:22 AM EST, every day Mon-Sat
@@ -12,8 +12,9 @@ on:
 
 jobs:
   call-dev-cloud-build-and-deploy:
-    uses: voxel51/cloud-build-and-deploy/.github/workflows/dev-build-and-deploy.yml@main
+    uses: 'voxel51/cloud-build-and-deploy/.github/workflows/dev-build-and-deploy.yml@main'
     with:
       deployer-branch: ${{ inputs.deployer-branch || 'main' }}
     secrets:
       ORG_GOOGLE_WORKLOAD_IDP: ${{ secrets.ORG_GOOGLE_WORKLOAD_IDP }}
+      RO_CBAD_FG_PAT: ${{ secrets.RO_CBAD_FG_PAT }}
