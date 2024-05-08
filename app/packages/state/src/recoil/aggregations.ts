@@ -150,28 +150,6 @@ export const aggregation = selectorFamily({
     },
 });
 
-export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
-  key: "dynamicGroupsElementCount",
-  get:
-    (groupByFieldValueExplicit: string | null = null) =>
-    ({ get }) => {
-      return (
-        get(
-          aggregationQuery({
-            customView: get(
-              viewAtoms.dynamicGroupViewQuery(
-                groupByFieldValueExplicit ? { groupByFieldValueExplicit } : {}
-              )
-            ),
-            extended: false,
-            modal: false,
-            paths: [""],
-          })
-        ).at(0)?.count ?? 0
-      );
-    },
-});
-
 export const modalAggregationPaths = selectorFamily({
   key: "modalAggregationPaths",
   get:

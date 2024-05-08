@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { MediaTypePcdComponent } from "./MediaTypePcd";
@@ -7,7 +7,11 @@ import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
-import { currentActionAtom, isGridOnAtom } from "./state";
+import {
+  currentActionAtom,
+  fo3dContainsBackground,
+  isGridOnAtom,
+} from "./state";
 
 /**
  * This component is responsible for rendering both "3d" as well as
@@ -28,6 +32,14 @@ export const Looker3d = () => {
   const hoveringRef = useRef(false);
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
+
+  const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
+
+  useEffect(() => {
+    return () => {
+      setFo3dHasBackground(false);
+    };
+  }, []);
 
   const shouldRenderPcdComponent = useMemo(
     () =>

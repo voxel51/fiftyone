@@ -1,12 +1,16 @@
-import { ModalSample, getSampleSrc } from "@fiftyone/state";
+import { ModalSample } from "@fiftyone/state";
+import { PathType, determinePathType } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
+  DoubleSide,
   MeshBasicMaterial,
   MeshDepthMaterial,
   MeshLambertMaterial,
   MeshPhongMaterial,
   MeshStandardMaterial,
   PointsMaterial,
+  Vector3,
+  Vector3Tuple,
 } from "three";
 import {
   FoMeshBasicMaterialProps,
@@ -15,7 +19,6 @@ import {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import { resolveParent } from "@fiftyone/utilities";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -104,20 +107,20 @@ export const getVisibilityMapFromFo3dParsed = (
     .reduce((acc, curr) => ({ ...acc, ...curr }), {});
 };
 
-export const getMediaUrlForFo3dSample = (
+export const getMediaPathForFo3dSample = (
   sample: ModalSample,
   mediaField: string
 ) => {
-  let mediaUrlUnresolved: string;
+  let mediaPath: string;
 
   if (Array.isArray(sample.urls)) {
     const mediaFieldObj = sample.urls.find((url) => url.field === mediaField);
-    mediaUrlUnresolved = mediaFieldObj?.url ?? sample.urls[0].url;
+    mediaPath = mediaFieldObj?.url ?? sample.urls[0].url;
   } else {
-    mediaUrlUnresolved = sample.urls[mediaField];
+    mediaPath = sample.urls[mediaField];
   }
 
-  return getSampleSrc(mediaUrlUnresolved);
+  return mediaPath;
 };
 
 export const getFo3dRoot = (fo3dUrl: string) => {
@@ -178,6 +181,7 @@ export const getThreeMaterialFromFo3dMaterial = (
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
+  props["side"] = DoubleSide;
 
   if (foMtl._type === "MeshBasicMaterial") {
     return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);
@@ -208,9 +212,66 @@ export const getThreeMaterialFromFo3dMaterial = (
     });
   } else if (foMtl._type === "MeshDepthMaterial") {
     return new MeshDepthMaterial(props);
-  } else if (foMtl._type === "PointcloudMaterial") {
+  } else if (foMtl._type === "PointCloudMaterial") {
     return new PointsMaterial(props);
   } else {
     throw new Error("Unknown material " + JSON.stringify(foMtl, null, 2));
   }
+};
+
+export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
+  if (!vec?.length) {
+    return null;
+  }
+
+  if (vec instanceof Vector3) {
+    vec = vec.toArray();
+  }
+
+  if (vec[0] === 1 && vec[1] === 0 && vec[2] === 0) {
+    return "X";
+  }
+
+  if (vec[0] === 0 && vec[1] === 1 && vec[2] === 0) {
+    return "Y";
+  }
+
+  if (vec[0] === 0 && vec[1] === 0 && vec[2] === 1) {
+    return "Z";
+  }
+
+  return null;
+};
+
+export const getBasePathForTextures = (
+  fo3dRoot: string,
+  primaryAssetUrl: string
+) => {
+  const assetUrlDecoded = new URL(decodeURIComponent(primaryAssetUrl));
+  const assetUrlSearchParams = assetUrlDecoded.searchParams;
+
+  const fo3dRootPathType = determinePathType(fo3dRoot);
+
+  if (
+    fo3dRootPathType !== PathType.URL &&
+    assetUrlSearchParams.has("filepath")
+  ) {
+    const assetFilePath = assetUrlSearchParams.get("filepath");
+    const assetFilePathWithFilenameStripped = assetFilePath.replace(
+      /[^/]*$/,
+      ""
+    );
+
+    return `${assetUrlDecoded.origin}${assetUrlDecoded.pathname}?filepath=${assetFilePathWithFilenameStripped}`;
+  }
+
+  const assetPathname = assetUrlDecoded.pathname;
+  const assetPathnameWithFilenameStripped = assetPathname.replace(/[^/]*$/, "");
+
+  const fo3dOrigin = fo3dRoot.slice(
+    0,
+    fo3dRoot.lastIndexOf(assetPathnameWithFilenameStripped)
+  );
+
+  return `${fo3dOrigin}${assetPathnameWithFilenameStripped}`;
 };

@@ -32,16 +32,16 @@ export const usePcdMaterialControls = (
       [name]: folder(
         {
           pointSize: {
-            value: pointSize,
-            min: 0.1,
+            value: pointSize ?? 1,
+            min: 0.01,
             max: 20,
-            step: 0.1,
+            step: 0.01,
             onChange: onChangeTextBox,
             label: "Points Size",
             order: -2,
           },
           shadeBy: {
-            value: shadeBy,
+            value: shadeBy ?? SHADE_BY_HEIGHT,
             options: [
               SHADE_BY_NONE,
               SHADE_BY_HEIGHT,
@@ -65,7 +65,7 @@ export const usePcdMaterialControls = (
             },
           },
           isPointSizeAttenuated: {
-            value: isPointSizeAttenuated,
+            value: isPointSizeAttenuated ?? false,
             onChange: setIsPointSizeAttenuated,
             label: "Attenuated",
             order: 1000,

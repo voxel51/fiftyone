@@ -1738,6 +1738,9 @@ class UniqueFilenameMaker(object):
             :func:`fiftyone.core.storage.normalize_path`
         alt_dir (None): an optional alternate directory in which to generate
             paths when :meth:`get_alt_path` is called
+        chunk_size (None): if provided, output paths will be nested in
+            subdirectories of ``output_dir`` with at most this many files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
@@ -1754,6 +1757,7 @@ class UniqueFilenameMaker(object):
         output_dir=None,
         rel_dir=None,
         alt_dir=None,
+        chunk_size=None,
         default_ext=None,
         ignore_exts=False,
         ignore_existing=False,
@@ -1761,10 +1765,12 @@ class UniqueFilenameMaker(object):
     ):
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.alt_dir = alt_dir
+        self.chunk_size = chunk_size
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
         self.ignore_existing = ignore_existing
@@ -1776,10 +1782,21 @@ class UniqueFilenameMaker(object):
             default_ext or ""
         )
         self._idx = 0
+        self._chunk_root = None
+        self._chunk_num = 0
+        self._chunk_count = 0
 
         self._setup()
 
     def _setup(self):
+        if self.chunk_size is not None:
+            if self.output_dir:
+                chunk_root = os.path.basename(fos.normpath(self.output_dir))
+            else:
+                chunk_root = "chunk"
+
+            self._chunk_root = chunk_root
+
         if not self.output_dir:
             return
 
@@ -1851,6 +1868,15 @@ class UniqueFilenameMaker(object):
         count = self._filename_counts[key]
         if count > 1:
             filename = name + ("-%d" % count) + ext
+
+        if self.chunk_size is not None:
+            chunk_dir = self._chunk_root + "_" + str(self._chunk_num)
+            filename = os.path.join(chunk_dir, filename)
+
+            self._chunk_count += 1
+            if self._chunk_count >= self.chunk_size:
+                self._chunk_num += 1
+                self._chunk_count = 0
 
         if self.output_dir:
             output_path = fos.join(self.output_dir, filename)
