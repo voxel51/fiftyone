@@ -43,8 +43,6 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .thumb {
-    margin-top: -8px;
-    margin-left: -8px;
     height: 16px;
     width: 16px;
     border-radius: 8px;

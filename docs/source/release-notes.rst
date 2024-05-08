@@ -3,6 +3,30 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.6.0
+--------------------
+*Released April 30, 2024*
+
+What's New
+
+- Added :ref:`Groups <teams-groups>` for managing and dataset access for groups
+  of users
+- Introduced a new :ref:`Pluggable Authentication <pluggable-auth>` system for
+  customizing FiftyOne Teams authentication
+- Removed Auth0 as a hard dependency for Teams deployments with the
+  introduction of :ref:`Internal Mode <internal-mode>`
+- Added support for directly authenticating with
+  :ref:`Identity Providers <identity-providers>`
+- Added a :ref:`Super Admin UI <super-admin-ui>` for administering FiftyOne
+  Teams deployments
+- Added the ability to search for users on the Users page
+
+FiftyOne Teams 1.5.10
+---------------------
+*Released April 18, 2024*
+
+- Fixed an issue where video datasets were not loading due to ffmpeg dependency
+
 FiftyOne Teams 1.5.9
 --------------------
 *Released April 15, 2024*

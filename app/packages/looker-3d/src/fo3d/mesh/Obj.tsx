@@ -1,11 +1,14 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Mesh, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
-import { MTLLoader } from "../../overrides/MtlLoader";
 import { getColorFromPoolBasedOnHash } from "../../utils";
+import { useFo3dContext } from "../context";
+import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
 
 const ObjMeshDefaultMaterial = ({
   name,
@@ -16,7 +19,15 @@ const ObjMeshDefaultMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objUrl } = obj;
+  const { objPath } = obj;
+
+  const { fo3dRoot } = useFo3dContext();
+
+  const objUrl = useMemo(
+    () => getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, fo3dRoot]
+  );
+
   const mesh = useLoader(OBJLoader, objUrl);
 
   const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
@@ -45,7 +56,6 @@ const ObjMeshDefaultMaterial = ({
 };
 
 const ObjMeshWithCustomMaterial = ({
-  name,
   obj,
   onLoad,
 }: {
@@ -53,9 +63,35 @@ const ObjMeshWithCustomMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objUrl, mtlUrl } = obj;
+  const { objPath, mtlPath, preTransformedObjPath, preTransformedMtlPath } =
+    obj;
 
-  const materials = useLoader(MTLLoader, mtlUrl);
+  const { fo3dRoot } = useFo3dContext();
+
+  const objUrl = useMemo(
+    () =>
+      preTransformedObjPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, preTransformedObjPath, fo3dRoot]
+  );
+
+  const mtlUrl = useMemo(
+    () =>
+      preTransformedMtlPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, fo3dRoot)),
+    [mtlPath, preTransformedMtlPath, fo3dRoot]
+  );
+
+  const resourcePath = useMemo(
+    () => (mtlUrl ? getBasePathForTextures(fo3dRoot, mtlUrl) : null),
+    [fo3dRoot, mtlUrl]
+  );
+
+  const materials = useLoader(MTLLoader, mtlUrl, (loader) => {
+    if (resourcePath) {
+      loader.setResourcePath(resourcePath);
+    }
+  });
   const mesh = useLoader(OBJLoader, objUrl, (loader) => {
     if (mtlUrl) {
       materials.preload();
@@ -89,7 +125,7 @@ export const Obj = ({
 }) => {
   return (
     <group position={position} quaternion={quaternion} scale={scale}>
-      {obj.mtlUrl ? (
+      {obj.mtlPath ? (
         <ObjMeshWithCustomMaterial name={name} obj={obj} />
       ) : (
         <ObjMeshDefaultMaterial name={name} obj={obj} />

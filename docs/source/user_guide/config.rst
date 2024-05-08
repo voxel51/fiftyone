@@ -682,6 +682,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                  |
@@ -713,9 +716,6 @@ The FiftyOne App can be configured in the ways described below:
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
-| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
-|                           |                                        |                             | field's value for a sample is not defined.                                                |
-+---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -734,7 +734,7 @@ You can print your App config at any time via the Python library and the CLI:
         print(fo.app_config)
 
         # Print a specific App config field
-        print(fo.app_config.show_attributes)
+        print(fo.app_config.show_label)
 
     .. code-block:: text
 
@@ -759,6 +759,7 @@ You can print your App config at any time via the Python library and the CLI:
             "grid_zoom": 5,
             "lightning_threshold": null,
             "loop_videos": false,
+            "media_fallback": false
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -771,7 +772,6 @@ You can print your App config at any time via the Python library and the CLI:
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {},
-            "media_fallback": false
         }
 
         True
@@ -784,7 +784,7 @@ You can print your App config at any time via the Python library and the CLI:
         fiftyone app config
 
         # Print a specific App config field
-        fiftyone app config show_attributes
+        fiftyone app config show_label
 
     .. code-block:: text
 
@@ -809,6 +809,7 @@ You can print your App config at any time via the Python library and the CLI:
             "grid_zoom": 5,
             "lightning_threshold": null,
             "loop_videos": false,
+            "media_fallback": false
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -821,7 +822,6 @@ You can print your App config at any time via the Python library and the CLI:
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {},
-            "media_fallback": false
         }
 
         True
@@ -875,7 +875,7 @@ via the following pattern:
     # Create a custom App config
     app_config = fo.app_config.copy()
     app_config.show_confidence = False
-    app_config.show_attributes = False
+    app_config.show_label = False
 
     session = fo.launch_app(dataset, config=app_config)
 
@@ -889,7 +889,7 @@ apply the changes:
 
     # Customize the config of a live session
     session.config.show_confidence = True
-    session.config.show_attributes = True
+    session.config.show_label = True
     session.refresh()  # must refresh after edits
 
 Editing your JSON App config
@@ -905,7 +905,7 @@ For example, a valid App config JSON file is:
 
     {
         "show_confidence": false,
-        "show_attributes": false
+        "show_label": false
     }
 
 When `fiftyone` is imported, any options from your JSON App config are applied,
@@ -931,7 +931,7 @@ issuing the following commands prior to launching your Python interpreter:
 .. code-block:: shell
 
     export FIFTYONE_APP_SHOW_CONFIDENCE=false
-    export FIFTYONE_APP_SHOW_ATTRIBUTES=false
+    export FIFTYONE_APP_SHOW_LABEL=false
 
 Modifying your App config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -949,7 +949,7 @@ current session.
     import fiftyone as fo
 
     fo.app_config.show_confidence = False
-    fo.app_config.show_attributes = False
+    fo.app_config.show_label = False
 
 .. _configuring-plugins:
 

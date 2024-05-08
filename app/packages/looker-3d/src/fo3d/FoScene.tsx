@@ -1,7 +1,7 @@
 import { useControls } from "leva";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
+import { PANEL_ORDER_VISIBILITY } from "../constants";
 import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
@@ -16,15 +16,16 @@ import {
   SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
-import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
+import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
+import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { Fo3dBackground } from "./Background";
-import { Stl } from "./Stl";
 import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
+import { Stl } from "./mesh/Stl";
 import { Pcd } from "./point-cloud/Pcd";
 import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
@@ -245,7 +246,9 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [scene]
   );
 
-  const { isSceneInitialized } = useFo3dContext();
+  const { isSceneInitialized, fo3dRoot } = useFo3dContext();
+
+  useUrlModifier(fo3dRoot);
 
   const visibilityMap = useControls(
     "Visibility",
@@ -254,20 +257,21 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [defaultVisibilityMap]
   );
 
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("fo3d")
-  );
-
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
+
+  const setFo3dContainsBackground = useSetRecoilState(fo3dContainsBackground);
 
   useEffect(() => {
     if (isSceneInitialized && scene?.background !== null) {
-      setActionBarItems((items) => [
-        [ACTION_TOGGLE_BACKGROUND, null],
-        ...items,
-      ]);
+      setFo3dContainsBackground(true);
+    } else {
+      setFo3dContainsBackground(false);
     }
-  }, [scene, isSceneInitialized, setActionBarItems]);
+  }, [scene, isSceneInitialized]);
+
+  if (!fo3dRoot) {
+    return null;
+  }
 
   return (
     <>

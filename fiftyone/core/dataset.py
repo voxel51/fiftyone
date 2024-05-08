@@ -1778,8 +1778,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's schema, and all samples will
         have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
-        frame fields.
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1792,8 +1792,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's schema, and all samples will
         have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
-        frame fields.
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
 
         Args:
             field_names: the field name or iterable of field names
@@ -1807,7 +1807,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's frame schema, and all frames
         will have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
+        You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
         Only applicable to datasets that contain videos.
@@ -1824,7 +1824,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The fields will remain in the dataset's frame schema, and all frames
         will have the value ``None`` for the field.
 
-        You can use dot notation (``embedded.field.name``) to clone embedded
+        You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
         Only applicable to datasets that contain videos.
@@ -2118,7 +2118,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_path = self.group_field + ".name"
         self.select_group_slices(name).set_field(group_path, new_name).save()
 
-        new_media_type = self._doc.group_media_types.pop(name)
+        # Reload these fields to be safer against concurrent edits. Because
+        #   the default_group_slice could've been changed elsewhere so we need
+        #   to know we have the latest values.
+        self._doc.reload("group_media_types", "default_group_slice")
+
+        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+        new_media_type = self._doc.group_media_types[name]
+        del self._doc.group_media_types[name]
+
         self._doc.group_media_types[new_name] = new_media_type
 
         if self._doc.default_group_slice == name:
@@ -2143,7 +2151,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.delete_samples(self.select_group_slices(name))
 
-        self._doc.group_media_types.pop(name)
+        # Reload these fields to be safer against concurrent edits. Because
+        #   the default_group_slice could've been changed elsewhere so we need
+        #   to know we have the latest values.
+        self._doc.reload("group_media_types", "default_group_slice")
+
+        # DON'T use pop()! https://github.com/voxel51/fiftyone/issues/4322
+        if name in self._doc.group_media_types:
+            del self._doc.group_media_types[name]
 
         new_default = next(iter(self._doc.group_media_types.keys()), None)
 
@@ -3588,6 +3603,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         view_doc.save(upsert=True)
 
+        # Targeted reload of saved views for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload("saved_views")
+
         self._doc.saved_views.append(view_doc)
         self.save()
 
@@ -3703,6 +3722,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
+
+        # Targeted reload of saved views for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload("saved_views")
+
         for view_doc in self._doc.saved_views:
             if isinstance(view_doc, DBRef):
                 continue
@@ -3727,6 +3751,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _get_saved_view_doc(self, name, pop=False, slug=False):
         idx = None
         key = "slug" if slug else "name"
+
+        if pop:
+            # Targeted reload of saved views for better concurrency safety.
+            # @todo improve list field updates in general so this
+            #   isn't necessary
+            self._doc.reload("saved_views")
 
         for i, view_doc in enumerate(self._doc.get_saved_views()):
             if name == getattr(view_doc, key):
@@ -3878,6 +3908,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         workspace_doc.save(upsert=True)
 
+        # Targeted reload of workspaces for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload("workspaces")
+
         self._doc.workspaces.append(workspace_doc)
         self.save()
 
@@ -4016,6 +4050,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_workspaces(self):
         """Deletes all saved workspaces from this dataset."""
+
+        # Targeted reload of workspaces for better concurrency safety.
+        # @todo improve list field updates in general so this isn't necessary
+        self._doc.reload("workspaces")
+
         for workspace_doc in self._doc.workspaces:
             if isinstance(workspace_doc, DBRef):
                 continue
@@ -4047,6 +4086,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _get_workspace_doc(self, name, pop=False, slug=False):
         idx = None
         key = "slug" if slug else "name"
+
+        if pop:
+            # Targeted reload of workspaces for better concurrency safety.
+            # @todo improve list field updates in general so this
+            #   isn't necessary
+            self._doc.reload("workspaces")
 
         for i, workspace_doc in enumerate(self._doc.get_workspaces()):
             if name == getattr(workspace_doc, key):

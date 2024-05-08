@@ -13,7 +13,7 @@ import { useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
 import { useWorkspacePermission } from "./hooks";
 
-export default function SavedSpace(props: SavedSpacePropsType) {
+export default function Workspace(props: WorkspacePropsType) {
   const { name, description, color, onClick, onEdit } = props;
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const { canEdit, disabledInfo } = useWorkspacePermission();
@@ -24,7 +24,7 @@ export default function SavedSpace(props: SavedSpacePropsType) {
         p: 0,
         background: (theme) => theme.palette.background.body,
         borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-        "&:hover": { ".MuiStack-root": { visibility: "visible" } },
+        "&:hover": { ".workspace-actions-stack": { visibility: "visible" } },
       }}
       title={description}
     >
@@ -46,6 +46,7 @@ export default function SavedSpace(props: SavedSpacePropsType) {
             visibility: "hidden",
             cursor: !canEdit ? "not-allowed" : undefined,
           }}
+          className="workspace-actions-stack"
           title={disabledInfo}
         >
           <IconButton
@@ -78,7 +79,7 @@ export default function SavedSpace(props: SavedSpacePropsType) {
   );
 }
 
-type SavedSpacePropsType = {
+type WorkspacePropsType = {
   name: string;
   color: string;
   description: string;

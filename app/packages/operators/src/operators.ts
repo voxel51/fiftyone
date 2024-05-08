@@ -3,19 +3,26 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
+import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 
 class InvocationRequest {
-  constructor(public operatorURI: string, public params: any = {}) {}
+  constructor(
+    public operatorURI: string,
+    public params: unknown = {},
+    public options?: OperatorExecutorOptions
+  ) {}
   static fromJSON(json: any) {
     return new InvocationRequest(
       json.operator_uri || json.operator_name,
-      json.params
+      json.params,
+      json.options
     );
   }
   toJSON() {
     return {
       operatorURI: this.operatorURI,
       params: this.params,
+      options: this.options,
     };
   }
 }
@@ -479,10 +486,14 @@ export function resolveOperatorURI(operatorURI) {
   return `@voxel51/operators/${operatorURI}`;
 }
 
-export async function executeOperator(operatorURI, params: any = {}) {
+export async function executeOperator(
+  operatorURI: string,
+  params: unknown = {},
+  options?: OperatorExecutorOptions
+) {
   operatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
-  const request = new InvocationRequest(operatorURI, params);
+  const request = new InvocationRequest(operatorURI, params, options);
   queue.add(request);
 }
 
@@ -747,7 +758,11 @@ enum QueueItemStatus {
 }
 
 class QueueItem {
-  constructor(public id: string, public request: InvocationRequest) {}
+  constructor(
+    public id: string,
+    public request: InvocationRequest,
+    public callback?: ExecutionCallback
+  ) {}
   status: QueueItemStatus = QueueItemStatus.Pending;
   result: OperatorResult;
   toJSON() {
@@ -845,6 +860,7 @@ export class InvocationRequestQueue {
       id: d.id,
       status: d.status,
       request: d.request.toJSON(),
+      callback: d.callback,
     }));
   }
 }

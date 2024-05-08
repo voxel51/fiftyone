@@ -5,12 +5,11 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-import json
+import itertools
 import os
-from typing import List, Optional
+from collections import Counter
+from typing import List, Optional, Union
 
-from pydantic.dataclasses import dataclass
 
 import fiftyone.core.storage as fos
 
@@ -18,9 +17,10 @@ from .camera import PerspectiveCamera
 from .lights import Light
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
-from .pointcloud import Pointcloud
+from .pointcloud import PointCloud
 from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
+from .validators import BaseValidatedDataClass, validate_color, validate_list
 
 fo3d_path_attributes = [
     "pcd_path",
@@ -33,8 +33,7 @@ fo3d_path_attributes = [
 ]
 
 
-@dataclass
-class SceneBackground:
+class SceneBackground(BaseValidatedDataClass):
     """Represents the background of the scene.
 
     Args:
@@ -49,12 +48,51 @@ class SceneBackground:
             to ``1.0``. This only applies for ``image`` and ``cube`` backgrounds
     """
 
-    color: Optional[str] = None
-    image: Optional[str] = None
-    cube: Optional[List[str]] = None
-    intensity: Optional[float] = 1.0
+    def __init__(
+        self,
+        color: Optional[str] = None,
+        image: Optional[str] = None,
+        cube: Optional[List[str]] = None,
+        intensity: Optional[float] = 1.0,
+    ):
+        self.color = color
+        self.image = image
+        self.cube = cube
+        self.intensity = intensity
 
-    def as_dict(self):
+    @property
+    def color(self) -> Union[str, None]:
+        return self._color
+
+    @color.setter
+    def color(self, value: Optional[str]) -> None:
+        self._color = validate_color(value, nullable=True)
+
+    @property
+    def image(self) -> Union[str, None]:
+        return self._image
+
+    @image.setter
+    def image(self, value: Optional[str]) -> None:
+        self._image = None if value is None else str(value)
+
+    @property
+    def cube(self) -> Union[List[str], None]:
+        return self._cube
+
+    @cube.setter
+    def cube(self, value: Optional[List[str]]) -> None:
+        self._cube = validate_list(value, length=6, nullable=True)
+
+    @property
+    def intensity(self) -> Union[float, None]:
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value: Optional[float]) -> None:
+        self._intensity = None if value is None else float(value)
+
+    def as_dict(self) -> dict:
         return {
             "color": self.color,
             "image": self.image,
@@ -63,7 +101,7 @@ class SceneBackground:
         }
 
     @staticmethod
-    def _from_dict(d):
+    def _from_dict(d: dict):
         return SceneBackground(
             color=d.get("color"),
             image=d.get("image"),
@@ -93,7 +131,7 @@ class Scene(Object3D):
                 "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
             )
             gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
-            pcd = Pointcloud("pcd_name", "/path/to/pcd")
+            pcd = PointCloud("pcd_name", "/path/to/pcd")
 
             scene.add(obj_mesh)
             scene.add(gltf_mesh)
@@ -146,7 +184,18 @@ class Scene(Object3D):
         """Returns a deep copy of the scene."""
         return Scene._from_fo3d_dict(self.as_dict())
 
-    def write(self, fo3d_path: str, resolve_relative_paths=False):
+    def _resolve_node_asset_paths(self, node, fo3d_path_dir):
+        for asset_path_field in node._asset_path_fields or []:
+            asset_path = getattr(node, asset_path_field, None)
+            if asset_path:
+                resolved_asset_path = self._resolve_asset_path(
+                    fo3d_path_dir, asset_path
+                )
+                setattr(node, asset_path_field, resolved_asset_path)
+
+    def write(
+        self, fo3d_path: str, resolve_relative_paths=False, pprint=False
+    ):
         """Export the scene to a ``.fo3d`` file.
 
         Args:
@@ -155,6 +204,8 @@ class Scene(Object3D):
                 scene to absolute paths. If ``True``, all asset paths in the
                 scene are resolved to absolute paths. If ``False``, asset
                 paths are left as-is. Defaults to ``False``.
+            pprint: whether to pretty-print the JSON output. Defaults to
+                ``False``.
         """
         if not fo3d_path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
@@ -172,37 +223,25 @@ class Scene(Object3D):
 
             visited_nodes.add(node.name)
 
+            # Resolve child's asset paths
             if resolve_relative_paths:
-                if hasattr(node, "pcd_path"):
-                    node.pcd_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.pcd_path
-                    )
-                if hasattr(node, "obj_path"):
-                    node.obj_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.obj_path
-                    )
-                if hasattr(node, "mtl_path"):
-                    node.mtl_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.mtl_path
-                    )
-                if hasattr(node, "gltf_path"):
-                    node.gltf_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.gltf_path
-                    )
-                if hasattr(node, "fbx_path"):
-                    node.fbx_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.fbx_path
-                    )
-                if hasattr(node, "stl_path"):
-                    node.stl_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.stl_path
-                    )
-                if hasattr(node, "ply_path"):
-                    node.ply_path = self._resolve_asset_path(
-                        fo3d_path_dir, node.ply_path
-                    )
+                self._resolve_node_asset_paths(node, fo3d_path_dir)
 
-        fos.write_json(validated_scene.as_dict(), fo3d_path, pretty_print=True)
+        # Now resolve any asset paths in scene background
+        if resolve_relative_paths and validated_scene.background is not None:
+            if validated_scene.background.image is not None:
+                validated_scene.background.image = self._resolve_asset_path(
+                    fo3d_path_dir, validated_scene.background.image
+                )
+            if validated_scene.background.cube is not None:
+                validated_scene.background.cube = [
+                    self._resolve_asset_path(fo3d_path_dir, ci)
+                    for ci in validated_scene.background.cube
+                ]
+
+        fos.write_json(
+            validated_scene.as_dict(), fo3d_path, pretty_print=pprint
+        )
 
     def traverse(self, include_self=False):
         """Traverse the scene graph.
@@ -218,61 +257,26 @@ class Scene(Object3D):
 
     def get_scene_summary(self):
         """Returns a summary of the scene."""
-        total_objs = 0
-        total_point_clouds = 0
-        total_gltfs = 0
-        total_fbxs = 0
-        total_stls = 0
-        total_plys = 0
-        total_shapes = 0
-
-        for node in self.traverse():
-            if isinstance(node, Pointcloud):
-                total_point_clouds += 1
-            elif isinstance(node, GltfMesh):
-                total_gltfs += 1
-            elif isinstance(node, FbxMesh):
-                total_fbxs += 1
-            elif isinstance(node, StlMesh):
-                total_stls += 1
-            elif isinstance(node, PlyMesh):
-                total_plys += 1
-            elif isinstance(node, ObjMesh):
-                total_objs += 1
-            elif isinstance(node, Shape3D):
-                total_shapes += 1
-
+        node_types = Counter(map(type, self.traverse()))
         return {
-            "objs": total_objs,
-            "point clouds": total_point_clouds,
-            "gltfs": total_gltfs,
-            "fbxs": total_fbxs,
-            "stls": total_stls,
-            "plys": total_plys,
-            "shapes": total_shapes,
+            "objs": node_types[ObjMesh],
+            "point clouds": node_types[PointCloud],
+            "gltfs": node_types[GltfMesh],
+            "fbxs": node_types[FbxMesh],
+            "stls": node_types[StlMesh],
+            "plys": node_types[PlyMesh],
+            "shapes": node_types[Shape3D],
         }
 
     def get_asset_paths(self):
         """Collect all asset paths in the scene. Asset paths aren't resolved to
         absolute paths.
         """
-        asset_paths = []
-
-        for node in self.traverse():
-            if isinstance(node, Pointcloud):
-                asset_paths.append(node.pcd_path)
-            elif isinstance(node, GltfMesh):
-                asset_paths.append(node.gltf_path)
-            elif isinstance(node, FbxMesh):
-                asset_paths.append(node.fbx_path)
-            elif isinstance(node, StlMesh):
-                asset_paths.append(node.stl_path)
-            elif isinstance(node, PlyMesh):
-                asset_paths.append(node.ply_path)
-            elif isinstance(node, ObjMesh):
-                asset_paths.append(node.obj_path)
-                if node.mtl_path is not None:
-                    asset_paths.append(node.mtl_path)
+        asset_paths = list(
+            itertools.chain.from_iterable(
+                node._get_asset_paths() for node in self.traverse()
+            )
+        )
 
         # append paths in scene background, if any
         if self.background is not None:
@@ -286,10 +290,10 @@ class Scene(Object3D):
         if path is None:
             return None
 
-        if not os.path.isabs(path):
-            path = os.path.join(root, path)
+        if not fos.isabs(path):
+            path = fos.join(root, path)
 
-        return path
+        return fos.resolve(path)
 
     def _to_dict_extra(self):
         return {
