@@ -13,11 +13,22 @@ from fiftyone.operators.operator import OperatorConfig, Operator
 class PanelOperatorConfig(OperatorConfig):
     """A configuration for a panel operator."""
 
-    def __init__(self, name, label, icon=None, allow_multiple=False, **kwargs):
+    def __init__(
+        self,
+        name,
+        label,
+        icon=None,
+        dark_icon=None,
+        light_icon=None,
+        allow_multiple=False,
+        **kwargs
+    ):
         super().__init__(name)
         self.name = name
         self.label = label
         self.icon = icon
+        self.dark_icon = dark_icon
+        self.light_icon = light_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
@@ -30,6 +41,8 @@ class PanelOperatorConfig(OperatorConfig):
             "name": self.name,
             "label": self.label,
             "icon": self.icon,
+            "dark_icon": self.dark_icon,
+            "light_icon": self.light_icon,
             "allow_multiple": self.allow_multiple,
         }
 
@@ -53,6 +66,9 @@ class Panel(Operator):
             "name": self.config.name,
             "label": self.config.label,
             "allow_duplicates": self.config.allow_multiple,
+            "icon": self.config.icon,
+            "dark_icon": self.config.dark_icon,
+            "light_icon": self.config.light_icon,
         }
         methods = ["on_load", "on_unload", "on_change", "on_view_change"]
         for method in methods:

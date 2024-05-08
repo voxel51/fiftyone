@@ -5,6 +5,7 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import json
 
 from bson import json_util
@@ -265,6 +266,9 @@ class Operations(object):
         self,
         name,
         label,
+        icon=None,
+        dark_icon=None,
+        light_icon=None,
         on_load=None,
         on_unload=None,
         on_change=None,
@@ -275,6 +279,9 @@ class Operations(object):
 
         Args:
             name: the name of the panel to register
+            icon (None): the icon to display in the panel tab
+            dark_icon (None): the icon to display in the panel tab in dark mode of app
+            light_icon (None): the icon to display in the panel tab in light mode of app
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state changes
@@ -283,6 +290,9 @@ class Operations(object):
         params = {
             "panel_name": name,
             "panel_label": label,
+            "icon": icon,
+            "dark_icon": dark_icon,
+            "light_icon": light_icon,
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
