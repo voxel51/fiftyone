@@ -1131,6 +1131,20 @@ export class LazyFieldView extends View {
 }
 
 /**
+ * Operator class for describing a IconButtonView {@link Button} for an
+ * operator type.
+ */
+export class IconButtonView extends Button {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "IconButtonView";
+  }
+  static fromJSON(json) {
+    return new IconButtonView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
