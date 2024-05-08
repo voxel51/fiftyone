@@ -32,6 +32,12 @@ class Encoder(JSONEncoder):
         return JSONEncoder.default(self, o)
 
 
+async def create_response(response: dict):
+    return Response(
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder))
+    )
+
+
 def route(func):
     async def wrapper(
         endpoint: HTTPEndpoint, request: Request, *args
@@ -44,11 +50,8 @@ def route(func):
             if isinstance(response, Response):
                 return response
 
-            return Response(
-                await run_sync_task(
-                    lambda: json_util.dumps(response, cls=Encoder)
-                )
-            )
+            return create_response(response)
+
         except Exception as e:
             logging.exception(e)
             return JSONResponse(
