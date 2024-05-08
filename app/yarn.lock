@@ -2395,6 +2395,7 @@ __metadata:
     "@types/react-syntax-highlighter": ^15.5.6
     classnames: ^2.3.1
     framer-motion: ^6.2.7
+    material-icons: ^1.13.12
     path-to-regexp: ^6.2.0
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
@@ -13185,6 +13186,13 @@ __metadata:
   version: 1.2.6
   resolution: "material-colors@npm:1.2.6"
   checksum: 72d005ccccb82bab68eef3cd757e802668634fc86976dedb9fc564ce994f2d3258273766b7efecb7404a0031969e2d72201a1b74169763f0a53c0dd8d649209f
+  languageName: node
+  linkType: hard
+
+"material-icons@npm:^1.13.12":
+  version: 1.13.12
+  resolution: "material-icons@npm:1.13.12"
+  checksum: 46f0e03c4c22e8334c633915dd87c3023f0c6345c1d9376170aa8bb8c54e944a5fc40ec128888965b563e2472a8fae83a2f5b75d3f957ede8b5d8476650e4109
   languageName: node
   linkType: hard
 
