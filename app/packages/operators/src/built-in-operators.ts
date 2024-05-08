@@ -1,7 +1,6 @@
 import {
   Layout,
   SpaceNode,
-  usePanel,
   usePanelState,
   usePanels,
   useSetPanelStateById,
@@ -13,9 +12,11 @@ import * as types from "./types";
 
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
+import { merge } from "lodash";
 import { useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
+import registerPanel from "./Panel/register";
 import {
   ExecutionContext,
   Operator,
@@ -25,10 +26,7 @@ import {
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./operators";
-import { usePromptOperatorInput, useShowOperatorIO } from "./state";
-import { merge } from "lodash";
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import CustomPanel, { defineCustomPanel } from "./CustomPanel";
+import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
 
 //
@@ -982,16 +980,7 @@ class RegisterPanel extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    registerComponent({
-      type: PluginComponentType.Panel,
-      name: ctx.params.panel_name,
-      component: defineCustomPanel(ctx.params),
-      label: ctx.params.panel_label,
-      activator: () => true,
-      panelOptions: {
-        allowDuplicates: ctx.params.allow_duplicates,
-      },
-    });
+    registerPanel(ctx);
   }
 }
 
