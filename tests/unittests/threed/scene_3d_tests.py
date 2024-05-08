@@ -15,6 +15,12 @@ from unittest.mock import mock_open, patch
 from fiftyone.core import threed
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
+from dataclass_test_utils import (
+    assert_color_prop,
+    assert_float_prop,
+    assert_string_prop,
+)
+
 
 class TestScene(unittest.TestCase):
     def setUp(self):
@@ -162,3 +168,23 @@ class TestScene(unittest.TestCase):
             "another_key": "value",
         }
         self.assertEqual(convert_keys_to_snake_case(input_dict), expected_dict)
+
+
+class TestSceneBackground(unittest.TestCase):
+    def test_it(self):
+        obj = threed.SceneBackground()
+        self.assertEqual(obj, threed.SceneBackground(None, None, None, 1.0))
+        self.assertRaises(ValueError, setattr, obj, "another_field", 51)
+
+        assert_color_prop(self, obj, "color", nullable=True)
+        assert_string_prop(self, obj, "image", nullable=True)
+        assert_float_prop(self, obj, "intensity", nullable=True)
+
+        # Custom cube tests
+        self.assertRaises(ValueError, setattr, obj, "cube", 51.51)
+        self.assertRaises(ValueError, setattr, obj, "cube", ["1", "2"])
+        obj.cube = ["1", "2", "3", "4", "5", "6"]
+        self.assertListEqual(obj.cube, ["1", "2", "3", "4", "5", "6"])
+
+        obj2 = threed.SceneBackground._from_dict(obj.as_dict())
+        self.assertEqual(obj, obj2)

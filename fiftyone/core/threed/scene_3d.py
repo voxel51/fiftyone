@@ -8,9 +8,8 @@
 import itertools
 import os
 from collections import Counter
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic.dataclasses import dataclass
 
 import fiftyone.core.storage as fos
 
@@ -21,6 +20,7 @@ from .object_3d import Object3D
 from .pointcloud import PointCloud
 from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
+from .validators import BaseValidatedDataClass, validate_color, validate_list
 
 fo3d_path_attributes = [
     "pcd_path",
@@ -33,8 +33,7 @@ fo3d_path_attributes = [
 ]
 
 
-@dataclass
-class SceneBackground:
+class SceneBackground(BaseValidatedDataClass):
     """Represents the background of the scene.
 
     Args:
@@ -49,12 +48,51 @@ class SceneBackground:
             to ``1.0``. This only applies for ``image`` and ``cube`` backgrounds
     """
 
-    color: Optional[str] = None
-    image: Optional[str] = None
-    cube: Optional[List[str]] = None
-    intensity: Optional[float] = 1.0
+    def __init__(
+        self,
+        color: Optional[str] = None,
+        image: Optional[str] = None,
+        cube: Optional[List[str]] = None,
+        intensity: Optional[float] = 1.0,
+    ):
+        self.color = color
+        self.image = image
+        self.cube = cube
+        self.intensity = intensity
 
-    def as_dict(self):
+    @property
+    def color(self) -> Union[str, None]:
+        return self._color
+
+    @color.setter
+    def color(self, value: Optional[str]) -> None:
+        self._color = validate_color(value, nullable=True)
+
+    @property
+    def image(self) -> Union[str, None]:
+        return self._image
+
+    @image.setter
+    def image(self, value: Optional[str]) -> None:
+        self._image = None if value is None else str(value)
+
+    @property
+    def cube(self) -> Union[List[str], None]:
+        return self._cube
+
+    @cube.setter
+    def cube(self, value: Optional[List[str]]) -> None:
+        self._cube = validate_list(value, length=6, nullable=True)
+
+    @property
+    def intensity(self) -> Union[float, None]:
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value: Optional[float]) -> None:
+        self._intensity = None if value is None else float(value)
+
+    def as_dict(self) -> dict:
         return {
             "color": self.color,
             "image": self.image,

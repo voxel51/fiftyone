@@ -10,8 +10,13 @@ from math import pi as PI
 from typing import Optional
 
 from .object_3d import Object3D
-from .transformation import Quaternion, Vec3UnionType, Vector3
-from .validators import normalize_to_vec3
+
+from .transformation import (
+    Quaternion,
+    Vec3UnionType,
+    Vector3,
+    normalize_to_vec3,
+)
 
 COLOR_DEFAULT_WHITE = "#ffffff"
 
