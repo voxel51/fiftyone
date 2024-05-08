@@ -682,6 +682,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
+|                           |                                        |                             | field's value for a sample is not defined.                                                |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                  |
@@ -712,9 +715,6 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 |                           |                                        |                             | details.                                                                                  |
-+---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
-| `media_fallback`          | `FIFTYONE_APP_MEDIA_FALLBACK`          | `False`                     | Whether to fall back to the default media field (`"filepath"`) when the configured media  |
-|                           |                                        |                             | field's value for a sample is not defined.                                                |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 
 Viewing your App config
@@ -759,6 +759,7 @@ You can print your App config at any time via the Python library and the CLI:
             "grid_zoom": 5,
             "lightning_threshold": null,
             "loop_videos": false,
+            "media_fallback": false
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -771,7 +772,6 @@ You can print your App config at any time via the Python library and the CLI:
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {},
-            "media_fallback": false
         }
 
         True
@@ -809,6 +809,7 @@ You can print your App config at any time via the Python library and the CLI:
             "grid_zoom": 5,
             "lightning_threshold": null,
             "loop_videos": false,
+            "media_fallback": false
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -821,7 +822,6 @@ You can print your App config at any time via the Python library and the CLI:
             "theme": "browser",
             "use_frame_number": false,
             "plugins": {},
-            "media_fallback": false
         }
 
         True
