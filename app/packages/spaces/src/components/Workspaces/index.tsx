@@ -61,7 +61,7 @@ export default function Workspaces() {
           zIndex: 1,
           color: (theme) => theme.palette.text.secondary,
           fontSize: 14,
-          pr: "19px",
+          pr: "0.75rem",
         }}
         endIcon={<AutoAwesomeMosaicOutlined sx={{ fontSize: 18 }} />}
       >
