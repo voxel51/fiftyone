@@ -4655,132 +4655,205 @@ class ThreeDMediaTests(unittest.TestCase):
     properly elsewhere, 3D should be no different in that regard.
     """
 
+    def _build_flat_relative(self, temp_dir):
+        # Scene has relative asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   pcd.pcd
+        #   obj.obj
+        #   mtl.mtl
+        #   s1.fo3d
+        root_data_dir = os.path.join(temp_dir, "data")
+        s = fo.Scene()
+        s.background = fo.SceneBackground(image="image.jpeg")
+        s.add(fo.PointCloud("pcd", "pcd.pcd"))
+        s.add(fo.ObjMesh("obj", "obj.obj", "mtl.mtl"))
+        scene_path = os.path.join(root_data_dir, "s1.fo3d")
+        s.write(scene_path)
+        for file in s.get_asset_paths():
+            with open(os.path.join(root_data_dir, file), "w") as f:
+                f.write(file)
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(scene_path))
+        return s, dataset
+
+    def _build_flat_absolute(self, temp_dir):
+        # Scene has absolute asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   pcd.pcd
+        #   obj.obj
+        #   mtl.mtl
+        #   s1.fo3d
+        root_data_dir = os.path.join(temp_dir, "data")
+        s = fo.Scene()
+        s.background = fo.SceneBackground(
+            image=os.path.join(root_data_dir, "image.jpeg")
+        )
+        s.add(fo.PointCloud("pcd", os.path.join(root_data_dir, "pcd.pcd")))
+        s.add(
+            fo.ObjMesh(
+                "obj",
+                os.path.join(root_data_dir, "obj.obj"),
+                os.path.join(root_data_dir, "mtl.mtl"),
+            )
+        )
+        scene_path = os.path.join(root_data_dir, "s1.fo3d")
+        s.write(scene_path)
+        for file in s.get_asset_paths():
+            with open(os.path.join(root_data_dir, file), "w") as f:
+                f.write(os.path.basename(file))
+
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(scene_path))
+        return s, dataset
+
+    def _build_nested_relative(self, temp_dir):
+        # Scene has relative asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   label1/
+        #       test/
+        #           s.fo3d
+        #           sub/
+        #               pcd.pcd
+        #               obj.obj
+        #               mtl.mtl
+        #   label2/
+        #       test/
+        #           s.fo3d
+        #           sub/
+        #               pcd.pcd
+        #               obj.obj
+        #               mtl.mtl
+        root_data_dir = os.path.join(temp_dir, "data")
+        scene1_dir = os.path.join(root_data_dir, "label1", "test")
+
+        s = fo.Scene()
+        s.background = fo.SceneBackground(image="../../image.jpeg")
+        s.add(fo.PointCloud("pcd", "sub/pcd.pcd"))
+        s.add(
+            fo.ObjMesh(
+                "obj",
+                "sub/obj.obj",
+                "sub/mtl.mtl",
+            )
+        )
+        scene_path = os.path.join(scene1_dir, "s.fo3d")
+        s.write(scene_path)
+
+        scene2_dir = os.path.join(root_data_dir, "label2", "test")
+
+        scene_path2 = os.path.join(scene2_dir, "s.fo3d")
+
+        # Scene2 is the same except change something small so we know which
+        #   is which.
+        s.background.color = "red"
+        s.write(scene_path2)
+
+        # Write content as filename (with 2 suffix for files from scene 2)
+        for file in s.get_asset_paths():
+            f = pathlib.Path(os.path.join(scene1_dir, file))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(os.path.basename(file))
+
+            if file.endswith("image.jpeg"):
+                continue
+
+            f = pathlib.Path(os.path.join(scene2_dir, file))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(os.path.basename(file) + "2")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample(scene_path), fo.Sample(scene_path2)])
+        return dataset
+
+    def _assert_scene_content(self, original_scene, scene, export_dir=None):
+        self.assertEqual(original_scene, scene)
+        for file in scene.get_asset_paths():
+            if export_dir:
+                file = os.path.join(export_dir, file)
+            with open(file) as f:
+                self.assertEqual(f.read(), os.path.basename(file))
+
     @drop_datasets
-    def test_relative_flat(self):
+    def test_flat_relative(self):
+        """Tests a simple flat and relative-addressed scene"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            root_data_dir = os.path.join(temp_dir, "data")
-            s = fo.Scene()
-            s.background = fo.SceneBackground(image="image.jpeg")
-            s.add(fo.PointCloud("pcd", "pcd.pcd"))
-            s.add(fo.ObjMesh("obj", "obj.obj", "mtl.mtl"))
-            scene_path = os.path.join(root_data_dir, "s1.fo3d")
-            s.write(scene_path)
-            for file in s.get_asset_paths():
-                with open(os.path.join(root_data_dir, file), "w") as f:
-                    f.write(file)
+            s, dataset = self._build_flat_relative(temp_dir)
 
-            dataset = fo.Dataset()
-            dataset.add_sample(fo.Sample(scene_path))
+            # Export
             export_dir = os.path.join(temp_dir, "export")
-
             dataset.export(
                 export_dir=export_dir,
                 dataset_type=fo.types.MediaDirectory,
                 export_media=True,
             )
+
+            # All files flat in export_dir
             fileset = set(os.listdir(export_dir))
             self.assertSetEqual(
                 fileset,
                 {"image.jpeg", "pcd.pcd", "obj.obj", "mtl.mtl", "s1.fo3d"},
             )
+
+            # Same file content
             scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
-            self.assertEqual(s, scene2)
-            for file in scene2.get_asset_paths():
-                with open(os.path.join(export_dir, file)) as f:
-                    self.assertEqual(f.read(), file)
+            self._assert_scene_content(s, scene2, export_dir)
 
     @drop_datasets
-    def test_absolute_flat(self):
+    def test_flat_absolute(self):
+        """Tests a simple flat and absolute-addressed scene"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            root_data_dir = os.path.join(temp_dir, "data")
-            s = fo.Scene()
-            s.background = fo.SceneBackground(
-                image=os.path.join(root_data_dir, "image.jpeg")
-            )
-            s.add(fo.PointCloud("pcd", os.path.join(root_data_dir, "pcd.pcd")))
-            s.add(
-                fo.ObjMesh(
-                    "obj",
-                    os.path.join(root_data_dir, "obj.obj"),
-                    os.path.join(root_data_dir, "mtl.mtl"),
-                )
-            )
-            scene_path = os.path.join(root_data_dir, "s1.fo3d")
-            s.write(scene_path)
-            for file in s.get_asset_paths():
-                with open(os.path.join(root_data_dir, file), "w") as f:
-                    f.write(os.path.basename(file))
+            s, dataset = self._build_flat_absolute(temp_dir)
 
-            dataset = fo.Dataset()
-            dataset.add_sample(fo.Sample(scene_path))
+            # Export it
             export_dir = os.path.join(temp_dir, "export")
-
             dataset.export(
                 export_dir=export_dir,
                 dataset_type=fo.types.MediaDirectory,
                 export_media=True,
             )
+
+            # All files flat in export_dir
             fileset = set(os.listdir(export_dir))
             self.assertSetEqual(
                 fileset,
                 {"image.jpeg", "pcd.pcd", "obj.obj", "mtl.mtl", "s1.fo3d"},
             )
-            scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
-            scene2.write(
+
+            # Write temp scene with resolving relative paths, so we can test
+            #   that scenes are equal if relative paths are resolved
+            tmp_scene = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
+            tmp_scene.write(
                 os.path.join(export_dir, "test.fo3d"),
                 resolve_relative_paths=True,
             )
-            scene3 = fo.Scene.from_fo3d(os.path.join(export_dir, "test.fo3d"))
+            scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "test.fo3d"))
 
-            self.assertEqual(s, scene3)
-            for file in scene2.get_asset_paths():
-                with open(os.path.join(export_dir, file)) as f:
-                    self.assertEqual(f.read(), os.path.basename(file))
+            self._assert_scene_content(s, scene2)
 
     @drop_datasets
     def test_relative_nested_flatten(self):
+        """Tests nested structure is flattened to export dir. Will require
+        rename of duplicate asset file names and change of relative asset path
+        in fo3d file.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
-            root_data_dir = os.path.join(temp_dir, "data")
-            scene1_dir = os.path.join(root_data_dir, "label1", "test")
+            dataset = self._build_nested_relative(temp_dir)
 
-            s = fo.Scene()
-            s.background = fo.SceneBackground(image="../../image.jpeg")
-            s.add(fo.PointCloud("pcd", "sub/pcd.pcd"))
-            s.add(
-                fo.ObjMesh(
-                    "obj",
-                    "sub/obj.obj",
-                    "sub/mtl.mtl",
-                )
-            )
-            scene_path = os.path.join(scene1_dir, "s1.fo3d")
-            s.write(scene_path)
-
-            scene2_dir = os.path.join(root_data_dir, "label2", "test")
-
-            scene_path2 = os.path.join(scene2_dir, "s1.fo3d")
-            s.background.color = "red"
-            s.write(scene_path2)
-            for file in s.get_asset_paths():
-                f = pathlib.Path(os.path.join(scene1_dir, file))
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_text(os.path.basename(file))
-
-                f = pathlib.Path(os.path.join(scene2_dir, file))
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_text(os.path.basename(file) + "2")
-
-            dataset = fo.Dataset()
-            dataset.add_samples(
-                [fo.Sample(scene_path), fo.Sample(scene_path2)]
-            )
+            # Export it and flatten (no rel_dir)
             export_dir = os.path.join(temp_dir, "export")
-
             dataset.export(
                 export_dir=export_dir,
                 dataset_type=fo.types.MediaDirectory,
                 export_media=True,
             )
+
+            # Flattening should mean duplicate file names gain a '-2'
             fileset = set(os.listdir(export_dir))
             self.assertSetEqual(
                 fileset,
@@ -4789,17 +4862,19 @@ class ThreeDMediaTests(unittest.TestCase):
                     "pcd.pcd",
                     "obj.obj",
                     "mtl.mtl",
-                    "s1.fo3d",
+                    "s.fo3d",
                     "image.jpeg",
                     "pcd-2.pcd",
                     "obj-2.obj",
                     "mtl-2.mtl",
-                    "s1-2.fo3d",
+                    "s-2.fo3d",
                 },
             )
-            scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
+
+            # Scene 1
+            scene1_2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s.fo3d"))
             self.assertSetEqual(
-                set(scene2.get_asset_paths()),
+                set(scene1_2.get_asset_paths()),
                 {
                     "image.jpeg",
                     "pcd.pcd",
@@ -4807,16 +4882,10 @@ class ThreeDMediaTests(unittest.TestCase):
                     "mtl.mtl",
                 },
             )
-            for file in scene2.get_asset_paths():
-                if file.endswith("image.jpeg"):
-                    continue
-                plus = "2" if scene2.background.color == "red" else ""
-                with open(os.path.join(export_dir, file)) as f:
-                    self.assertEqual(f.read(), os.path.basename(file) + plus)
-
-            scene3 = fo.Scene.from_fo3d(os.path.join(export_dir, "s1-2.fo3d"))
+            # Scene 2
+            scene2_2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s-2.fo3d"))
             self.assertSetEqual(
-                set(scene3.get_asset_paths()),
+                set(scene2_2.get_asset_paths()),
                 {
                     "image.jpeg",
                     "pcd-2.pcd",
@@ -4825,50 +4894,34 @@ class ThreeDMediaTests(unittest.TestCase):
                 },
             )
 
-            for file in scene3.get_asset_paths():
-                plus = "2" if scene3.background.color == "red" else ""
+            # Make sure we align on scene number from before - remember, scene2
+            #   has a red background! Swap if necessary
+            if scene1_2.background.color == "red":
+                scene2_2, scene1_2 = scene1_2, scene2_2
+
+            for file in scene1_2.get_asset_paths():
+                with open(os.path.join(export_dir, file)) as f:
+                    self.assertEqual(f.read(), os.path.basename(file))
+
+            for file in scene2_2.get_asset_paths():
+                if file.endswith("image.jpeg"):
+                    continue
                 with open(os.path.join(export_dir, file)) as f:
                     self.assertEqual(
                         f.read(),
-                        os.path.basename(file).replace("-2", "") + plus,
+                        os.path.basename(file).replace("-2", "") + "2",
                     )
 
     @drop_datasets
     def test_relative_nested_maintain(self):
+        """Tests nested structure is maintained in export dir. No change in
+        relative asset paths in fo3d file.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
+            dataset = self._build_nested_relative(temp_dir)
+
+            # Export it - with root data dir as rel_dir
             root_data_dir = os.path.join(temp_dir, "data")
-            scene1_dir = os.path.join(root_data_dir, "label1", "test")
-
-            s = fo.Scene()
-            s.background = fo.SceneBackground(image="../../image.jpeg")
-            s.add(fo.PointCloud("pcd", "sub/pcd.pcd"))
-            s.add(
-                fo.ObjMesh(
-                    "obj",
-                    "sub/obj.obj",
-                    "sub/mtl.mtl",
-                )
-            )
-            scene_path = os.path.join(scene1_dir, "s1.fo3d")
-            s.write(scene_path)
-
-            scene2_dir = os.path.join(root_data_dir, "label2", "test")
-
-            scene_path2 = os.path.join(scene2_dir, "s1.fo3d")
-            s.write(scene_path2)
-            for file in s.get_asset_paths():
-                f = pathlib.Path(os.path.join(scene1_dir, file))
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_text(os.path.basename(file))
-
-                f = pathlib.Path(os.path.join(scene2_dir, file))
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_text(os.path.basename(file) + "2")
-
-            dataset = fo.Dataset()
-            dataset.add_samples(
-                [fo.Sample(scene_path), fo.Sample(scene_path2)]
-            )
             export_dir = os.path.join(temp_dir, "export")
 
             dataset.export(
@@ -4878,26 +4931,24 @@ class ThreeDMediaTests(unittest.TestCase):
                 rel_dir=root_data_dir,
             )
 
-            scene2 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label1/test/s1.fo3d")
+            scene1 = fo.Scene.from_fo3d(
+                os.path.join(export_dir, "label1/test/s.fo3d")
             )
-            self.assertEqual(s, scene2)
-            self.assertEqual(scene2.background.image, "../../image.jpeg")
+            self.assertEqual(scene1.background.image, "../../image.jpeg")
 
-            for file in scene2.get_asset_paths():
-                if file.endswith("image.jpeg"):
-                    continue
+            for file in scene1.get_asset_paths():
                 with open(os.path.join(export_dir, "label1/test/", file)) as f:
                     self.assertEqual(f.read(), os.path.basename(file))
 
-            scene3 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label2/test/s1.fo3d")
+            scene2 = fo.Scene.from_fo3d(
+                os.path.join(export_dir, "label2/test/s.fo3d")
             )
-            self.assertEqual(s, scene3)
-            self.assertEqual(scene3.background.image, "../../image.jpeg")
+            self.assertEqual(scene2.background.image, "../../image.jpeg")
 
-            for file in scene3.get_asset_paths():
+            for file in scene2.get_asset_paths():
                 with open(os.path.join(export_dir, "label2/test/", file)) as f:
+                    if file.endswith("image.jpeg"):
+                        continue
                     self.assertEqual(
                         f.read(),
                         os.path.basename(file) + "2",
