@@ -423,7 +423,7 @@ def _apply_options(db):
     timezone = fo.config.timezone
 
     if not timezone:
-        timezone = "utc"
+        return db
 
     if timezone.lower() == "local":
         tzinfo = datetime.now().astimezone().tzinfo
