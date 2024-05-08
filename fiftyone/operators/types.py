@@ -969,7 +969,7 @@ class Button(View):
         button = types.Button(
             label="Click me",
             operator="print_stdout",
-            params={"message": "Hello World"},
+            params={"msg": "Hello World"},
         )
 
         inputs = types.Object()
@@ -1864,4 +1864,28 @@ class DrawerView(View):
         placement = kwargs.get("placement", None)
         if placement not in ["left", "right"]:
             raise ValueError('placement must be either "left" or "right".')
+        super().__init__(**kwargs)
+
+
+class IconButtonView(Button):
+    """Represents a button in a :class:`View`.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        iconButtonView = types.IconButtonView(
+            icon="waving_hand",
+            operator="print_stdout",
+            params={"msg": "Hi!"},
+        )
+
+        inputs = types.Object()
+        inputs.view("icon_btn", iconButtonView)
+
+    Args:
+        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+    """
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
