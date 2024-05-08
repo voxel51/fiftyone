@@ -514,10 +514,7 @@ class DateField(mongoengine.fields.DateField, Field):
         if value is None:
             return None
 
-        # Explicitly converting to UTC is important here because PyMongo loads
-        # everything as `datetime`, which will respect `fo.config.timezone`,
-        # but we always need UTC here for the conversion back to `date`
-        return value.astimezone(pytz.utc).date()
+        return value.date()
 
     def validate(self, value):
         if not isinstance(value, date):
