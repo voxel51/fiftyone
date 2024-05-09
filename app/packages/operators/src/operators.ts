@@ -71,6 +71,30 @@ export class ExecutionContext {
   public delegationTarget: string = null;
   public requestDelegation: boolean = false;
   public currentPanel?: Panel = null;
+  public get datasetName(): string {
+    return this._currentContext.datasetName;
+  }
+  public get view(): string {
+    return this._currentContext.view;
+  }
+  public get extended(): boolean {
+    return this._currentContext.extended;
+  }
+  public get filters(): any {
+    return this._currentContext.filters;
+  }
+  public get selectedSamples(): any {
+    return this._currentContext.selectedSamples;
+  }
+  public get selectedLabels(): any {
+    return this._currentContext.selectedLabels;
+  }
+  public get currentSample(): any {
+    return this._currentContext.currentSample;
+  }
+  public get viewName(): any {
+    return this._currentContext.viewName;
+  }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }

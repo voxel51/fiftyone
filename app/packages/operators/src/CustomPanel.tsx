@@ -26,7 +26,11 @@ export function CustomPanel(props: CustomPanelProps) {
     onLoad,
     onChange,
     onUnLoad,
-    onViewChange,
+    onChangeView,
+    onChangeDataset,
+    onChangeCurrentSample,
+    onChangeSelected,
+    onChangeSelectedLabels,
     dimensions,
     panelName,
     panelLabel,
@@ -87,7 +91,11 @@ export function defineCustomPanel({
   on_load,
   on_change,
   on_unload,
-  on_view_change,
+  on_change_view,
+  on_change_dataset,
+  on_change_current_sample,
+  on_change_selected,
+  on_change_selected_labels,
   panel_name,
   panel_label,
 }) {
@@ -97,7 +105,11 @@ export function defineCustomPanel({
       onLoad={on_load}
       onUnLoad={on_unload}
       onChange={on_change}
-      onViewChange={on_view_change}
+      onChangeView={on_change_view}
+      onChangeDataset={on_change_dataset}
+      onChangeCurrentSample={on_change_current_sample}
+      onChangeSelected={on_change_selected}
+      onChangeSelectedLabels={on_change_selected_labels}
       dimensions={dimensions}
       panelName={panel_name}
       panelLabel={panel_label}

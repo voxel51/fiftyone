@@ -54,8 +54,15 @@ class Panel(Operator):
             "label": self.config.label,
             "allow_duplicates": self.config.allow_multiple,
         }
-        methods = ["on_load", "on_unload", "on_change", "on_view_change"]
-        for method in methods:
+        methods = ["on_load", "on_unload", "on_change"]
+        ctx_change_events = [
+            "on_change_view",
+            "on_change_dataset",
+            "on_change_current_sample",
+            "on_change_selected",
+            "on_change_selected_labels",
+        ]
+        for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):
                 panel_config[method] = self.method_to_uri(method)
 
@@ -89,7 +96,7 @@ class PanelRefState:
             super().__setattr__(key, value)
         else:
             self._data[key] = value
-            self._ctx.ops.patch_panel_state({key: value})
+            self._ctx.ops.set_panel_state({key: value})
 
     def __getattr__(self, key):
         return self._data.get(key, None)

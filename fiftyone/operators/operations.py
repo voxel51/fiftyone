@@ -268,7 +268,11 @@ class Operations(object):
         on_load=None,
         on_unload=None,
         on_change=None,
-        on_view_change=None,
+        on_change_view=None,
+        on_change_dataset=None,
+        on_change_current_sample=None,
+        on_change_selected=None,
+        on_change_selected_labels=None,
         allow_duplicates=False,
     ):
         """Register a panel with the given name and lifecycle callbacks.
@@ -287,7 +291,11 @@ class Operations(object):
             "on_unload": on_unload,
             "on_change": on_change,
             "allow_duplicates": allow_duplicates,
-            "on_view_change": on_view_change,
+            "on_change_view": on_change_view,
+            "on_change_dataset": on_change_dataset,
+            "on_change_current_sample": on_change_current_sample,
+            "on_change_selected": on_change_selected,
+            "on_change_selected_labels": on_change_selected_labels,
         }
         return self._ctx.trigger("register_panel", params=params)
 

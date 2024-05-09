@@ -9,7 +9,11 @@ export {
   abortOperationsByExpression,
   abortOperationsByURI,
 } from "./operators";
-export { useOperatorExecutor, useOperatorPlacements } from "./state";
+export {
+  useOperatorExecutor,
+  useOperatorPlacements,
+  useGlobalExecutionContext,
+} from "./state";
 export { useOperators } from "./loader";
 export { default as OperatorPlacements } from "./OperatorPlacements";
 export * as types from "./types";
