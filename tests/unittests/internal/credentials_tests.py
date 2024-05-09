@@ -14,6 +14,7 @@ from cryptography.fernet import Fernet
 from fiftyone.core.storage import FileSystem
 from fiftyone.internal import credentials
 
+
 CREDENTIAL_DATA = [
     {
         "creds": {"access-key-id": "blah", "secret-access-key": "bloh"},
@@ -38,13 +39,20 @@ CREDENTIAL_DATA = [
     },
     {
         "creds": {"account-name": "azure-me", "aliases": ["az"]},
-        "prefixes": ["http://blah.azure.com/container*"],
+        "prefixes": ["http://foo.azure.com/container*"],
+        "provider": "AZURE",
+    },
+    {
+        "creds": {"account-name": "azure-me", "aliases": ["az"]},
+        "prefixes": ["http://bar.azure.com/container*"],
         "provider": "AZURE",
     },
 ]
+
 DEFAULT_CREDENTIAL_DATA = {
     "AWS": {"access-key-id": "blap", "secret-access-key": "zorp"}
 }
+
 ENCRYPTION_KEY = "'Ra_32QZcYDKDd75a56lUy5rNffhvbjps36gPdHOqMjE='"
 
 
@@ -116,10 +124,16 @@ class TestCredentialsManager:
         )
         assert not manager.has_bucket_credentials(FileSystem.S3, "s3://hello")
         assert manager.has_bucket_credentials(
-            FileSystem.AZURE, "http://blah.azure.com/container"
+            FileSystem.AZURE, "http://foo.azure.com/container"
         )
         assert manager.has_bucket_credentials(
-            FileSystem.AZURE, "http://blah.azure.com/container1"
+            FileSystem.AZURE, "http://foo.azure.com/container1"
+        )
+        assert manager.has_bucket_credentials(
+            FileSystem.AZURE, "http://bar.azure.com/container"
+        )
+        assert manager.has_bucket_credentials(
+            FileSystem.AZURE, "http://bar.azure.com/container1"
         )
 
     def test_get_file_systems_with_credentials(self, manager):
@@ -145,7 +159,6 @@ class TestCredentialsManager:
         _test_creds_path(
             manager, FileSystem.S3, "innocuous-secretphrase-bucket", 0
         )
-
         _test_creds_path(manager, FileSystem.S3, "s3://hello-there", 1)
 
         # Regex match
@@ -163,7 +176,10 @@ class TestCredentialsManager:
 
         # Azure match
         _test_creds_path(
-            manager, FileSystem.AZURE, "http://blah.azure.com/container1", 3
+            manager, FileSystem.AZURE, "http://foo.azure.com/container1", 3
+        )
+        _test_creds_path(
+            manager, FileSystem.AZURE, "http://bar.azure.com/container1", 4
         )
 
     def test_get_all_credentials_for_file_system(self, manager):
@@ -174,6 +190,6 @@ class TestCredentialsManager:
             + [_make_default_creds_path(manager, "AWS")]
         )
 
-        assert manager.get_all_credentials_for_file_system(
-            FileSystem.AZURE
-        ) == [manager._make_creds_path(CREDENTIAL_DATA[3])]
+        assert set(
+            manager.get_all_credentials_for_file_system(FileSystem.AZURE)
+        ) == set([manager._make_creds_path(c) for c in CREDENTIAL_DATA[3:]])

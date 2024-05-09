@@ -48,6 +48,7 @@ default_clients = {}
 bucket_regions = {}
 region_clients = {}
 bucket_clients = {}
+path_clients = {}
 client_lock = threading.Lock()
 minio_prefixes = []
 azure_prefixes = []
@@ -79,6 +80,7 @@ def init_storage():
     bucket_regions.clear()
     region_clients.clear()
     bucket_clients.clear()
+    path_clients.clear()
     minio_prefixes.clear()
     azure_prefixes.clear()
 
@@ -541,10 +543,7 @@ def get_client(fs=None, path=None):
     Raises:
         ValueError: if no suitable client could be constructed
     """
-    # Client creation may not be thread-safe, so we lock for safety
-    # https://stackoverflow.com/a/61943955/16823653
-    with client_lock:
-        return _get_client(fs=fs, path=path)
+    return _get_client(fs=fs, path=path)
 
 
 def get_url(path, **kwargs):
@@ -1868,7 +1867,6 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
     if _is_root(dirpath):
         fs = get_file_system(dirpath)
         buckets = list_buckets(fs, abs_paths=True)
-        buckets = sorted(buckets)
 
         if recursive:
             dirs = list(
@@ -1881,8 +1879,7 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
             dirs = buckets
 
         if not abs_paths:
-            n = len(dirpath)
-            dirs = [d[n:] for d in dirs]
+            dirs = [_split_prefix(fs, d)[1] for d in dirs]
 
         return dirs
 
@@ -1923,8 +1920,57 @@ def _is_root(path):
     return False
 
 
+def list_buckets(fs, abs_paths=False):
+    """Lists the available buckets in the given file system.
+
+    For local file systems, this method returns subdirectories of ``/``(or the
+    current drive on Windows).
+
+    Args:
+        fs: a :class:`FileSystem` value
+        abs_paths (False): whether to return absolute paths
+
+    Returns:
+        a list of buckets
+    """
+    _refresh_managed_credentials_if_necessary()
+
+    if fs == FileSystem.LOCAL:
+        root = os.path.abspath(os.sep)
+        return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
+
+    if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
+        raise ValueError("Unsupported file system '%s'" % fs)
+
+    buckets = set()
+
+    # Always include buckets with specific credentials
+    # Note: `managed_buckets` may contain prefixed bucket names like
+    # 's3://voxel51-test' or names-only like 'voxel51-test'
+    managed_buckets = _get_buckets_with_managed_credentials(fs)
+    if managed_buckets:
+        if abs_paths:
+            buckets.update(managed_buckets)
+        else:
+            buckets.update(_get_bucket_name(b) for b in managed_buckets)
+
+    # Also include any buckets accessible by default credentials
+    try:
+        client = get_client(fs=fs)
+    except:
+        client = None
+
+    default_buckets, prefix = _list_buckets(fs, client)
+    if default_buckets:
+        buckets.update(default_buckets)
+
+    if abs_paths and prefix:
+        buckets = [prefix + b if "/" not in b else b for b in buckets]
+
+    return sorted(buckets)
+
+
 def _list_buckets(fs, client):
-    """Lists buckets that are visible to a given client."""
     prefix = None
 
     buckets = set()
@@ -1956,83 +2002,6 @@ def _list_buckets(fs, client):
             prefix = alias_prefix or endpoint_prefix
 
     return buckets, prefix
-
-
-def list_buckets(fs, abs_paths=False):
-    """Lists the available buckets in the given file system.
-
-    For local file systems, this method returns subdirectories of ``/``(or the
-    current drive on Windows).
-
-    Args:
-        fs: a :class:`FileSystem` value
-        abs_paths (False): whether to return absolute paths
-
-    Returns:
-        a list of buckets
-    """
-    _refresh_managed_credentials_if_necessary()
-
-    if fs == FileSystem.LOCAL:
-        root = os.path.abspath(os.sep)
-        return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
-
-    if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
-        raise ValueError("Unsupported file system '%s'" % fs)
-
-    # @todo when `abs_paths=True`, this needs to be updated to prepend the
-    # correct MinIO/Azure prefix for each bucket, in case there are multiple
-    # different prefixes
-    buckets = set()
-
-    # Always include buckets with specific credentials
-    managed_buckets = _get_buckets_with_managed_credentials(fs)
-    if managed_buckets:
-        if abs_paths:
-            buckets.update(managed_buckets)
-        else:
-            buckets.update(_get_bucket_name(b) for b in managed_buckets)
-
-    prefix = None
-    # We can't use our bucket-keyed credentials cache since these are
-    #   pattern-based, so we'll just have to make the client every time.
-    if creds_manager is not None:
-        patterned_creds = creds_manager.get_patterned_credentials(fs)
-        for creds_path in patterned_creds:
-            # Make client out of credentials and list buckets
-            client = _make_client_with_credentials_path(fs, creds_path)
-            found_buckets, local_prefix = _list_buckets(fs, client)
-
-            # Filter buckets on whether they actually match one of the patterns
-            # @todo: fix imprecision in a subtle case:
-            #   credsA can see bucketA, credsB cannot see bucketA.
-            #   bucketA matches credsB pattern but not credsA pattern.
-            #   bucketA incorrectly returned since credsB would normally be used
-            found_buckets = [
-                b for b in found_buckets if _has_managed_credentials(fs, b)
-            ]
-            if abs_paths and prefix:
-                found_buckets = [
-                    local_prefix + b if "/" not in b else b
-                    for b in found_buckets
-                ]
-            buckets.update(found_buckets)
-
-    # Also include any buckets accessible by default credentials
-    try:
-        client = get_client(fs=fs)
-    except:
-        client = None
-
-    default_client_buckets, prefix = _list_buckets(fs, client)
-    buckets.update(default_client_buckets)
-
-    # Set to sorted list
-    buckets = sorted(buckets)
-    if abs_paths and prefix:
-        buckets = [prefix + b if "/" not in b else b for b in buckets]
-
-    return buckets
 
 
 def get_glob_matches(glob_patt):
@@ -2404,13 +2373,25 @@ def run(fcn, tasks, num_workers=None, progress=None):
     return results
 
 
-def _get_client(fs=None, path=None):
+def _get_client(fs=None, path=None, credentials_path=None):
+    # Client creation may not be thread-safe, so we lock for safety
+    # https://stackoverflow.com/a/61943955/16823653
+    with client_lock:
+        return _do_get_client(
+            fs=fs, path=path, credentials_path=credentials_path
+        )
+
+
+def _do_get_client(fs=None, path=None, credentials_path=None):
     _refresh_managed_credentials_if_necessary()
 
     if path is not None:
         fs = get_file_system(path)
     elif fs is None:
         raise ValueError("You must provide either a file system or a path")
+
+    if credentials_path is not None:
+        return _get_path_client(fs, credentials_path)
 
     if path is not None:
         bucket = _get_bucket(fs, path)
@@ -2474,6 +2455,25 @@ def _get_regional_client(fs, bucket):
             client = e
 
         region_clients[fs][region] = client
+
+    if isinstance(client, Exception):
+        raise client
+
+    return client
+
+
+def _get_path_client(fs, credentials_path):
+    if fs not in path_clients:
+        path_clients[fs] = {}
+
+    client = path_clients[fs].get(credentials_path, None)
+    if client is None:
+        try:
+            client = _make_client(fs, credentials_path=credentials_path)
+        except Exception as e:
+            client = e
+
+        path_clients[fs][credentials_path] = client
 
     if isinstance(client, Exception):
         raise client
@@ -2547,43 +2547,12 @@ def _do_get_region(fs, bucket):
             return _UNKNOWN_REGION
 
 
-def _make_client(fs, bucket=None, region=None, num_workers=None):
-    if region is not None and fs not in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
-        region = None
-        logger.debug("Ignoring region for non-regional file system '%s'", fs)
-
-    if num_workers is None:
-        num_workers = fo.media_cache_config.num_workers
-
-    kwargs = (fo.media_cache_config.extra_client_kwargs or {}).get(fs, {})
-
-    if num_workers is not None and num_workers > 10:
-        kwargs["max_pool_connections"] = num_workers
-
-    if fs == FileSystem.S3:
-        credentials_path, profile = _load_s3_credentials(bucket=bucket)
-        return _make_s3_client(credentials_path, profile, region, **kwargs)
-
-    if fs == FileSystem.GCS:
-        credentials_path = _load_gcs_credentials(bucket=bucket)
-        return _make_gcs_client(credentials_path, **kwargs)
-
-    if fs == FileSystem.AZURE:
-        credentials_path, profile = _load_azure_credentials(bucket=bucket)
-        return _make_azure_client(credentials_path, profile, **kwargs)
-
-    if fs == FileSystem.MINIO:
-        credentials_path, profile = _load_minio_credentials(bucket=bucket)
-        return _make_minio_client(credentials_path, profile, region, **kwargs)
-
-    if fs == FileSystem.HTTP:
-        return HTTPStorageClient(**kwargs)
-
-    raise ValueError("Unsupported file system '%s'" % fs)
-
-
-def _make_client_with_credentials_path(
-    fs, credentials_path, region=None, num_workers=None
+def _make_client(
+    fs,
+    bucket=None,
+    region=None,
+    credentials_path=None,
+    num_workers=None,
 ):
     if region is not None and fs not in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
         region = None
@@ -2592,22 +2561,40 @@ def _make_client_with_credentials_path(
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
+    profile = None
     kwargs = (fo.media_cache_config.extra_client_kwargs or {}).get(fs, {})
 
     if num_workers is not None and num_workers > 10:
         kwargs["max_pool_connections"] = num_workers
 
     if fs == FileSystem.S3:
-        return _make_s3_client(credentials_path, None, region, **kwargs)
+        if credentials_path is None:
+            credentials_path, profile = _load_s3_credentials(bucket=bucket)
+
+        return _make_s3_client(credentials_path, profile, region, **kwargs)
 
     if fs == FileSystem.GCS:
+        if credentials_path is None:
+            credentials_path = _load_gcs_credentials(bucket=bucket)
+
         return _make_gcs_client(credentials_path, **kwargs)
 
     if fs == FileSystem.AZURE:
-        return _make_azure_client(credentials_path, None, **kwargs)
+        if credentials_path is None:
+            credentials_path, profile = _load_azure_credentials(bucket=bucket)
+
+        return _make_azure_client(credentials_path, profile, **kwargs)
 
     if fs == FileSystem.MINIO:
-        return _make_minio_client(credentials_path, None, region, **kwargs)
+        if credentials_path is None:
+            credentials_path, profile = _load_minio_credentials(bucket=bucket)
+
+        return _make_minio_client(credentials_path, profile, region, **kwargs)
+
+    if fs == FileSystem.HTTP:
+        return HTTPStorageClient(**kwargs)
+
+    raise ValueError("Unsupported file system '%s'" % fs)
 
 
 def _refresh_managed_credentials_if_necessary():
@@ -2622,7 +2609,31 @@ def _get_buckets_with_managed_credentials(fs):
     if creds_manager is None:
         return None
 
-    return creds_manager.get_buckets_with_credentials(fs)
+    buckets = set()
+
+    # Buckets with exact credentials
+    for bucket in creds_manager.get_buckets_with_credentials(fs):
+        buckets.add(bucket)
+
+    # Buckets matching patterned credentials
+    for regex, patt, creds_path in creds_manager.get_patterned_credentials(fs):
+        try:
+            client = _get_client(fs, credentials_path=creds_path)
+        except:
+            client = None
+
+        if client is not None:
+            path_buckets, _ = _list_buckets(fs, client)
+
+            # Handle regexes that included prefix like 's3://voxel51-*' or
+            # 'https://voxel51.blob.core.windows.net/voxel51-*'
+            if "/" in patt:
+                prefix, _ = patt.rsplit("/", 1)
+                path_buckets = [prefix + "/" + b for b in path_buckets]
+
+            buckets.update(b for b in path_buckets if regex.fullmatch(b))
+
+    return buckets
 
 
 def _get_file_systems_with_managed_credentials():
@@ -2641,6 +2652,7 @@ def _has_managed_credentials(fs, bucket):
     if has_creds:
         return True
 
+    # Swap alias <> endpoint and check again, if applicable
     if fs in _FILE_SYSTEMS_WITH_ALIASES:
         _bucket = _swap_prefix(fs, bucket)
         has_creds = creds_manager.has_bucket_credentials(fs, _bucket)
@@ -2663,6 +2675,7 @@ def _get_managed_credentials(fs, bucket=None):
     if creds_manager.has_bucket_credentials(fs, bucket):
         return creds_manager.get_credentials(fs, bucket=bucket)
 
+    # Swap alias <> endpoint and check again, if applicable
     if fs in _FILE_SYSTEMS_WITH_ALIASES:
         _bucket = _swap_prefix(fs, bucket)
         if creds_manager.has_bucket_credentials(fs, _bucket):

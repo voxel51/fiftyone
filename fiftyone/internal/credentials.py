@@ -85,12 +85,13 @@ class CloudCredentialsManager(object):
         Returns:
             True/False
         """
-        # If exact match or matches any regex
         if bucket in self._bucket_creds_exact[fs]:
             return True
-        for bucket_regex, _ in self._bucket_creds_regex[fs]:
-            if bucket_regex.fullmatch(bucket):
+
+        for regex, _, _ in self._bucket_creds_regex[fs]:
+            if regex.fullmatch(bucket):
                 return True
+
         return False
 
     def get_file_systems_with_credentials(self):
@@ -113,8 +114,10 @@ class CloudCredentialsManager(object):
 
     def get_buckets_with_credentials(self, fs):
         """Returns the list of buckets with bucket-specific credentials for the
-        given file system. Does not include buckets included by regex as the
-        possibilities are infinite.
+        given file system.
+
+        This method does not include buckets that only match patterned
+        credentials.
 
         Args:
             fs: a :class:`fiftyone.core.storage.FileSystem`
@@ -143,9 +146,9 @@ class CloudCredentialsManager(object):
             creds_path = self._bucket_creds_exact[fs].get(bucket, None)
 
             if creds_path is None:
-                for bucket_regex, c_path in self._bucket_creds_regex[fs]:
-                    if bucket_regex.fullmatch(bucket):
-                        creds_path = c_path
+                for regex, _, _creds_path in self._bucket_creds_regex[fs]:
+                    if regex.fullmatch(bucket):
+                        creds_path = _creds_path
                         break
 
         if creds_path is None:
@@ -171,29 +174,27 @@ class CloudCredentialsManager(object):
         for creds_path in self._bucket_creds_exact[fs].values():
             creds_paths.add(creds_path)
 
-        creds_paths.update(self.get_patterned_credentials(fs))
+        for _, _, creds_path in self._bucket_creds_regex[fs]:
+            creds_paths.add(creds_path)
 
         return list(creds_paths)
 
     def get_patterned_credentials(self, fs):
-        """Returns credentials for the given file system, which have a bucket
-        pattern/regex associated with them.
+        """Returns all credentials for the given file system that have a bucket
+        pattern associated with them.
 
         Args:
             fs: a :class:`fiftyone.core.storage.FileSystem`
 
         Returns:
-            a list of credential paths
+            a list of ``(regex, patt, credentials_path)`` tuples
         """
-        creds_paths = {
-            creds_path for _, creds_path in self._bucket_creds_regex[fs]
-        }
-        return list(creds_paths)
+        return self._bucket_creds_regex[fs]
 
     def _refresh_credentials(self):
+        self._default_creds.clear()
         self._bucket_creds_exact.clear()
         self._bucket_creds_regex.clear()
-        self._default_creds.clear()
 
         for credentials in foo.get_cloud_credentials():
             provider = credentials.get("provider", "")
@@ -228,14 +229,14 @@ class CloudCredentialsManager(object):
                 for bucket in credentials["prefixes"]:
                     if "*" in bucket or "?" in bucket:
                         # Bucket has a wildcard so convert and compile as regex
-                        #   Escape it in the weird case that other regex escape
-                        #   chars like '[' are in here
-                        regex = re.escape(bucket)
-                        regex = regex.replace(r"\*", ".*")
-                        regex = regex.replace(r"\?", ".")
                         try:
+                            # Escape it in the weird case that other regex
+                            # escape chars like '[' are in here
+                            regex = re.escape(bucket)
+                            regex = regex.replace(r"\*", ".*")
+                            regex = regex.replace(r"\?", ".")
                             self._bucket_creds_regex[fs].append(
-                                (re.compile(regex), creds_path)
+                                (re.compile(regex), bucket, creds_path)
                             )
                         except re.error:
                             logger.warning(
