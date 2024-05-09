@@ -138,8 +138,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(
         exclude=["app", "eta", "package", "requirements", "tests", "tools"]
-    )
-    + ["fiftyone.recipes", "fiftyone.tutorials"],
+    ),
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",
         "fiftyone.tutorials": "docs/source/tutorials",
