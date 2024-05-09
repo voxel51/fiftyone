@@ -323,6 +323,11 @@ export const canCreateNewField = sessionAtom({
   default: true,
 });
 
+export const canAddSidebarGroup = sessionAtom({
+  key: "canAddSidebarGroup",
+  default: true,
+});
+
 export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,

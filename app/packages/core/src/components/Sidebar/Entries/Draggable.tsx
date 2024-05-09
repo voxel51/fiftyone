@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useMemo, useState } from "react";
@@ -19,8 +19,10 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const isReadOnly = useRecoilValue(readOnly);
-  const isFieldVisibilityApplied = useRecoilValue(isFieldVisibilityActive);
+  const isSnapShot = useRecoilValue(fos.readOnly);
+  const canAddSidebarGroup = useRecoilValue(fos.canAddSidebarGroup);
+  const isReadOnly = isSnapShot || !canAddSidebarGroup;
+  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
   const disableDrag =
     !entryKey ||

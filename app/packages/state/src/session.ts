@@ -30,6 +30,7 @@ export interface Session {
   canEditSavedViews: boolean;
   canEditWorkspaces: boolean;
   canCreateNewField: boolean;
+  canAddSidebarGroup: boolean;
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -41,9 +42,10 @@ export interface Session {
 
 export const SESSION_DEFAULT: Session = {
   canEditCustomColors: true,
-  canCreateNewField: true,
   canEditSavedViews: true,
   canEditWorkspaces: true,
+  canCreateNewField: true,
+  canAddSidebarGroup: true,
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
@@ -66,6 +68,7 @@ export const SESSION_DEFAULT: Session = {
 type SetterKeys = keyof Omit<
   Session,
   | "canCreateNewField"
+  | "canAddSidebarGroup"
   | "canEditCustomColors"
   | "canEditSavedViews"
   | "canEditWorkspaces"
@@ -178,6 +181,7 @@ export function sessionAtom<K extends keyof Session>(
 
       if (
         options.key === "canCreateNewField" ||
+        options.key === "canAddSidebarGroup" ||
         options.key === "canEditCustomColors" ||
         options.key === "readOnly" ||
         options.key === "canEditSavedViews" ||
