@@ -6,16 +6,19 @@ Camera definition for 3D visualization.
 |
 """
 
-from typing import Literal, Optional
+from dataclasses import dataclass
+from typing import Literal, Optional, Union
 
-from pydantic.dataclasses import dataclass
+from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
+from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
-from .transformation import Vec3UnionType
-from .validators import vec3_normalizing_validator
+
+UP_DIRECTIONS = frozenset(["X", "Y", "Z"])
+UpDirection = Literal["X", "Y", "Z"]
 
 
 @dataclass
-class PerspectiveCamera:
+class PerspectiveCamera(BaseValidatedDataClass):
     """Represents the configuration of a 3D perspective camera.
 
     Args:
@@ -35,19 +38,81 @@ class PerspectiveCamera:
         far (2000): the far clipping plane of the camera
     """
 
-    position: Optional[Vec3UnionType] = None
-    look_at: Optional[Vec3UnionType] = None
-    up: Optional[Literal["Z", "Y", "X"]] = None
-    aspect: Optional[float] = None
+    def __init__(
+        self,
+        position: Optional[Vector3] = None,
+        look_at: Optional[Vector3] = None,
+        up: Optional[UpDirection] = None,
+        aspect: Optional[float] = None,
+        fov: float = 50.0,
+        near: float = 0.1,
+        far: float = 2000.0,
+    ):
+        self.position = position
+        self.look_at = look_at
+        self.up = up
+        self.aspect = aspect
+        self.fov = fov
+        self.near = near
+        self.far = far
 
-    fov: float = 50
-    near: float = 0.1
-    far: float = 2000
+    @property
+    def position(self) -> Vector3:
+        return self._position
 
-    _ensure_position_is_normalized = vec3_normalizing_validator("position")
-    _ensure_look_at_is_normalized = vec3_normalizing_validator("look_at")
+    @position.setter
+    def position(self, value: Vec3UnionType) -> None:
+        self._position = normalize_to_vec3(value)
 
-    def as_dict(self):
+    @property
+    def look_at(self) -> Vector3:
+        return self._look_at
+
+    @look_at.setter
+    def look_at(self, value: Vec3UnionType) -> None:
+        self._look_at = normalize_to_vec3(value)
+
+    @property
+    def up(self) -> Union[str, None]:
+        return self._up
+
+    @up.setter
+    def up(self, value):
+        self._up = validate_choice(value, UP_DIRECTIONS, True)
+
+    @property
+    def aspect(self):
+        return self._aspect
+
+    @aspect.setter
+    def aspect(self, value: Optional[float]) -> None:
+        self._aspect = validate_float(value, nullable=True)
+
+    @property
+    def fov(self) -> float:
+        return self._fov
+
+    @fov.setter
+    def fov(self, value: float) -> None:
+        self._fov = validate_float(value)
+
+    @property
+    def near(self) -> float:
+        return self._near
+
+    @near.setter
+    def near(self, value: float) -> None:
+        self._near = validate_float(value)
+
+    @property
+    def far(self) -> float:
+        return self._far
+
+    @far.setter
+    def far(self, value: float) -> None:
+        self._far = validate_float(value)
+
+    def as_dict(self) -> dict:
         return {
             "position": (
                 self.position.to_arr().tolist() if self.position else None
@@ -61,7 +126,7 @@ class PerspectiveCamera:
         }
 
     @staticmethod
-    def _from_dict(d):
+    def _from_dict(d: dict):
         return PerspectiveCamera(
             position=d.get("position"),
             look_at=d.get("lookAt"),

@@ -206,6 +206,11 @@ script:
 bash install.bash -d
 ```
 
+Although not required, developers typically prefer to configure their FiftyOne
+installation to connect to a self-installed and managed instance of MongoDB,
+which you can do by following
+[these simple steps](https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection).
+
 ### Source installs in Google Colab
 
 You can install from source in

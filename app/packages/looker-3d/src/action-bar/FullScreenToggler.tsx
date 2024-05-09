@@ -26,7 +26,7 @@ export const FullScreenToggler = () => {
   }, []);
 
   return (
-    <ActionItem title="Toggle Fullscreen">
+    <ActionItem title="Toggle Fullscreen (F)">
       <IconButton onClick={toggleFullScreen} sx={{ fontSize: 24, padding: 0 }}>
         {isFullScreen ? (
           <FullScreenIcon exit />

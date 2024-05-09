@@ -1,5 +1,6 @@
 export * from "./boolean";
 export * from "./counts";
+export * from "./groups";
 export * from "./labels";
 export * from "./lightningBoolean";
 export * from "./lightningNumeric";

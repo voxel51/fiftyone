@@ -23,14 +23,14 @@ import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
+from fiftyone.core.threed import PerspectiveCamera, PointCloud, Scene
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
-from fiftyone.core.odm import DynamicEmbeddedDocument
-from fiftyone.core.sample import Sample
-from fiftyone.core.threed import Pointcloud, Scene
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -839,13 +839,21 @@ def _parse_point_cloud(
     ):
         # rotate points so that they are perpendicular to the projection plane
         # as opposed to the default XY plane
-        normal = np.asarray(projection_normal).reshape((1, 3))
+        try:
+            normal = np.asarray(projection_normal).reshape((1, 3))
+        except Exception as e:
+            raise ValueError(
+                f"Invalid projection normal argument. Must be an XYZ vector of"
+                f" shape (1,3): {projection_normal}"
+            ) from e
+
+        # There are multiple rotations that can align two vectors. This is known
+        # and accepted, so we suppress the warning.
         with warnings.catch_warnings():
-            # There are multiple rotations that can align two vectors. This is known
-            # and accepted, so we suppress the warning.
             warnings.filterwarnings(
                 "ignore",
-                message="Optimal rotation is not uniquely or poorly defined for the given sets of vectors\.",
+                message="Optimal rotation is not uniquely or poorly defined "
+                "for the given sets of vectors",
                 category=UserWarning,
             )
             R = sp.transform.Rotation.align_vectors([[0, 0, 1]], normal)[
@@ -859,12 +867,19 @@ def _parse_point_cloud(
         min_bound, max_bound = bounds
 
     if _contains_none(min_bound):
-        _min_bound = np.nanmin(np.asarray(pc.points), axis=0)
+        _min_bound = pc.get_min_bound()
         min_bound = _fill_none(min_bound, _min_bound)
 
     if _contains_none(max_bound):
-        _max_bound = np.nanmax(np.asarray(pc.points), axis=0)
+        _max_bound = pc.get_max_bound()
         max_bound = _fill_none(max_bound, _max_bound)
+
+    # Ensure bbox will not have 0 volume by adding a small value if max_bound
+    #   and min_bound are close to each other
+    delta = np.isclose(
+        np.asarray(max_bound) - np.asarray(min_bound), 0
+    ) * np.repeat(0.000001, 3)
+    max_bound += delta
 
     bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=min_bound, max_bound=max_bound
@@ -1142,8 +1157,8 @@ def _make_scene(
 
     local_scene_path = file_writer.get_local_path(scene_path)
 
-    scene = Scene()
-    scene.add(Pointcloud("point cloud", pcd_path))
+    scene = Scene(camera=PerspectiveCamera(up="Z"))
+    scene.add(PointCloud("point cloud", pcd_path))
     scene.write(local_scene_path)
 
     return scene_path

@@ -109,7 +109,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   for (const child of scene.children) {
     if (child["_type"].endsWith("Mesh")) {
       meshCount += 1;
-    } else if (child["_type"].endsWith("Pointcloud")) {
+    } else if (child["_type"].endsWith("PointCloud")) {
       pointcloudCount += 1;
     } else if (child["_type"].endsWith("Geometry")) {
       shapeCount += 1;

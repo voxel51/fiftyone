@@ -1,3 +1,5 @@
+// NOTE: CODE FORK
+
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { getFo3dRoot } from "../fo3d/utils";
@@ -20,4 +22,8 @@ export default () => {
   }, []);
 
   return fetcher;
+};
+
+export const useUrlModifier = (_fo3dRoot: string) => {
+  // no-op in OSS
 };

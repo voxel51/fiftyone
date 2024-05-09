@@ -1,7 +1,7 @@
-import { GizmoHelper, GizmoViewport, Line } from "@react-three/drei";
+import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { Vector3 } from "three";
+import { DoubleSide, Vector3 } from "three";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
 import { useFo3dContext } from "./context";
@@ -10,8 +10,19 @@ const AXIS_RED_COLOR = "#FF2160";
 const AXIS_GREEN_COLOR = "#21DF80";
 const AXIS_BLUE_COLOR = "#2280FF";
 
-const FoAxesHelper = ({ size }) => {
+const GRID_CELL_COLOR = "#6f6f6f";
+const GRID_SECTION_COLOR = "#a79d9d";
+
+const FoAxesHelper = ({
+  maxInOrthonormalPlane,
+}: {
+  maxInOrthonormalPlane: number;
+}) => {
   const { upVector } = useFo3dContext();
+  const size = useMemo(
+    () => maxInOrthonormalPlane * 20,
+    [maxInOrthonormalPlane]
+  );
 
   const axes = useMemo(
     () => [
@@ -50,7 +61,7 @@ const FoAxesHelper = ({ size }) => {
             key={axis.color}
             points={[axis.start, axis.end]}
             color={axis.color}
-            lineWidth={2}
+            lineWidth={1.1}
             opacity={0.3}
             transparent
           />
@@ -70,50 +81,56 @@ export const Gizmos = () => {
     [upVector]
   );
 
-  const [gridSize, numGridLines] = useMemo(() => {
-    if (
-      !sceneBoundingBox ||
-      Math.abs(sceneBoundingBox.max.x) === Infinity ||
-      !upVector
-    ) {
-      return [100, 100];
+  const maxInOrthonormalPlane = useMemo(() => {
+    if (!sceneBoundingBox) {
+      return 0;
     }
 
-    let maxInOrthoNormalPlane: number;
+    const sceneSize = sceneBoundingBox.getSize(new Vector3());
 
     if (upVector.x === 1) {
-      maxInOrthoNormalPlane = Math.max(
-        sceneBoundingBox.max.y - sceneBoundingBox.min.y,
-        sceneBoundingBox.max.z - sceneBoundingBox.min.z
-      );
-    } else if (upVector.y === 1) {
-      maxInOrthoNormalPlane = Math.max(
-        sceneBoundingBox.max.x - sceneBoundingBox.min.x,
-        sceneBoundingBox.max.z - sceneBoundingBox.min.z
-      );
-    } else {
-      maxInOrthoNormalPlane = Math.max(
-        sceneBoundingBox.max.x - sceneBoundingBox.min.x,
-        sceneBoundingBox.max.y - sceneBoundingBox.min.y
-      );
+      return Math.max(sceneSize.y, sceneSize.z);
     }
 
-    // add 30% padding (arbitrary)
-    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.3);
-    const numLines = Math.ceil(gridSize);
+    if (upVector.y === 1) {
+      return Math.max(sceneSize.x, sceneSize.z);
+    }
 
-    return [gridSize, numLines];
+    return Math.max(sceneSize.x, sceneSize.y);
   }, [sceneBoundingBox, upVector]);
+
+  // cell size is based on max bounding box size
+  // following multipliers (0.5, 10, 30) are arbitrary and can be adjusted
+  const cellSize = useMemo(
+    () => maxInOrthonormalPlane * 0.5,
+    [maxInOrthonormalPlane]
+  );
+  const sectionSize = useMemo(() => cellSize * 10, [cellSize]);
+
+  const fadeDistance = useMemo(
+    () => maxInOrthonormalPlane * 30,
+    [maxInOrthonormalPlane]
+  );
 
   return (
     <>
       {isGridOn && (
         <>
-          <gridHelper
-            args={[gridSize, numGridLines]}
+          <Grid
             quaternion={gridHelperQuarternion}
+            infiniteGrid
+            side={DoubleSide}
+            cellSize={cellSize}
+            sectionSize={sectionSize}
+            sectionColor={GRID_SECTION_COLOR}
+            cellColor={GRID_CELL_COLOR}
+            fadeDistance={fadeDistance}
+            fadeStrength={1}
+            followCamera
+            cellThickness={0.5}
+            sectionThickness={0.8}
           />
-          <FoAxesHelper size={gridSize} />
+          <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
         </>
       )}
       <GizmoHelper alignment="top-left" margin={[80, 100]}>
