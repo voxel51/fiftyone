@@ -69,8 +69,13 @@ function Leva() {
 
     const levaContainer =
       levaParentContainer.firstElementChild as HTMLDivElement;
+
+    levaContainer.setAttribute("data-cy", "leva-container");
+
     const levaContainerHeader =
       levaContainer.firstElementChild as HTMLDivElement;
+
+    levaContainerHeader.setAttribute("data-cy", "leva-container-header");
 
     levaContainerHeader.addEventListener("mousedown", mouseDownEventHandler);
     levaContainerHeader.addEventListener("mouseup", mouseUpEventHandler);
