@@ -162,8 +162,9 @@ const Tag = ({
   const [available, setAvailable] = useState(true);
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
-  const readOnly =
-    useRecoilValue(fos.readOnly) || !useRecoilValue(fos.canTagSamplesOrLabels);
+  const canTag = useRecoilValue(fos.canTagSamplesOrLabels);
+  const readOnly = useRecoilValue(fos.readOnly);
+  const isReadOnly = readOnly || !canTag;
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
@@ -180,7 +181,7 @@ const Tag = ({
     useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
-  const title = readOnly
+  const title = isReadOnly
     ? `Can not ${baseTitle.toLowerCase()} in read-only mode.`
     : baseTitle;
 
@@ -188,7 +189,7 @@ const Tag = ({
     <ActionDiv ref={ref}>
       <PillButton
         style={{
-          cursor: readOnly
+          cursor: isReadOnly
             ? "not-allowed"
             : disabled || !available
             ? "default"
@@ -196,7 +197,7 @@ const Tag = ({
         }}
         icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
-        onClick={() => !disabled && available && !readOnly && setOpen(!open)}
+        onClick={() => !disabled && available && !isReadOnly && setOpen(!open)}
         highlight={(selected || open) && available}
         title={title}
         data-cy="action-tag-sample-labels"

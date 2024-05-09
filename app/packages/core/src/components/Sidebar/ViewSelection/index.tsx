@@ -43,10 +43,10 @@ export default function ViewSelection() {
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-  const isSnapShot = useRecoilValue(fos.readOnly);
+  const readOnly = useRecoilValue(fos.readOnly);
   const canEdit = useMemo(
-    () => canEditSavedViews && !isSnapShot,
-    [canEditSavedViews, isSnapShot]
+    () => canEditSavedViews && !readOnly,
+    [canEditSavedViews, readOnly]
   );
 
   const [data, refetch] = useRefetchableSavedViews();
