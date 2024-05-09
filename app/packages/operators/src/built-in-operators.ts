@@ -1036,7 +1036,7 @@ class PromptUserForOperation extends Operator {
         } else {
           triggerEvent(panelId, {
             operator: on_success,
-            params: result.result,
+            params: { result: result.result },
           });
         }
       },
