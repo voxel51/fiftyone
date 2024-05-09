@@ -36,6 +36,7 @@ export default function IconButtonView(props) {
         title={label}
         highlight
         onClick={onClick}
+        aria-label={`Button for ${icon}`}
       />
     );
   }
@@ -44,7 +45,7 @@ export default function IconButtonView(props) {
     return (
       <SquareButton
         title={label}
-        aria-label={icon}
+        aria-label={`Button for ${icon}`}
         onClick={onClick}
         {...getComponentProps(props, "button")}
       >
@@ -56,7 +57,8 @@ export default function IconButtonView(props) {
   return (
     <IconButton
       title={label}
-      aria-label={icon}
+      aria-label={`Button for ${icon}`}
+      size="small"
       {...getComponentProps(props, "button")}
       onClick={onClick}
     >

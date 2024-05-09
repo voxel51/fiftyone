@@ -1,8 +1,9 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { defineCustomPanel } from "../CustomPanel";
 import OperatorIcon from "../OperatorIcon";
+import { ExecutionContext } from "../operators";
 
-export default function registerPanel(ctx) {
+export default function registerPanel(ctx: ExecutionContext) {
   registerComponent({
     type: PluginComponentType.Panel,
     name: ctx.params.panel_name,

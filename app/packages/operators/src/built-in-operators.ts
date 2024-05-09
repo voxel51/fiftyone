@@ -955,24 +955,19 @@ class RegisterPanel extends Operator {
     return new OperatorConfig({
       name: "register_panel",
       label: "Register panel",
-      // unlisted: true,
+      unlisted: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("panel_name", { label: "Panel name", required: true });
     inputs.str("panel_label", { label: "Panel label", required: true });
-    inputs.str("on_load", {
-      label: "On load operator",
-      // required: true,
-    });
-    inputs.str("on_change", {
-      label: "On change operator",
-      // required: true,
-    });
-    inputs.str("on_unload", {
-      label: "On unload operator",
-    });
+    inputs.str("icon", { label: "Icon" });
+    inputs.str("dark_icon", { label: "Icon for dark mode" });
+    inputs.str("light_icon", { label: "Icon for light mode" });
+    inputs.str("on_load", { label: "On load operator" });
+    inputs.str("on_change", { label: "On change operator" });
+    inputs.str("on_unload", { label: "On unload operator" });
     inputs.bool("allow_duplicates", {
       label: "Allow duplicates",
       default: false,
