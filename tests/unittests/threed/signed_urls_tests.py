@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 from fiftyone.core.threed import GltfMesh, PointCloud, Scene
-from fiftyone.server.routes import fo3d_resolver
+from fiftyone.server.routes import fo3d_resolver, signed_url
 
 
 class TestSignedUrlsFo3d(unittest.TestCase):
@@ -60,7 +60,8 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 )
 
                 self.assertEqual(
-                    scene.children[0].gltf_path, get_url_mock.return_value
+                    scene.children[0]._pre_transformed_gltf_path,
+                    get_url_mock.return_value,
                 )
 
     def test_absolute_cloud_paths_with_root(self):
@@ -88,7 +89,8 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 )
 
                 self.assertEqual(
-                    scene.children[0].gltf_path, get_url_mock.return_value
+                    scene.children[0]._pre_transformed_gltf_path,
+                    get_url_mock.return_value,
                 )
 
     def test_absolute_cloud_paths_with_no_root(self):
@@ -116,7 +118,8 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 )
 
                 self.assertEqual(
-                    scene.children[0].gltf_path, get_url_mock.return_value
+                    scene.children[0]._pre_transformed_gltf_path,
+                    get_url_mock.return_value,
                 )
 
     def test_http_paths_with_root(self):
@@ -152,3 +155,43 @@ class TestSignedUrlsFo3d(unittest.TestCase):
             scene.children[1].pcd_path,
             "http://example.com/pcd.pcd",
         )
+
+
+class TestGeneralSignedUrls(unittest.TestCase):
+    def test_absolute_local_paths(self):
+        # Test that absolute local paths are not modified
+        self.assertEqual(
+            signed_url.get_signed_url("/path/to/file"), "/path/to/file"
+        )
+
+    def test_relative_local_paths(self):
+        # Test that relative local paths are not modified
+        self.assertEqual(
+            signed_url.get_signed_url("path/to/file"), "path/to/file"
+        )
+
+    def test_http_paths(self):
+        # Test that http paths are not modified
+        self.assertEqual(
+            signed_url.get_signed_url("http://example.com/file"),
+            "http://example.com/file",
+        )
+
+    def test_s3_paths(self):
+        # Test that s3 paths are signed
+        with mock.patch.object(
+            signed_url.fos, "get_file_system"
+        ) as get_file_system_mock:
+            with mock.patch.object(
+                signed_url.media_cache, "get_url"
+            ) as get_url_mock:
+                get_file_system_mock.return_value = (
+                    signed_url.fos.FileSystem.S3
+                )
+
+                signed_url.get_signed_url("s3://bucket/path/to/file")
+                get_url_mock.assert_called_with(
+                    "s3://bucket/path/to/file",
+                    method="GET",
+                    hours=24,
+                )
