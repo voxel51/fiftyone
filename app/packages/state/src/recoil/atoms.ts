@@ -323,13 +323,13 @@ export const canCreateNewField = sessionAtom({
   default: true,
 });
 
-export const canAddSidebarGroup = sessionAtom({
-  key: "canAddSidebarGroup",
+export const canModifySidebarGroup = sessionAtom({
+  key: "canModifySidebarGroup",
   default: true,
 });
 
-export const canTagSamples = sessionAtom({
-  key: "canTagSamples",
+export const canTagSamplesOrLabels = sessionAtom({
+  key: "canTagSamplesOrLabels",
   default: true,
 });
 

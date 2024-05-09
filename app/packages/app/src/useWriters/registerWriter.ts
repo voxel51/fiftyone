@@ -6,9 +6,9 @@ import { RoutingContext } from "../routing";
 
 type WriterKeys = keyof Omit<
   Session,
-  | "canAddSidebarGroup"
+  | "canModifySidebarGroup"
   | "canCreateNewField"
-  | "canTagSamples"
+  | "canTagSamplesOrLabels"
   | "canEditCustomColors"
   | "canEditSavedViews"
   | "readOnly"
