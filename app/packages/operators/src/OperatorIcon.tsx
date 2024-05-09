@@ -19,17 +19,19 @@ export default function OperatorIcon(props: CustomIconPropsType) {
 
   if (isIconFont(iconPath)) {
     return <MuiIconFont {...(iconProps as IconProps)} name={iconPath} />;
+  } else if (!iconPath || !canExecute) {
+    return Fallback ? <Fallback /> : null;
+  } else if (_builtIn) {
+    return <ImageIcon src={iconPath} />;
+  } else {
+    return (
+      <CustomOperatorIcon
+        pluginName={pluginName}
+        iconPath={iconPath}
+        iconProps={iconProps as JSX.IntrinsicElements["img"]}
+      />
+    );
   }
-
-  if (!iconPath || !canExecute) return Fallback ? <Fallback /> : null;
-  if (_builtIn) return <ImageIcon src={iconPath} />;
-  return (
-    <CustomOperatorIcon
-      pluginName={pluginName}
-      iconPath={iconPath}
-      iconProps={iconProps as JSX.IntrinsicElements["img"]}
-    />
-  );
 }
 
 function CustomOperatorIcon(props: CustomOperatorIconPropsType) {

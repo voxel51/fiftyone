@@ -246,11 +246,53 @@ class Object(BaseType):
         """
         return self.define_property(name, Void(), view=view, **kwargs)
 
-    def btn(self, name, label, on_click=None, prompt=False, params=None):
-        """Defines a button to display to the user as a :class:`Button`."""
+    def btn(
+        self,
+        name,
+        label,
+        icon=None,
+        icon_variant=None,
+        on_click=None,
+        prompt=False,
+        params=None,
+    ):
+        """Defines a button or icon button to display to the user as a :class:`Button`.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            inputs = types.Object()
+            inputs.btn(
+                "greet",
+                label="Say Hi!",
+                icon="waving_hand",
+                on_click="print_stdout",
+                params={"msg": "Hi!"},
+            )
+
+        Args:
+            name: the name of the property
+            label: the label of the button
+            icon (None): the name of the icon to display
+            icon_variant (None): the optional variant of the icon. Can be ``"round"`` or
+                ``"square"``
+            on_click (None): the name of the operator to execute when the button is clicked
+            prompt (False): whether to prompt the user before executing the operator
+            params (None): the parameters to pass to the operator
+        """
         btn = Button(
             label=label, operator=on_click, prompt=prompt, params=params
         )
+        if icon:
+            btn = IconButtonView(
+                label=label,
+                operator=on_click,
+                prompt=prompt,
+                params=params,
+                icon=icon,
+                variant=icon_variant,
+            )
         return self.view(name, btn)
 
     def message(self, name, label, **kwargs):
@@ -1885,7 +1927,11 @@ class IconButtonView(Button):
 
     Args:
         icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+        variant (None): the optional variant of the icon button. Can be either ``"round"``
+            or ``"square"``.
     """
 
     def __init__(self, **kwargs):
+        if "icon" not in kwargs or not isinstance(kwargs["icon"], str):
+            raise ValueError("The 'icon' parameter of type str is required.")
         super().__init__(**kwargs)
