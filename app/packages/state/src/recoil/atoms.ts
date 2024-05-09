@@ -328,6 +328,11 @@ export const canAddSidebarGroup = sessionAtom({
   default: true,
 });
 
+export const canTagSamples = sessionAtom({
+  key: "canTagSamples",
+  default: true,
+});
+
 export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,

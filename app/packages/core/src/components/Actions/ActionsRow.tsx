@@ -162,7 +162,9 @@ const Tag = ({
   const [available, setAvailable] = useState(true);
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
-  const readOnly = useRecoilValue(fos.readOnly);
+  const canTag = useRecoilValue(fos.canTagSamples);
+  const isSnapshot = useRecoilValue(fos.readOnly);
+  const readOnly = isSnapshot || !canTag;
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);

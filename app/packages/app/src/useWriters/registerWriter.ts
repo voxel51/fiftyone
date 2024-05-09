@@ -8,6 +8,7 @@ type WriterKeys = keyof Omit<
   Session,
   | "canAddSidebarGroup"
   | "canCreateNewField"
+  | "canTagSamples"
   | "canEditCustomColors"
   | "canEditSavedViews"
   | "readOnly"
