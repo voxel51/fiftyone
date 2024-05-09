@@ -132,6 +132,9 @@ const GroupEntry = React.memo(
     const canCommit = useRef(false);
     const theme = useTheme();
     const notify = fos.useNotification();
+    const readOnly = useRecoilValue(fos.readOnly);
+    const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
+    const canModify = !readOnly && canModifySidebarGroup;
 
     return (
       <div
@@ -207,7 +210,7 @@ const GroupEntry = React.memo(
                   }
                 }}
               />
-              {hovering && !editing && setValue && (
+              {hovering && !editing && setValue && canModify && (
                 <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
                   <Edit
                     onMouseDown={(event) => {
@@ -228,7 +231,7 @@ const GroupEntry = React.memo(
                 </span>
               )}
               {pills}
-              {onDelete && !editing && (
+              {onDelete && !editing && canModify && (
                 <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
                   <Close
                     onMouseDown={(event) => {
