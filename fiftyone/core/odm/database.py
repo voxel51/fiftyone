@@ -422,7 +422,7 @@ def get_async_db_conn(use_global=False):
 def _apply_options(db):
     timezone = fo.config.timezone
 
-    if not timezone or timezone.lower() == "utc":
+    if not timezone:
         return db
 
     if timezone.lower() == "local":
