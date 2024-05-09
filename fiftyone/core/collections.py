@@ -5,6 +5,7 @@ Interface for sample collections.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -1392,6 +1393,7 @@ class SampleCollection(object):
         path=None,
         include_private=False,
         use_db_fields=False,
+        media_types=None,
     ):
         if path is not None:
             field = self.get_field(path, leaf=True)
@@ -1403,11 +1405,17 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
+            # These fields are currently not declared by default on 3D
             # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            media_types = media_types if media_types else set()
+            if issubclass(field.document_type, fol.Detection) and (
+                (
+                    self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                    or self._contains_media_type(fom.THREE_D, any_slice=True)
+                    or fom.POINT_CLOUD in media_types
+                    or fom.THREE_D in media_types
+                )
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1458,11 +1466,12 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
-            # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            # These fields are currently not declared by default on 3D
+            # datasets/slices, but they should be
+            if issubclass(field.document_type, fol.Detection) and (
+                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                or self._contains_media_type(fom.THREE_D, any_slice=True)
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1976,7 +1985,27 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-        view._edit_sample_tags(update)
+
+        try:
+            view._edit_sample_tags(update)
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                none_tags = self.exists("tags", bool=False)
+                none_tags.set_field("tags", []).save()
+
+                view._edit_sample_tags(update)
+            else:
+                raise e
 
     @mutates_data
     def untag_samples(self, tags):
@@ -2047,9 +2076,31 @@ class SampleCollection(object):
             tags = list(tags)
             update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
 
-        return self._edit_label_tags(
-            update_fcn, label_field, ids=ids, label_ids=label_ids
-        )
+        try:
+            return self._edit_label_tags(
+                update_fcn, label_field, ids=ids, label_ids=label_ids
+            )
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                _, tags_path = self._get_label_field_path(label_field, "tags")
+                none_tags = self.filter_labels(label_field, F("tags") == None)
+                none_tags.set_field(tags_path, []).save()
+
+                return self._edit_label_tags(
+                    update_fcn, label_field, ids=ids, label_ids=label_ids
+                )
+            else:
+                raise e
 
     @mutates_data
     def untag_labels(self, tags, label_fields=None):

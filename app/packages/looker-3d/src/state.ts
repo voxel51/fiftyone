@@ -1,14 +1,9 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { atom, atomFamily } from "recoil";
+import { atom } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
 import { FoSceneNode } from "./hooks";
-import { Actions, ShadeBy, VisibilityMap } from "./types";
-
-export const worldBoundsAtom = atom<THREE.Box3 | null>({
-  key: "fo3d-worldBounds",
-  default: null,
-});
+import { Actions, ShadeBy } from "./types";
 
 export const shadeByAtom = atom<ShadeBy>({
   key: "fo3d-shadeBy",
@@ -24,14 +19,6 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
       useJsonSerialization: true,
     }),
   ],
-});
-
-export const actionRenderListAtomFamily = atomFamily<
-  [string, any][],
-  "pcd" | "fo3d"
->({
-  key: "fo3d-actionRenderListAtomFamily",
-  default: [],
 });
 
 export const currentActionAtom = atom<Actions>({
@@ -70,6 +57,11 @@ export const isGridOnAtom = atom<boolean>({
   ],
 });
 
+export const fo3dContainsBackground = atom<boolean>({
+  key: "fo3d-containsBackground",
+  default: false,
+});
+
 export const isFo3dBackgroundOnAtom = atom<boolean>({
   key: "fo3d-isBackgroundON",
   default: true,
@@ -85,17 +77,7 @@ export const isStatusBarOnAtom = atom<boolean>({
   default: false,
 });
 
-export const panelPositionAtom = atom<{ x?: number; y?: number } | null>({
-  key: "fo3d-panelPosition",
-  default: null,
-});
-
 export const activeNodeAtom = atom<FoSceneNode>({
   key: "fo3d-activeNode",
   default: null,
-});
-
-export const currentVisibilityMapAtom = atom<VisibilityMap>({
-  key: "fo3d-currentVisibilityMap",
-  default: {},
 });

@@ -87,6 +87,7 @@ export default class SpaceTree {
   }
 
   setNodeSizes(node: SpaceNode, sizes: number[]) {
+    if (isEqual(node.sizes, sizes)) return;
     node.sizes = sizes;
     this.updateTree(node);
   }

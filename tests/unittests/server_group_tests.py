@@ -32,7 +32,7 @@ class ServerGroupTests(unittest.TestCase):
         expr = F("label") == "label"
         filtered = dataset.filter_labels("label", F("label") == "label")
 
-        view = fosv.handle_group_filter(
+        view, _ = fosv.handle_group_filter(
             dataset,
             filtered,
             GroupElementFilter(slice="image", slices=["image"]),
@@ -46,7 +46,7 @@ class ServerGroupTests(unittest.TestCase):
             ],
         )
 
-        view = fosv.handle_group_filter(
+        view, _ = fosv.handle_group_filter(
             dataset,
             filtered,
             GroupElementFilter(
@@ -62,3 +62,31 @@ class ServerGroupTests(unittest.TestCase):
                 fo.Match({"group.name": {"$in": ["image"]}}),
             ],
         )
+
+        # dynamic group
+        filtered = dataset.group_by("label.label").filter_labels(
+            "label", F("label") == "label"
+        )
+        view, _ = fosv.handle_group_filter(
+            dataset,
+            filtered,
+            GroupElementFilter(slice="image", slices=["image"]),
+        )
+        self.assertEqual(
+            view._all_stages,
+            [
+                fo.SelectGroupSlices(_force_mixed=True),
+                fo.Match({"group.name": {"$in": ["image"]}}),
+                fo.GroupBy("label.label"),
+                fo.FilterLabels("label", expr),
+            ],
+        )
+
+        # noop
+        first = dataset.first().id
+        view, _ = fosv.handle_group_filter(
+            dataset,
+            dataset.select(first),
+            GroupElementFilter(),
+        )
+        self.assertEqual(view._all_stages, [fo.Select(first)])

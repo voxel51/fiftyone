@@ -173,6 +173,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/small_object_detection.jpg
     :tags: Model-Evaluation,Model-Zoo
 
+.. customcarditem::
+    :header: Anomaly Detection with Anomalib
+    :description: Detect anomalies in your images with Anomalib and FiftyOne.
+    :link: anomaly_detection.html
+    :image: ../_static/images/tutorials/anomaly_detection.jpg
+    :tags: Embeddings,Model-Evaluation,Model-Training,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -217,3 +224,4 @@ your datasets and turn your good models into *great models*.
    Data augmentation <data_augmentation.ipynb>
    Clustering images <clustering.ipynb>
    Detecting small objects <small_object_detection.ipynb>
+   Anomaly detection <anomaly_detection.ipynb>

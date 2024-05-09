@@ -11,17 +11,16 @@ import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ResponseFrom } from "../utils";
+import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
   activeModalSidebarSample,
   groupId,
   groupSlice,
   hasGroupSlices,
-  imaVidLookerState,
   modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
-  shouldRenderImaVidLooker,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";

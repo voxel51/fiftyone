@@ -2858,6 +2858,40 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertListEqual(dataset._doc.saved_views, [])
 
+    @drop_datasets
+    def test_concurrent_saved_view_updates(self):
+        dataset = fo.Dataset()
+        v = dataset.limit(2)
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        v2 = also_dataset.limit(5)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test add save view safety
+        dataset.save_view("view1", v)
+        also_dataset.save_view("view2", v2)
+
+        self.assertListEqual(dataset.list_saved_views(), ["view1"])
+
+        dataset.reload()
+        self.assertListEqual(dataset.list_saved_views(), ["view1", "view2"])
+
+        # Test delete saved view safety
+        also_dataset.reload()
+        dataset.delete_saved_view("view1")
+        also_dataset.delete_saved_view("view2")
+        dataset.reload()
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        # Test delete all saved views safety
+        also_dataset.reload()
+        dataset.save_view("view1", v)
+        also_dataset.delete_saved_views()
+        also_dataset.reload()
+        self.assertListEqual(also_dataset.list_saved_views(), [])
+
     def test_workspaces(self):
         dataset = self.dataset
 
@@ -3050,6 +3084,39 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.delete_workspaces()
 
         self.assertListEqual(dataset._doc.workspaces, [])
+
+    @drop_datasets
+    def test_concurrent_workspace_updates(self):
+        dataset = fo.Dataset()
+        space = fo.Space()
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test add workspace safety
+        dataset.save_workspace("ws1", space)
+        also_dataset.save_workspace("ws2", space)
+
+        self.assertListEqual(dataset.list_workspaces(), ["ws1"])
+
+        dataset.reload()
+        self.assertListEqual(dataset.list_workspaces(), ["ws1", "ws2"])
+
+        # Test delete workspace safety
+        also_dataset.reload()
+        dataset.delete_workspace("ws1")
+        also_dataset.delete_workspace("ws2")
+        dataset.reload()
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        # Test delete all workspaces safety
+        also_dataset.reload()
+        dataset.save_workspace("ws1", space)
+        also_dataset.delete_workspaces()
+        also_dataset.reload()
+        self.assertListEqual(also_dataset.list_workspaces(), [])
 
     def test_runs(self):
         dataset = self.dataset

@@ -6,7 +6,7 @@ FiftyOne Server view.
 |
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from bson import ObjectId
 import strawberry as gql
@@ -119,9 +119,12 @@ def get_view(
         else:
             view = dataset.view()
 
+        media_types = None
         if sample_filter is not None:
             if sample_filter.group:
-                view = handle_group_filter(dataset, view, sample_filter.group)
+                view, media_types = handle_group_filter(
+                    dataset, view, sample_filter.group
+                )
 
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -132,6 +135,7 @@ def get_view(
                 filters,
                 pagination_data=pagination_data,
                 extended_stages=extended_stages,
+                media_types=media_types,
             )
 
         return view
@@ -147,6 +151,7 @@ def get_extended_view(
     filters=None,
     extended_stages=None,
     pagination_data=False,
+    media_types=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -155,6 +160,7 @@ def get_extended_view(
         filters: an optional ``dict`` of App defined filters
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
+        media_types (None): the media types to consider
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -167,7 +173,7 @@ def get_extended_view(
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view)
+        view = _project_pagination_paths(view, media_types)
 
     if filters:
         if "tags" in filters:
@@ -230,13 +236,23 @@ def handle_group_filter(
         a :class:`fiftyone.core.view.DatasetView` with a group or slice
         selection
     """
+    if not filter.id and not filter.slice and not filter.slices:
+        # nothing to do
+        return view, None
+
     stages = view._stages
     group_field = dataset.group_field
 
     unselected = not any(
         isinstance(stage, fosg.SelectGroupSlices) for stage in stages
     )
-    if unselected and filter.slice:
+    group_by = any(isinstance(stage, fosg.GroupBy) for stage in stages)
+
+    view = dataset.view()
+    if filter.slice:
+        view.group_slice = filter.slice
+
+    if unselected and filter.slices:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
@@ -248,21 +264,28 @@ def handle_group_filter(
 
         for stage in stages:
             # add stages after flattening and group match
+            if group_by and isinstance(stage, fosg.GroupBy) and filter.slices:
+                view = view.match(
+                    {group_field + ".name": {"$in": filter.slices}}
+                )
             view = view._add_view_stage(stage, validate=False)
 
-    else:
-        if filter.slice:
-            view.group_slice = filter.slice
+    elif filter.id:
+        view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
-        if filter.id:
-            view = fov.make_optimized_select_view(view, filter.id, groups=True)
-
-    if filter.slices:
+    if not group_by and filter.slices:
         # use 'match' to select requested slices, and avoid media type
         # validation
         view = view.match({group_field + ".name": {"$in": filter.slices}})
 
-    return view
+    media_types = None
+    if dataset.group_media_types:
+        media_types = (
+            set(dataset.group_media_types[s] for s in filter.slices)
+            if filter.slices
+            else set(dataset.group_media_types.values())
+        )
+    return view, media_types
 
 
 def _add_labels_tags_counts(view):
@@ -290,7 +313,9 @@ def _add_labels_tags_counts(view):
     return view
 
 
-def _project_pagination_paths(view: foc.SampleCollection):
+def _project_pagination_paths(
+    view: foc.SampleCollection, media_types: Optional[Tuple[str]] = None
+):
     schema = view.get_field_schema(flat=True)
     frame_schema = view.get_frame_field_schema(flat=True)
     if frame_schema:
@@ -304,12 +329,15 @@ def _project_pagination_paths(view: foc.SampleCollection):
         if isinstance(field, fof.DictField)
     ]
 
-    return view.select_fields(
-        [
-            path
-            for path in schema
-            if all(not path.startswith(exclude) for exclude in excluded)
-        ]
+    return view.add_stage(
+        fosg.SelectFields(
+            [
+                path
+                for path in schema
+                if all(not path.startswith(exclude) for exclude in excluded)
+            ],
+            _media_types=media_types,
+        )
     )
 
 

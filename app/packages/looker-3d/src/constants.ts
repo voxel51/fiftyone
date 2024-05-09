@@ -12,6 +12,9 @@ export const ACTION_TOGGLE_BACKGROUND = "toggleFo3dBackground";
 export const ACTION_VIEW_JSON = "json";
 export const ACTION_VIEW_HELP = "help";
 
+export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
+export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
+
 export const SHADE_BY_INTENSITY = "intensity";
 export const SHADE_BY_HEIGHT = "height";
 export const SHADE_BY_RGB = "rgb";
