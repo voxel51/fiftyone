@@ -19,9 +19,7 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const isSnapShot = useRecoilValue(fos.readOnly);
-  const canAddSidebarGroup = useRecoilValue(fos.canAddSidebarGroup);
-  const isReadOnly = isSnapShot || !canAddSidebarGroup;
+  const isReadOnly = useRecoilValue(fos.readOnly) || !useRecoilValue(fos.canAddSidebarGroup);
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
   const disableDrag =
