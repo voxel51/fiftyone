@@ -16,6 +16,7 @@ export interface CustomPanelProps {
   onLoad?: Function;
   onChange?: Function;
   onUnLoad?: Function;
+  onChangeCtx?: Function;
   onViewChange?: Function;
   onChangeView?: Function;
   onChangeDataset?: Function;
@@ -85,7 +86,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       });
     }
   }
-
+  useCtxChangePanelEvent(panelId, ctx._currentContext, props.onChangeCtx);
   useCtxChangePanelEvent(panelId, ctx.view, props.onChangeView);
   useCtxChangePanelEvent(panelId, ctx.viewName, props.onChangeView);
   useCtxChangePanelEvent(panelId, ctx.filters, props.onChangeView);
