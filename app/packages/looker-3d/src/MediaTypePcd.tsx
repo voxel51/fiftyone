@@ -14,22 +14,12 @@ import {
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import { Screenshot } from "./action-bar/Screenshot";
-import {
-  ACTION_GRID,
-  ACTION_SET_EGO_VIEW,
-  ACTION_SET_PCDS,
-  ACTION_SET_POINT_SIZE,
-  ACTION_SET_TOP_VIEW,
-  ACTION_SHADE_BY,
-  ACTION_VIEW_HELP,
-  ACTION_VIEW_JSON,
-} from "./constants";
+import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "./constants";
 import { Container } from "./containers";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
 import { PointCloudMesh } from "./renderables";
 import {
-  actionRenderListAtomFamily,
   currentActionAtom,
   currentPointSizeAtom,
   customColorMapAtom,
@@ -51,11 +41,6 @@ export const MediaTypePcdComponent = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
-  );
-  const dataset = useRecoilValue(fos.dataset);
-
-  const setActionBarItems = useSetRecoilState(
-    actionRenderListAtomFamily("pcd")
   );
 
   const cameraRef = React.useRef<Camera>();
@@ -170,8 +155,14 @@ export const MediaTypePcdComponent = () => {
     [topCameraPosition]
   );
 
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
+  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
+    onChangeView("top");
+  });
+
+  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
+    onChangeView("pov");
+  });
+
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const minZ = _.get(settings, "pointCloud.minZ", null);
 
@@ -182,33 +173,8 @@ export const MediaTypePcdComponent = () => {
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
 
-  useHotkey("KeyT", () => onChangeView("top"));
-  useHotkey("KeyE", () => onChangeView("pov"));
-
-  const hasMultiplePcdSlices = useMemo(
-    () =>
-      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
-        .length > 1,
-    [dataset]
-  );
-
-  useEffect(() => {
-    const actionItems = [
-      [ACTION_GRID, []],
-      [ACTION_SET_POINT_SIZE, []],
-      [ACTION_SHADE_BY, []],
-      [ACTION_SET_TOP_VIEW, [onChangeView]],
-      [ACTION_SET_EGO_VIEW, [onChangeView]],
-      [ACTION_VIEW_JSON, [jsonPanel, sampleMap]],
-      [ACTION_VIEW_HELP, [helpPanel]],
-    ];
-
-    if (hasMultiplePcdSlices) {
-      actionItems.splice(0, 0, [ACTION_SET_PCDS, []]);
-    }
-
-    setActionBarItems(actionItems);
-  }, [hasMultiplePcdSlices, jsonPanel, helpPanel, sampleMap]);
+  useHotkey("KeyT", () => onChangeView("top"), [onChangeView], false);
+  useHotkey("KeyE", () => onChangeView("pov"), [onChangeView], false);
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;
@@ -311,6 +277,7 @@ export const MediaTypePcdComponent = () => {
       pointCloudBounds,
       customColorMap,
       isPointcloudDataset,
+      upVectorNormalized,
     ]
   );
 

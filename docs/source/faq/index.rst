@@ -216,9 +216,8 @@ which includes standard image types like JPEG, PNG, and BMP.
 
 Some browsers like Safari natively support other image types such as TIFF,
 while others do not. You may be able to install a browser extension to work
-with additional image types. For example, you can install
-`this extension <https://github.com/my-codeworks/tiff-viewer-extension>`_ to
-view TIFF images in Chrome or Firefox.
+with additional image types, but Voxel51 does not currently recommend any
+such extensions in particular.
 
 .. note::
 

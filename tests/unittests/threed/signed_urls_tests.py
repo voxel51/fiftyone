@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from fiftyone.core.threed import GltfMesh, Pointcloud, Scene
+from fiftyone.core.threed import GltfMesh, PointCloud, Scene
 from fiftyone.server.routes import fo3d_resolver
 
 
@@ -10,7 +10,7 @@ class TestSignedUrlsFo3d(unittest.TestCase):
         # Test that absolute local paths are not modified
         scene = Scene()
         scene.add(GltfMesh("gltf", "/path/to/gltf.gltf"))
-        scene.add(Pointcloud("pcd", "/path/to/pcd.pcd"))
+        scene.add(PointCloud("pcd", "/path/to/pcd.pcd"))
 
         fo3d_resolver.resolve_urls_for_scene(scene)
 
@@ -27,7 +27,7 @@ class TestSignedUrlsFo3d(unittest.TestCase):
         # Test that relative paths are modified
         scene = Scene()
         scene.add(GltfMesh("gltf", "path/to/gltf.gltf"))
-        scene.add(Pointcloud("pcd", "path/to/pcd.pcd"))
+        scene.add(PointCloud("pcd", "path/to/pcd.pcd"))
 
         fo3d_resolver.resolve_urls_for_scene(scene, root="/path/to/root")
 
@@ -123,7 +123,7 @@ class TestSignedUrlsFo3d(unittest.TestCase):
         # Test that http paths with root are not modified
         scene = Scene()
         scene.add(GltfMesh("gltf", "http://example.com/gltf.gltf"))
-        scene.add(Pointcloud("pcd", "http://example.com/pcd.pcd"))
+        scene.add(PointCloud("pcd", "http://example.com/pcd.pcd"))
 
         fo3d_resolver.resolve_urls_for_scene(scene, root="s3://bucket/root")
 
@@ -140,7 +140,7 @@ class TestSignedUrlsFo3d(unittest.TestCase):
         # Test that http paths with no root are not modified
         scene = Scene()
         scene.add(GltfMesh("gltf", "http://example.com/gltf.gltf"))
-        scene.add(Pointcloud("pcd", "http://example.com/pcd.pcd"))
+        scene.add(PointCloud("pcd", "http://example.com/pcd.pcd"))
 
         fo3d_resolver.resolve_urls_for_scene(scene)
 

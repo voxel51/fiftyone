@@ -4,10 +4,10 @@ import { ActionItem } from "../containers";
 import { ACTION_VIEW_HELP } from "../constants";
 
 export const LOOKER3D_HELP_ITEMS = [
+  { shortcut: "Left mouse drag", title: "Rotate", detail: "Rotate the camera" },
   { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
-  { shortcut: "Drag", title: "Rotate", detail: "Rotate the camera" },
   {
-    shortcut: "Shift + drag",
+    shortcut: "Middle mouse drag",
     title: "Translate",
     detail: "Translate the camera",
   },
@@ -17,6 +17,7 @@ export const LOOKER3D_HELP_ITEMS = [
   { shortcut: "C", title: "Controls", detail: "Toggle controls" },
   { shortcut: "G", title: "Grid", detail: "Toggle grid" },
   { shortcut: "F", title: "Full-screen", detail: "Toggle full-screen" },
+  { shortcut: "J", title: "Json ", detail: "Toggle JSON view" },
   { shortcut: "?", title: "Display help", detail: "Display this help window" },
   { shortcut: "ESC", title: "Escape ", detail: "Escape the current context" },
 ];

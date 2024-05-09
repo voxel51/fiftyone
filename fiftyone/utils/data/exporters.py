@@ -1125,6 +1125,10 @@ class MediaExporter(object):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -1140,6 +1144,7 @@ class MediaExporter(object):
         export_mode,
         export_path=None,
         rel_dir=None,
+        chunk_size=None,
         supported_modes=None,
         default_ext=None,
         ignore_exts=False,
@@ -1168,10 +1173,12 @@ class MediaExporter(object):
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         self.export_mode = export_mode
         self.export_path = export_path
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.supported_modes = supported_modes
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
@@ -1320,6 +1327,7 @@ class MediaExporter(object):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             default_ext=self.default_ext,
             ignore_exts=self.ignore_exts,
             ignore_existing=True,
@@ -1931,6 +1939,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
         export_saved_views (True): whether to include saved views in the export.
@@ -1948,6 +1960,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
+        chunk_size=None,
         abs_paths=False,
         export_saved_views=True,
         export_runs=True,
@@ -1957,10 +1970,15 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if export_media is None:
             export_media = True
 
+        if rel_dir is not None:
+            rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
+
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.abs_paths = abs_paths
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
@@ -2000,6 +2018,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self.export_media,
             export_path=self._data_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -2010,6 +2029,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def log_collection(self, sample_collection):
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
+        if sample_collection.media_type == fomm.GROUP:
+            self._metadata[
+                "group_media_types"
+            ] = sample_collection.group_media_types
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
@@ -2200,6 +2223,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self.export_media,
             export_path=field_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         media_exporter.setup()
@@ -2232,6 +2256,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
@@ -2249,6 +2277,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
+        chunk_size=None,
         export_saved_views=True,
         export_runs=True,
         export_workspaces=True,
@@ -2260,11 +2289,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
         self.export_workspaces = export_workspaces
@@ -2304,6 +2335,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self.export_media,
             export_path=self._data_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -2494,6 +2526,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self.export_media,
             export_path=field_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         media_exporter.setup()

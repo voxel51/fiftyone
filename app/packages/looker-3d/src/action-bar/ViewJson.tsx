@@ -1,11 +1,11 @@
 import { JSONIcon } from "@fiftyone/components";
 import { Sample } from "@fiftyone/looker/src/state";
-import { useJSONPanel } from "@fiftyone/state";
-import { ActionItem } from "../containers";
+import { ModalSample, useJSONPanel } from "@fiftyone/state";
 import { ACTION_VIEW_JSON } from "../constants";
+import { ActionItem } from "../containers";
 
 export const ViewJSON = (props: {
-  sample: Sample;
+  sample: Sample | ModalSample | Record<string, ModalSample>;
   jsonPanel: ReturnType<typeof useJSONPanel>;
 }) => {
   const { sample, jsonPanel } = props;

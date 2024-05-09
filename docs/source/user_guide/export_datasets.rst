@@ -3913,6 +3913,48 @@ image's filepath, and then provide the new `rel_dir` when
     :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
     new environment.
 
+You can also pass in a `chunk_size` parameter to create nested directories of
+media files with a maximum number of files per directory. This can be useful
+when exporting large datasets to avoid filesystem limits on the number of files
+in a single directory.
+
+As an example, the following code exports a dataset with a maximum of 1000
+media files per directory:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    export_dir = "/path/for/fiftyone-dataset"
+
+    # The dataset or view to export
+    dataset_or_view = fo.Dataset(...)
+
+    # Export the dataset with a maximum of 1000 media files per directory
+    dataset_or_view.export(
+        export_dir=export_dir,
+        dataset_type=fo.types.FiftyOneDataset,
+        chunk_size=1000,
+    )
+
+This will create a directory structure like the following:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        metadata.json
+        samples.json
+        data/
+            data_0/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            data_1/
+                <filename1>.<ext>
+                <filename2>.<ext>
+            ...
+
 .. _custom-dataset-exporter:
 
 Custom formats

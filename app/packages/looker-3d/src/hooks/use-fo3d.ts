@@ -1,7 +1,8 @@
-import { getSampleSrc } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
+import { useSetRecoilState } from "recoil";
 import { Quaternion, Vector3 } from "three";
-import { getFo3dRoot, getResolvedUrlForFo3dAsset } from "../fo3d/utils";
+import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
 import {
   FiftyoneSceneRawJson,
   FoSceneBackground,
@@ -9,6 +10,16 @@ import {
 } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
 
+export const Fo3dSupportedExtensions = [
+  ".pcd",
+  ".ply",
+  ".stl",
+  ".obj",
+  ".mtl",
+  ".gltf",
+  ".glb",
+  ".fbx",
+];
 export class BoxGeometryAsset {
   constructor(
     readonly width: number,
@@ -54,38 +65,52 @@ export class SphereGeometryAsset {
 }
 
 export class FbxAsset {
-  constructor(readonly fbxUrl?: string) {}
+  constructor(
+    readonly fbxPath: string,
+    readonly preTransformedFbxPath?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class GltfAsset {
-  constructor(readonly gltfUrl?: string) {}
+  constructor(
+    readonly gltfPath: string,
+    readonly preTransformedGltfPath?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class ObjAsset {
   constructor(
-    readonly objUrl?: string,
-    readonly mtlUrl?: string,
+    readonly objPath?: string,
+    readonly mtlPath?: string,
+    readonly preTransformedObjPath?: string,
+    readonly preTransformedMtlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
 
 export class PcdAsset {
   constructor(
-    readonly pcdUrl?: string,
+    readonly pcdPath?: string,
+    readonly preTransformedPcdPath?: string,
     readonly defaultMaterial?: FoPointcloudMaterialProps
   ) {}
 }
 
 export class PlyAsset {
   constructor(
-    readonly plyUrl?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly plyPath?: string,
+    readonly preTransformedPlyPath?: string,
+    readonly defaultMaterial?: FoMeshMaterial,
+    readonly isPcd?: boolean
   ) {}
 }
 
 export class StlAsset {
   constructor(
-    readonly stlUrl?: string,
+    readonly stlPath?: string,
+    readonly preTransformedStlPath?: string,
     readonly defaultMaterial?: FoMeshMaterial
   ) {}
 }
@@ -155,7 +180,7 @@ export type FoMeshMaterial =
   | FoMeshDepthMaterialProps;
 
 export type FoPointcloudMaterialProps = FoMaterial3D & {
-  _type: "PointcloudMaterial";
+  _type: "PointCloudMaterial";
   shadingMode: "height" | "intensity" | "rgb" | "custom";
   customColor: string;
   pointSize: number;
@@ -188,9 +213,15 @@ type UseFo3dReturnType = {
 /**
  * This hook parses the fo3d file into a FiftyOne scene graph.
  */
-export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
+export const useFo3d = (
+  url: string,
+  filepath: string,
+  fo3dRoot: string
+): UseFo3dReturnType => {
   const [isLoading, setIsLoading] = useState(true);
   const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
+
+  const setFo3dContent = useSetRecoilState(fos.fo3dContent);
 
   const fetchFo3d = useFo3dFetcher();
 
@@ -201,7 +232,29 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     });
   }, [url, filepath, fetchFo3d]);
 
-  const mediaRoot = useMemo(() => getFo3dRoot(url), [url]);
+  useEffect(() => {
+    if (!rawData) {
+      return;
+    }
+
+    // recursively remove all attributes that start with "preTransformed" from the raw data
+    // `preTransformed` is not relevant in OSS
+    const removePreTransformedAttributes = (node: FoSceneRawNode) => {
+      for (const key in node) {
+        if (key.startsWith("preTransformed")) {
+          delete node[key];
+        }
+      }
+
+      if (node.children) {
+        node.children.forEach(removePreTransformedAttributes);
+      }
+    };
+
+    removePreTransformedAttributes(rawData);
+
+    setFo3dContent(rawData);
+  }, [rawData]);
 
   const foScene = useMemo(() => {
     if (!rawData) {
@@ -216,60 +269,52 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
         if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
           if (node["fbxPath"]) {
             asset = new FbxAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["fbxPath"], mediaRoot)
-              )
+              node["fbxPath"],
+              node["preTransformedFbxPath"],
+              material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
             asset = new GltfAsset(
-              getResolvedUrlForFo3dAsset(node["gltfPath"], mediaRoot)
+              node["gltfPath"],
+              node["preTransformedGltfPath"],
+              material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
           if (node["objPath"]) {
-            const objPath = node["objPath"];
-            const mtlPath = node["mtlPath"];
-            if (mtlPath) {
-              asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
-                getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, mediaRoot)),
-                material as FoMeshMaterial
-              );
-            } else {
-              asset = new ObjAsset(
-                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
-                undefined,
-                material as FoMeshMaterial
-              );
-            }
+            asset = new ObjAsset(
+              node["objPath"],
+              node["mtlPath"],
+              node["preTransformedObjPath"],
+              node["preTransformedMtlPath"],
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {
             asset = new StlAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["stlPath"], mediaRoot)
-              ),
+              node["stlPath"],
+              node["preTransformedStlPath"],
               material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
             asset = new PlyAsset(
-              getSampleSrc(
-                getResolvedUrlForFo3dAsset(node["plyPath"], mediaRoot)
-              ),
-              material as FoMeshMaterial
+              node["plyPath"],
+              node["preTransformedPlyPath"],
+              material as FoMeshMaterial,
+              node["isPointCloud"] ?? false
             );
           }
         }
-      } else if (node["_type"].endsWith("Pointcloud")) {
+      } else if (node["_type"].endsWith("PointCloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
-            getSampleSrc(
-              getResolvedUrlForFo3dAsset(node["pcdPath"], mediaRoot)
-            ),
+            node["pcdPath"],
+            node["preTransformedPcdPath"],
             material as FoPointcloudMaterialProps
           );
         }
@@ -338,13 +383,13 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     if (rawData.background?.image) {
       rawData.background.image = getResolvedUrlForFo3dAsset(
         rawData.background.image,
-        mediaRoot
+        fo3dRoot
       );
     }
 
     if (rawData.background?.cube) {
       rawData.background.cube = rawData.background.cube.map((cubePath) =>
-        getResolvedUrlForFo3dAsset(cubePath, mediaRoot)
+        getResolvedUrlForFo3dAsset(cubePath, fo3dRoot)
       ) as FoSceneBackground["cube"];
     }
 
@@ -368,7 +413,7 @@ export const useFo3d = (url: string, filepath: string): UseFo3dReturnType => {
     };
 
     return toReturn;
-  }, [rawData, mediaRoot]);
+  }, [rawData, fo3dRoot]);
 
   if (isLoading) {
     return {

@@ -71,4 +71,4 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
-export { Locator, Page, expect, Browser } from "@playwright/test";
+export { Browser, Locator, Page, expect } from "@playwright/test";
