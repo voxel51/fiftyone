@@ -27,6 +27,7 @@ import {
   resolveExecutionOptions,
 } from "./operators";
 import { Places } from "./types";
+import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
@@ -853,12 +854,6 @@ export function useOperatorBrowser() {
   };
 }
 
-type OperatorExecutorOptions = {
-  delegationTarget?: string;
-  requestDelegation?: boolean;
-  skipOutput?: boolean;
-};
-
 export function useOperatorExecutor(uri, handlers: any = {}) {
   if (!uri.includes("/")) {
     uri = `@voxel51/operators/${uri}`;
@@ -887,7 +882,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation, skipOutput } = options || {};
+      const { delegationTarget, requestDelegation, skipOutput, callback } =
+        options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -912,7 +908,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setError(result.error);
         setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
+        callback?.(result);
       } catch (e) {
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         if (!isAbortError) {

@@ -1,51 +1,50 @@
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { executeOperator } from "@fiftyone/operators";
 import { canEditWorkspaces, datasetName, readOnly } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { Workspace, savedWorkspacesAtom } from "../../state";
+import { savedWorkspacesAtom } from "../../state";
+import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
 
-export function useSavedSpaces() {
+export function useWorkspaces() {
   const [state, setState] = useRecoilState(savedWorkspacesAtom);
   const resetState = useResetRecoilState(savedWorkspacesAtom);
-  const listOperator = useOperatorExecutor(
-    "@voxel51/operators/list_saved_workspaces"
-  );
-  const loadOperator = useOperatorExecutor("@voxel51/operators/load_workspace");
   const [listWorkspaceExecuting, setListWorkspaceExecuting] = useState(false);
   const currentDataset = useRecoilValue(datasetName);
 
-  const listWorkspace = () => {
+  const listWorkspace = useCallback(() => {
     if (listWorkspaceExecuting) return;
     setListWorkspaceExecuting(true);
-    listOperator.execute({}, { skipOutput: true });
-  };
+    executeOperator(
+      LIST_WORKSPACES_OPERATOR,
+      {},
+      {
+        callback: (result) => {
+          setState((state) => {
+            return {
+              ...state,
+              initialized: true,
+              workspaces: result?.result?.workspaces,
+              dataset: currentDataset,
+            };
+          });
+          setListWorkspaceExecuting(false);
+          if (result.error) {
+            console.error(result.error);
+          }
+        },
+        skipOutput: true,
+      }
+    );
+  }, [listWorkspaceExecuting, setState, currentDataset]);
 
-  const loadWorkspace = (name: string) => {
-    loadOperator.execute({ name }, { skipOutput: true });
-  };
+  const loadWorkspace = useCallback((name: string) => {
+    executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
+  }, []);
+
   const existingSlugs = useMemo(() => {
     return state.workspaces.map(({ name }) => toSlug(name));
   }, [state.workspaces]);
-
-  useEffect(() => {
-    if (listOperator.hasExecuted) {
-      const workspaces: Workspace[] = listOperator.result?.workspaces || [];
-      setState((state) => ({
-        ...state,
-        initialized: true,
-        workspaces,
-        dataset: currentDataset,
-      }));
-      listOperator.clear();
-      setListWorkspaceExecuting(false);
-    }
-  }, [
-    currentDataset,
-    listOperator.hasExecuted,
-    listOperator.result,
-    setListWorkspaceExecuting,
-  ]);
 
   useEffect(() => {
     if (currentDataset !== state.dataset) {
@@ -55,7 +54,7 @@ export function useSavedSpaces() {
 
   return {
     initialized: state.initialized,
-    savedSpaces: state.workspaces || [],
+    workspaces: state.workspaces || [],
     loadWorkspace,
     listWorkspace,
     reset: resetState,

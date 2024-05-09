@@ -446,13 +446,11 @@ def list_files(dirpath):
     return dirs + files
 
 
-class ListSavedWorkspaces(foo.Operator):
+class ListWorkspaces(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="list_saved_workspaces",
-            label="List Saved Workspaces",
-            unlisted=True,
+            name="list_workspaces", label="List Workspaces", unlisted=True
         )
 
     def execute(self, ctx):
@@ -475,8 +473,7 @@ class LoadWorkspace(foo.Operator):
 
     def execute(self, ctx):
         name = ctx.params.get("name", None)
-        spaces = ctx.dataset.load_workspace(name)
-        ctx.trigger("set_spaces", {"spaces": spaces.to_dict()})
+        ctx.ops.set_spaces(name=name)
         return {}
 
 
@@ -552,7 +549,7 @@ BUILTIN_OPERATORS = [
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
     ListFiles(_builtin=True),
-    ListSavedWorkspaces(_builtin=True),
+    ListWorkspaces(_builtin=True),
     LoadWorkspace(_builtin=True),
     SaveWorkspace(_builtin=True),
     DeleteWorkspace(_builtin=True),
