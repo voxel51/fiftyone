@@ -1289,6 +1289,34 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
+        # Non-sequential categories
+
+        export_dir = self._new_dir()
+
+        categories = [
+            {"supercategory": "animal", "id": 10, "name": "cat"},
+            {"supercategory": "vehicle", "id": 20, "name": "dog"},
+        ]
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            categories=categories,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+        )
+        categories2 = dataset2.info["categories"]
+
+        self.assertSetEqual(
+            {c["id"] for c in categories},
+            {c["id"] for c in categories2},
+        )
+
     @drop_datasets
     def test_voc_detection_dataset(self):
         dataset = self._make_dataset()
