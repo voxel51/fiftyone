@@ -318,6 +318,11 @@ export const canEditCustomColors = sessionAtom({
   default: true,
 });
 
+export const canCreateNewField = sessionAtom({
+  key: "canCreateNewField",
+  default: true,
+});
+
 export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,

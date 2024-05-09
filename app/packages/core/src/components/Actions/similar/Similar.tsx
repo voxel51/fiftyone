@@ -93,6 +93,7 @@ const SortBySimilarity = ({
     []
   );
   const isLoading = useRecoilValue(fos.similaritySorting);
+  const canCreateNewField = useRecoilValue(fos.canCreateNewField);
   const isReadOnly = useRecoilValue(fos.readOnly);
 
   useLayoutEffect(() => {
@@ -281,7 +282,7 @@ const SortBySimilarity = ({
           Optional: store the distance between each sample and the query in this
           field
           <Input
-            disabled={isReadOnly}
+            disabled={isReadOnly && canCreateNewField}
             placeholder={"dist_field (default = None)"}
             validator={(value) => !value.startsWith("_")}
             value={state.distField ?? ""}

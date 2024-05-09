@@ -29,6 +29,7 @@ export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
   canEditWorkspaces: boolean;
+  canCreateNewField: boolean;
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -40,6 +41,7 @@ export interface Session {
 
 export const SESSION_DEFAULT: Session = {
   canEditCustomColors: true,
+  canCreateNewField: true,
   canEditSavedViews: true,
   canEditWorkspaces: true,
   readOnly: false,
@@ -63,7 +65,11 @@ export const SESSION_DEFAULT: Session = {
 
 type SetterKeys = keyof Omit<
   Session,
-  "canEditCustomColors" | "canEditSavedViews" | "canEditWorkspaces" | "readOnly"
+  | "canCreateNewField"
+  | "canEditCustomColors"
+  | "canEditSavedViews"
+  | "canEditWorkspaces"
+  | "readOnly"
 >;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 
@@ -171,6 +177,7 @@ export function sessionAtom<K extends keyof Session>(
       }
 
       if (
+        options.key === "canCreateNewField" ||
         options.key === "canEditCustomColors" ||
         options.key === "readOnly" ||
         options.key === "canEditSavedViews" ||
