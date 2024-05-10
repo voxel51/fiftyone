@@ -1,1 +1,3 @@
-operators
+# require these paths to pass linting
+# for PRs to be merge-able
+packages/operators
