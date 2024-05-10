@@ -35,6 +35,7 @@ class Light(Object3D):
 
     def __init__(
         self,
+        name: str,
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
         visible=True,
@@ -43,7 +44,7 @@ class Light(Object3D):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
-            name=self.__class__.__name__,
+            name=name,
             visible=visible,
             position=position,
             scale=scale,
@@ -68,6 +69,7 @@ class AmbientLight(Light):
     This light globally illuminates all objects in the scene equally.
 
     Args:
+        name ("AmbientLight"): the name of the light
         intensity (0.1): the intensity of the light in the range ``[0, 1]``
         color ("#ffffff"): the color of the light
         visible (True): default visibility of the object in the scene
@@ -78,6 +80,7 @@ class AmbientLight(Light):
 
     def __init__(
         self,
+        name: str = "AmbientLight",
         intensity: float = 0.1,
         color: str = COLOR_DEFAULT_WHITE,
         visible=True,
@@ -86,6 +89,7 @@ class AmbientLight(Light):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
+            name=name,
             intensity=intensity,
             color=color,
             visible=visible,
@@ -113,6 +117,7 @@ class DirectionalLight(Light):
     parallel.
 
     Args:
+        name ("DirectionalLight"): the name of the light
         target ([0,0,0]): the target of the light
         color ("#ffffff"): the color of the light
         intensity (1.0): the intensity of the light in the range ``[0, 1]``
@@ -126,6 +131,7 @@ class DirectionalLight(Light):
 
     def __init__(
         self,
+        name: str = "DirectionalLight",
         target: Vec3UnionType = Vector3(0, 0, 0),
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
@@ -135,6 +141,7 @@ class DirectionalLight(Light):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
+            name=name,
             color=color,
             intensity=intensity,
             visible=visible,
@@ -166,6 +173,7 @@ class PointLight(Light):
     """Represents a point light.
 
     Args:
+        name ("PointLight"): the name of the light
         distance (0.0): the distance at which the light's intensity is zero
         decay (2.0): the amount the light dims along the distance of the light
         color ("#ffffff"): the color of the light
@@ -178,6 +186,7 @@ class PointLight(Light):
 
     def __init__(
         self,
+        name: str = "PointLight",
         distance: float = 0.0,
         decay: float = 2.0,
         color: str = COLOR_DEFAULT_WHITE,
@@ -188,6 +197,7 @@ class PointLight(Light):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
+            name=name,
             color=color,
             intensity=intensity,
             visible=visible,
@@ -224,6 +234,7 @@ class SpotLight(Light):
     """Represents a spot light.
 
     Args:
+        name ("SpotLight"): the name of the light
         target ([0,0,0]): the target of the light
         distance (0.0): the distance at which the light's intensity is zero
         decay (2.0): the amount the light dims along the distance of the light
@@ -238,6 +249,7 @@ class SpotLight(Light):
 
     def __init__(
         self,
+        name: str = "SpotLight",
         target: Vec3UnionType = None,
         distance: float = 0.0,
         decay: float = 2.0,
@@ -251,6 +263,7 @@ class SpotLight(Light):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
+            name=name,
             color=color,
             intensity=intensity,
             visible=visible,
