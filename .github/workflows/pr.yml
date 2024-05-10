@@ -19,9 +19,26 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
+  teams:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: voxel51
+          repo: fiftyone-teams
+          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          github_user: voxel51-bot
+          workflow_file_name: merge-oss.yml
+          ref: chore/merge-pr-automation
+          wait_interval: 10
+          client_payload: '{ "branch": "${{ github.head_ref || github.ref_name }}" }'
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [build, teams, test]
     if: always()
     steps:
-      - run: sh -c ${{ needs.build.result == 'success' && needs.test.result == 'success' }}
+      - run: sh -c ${{ needs.build.result == 'success' && needs.teams.result == 'success' && needs.test.result == 'success' }}
