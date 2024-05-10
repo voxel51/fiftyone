@@ -10,6 +10,9 @@ on:
       - release/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+
   build:
     uses: ./.github/workflows/build.yml
 

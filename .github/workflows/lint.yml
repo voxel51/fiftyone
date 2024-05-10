@@ -1,0 +1,39 @@
+name: Lint
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+  push:
+    paths:
+      - "app/**"
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16"
+
+      - name: Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            app/node_modules
+            app/.yarn/cache
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: cd app && yarn install
+
+      - name: Read ESLint Packages List and Lint
+        run: |
+          cd app
+          ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
+          yarn eslint $ESLINT_PACKAGES --max-warnings=0
