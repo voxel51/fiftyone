@@ -115,6 +115,14 @@ const currentContextSelector = selectorFamily({
     },
 });
 
+export function useGlobalExecutionContext(): ExecutionContext {
+  const globalCtx = useRecoilValue(globalContextSelector);
+  const ctx = useMemo(() => {
+    return new ExecutionContext({}, globalCtx);
+  }, [globalCtx]);
+  return ctx;
+}
+
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
   const {

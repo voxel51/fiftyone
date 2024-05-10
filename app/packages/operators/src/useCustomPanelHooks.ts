@@ -6,14 +6,23 @@ import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import { executeOperator } from "./operators";
 import * as fos from "@fiftyone/state";
 import usePanelEvent from "./usePanelEvent";
-import { panelsStateUpdatesCountAtom } from "./state";
+import {
+  panelsStateUpdatesCountAtom,
+  useGlobalExecutionContext,
+} from "./state";
 
 export interface CustomPanelProps {
   panelId: string;
   onLoad?: Function;
   onChange?: Function;
   onUnLoad?: Function;
+  onChangeCtx?: Function;
   onViewChange?: Function;
+  onChangeView?: Function;
+  onChangeDataset?: Function;
+  onChangeCurrentSample?: Function;
+  onChangeSelected?: Function;
+  onChangeSelectedLabels?: Function;
   dimensions: {
     bounds: {
       height?: number;
@@ -31,6 +40,19 @@ export interface CustomPanelHooks {
   data: any;
   panelSchema: any;
   loaded: boolean;
+}
+
+function useCtxChangePanelEvent(panelId, value, operator) {
+  const triggerCtxChangedEvent = usePanelEvent();
+  const serializedValue = JSON.stringify(value);
+  console.log(operator, value);
+  useEffect(() => {
+    console.log("useEffect");
+    if (operator) {
+      console.log("triggering");
+      triggerCtxChangedEvent(panelId, { operator, params: { value } });
+    }
+  }, [value, operator]);
 }
 
 export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
@@ -54,6 +76,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     count: panelsStateUpdatesCount,
     state: panelState,
   });
+  const ctx = useGlobalExecutionContext();
 
   function onLoad() {
     if (props.onLoad) {
@@ -63,6 +86,23 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       });
     }
   }
+  useCtxChangePanelEvent(panelId, ctx._currentContext, props.onChangeCtx);
+  useCtxChangePanelEvent(panelId, ctx.view, props.onChangeView);
+  useCtxChangePanelEvent(panelId, ctx.viewName, props.onChangeView);
+  useCtxChangePanelEvent(panelId, ctx.filters, props.onChangeView);
+  useCtxChangePanelEvent(panelId, ctx.extended, props.onChangeView);
+  useCtxChangePanelEvent(panelId, ctx.datasetName, props.onChangeDataset);
+  useCtxChangePanelEvent(
+    panelId,
+    ctx.currentSample,
+    props.onChangeCurrentSample
+  );
+  useCtxChangePanelEvent(panelId, ctx.selectedSamples, props.onChangeSelected);
+  useCtxChangePanelEvent(
+    panelId,
+    ctx.selectedLabels,
+    props.onChangeSelectedLabels
+  );
 
   useEffect(() => {
     if (props.onLoad && !panelState?.loaded) {
