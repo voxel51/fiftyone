@@ -1,9 +1,4 @@
-import {
-  ColoredDot,
-  DEFAULT_COLOR,
-  Popout,
-  scrollable,
-} from "@fiftyone/components";
+import { ColoredDot, Popout, scrollable } from "@fiftyone/components";
 import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
@@ -21,30 +16,31 @@ import "allotment/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import SavedSpace from "./SavedSpace";
+import Workspace from "./Workspace";
 import WorkspaceEditor from "./WorkspaceEditor";
-import { useSavedSpaces, useWorkspacePermission } from "./hooks";
+import { useWorkspaces, useWorkspacePermission } from "./hooks";
 import { sessionSpaces } from "@fiftyone/state";
+import { UNSAVED_WORKSPACE_COLOR } from "./constants";
 
-export default function SavedSpaces() {
+export default function Workspaces() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const { savedSpaces, loadWorkspace, initialized, listWorkspace } =
-    useSavedSpaces();
+  const { workspaces, loadWorkspace, initialized, listWorkspace } =
+    useWorkspaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const { canEdit, disabledInfo } = useWorkspacePermission();
   const sessionSpacesState = useRecoilValue(sessionSpaces);
   const currentWorkspaceName = sessionSpacesState._name;
 
   const currentWorkspace = useMemo(() => {
-    return savedSpaces.find((space) => space.name === currentWorkspaceName);
-  }, [savedSpaces, currentWorkspaceName]);
+    return workspaces.find((space) => space.name === currentWorkspaceName);
+  }, [workspaces, currentWorkspaceName]);
 
   const items = useMemo(() => {
-    return savedSpaces.filter((space) =>
+    return workspaces.filter((space) =>
       space.name.toLowerCase().includes(input.toLowerCase())
     );
-  }, [savedSpaces, input]);
+  }, [workspaces, input]);
 
   useEffect(() => {
     if (!initialized) {
@@ -65,19 +61,15 @@ export default function SavedSpaces() {
           zIndex: 1,
           color: (theme) => theme.palette.text.secondary,
           fontSize: 14,
+          pr: "0.75rem",
         }}
-        endIcon={
-          <AutoAwesomeMosaicOutlined
-            sx={{
-              color: (theme) => theme.palette.primary.main,
-              fontSize: 18,
-            }}
-          />
-        }
+        endIcon={<AutoAwesomeMosaicOutlined sx={{ fontSize: 18 }} />}
       >
         {!initialized && <Skeleton width={64} />}
         {initialized && (
-          <ColoredDot color={currentWorkspace?.color || DEFAULT_COLOR} />
+          <ColoredDot
+            color={currentWorkspace?.color || UNSAVED_WORKSPACE_COLOR}
+          />
         )}
         {initialized && (currentWorkspace?.name || "Unsaved")}
       </Button>
@@ -118,7 +110,7 @@ export default function SavedSpaces() {
                     className={scrollable}
                   >
                     {items.map((space) => (
-                      <SavedSpace
+                      <Workspace
                         key={space.id}
                         onEdit={() => {
                           setOpen(false);
@@ -159,7 +151,12 @@ export default function SavedSpaces() {
                       }}
                     >
                       <ListItemIcon sx={{ minWidth: "auto" }}>
-                        <Add />
+                        <Add
+                          sx={{
+                            color: (theme) => theme.palette.text.primary,
+                            mr: 0.5,
+                          }}
+                        />
                       </ListItemIcon>
                       <ListItemText
                         primary={"Save current spaces as a workspace"}

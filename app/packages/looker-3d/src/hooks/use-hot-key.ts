@@ -18,7 +18,7 @@ export const useHotkey = (
 ) => {
   const cbAsRecoilTransaction = useTransaction
     ? useRecoilTransaction_UNSTABLE((ctx) => () => cb(ctx), deps)
-    : recoil.useRecoilCallback((ctx) => cb(ctx), deps);
+    : recoil.useRecoilCallback((ctx) => () => cb(ctx), deps);
 
   const handle = useCallback(
     (e: KeyboardEventUnionType) => {
