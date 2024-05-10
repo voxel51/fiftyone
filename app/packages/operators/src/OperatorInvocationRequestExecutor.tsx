@@ -33,7 +33,12 @@ function RequestExecutor({ queueItem, onSuccess, onError }) {
       callback: queueItem.callback,
       ...(queueItem?.request?.options || {}),
     });
-  }, []);
+  }, [
+    executor,
+    queueItem.callback,
+    queueItem.request?.options,
+    queueItem.request.params,
+  ]);
 
   return null;
 }
