@@ -54,18 +54,30 @@ export default function PlotlyView(props) {
     }
     const eventHandlerOperator = view[snakeCase(event)];
 
-    triggerPanelEvent(view.panel_id, {
-      operator: eventHandlerOperator,
-      params: {
-        event,
-        data,
-        x_data_source,
-        range,
-        type: view.type,
-        x: xValue,
-        y: yValue,
-      },
-    });
+    if (eventHandlerOperator) {
+      let params = {};
+      if (event === "onClick") {
+        params = {
+          event,
+          data,
+          x_data_source,
+          range,
+          type: view.type,
+          x: xValue,
+          y: yValue,
+        };
+      } else if (event === "onSelected") {
+        params = {
+          event,
+          data,
+          type: view.type,
+        };
+      }
+      triggerPanelEvent(view.panel_id, {
+        operator: eventHandlerOperator,
+        params,
+      });
+    }
   };
   const eventHandlers = createPlotlyHandlers(handleEvent);
 
@@ -183,7 +195,25 @@ const EventDataMappers = {
     };
     return result;
   },
+  onSelected: (e) => {
+    const { event, points } = e;
+    const selected = [];
+    for (const point of points) {
+      const { data, fullData, xaxis, yaxis, ...pointdata } = point;
+      const { x, y, z, ids, selectedpoints, ...metadata } = data;
+      selected.push({
+        idx: point.pointIndex,
+        id: Array.isArray(ids) ? ids[point.pointIndex] : null,
+      });
+    }
+    return selected;
+  },
 };
+
+function getValuesAtIndices(array, indices) {
+  if (!indices || !indices) return null;
+  return indices.map((i) => array[i]);
+}
 
 function mergeData(data, defaults) {
   if (!Array.isArray(data)) {
