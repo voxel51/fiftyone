@@ -33,12 +33,8 @@ function RequestExecutor({ queueItem, onSuccess, onError }) {
       callback: queueItem.callback,
       ...(queueItem?.request?.options || {}),
     });
-  }, [
-    executor,
-    queueItem.callback,
-    queueItem.request?.options,
-    queueItem.request.params,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }
