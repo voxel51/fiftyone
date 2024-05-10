@@ -139,10 +139,6 @@ setup(
     packages=find_packages(
         exclude=["app", "eta", "package", "requirements", "tests", "tools"]
     ),
-    package_dir={
-        "fiftyone.recipes": "docs/source/recipes",
-        "fiftyone.tutorials": "docs/source/tutorials",
-    },
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
     ),
