@@ -3,6 +3,15 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.6.1
+--------------------
+*Released May 10, 2024*
+
+Bugs
+
+- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
+  enviornments
+
 FiftyOne Teams 1.6.0
 --------------------
 *Released April 30, 2024*
