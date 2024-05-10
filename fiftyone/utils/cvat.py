@@ -3052,8 +3052,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
-        image_quality (75): an int in ``[0, 100]`` determining the image quality
-            to upload to CVAT
+        image_quality (75): an int in ``[0, 100]`` determining the image
+            quality to upload to CVAT
         use_cache (True): whether to use a cache when uploading data. Using a
             cache reduces task creation time as data will be processed
             on-the-fly and stored in the cache when requested
@@ -3074,7 +3074,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             default, no project is used
         project_id (None): an optional ID of an existing CVAT project to which
             to upload the annotation tasks. By default, no project is used
-        task_name (None): an optional task name to use for the created CVAT task
+        task_name (None): an optional task name to use for the created CVAT
+            task
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
@@ -4311,7 +4312,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if self._server_version < Version("2.4.6"):
                     # IMPORTANT: older versions of CVAT organizes media within
                     # a task alphabetically by filename, so we must give CVAT
-                    # filenames whose alphabetical order matches the order of `paths`
+                    # filenames whose alphabetical order matches the order of
+                    # `paths`
                     filename = "%06d_%s" % (idx, os.path.basename(path))
 
                 if self._server_version >= Version("2.3"):
@@ -4643,8 +4645,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     all_tags = job_resp["tags"]
                     all_tracks = job_resp["tracks"]
 
-                    # For videos that were subsampled, remap the frame numbers to
-                    # those on the original video
+                    # For videos that were subsampled, remap the frame numbers
+                    # to those on the original video
                     all_shapes = _remap_annotation_frames(
                         all_shapes, frame_start, frame_stop, frame_step
                     )
@@ -4672,8 +4674,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                         label_field_results = {}
 
-                        # Dict mapping class labels to the classes used in CVAT.
-                        # These are equal unless a class appears in multiple fields
+                        # Dict mapping class labels to the classes used in
+                        # CVAT. These are equal unless a class appears in
+                        # multiple fields
                         _classes = label_field_classes[label_field]
 
                         # Maps CVAT IDs to FiftyOne labels
@@ -4784,8 +4787,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                             frames_metadata[sample_id] = frame_metadata
 
-                        # Polyline(s) corresponding to instance/semantic masks need to
-                        # be converted to their final format
+                        # Polyline(s) corresponding to instance/semantic masks
+                        # need to be converted to their final format
                         self._convert_polylines_to_masks(
                             label_field_results, label_info, frames_metadata
                         )
