@@ -4,9 +4,6 @@ on:
   pull_request:
     paths:
       - "app/**"
-  push:
-    paths:
-      - "app/**"
 
 jobs:
   eslint:
