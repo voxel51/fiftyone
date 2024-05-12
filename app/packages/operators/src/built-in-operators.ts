@@ -138,7 +138,7 @@ class OpenPanel extends Operator {
     const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
     return { availablePanels, openedPanels, spaces };
   }
-  findFirstPanelContainer(node: SpaceNode): SpaceNode {
+  findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
     if (node.isPanelContainer()) {
       return node;
     }
@@ -461,7 +461,7 @@ class SetView extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     const refetchableSavedViews = useRefetchableSavedViews();
 
     return {
@@ -521,7 +521,7 @@ class ShowSamples extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       setView: fos.useSetView(),
     };
@@ -596,7 +596,7 @@ class ShowOutput extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("outputs", new types.Object(), {
       label: "Outputs",
@@ -608,7 +608,7 @@ class ShowOutput extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       io: useShowOperatorIO(),
     };
@@ -631,7 +631,7 @@ class SetProgress extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("label", new types.String(), { label: "Label" });
     inputs.defineProperty("variant", new types.Enum(["linear", "circular"]), {
@@ -642,7 +642,7 @@ class SetProgress extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       io: useShowOperatorIO(),
     };
@@ -730,7 +730,7 @@ class SetSelectedLabels extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       setSelected: fos.useSetSelectedLabels(),
     };
