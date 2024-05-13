@@ -181,9 +181,7 @@ const Tag = ({
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
   const title = isReadOnly
-    ? `Can not ${baseTitle.toLowerCase()} in read-only mode` + canTag.message
-      ? `: ${canTag.message}`
-      : ""
+    ? canTag.message ?? "Cannot tag in read-only mode"
     : baseTitle;
 
   return (

@@ -90,10 +90,8 @@ const Draggable: React.FC<
         }}
         title={
           isReadOnly
-            ? "Can not reorder in read-only mode" +
-              canModifySidebarGroup.message
-              ? ": " + canModifySidebarGroup.message
-              : ""
+            ? canModifySidebarGroup.message ??
+              "Can not reorder in read-only mode"
             : trigger
             ? "Drag to reorder"
             : undefined
