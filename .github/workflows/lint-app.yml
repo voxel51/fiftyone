@@ -1,12 +1,6 @@
-name: Lint
+name: Lint App
 
-on:
-  pull_request:
-    paths:
-      - "app/**"
-  push:
-    paths:
-      - "app/**"
+on: workflow_call
 
 jobs:
   eslint:
@@ -21,6 +15,7 @@ jobs:
           node-version: "16"
 
       - name: Cache Node Modules
+        id: node-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -29,7 +24,7 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
 
       - name: Install Dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
 
       - name: Read ESLint Packages List and Lint
