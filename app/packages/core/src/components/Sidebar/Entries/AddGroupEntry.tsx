@@ -8,7 +8,7 @@ const AddGroup = () => {
   const [value, setValue] = useState("");
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
   const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
-  const isReadOnly = canModifySidebarGroup.enabled !== true;
+  const disabled = canModifySidebarGroup.enabled !== true;
 
   const addGroup = useRecoilCallback(
     ({ set, snapshot }) =>
@@ -41,7 +41,7 @@ const AddGroup = () => {
     []
   );
 
-  if (isFieldVisibilityApplied || isReadOnly) {
+  if (isFieldVisibilityApplied || disabled) {
     return null;
   }
 

@@ -26,12 +26,12 @@ export const SPACES_DEFAULT = {
 };
 
 export interface Session {
-  canEditCustomColors: boolean;
-  canEditSavedViews: boolean;
-  canEditWorkspaces: boolean;
-  canCreateNewField: { enabled: boolean; message: string | null };
-  canModifySidebarGroup: { enabled: boolean; message: string | null };
-  canTagSamplesOrLabels: { enabled: boolean; message: string | null };
+  canEditCustomColors: { enabled: boolean; message?: string };
+  canEditSavedViews: { enabled: boolean; message?: string };
+  canEditWorkspaces: { enabled: boolean; message?: string };
+  canCreateNewField: { enabled: boolean; message?: string };
+  canModifySidebarGroup: { enabled: boolean; message?: string };
+  canTagSamplesOrLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -42,12 +42,12 @@ export interface Session {
 }
 
 export const SESSION_DEFAULT: Session = {
-  canEditCustomColors: true,
-  canEditSavedViews: true,
-  canEditWorkspaces: true,
-  canCreateNewField: { enabled: true, message: null },
-  canModifySidebarGroup: { enabled: true, message: null },
-  canTagSamplesOrLabels: { enabled: true, message: null },
+  canEditCustomColors: { enabled: true, message: undefined },
+  canEditSavedViews: { enabled: true, message: undefined },
+  canEditWorkspaces: { enabled: true, message: undefined },
+  canCreateNewField: { enabled: true, message: undefined },
+  canModifySidebarGroup: { enabled: true, message: undefined },
+  canTagSamplesOrLabels: { enabled: true, message: undefined },
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
