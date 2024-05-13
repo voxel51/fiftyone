@@ -1,7 +1,9 @@
+import { ViewPropsType } from "./types";
+
 const CSS_UNIT_PATTERN =
   /(\d+)(cm|mm|in|px|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax|%)$/;
 
-export function parseSize(value: number | string, max: number) {
+export function parseSize(value: number | string, max?: number) {
   const valueIsNumber = typeof value === "number";
   const valueIsRelativeString =
     typeof value === "string" && !CSS_UNIT_PATTERN.test(value);
@@ -13,16 +15,16 @@ export function parseSize(value: number | string, max: number) {
   return value;
 }
 
-export function spaceToHeight(space: number, max: number) {
+export function spaceToHeight(space?: number, max?: number) {
   if (typeof space === "number" && typeof max === "number") {
     return space * (max / 12);
   }
 }
 
-export function getLayoutProps(props) {
-  const { schema, layout = {} } = props;
+export function getLayoutProps(props: ViewPropsType) {
+  const { schema, layout } = props;
   const { view = {} } = schema;
-  const { height, width } = layout;
+  const { height, width } = layout || {};
   return {
     height: parseSize(view.height, height),
     width: parseSize(view.width, width),
