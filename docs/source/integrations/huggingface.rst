@@ -1709,7 +1709,7 @@ specify the `detection_fields` as `"digits"`:
 
 Loading segmentation datasets from the Hub is also a breeze. For example, to
 load the "instance_segmentation" subset from
-`SceneParse150 <https://huggingface.co/datasets/scene_parse150>`_, all you
+`SceneParse150 <https://huggingface.co/datasets/scene_parse_150>`_, all you
 need to do is specify the `mask_fields` as `"annotation"`:
 
 .. code-block:: python
