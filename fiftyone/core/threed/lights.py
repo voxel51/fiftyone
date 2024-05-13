@@ -7,7 +7,7 @@ Lights definition for 3D visualization.
 """
 
 from math import pi as PI
-from typing import Optional
+from typing import Optional, Union
 
 from .object_3d import Object3D
 
@@ -35,7 +35,7 @@ class Light(Object3D):
 
     def __init__(
         self,
-        name: str,
+        name: Union[str, None] = None,
         color: str = COLOR_DEFAULT_WHITE,
         intensity: float = 1.0,
         visible=True,
@@ -44,7 +44,7 @@ class Light(Object3D):
         quaternion: Optional[Quaternion] = None,
     ):
         super().__init__(
-            name=name,
+            name=name or self.__class__.__name__,
             visible=visible,
             position=position,
             scale=scale,
