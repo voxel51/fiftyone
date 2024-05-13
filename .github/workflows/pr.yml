@@ -11,17 +11,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            changes:
-              - 'app/**'
-      - if: steps.changes.outputs.changes == 'true'
-        uses: ./.github/workflows/lint-app.yml
+    uses: ./.github/workflows/lint-app.yml
 
   build:
     uses: ./.github/workflows/build.yml

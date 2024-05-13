@@ -9,6 +9,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            changes:
+              - 'app/**'
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,6 +36,7 @@ jobs:
         run: cd app && yarn install
 
       - name: Read ESLint Packages List and Lint
+        if: steps.changes.outputs.changes == 'true'
         run: |
           cd app
           ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
