@@ -29,9 +29,9 @@ export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
   canEditWorkspaces: boolean;
-  canCreateNewField: boolean;
-  canModifySidebarGroup: boolean;
-  canTagSamplesOrLabels: boolean;
+  canCreateNewField: { enabled: boolean; message: string | null };
+  canModifySidebarGroup: { enabled: boolean; message: string | null };
+  canTagSamplesOrLabels: { enabled: boolean; message: string | null };
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -45,9 +45,9 @@ export const SESSION_DEFAULT: Session = {
   canEditCustomColors: true,
   canEditSavedViews: true,
   canEditWorkspaces: true,
-  canCreateNewField: true,
-  canModifySidebarGroup: true,
-  canTagSamplesOrLabels: true,
+  canCreateNewField: { enabled: true, message: null },
+  canModifySidebarGroup: { enabled: true, message: null },
+  canTagSamplesOrLabels: { enabled: true, message: null },
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],

@@ -320,17 +320,17 @@ export const canEditCustomColors = sessionAtom({
 
 export const canCreateNewField = sessionAtom({
   key: "canCreateNewField",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canModifySidebarGroup = sessionAtom({
   key: "canModifySidebarGroup",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canTagSamplesOrLabels = sessionAtom({
   key: "canTagSamplesOrLabels",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const readOnly = sessionAtom({
