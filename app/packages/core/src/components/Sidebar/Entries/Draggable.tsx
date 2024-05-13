@@ -19,9 +19,8 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const readOnly = useRecoilValue(fos.readOnly);
   const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
-  const isReadOnly = readOnly || !canModifySidebarGroup;
+  const isReadOnly = canModifySidebarGroup.enabled !== true;
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
   const disableDrag =
@@ -91,7 +90,10 @@ const Draggable: React.FC<
         }}
         title={
           isReadOnly
-            ? "Can not reorder in read-only mode"
+            ? "Can not reorder in read-only mode" +
+              canModifySidebarGroup.message
+              ? ": " + canModifySidebarGroup.message
+              : ""
             : trigger
             ? "Drag to reorder"
             : undefined

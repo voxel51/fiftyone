@@ -163,8 +163,7 @@ const Tag = ({
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
   const canTag = useRecoilValue(fos.canTagSamplesOrLabels);
-  const readOnly = useRecoilValue(fos.readOnly);
-  const isReadOnly = readOnly || !canTag;
+  const isReadOnly = canTag.enabled !== true;
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
@@ -182,7 +181,9 @@ const Tag = ({
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
   const title = isReadOnly
-    ? `Can not ${baseTitle.toLowerCase()} in read-only mode.`
+    ? `Can not ${baseTitle.toLowerCase()} in read-only mode` + canTag.message
+      ? `: ${canTag.message}`
+      : ""
     : baseTitle;
 
   return (

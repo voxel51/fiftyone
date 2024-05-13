@@ -7,9 +7,8 @@ import { InputDiv } from "./utils";
 const AddGroup = () => {
   const [value, setValue] = useState("");
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
-  const readOnly = useRecoilValue(fos.readOnly);
   const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
-  const isReadOnly = readOnly || !canModifySidebarGroup;
+  const isReadOnly = canModifySidebarGroup.enabled !== true;
 
   const addGroup = useRecoilCallback(
     ({ set, snapshot }) =>
