@@ -180,8 +180,9 @@ const Tag = ({
     useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
+
   const title = disabled
-    ? canTag.message ?? "cannot tag in read-only mode"
+    ? (canTag.message || "").replace("#action", baseTitle.toLowerCase())
     : baseTitle;
 
   return (
@@ -196,7 +197,7 @@ const Tag = ({
         }}
         icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
-        onClick={() => !disabled && available && setOpen(!open)}
+        onClick={() => !disabled && available && !disableTag && setOpen(!open)}
         highlight={(selected || open) && available}
         title={title}
         data-cy="action-tag-sample-labels"

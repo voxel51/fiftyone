@@ -11,7 +11,7 @@ const ColorFooter: React.FC = () => {
   const canEditCustomColors = useRecoilValue(fos.canEditCustomColors);
   const disabled = canEditCustomColors.enabled! == true;
   const title = disabled
-    ? canEditCustomColors.message ?? ""
+    ? canEditCustomColors.message
     : "Save to dataset app config";
   const setColorScheme = fos.useSetSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] =

@@ -52,6 +52,12 @@ const Draggable: React.FC<
     [disableDrag, trigger, disabled]
   );
 
+  const title = disabled
+    ? canModifySidebarGroup.message || "Can not reorder in read-only mode"
+    : trigger
+    ? "Drag to reorder"
+    : undefined;
+
   return (
     <>
       <animated.div
@@ -86,14 +92,7 @@ const Draggable: React.FC<
           ...style,
           ...(disabled ? { cursor: "not-allowed" } : {}),
         }}
-        title={
-          disabled
-            ? canModifySidebarGroup.message ??
-              "Can not reorder in read-only mode"
-            : trigger
-            ? "Drag to reorder"
-            : undefined
-        }
+        title={title}
       >
         {active && <DragIndicator style={{ color: theme.background.level1 }} />}
       </animated.div>
