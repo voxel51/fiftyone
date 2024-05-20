@@ -38,11 +38,9 @@ export const Pcd = ({
   const points = useMemo(() => points_.clone(false), [points_]);
 
   useEffect(() => {
-    if (!points) {
-      return;
+    if (points) {
+      points.geometry.center();
     }
-
-    points.geometry.center();
   }, [points]);
 
   const pcdContainerRef = useRef();

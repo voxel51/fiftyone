@@ -27,6 +27,7 @@ const FoAxesHelper = ({
 }) => {
   const { upVector } = useFo3dContext();
   const size = useMemo(
+    // multiplier (10) and offset (100) are arbitrary that seem to work well
     () => maxInOrthonormalPlane * 10 + 100,
     [maxInOrthonormalPlane]
   );
