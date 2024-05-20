@@ -10,6 +10,7 @@ prune package
 prune requirements
 prune tools
 prune tests
+prune dist
 
 global-exclude .*
 exclude TEAMS.md

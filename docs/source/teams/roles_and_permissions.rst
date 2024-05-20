@@ -10,7 +10,7 @@ as possible for engineers, data scientists, and stakeholders to work together
 to build high quality datasets and computer vision models.
 
 Accordingly, FiftyOne Teams gives you the flexibility to configure user roles,
-user groups and fine-grained permissions so that you can safely and securly
+user groups and fine-grained permissions so that you can safely and securely
 collaborate both inside and outside your organization at all stages of your
 workflows.
 

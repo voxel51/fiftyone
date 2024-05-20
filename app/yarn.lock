@@ -2549,8 +2549,8 @@ __metadata:
   dependencies:
     "@emotion/react": ^11.11.3
     "@emotion/styled": ^11.11.0
-    "@react-three/drei": ^9.105.4
-    "@react-three/fiber": ^8.16.2
+    "@react-three/drei": ^9.105.6
+    "@react-three/fiber": ^8.16.6
     "@types/node": ^20.11.10
     "@types/react": ^18.2.48
     "@types/react-dom": ^18.2.18
@@ -2563,7 +2563,7 @@ __metadata:
     react-color: ^2.19.3
     rollup-plugin-external-globals: ^0.6.1
     styled-components: ^6.1.8
-    three: ^0.163.0
+    three: ^0.164.1
     tunnel-rat: ^0.1.2
     typescript: ^5.4.5
     vite: ^3.2.10
@@ -4411,7 +4411,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^9.105.4":
+"@react-three/drei@npm:^9.105.6":
   version: 9.105.6
   resolution: "@react-three/drei@npm:9.105.6"
   dependencies:
@@ -4450,9 +4450,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/fiber@npm:^8.16.2":
-  version: 8.16.4
-  resolution: "@react-three/fiber@npm:8.16.4"
+"@react-three/fiber@npm:^8.16.6":
+  version: 8.16.6
+  resolution: "@react-three/fiber@npm:8.16.6"
   dependencies:
     "@babel/runtime": ^7.17.8
     "@types/react-reconciler": ^0.26.7
@@ -4487,7 +4487,7 @@ __metadata:
       optional: true
     react-native:
       optional: true
-  checksum: bfea1dd195a29256a8d777caef457dec7294f44f79e701fe3a3482034bb90fe532b1b729eafb44038e1866f5251eb523968caa9a2e44d74d101ee54293bf5f33
+  checksum: b398a8f6c287c3d61d2d19f4c5308b9e3d95a04c65d56574bdf0b459e1234962e64cfa2d378fd07f25027c8272a4a5e2f8a278ab4bfaa20d90fe47fcd809ee12
   languageName: node
   linkType: hard
 
@@ -17826,8 +17826,8 @@ __metadata:
   linkType: hard
 
 "three-stdlib@npm:^2.29.9":
-  version: 2.29.11
-  resolution: "three-stdlib@npm:2.29.11"
+  version: 2.30.0
+  resolution: "three-stdlib@npm:2.30.0"
   dependencies:
     "@types/draco3d": ^1.4.0
     "@types/offscreencanvas": ^2019.6.4
@@ -17837,14 +17837,14 @@ __metadata:
     potpack: ^1.0.1
   peerDependencies:
     three: ">=0.128.0"
-  checksum: 431c1f24f401bcaecf741f27fd9cc0de24893a5793b2aa723d89a320fe3a2b1e8cdd4dfae5bb1878449ef8fc5673ece6cc7a28df9cfa9642ccad2ffbb6dadbc4
+  checksum: 2497386bd6b9e559453491764a06e1c9b74394280b08b0cb356fd170a531b4e6cd5ee905c8234cc2e86d176d5ff35ac1d8111ba3aec9cfecf6634bf8c90f2cdb
   languageName: node
   linkType: hard
 
-"three@npm:^0.163.0":
-  version: 0.163.0
-  resolution: "three@npm:0.163.0"
-  checksum: 572c16264512f8d094929f585de0092cfaebe9306d7ee45acbf6a78e20e142424a4898679a79fbfe6c76cd3ea048b28f3f821e2daaf243a2e8f8a0d8c00c27dd
+"three@npm:^0.164.1":
+  version: 0.164.1
+  resolution: "three@npm:0.164.1"
+  checksum: 64a1b713cd14b53af12858ad1b89a9daaa493ee2a42384480e408ec3add6cd474811b34a5faa4a3611398db39ed86afb3a96b4d0a54a2feaacc9c5dc54cf5c8a
   languageName: node
   linkType: hard
 

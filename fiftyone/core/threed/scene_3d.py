@@ -249,12 +249,56 @@ class Scene(Object3D):
 
         Args:
             include_self: whether to include the current node in the traversal
+
+        Yields:
+            :class:`Object3D`
+
         """
         if include_self:
             yield self
 
         for child in self.children:
             yield from child.traverse(include_self=True)
+
+    def update_asset_paths(self, asset_rewrite_paths: dict):
+        """Update asset paths in this scene according to an input dict mapping.
+
+        Asset path is unchanged if it does not exist in ``asset_rewrite_paths``
+
+        Args:
+            asset_rewrite_paths: ``dict`` mapping asset path to new asset path
+
+        Returns:
+            ``True`` if the scene was modified.
+        """
+        scene_modified = False
+        for node in self.traverse():
+            for path_attribute in node._asset_path_fields:
+                asset_path = getattr(node, path_attribute, None)
+                new_asset_path = asset_rewrite_paths.get(asset_path)
+
+                if asset_path is not None and asset_path != new_asset_path:
+                    setattr(node, path_attribute, new_asset_path)
+                    scene_modified = True
+
+        # modify scene background paths, if any
+        if self.background is not None:
+            if self.background.image is not None:
+                new_asset_path = asset_rewrite_paths.get(self.background.image)
+                if new_asset_path != self.background.image:
+                    self.background.image = new_asset_path
+                    scene_modified = True
+
+            if self.background.cube is not None:
+                new_cube = [
+                    asset_rewrite_paths.get(face)
+                    for face in self.background.cube
+                ]
+                if new_cube != self.background.cube:
+                    self.background.cube = new_cube
+                    scene_modified = True
+
+        return scene_modified
 
     def get_scene_summary(self):
         """Returns a summary of the scene."""
