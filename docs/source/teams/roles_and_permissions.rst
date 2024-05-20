@@ -109,7 +109,8 @@ datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
-all users within the group (except for guests).
+all users within the group. Collaborators' and guests' access to the dataset is 
+limited by the maximum dataset access level of the role. 
 
 .. image:: /images/teams/admin_team_groups_page.png
    :alt: admin-team-groups-page
