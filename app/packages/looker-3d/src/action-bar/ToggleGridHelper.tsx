@@ -57,7 +57,7 @@ const GridConfigurator = () => {
             value={gridCellSize}
             setter={setGridCellSize}
             min={1}
-            max={100}
+            max={10000}
             step={1}
           />
         </div>
@@ -68,7 +68,7 @@ const GridConfigurator = () => {
             value={gridSectionSize}
             setter={setGridSectionSize}
             min={1}
-            max={100}
+            max={100000}
             step={1}
           />
         </div>
@@ -80,7 +80,7 @@ const GridConfigurator = () => {
               value={gridSize}
               setter={setGridSize}
               min={1}
-              max={10000}
+              max={100000}
               step={1}
             />
           </div>
