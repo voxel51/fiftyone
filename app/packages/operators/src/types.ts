@@ -220,7 +220,7 @@ export class Property {
    * set to `true`.
    * view: view options for the property. Refer to {@link View}
    */
-  constructor(type: ANY_TYPE, options?) {
+  constructor(type: ANY_TYPE, options?: PropertyOptions) {
     this.type = type;
     this.defaultValue = options?.defaultValue || options?.default;
     this.required = options?.required;
@@ -1246,6 +1246,11 @@ type PropertyOptions = {
   label?: string;
   description?: string;
   view?: View;
+  required?: boolean;
+  defaultValue?: any;
+  default?: any;
+  invalid?: boolean;
+  errorMessage?: string;
 };
 type ObjectProperties = Map<string, Property>;
 
