@@ -65,7 +65,6 @@ const GridConfigurator = () => {
         <div className={style.gridLabel}>
           <Typography variant="body2">Section Size</Typography>
           <NumberInput
-            style={{ width: "12rem" }}
             value={gridSectionSize}
             setter={setGridSectionSize}
             min={1}
@@ -78,7 +77,6 @@ const GridConfigurator = () => {
           <div className={style.gridLabel}>
             <Typography variant="body2">Grid Size</Typography>
             <NumberInput
-              style={{ width: "12rem" }}
               value={gridSize}
               setter={setGridSize}
               min={1}
