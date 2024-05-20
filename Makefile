@@ -5,7 +5,10 @@
 app:
 	@cd app && yarn && yarn build && cd ..
 
-python: app
+clean:
+	@rm -rf ./dist/*
+
+python: app clean
 	@python -Im build
 
 docker: python

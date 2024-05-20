@@ -1,4 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
+import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -13,6 +14,7 @@ const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
   sidebar: SidebarPom;
+  asset3dPanel: Asset3dPanelPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -22,6 +24,9 @@ const test = base.extend<{
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
+  },
+  asset3dPanel: async ({ page }, use) => {
+    await use(new Asset3dPanelPom(page));
   },
 });
 
@@ -89,9 +94,16 @@ test.describe("quickstart-groups", () => {
       );
     });
 
-    test("group media visibility toggle works", async ({ modal }) => {
+    test("group media visibility toggle works", async ({
+      modal,
+      asset3dPanel,
+    }) => {
+      // need to drag the asset3d panel to the left corner to make sure it doesn't overlap with the popout
+      await asset3dPanel.dragToToLeftCorner();
+
       // make sure popout is right aligned to the toggle button
       await modal.group.toggleMediaButton.click();
+
       const popoutBoundingBox =
         await modal.group.groupMediaVisibilityPopout.boundingBox();
       const toggleButtonBoundingBox =
