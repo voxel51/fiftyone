@@ -34,6 +34,7 @@ export default class Row<V> {
   ) {
     this.#container.classList.add(styles.spotlightRow);
     this.#from = from;
+    this.#spacing = spacing;
     this.#width = width;
 
     this.#row = items.map((item) => {
