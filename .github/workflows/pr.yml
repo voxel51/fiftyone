@@ -21,6 +21,7 @@ jobs:
 
   teams:
     runs-on: ubuntu-latest
+    if: github.base_ref == 'develop'
     steps:
       - uses: convictional/trigger-workflow-and-wait@v1.6.1
         with:
@@ -31,7 +32,7 @@ jobs:
           workflow_file_name: merge-oss.yml
           ref: chore/merge-pr-automation
           wait_interval: 10
-          client_payload: '{ "assignee": "${{ github.actor }}", "pull": "${{ github.event.number }}" }'
+          client_payload: '{ "pull": "${{ github.event.number }}" }'
           propagate_failure: true
           trigger_workflow: true
           wait_workflow: true
