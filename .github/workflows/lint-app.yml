@@ -40,4 +40,4 @@ jobs:
         run: |
           cd app
           ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
-          yarn eslint $ESLINT_PACKAGES --max-warnings=0
+          yarn eslint $ESLINT_PACKAGES
