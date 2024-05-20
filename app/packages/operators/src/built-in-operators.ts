@@ -8,6 +8,7 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { useSetRecoilState } from "recoil";
@@ -772,7 +773,14 @@ class SetSpaces extends Operator {
     return { setSessionSpacesState };
   }
   async execute(ctx: ExecutionContext) {
-    ctx.hooks.setSessionSpacesState(ctx.params.spaces);
+    const { name, spaces } = ctx.params || {};
+    if (spaces) {
+      ctx.hooks.setSessionSpacesState(spaces);
+    } else if (name) {
+      executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
+    } else {
+      throw new Error('Param "spaces" or "name" is required to set a space');
+    }
   }
 }
 
