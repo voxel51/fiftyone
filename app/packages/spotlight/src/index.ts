@@ -20,7 +20,12 @@ export interface SpotlightConfig<K, V> {
   render: Render;
   key: K;
   rowAspectRatioThreshold: number;
+  offset?: number;
+  spacing?: number;
+  margin?: number;
 }
+
+const ZERO = 0;
 
 export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
@@ -37,7 +42,12 @@ export default class Spotlight<K, V> extends EventTarget {
 
   constructor(config: SpotlightConfig<K, V>) {
     super();
-    this.#config = config;
+    this.#config = {
+      ...config,
+      margin: 8,
+      spacing: 3,
+      offset: 48,
+    };
 
     this.#element.classList.add(styles.spotlight);
 
@@ -104,11 +114,11 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #padding() {
-    return this.#height * 1;
+    return this.#height;
   }
 
   get #width() {
-    return this.#rect.width - 16;
+    return this.#rect.width - this.#config.margin * 2;
   }
 
   async #next(render = true) {
@@ -139,10 +149,8 @@ export default class Spotlight<K, V> extends EventTarget {
 
           this.#backward.remove();
           this.#backward = backward;
-          offset = before - this.#containerHeight - 48;
+          offset = before - this.#containerHeight - this.#config.offset;
         }
-
-        console.log(offset);
 
         this.#render(false, offset, false);
       });
@@ -170,7 +178,7 @@ export default class Spotlight<K, V> extends EventTarget {
         requestAnimationFrame(() => {
           if (
             this.#element.scrollTop > this.#containerHeight ||
-            this.#element.scrollTop < 0 ||
+            this.#element.scrollTop < ZERO ||
             this.#scrollReader.zooming()
           ) {
             requestAnimationFrame(run);
@@ -197,6 +205,7 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#forward = new Section(
       { key: this.#config.key, remainder: [] },
       "forward",
+      this.#config.spacing,
       this.#config.rowAspectRatioThreshold,
       this.#width
     );
@@ -214,7 +223,7 @@ export default class Spotlight<K, V> extends EventTarget {
     await this.#previous(false);
 
     requestAnimationFrame(() => {
-      this.#render(false, -this.#backward.height + 48);
+      this.#render(false, -this.#backward.height + this.#config.offset);
 
       requestAnimationFrame(() => {
         this.#scrollReader = createScrollReader(
@@ -245,6 +254,7 @@ export default class Spotlight<K, V> extends EventTarget {
           ? { key: result.previous, remainder: [] }
           : undefined,
         "backward",
+        this.#config.spacing,
         this.#config.rowAspectRatioThreshold,
         this.#width
       );
@@ -261,17 +271,17 @@ export default class Spotlight<K, V> extends EventTarget {
   #render(zooming: boolean, offset: number | false = false, go = true) {
     if (go && offset !== false) {
       this.#forward.top = this.#backward.height;
-      this.#backward.top = 0;
+      this.#backward.top = ZERO;
     }
 
-    const top = this.#element.scrollTop - (offset === false ? 0 : offset);
+    const top = this.#element.scrollTop - (offset === false ? ZERO : offset);
 
     const backward = this.#backward.render(
       top + this.#height + this.#padding,
       (n) => n > top - this.#padding,
       zooming,
       this.#config.render,
-      top + 48
+      top + this.#config.offset
     );
 
     const forward = this.#forward.render(
@@ -281,7 +291,7 @@ export default class Spotlight<K, V> extends EventTarget {
       },
       zooming,
       this.#config.render,
-      top - this.#backward.height + 48
+      top - this.#backward.height + this.#config.offset
     );
 
     let pageRow = forward.match?.row;
@@ -300,11 +310,11 @@ export default class Spotlight<K, V> extends EventTarget {
 
     if (!go && offset !== false) {
       this.#forward.top = this.#backward.height;
-      this.#backward.top = 0;
+      this.#backward.top = ZERO;
     }
 
     if (offset !== false && top) {
-      this.#element.scrollTo(0, top);
+      this.#element.scrollTo(ZERO, top);
     }
 
     if (!zooming && backward.more) this.#previous();

@@ -174,7 +174,7 @@ const Wrap = () => {
   const set = useSetRecoilState(showGridPixels);
 
   const observer = useMemo(() => {
-    let timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     return new ResizeObserver(() => {
       set(true);
 
@@ -188,15 +188,16 @@ const Wrap = () => {
 
   useEffect(() => {
     if (!ref.current) {
-      return;
+      return () => null;
     }
+
     const el = ref.current;
     observer.observe(el);
 
     return () => {
       observer.unobserve(el);
     };
-  }, [observer, ref]);
+  }, [observer]);
 
   return (
     <Contain ref={ref}>

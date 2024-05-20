@@ -3,8 +3,6 @@
  */
 import styles from "./styles.module.css";
 
-import { MARGIN } from "./constants";
-
 export interface ItemData<V> {
   id?: symbol;
   aspectRatio: number;
@@ -20,16 +18,23 @@ export type Render = (
 ) => (() => void) | undefined;
 
 export default class Row<V> {
-  #hidden: boolean;
-
   #from: number;
-  readonly #width: number;
+  #hidden: boolean;
 
   readonly #container: HTMLDivElement = document.createElement("div");
   readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
+  readonly #spacing: number;
+  readonly #width: number;
 
-  constructor(items: ItemData<V>[], from: number, width: number) {
+  constructor(
+    from: number,
+    items: ItemData<V>[],
+    spacing: number,
+    width: number
+  ) {
     this.#container.classList.add(styles.spotlightRow);
+    this.#from = from;
+    this.#width = width;
 
     this.#row = items.map((item) => {
       const element = document.createElement("div");
@@ -39,8 +44,6 @@ export default class Row<V> {
       return { element, item };
     });
 
-    this.#from = from;
-    this.#width = width;
     const height = this.height;
     let left = 0;
 
@@ -54,7 +57,7 @@ export default class Row<V> {
       element.style.width = `${itemWidth}px`;
       element.style.left = `${left}px`;
 
-      left += itemWidth + MARGIN;
+      left += itemWidth + spacing;
     }
 
     this.#container.style.height = `${height}px`;
@@ -88,7 +91,7 @@ export default class Row<V> {
   }
 
   get #cleanWidth() {
-    return this.#width - (this.#row.length - 1) * MARGIN;
+    return this.#width - (this.#row.length - 1) * this.#spacing;
   }
 
   get attached() {

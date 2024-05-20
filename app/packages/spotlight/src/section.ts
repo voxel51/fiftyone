@@ -7,7 +7,6 @@ import styles from "./styles.module.css";
 import type { ItemData, Render } from "./row";
 
 import { closest } from "./closest";
-import { MARGIN } from "./constants";
 import Row from "./row";
 import tile from "./tile";
 
@@ -23,22 +22,31 @@ interface Edge<K, V> {
 }
 
 export class Section<K, V> {
-  #shown: Set<Row<V>> = new Set();
-
   readonly #container = document.createElement("div");
   readonly #section = document.createElement("div");
-  #start: Edge<K, V>;
+  readonly #spacing: number;
+  readonly #threshold: number;
+  readonly #width: number;
+
   #direction: "forward" | "backward";
   #end: Edge<K, V>;
+  #shown: Set<Row<V>> = new Set();
+  #start: Edge<K, V>;
   #rows: Row<V>[] = [];
+
   constructor(
     edge: Edge<K, V> | undefined,
     direction: "forward" | "backward",
-    readonly threshold: number,
-    readonly width: number
+    spacing: number,
+    threshold: number,
+    width: number
   ) {
-    this.#end = edge;
     this.#direction = direction;
+    this.#end = edge;
+    this.#spacing = spacing;
+    this.#threshold = threshold;
+    this.#width = width;
+
     this.#container.classList.add(styles.spotlightContainer);
 
     this.#section.classList.add(styles.spotlightSection);
@@ -59,11 +67,12 @@ export class Section<K, V> {
   }
 
   get #height() {
-    if (!this.#rows.length) return this.#direction === "backward" ? MARGIN : 0;
+    if (!this.#rows.length)
+      return this.#direction === "backward" ? this.#spacing : 0;
 
     const row = this.#rows[this.length - 1];
 
-    return row.from + row.height + MARGIN;
+    return row.from + row.height + this.#spacing;
   }
 
   set top(top: number) {
@@ -120,7 +129,10 @@ export class Section<K, V> {
           : {};
       this.#rows.push(...rows);
 
-      const height = rows.reduce((acc, cur) => acc + cur.height + MARGIN, 0);
+      const height = rows.reduce(
+        (acc, cur) => acc + cur.height + this.#spacing,
+        0
+      );
 
       if (this.#rows.length < 40) {
         this.#end = newEnd;
@@ -130,8 +142,9 @@ export class Section<K, V> {
       const section = new Section(
         newEnd,
         this.#direction,
-        this.threshold,
-        this.width
+        this.#spacing,
+        this.#threshold,
+        this.#width
       );
       this.#end = this.#start;
       this.#start = newEnd;
@@ -232,7 +245,8 @@ export class Section<K, V> {
   }
 
   #reverse() {
-    const from = this.#height - (this.#direction === "forward" ? MARGIN : 0);
+    const from =
+      this.#height - (this.#direction === "forward" ? this.#spacing : 0);
     this.#rows.reverse();
     const old = this.#direction;
     this.#direction = this.#direction === "backward" ? "forward" : "backward";
@@ -253,7 +267,7 @@ export class Section<K, V> {
     useRemainder: boolean
   ): { rows: Row<V>[]; remainder: ItemData<V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
-    const breakpoints = tile(data, this.threshold, useRemainder);
+    const breakpoints = tile(data, this.#threshold, useRemainder);
 
     let previous = 0;
     let offset = 0;
@@ -263,9 +277,9 @@ export class Section<K, V> {
 
       this.#direction === "backward" && rowItems.reverse();
 
-      const row = new Row(rowItems, from + offset, this.width);
+      const row = new Row(from + offset, rowItems, this.#spacing, this.#width);
       rows.push(row);
-      offset += row.height + MARGIN;
+      offset += row.height + this.#spacing;
       previous = breakpoints[index];
     }
 
