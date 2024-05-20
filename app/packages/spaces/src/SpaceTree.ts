@@ -1,8 +1,8 @@
-import { Layout } from "./enums";
+import { isEqual } from "lodash";
 import SpaceNode from "./SpaceNode";
+import { Layout } from "./enums";
 import { SpaceNodeJSON } from "./types";
 import { spaceNodeFromJSON } from "./utils";
-import { isEqual } from "lodash";
 
 type SpaceTreeUpdateCallback = (rootNode: SpaceNodeJSON) => void;
 
@@ -26,6 +26,10 @@ export default class SpaceTree {
       ? spaceNodeFromJSON(serializedTree)
       : new SpaceNode("root");
     if (onTreeUpdate) this.onUpdate = onTreeUpdate;
+
+    if (!this.root.hasActiveChild() && this.root.hasChildren()) {
+      this.setNodeActive(this.root.firstChild());
+    }
   }
 
   updateTree(node: SpaceNode) {
@@ -83,6 +87,7 @@ export default class SpaceTree {
   }
 
   setNodeSizes(node: SpaceNode, sizes: number[]) {
+    if (isEqual(node.sizes, sizes)) return;
     node.sizes = sizes;
     this.updateTree(node);
   }

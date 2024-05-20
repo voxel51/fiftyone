@@ -1,7 +1,7 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -516,8 +516,14 @@ class DateField(mongoengine.fields.DateField, Field):
 
         # Explicitly converting to UTC is important here because PyMongo loads
         # everything as `datetime`, which will respect `fo.config.timezone`,
-        # but we always need UTC here for the conversion back to `date`
-        return value.astimezone(pytz.utc).date()
+        # but we always need UTC here for the conversion back to `date` because
+        # we write to the DB in UTC time.
+        # If value is timezone unaware, then do not convert because it will be
+        # assumed to be in local timezone and date will be wrong for GMT+
+        # localities.
+        if value.tzinfo is not None:
+            value = value.astimezone(pytz.utc)
+        return value.date()
 
     def validate(self, value):
         if not isinstance(value, date):

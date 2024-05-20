@@ -1,8 +1,13 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getCls, REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
+import {
+  getCls,
+  REGRESSION,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
+} from "@fiftyone/utilities";
 
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
@@ -32,6 +37,8 @@ export interface Regression {
 export type ClassificationLabel = Classification & Regression;
 
 export type Labels<T> = [string, T[]][];
+
+const TEMPORAL_LABELS = new Set([TEMPORAL_DETECTION, TEMPORAL_DETECTIONS]);
 
 export class ClassificationsOverlay<
   State extends BaseState,
@@ -353,20 +360,38 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
         field,
         labels.filter((label) => {
           const shown = isShown(state, field, label) && label.label;
-          if (this.getCls(field, state) === TEMPORAL_DETECTION) {
-            return (
-              shown &&
-              label.support[0] <= state.frameNumber &&
-              label.support[1] >= state.frameNumber
-            );
+
+          if (!shown) {
+            return false;
           }
 
-          return shown;
+          const cls = this.getCls(field, state);
+          return filterTemporalLabel(cls, label, state.frameNumber);
         }),
       ];
     });
   }
 }
+
+export const filterTemporalLabel = (
+  cls: string,
+  label: ClassificationLabel | TemporalDetectionLabel,
+  frameNumber: number
+) => {
+  if (!TEMPORAL_LABELS.has(cls)) {
+    return true;
+  }
+
+  const temporal = label as TemporalDetectionLabel;
+
+  if (temporal.support?.length !== 2) {
+    return false;
+  }
+
+  return (
+    temporal.support[0] <= frameNumber && temporal.support[1] >= frameNumber
+  );
+};
 
 export const getClassificationPoints = (
   labels: ClassificationLabel[]

@@ -245,7 +245,7 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
             os.chdir(plugin_path)
             git_archive_args = [
                 "git",
-                "archives",
+                "archive",
                 "--format=zip",
                 "-o",
                 zip_name,

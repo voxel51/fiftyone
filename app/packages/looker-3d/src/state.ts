@@ -1,56 +1,18 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom } from "recoil";
-
-export const ACTION_SHADE_BY = "shadeBy";
-export const ACTION_SET_POINT_SIZE = "setPointSize";
-export const ACTION_SET_PCDS = "setPcds";
-export const ACTION_VIEW_JSON = "json";
-export const ACTION_VIEW_HELP = "help";
-
-export type Actions =
-  | typeof ACTION_SHADE_BY
-  | typeof ACTION_SET_POINT_SIZE
-  | typeof ACTION_SET_PCDS
-  | typeof ACTION_VIEW_JSON
-  | typeof ACTION_VIEW_HELP;
-
-export const SHADE_BY_INTENSITY = "intensity";
-export const SHADE_BY_HEIGHT = "height";
-export const SHADE_BY_RGB = "rgb";
-export const SHADE_BY_CUSTOM = "custom";
-export const SHADE_BY_NONE = "none";
-
-export type ShadeBy =
-  | typeof SHADE_BY_INTENSITY
-  | typeof SHADE_BY_HEIGHT
-  | typeof SHADE_BY_RGB
-  | typeof SHADE_BY_CUSTOM
-  | typeof SHADE_BY_NONE;
-
-export const ACTIONS = [
-  { label: "Color By", value: ACTION_SHADE_BY },
-  { label: "Set Point Size", value: ACTION_SET_POINT_SIZE },
-  { label: "Set PCDs", value: ACTION_SET_PCDS },
-  { label: "View Json", value: ACTION_VIEW_JSON },
-];
-
-export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
-  { label: "Height", value: SHADE_BY_HEIGHT },
-  { label: "Intensity", value: SHADE_BY_INTENSITY },
-  { label: "RGB", value: SHADE_BY_RGB },
-  { label: "Custom", value: SHADE_BY_CUSTOM },
-  { label: "None", value: SHADE_BY_NONE },
-];
+import { SHADE_BY_HEIGHT } from "./constants";
+import { FoSceneNode } from "./hooks";
+import { Actions, ShadeBy } from "./types";
 
 export const shadeByAtom = atom<ShadeBy>({
-  key: "shadeBy",
+  key: "fo3d-shadeBy",
   default: SHADE_BY_HEIGHT,
   effects: [getBrowserStorageEffectForKey("shadeBy")],
 });
 
 export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
-  key: "customColorMap",
+  key: "fo3d-customColorMap",
   default: null,
   effects: [
     getBrowserStorageEffectForKey("customColorMap", {
@@ -60,23 +22,23 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
 });
 
 export const currentActionAtom = atom<Actions>({
-  key: "openAction",
+  key: "fo3d-openAction",
   default: null,
 });
 
 export const currentPointSizeAtom = atom<string>({
-  key: "pointSize",
+  key: "fo3d-pointSize",
   default: "2",
   effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
-  key: "pointSizeRange",
+  key: "fo3d-pointSizeRange",
   default: [0.1, 2],
 });
 
 export const isPointSizeAttenuatedAtom = atom<boolean>({
-  key: "isPointSizeAttenuated",
+  key: "fo3d-isPointSizeAttenuated",
   default: false,
   effects: [
     getBrowserStorageEffectForKey("isPointSizeAttenuated", {
@@ -86,9 +48,36 @@ export const isPointSizeAttenuatedAtom = atom<boolean>({
 });
 
 export const isGridOnAtom = atom<boolean>({
-  key: "isGridOn",
+  key: "fo3d-isGridOn",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
+    getBrowserStorageEffectForKey("fo3d-isGridOn", {
+      valueClass: "boolean",
+    }),
   ],
+});
+
+export const fo3dContainsBackground = atom<boolean>({
+  key: "fo3d-containsBackground",
+  default: false,
+});
+
+export const isFo3dBackgroundOnAtom = atom<boolean>({
+  key: "fo3d-isBackgroundON",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isBackgroundON", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const isStatusBarOnAtom = atom<boolean>({
+  key: "fo3d-isStatusBarOn",
+  default: false,
+});
+
+export const activeNodeAtom = atom<FoSceneNode>({
+  key: "fo3d-activeNode",
+  default: null,
 });

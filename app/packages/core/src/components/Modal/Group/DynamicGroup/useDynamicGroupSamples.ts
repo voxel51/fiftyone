@@ -7,11 +7,15 @@ import { useRecoilValue } from "recoil";
 export const useDynamicGroupSamples = () => {
   const environment = useRelayEnvironment();
   const slice = useRecoilValue(fos.groupSlice);
-  const view = useRecoilValue(fos.dynamicGroupViewQuery({}));
+  const view = useRecoilValue(fos.dynamicGroupViewQuery(null));
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker);
 
+  const filter = useMemo(
+    () => (slice ? { group: { slice, slices: [slice] } } : {}),
+    [slice]
+  );
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
       if (!dataset) {
@@ -29,16 +33,12 @@ export const useDynamicGroupSamples = () => {
         {
           after: cursor ? String(cursor) : null,
           dataset,
-          filter: {
-            group: {
-              slice,
-            },
-          },
+          filter,
           view,
         }
       );
     },
-    [dataset, environment, slice, shouldRenderImavid, view]
+    [dataset, environment, filter, shouldRenderImavid, view]
   );
 
   const queryRef = useMemo(

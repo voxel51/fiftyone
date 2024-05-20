@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e0795a0616c3848ab74ec3e449ce4d95>>
+ * @generated SignedSource<<d03cac0dcd2c4d8e25f92fd6a1286e20>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type BrainRunType = "similarity" | "visualization" | "%future added value";
-export type MediaType = "group" | "image" | "point_cloud" | "video" | "%future added value";
+export type MediaType = "group" | "image" | "point_cloud" | "three_d" | "video" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {

@@ -1,7 +1,7 @@
 """
 FiftyOne Server /aggregation and /tagging routes
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,7 +9,6 @@ FiftyOne Server /aggregation and /tagging routes
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.view as fov
 

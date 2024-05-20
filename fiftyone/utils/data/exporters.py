@@ -1,31 +1,32 @@
 """
 Dataset exporters.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+
 import inspect
 import logging
 import os
 import warnings
-
-from bson import json_util
+from collections import defaultdict
 
 import eta.core.datasets as etad
 import eta.core.frameutils as etaf
 import eta.core.utils as etau
+from bson import json_util
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.storage as fos
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
@@ -33,14 +34,13 @@ import fiftyone.utils.patches as foup
 
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
+    FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledImageSampleParser,
     FiftyOneUnlabeledMediaSampleParser,
-    FiftyOneLabeledVideoSampleParser,
     FiftyOneUnlabeledVideoSampleParser,
-    ImageSampleParser,
     ImageClassificationSampleParser,
+    ImageSampleParser,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -1125,6 +1125,10 @@ class MediaExporter(object):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -1140,6 +1144,7 @@ class MediaExporter(object):
         export_mode,
         export_path=None,
         rel_dir=None,
+        chunk_size=None,
         supported_modes=None,
         default_ext=None,
         ignore_exts=False,
@@ -1168,10 +1173,12 @@ class MediaExporter(object):
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         self.export_mode = export_mode
         self.export_path = export_path
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.supported_modes = supported_modes
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
@@ -1183,6 +1190,72 @@ class MediaExporter(object):
         self._tmpdir = None
         self._inpaths = []
         self._outpaths = []
+
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
+        if export_mode in (False, "manifest"):
+            return
+
+        scene = fo3d.Scene.from_fo3d(fo3d_path)
+
+        asset_paths = scene.get_asset_paths()
+
+        input_to_output_paths = {}
+        for asset_path in asset_paths:
+            if not fos.isabs(asset_path):
+                absolute_asset_path = fos.join(
+                    os.path.dirname(fo3d_path), asset_path
+                )
+            else:
+                absolute_asset_path = asset_path
+
+            seen = self._filename_maker.seen_input_path(absolute_asset_path)
+
+            asset_output_path = self._filename_maker.get_output_path(
+                absolute_asset_path
+            )
+            input_to_output_paths[asset_path] = os.path.relpath(
+                asset_output_path, os.path.dirname(fo3d_output_path)
+            )
+
+            if seen:
+                continue
+
+            if not fos.is_local(absolute_asset_path) or not fos.is_local(
+                asset_output_path
+            ):
+                if self.export_mode in (True, "move"):
+                    self._inpaths.append(absolute_asset_path)
+                    self._outpaths.append(asset_output_path)
+                continue
+
+            if export_mode is True:
+                etau.copy_file(absolute_asset_path, asset_output_path)
+            elif export_mode == "move":
+                etau.move_file(absolute_asset_path, asset_output_path)
+            elif export_mode == "symlink":
+                etau.symlink_file(absolute_asset_path, asset_output_path)
+
+        is_scene_modified = scene.update_asset_paths(input_to_output_paths)
+
+        if is_scene_modified:
+            # note: we can't have different behavior for "symlink" because
+            # scene is modified, so we just copy the file regardless
+            scene.write(fo3d_output_path)
+        else:
+            if export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
+            else:
+                etau.copy_file(fo3d_path, fo3d_output_path)
+
+        if export_mode == "move":
+            etau.delete_file(fo3d_path)
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def _write_media(self, media, outpath):
         raise NotImplementedError("subclass must implement _write_media()")
@@ -1224,6 +1297,7 @@ class MediaExporter(object):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=output_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             default_ext=self.default_ext,
             ignore_exts=self.ignore_exts,
             ignore_existing=True,
@@ -1264,8 +1338,14 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
+                is_fo3d_file = media_path.endswith(".fo3d")
+
                 if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
+                elif is_fo3d_file:
+                    self._handle_fo3d_file(
+                        media_path, outpath, self.export_mode
+                    )
                 elif self.export_mode != False and (
                     not fos.is_local(outpath) or not fos.is_local(media_path)
                 ):
@@ -1829,12 +1909,18 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
         export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -1844,21 +1930,29 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
+        chunk_size=None,
         abs_paths=False,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         pretty_print=False,
     ):
         if export_media is None:
             export_media = True
 
+        if rel_dir is not None:
+            rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
+
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.abs_paths = abs_paths
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.pretty_print = pretty_print
 
         self._data_dir = None
@@ -1894,6 +1988,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self.export_media,
             export_path=self._data_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -1904,6 +1999,10 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
     def log_collection(self, sample_collection):
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
+        if sample_collection.media_type == fomm.GROUP:
+            self._metadata[
+                "group_media_types"
+            ] = sample_collection.group_media_types
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
@@ -1967,6 +2066,12 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self._metadata["saved_views"] = [
                 json_util.dumps(v.to_dict())
                 for v in dataset._doc.get_saved_views()
+            ]
+
+        if dataset.has_workspaces and self.export_workspaces:
+            self._metadata["workspaces"] = [
+                json_util.dumps(w.to_dict())
+                for w in dataset._doc.get_workspaces()
             ]
 
         if dataset.has_annotation_runs and self.export_runs:
@@ -2088,6 +2193,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self.export_media,
             export_path=field_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         media_exporter.setup()
@@ -2120,10 +2226,16 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
             necessary) via :func:`fiftyone.core.storage.normalize_path`
+        chunk_size (None): an optional chunk size to use when exporting media
+            files. If provided, media files will be nested in subdirectories
+            of the output directory with at most this many media files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
             runs in the export. Only applicable when exporting full datasets
+        export_workspaces (True): whether to include saved workspaces in the
+            export. Only applicable when exporting full datasets
         use_dirs (False): whether to export metadata into directories of per
             sample/frame files
         ordered (True): whether to preserve the order of the exported
@@ -2135,8 +2247,10 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_dir,
         export_media=None,
         rel_dir=None,
+        chunk_size=None,
         export_saved_views=True,
         export_runs=True,
+        export_workspaces=True,
         use_dirs=False,
         ordered=True,
     ):
@@ -2145,13 +2259,16 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
+        self.chunk_size = chunk_size
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
+        self.export_workspaces = export_workspaces
         self.use_dirs = use_dirs
         self.ordered = ordered
 
@@ -2188,6 +2305,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self.export_media,
             export_path=self._data_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         self._media_exporter.setup()
@@ -2281,22 +2399,19 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}
         dataset_dict["runs"] = {}
+        dataset_dict["workspaces"] = []
 
         #
-        # Exporting saved views/runs only makes sense if the entire dataset is
-        # being exported, otherwise the view for the run cannot be
+        # Exporting saved views/runs/workspaces only makes sense if the entire
+        # dataset is being exported, otherwise the view for the run cannot be
         # reconstructed based on the information encoded in the run's document
         #
 
-        _export_saved_views = (
-            self.export_saved_views
-            and sample_collection == sample_collection._root_dataset
-        )
+        is_full_dataset = sample_collection == sample_collection._root_dataset
 
-        _export_runs = (
-            self.export_runs
-            and sample_collection == sample_collection._root_dataset
-        )
+        _export_saved_views = self.export_saved_views and is_full_dataset
+        _export_runs = self.export_runs and is_full_dataset
+        _export_workspaces = self.export_workspaces and is_full_dataset
 
         if _export_saved_views and dataset.has_saved_views:
             dataset_dict["saved_views"] = [
@@ -2329,6 +2444,11 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 k: v.to_dict() for k, v in dataset._doc.get_runs().items()
             }
             _export_run_results(dataset, self._runs_dir)
+
+        if _export_workspaces and dataset.has_workspaces:
+            dataset_dict["workspaces"] = [
+                v.to_dict() for v in dataset._doc.get_workspaces()
+            ]
 
         foo.export_document(dataset_dict, self._metadata_path)
 
@@ -2376,6 +2496,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             self.export_media,
             export_path=field_dir,
             rel_dir=self.rel_dir,
+            chunk_size=self.chunk_size,
             supported_modes=(True, False, "move", "symlink"),
         )
         media_exporter.setup()

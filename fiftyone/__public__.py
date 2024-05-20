@@ -1,13 +1,12 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import fiftyone.core.cache as _foca
 import fiftyone.core.config as _foc
-import fiftyone.core.odm as _foo
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
@@ -15,7 +14,6 @@ evaluation_config = _foc.load_evaluation_config()
 app_config = _foc.load_app_config()
 media_cache_config = _foc.load_media_cache_config()
 
-_foo.establish_db_conn(config)
 _foca.init_media_cache(media_cache_config)
 
 media_cache = _foca.media_cache
@@ -138,7 +136,9 @@ from .core.odm import (
     DynamicEmbeddedDocument,
     EmbeddedDocument,
     KeypointSkeleton,
+    Panel,
     SidebarGroupDocument,
+    Space,
 )
 from .core.plots import (
     plot_confusion_matrix,
@@ -162,9 +162,32 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-from .core.spaces import (
-    Space,
-    Panel,
+from .core.threed import (
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
+    FbxMesh,
+    GltfMesh,
+    ObjMesh,
+    PlyMesh,
+    StlMesh,
+    PerspectiveCamera,
+    PointLight,
+    DirectionalLight,
+    AmbientLight,
+    SpotLight,
+    PointCloud,
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointCloudMaterial,
+    Scene,
+    SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
 )
 from .core.stages import (
     Concat,

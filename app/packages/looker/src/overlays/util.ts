@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { COLOR_BY, getColor, REGRESSION } from "@fiftyone/utilities";
@@ -135,13 +135,13 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
 };
 
 export const getHashLabel = (label: RegularLabel): string => {
-  if (label?.index && ["number", "string"].includes(typeof label?.index)) {
+  if (["number", "string"].includes(typeof label?.index)) {
     return `${label.label}.${label.index}`;
-  } else if (label?.label && label?.id) {
-    return `${label.label}.${label.id}`;
-  } else {
-    return `${label}`;
   }
+  if (typeof label?.label !== "undefined" && typeof label?.id !== "undefined") {
+    return `${label.label}.${label.id}`;
+  }
+  return `${label.label}`;
 };
 
 export const shouldShowLabelTag = (

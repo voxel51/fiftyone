@@ -483,6 +483,7 @@ show statistics for the current collection based on the **sidebar mode**:
 -   `all`: always compute counts for all fields
 -   `best`: automatically choose between `fast` and `all` mode based on the
     size of the dataset
+-   `disabled`: disable the feature in the App and always choose `fast`
 
 When the sidebar mode is `best`, the App will choose `fast` mode if any of the
 following conditions are met:
@@ -1180,10 +1181,12 @@ Using the 3D visualizer
 _______________________
 
 The 3D visualizer allows you to interactively visualize
-:ref:`point cloud samples <point-cloud-datasets>` along with any associated
+:ref:`3D samples <3d-datasets>` or
+:ref:`point cloud samples <point-cloud-datasets>`
+along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
 
-.. image:: /images/app/app-3d-visualizer.gif
+.. image:: /images/app/app-new-3d-visualizer.gif
    :alt: 3d-visualizer
    :align: center
 
@@ -1202,6 +1205,12 @@ supports:
     +--------------+----------------+-------------------------------+
     | Shift + drag | Translate      | Translate the camera          |
     +--------------+----------------+-------------------------------+
+    | B            | Background     | Toggle background on/off      |
+    +--------------+----------------+-------------------------------+
+    | F            | Fullscreen     | Toggle fullscreen             |
+    +--------------+----------------+-------------------------------+
+    | G            | Grid           | Toggle the grid on/off        |
+    +--------------+----------------+-------------------------------+
     | T            | Top-down       | Reset camera to top-down view |
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
@@ -1209,17 +1218,19 @@ supports:
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
+A variety of context-specific options are available in a draggable
+panel in the 3D visualizer that let you configure lights, as well as
+material and visibility of the 3D objects in the scene.
+
 In addition, the HUD at the bottom of the 3D visualizer provides the following
 controls:
 
--   Use the points icon to change the size of the points in the cloud
--   Use the palette icon to choose whether the point cloud is colored by
-    height, intensity, RGB, or no coloring
+-   Click the grid icon to toggle the grid on/off
 -   Click the `T` to reset the camera to top-down view
 -   Click the `E` to reset the camera to ego-view
 
-When coloring by intensity, the color of each point is computed by mapping the
-`r` channel of the `rgb` field of the
+For point clouds, when coloring by intensity, the color of each point is
+computed by mapping the `r` channel of the `rgb` field of the
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 onto a fixed colormap, which is scaled so that the full colormap is matched to
 the observed dynamic range of `r` values for each sample.
@@ -1232,9 +1243,9 @@ the full colormap using the same strategy.
 Viewing 3D samples in the grid
 ------------------------------
 
-When you load point cloud collections in the App, any
+When you load 3D collections in the App, any
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
-fields will be visualized in the App using an orthographic projection
+fields will be visualized in the grid using an orthographic projection
 (onto the xy plane by default).
 
 In addition, if you have populated
@@ -1248,7 +1259,7 @@ dataset, the projection images will be rendered for each sample in the grid:
     import fiftyone.utils.utils3d as fou3d
     import fiftyone.zoo as foz
 
-    # Load an example point cloud dataset
+    # Load an example 3D dataset
     dataset = (
         foz.load_zoo_dataset("quickstart-groups")
         .select_group_slices("pcd")
@@ -1478,6 +1489,166 @@ You can reset your spaces to their default state by setting
 
     # Reset spaces layout in the App
     session.spaces = None
+
+.. _app-workspaces:
+
+Saving workspaces
+_________________
+
+If you find yourself frequently using/recreating a certain
+:ref:`spaces layout <app-spaces>`, you can save it as a workspace with a name
+of your choice and then load it later via the App or programmatically!
+
+.. _app-saving-workspaces:
+
+Saving workspaces in the App
+----------------------------
+
+Continuing from the :ref:`example above <app-spaces-layout>`, once you've
+configured a spaces layout of interest, click the "Unsaved workspace" icon in
+the upper right corner to open the workspaces menu and save your current
+workspace with a name and optional description/color of your choice:
+
+.. image:: /images/app/app-save-workspace.gif
+    :alt: app-save-workspace
+    :align: center
+
+.. note::
+
+    Saved workspaces include all aspects of your current spaces layout,
+    including panel types, layouts, sizes, and even the current state of each
+    panel!
+
+You can load saved workspaces at any time later via this same menu:
+
+.. image:: /images/app/app-load-workspace.gif
+    :alt: app-load-workspace
+    :align: center
+
+You can also edit the details of an existing saved workspace at any time by
+clicking on its pencil icon in the workspace menu:
+
+.. image:: /images/app/app-update-workspace.gif
+    :alt: app-update-workspace
+    :align: center
+
+.. note::
+
+    If you want to modify the layout of an existing saved workspace, you must
+    delete the existing workspace and then re-save it under the same name after
+    modifying the layout in the App.
+
+.. _app-saving-workspaces-python:
+
+Saving workspaces in Python
+---------------------------
+
+You can also programmatically create and manage saved workspaces!
+
+Use :meth:`save_workspace() <fiftyone.core.dataset.Dataset.save_workspace>`
+to create a new saved workspace with a name of your choice:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    samples_panel = fo.Panel(type="Samples", pinned=True)
+
+    histograms_panel = fo.Panel(
+        type="Histograms",
+        state=dict(plot="Labels"),
+    )
+
+    embeddings_panel = fo.Panel(
+        type="Embeddings",
+        state=dict(brainResult="img_viz", colorByField="metadata.size_bytes"),
+    )
+
+    workspace = fo.Space(
+        children=[
+            fo.Space(
+                children=[
+                    fo.Space(children=[samples_panel]),
+                    fo.Space(children=[histograms_panel]),
+                ],
+                orientation="horizontal",
+            ),
+            fo.Space(children=[embeddings_panel]),
+        ],
+        orientation="vertical",
+    )
+
+    dataset.save_workspace(
+        "my-workspace",
+        workspace,
+        description="Samples, embeddings, histograms, oh my!",
+        color="#FF6D04",
+    )
+
+.. note::
+
+    Pro tip! You can save your current spaces layout in the App via
+    :meth:`session.spaces <fiftyone.core.session.Session.spaces>`:
+
+    .. code-block:: python
+
+        workspace = session.spaces
+        dataset.save_workspace("my-workspace", workspace, ...)
+
+Then in a future session you can load the workspace by name with
+:meth:`load_workspace() <fiftyone.core.dataset.Dataset.load_workspace>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("quickstart")
+
+    # Retrieve a saved workspace and launch app with it
+    workspace = dataset.load_workspace("my-workspace")
+    session = fo.launch_app(dataset, spaces=workspace)
+
+    # Or, load a workspace on an existing session
+    session.spaces = workspace
+
+Saved workspaces have certain editable metadata such as a name, description,
+and color that you can view via
+:meth:`get_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`
+and update via
+:meth:`update_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get a saved workspace's editable info
+    print(dataset.get_workspace_info("my-workspace"))
+
+    # Update the workspace's name and add a description
+    info = dict(
+        name="still-my-workspace",
+        description="Samples, embeddings, histograms, oh my oh my!!",
+    )
+    dataset.update_workspace_info("my-workspace", info)
+
+    # Verify that the info has been updated
+    print(dataset.get_workspace_info("still-my-workspace"))
+    # {
+    #   'name': 'still-my-workspace',
+    #   'description': 'Samples, embeddings, histograms, oh my oh my!!',
+    #   'color': None
+    # }
+
+You can also use
+:meth:`list_workspaces() <fiftyone.core.dataset.Dataset.list_workspaces>`,
+:meth:`has_workspace() <fiftyone.core.dataset.Dataset.has_workspace()>`,
+and
+:meth:`delete_workspace() <fiftyone.core.dataset.Dataset.delete_workspace>`
+to manage your saved workspaces.
 
 .. _app-samples-panel:
 

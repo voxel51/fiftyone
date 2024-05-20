@@ -308,6 +308,11 @@ export const canEditSavedViews = sessionAtom({
   default: true,
 });
 
+export const canEditWorkspaces = sessionAtom({
+  key: "canEditWorkspaces",
+  default: true,
+});
+
 export const canEditCustomColors = sessionAtom({
   key: "canEditCustomColors",
   default: true,

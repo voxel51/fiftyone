@@ -1,7 +1,7 @@
 """
 FiftyOne Server mutations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,15 +10,11 @@ from dataclasses import asdict
 import strawberry as gql
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.session.events as fose
-from fiftyone.core.session.events import StateUpdate
-from fiftyone.core.spaces import default_spaces, Space
 from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -98,14 +94,14 @@ class Mutation(SetColorScheme):
         state.selected_labels = []
         state.view = None
         state.view_name = view_name if view_name is not None else None
-        state.spaces = default_spaces
+        state.spaces = foo.default_workspace_factory()
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
         if state.dataset is not None:
             state.group_slice = state.dataset.group_slice
 
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, fose.StateUpdate(state=state))
         return True
 
     @gql.mutation
@@ -150,7 +146,7 @@ class Mutation(SetColorScheme):
         view._dataset.save()
 
         state.view = view
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, fose.StateUpdate(state=state))
         return True
 
     @gql.mutation
@@ -196,9 +192,9 @@ class Mutation(SetColorScheme):
         if not dataset_name:
             state.dataset = None
             state.view = None
-            state.spaces = default_spaces
+            state.spaces = foo.default_workspace_factory()
             state.group_slice = None
-            await dispatch_event(subscription, StateUpdate(state=state))
+            await dispatch_event(subscription, fose.StateUpdate(state=state))
 
         result_view = None
         ds = fod.load_dataset(dataset_name)
@@ -258,7 +254,7 @@ class Mutation(SetColorScheme):
 
         await dispatch_event(
             subscription,
-            StateUpdate(state=state),
+            fose.StateUpdate(state=state),
         )
 
         return result_view._serialize() if result_view else []
@@ -305,7 +301,7 @@ class Mutation(SetColorScheme):
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
-            await dispatch_event(subscription, StateUpdate(state=state))
+            await dispatch_event(subscription, fose.StateUpdate(state=state))
 
         return next(
             (
@@ -354,7 +350,7 @@ class Mutation(SetColorScheme):
             state.view = dataset.view()
             state.view_name = None
 
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, fose.StateUpdate(state=state))
 
         return deleted_view_id
 
@@ -418,7 +414,7 @@ class Mutation(SetColorScheme):
         spaces: BSON,
     ) -> bool:
         state = get_state()
-        state.spaces = Space.from_dict(spaces)
+        state.spaces = foo.Space.from_dict(spaces)
         await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 
@@ -436,7 +432,7 @@ class Mutation(SetColorScheme):
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
-        except Exception as e:
+        except Exception:
             try:
                 view = dataset.select_fields(meta_filter)
             except Exception:
@@ -450,7 +446,7 @@ class Mutation(SetColorScheme):
                     st
                     for st in stage.get_selected_fields(view, frames=is_video)
                 ]
-        except Exception as e:
+        except Exception:
             res = []
 
         return res

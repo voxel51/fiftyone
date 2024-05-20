@@ -1,18 +1,20 @@
 """
 FiftyOne Server /events route
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from sse_starlette.sse import EventSourceResponse
 
+from fiftyone.core.session.events import ListenPayload
+
 from fiftyone.server.events import (
-    ListenPayload,
     add_event_listener,
     dispatch_polling_event_listener,
 )

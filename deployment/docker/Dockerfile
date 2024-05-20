@@ -1,43 +1,33 @@
-# Dockerfile for building an image with a FiftyOne Team App release atop a
-# Debian-based Linux distribution.
 #
-# OPTIONAL BUILD ARGs::
-#
-#   PYTHON_VERSION (3.10): The Python version to install. Must be >= 3.9
-#
-# REQUIRED RUNTIME ENV VARS::
-#
-#   FIFTYONE_DATABASE_URI: your MongoDB database URI
-#   FIFTYONE_TEAMS_CLIENT_ID: your application client ID
-#   FIFTYONE_TEAMS_ORGANIZATION: your organization's authentication ID
-#
-# OPTIONAL RUNTIME ENV VARS::
-#
-#   (your cloud storage credentials)
-#
-# Example usage::
-#
-#   # Build
-#   DOCKER_BUILDKIT=1 docker build \
-#       --build-arg TOKEN=${TOKEN} \
-#       -t voxel51/fiftyone-teams-app .
-#
-#   # Run
-#   SHARED_DIR=/data # if necessary
-#   docker run \
-#       -e FIFTYONE_DATABASE_URI=mongodb://... \
-#       -e FIFTYONE_TEAMS_CLIENT_ID=... \
-#       -e FIFTYONE_TEAMS_ORGANIZATION=... \
-#       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
-#       -v /path/to/aws-credentials.ini:/fiftyone/aws-credentials.ini \
-#       -p 5151:5151 \
-#       -it voxel51/fiftyone-teams-app
-#
-# Copyright 2017-2023, Voxel51, Inc.
+# Copyright 2017-2024, Voxel51, Inc.
 # voxel51.com
 #
+# To build a local image, run the following from the root of the git clone:
+#
+# docker buildx build --load -f deployment/docker/Dockerfile \
+#   -t fiftyone-app:local .
+#
+# To publish a `fiftyone-app` image, run the following from the
+#   `{repo}/deployment/docker` directory:
+#
+#  docker buildx build --push -t ${TEAMS_IMAGE_NAME} .
+#
+# To publish a `fiftyone-app-internal` image, run the following from the
+#   `{repo}/deployment/docker` directory AFTER you have built the GPT image
+#
+#  export PIP_USER=oauth2accesstoken
+#  export PIP_PASS=$(gcloud auth print-access-token)
+#  export GAR_PATH="us-central1-python.pkg.dev/computer-vision-team/dev-python/simple/
+#  export PIP_EXTRA_INDEX_URL="https://${PIP_USER}:${PIP_PASS}@${GAR_PATH}"
+#  docker buildx build --push \
+#    --secret id=PIP_EXTRA_INDEX_URL \
+#    --build-arg GPT_PLUGIN_IMAGE="${GPT_IMAGE_NAME}" \
+#    --build-arg SDK_VERSION="${SDK_VERSION}" \
+#    -t "${INTERNAL_IMAGE_NAME}" --target internalrelease .
+
 
 ARG PYTHON_VERSION=3.10
+ARG GPT_PLUGIN_IMAGE_NAME=fiftyone-app-gpt:local
 
 FROM python:${PYTHON_VERSION} as builder
 ARG PIP_INDEX_URL=https://pypi.org/simple
@@ -48,7 +38,31 @@ COPY ./yarnrc.yml ~/.yarnrc.yml
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
     && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
+### Internal Plugins Image
+FROM builder as internal-wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG SDK_VERSION
 
+RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
+    export PIP_EXTRA_INDEX_URL=$(cat /run/secrets/PIP_EXTRA_INDEX_URL) \
+    && pip wheel --wheel-dir=/tmp/wheels \
+    darwin-fiftyone \
+    fiftyone=="${SDK_VERSION}" \
+    pyperclip \
+    sentence_transformers
+
+
+FROM ${GPT_PLUGIN_IMAGE_NAME} as internalrelease
+
+RUN --mount=type=cache,from=internal-wheelhouse,target=/wheelhouse,ro \
+    pip --no-cache-dir install -q --no-index \
+    --find-links=/wheelhouse/tmp/wheels \
+    sentence_transformers \
+    pyperclip \
+    darwin-fiftyone
+
+
+### `fiftyone-app` image - last to make it the default
 FROM python:${PYTHON_VERSION}-slim as release
 
 WORKDIR /opt

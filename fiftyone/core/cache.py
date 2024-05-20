@@ -152,8 +152,9 @@ class MediaCache(object):
             filepath: a filepath
 
         Returns:
-            tuple of the (possibly locally-cached) filepath, and whether the
-            returned path is local
+            a tuple of:
+            -   the (possibly locally-cached) filepath
+            -   True/False whether the returned path is local
         """
 
         # Function will report exists as True if we have previously
@@ -176,9 +177,18 @@ class MediaCache(object):
             filepaths: a list of filepaths
 
         Returns:
-            a list of (possibly locally-cached) filepaths
+            a tuple of:
+            -   a list of (possibly locally-cached) filepaths
+            -   True/False whether all returned paths are local
         """
-        return [self.use_cached_path(f)[0] for f in filepaths]
+        cached_paths = []
+        all_local = True
+
+        for filepath in filepaths:
+            cached_path, is_local = self.use_cached_path(filepath)
+            cached_paths.append(cached_path)
+            all_local &= is_local
+        return cached_paths, all_local
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.

@@ -1,7 +1,7 @@
 """
 Saved view documents.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -11,7 +11,6 @@ from fiftyone.core.fields import (
     ListField,
     ObjectIdField,
     StringField,
-    ObjectId,
 )
 
 from .document import Document

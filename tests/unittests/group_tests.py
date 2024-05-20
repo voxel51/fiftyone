@@ -1,10 +1,11 @@
 """
 FiftyOne group-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from itertools import groupby
 import json
 import os
@@ -21,6 +22,7 @@ import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 from fiftyone import ViewExpression as E, ViewField as F
 
 from decorators import drop_datasets
@@ -250,6 +252,23 @@ class GroupTests(unittest.TestCase):
         self.assertIn("left", group)
         self.assertNotIn("ego", group)
         self.assertIn("right", group)
+
+    @drop_datasets
+    def test_one_fo3d_group_slice(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        one = fo.Sample(filepath="one.fo3d", group=group.element("one"))
+        two = fo.Sample(filepath="two.fo3d", group=group.element("two"))
+
+        with self.assertRaises(ValueError):
+            dataset.add_samples([one, two])
+
+        dataset = fo.Dataset()
+        dataset.add_sample(one)
+
+        with self.assertRaises(ValueError):
+            dataset.add_group_slice("two", "3d")
 
     @drop_datasets
     def test_field_operations(self):
@@ -1207,6 +1226,69 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(view), 6)
         self.assertEqual(view.media_type, "image")
 
+    @drop_datasets
+    def test_concurrent_group_slice_updates(self):
+        dataset = fo.Dataset()
+        group = fo.Group()
+        slice1 = "slice1"
+        dataset.add_sample(fo.Sample("blah.jpg", group=group.element(slice1)))
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test rename group slice safety
+        also_dataset.add_group_slice("slice2", fo.core.media.IMAGE)
+        dataset.rename_group_slice("slice1", "also-slice1")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {
+                "slice2": fo.core.media.IMAGE,
+                "also-slice1": fo.core.media.IMAGE,
+            },
+        )
+
+        # Test delete group slice safety
+        also_dataset.reload()
+        also_dataset.add_group_slice("slice3", fo.core.media.IMAGE)
+        dataset.delete_group_slice("also-slice1")
+
+        also_dataset.reload()
+        self.assertDictEqual(
+            also_dataset.group_media_types,
+            {"slice2": fo.core.media.IMAGE, "slice3": fo.core.media.IMAGE},
+        )
+
+        # Test default group slice safety with delete
+        dataset.reload()
+        dataset.default_group_slice = "slice3"
+        dataset.save()
+        also_dataset.reload()
+
+        dataset.rename_group_slice("slice2", "slice2-1")
+        also_dataset.delete_group_slice("slice3")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {"slice2-1": fo.core.media.IMAGE},
+        )
+        self.assertEqual(dataset.default_group_slice, "slice2-1")
+
+        # Test default group slice safety with rename
+        dataset.add_group_slice("slice3", fo.core.media.IMAGE)
+        also_dataset.reload()
+        also_dataset.default_group_slice = "slice3"
+        also_dataset.save()
+        dataset.rename_group_slice("slice3", "slice3-1")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {"slice2-1": fo.core.media.IMAGE, "slice3-1": fo.core.media.IMAGE},
+        )
+        self.assertEqual(dataset.default_group_slice, "slice3-1")
+
 
 class GroupImportExportTests(unittest.TestCase):
     def setUp(self):
@@ -2102,6 +2184,36 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(also_view.name, "group_by_clips")
         self.assertTrue(also_view.is_saved)
         self.assertEqual(len(also_view), 2)
+
+    @drop_datasets
+    def test_expand_group_metadata(self):
+        dataset: fo.Dataset = fo.Dataset()
+
+        group = fo.Group()
+        samples = [
+            fo.Sample(filepath="video.mp4", group=group.element("video")),
+            fo.Sample(filepath="image.png", group=group.element("image")),
+        ]
+        dataset.add_samples(samples)
+
+        # assert that slices have their media type metadata fields populated
+        for (
+            name,
+            field,
+        ) in fome.ImageMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
+
+        for (
+            name,
+            field,
+        ) in fome.VideoMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
 
 
 def _make_group_by_dataset():

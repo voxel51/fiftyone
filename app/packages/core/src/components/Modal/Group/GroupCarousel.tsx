@@ -17,7 +17,10 @@ const groupCarouselSlices = selector<string[]>({
     const mediaTypesSet = get(fos.groupMediaTypesSet);
     const slices = get(fos.groupSlices);
 
-    if (mediaTypesSet.size === 1 && mediaTypesSet.has("point-cloud")) {
+    if (
+      mediaTypesSet.size === 1 &&
+      (mediaTypesSet.has("point-cloud") || mediaTypesSet.has("three_d"))
+    ) {
       return slices;
     }
 
@@ -25,7 +28,10 @@ const groupCarouselSlices = selector<string[]>({
       get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
     );
 
-    return slices.filter((slice) => mediaTypes[slice] !== "point_cloud");
+    return slices.filter(
+      (slice) =>
+        mediaTypes[slice] !== "point_cloud" && mediaTypes[slice] !== "three_d"
+    );
   },
 });
 
@@ -34,7 +40,7 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName) as string,
-      view: get(fos.view),
+      view: get(fos.groupView),
       filter: {
         group: {
           slice: get(fos.groupSlice),

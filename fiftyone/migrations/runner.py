@@ -1,7 +1,7 @@
 """
 FiftyOne migrations runner.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -94,7 +94,9 @@ def migrate_all(destination=None, error_level=0, verbose=False):
         )
 
 
-def migrate_database_if_necessary(destination=None, verbose=False):
+def migrate_database_if_necessary(
+    destination=None, verbose=False, config=None
+):
     """Migrates the database to the specified revision, if necessary.
 
     If ``fiftyone.config.database_admin`` is ``False`` and no ``destination``
@@ -105,11 +107,14 @@ def migrate_database_if_necessary(destination=None, verbose=False):
         destination (None): the destination revision. By default, the
             ``fiftyone`` client version is used
         verbose (False): whether to log incremental migrations that are run
+        config (None): an optional :class:`DatabaseConfigDocument`. By default,
+            DB config is pulled from the database.
     """
     if _migrations_disabled():
         return
 
-    config = foo.get_db_config()
+    if config is None:
+        config = foo.get_db_config()
     head = config.version
 
     default_destination = destination is None

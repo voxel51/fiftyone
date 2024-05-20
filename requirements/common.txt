@@ -11,7 +11,7 @@ ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2
 importlib-metadata==1.4.0; python_version<"3.8"
-Jinja2==3.0.3
+Jinja2==3.1.4
 jsonlines==3.1.0
 kaleido==0.2.1
 matplotlib==3.5.2
@@ -32,7 +32,7 @@ scikit-image>=0.16.2
 setuptools>=45.2.0
 sseclient-py>=1.7.2
 sse-starlette>=0.10.3
-starlette==0.27.0
+starlette==0.36.2
 strawberry-graphql==0.138.1
 tabulate==0.8.10
 wcmatch==8.3

@@ -1,7 +1,7 @@
 """
 FiftyOne Server queries.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,10 +10,8 @@ from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import logging
-import os
 import typing as t
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId, json_util
@@ -36,6 +34,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
@@ -48,6 +47,7 @@ from fiftyone.server.samples import (
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
+from fiftyone.server.workspace import Workspace
 
 
 ID = gql.scalar(
@@ -211,6 +211,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class SidebarMode(Enum):
     all = "all"
     best = "best"
+    disabled = "disabled"
     fast = "fast"
 
 
@@ -225,6 +226,7 @@ class DatasetAppConfig:
 
     grid_media_field: str = "filepath"
     modal_media_field: str = "filepath"
+    media_fallback: bool = False
 
 
 @gql.type
@@ -293,6 +295,20 @@ class Dataset:
             return await info.context.db[
                 self.frame_collection_name
             ].estimated_document_count()
+
+    @gql.field
+    async def workspace(
+        self, slug: t.Optional[str], info: Info
+    ) -> t.Optional[Workspace]:
+        if slug:
+            doc = await info.context.db["workspaces"].find_one({"slug": slug})
+
+            if doc:
+                doc["id"] = doc.pop("_id")
+                doc["dataset_id"] = doc.pop("_dataset_id")
+                return from_dict(Workspace, doc)
+
+        return None
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -377,6 +393,7 @@ class AppConfig:
     timezone: t.Optional[str]
     use_frame_number: bool
     spaces: t.Optional[JSON]
+    media_fallback: bool = False
 
 
 @gql.type
@@ -399,7 +416,8 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        d = fo.app_config.serialize()
+        config = get_state().config
+        d = config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 

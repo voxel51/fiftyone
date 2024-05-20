@@ -1,11 +1,12 @@
 """
 View stages.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import builtins
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
@@ -5356,6 +5357,11 @@ class MatchTags(ViewStage):
             tags = [tags]
         else:
             tags = list(tags)
+            if not builtins.all(etau.is_str(t) for t in tags):
+                raise ValueError(
+                    "The `tags` argument must be a string or iterable of "
+                    "strings."
+                )
 
         if bool is None:
             bool = True
@@ -5903,6 +5909,7 @@ class SelectFields(ViewStage):
         field_names=None,
         meta_filter=None,
         _allow_missing=False,
+        _media_types=None,
     ):
         if etau.is_str(field_names):
             field_names = [field_names]
@@ -5912,6 +5919,7 @@ class SelectFields(ViewStage):
         self._field_names = field_names
         self._meta_filter = meta_filter
         self._allow_missing = _allow_missing
+        self._media_types = _media_types
 
     @property
     def field_names(self):
@@ -5953,7 +5961,7 @@ class SelectFields(ViewStage):
 
         for path in roots:
             default_paths = sample_collection._get_default_sample_fields(
-                path=path, include_private=True
+                path=path, include_private=True, media_types=self._media_types
             )
             selected_paths.update(default_paths)
 

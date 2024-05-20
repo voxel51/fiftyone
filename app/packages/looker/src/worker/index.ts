@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
@@ -322,7 +322,7 @@ const processSample = ({
 
   let bufferPromises = [];
 
-  if (sample?._media_type === "point-cloud") {
+  if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
   } else {
     bufferPromises = [

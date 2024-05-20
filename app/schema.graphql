@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  mediaFallback: Boolean!
 }
 
 scalar BSON
@@ -234,13 +235,14 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  headName: String
-  snapshotName: String
   estimatedFrameCount: Int
   estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
+  headName: String
+  snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  workspace(slug: String): Workspace
 }
 
 type DatasetAppConfig {
@@ -252,6 +254,7 @@ type DatasetAppConfig {
   spaces: JSON
   gridMediaField: String!
   modalMediaField: String!
+  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {
@@ -476,6 +479,7 @@ enum MediaType {
   image
   group
   point_cloud
+  three_d
   video
 }
 
@@ -671,7 +675,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -739,6 +743,7 @@ input SidebarGroupInput {
 enum SidebarMode {
   all
   best
+  disabled
   fast
 }
 
@@ -800,6 +805,13 @@ enum Theme {
   light
 }
 
+type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
 type ValueColor {
   color: String!
   value: String!
@@ -824,9 +836,17 @@ type WildcardProjection {
   inclusion: Boolean!
 }
 
-type WildcardProjection {
-  fields: [String!]!
-  inclusion: Boolean!
+type Workspace {
+  id: ID!
+  color: String
+  child: BSON!
+  datasetId: ID!
+  createdAt: datetime
+  description: String
+  name: String
+  lastModifiedAt: datetime
+  lastLoadedAt: datetime
+  slug: String
 }
 
 scalar date

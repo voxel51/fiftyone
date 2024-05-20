@@ -15,15 +15,17 @@ rather than a local directory by passing the extra ``--basedir`` argument::
         ClassName.method_name \
         --basedir $BASEDIR
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import argparse
 import os
+import pathlib
 import random
 import string
 import sys
+import tempfile
 import unittest
 
 import cv2
@@ -1305,6 +1307,34 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
+        # Non-sequential categories
+
+        export_dir = self._new_dir()
+
+        categories = [
+            {"supercategory": "animal", "id": 10, "name": "cat"},
+            {"supercategory": "vehicle", "id": 20, "name": "dog"},
+        ]
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            categories=categories,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+        )
+        categories2 = dataset2.info["categories"]
+
+        self.assertSetEqual(
+            {c["id"] for c in categories},
+            {c["id"] for c in categories2},
+        )
+
     @drop_datasets
     def test_voc_detection_dataset(self):
         dataset = self._make_dataset()
@@ -2154,7 +2184,6 @@ class DICOMDatasetTests(ImageDatasetTests):
 
     @drop_datasets
     def test_dicom_dataset(self):
-
         dataset_dir = self._new_dir()
         images_dir = self._new_dir()
 
@@ -2967,6 +2996,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
+        # Test import/export of workspaces
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+        workspace = fo.Space(
+            children=[histograms_panel], orientation="vertical"
+        )
+
+        workspace_name = "my-workspace"
+        workspace_desc = "very nice, high five!"
+
+        dataset.save_workspace(
+            workspace_name, workspace, description=workspace_desc
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue(workspace_name in dataset.list_workspaces())
+        self.assertTrue(workspace_name in dataset2.list_workspaces())
+
+        workspace_doc = dataset2._get_workspace_doc(workspace_name)
+        self.assertEqual(str(dataset2._doc.id), workspace_doc.dataset_id)
+
+        workspace2 = dataset2.load_workspace(workspace_name)
+        self.assertEqual(workspace, workspace2)
+        self.assertEqual(
+            dataset.get_workspace_info(workspace_name),
+            dataset2.get_workspace_info(workspace_name),
+        )
+
         # Test import/export of evaluations
 
         dataset.clone_sample_field("predictions", "ground_truth")
@@ -3274,6 +3345,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
+
+        # Test import/export of workspaces
+
+        histograms_panel = fo.Panel(
+            type="Histograms",
+            state=dict(plot="Labels"),
+        )
+        workspace = fo.Space(
+            children=[histograms_panel], orientation="vertical"
+        )
+
+        workspace_name = "my-workspace"
+        workspace_desc = "very nice, high five!"
+
+        dataset.save_workspace(
+            workspace_name, workspace, description=workspace_desc
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue(workspace_name in dataset.list_workspaces())
+        self.assertTrue(workspace_name in dataset2.list_workspaces())
+
+        workspace_doc = dataset2._get_workspace_doc(workspace_name)
+        self.assertEqual(str(dataset2._doc.id), workspace_doc.dataset_id)
+
+        workspace2 = dataset2.load_workspace(workspace_name)
+        self.assertEqual(workspace, workspace2)
+        self.assertEqual(
+            dataset.get_workspace_info(workspace_name),
+            dataset2.get_workspace_info(workspace_name),
+        )
 
         # Test import/export of evaluations
 
@@ -4582,6 +4695,311 @@ class UnlabeledMediaDatasetTests(ImageDatasetTests):
 
         # _images/<filename>
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
+
+
+class ThreeDMediaTests(unittest.TestCase):
+    """Tests mostly for proper media export. Labels are tested
+    properly elsewhere, 3D should be no different in that regard.
+    """
+
+    def _build_flat_relative(self, temp_dir):
+        # Scene has relative asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   pcd.pcd
+        #   obj.obj
+        #   mtl.mtl
+        #   s1.fo3d
+        root_data_dir = os.path.join(temp_dir, "data")
+        s = fo.Scene()
+        s.background = fo.SceneBackground(image="image.jpeg")
+        s.add(fo.PointCloud("pcd", "pcd.pcd"))
+        s.add(fo.ObjMesh("obj", "obj.obj", "mtl.mtl"))
+        scene_path = os.path.join(root_data_dir, "s1.fo3d")
+        s.write(scene_path)
+        for file in s.get_asset_paths():
+            with open(os.path.join(root_data_dir, file), "w") as f:
+                f.write(file)
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(scene_path))
+        return s, dataset
+
+    def _build_flat_absolute(self, temp_dir):
+        # Scene has absolute asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   pcd.pcd
+        #   obj.obj
+        #   mtl.mtl
+        #   s1.fo3d
+        root_data_dir = os.path.join(temp_dir, "data")
+        s = fo.Scene()
+        s.background = fo.SceneBackground(
+            image=os.path.join(root_data_dir, "image.jpeg")
+        )
+        s.add(fo.PointCloud("pcd", os.path.join(root_data_dir, "pcd.pcd")))
+        s.add(
+            fo.ObjMesh(
+                "obj",
+                os.path.join(root_data_dir, "obj.obj"),
+                os.path.join(root_data_dir, "mtl.mtl"),
+            )
+        )
+        scene_path = os.path.join(root_data_dir, "s1.fo3d")
+        s.write(scene_path)
+        for file in s.get_asset_paths():
+            with open(os.path.join(root_data_dir, file), "w") as f:
+                f.write(os.path.basename(file))
+
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(scene_path))
+        return s, dataset
+
+    def _build_nested_relative(self, temp_dir):
+        # Scene has relative asset paths
+        # Data layout:
+        # data/
+        #   image.jpeg
+        #   label1/
+        #       test/
+        #           s.fo3d
+        #           sub/
+        #               pcd.pcd
+        #               obj.obj
+        #               mtl.mtl
+        #   label2/
+        #       test/
+        #           s.fo3d
+        #           sub/
+        #               pcd.pcd
+        #               obj.obj
+        #               mtl.mtl
+        root_data_dir = os.path.join(temp_dir, "data")
+        scene1_dir = os.path.join(root_data_dir, "label1", "test")
+
+        s = fo.Scene()
+        s.background = fo.SceneBackground(image="../../image.jpeg")
+        s.add(fo.PointCloud("pcd", "sub/pcd.pcd"))
+        s.add(
+            fo.ObjMesh(
+                "obj",
+                "sub/obj.obj",
+                "sub/mtl.mtl",
+            )
+        )
+        scene_path = os.path.join(scene1_dir, "s.fo3d")
+        s.write(scene_path)
+
+        scene2_dir = os.path.join(root_data_dir, "label2", "test")
+
+        scene_path2 = os.path.join(scene2_dir, "s.fo3d")
+
+        # Scene2 is the same except change something small so we know which
+        #   is which.
+        s.background.color = "red"
+        s.write(scene_path2)
+
+        # Write content as filename (with 2 suffix for files from scene 2)
+        for file in s.get_asset_paths():
+            f = pathlib.Path(os.path.join(scene1_dir, file))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(os.path.basename(file))
+
+            if file.endswith("image.jpeg"):
+                continue
+
+            f = pathlib.Path(os.path.join(scene2_dir, file))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(os.path.basename(file) + "2")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample(scene_path), fo.Sample(scene_path2)])
+        return dataset
+
+    def _assert_scene_content(self, original_scene, scene, export_dir=None):
+        self.assertEqual(original_scene, scene)
+        for file in scene.get_asset_paths():
+            if export_dir:
+                file = os.path.join(export_dir, file)
+            with open(file) as f:
+                self.assertEqual(f.read(), os.path.basename(file))
+
+    @drop_datasets
+    def test_flat_relative(self):
+        """Tests a simple flat and relative-addressed scene"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            s, dataset = self._build_flat_relative(temp_dir)
+
+            # Export
+            export_dir = os.path.join(temp_dir, "export")
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fo.types.MediaDirectory,
+                export_media=True,
+            )
+
+            # All files flat in export_dir
+            fileset = set(os.listdir(export_dir))
+            self.assertSetEqual(
+                fileset,
+                {"image.jpeg", "pcd.pcd", "obj.obj", "mtl.mtl", "s1.fo3d"},
+            )
+
+            # Same file content
+            scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
+            self._assert_scene_content(s, scene2, export_dir)
+
+    @drop_datasets
+    def test_flat_absolute(self):
+        """Tests a simple flat and absolute-addressed scene"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            s, dataset = self._build_flat_absolute(temp_dir)
+
+            # Export it
+            export_dir = os.path.join(temp_dir, "export")
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fo.types.MediaDirectory,
+                export_media=True,
+            )
+
+            # All files flat in export_dir
+            fileset = set(os.listdir(export_dir))
+            self.assertSetEqual(
+                fileset,
+                {"image.jpeg", "pcd.pcd", "obj.obj", "mtl.mtl", "s1.fo3d"},
+            )
+
+            # Write temp scene with resolving relative paths, so we can test
+            #   that scenes are equal if relative paths are resolved
+            tmp_scene = fo.Scene.from_fo3d(os.path.join(export_dir, "s1.fo3d"))
+            tmp_scene.write(
+                os.path.join(export_dir, "test.fo3d"),
+                resolve_relative_paths=True,
+            )
+            scene2 = fo.Scene.from_fo3d(os.path.join(export_dir, "test.fo3d"))
+
+            self._assert_scene_content(s, scene2)
+
+    @drop_datasets
+    def test_relative_nested_flatten(self):
+        """Tests nested structure is flattened to export dir. Will require
+        rename of duplicate asset file names and change of relative asset path
+        in fo3d file.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dataset = self._build_nested_relative(temp_dir)
+
+            # Export it and flatten (no rel_dir)
+            export_dir = os.path.join(temp_dir, "export")
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fo.types.MediaDirectory,
+                export_media=True,
+            )
+
+            # Flattening should mean duplicate file names gain a '-2'
+            fileset = set(os.listdir(export_dir))
+            self.assertSetEqual(
+                fileset,
+                {
+                    "image.jpeg",
+                    "pcd.pcd",
+                    "obj.obj",
+                    "mtl.mtl",
+                    "s.fo3d",
+                    "image.jpeg",
+                    "pcd-2.pcd",
+                    "obj-2.obj",
+                    "mtl-2.mtl",
+                    "s-2.fo3d",
+                },
+            )
+
+            # Scene 1
+            scene1_2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s.fo3d"))
+            self.assertSetEqual(
+                set(scene1_2.get_asset_paths()),
+                {
+                    "image.jpeg",
+                    "pcd.pcd",
+                    "obj.obj",
+                    "mtl.mtl",
+                },
+            )
+            # Scene 2
+            scene2_2 = fo.Scene.from_fo3d(os.path.join(export_dir, "s-2.fo3d"))
+            self.assertSetEqual(
+                set(scene2_2.get_asset_paths()),
+                {
+                    "image.jpeg",
+                    "pcd-2.pcd",
+                    "obj-2.obj",
+                    "mtl-2.mtl",
+                },
+            )
+
+            # Make sure we align on scene number from before - remember, scene2
+            #   has a red background! Swap if necessary
+            if scene1_2.background.color == "red":
+                scene2_2, scene1_2 = scene1_2, scene2_2
+
+            for file in scene1_2.get_asset_paths():
+                with open(os.path.join(export_dir, file)) as f:
+                    self.assertEqual(f.read(), os.path.basename(file))
+
+            for file in scene2_2.get_asset_paths():
+                if file.endswith("image.jpeg"):
+                    continue
+                with open(os.path.join(export_dir, file)) as f:
+                    self.assertEqual(
+                        f.read(),
+                        os.path.basename(file).replace("-2", "") + "2",
+                    )
+
+    @drop_datasets
+    def test_relative_nested_maintain(self):
+        """Tests nested structure is maintained in export dir. No change in
+        relative asset paths in fo3d file.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dataset = self._build_nested_relative(temp_dir)
+
+            # Export it - with root data dir as rel_dir
+            root_data_dir = os.path.join(temp_dir, "data")
+            export_dir = os.path.join(temp_dir, "export")
+
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fo.types.MediaDirectory,
+                export_media=True,
+                rel_dir=root_data_dir,
+            )
+
+            scene1 = fo.Scene.from_fo3d(
+                os.path.join(export_dir, "label1/test/s.fo3d")
+            )
+            self.assertEqual(scene1.background.image, "../../image.jpeg")
+
+            for file in scene1.get_asset_paths():
+                with open(os.path.join(export_dir, "label1/test/", file)) as f:
+                    self.assertEqual(f.read(), os.path.basename(file))
+
+            scene2 = fo.Scene.from_fo3d(
+                os.path.join(export_dir, "label2/test/s.fo3d")
+            )
+            self.assertEqual(scene2.background.image, "../../image.jpeg")
+
+            for file in scene2.get_asset_paths():
+                with open(os.path.join(export_dir, "label2/test/", file)) as f:
+                    if file.endswith("image.jpeg"):
+                        continue
+                    self.assertEqual(
+                        f.read(),
+                        os.path.basename(file) + "2",
+                    )
 
 
 def _relpath(path, start):
