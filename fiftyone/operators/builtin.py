@@ -473,8 +473,7 @@ class LoadWorkspace(foo.Operator):
 
     def execute(self, ctx):
         name = ctx.params.get("name", None)
-        spaces = ctx.dataset.load_workspace(name)
-        ctx.trigger("set_spaces", {"spaces": spaces.to_dict()})
+        ctx.ops.set_spaces(name=name)
         return {}
 
 

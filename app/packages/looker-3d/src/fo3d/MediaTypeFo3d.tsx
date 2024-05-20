@@ -266,14 +266,23 @@ export const MediaTypeFo3dComponent = () => {
   }, [isSceneInitialized, resetActiveNode]);
 
   const canvasCameraProps = useMemo(() => {
-    return {
+    const cameraProps = {
       position: defaultCameraPositionComputed,
       up: upVector,
-      aspect: foScene?.cameraProps.aspect,
-      fov: foScene?.cameraProps.fov && 50,
-      near: foScene?.cameraProps.near && 0.1,
-      far: foScene?.cameraProps.far && 2500,
+      fov: foScene?.cameraProps.fov ?? 50,
+      near: foScene?.cameraProps.near ?? 0.1,
+      far: foScene?.cameraProps.far ?? 2500,
     };
+
+    if (foScene?.cameraProps.lookAt) {
+      cameraProps["lookAt"] = foScene.cameraProps.lookAt;
+    }
+
+    if (foScene?.cameraProps.aspect) {
+      cameraProps["aspect"] = foScene.cameraProps.aspect;
+    }
+
+    return cameraProps;
   }, [foScene, upVector, defaultCameraPositionComputed]);
 
   const onChangeView = useCallback(

@@ -1199,6 +1199,7 @@ class MediaExporter(object):
 
         asset_paths = scene.get_asset_paths()
 
+        input_to_output_paths = {}
         for asset_path in asset_paths:
             if not fos.isabs(asset_path):
                 absolute_asset_path = fos.join(
@@ -1209,12 +1210,15 @@ class MediaExporter(object):
 
             seen = self._filename_maker.seen_input_path(absolute_asset_path)
 
-            if seen:
-                continue
-
             asset_output_path = self._filename_maker.get_output_path(
                 absolute_asset_path
             )
+            input_to_output_paths[asset_path] = os.path.relpath(
+                asset_output_path, os.path.dirname(fo3d_output_path)
+            )
+
+            if seen:
+                continue
 
             if not fos.is_local(absolute_asset_path) or not fos.is_local(
                 asset_output_path
@@ -1231,41 +1235,7 @@ class MediaExporter(object):
             elif export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
-        is_scene_modified = False
-
-        for node in scene.traverse():
-            path_attribute = next(
-                (
-                    attr
-                    for attr in fo3d.fo3d_path_attributes
-                    if hasattr(node, attr)
-                ),
-                None,
-            )
-
-            if path_attribute is not None:
-                asset_path = getattr(node, path_attribute)
-
-                is_nested_path = os.path.split(asset_path)[0] != ""
-
-                if asset_path is not None and is_nested_path:
-                    setattr(node, path_attribute, os.path.basename(asset_path))
-                    is_scene_modified = True
-
-        # modify scene background paths, if any
-        if scene.background is not None:
-            if scene.background.image is not None:
-                scene.background.image = os.path.basename(
-                    scene.background.image
-                )
-                is_scene_modified = True
-
-            if scene.background.cube is not None:
-                scene.background.cube = [
-                    os.path.basename(face_path)
-                    for face_path in scene.background.cube
-                ]
-                is_scene_modified = True
+        is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
             # note: we can't have different behavior for "symlink" because
