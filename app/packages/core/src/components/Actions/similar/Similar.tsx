@@ -94,7 +94,7 @@ const SortBySimilarity = ({
   );
   const isLoading = useRecoilValue(fos.similaritySorting);
   const canCreateNewField = useRecoilValue(fos.canCreateNewField);
-  const disabled = canCreateNewField.enabled !== true;
+  const disabled = !canCreateNewField.enabled;
   const disableMsg = canCreateNewField.message;
 
   useLayoutEffect(() => {
