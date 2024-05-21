@@ -188,6 +188,7 @@ class MediaCache(object):
             cached_path, is_local = self.use_cached_path(filepath)
             cached_paths.append(cached_path)
             all_local &= is_local
+
         return cached_paths, all_local
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):

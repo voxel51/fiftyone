@@ -12,7 +12,6 @@ import logging
 import os
 import warnings
 
-import eta.core.numutils as etan
 import numpy as np
 import scipy.spatial as sp
 
@@ -624,49 +623,60 @@ def compute_orthographic_projection_images(
     if out_group_slice is not None:
         out_samples = []
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir
-    )
-
-    for sample in view.iter_samples(autosave=True, progress=progress):
-        if view.media_type == fom.THREE_D:
-            pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
-        else:
-            pcd_filepath = sample.filepath
-
-        image_path = filename_maker.get_output_path(
-            pcd_filepath, output_ext=".png"
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            view.download_context(media_fields="filepath", progress=progress)
         )
 
-        try:
-            img, metadata = compute_orthographic_projection_image(
-                pcd_filepath,
-                size,
-                shading_mode=shading_mode,
-                colormap=colormap,
-                subsampling_rate=subsampling_rate,
-                projection_normal=projection_normal,
-                bounds=bounds,
+        local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            alt_dir=local_dir,
+            idempotent=False,
+        )
+
+        for sample in view.iter_samples(autosave=True, progress=progress):
+            if view.media_type == fom.THREE_D:
+                pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
+            else:
+                pcd_filepath = sample.filepath
+
+            image_path = filename_maker.get_output_path(
+                pcd_filepath, output_ext=".png"
             )
-        except Exception as e:
-            if not skip_failures:
-                raise
+            local_image_path = filename_maker.get_alt_path(image_path)
 
-            if skip_failures != "ignore":
-                logger.warning(e)
+            try:
+                img, metadata = compute_orthographic_projection_image(
+                    pcd_filepath,
+                    size,
+                    shading_mode=shading_mode,
+                    colormap=colormap,
+                    subsampling_rate=subsampling_rate,
+                    projection_normal=projection_normal,
+                    bounds=bounds,
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise
 
-            continue
+                if skip_failures != "ignore":
+                    logger.warning(e)
 
-        foui.write(img, image_path)
-        metadata.filepath = image_path
+                continue
 
-        sample[metadata_field] = metadata
+            foui.write(img, local_image_path)
+            metadata.filepath = image_path
 
-        if out_group_slice is not None:
-            s = Sample(filepath=image_path)
-            s[group_field] = sample[group_field].element(out_group_slice)
-            s[metadata_field] = metadata
-            out_samples.append(s)
+            sample[metadata_field] = metadata
+
+            if out_group_slice is not None:
+                s = Sample(filepath=image_path)
+                s[group_field] = sample[group_field].element(out_group_slice)
+                s[metadata_field] = metadata
+                out_samples.append(s)
 
     if out_group_slice is not None:
         samples._root_dataset.add_samples(out_samples)
@@ -788,7 +798,7 @@ def compute_orthographic_projection_image(
     return image, metadata
 
 
-def _get_pcd_filepath_from_scene(scene_path: str):
+def _get_pcd_filepath_from_scene(scene_path):
     scene = Scene.from_fo3d(scene_path)
 
     explicitly_flagged_pcd_path = None

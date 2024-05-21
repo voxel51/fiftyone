@@ -5,6 +5,7 @@ File storage utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime
 import io
@@ -38,6 +39,8 @@ import fiftyone.internal as fi
 import fiftyone.internal.constants as fic
 
 foc = fou.lazy_import("fiftyone.core.cache")
+fo3d = fou.lazy_import("fiftyone.core.threed")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 
 
 logger = logging.getLogger(__name__)
@@ -2305,6 +2308,14 @@ def upload_media(
     media_field = sample_collection._resolve_media_field(media_field)
     filepaths = sample_collection.values(media_field)
 
+    if sample_collection._contains_media_type(fom.THREE_D):
+        scene_paths = [p for p in filepaths if p.endswith(".fo3d")]
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, skip_failures=True
+        )
+    else:
+        asset_map = None
+
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
         rel_dir=rel_dir,
@@ -2312,15 +2323,62 @@ def upload_media(
     )
 
     paths_map = {}
+
     for filepath in filepaths:
         if filepath not in paths_map:
             paths_map[filepath] = filename_maker.get_output_path(filepath)
 
+    scene_rewrite_paths = defaultdict(dict)
+    if asset_map is not None:
+        for scene_path, asset_paths in asset_map.items():
+            out_scene_path = filename_maker.get_output_path(scene_path)
+            out_scene_dir = os.path.dirname(out_scene_path)
+            in_scene_dir = os.path.dirname(scene_path)
+
+            for asset_path in asset_paths:
+                abs_asset_path = asset_path
+                if not isabs(asset_path):
+                    abs_asset_path = join(in_scene_dir, asset_path)
+                abs_asset_path = resolve(abs_asset_path)
+
+                out_asset_path = filename_maker.get_output_path(abs_asset_path)
+
+                out_asset_path = resolve(out_asset_path)
+                if abs_asset_path not in paths_map:
+                    paths_map[abs_asset_path] = out_asset_path
+
+                new_relative_path = os.path.relpath(
+                    out_asset_path, out_scene_dir
+                )
+                if asset_path != new_relative_path:
+                    scene_rewrite_paths[scene_path][
+                        asset_path
+                    ] = new_relative_path
+
     remote_paths = [paths_map[f] for f in filepaths]
+
+    # Update asset paths in FO3D scenes and rewrite those files into place.
+    if scene_rewrite_paths:
+        tasks = [
+            (
+                scene_path,
+                filename_maker.get_output_path(scene_path),
+                asset_rewrite_paths,
+            )
+            for scene_path, asset_rewrite_paths in scene_rewrite_paths.items()
+        ]
+        run(_update_scene_asset_paths_and_write, tasks)
+
+        # Remove scenes we already wrote above from paths_map, so we don't
+        #   copy them and overwrite our changes
+        paths_map = {
+            f: r for f, r in paths_map.items() if f not in scene_rewrite_paths
+        }
 
     if not overwrite:
         client = get_client(path=remote_dir)
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
+
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
     if paths_map:
@@ -2337,6 +2395,14 @@ def upload_media(
         sample_collection.set_values(media_field, remote_paths)
 
     return remote_paths
+
+
+def _update_scene_asset_paths_and_write(task):
+    in_scene_path, out_scene_path, asset_rewrite_paths = task
+    scene = fo3d.Scene.from_fo3d(in_scene_path)
+
+    scene.update_asset_paths(asset_rewrite_paths)
+    scene.write(out_scene_path)
 
 
 def run(fcn, tasks, num_workers=None, progress=None):
