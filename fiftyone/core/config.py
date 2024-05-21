@@ -262,6 +262,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.signed_url_expiration = self.parse_int(
+            d,
+            "signed_url_expiration",
+            env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
+            default=24
+        )
 
         self._init()
 
