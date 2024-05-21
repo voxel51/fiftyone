@@ -576,6 +576,8 @@ def get_url(path, **kwargs):
             "signed URLs" % (path, fs)
         )
 
+    kwargs["hours"] = kwargs.get("hours", fo.config.signed_url_expiration)
+
     return client.generate_signed_url(path, **kwargs)
 
 
