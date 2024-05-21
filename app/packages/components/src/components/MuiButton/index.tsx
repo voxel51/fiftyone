@@ -2,7 +2,11 @@ import React from "react";
 import { ButtonProps, CircularProgress, Button, Stack } from "@mui/material";
 
 export default function MuiButton(props: ButtonPropsType) {
-  const { loading, ...otherProps } = props;
+  const { loading, variant, ...otherProps } = props;
+
+  const containedStyles =
+    variant === "contained" ? { sx: { color: "white" } } : {};
+
   return (
     <Stack
       direction="row"
@@ -10,7 +14,7 @@ export default function MuiButton(props: ButtonPropsType) {
       alignItems="center"
       sx={{ position: "relative" }}
     >
-      <Button {...otherProps} />
+      <Button {...containedStyles} variant={variant} {...otherProps} />
       {loading && (
         <CircularProgress size={20} sx={{ position: "absolute", left: 6 }} />
       )}
