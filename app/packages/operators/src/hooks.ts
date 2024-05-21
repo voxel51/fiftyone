@@ -2,11 +2,7 @@ import { pluginsLoaderAtom } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  useRecoilValue,
-  useRecoilValueLoadable,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
@@ -17,13 +13,8 @@ import {
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
+  useCurrentSample,
 } from "./state";
-
-function useCurrentSample() {
-  // 'currentSampleId' may suspend for group datasets, so we use a loadable
-  const currentSample = useRecoilValueLoadable(fos.currentSampleId);
-  return currentSample.state === "hasValue" ? currentSample.contents : null;
-}
 
 function useOperatorThrottledContextSetter() {
   const datasetName = useRecoilValue(fos.datasetName);
