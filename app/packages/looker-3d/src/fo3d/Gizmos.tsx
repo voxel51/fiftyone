@@ -2,7 +2,14 @@ import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
-import { isGridOnAtom } from "../state";
+import {
+  gridCellSizeAtom,
+  gridSectionSizeAtom,
+  gridSizeAtom,
+  isGridInfinitelyLargeAtom,
+  isGridOnAtom,
+  shouldGridFadeAtom,
+} from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
 import { useFo3dContext } from "./context";
 
@@ -20,7 +27,8 @@ const FoAxesHelper = ({
 }) => {
   const { upVector } = useFo3dContext();
   const size = useMemo(
-    () => maxInOrthonormalPlane * 20,
+    // multiplier (10) and offset (100) are arbitrary that seem to work well
+    () => maxInOrthonormalPlane * 10 + 100,
     [maxInOrthonormalPlane]
   );
 
@@ -99,18 +107,17 @@ export const Gizmos = () => {
     return Math.max(sceneSize.x, sceneSize.y);
   }, [sceneBoundingBox, upVector]);
 
-  // cell size is based on max bounding box size
-  // following multipliers (0.5, 10, 30) are arbitrary and can be adjusted
-  const cellSize = useMemo(
-    () => maxInOrthonormalPlane * 0.5,
-    [maxInOrthonormalPlane]
-  );
-  const sectionSize = useMemo(() => cellSize * 10, [cellSize]);
+  const cellSize = useRecoilValue(gridCellSizeAtom);
+  const sectionSize = useRecoilValue(gridSectionSizeAtom);
+  const isGridInfinitelyLarge = useRecoilValue(isGridInfinitelyLargeAtom);
+  const shouldFade = useRecoilValue(shouldGridFadeAtom);
+  const gridSize = useRecoilValue(gridSizeAtom);
 
-  const fadeDistance = useMemo(
-    () => maxInOrthonormalPlane * 30,
-    [maxInOrthonormalPlane]
-  );
+  // The fade distance is the distance at which the grid will start to fade out
+  // the multipliers and offset are arbitrary
+  const fadeDistance = useMemo(() => {
+    return maxInOrthonormalPlane * 10 + 100;
+  }, [maxInOrthonormalPlane, gridSize, isGridInfinitelyLarge]);
 
   return (
     <>
@@ -118,15 +125,17 @@ export const Gizmos = () => {
         <>
           <Grid
             quaternion={gridHelperQuarternion}
-            infiniteGrid
+            infiniteGrid={isGridInfinitelyLarge}
             side={DoubleSide}
+            args={[gridSize, gridSize]}
             cellSize={cellSize}
             sectionSize={sectionSize}
             sectionColor={GRID_SECTION_COLOR}
             cellColor={GRID_CELL_COLOR}
             fadeDistance={fadeDistance}
-            fadeStrength={1}
-            followCamera
+            fadeStrength={shouldFade ? 1 : 0}
+            followCamera={shouldFade}
+            fadeFrom={0.5}
             cellThickness={0.5}
             sectionThickness={0.8}
           />

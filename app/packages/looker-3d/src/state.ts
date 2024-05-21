@@ -57,6 +57,44 @@ export const isGridOnAtom = atom<boolean>({
   ],
 });
 
+export const gridCellSizeAtom = atom<number>({
+  key: "fo3d-gridCellSize",
+  default: 1,
+  effects: [getBrowserStorageEffectForKey("fo3d-gridCellSize")],
+});
+
+export const gridSectionSizeAtom = atom<number>({
+  key: "fo3d-gridSectionSize",
+  default: 10,
+  effects: [getBrowserStorageEffectForKey("fo3d-gridSectionSize")],
+});
+
+export const isGridInfinitelyLargeAtom = atom<boolean>({
+  key: "fo3d-isGridInfinitelyLarge",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isGridInfinitelyLarge", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const gridSizeAtom = atom<number>({
+  key: "fo3d-gridSize",
+  default: 1000,
+  effects: [getBrowserStorageEffectForKey("fo3d-gridSize")],
+});
+
+export const shouldGridFadeAtom = atom<boolean>({
+  key: "fo3d-shouldGridFade",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-shouldGridFade", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const fo3dContainsBackground = atom<boolean>({
   key: "fo3d-containsBackground",
   default: false,

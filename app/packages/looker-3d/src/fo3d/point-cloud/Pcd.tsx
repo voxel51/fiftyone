@@ -1,6 +1,6 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Quaternion, Vector3 } from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { PcdAsset } from "../../hooks";
@@ -32,7 +32,18 @@ export const Pcd = ({
     [pcdPath, preTransformedPcdPath, fo3dRoot]
   );
 
-  const points = useLoader(PCDLoader, pcdUrl);
+  const points_ = useLoader(PCDLoader, pcdUrl);
+
+  // todo: hack until https://github.com/pmndrs/react-three-fiber/issues/245 is fixed
+  const points = useMemo(() => points_.clone(false), [points_]);
+
+  // todo: expose centering of points as an opt-in behavior from the sdk
+  // useEffect(() => {
+  //   if (points) {
+  //     points.geometry.center();
+  //   }
+  // }, [points]);
+
   const pcdContainerRef = useRef();
 
   const pointsMaterialElement = usePcdMaterial(
