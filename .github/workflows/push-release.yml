@@ -1,0 +1,22 @@
+name: Push Release
+
+on:
+  push:
+    branches:
+      - main
+      - release/v[0-9]+.[0-9]+.[0-9]+
+
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull origin ${{ github.ref_name }} --no-rebase
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          author: voxel51-bot <bot@voxel51.com>
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          base: develop
+          body: "Merge `${{ github.ref_name }}` to `develop`"
+          branch: merge/${{ github.ref_name }}
+          title: Merge `${{ github.ref_name }}` to `develop`
