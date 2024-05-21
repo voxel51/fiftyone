@@ -7,6 +7,7 @@ import type { EventCallback } from "./events";
 import type { Render } from "./row";
 import type { Response } from "./section";
 
+import { ONE, SCROLL_TIMEOUT, TWO, ZERO } from "./constants";
 import { Load, PageChange } from "./events";
 import { Section } from "./section";
 import { createScrollReader } from "./zooming";
@@ -24,8 +25,6 @@ export interface SpotlightConfig<K, V> {
   spacing?: number;
   margin?: number;
 }
-
-const ZERO = 0;
 
 export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
@@ -118,7 +117,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #width() {
-    return this.#rect.width - this.#config.margin * 2;
+    return this.#rect.width - this.#config.margin * TWO;
   }
 
   async #next(render = true) {
@@ -205,6 +204,7 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#forward = new Section(
       { key: this.#config.key, remainder: [] },
       "forward",
+      this.#config.offset,
       this.#config.spacing,
       this.#config.rowAspectRatioThreshold,
       this.#width
@@ -214,7 +214,7 @@ export default class Spotlight<K, V> extends EventTarget {
     await this.#next(false);
 
     while (
-      this.#containerHeight < this.#height + this.#padding * 2 &&
+      this.#containerHeight < this.#height + this.#padding * TWO &&
       !this.#forward.finished
     ) {
       await this.#next(false);
@@ -235,8 +235,8 @@ export default class Spotlight<K, V> extends EventTarget {
             return (
               (this.#width /
                 (this.#height *
-                  Math.max(this.#config.rowAspectRatioThreshold, 1))) *
-              200
+                  Math.max(this.#config.rowAspectRatioThreshold, ONE))) *
+              SCROLL_TIMEOUT
             );
           }
         );
@@ -254,6 +254,7 @@ export default class Spotlight<K, V> extends EventTarget {
           ? { key: result.previous, remainder: [] }
           : undefined,
         "backward",
+        this.#config.offset,
         this.#config.spacing,
         this.#config.rowAspectRatioThreshold,
         this.#width

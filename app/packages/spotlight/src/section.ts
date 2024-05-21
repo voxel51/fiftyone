@@ -7,6 +7,7 @@ import styles from "./styles.module.css";
 import type { ItemData, Render } from "./row";
 
 import { closest } from "./closest";
+import { ONE, SECTION_ROW_LIMIT, ZERO } from "./constants";
 import Row from "./row";
 import tile from "./tile";
 
@@ -23,6 +24,7 @@ interface Edge<K, V> {
 
 export class Section<K, V> {
   readonly #container = document.createElement("div");
+  readonly #offset: number;
   readonly #section = document.createElement("div");
   readonly #spacing: number;
   readonly #threshold: number;
@@ -37,12 +39,14 @@ export class Section<K, V> {
   constructor(
     edge: Edge<K, V> | undefined,
     direction: "forward" | "backward",
+    offset: number,
     spacing: number,
     threshold: number,
     width: number
   ) {
     this.#direction = direction;
     this.#end = edge;
+    this.#offset = offset;
     this.#spacing = spacing;
     this.#threshold = threshold;
     this.#width = width;
@@ -63,14 +67,16 @@ export class Section<K, V> {
   }
 
   get height() {
-    return this.#height + (this.#direction === "backward" ? 48 : 0);
+    return (
+      this.#height + (this.#direction === "backward" ? this.#offset : ZERO)
+    );
   }
 
   get #height() {
     if (!this.#rows.length)
-      return this.#direction === "backward" ? this.#spacing : 0;
+      return this.#direction === "backward" ? this.#spacing : ZERO;
 
-    const row = this.#rows[this.length - 1];
+    const row = this.#rows[this.length - ONE];
 
     return row.from + row.height + this.#spacing;
   }
@@ -131,10 +137,10 @@ export class Section<K, V> {
 
       const height = rows.reduce(
         (acc, cur) => acc + cur.height + this.#spacing,
-        0
+        ZERO
       );
 
-      if (this.#rows.length < 40) {
+      if (this.#rows.length < SECTION_ROW_LIMIT) {
         this.#end = newEnd;
         return { section: null, offset: height };
       }
@@ -142,6 +148,7 @@ export class Section<K, V> {
       const section = new Section(
         newEnd,
         this.#direction,
+        this.#offset,
         this.#spacing,
         this.#threshold,
         this.#width
@@ -167,7 +174,7 @@ export class Section<K, V> {
 
     let requestMore = false;
 
-    let index = -1;
+    let index = -ONE;
 
     const match = closest(
       this.#rows,
@@ -220,9 +227,10 @@ export class Section<K, V> {
         hide.delete(row);
         index++;
 
-        if (d < 0) {
+        if (d < ZERO) {
           continue;
         }
+
         if (delta === undefined || d < delta) {
           pageRow = row;
           delta = d;
@@ -230,7 +238,7 @@ export class Section<K, V> {
       }
     }
 
-    if (index >= this.#rows.length - 1 && this.#end?.key !== undefined) {
+    if (index >= this.#rows.length - ONE && this.#end?.key !== undefined) {
       requestMore = true;
     }
 
@@ -246,7 +254,7 @@ export class Section<K, V> {
 
   #reverse() {
     const from =
-      this.#height - (this.#direction === "forward" ? this.#spacing : 0);
+      this.#height - (this.#direction === "forward" ? this.#spacing : ZERO);
     this.#rows.reverse();
     const old = this.#direction;
     this.#direction = this.#direction === "backward" ? "forward" : "backward";
@@ -269,10 +277,10 @@ export class Section<K, V> {
     const data = items.map(({ aspectRatio }) => aspectRatio);
     const breakpoints = tile(data, this.#threshold, useRemainder);
 
-    let previous = 0;
-    let offset = 0;
+    let previous = ZERO;
+    let offset = ZERO;
     const rows: Row<V>[] = [];
-    for (let index = 0; index < breakpoints.length; index++) {
+    for (let index = ZERO; index < breakpoints.length; index++) {
       const rowItems = items.slice(previous, breakpoints[index]);
 
       this.#direction === "backward" && rowItems.reverse();
@@ -283,7 +291,7 @@ export class Section<K, V> {
       previous = breakpoints[index];
     }
 
-    const remainder = items.slice(breakpoints[breakpoints.length - 1]);
+    const remainder = items.slice(breakpoints[breakpoints.length - ONE]);
 
     return { rows, remainder, offset };
   }

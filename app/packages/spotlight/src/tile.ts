@@ -2,13 +2,15 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { ONE, THREE, ZERO } from "./constants";
+
 // adapted from https://medium.com/google-design/google-photos-45b714dfbed1
 export default (
   items: number[],
   threshold: number,
   remainder: boolean
 ): number[] => {
-  if (threshold < 1) {
+  if (threshold < ONE) {
     throw new TilingException(
       `threshold must be greater than 1, received ${threshold}`
     );
@@ -21,7 +23,7 @@ export default (
   const findCursor = () => {
     const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
 
-    if (!remainder) return keys[0];
+    if (!remainder) return keys[ZERO];
 
     let cursor: number;
     let score = Number.POSITIVE_INFINITY;
@@ -50,11 +52,11 @@ export default (
     if (!cache.has(key)) {
       const aspectRatio = items
         .slice(start, end)
-        .reduce((sum, aspectRatio) => sum + aspectRatio, 0);
+        .reduce((sum, aspectRatio) => sum + aspectRatio, ZERO);
       const delta = threshold - aspectRatio;
       cache.set(key, {
         delta,
-        score: (1 + Math.abs(delta)) ** 3,
+        score: (ONE + Math.abs(delta)) ** THREE,
       });
     }
 
@@ -69,19 +71,19 @@ export default (
   >();
   const search = (parent: number, item: number) => {
     const score = () => {
-      if (parent === 0) {
+      if (parent === ZERO) {
         return row(parent, item).score;
       }
 
-      return row(parent, item).score + nodes.get(parent)?.score() || 0;
+      return row(parent, item).score + nodes.get(parent)?.score() || ZERO;
     };
 
     const length = () => {
-      if (parent === 0) {
-        return 1;
+      if (parent === ZERO) {
+        return ONE;
       }
 
-      return 1 + nodes.get(parent).length();
+      return ONE + nodes.get(parent).length();
     };
 
     const node = nodes.get(item);
@@ -102,10 +104,10 @@ export default (
       return;
     }
 
-    let end = item + 1;
+    let end = item + ONE;
     while (end <= items.length) {
       const edge = row(item, end);
-      if (edge.delta <= 0) {
+      if (edge.delta <= ZERO) {
         search(item, end);
       }
 
@@ -115,7 +117,7 @@ export default (
     return;
   };
 
-  search(0, 0);
+  search(ZERO, ZERO);
   let cursor = findCursor();
 
   const result = [];

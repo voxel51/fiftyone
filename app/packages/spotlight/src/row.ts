@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import { ONE, ZERO } from "./constants";
 import styles from "./styles.module.css";
 
 export interface ItemData<V> {
@@ -15,7 +16,7 @@ export type Render = (
   dimensions: [number, number],
   soft: boolean,
   disable: boolean
-) => (() => void) | undefined;
+) => void;
 
 export default class Row<V> {
   #from: number;
@@ -39,14 +40,14 @@ export default class Row<V> {
 
     this.#row = items.map((item) => {
       const element = document.createElement("div");
-      element.style.top = "0px";
+      element.style.top = `${ZERO}px`;
 
       this.#container.appendChild(element);
       return { element, item };
     });
 
     const height = this.height;
-    let left = 0;
+    let left = ZERO;
 
     for (const {
       element,
@@ -66,7 +67,7 @@ export default class Row<V> {
   }
 
   get id() {
-    return this.#row[0].item.id;
+    return this.#row[ZERO].item.id;
   }
 
   get from() {
@@ -88,11 +89,11 @@ export default class Row<V> {
   get #cleanAspectRatio() {
     return this.#row
       .map(({ item }) => item.aspectRatio)
-      .reduce((ar, next) => ar + next, 0);
+      .reduce((ar, next) => ar + next, ZERO);
   }
 
   get #cleanWidth() {
-    return this.#width - (this.#row.length - 1) * this.#spacing;
+    return this.#width - (this.#row.length - ONE) * this.#spacing;
   }
 
   get attached() {
