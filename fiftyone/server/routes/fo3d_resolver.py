@@ -86,7 +86,9 @@ class ResolveFo3d(HTTPEndpoint):
             raise ValueError("url is required")
 
         cookies = request.cookies
-        async with aiohttp.ClientSession(cookies=cookies) as session:
+        async with aiohttp.ClientSession(
+            cookies=cookies, trust_env=True
+        ) as session:
             async with session.get(fo3d_url) as response:
                 if response.headers.get("Content-Type") != "application/json":
                     # parse json from text
