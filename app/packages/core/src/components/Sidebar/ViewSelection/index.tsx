@@ -143,7 +143,7 @@ export default function ViewSelection() {
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
-      if (!disabled) {
+      if (disabled) {
         return;
       }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
