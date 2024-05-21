@@ -37,11 +37,12 @@ export const Pcd = ({
   // todo: hack until https://github.com/pmndrs/react-three-fiber/issues/245 is fixed
   const points = useMemo(() => points_.clone(false), [points_]);
 
-  useEffect(() => {
-    if (points) {
-      points.geometry.center();
-    }
-  }, [points]);
+  // todo: expose centering of points as an opt-in behavior from the sdk
+  // useEffect(() => {
+  //   if (points) {
+  //     points.geometry.center();
+  //   }
+  // }, [points]);
 
   const pcdContainerRef = useRef();
 
