@@ -514,6 +514,7 @@ async function executeOperatorAsGenerator(
 const HASH = "#";
 
 export function resolveOperatorURI(operatorURI, { keepMethod = false } = {}) {
+  if (!operatorURI) throw new Error("Operator URI is required");
   if (!keepMethod && operatorURI.includes(HASH))
     operatorURI = operatorURI.split(HASH)[0];
   if (operatorURI.includes("/")) return operatorURI;
