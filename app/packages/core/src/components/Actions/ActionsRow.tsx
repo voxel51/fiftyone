@@ -163,7 +163,7 @@ const Tag = ({
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
   const canTag = useRecoilValue(fos.canTagSamplesOrLabels);
-  const disableTag = canTag.enabled !== true;
+  const disableTag = !canTag.enabled;
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
