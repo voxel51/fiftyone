@@ -10,7 +10,7 @@ as possible for engineers, data scientists, and stakeholders to work together
 to build high quality datasets and computer vision models.
 
 Accordingly, FiftyOne Teams gives you the flexibility to configure user roles,
-user groups and fine-grained permissions so that you can safely and securly
+user groups and fine-grained permissions so that you can safely and securely
 collaborate both inside and outside your organization at all stages of your
 workflows.
 
@@ -109,7 +109,8 @@ datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
-all users within the group (except for guests).
+all users within the group. Collaborators' and guests' access to the dataset is 
+limited by the maximum dataset access level of the role. 
 
 .. image:: /images/teams/admin_team_groups_page.png
    :alt: admin-team-groups-page

@@ -34,7 +34,8 @@ export const usePcdMaterialControls = (
           pointSize: {
             value: pointSize ?? 1,
             min: 0.01,
-            max: 20,
+            // max point size is arbitrary. ideally, we should also offer a text box for users to input their desired point size
+            max: 50,
             step: 0.01,
             onChange: onChangeTextBox,
             label: "Points Size",
