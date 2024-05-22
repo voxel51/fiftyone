@@ -3179,6 +3179,63 @@ class QuickstartGroupsDataset(FiftyOneDataset):
             etau.delete_dir(scratch_dir)
 
 
+class Quickstart3DDataset(FiftyOneDataset):
+    """A small 3D dataset with meshes, point clouds, and oriented bounding boxes.
+
+    The dataset consists of 200 3D mesh samples from the test split of the
+    `ModelNet40 <https://modelnet.cs.princeton.edu>`_ dataset, with point
+    clouds generated using a Poisson disk sampling method, and oriented
+    bounding boxes generated based on the convex hull.
+
+    Objects have been rescaled and recentered from the original dataset.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-3d")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        223.40 MB
+    """
+
+    _GDRIVE_ID = "1EnQ2-gGDktEd8pAWwdXNK-FeHUFTFl5K"
+    _ARCHIVE_NAME = "quickstart-3d.zip"
+    _DIR_IN_ARCHIVE = "quickstart-3d"
+
+    @property
+    def name(self):
+        return "quickstart-3d"
+
+    @property
+    def tags(self):
+        return ("3d", "point-cloud", "mesh", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class UCF101Dataset(FiftyOneDataset):
     """UCF101 is an action recognition data set of realistic action videos,
     collected from YouTube, having 101 action categories. This data set is an
@@ -3289,6 +3346,7 @@ AVAILABLE_DATASETS = {
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-groups": QuickstartGroupsDataset,
+    "quickstart-3d": Quickstart3DDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
