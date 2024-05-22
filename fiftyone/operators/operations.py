@@ -491,6 +491,27 @@ class Operations(object):
             "notify", params={"message": message, "variant": variant}
         )
 
+    def set_extended_selection(
+        self, selection, scope=None, clear=False, reset=False
+    ):
+        """Set the extended selection in the App.
+
+        Args:
+            selection: the selection to set
+            scope: the scope of the selection
+            clear: whether to clear the selection
+            reset: whether to reset the selection
+        """
+        return self._ctx.trigger(
+            "set_extended_selection",
+            params={
+                "selection": selection,
+                "scope": scope,
+                "clear": clear,
+                "reset": reset,
+            },
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
