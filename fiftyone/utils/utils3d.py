@@ -426,6 +426,8 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
             plane
         max_bound (None): the ``[xmax, ymax]`` of the image in the projection
             plane
+        normal (None): the normal vector of the plane onto which the
+            projection was performed
         width: the width of the image, in pixels
         height: the height of the image, in pixels
     """
@@ -435,6 +437,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     filepath = fof.StringField()
     min_bound = fof.ListField(fof.FloatField())
     max_bound = fof.ListField(fof.FloatField())
+    normal = fof.ListField(fof.FloatField())
     width = fof.IntField()
     height = fof.IntField()
 
@@ -898,6 +901,7 @@ def _parse_point_cloud(
     metadata = OrthographicProjectionMetadata(
         min_bound=min_bound,
         max_bound=max_bound,
+        normal=projection_normal or [0, 0, 1],
         width=width,
         height=height,
     )
