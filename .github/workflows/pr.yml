@@ -16,6 +16,9 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
+  lint:
+    uses: ./.github/workflows/lint-app.yml
+
   test:
     uses: ./.github/workflows/test.yml
 
@@ -39,7 +42,11 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, teams, test]
+    needs: [build, lint, teams, test]
     if: always()
     steps:
-      - run: sh -c ${{ needs.build.result == 'success' && needs.teams.result == 'success' && needs.test.result == 'success' }}
+      - run: sh -c ${{
+          needs.build.result == 'success' &&
+          needs.lint.result == 'success' &&
+          needs.teams.result == 'success' &&
+          needs.test.result == 'success' }}

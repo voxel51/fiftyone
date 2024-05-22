@@ -3088,6 +3088,166 @@
             "date_added": "2024-04-05 19:22:51"
         },
         {
+            "base_name": "yolov8n-oiv7-torch",
+            "base_filename": "yolov8n-oiv7.pt",
+            "description": "Ultralytics YOLOv8n model trained on Open Images v7",
+            "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "size_bytes": 6534387,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n-oiv7.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "date_added": "2024-05-20 19:22:51"
+        },
+        {
+            "base_name": "yolov8s-oiv7-torch",
+            "base_filename": "yolov8s-oiv7.pt",
+            "description": "Ultralytics YOLOv8s model trained on Open Images v7",
+            "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "size_bytes": 22573363,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-oiv7.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "date_added": "2024-05-20 19:22:51"
+        },
+        {
+            "base_name": "yolov8m-oiv7-torch",
+            "base_filename": "yolov8m-oiv7.pt",
+            "description": "Ultralytics YOLOv8m model trained Open Images v7",
+            "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "size_bytes": 52117635,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8m-oiv7.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "date_added": "2024-05-20 19:22:51"
+        },
+        {
+            "base_name": "yolov8l-oiv7-torch",
+            "base_filename": "yolov8l-oiv7.pt",
+            "description": "Ultralytics YOLOv8l model trained Open Images v7",
+            "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "size_bytes": 87769683,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8l-oiv7.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "date_added": "2024-05-20 19:22:51"
+        },
+        {
+            "base_name": "yolov8x-oiv7-torch",
+            "base_filename": "yolov8x-oiv7.pt",
+            "description": "Ultralytics YOLOv8x model trained Open Images v7",
+            "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "size_bytes": 136867539,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8x-oiv7.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "oiv7", "torch", "yolo"],
+            "date_added": "2024-05-20 19:22:51"
+        },
+        {
             "base_name": "yolo-nas-torch",
             "base_filename": null,
             "version": null,
