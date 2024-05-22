@@ -60,13 +60,11 @@ export const isGridOnAtom = atom<boolean>({
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
-  effects: [getBrowserStorageEffectForKey("fo3d-gridCellSize")],
 });
 
 export const gridSectionSizeAtom = atom<number>({
   key: "fo3d-gridSectionSize",
   default: 10,
-  effects: [getBrowserStorageEffectForKey("fo3d-gridSectionSize")],
 });
 
 export const isGridInfinitelyLargeAtom = atom<boolean>({
