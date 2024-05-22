@@ -1056,6 +1056,46 @@ class Notify extends Operator {
   }
 }
 
+class SetExtendedSelection extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_extended_selection",
+      label: "Set extended selection",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      resetExtendedSelection: fos.useResetExtendedSelection(),
+    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("selection", new types.String(), {
+      label: "Selection",
+      required: false,
+    });
+    inputs.str("scope", { label: "Scope", required: false });
+    inputs.bool("clear", { label: "Clear", default: false });
+    inputs.bool("reset", { label: "Reset", default: false });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    if (ctx.params.reset) {
+      ctx.hooks.resetExtendedSelection();
+    } else if (ctx.params.clear) {
+      ctx.hooks.clearExtendedSelection();
+    } else {
+      ctx.hooks.setExtendedSelection({
+        selection: ctx.params.selection,
+        scope: ctx.params.scope,
+      });
+    }
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1097,6 +1137,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(PatchPanelData);
     _registerBuiltInOperator(PromptUserForOperation);
     _registerBuiltInOperator(Notify);
+    _registerBuiltInOperator(SetExtendedSelection);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
