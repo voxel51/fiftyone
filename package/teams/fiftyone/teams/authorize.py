@@ -23,12 +23,13 @@ from fiftyone.server.data import Info
 from fiftyone.server.decorators import load_variables
 
 from fiftyone.teams.authenticate import authenticate
-from fiftyone.teams.routes import NEEDS_EDIT
+from fiftyone.teams.routes import NEEDS_EDIT, NEEDS_TAG
 
 
 _API_URL = get_api_url()
 _CAN_EDIT = {"EDIT", "MANAGE"}
-_CAN_VIEW = {"COMMENT", "EDIT", "MANAGE", "VIEW"}
+_CAN_TAG = {"TAG", "EDIT", "MANAGE"}
+_CAN_VIEW = {"TAG", "EDIT", "MANAGE", "VIEW"}
 _DATASET_PERMISSION_QUERY = """
 query DatasetPermission($identifier: String!) {
     dataset(identifier: $identifier) {
@@ -171,9 +172,20 @@ def authorize_gql_class(query: t.Type[t.Any]) -> t.Type[t.Any]:
 def _authorize_route(func):
     async def authorize_request(endpoint: HTTPEndpoint, request: Request):
         needs_edit_resolver = None
+        needs_tag_resolver = None
         for item in NEEDS_EDIT:
             if isinstance(endpoint, item):
                 needs_edit_resolver = NEEDS_EDIT[item]
+        variables = await load_variables(request)
+        token = get_token_from_request(request)
+        try:
+            authenticate(token)
+        except:
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        for item in NEEDS_TAG:
+            if isinstance(endpoint, item):
+                needs_tag_resolver = NEEDS_TAG[item]
         variables = await load_variables(request)
         token = get_token_from_request(request)
         try:
@@ -187,6 +199,7 @@ def _authorize_route(func):
                 token,
                 dataset_name,
                 edit=needs_edit_resolver and needs_edit_resolver(variables),
+                tag=needs_tag_resolver and needs_tag_resolver(variables),
             )
         ):
             return JSONResponse({"error": "Forbidden"}, status_code=403)
@@ -209,7 +222,9 @@ def _get_dataset_name(variables):
     return None
 
 
-async def _has_dataset_permission(token: str, dataset_name: str, edit=False):
+async def _has_dataset_permission(
+    token: str, dataset_name: str, edit=False, tag=False
+):
     dataset_identifier = (
         re.search(_SNAPSHOT_PATTERN, dataset_name).group(1)
         if re.search(_SNAPSHOT_PATTERN, dataset_name)
@@ -226,6 +241,9 @@ async def _has_dataset_permission(token: str, dataset_name: str, edit=False):
 
         if edit:
             return permission in _CAN_EDIT
+
+        if tag:
+            return permission in _CAN_TAG
 
         return permission in _CAN_VIEW
     except:
