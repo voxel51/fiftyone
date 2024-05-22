@@ -127,6 +127,9 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `signed_url_expiration`       | `FIFTYONE_SIGNED_URL_EXPIRATION`    | `24`                          | (Team Only) Controls the duration (in hours) of signed URLs of assets from cloud       |
+|                               |                                     |                               | provider such as AWS or Google Storage. The default value is 24 hours.                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
 |                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
 |                               |                                     |                               | more information.                                                                      |
