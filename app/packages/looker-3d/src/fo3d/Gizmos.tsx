@@ -1,6 +1,6 @@
 import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
-import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useEffect, useMemo } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
 import {
   gridCellSizeAtom,
@@ -18,7 +18,7 @@ const AXIS_GREEN_COLOR = "#21DF80";
 const AXIS_BLUE_COLOR = "#2280FF";
 
 const GRID_CELL_COLOR = "#6f6f6f";
-const GRID_SECTION_COLOR = "#a79d9d";
+const GRID_SECTION_COLOR = "#736f73";
 
 const FoAxesHelper = ({
   maxInOrthonormalPlane,
@@ -89,12 +89,18 @@ export const Gizmos = () => {
     [upVector]
   );
 
-  const maxInOrthonormalPlane = useMemo(() => {
+  const sceneSize = useMemo(() => {
     if (!sceneBoundingBox) {
       return 0;
     }
 
-    const sceneSize = sceneBoundingBox.getSize(new Vector3());
+    return sceneBoundingBox.getSize(new Vector3());
+  }, [sceneBoundingBox]);
+
+  const maxInOrthonormalPlane = useMemo(() => {
+    if (!sceneSize) {
+      return 0;
+    }
 
     if (upVector.x === 1) {
       return Math.max(sceneSize.y, sceneSize.z);
@@ -105,19 +111,37 @@ export const Gizmos = () => {
     }
 
     return Math.max(sceneSize.x, sceneSize.y);
-  }, [sceneBoundingBox, upVector]);
+  }, [sceneSize, upVector]);
 
-  const cellSize = useRecoilValue(gridCellSizeAtom);
-  const sectionSize = useRecoilValue(gridSectionSizeAtom);
+  const [cellSize, setCellSize] = useRecoilState(gridCellSizeAtom);
+  const [sectionSize, setSectionSize] = useRecoilState(gridSectionSizeAtom);
   const isGridInfinitelyLarge = useRecoilValue(isGridInfinitelyLargeAtom);
   const shouldFade = useRecoilValue(shouldGridFadeAtom);
   const gridSize = useRecoilValue(gridSizeAtom);
+
+  // This effect dynamically sets initial cell and section size based on the scene size
+  useEffect(() => {
+    if (!sceneSize) {
+      return;
+    }
+
+    const maxDim = Math.max(sceneSize.x, sceneSize.y, sceneSize.z);
+
+    const potentialCellSize = maxDim / 10;
+
+    const roundedCellSize =
+      potentialCellSize <= 1 ? 1 : Math.ceil(potentialCellSize / 10) * 10;
+    const roundedSectionSize = roundedCellSize * 10;
+
+    setCellSize(roundedCellSize);
+    setSectionSize(roundedSectionSize);
+  }, [sceneSize]);
 
   // The fade distance is the distance at which the grid will start to fade out
   // the multipliers and offset are arbitrary
   const fadeDistance = useMemo(() => {
     return maxInOrthonormalPlane * 10 + 100;
-  }, [maxInOrthonormalPlane, gridSize, isGridInfinitelyLarge]);
+  }, [maxInOrthonormalPlane]);
 
   return (
     <>
@@ -137,7 +161,7 @@ export const Gizmos = () => {
             followCamera={shouldFade}
             fadeFrom={0.5}
             cellThickness={0.5}
-            sectionThickness={0.8}
+            sectionThickness={0.4}
           />
           <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
         </>
