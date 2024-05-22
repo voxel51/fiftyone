@@ -44,12 +44,8 @@ export interface CustomPanelHooks {
 
 function useCtxChangePanelEvent(panelId, value, operator) {
   const triggerCtxChangedEvent = usePanelEvent();
-  const serializedValue = JSON.stringify(value);
-  console.log(operator, value);
   useEffect(() => {
-    console.log("useEffect");
     if (operator) {
-      console.log("triggering");
       triggerCtxChangedEvent(panelId, { operator, params: { value } });
     }
   }, [value, operator]);
@@ -156,10 +152,14 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   const handlePanelStatePathChange = (path, value, schema) => {
     if (schema?.onChange) {
-      triggerPanelPropertyChange(panelId, {
-        operator: schema.onChange,
-        params: { path, value },
-      });
+      // This timeout allows the change to be applied before executing the operator
+      // it might make sense to do this for all operator executions
+      setTimeout(() => {
+        triggerPanelPropertyChange(panelId, {
+          operator: schema.onChange,
+          params: { path, value },
+        });
+      }, 0);
     }
   };
 
