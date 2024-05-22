@@ -129,7 +129,7 @@ export const Gizmos = () => {
 
     const nominalCellSize = maxDim / 10;
 
-    // round to the nearest 10, but make sure it's at least 1
+    // round to the nearest 10, but for small values, just use 1
     const roundedCellSize =
       nominalCellSize <= 1 ? 1 : Math.ceil(nominalCellSize / 10) * 10;
     const roundedSectionSize = roundedCellSize * 10;
