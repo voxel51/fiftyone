@@ -173,21 +173,18 @@ def _authorize_route(func):
     async def authorize_request(endpoint: HTTPEndpoint, request: Request):
         needs_edit_resolver = None
         needs_tag_resolver = None
+
+        variables = await load_variables(request)
+        token = get_token_from_request(request)
+
         for item in NEEDS_EDIT:
             if isinstance(endpoint, item):
                 needs_edit_resolver = NEEDS_EDIT[item]
-        variables = await load_variables(request)
-        token = get_token_from_request(request)
-        try:
-            authenticate(token)
-        except:
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
         for item in NEEDS_TAG:
             if isinstance(endpoint, item):
                 needs_tag_resolver = NEEDS_TAG[item]
-        variables = await load_variables(request)
-        token = get_token_from_request(request)
+
         try:
             authenticate(token)
         except:
