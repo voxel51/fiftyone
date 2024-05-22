@@ -5,7 +5,7 @@ import Plot from "react-plotly.js";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { merge } from "lodash";
-import { usePanelState } from "@fiftyone/spaces";
+import { usePanelId, usePanelState } from "@fiftyone/spaces";
 import { executeOperator } from "@fiftyone/operators";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { snakeCase } from "lodash";
@@ -15,6 +15,7 @@ export default function PlotlyView(props) {
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
+  const panelId = usePanelId();
   const [selectedpoints, setSelectedPoints] = React.useState(null);
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
@@ -73,7 +74,7 @@ export default function PlotlyView(props) {
           type: view.type,
         };
       }
-      triggerPanelEvent(view.panel_id, {
+      triggerPanelEvent(panelId, {
         operator: eventHandlerOperator,
         params,
       });
