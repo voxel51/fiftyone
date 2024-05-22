@@ -306,6 +306,7 @@ class CVATTests(unittest.TestCase):
             backend="cvat",
             label_field="ground_truth",
             attributes=attributes,
+            segment_size=1,
         )
 
         with results:
