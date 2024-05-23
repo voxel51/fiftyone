@@ -732,7 +732,7 @@ class ExecutionContext(object):
                 ExecutionProgress(progress, label),
             )
         else:
-            self.log(f"Progress: {progress.progress} - {progress.label}")
+            self.log(f"Progress: {progress} - {label}")
 
 
 class ExecutionResult(object):
