@@ -62,7 +62,7 @@ export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
     public params: any = {},
-    public _currentContext: any,
+    public _currentContext: CurrentContext,
     public hooks: any = {},
     public executor: Executor = null
   ) {
@@ -94,6 +94,9 @@ export class ExecutionContext {
   }
   public get viewName(): any {
     return this._currentContext.viewName;
+  }
+  public get extendedSelection(): any {
+    return this._currentContext.extendedSelection;
   }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
@@ -467,19 +470,20 @@ async function executeOperatorAsGenerator(
     "POST",
     "/operators/execute/generator",
     {
-      operator_uri: operator.uri,
-      params: ctx.params,
+      current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
-      view: currentContext.view,
+      extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
+      operator_uri: operator.uri,
+      params: ctx.params,
+      request_delegation: ctx.requestDelegation,
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
-      current_sample: currentContext.currentSample,
-      request_delegation: ctx.requestDelegation,
+      view: currentContext.view,
       view_name: currentContext.viewName,
     },
     "json-stream"
@@ -594,19 +598,20 @@ export async function executeOperatorWithContext(
         "POST",
         "/operators/execute",
         {
+          current_sample: currentContext.currentSample,
+          dataset_name: currentContext.datasetName,
+          delegation_target: currentContext.delegationTarget,
+          extended: currentContext.extended,
+          extended_selection: currentContext.extendedSelection,
+          filters: currentContext.filters,
           operator_uri: operatorURI,
           params: ctx.params,
-          dataset_name: currentContext.datasetName,
-          extended: currentContext.extended,
-          view: currentContext.view,
-          filters: currentContext.filters,
+          request_delegation: ctx.requestDelegation,
           selected: currentContext.selectedSamples
             ? Array.from(currentContext.selectedSamples)
             : [],
           selected_labels: formatSelectedLabels(currentContext.selectedLabels),
-          current_sample: currentContext.currentSample,
-          delegation_target: ctx.delegationTarget,
-          request_delegation: ctx.requestDelegation,
+          view: currentContext.view,
           view_name: currentContext.viewName,
         }
       );
@@ -649,6 +654,23 @@ export async function executeOperatorWithContext(
   return new OperatorResult(operator, result, executor, error, delegated);
 }
 
+type CurrentContext = {
+  datasetName: string;
+  view: any;
+  extended: any;
+  filters: any;
+  selectedSamples: Set<string>;
+  selectedLabels: any;
+  currentSample: string;
+  viewName: string;
+  extendedSelection: {
+    selection: string[] | null;
+    scope: string;
+  };
+  state: any;
+  delegationTarget?: string;
+};
+
 export async function resolveRemoteType(
   operatorURI,
   ctx: ExecutionContext,
@@ -661,20 +683,20 @@ export async function resolveRemoteType(
     "POST",
     "/operators/resolve-type",
     {
-      operator_uri: operatorURI,
-      target,
-      params: ctx.params,
+      current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
+      delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
-      view: currentContext.view,
+      extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
+      operator_uri: operatorURI,
+      params: ctx.params,
+      request_delegation: ctx.requestDelegation,
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
-      results: results ? results.result : null,
-      delegated: results ? results.delegated : null,
-      current_sample: currentContext.currentSample,
+      view: currentContext.view,
       view_name: currentContext.viewName,
     }
   );
@@ -734,16 +756,20 @@ export async function resolveExecutionOptions(
     "POST",
     "/operators/resolve-execution-options",
     {
+      current_sample: currentContext.currentSample,
+      dataset_name: currentContext.datasetName,
+      delegation_target: currentContext.delegationTarget,
+      extended: currentContext.extended,
+      extended_selection: currentContext.extendedSelection,
+      filters: currentContext.filters,
       operator_uri: operatorURI,
       params: ctx.params,
-      dataset_name: currentContext.datasetName,
-      extended: currentContext.extended,
-      view: currentContext.view,
-      filters: currentContext.filters,
+      request_delegation: ctx.requestDelegation,
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      view: currentContext.view,
       view_name: currentContext.viewName,
     }
   );
@@ -766,6 +792,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
     {
       dataset_name: currentContext.datasetName,
       extended: currentContext.extended,
+      extended_selection: currentContext.extendedSelection,
       view: currentContext.view,
       filters: currentContext.filters,
       selected: currentContext.selectedSamples

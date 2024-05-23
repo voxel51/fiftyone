@@ -32,6 +32,7 @@ export function CustomPanel(props: CustomPanelProps) {
     onChangeCurrentSample,
     onChangeSelected,
     onChangeSelectedLabels,
+    onChangeExtendedSelection,
     dimensions,
     panelName,
     panelLabel,
@@ -97,6 +98,7 @@ export function defineCustomPanel({
   on_change_current_sample,
   on_change_selected,
   on_change_selected_labels,
+  on_change_extended_selection,
   panel_name,
   panel_label,
 }) {
@@ -112,6 +114,7 @@ export function defineCustomPanel({
       onChangeCurrentSample={on_change_current_sample}
       onChangeSelected={on_change_selected}
       onChangeSelectedLabels={on_change_selected_labels}
+      onChangeExtendedSelection={on_change_extended_selection}
       dimensions={dimensions}
       panelName={panel_name}
       panelLabel={panel_label}

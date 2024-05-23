@@ -78,6 +78,7 @@ class Panel(Operator):
             "on_change_current_sample",
             "on_change_selected",
             "on_change_selected_labels",
+            "on_change_extended_selection",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):

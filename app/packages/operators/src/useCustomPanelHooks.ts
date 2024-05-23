@@ -23,6 +23,7 @@ export interface CustomPanelProps {
   onChangeCurrentSample?: Function;
   onChangeSelected?: Function;
   onChangeSelectedLabels?: Function;
+  onChangeExtendedSelection?: Function;
   dimensions: {
     bounds: {
       height?: number;
@@ -88,6 +89,11 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   useCtxChangePanelEvent(panelId, ctx.filters, props.onChangeView);
   useCtxChangePanelEvent(panelId, ctx.extended, props.onChangeView);
   useCtxChangePanelEvent(panelId, ctx.datasetName, props.onChangeDataset);
+  useCtxChangePanelEvent(
+    panelId,
+    ctx.extendedSelection,
+    props.onChangeExtendedSelection
+  );
   useCtxChangePanelEvent(
     panelId,
     ctx.currentSample,

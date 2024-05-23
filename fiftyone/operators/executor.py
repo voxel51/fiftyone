@@ -793,6 +793,11 @@ class ExecutionContext(object):
         else:
             self.log(f"Progress: {progress.progress} - {progress.label}")
 
+    @property
+    def extended_selection(self):
+        """The extended selection of the view."""
+        return self.request_params.get("extended_selection", None)
+
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
