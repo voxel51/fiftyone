@@ -160,8 +160,8 @@ POSIX-based systems (e.g. Mac and Linux).
 First, clone the repository:
 
 ```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
+git clone https://github.com/voxel51/fiftyone-teams
+cd fiftyone-teams
 ```
 
 Then run the install script:
@@ -174,7 +174,7 @@ bash install.bash
 path to the cloned repository to your `PYTHONPATH`:
 
 ```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone-teams
 ```
 
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
@@ -220,8 +220,8 @@ cell and then **restarting the runtime**:
 ```shell
 %%shell
 
-git clone --depth 1 https://github.com/voxel51/fiftyone.git
-cd fiftyone
+git clone --depth 1 https://github.com/voxel51/fiftyone-teams.git
+cd fiftyone-teams
 bash install.bash
 ```
 
