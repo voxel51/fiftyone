@@ -305,17 +305,32 @@ export const theme = atom<"dark" | "light">({
 
 export const canEditSavedViews = sessionAtom({
   key: "canEditSavedViews",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canEditWorkspaces = sessionAtom({
   key: "canEditWorkspaces",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canEditCustomColors = sessionAtom({
   key: "canEditCustomColors",
-  default: true,
+  default: { enabled: true, message: null },
+});
+
+export const canCreateNewField = sessionAtom({
+  key: "canCreateNewField",
+  default: { enabled: true, message: null },
+});
+
+export const canModifySidebarGroup = sessionAtom({
+  key: "canModifySidebarGroup",
+  default: { enabled: true, message: null },
+});
+
+export const canTagSamplesOrLabels = sessionAtom({
+  key: "canTagSamplesOrLabels",
+  default: { enabled: true, message: null },
 });
 
 export const readOnly = sessionAtom({

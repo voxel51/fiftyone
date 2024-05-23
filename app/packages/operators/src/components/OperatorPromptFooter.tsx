@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import SplitButton from "../SplitButton";
 import { BaseStylesProvider } from "../styled-components";
 import { onEnter } from "../utils";
+import { SubmitButtonOption } from "../OperatorPalette";
 
 export default function OperatorPromptFooter(props: OperatorFooterProps) {
   const {
@@ -91,7 +92,7 @@ type OperatorFooterProps = {
   disableSubmit?: boolean;
   disabledReason?: string;
   loading?: boolean;
-  submitButtonOptions: any[];
+  submitButtonOptions: SubmitButtonOption[];
   hasSubmitButtonOptions: boolean;
   submitOptionsLoading: boolean;
   showWarning?: boolean;

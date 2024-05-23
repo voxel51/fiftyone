@@ -33,6 +33,7 @@ function RequestExecutor({ queueItem, onSuccess, onError }) {
       callback: queueItem.callback,
       ...(queueItem?.request?.options || {}),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;
