@@ -8,7 +8,7 @@ ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2
 importlib-metadata==1.4.0; python_version<"3.8"
-Jinja2==3.1.4
+Jinja2==3.0.3
 kaleido==0.2.1
 matplotlib==3.5.2
 mongoengine==0.24.2
