@@ -280,16 +280,3 @@ class PanelRef:
             value (any): The data value.
         """
         self._data.set(key, value)
-
-    def get_data(self, key, default=None):
-        """
-        Gets the data of the panel.
-
-        Args:
-            key (str): The data key.
-            default (any): The default value if key is not found.
-
-        Returns:
-            The data value.
-        """
-        return self._data.get(key, default)
