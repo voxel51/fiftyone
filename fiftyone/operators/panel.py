@@ -113,7 +113,7 @@ class PanelRefState:
             super().__setattr__(key, value)
         else:
             self._data[key] = value
-            self._ctx.ops.set_panel_state({key: value})
+            self._ctx.ops.patch_panel_state({key: value})
 
     def __getattr__(self, key):
         return self._data.get(key, None)
