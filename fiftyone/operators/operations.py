@@ -278,6 +278,7 @@ class Operations(object):
         on_change_current_sample=None,
         on_change_selected=None,
         on_change_selected_labels=None,
+        on_change_extended_selection=None,
         allow_duplicates=False,
     ):
         """Register a panel with the given name and lifecycle callbacks.
@@ -308,6 +309,7 @@ class Operations(object):
             "on_change_current_sample": on_change_current_sample,
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,
+            "on_change_extended_selection": on_change_extended_selection,
         }
         return self._ctx.trigger("register_panel", params=params)
 
