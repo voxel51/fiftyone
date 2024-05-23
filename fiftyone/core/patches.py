@@ -558,6 +558,8 @@ def make_patches_dataset(
     other_fields=None,
     keep_label_lists=False,
     name=None,
+    persistent=False,
+    _generated=False,
 ):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
@@ -586,6 +588,8 @@ def make_patches_dataset(
             fields of the same type as the input collection rather than using
             their single label variants
         name (None): a name for the dataset
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -606,7 +610,12 @@ def make_patches_dataset(
         sample_collection, field, keep_label_lists
     )
 
-    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
+    dataset = fod.Dataset(
+        name=name,
+        persistent=persistent,
+        _patches=_generated,
+        _frames=is_frame_patches and _generated,
+    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
@@ -671,7 +680,12 @@ def _get_patches_field(sample_collection, field_name, keep_label_lists):
 
 
 def make_evaluation_patches_dataset(
-    sample_collection, eval_key, other_fields=None, name=None
+    sample_collection,
+    eval_key,
+    other_fields=None,
+    name=None,
+    persistent=False,
+    _generated=False,
 ):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
@@ -720,6 +734,8 @@ def make_evaluation_patches_dataset(
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
         name (None): a name for the dataset
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -757,7 +773,12 @@ def make_evaluation_patches_dataset(
     _pred_field = sample_collection.get_field(pred_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(name=name, _patches=True, _frames=is_frame_patches)
+    dataset = fod.Dataset(
+        name=name,
+        persistent=persistent,
+        _patches=_generated,
+        _frames=is_frame_patches and _generated,
+    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
