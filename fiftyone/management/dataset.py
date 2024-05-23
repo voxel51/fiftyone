@@ -18,7 +18,7 @@ class DatasetPermission(enum.Enum):
 
     NO_ACCESS = "NO_ACCESS"
     VIEW = "VIEW"
-    COMMENT = "COMMENT"
+    TAG = "TAG"
     EDIT = "EDIT"
     MANAGE = "MANAGE"
 

@@ -17,9 +17,11 @@ from fiftyone.server.routes import (
 )
 from fiftyone.operators.server import OperatorRoutes
 
+NEEDS_TAG = {
+    Tag: lambda _: True,
+}
 
 NEEDS_EDIT = {
-    Tag: lambda _: True,
     Sort: lambda v: v["extended"].get("dist_field", None) is not None,
 }
 
