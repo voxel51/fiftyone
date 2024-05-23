@@ -97,9 +97,10 @@ class Panel(Operator):
             return self.on_startup(ctx)
 
         # trigger the event
-        method = getattr(self, method_name)
-        ctx.event_args = event_args
-        method(ctx)
+        if hasattr(self, method_name):
+            method = getattr(self, method_name)
+            ctx.event_args = event_args
+            method(ctx)
 
         # render
         panel_output = self.render(ctx)
