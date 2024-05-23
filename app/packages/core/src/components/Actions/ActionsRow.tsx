@@ -162,13 +162,14 @@ const Tag = ({
   const [available, setAvailable] = useState(true);
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
-  const readOnly = useRecoilValue(fos.readOnly);
+  const canTag = useRecoilValue(fos.canTagSamplesOrLabels);
+  const disableTag = !canTag.enabled;
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const disabled = tagging;
+  const disabled = tagging || disableTag;
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {
@@ -179,15 +180,16 @@ const Tag = ({
     useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
-  const title = readOnly
-    ? `Can not ${baseTitle.toLowerCase()} in read-only mode.`
+
+  const title = disabled
+    ? (canTag.message || "").replace("#action", baseTitle.toLowerCase())
     : baseTitle;
 
   return (
     <ActionDiv ref={ref}>
       <PillButton
         style={{
-          cursor: readOnly
+          cursor: disableTag
             ? "not-allowed"
             : disabled || !available
             ? "default"
@@ -195,7 +197,7 @@ const Tag = ({
         }}
         icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
-        onClick={() => !disabled && available && !readOnly && setOpen(!open)}
+        onClick={() => !disabled && available && !disableTag && setOpen(!open)}
         highlight={(selected || open) && available}
         title={title}
         data-cy="action-tag-sample-labels"

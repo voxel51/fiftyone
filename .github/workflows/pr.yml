@@ -10,6 +10,9 @@ on:
       - release/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
+  lint:
+    uses: ./.github/workflows/lint-app.yml
+
   build:
     uses: ./.github/workflows/build.yml
 
@@ -21,7 +24,7 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [build, lint, test]
     if: always()
     steps:
-      - run: sh -c ${{ needs.build.result == 'success' && needs.test.result == 'success' }}
+      - run: sh -c ${{ needs.build.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success' }}

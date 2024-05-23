@@ -93,7 +93,9 @@ const SortBySimilarity = ({
     []
   );
   const isLoading = useRecoilValue(fos.similaritySorting);
-  const isReadOnly = useRecoilValue(fos.readOnly);
+  const canCreateNewField = useRecoilValue(fos.canCreateNewField);
+  const disabled = !canCreateNewField.enabled;
+  const disableMsg = canCreateNewField.message;
 
   useLayoutEffect(() => {
     if (!choices.choices.includes(state.brainKey)) {
@@ -281,18 +283,14 @@ const SortBySimilarity = ({
           Optional: store the distance between each sample and the query in this
           field
           <Input
-            disabled={isReadOnly}
+            disabled={disabled}
             placeholder={"dist_field (default = None)"}
             validator={(value) => !value.startsWith("_")}
             value={state.distField ?? ""}
             setter={(value) =>
               updateState({ distField: !value.length ? undefined : value })
             }
-            title={
-              isReadOnly
-                ? "Can not store the distance in a field in read-only mode"
-                : undefined
-            }
+            title={disableMsg}
           />
         </div>
       )}

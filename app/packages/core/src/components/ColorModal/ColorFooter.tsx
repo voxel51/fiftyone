@@ -1,19 +1,18 @@
 import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
-  const isReadOnly = useRecoilValue(fos.readOnly);
   const canEditCustomColors = useRecoilValue(fos.canEditCustomColors);
-  const canEdit = useMemo(
-    () => !isReadOnly && canEditCustomColors,
-    [canEditCustomColors, isReadOnly]
-  );
+  const disabled = canEditCustomColors.enabled! == true;
+  const title = disabled
+    ? canEditCustomColors.message
+    : "Save to dataset app config";
   const setColorScheme = fos.useSetSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] =
     useRecoilState(activeColorEntry);
@@ -30,6 +29,7 @@ const ColorFooter: React.FC = () => {
     () => foq.subscribe(() => setActiveColorModalField(null)),
     [setActiveColorModalField]
   );
+
   if (!activeColorModalField) return null;
   if (!datasetName) {
     throw new Error("dataset not defined");
@@ -53,11 +53,7 @@ const ColorFooter: React.FC = () => {
           Reset
         </Button>
         <Button
-          title={
-            canEdit
-              ? "Save to dataset app config"
-              : "Can not save to dataset appConfig in read-only mode"
-          }
+          title={title}
           onClick={() => {
             // remove rgb list from defaultColorscale and colorscales
             const { rgb, ...rest } = colorScheme.defaultColorscale;
@@ -105,13 +101,13 @@ const ColorFooter: React.FC = () => {
             });
             setActiveColorModalField(null);
           }}
-          disabled={!canEdit}
+          disabled={disabled}
         >
           Save as default
         </Button>
-        {datasetDefault && (
+        {datasetDefault && !disabled && (
           <Button
-            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
+            title="Clear"
             onClick={() => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
@@ -135,7 +131,6 @@ const ColorFooter: React.FC = () => {
                 showSkeletons: configDefault.showSkeletons ?? true,
               }));
             }}
-            disabled={!canEdit}
           >
             Clear default
           </Button>

@@ -1,4 +1,5 @@
 import { ColoredDot, Popout, scrollable } from "@fiftyone/components";
+import { canEditWorkspaces, sessionSpaces } from "@fiftyone/state";
 import { Add, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import {
   Box,
@@ -18,9 +19,8 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
 import Workspace from "./Workspace";
 import WorkspaceEditor from "./WorkspaceEditor";
-import { useWorkspaces, useWorkspacePermission } from "./hooks";
-import { sessionSpaces } from "@fiftyone/state";
 import { UNSAVED_WORKSPACE_COLOR } from "./constants";
+import { useWorkspaces } from "./hooks";
 
 export default function Workspaces() {
   const [open, setOpen] = useState(false);
@@ -28,7 +28,9 @@ export default function Workspaces() {
   const { workspaces, loadWorkspace, initialized, listWorkspace } =
     useWorkspaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
-  const { canEdit, disabledInfo } = useWorkspacePermission();
+  const canEditWorkSpace = useRecoilValue(canEditWorkspaces);
+  const disabled = canEditWorkSpace.enabled !== true;
+  const disabledMsg = canEditWorkSpace.message;
   const sessionSpacesState = useRecoilValue(sessionSpaces);
   const currentWorkspaceName = sessionSpacesState._name;
 
@@ -132,16 +134,16 @@ export default function Workspaces() {
                       "&:hover": {
                         ".MuiStack-root": { visibility: "visible" },
                       },
-                      cursor: !canEdit ? "not-allowed" : undefined,
+                      cursor: disabled ? "not-allowed" : undefined,
                     }}
-                    title={disabledInfo}
+                    title={disabledMsg}
                   >
                     <ListItemButton
                       component="a"
                       sx={{ py: 0.5, pr: 0.5 }}
-                      disabled={!canEdit}
+                      disabled={disabled}
                       onClick={() => {
-                        if (!canEdit) return;
+                        if (disabled) return;
                         setOpen(false);
                         setWorkspaceEditorState((state) => ({
                           ...state,
