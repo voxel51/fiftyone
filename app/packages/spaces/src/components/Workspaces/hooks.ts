@@ -1,5 +1,5 @@
 import { executeOperator } from "@fiftyone/operators";
-import { canEditWorkspaces, datasetName, readOnly } from "@fiftyone/state";
+import { datasetName } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -60,22 +60,4 @@ export function useWorkspaces() {
     reset: resetState,
     existingSlugs,
   };
-}
-
-export function useWorkspacePermission() {
-  const canEditSavedViews = useRecoilValue(canEditWorkspaces);
-  const isReadOnly = useRecoilValue(readOnly);
-  const canEdit = useMemo(
-    () => canEditSavedViews && !isReadOnly,
-    [canEditSavedViews, isReadOnly]
-  );
-  const disabledInfo = useMemo(() => {
-    return !canEditSavedViews
-      ? "You do not have permission to save a workspace"
-      : isReadOnly
-      ? "Can not save workspace in read-only mode"
-      : undefined;
-  }, [canEditSavedViews, isReadOnly]);
-
-  return { canEdit, disabledInfo };
 }
