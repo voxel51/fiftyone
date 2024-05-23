@@ -176,13 +176,7 @@ const PainterFactory3D = (
    * Impute bounding box parameters.
    */
   Detection: (label: DetectionLabel) => {
-    const {
-      width: canvasWidth,
-      height: canvasHeight,
-      min_bound,
-      max_bound,
-      normal,
-    } = orthographicProjectionParams;
+    const { min_bound, max_bound, normal } = orthographicProjectionParams;
     const [xmin, ymin, zmin] = min_bound;
     const [xmax, ymax, zmax] = max_bound;
 
@@ -191,19 +185,6 @@ const PainterFactory3D = (
     const [rx, ry, rz] = label.rotation ?? [0, 0, 0]; // rotation of bounding box
 
     const [nx, ny, nz] = normal;
-
-    const { xScale, yScale } = getScalingFactorForLabel({
-      labelId: label.id ?? label._id,
-      normal,
-      width: canvasWidth,
-      height: canvasHeight,
-      xmin,
-      xmax,
-      ymin,
-      ymax,
-      zmin,
-      zmax,
-    });
 
     const box: BoundingBox3D = {
       dimensions: [dx, dy, dz],
@@ -226,18 +207,12 @@ const PainterFactory3D = (
 
     let { tlx, tly, width, height } = getBoundingBox2D(box, projectionPlane);
 
-    // translate according to point cloud bounds
-    tlx = tlx - min_bound[0];
-    tly = tly + max_bound[1];
+    tlx = (tlx - xmin) / (xmax - xmin);
+    tly = (tly + ymax) / (ymax - ymin);
 
-    // scale to canvas size
-    tlx = (xScale * tlx) / canvasWidth;
-    tly = (yScale * tly) / canvasHeight;
+    width = width / (xmax - xmin);
+    height = height / (ymax - ymin);
 
-    width = (xScale * width) / canvasWidth;
-    height = (yScale * height) / canvasHeight;
-
-    // label.bounding_box = [tlxI, tlyI, boxWidthNormalized, boxHeightNormalized];
     label.bounding_box = [tlx, tly, width, height];
   },
 });
