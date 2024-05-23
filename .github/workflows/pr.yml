@@ -34,7 +34,7 @@ jobs:
           github_user: voxel51-bot
           workflow_file_name: merge-oss.yml
           ref: chore/merge-pr-automation
-          wait_interval: 10
+          wait_interval: 20
           client_payload: '{ "branch": "${{ github.head_ref || github.ref_name }}" }'
           propagate_failure: true
           trigger_workflow: true
