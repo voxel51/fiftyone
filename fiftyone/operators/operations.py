@@ -494,7 +494,7 @@ class Operations(object):
         )
 
     def set_extended_selection(
-        self, selection, scope=None, clear=False, reset=False
+        self, selection=None, scope=None, clear=False, reset=False
     ):
         """Set the extended selection in the App.
 
