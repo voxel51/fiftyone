@@ -65,8 +65,9 @@ export type OrthogrpahicProjectionMetadata = {
   filepath: string;
   height: number;
   width: number;
-  min_bound: [number, number];
-  max_bound: [number, number];
+  min_bound: [number, number, number];
+  max_bound: [number, number, number];
+  normal: [number, number, number];
 };
 
 export type GenericLabel = {
