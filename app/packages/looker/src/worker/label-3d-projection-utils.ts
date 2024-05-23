@@ -86,14 +86,6 @@ export const getBoundingBox2D = (
   const transformedCorners = corners.map((corner) => {
     const newRotation = rotation;
 
-    // depending on the plane, ignore the corresponding rotation
-    if (plane === "xz") {
-      newRotation[0] = 0;
-    } else if (plane === "xy") {
-      newRotation[2] = 0;
-    } else {
-      newRotation[1] = 0;
-    }
     const rotated = rotatePoint(corner, newRotation);
     return [
       rotated[0] + location[0],
