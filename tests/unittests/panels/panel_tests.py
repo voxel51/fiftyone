@@ -9,7 +9,6 @@ from fiftyone.operators.panel import (
     WriteOnlyError,
 )
 from fiftyone.operators.types import Object, Property
-import pydash
 
 
 def simulate_event(panel, mock_ctx, event_name):
@@ -23,7 +22,9 @@ class TestPanel(Panel):
         return PanelOperatorConfig(name="test_panel", label="Test Panel")
 
     def render(self, ctx):
-        return "Rendered content"
+        panel = Object()
+        panel.str("content", default="Rendered content")
+        return Property(panel)
 
     def on_change(self, ctx):
         pass  # Implemented for testing purposes
@@ -54,7 +55,7 @@ def test_panel_initialization(panel):
 
 def test_panel_render(panel, mock_ctx):
     output = panel.render(mock_ctx)
-    assert output == "Rendered content"
+    assert isinstance(output, Property)
 
 
 def test_panel_resolve_input(panel, mock_ctx):
@@ -82,7 +83,7 @@ def test_panel_on_startup(panel, mock_ctx):
 def test_panel_execute(panel, mock_ctx):
     simulate_event(panel, mock_ctx, "on_load")
     assert mock_ctx.ops.show_panel_output.called
-    assert mock_ctx.ops.show_panel_output.call_args[0][0] == "Rendered content"
+    assert isinstance(mock_ctx.ops.show_panel_output.call_args[0][0], Property)
 
 
 def test_panel_execute_on_startup(panel, mock_ctx):
