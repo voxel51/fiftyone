@@ -53,7 +53,16 @@ export default function PlotlyView(props) {
       }
       setSelectedPoints(selected);
     }
+
     const eventHandlerOperator = view[snakeCase(event)];
+
+    if (event === "onDeselect") {
+      setSelectedPoints(null);
+    }
+
+    if (event === "onSelected" && e?.lassoPoints) {
+      setSelectedPoints(data);
+    }
 
     if (eventHandlerOperator) {
       let params = {};
@@ -197,7 +206,7 @@ const EventDataMappers = {
     return result;
   },
   onSelected: (e) => {
-    const { event, points } = e;
+    const { event, points } = e || { points: [] };
     const selected = [];
     for (const point of points) {
       const { data, fullData, xaxis, yaxis, ...pointdata } = point;
