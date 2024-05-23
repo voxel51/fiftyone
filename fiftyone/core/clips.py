@@ -586,6 +586,8 @@ def make_clips_dataset(
     min_len=0,
     trajectories=False,
     name=None,
+    persistent=False,
+    _generated=False,
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
@@ -650,6 +652,8 @@ def make_clips_dataset(
             trajectory defined by their ``(label, index)``. Only applicable
             when ``field_or_expr`` is a frame-level field
         name (None): a name for the dataset
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -675,9 +679,22 @@ def make_clips_dataset(
     else:
         clips_type = "manual"
 
+    if _generated:
+        _name = name
+        _persistent = persistent
+    else:
+        # We first create a temporary dataset with samples representing the
+        # clips; then we clone it to pull in the corresponding frames
+        _name = None
+        _persistent = False
+
     dataset = fod.Dataset(
-        name=name, _clips=True, _src_collection=sample_collection
+        name=_name,
+        persistent=_persistent,
+        _clips=True,
+        _src_collection=sample_collection,
     )
+
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.add_sample_field("support", fof.FrameSupportField)
@@ -749,6 +766,13 @@ def make_clips_dataset(
             field_or_expr,
             other_fields=other_fields,
         )
+
+    if not _generated:
+        # Clone so that dataset no longer shares the same underlying frames
+        # collection as the input collection
+        _dataset = dataset
+        dataset = _dataset.clone(name=name, persistent=persistent)
+        _dataset.delete()
 
     return dataset
 
