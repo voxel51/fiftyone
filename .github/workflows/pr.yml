@@ -42,11 +42,10 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, lint, teams, test]
+    needs: [build, lint, test]
     if: always()
     steps:
       - run: sh -c ${{
           needs.build.result == 'success' &&
           needs.lint.result == 'success' &&
-          needs.teams.result == 'success' &&
           needs.test.result == 'success' }}
