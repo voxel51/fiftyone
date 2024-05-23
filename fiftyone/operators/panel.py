@@ -9,6 +9,8 @@ FiftyOne operators.
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
 
+import pydash
+
 
 class PanelOperatorConfig(OperatorConfig):
     """A configuration for a panel operator."""
@@ -104,47 +106,125 @@ class Panel(Operator):
         ctx.ops.show_panel_output(panel_output)
 
 
-class PanelRefState:
+class WriteOnlyError(Exception):
+    """Error raised when trying to read a write-only property."""
+
+
+class PanelRefBase:
+    """
+    Base class for panel state and data.
+
+    Attributes:
+        _data (dict): A dictionary to store the data or state.
+        _ctx: The context object containing the operations.
+    """
+
     def __init__(self, ctx):
-        self._data = ctx.panel_state
+        self._data = {}
         self._ctx = ctx
+
+    def set(self, key, value):
+        """
+        Sets the value in the dictionary.
+
+        Args:
+            key (str): The key.
+            value (any): The value.
+        """
+        pydash.set_(self._data, key, value)
+
+    def get(self, key, default=None):
+        """
+        Gets the value from the dictionary.
+
+        Args:
+            key (str): The key.
+            default (any): The default value if key is not found.
+
+        Returns:
+            The value.
+        """
+        return pydash.get(self._data, key, default)
+
+    def clear(self):
+        """Clears the dictionary."""
+        self._data = {}
 
     def __setattr__(self, key, value):
         if key.startswith("_"):
             super().__setattr__(key, value)
         else:
-            self._data[key] = value
-            self._ctx.ops.patch_panel_state({key: value})
+            self.set(key, value)
 
     def __getattr__(self, key):
-        return self._data.get(key, None)
+        if key == "_data":
+            return self._data
+        elif key == "_ctx":
+            return self._ctx
+        else:
+            return self.get(key)
+
+
+class PanelRefState(PanelRefBase):
+    """
+    Class representing the state of a panel.
+    """
+
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        self._data = ctx.panel_state
+
+    def set(self, key, value):
+        """
+        Sets the state of the panel.
+
+        Args:
+            key (str): A dot delimited path.
+            value (any): The state value.
+        """
+        super().set(key, value)
+        args = {}
+        pydash.set_(args, key, value)
+        self._ctx.ops.patch_panel_state(args)
 
     def clear(self):
-        self._data = {}
+        """Clears the panel state."""
+        super().clear()
         self._ctx.ops.clear_panel_state()
 
 
-class PanelRefData:
-    def __init__(self, ctx):
-        self._data = {}
-        self._ctx = ctx
+class PanelRefData(PanelRefBase):
+    """
+    Class representing the data of a panel.
+    """
 
-    def __setattr__(self, key, value):
-        if key.startswith("_"):
-            super().__setattr__(key, value)
-        else:
-            self._data[key] = value
-            self._ctx.ops.patch_panel_data({key: value})
+    def set(self, key, value):
+        """
+        Sets the data of the panel.
 
-    def __getattr__(self, key):
-        raise KeyError("Cannot read panel data")
+        Args:
+            key (str): The data key.
+            value (any): The data value.
+        """
+        super().set(key, value)
+        args = {}
+        pydash.set_(args, key, value)
+        self._ctx.ops.patch_panel_data(args)
+
+    def get(self, key, default=None):
+        raise WriteOnlyError("Panel data is write-only")
 
     def clear(self):
-        self._data = {}
+        """Clears the panel data."""
+        super().clear()
         self._ctx.ops.clear_panel_data()
 
 
 class PanelRef:
+    """
+    Represents a panel in the app.
+    """
+
     def __init__(self, ctx):
         self._ctx = ctx
         self._state = PanelRefState(ctx)
@@ -152,15 +232,52 @@ class PanelRef:
 
     @property
     def data(self):
+        """Panel data."""
         return self._data
 
     @property
     def state(self):
+        """Panel state."""
         return self._state
 
     @property
     def id(self):
+        """Panel ID."""
         return self._ctx.panel_id
 
     def close(self):
+        """Closes the panel."""
         self._ctx.ops.close_panel()
+
+    def set_state(self, key, value):
+        """
+        Sets the state of the panel.
+
+        Args:
+            key (str): A dot delimited path.
+            value (any): The state value.
+        """
+        self._state.set(key, value)
+
+    def get_state(self, key, default=None):
+        """
+        Gets the state of the panel.
+
+        Args:
+            key (str): A dot delimited path.
+            default (any): The default value if key is not found.
+
+        Returns:
+            The state value.
+        """
+        return self._state.get(key, default)
+
+    def set_data(self, key, value):
+        """
+        Sets the data of the panel.
+
+        Args:
+            key (str): The data key.
+            value (any): The data value.
+        """
+        self._data.set(key, value)
