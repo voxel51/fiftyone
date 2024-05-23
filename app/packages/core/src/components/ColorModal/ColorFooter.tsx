@@ -9,7 +9,7 @@ import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
   const canEditCustomColors = useRecoilValue(fos.canEditCustomColors);
-  const disabled = canEditCustomColors.enabled! == true;
+  const disabled = !canEditCustomColors.enabled;
   const title = disabled
     ? canEditCustomColors.message
     : "Save to dataset app config";
