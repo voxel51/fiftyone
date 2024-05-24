@@ -116,7 +116,7 @@ const PainterFactory3D = (
     const [dx, dy, dz] = label.dimensions; // length of bounding box in each dimension
     const [rx, ry, rz] = label.rotation ?? [0, 0, 0]; // rotation of bounding box
 
-    const [nx, ny, nz] = normal;
+    const [nx, ny, nz] = normal ?? [0, 0, 1];
 
     const box: BoundingBox3D = {
       dimensions: [dx, dy, dz],
