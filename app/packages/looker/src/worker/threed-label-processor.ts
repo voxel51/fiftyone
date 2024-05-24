@@ -1,4 +1,5 @@
 import { DETECTIONS, getCls, Schema } from "@fiftyone/utilities";
+import ch from "monotone-convex-hull-2d";
 import { POINTCLOUD_OVERLAY_PADDING } from "../constants";
 import { DetectionLabel } from "../overlays/detection";
 import { OrthogrpahicProjectionMetadata, Sample } from "../state";
@@ -205,7 +206,10 @@ const PainterFactory3D = (
       projectionPlane = "xy";
     }
 
-    let { tlx, tly, width, height } = getBoundingBox2D(box, projectionPlane);
+    let { tlx, tly, width, height, projectedCorners } = getBoundingBox2D(
+      box,
+      projectionPlane
+    );
 
     tlx = (tlx - xmin) / (xmax - xmin);
     tly = (tly + ymax) / (ymax - ymin);
@@ -214,6 +218,21 @@ const PainterFactory3D = (
     height = height / (ymax - ymin);
 
     label.bounding_box = [tlx, tly, width, height];
+
+    // map projected corners
+    const newProjectedCorners = projectedCorners.map(([x, y]) => {
+      const px = (x - xmin) / (xmax - xmin);
+      const py = (ymax - y) / (ymax - ymin);
+      return [px, py];
+    });
+
+    const convexHullIndices = ch(newProjectedCorners);
+
+    const convexHull = convexHullIndices.map((i) => newProjectedCorners[i]);
+
+    // sort convex hull points in clockwise order
+
+    label.convexHull = convexHull;
   },
 });
 

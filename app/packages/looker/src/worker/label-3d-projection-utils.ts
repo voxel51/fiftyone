@@ -57,7 +57,7 @@ export const projectTo2D = (point: Vec3, plane: "xz" | "xy" | "yz"): Vec2 => {
 export const getBoundingBox2D = (
   box: BoundingBox3D,
   plane: "xz" | "xy" | "yz"
-): BoundingBox2D => {
+) => {
   const { dimensions, location, rotation } = box;
   const [dx, dy, dz] = dimensions;
   const halfDimensions = [dx / 2, dy / 2, dz / 2] as Vec3;
@@ -128,5 +128,5 @@ export const getBoundingBox2D = (
   const width = maxX - minX;
   const height = maxY - minY;
 
-  return { tlx, tly, width, height };
+  return { tlx, tly, width, height, projectedCorners };
 };

@@ -229,25 +229,28 @@ export default class DetectionOverlay<
     state: Readonly<State>,
     color: string
   ) {
-    const [tlx, tly, w, h] = this.label.bounding_box;
+    const convexHull = this.label.convexHull;
 
     const previousAlpha = ctx.globalAlpha;
-    ctx.beginPath();
     // use double stoke width to make the box more visible
     ctx.lineWidth = state.strokeWidth * 2;
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
-    ctx.moveTo(...t(state, tlx, tly));
-    ctx.lineTo(...t(state, tlx + w, tly));
-    ctx.lineTo(...t(state, tlx + w, tly + h));
-    ctx.lineTo(...t(state, tlx, tly + h));
+
+    ctx.beginPath();
+
+    // draw a polyline that defines the convex hull of the projected corners
+    ctx.moveTo(...t(state, convexHull[0][0], convexHull[0][1]));
+    for (let i = 1; i < convexHull.length; i++) {
+      ctx.lineTo(...t(state, convexHull[i][0], convexHull[i][1]));
+    }
+
     ctx.closePath();
     ctx.stroke();
+    ctx.fill();
 
     // fill with some transparency
     ctx.globalAlpha = state.options.alpha * 0.5;
-    ctx.fillRect(...t(state, tlx, tly), w, h);
-    ctx.fill();
 
     // restore previous alpha
     ctx.globalAlpha = previousAlpha;
