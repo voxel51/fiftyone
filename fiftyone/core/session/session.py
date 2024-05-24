@@ -7,7 +7,6 @@ Session class for interacting with the FiftyOne App.
 """
 
 from collections import defaultdict
-from dataclasses import asdict
 from functools import wraps
 
 try:
