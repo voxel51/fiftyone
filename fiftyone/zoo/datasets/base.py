@@ -3180,7 +3180,8 @@ class QuickstartGroupsDataset(FiftyOneDataset):
 
 
 class Quickstart3DDataset(FiftyOneDataset):
-    """A small 3D dataset with meshes, point clouds, and oriented bounding boxes.
+    """A small 3D dataset with meshes, point clouds, and oriented bounding
+    boxes.
 
     The dataset consists of 200 3D mesh samples from the test split of the
     `ModelNet40 <https://modelnet.cs.princeton.edu>`_ dataset, with point
