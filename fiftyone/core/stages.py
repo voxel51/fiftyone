@@ -7479,7 +7479,10 @@ class ToPatches(ViewStage):
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
             patches_dataset = fop.make_patches_dataset(
-                sample_collection, self._field, **kwargs
+                sample_collection,
+                self._field,
+                _generated=True,
+                **kwargs,
             )
 
             # Other views may use the same generated dataset, so reuse the old
@@ -7623,7 +7626,10 @@ class ToEvaluationPatches(ViewStage):
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
             eval_patches_dataset = fop.make_evaluation_patches_dataset(
-                sample_collection, self._eval_key, **kwargs
+                sample_collection,
+                self._eval_key,
+                _generated=True,
+                **kwargs,
             )
 
             # Other views may use the same generated dataset, so reuse the old
@@ -7780,7 +7786,10 @@ class ToClips(ViewStage):
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
             clips_dataset = focl.make_clips_dataset(
-                sample_collection, self._field_or_expr, **kwargs
+                sample_collection,
+                self._field_or_expr,
+                _generated=True,
+                **kwargs,
             )
 
             # Other views may use the same generated dataset, so reuse the old
@@ -7914,7 +7923,11 @@ class ToTrajectories(ViewStage):
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
             clips_dataset = focl.make_clips_dataset(
-                sample_collection, self._field, trajectories=True, **kwargs
+                sample_collection,
+                self._field,
+                trajectories=True,
+                _generated=True,
+                **kwargs,
             )
 
             state["name"] = clips_dataset.name
@@ -8098,7 +8111,9 @@ class ToFrames(ViewStage):
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
             frames_dataset = fovi.make_frames_dataset(
-                sample_collection, **kwargs
+                sample_collection,
+                _generated=True,
+                **kwargs,
             )
 
             # Other views may use the same generated dataset, so reuse the old

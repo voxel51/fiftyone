@@ -11,6 +11,7 @@ from bson import ObjectId
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.patches as fop
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -657,6 +658,65 @@ class PatchesTests(unittest.TestCase):
         self.assertEqual(still_view.name, view_name)
         self.assertTrue(still_view.is_saved)
         self.assertEqual(still_view, view)
+
+    @drop_datasets
+    def test_make_patches_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            tags=["sample1"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            tags=["sample2"],
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        patches_view = dataset.to_patches("ground_truth")
+        patches_dataset = fop.make_patches_dataset(dataset, "ground_truth")
+
+        self.assertNotEqual(
+            patches_dataset._sample_collection_name,
+            dataset._sample_collection_name,
+        )
+        self.assertIsNone(patches_dataset._frame_collection_name)
+        self.assertTrue(patches_view._is_generated)
+        self.assertFalse(patches_dataset._is_generated)
+        self.assertEqual(
+            len(patches_dataset), dataset.count("ground_truth.detections")
+        )
+        self.assertEqual(len(patches_dataset), len(patches_view))
 
 
 if __name__ == "__main__":
