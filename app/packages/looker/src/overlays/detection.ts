@@ -247,10 +247,11 @@ export default class DetectionOverlay<
 
     ctx.closePath();
     ctx.stroke();
-    ctx.fill();
 
     // fill with some transparency
-    ctx.globalAlpha = state.options.alpha * 0.5;
+    ctx.globalAlpha = state.options.alpha * 0.3;
+
+    ctx.fill();
 
     // restore previous alpha
     ctx.globalAlpha = previousAlpha;

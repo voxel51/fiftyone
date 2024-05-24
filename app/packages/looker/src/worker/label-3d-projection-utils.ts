@@ -99,34 +99,5 @@ export const getBoundingBox2D = (
     projectTo2D(corner, plane)
   );
 
-  // determine the bounding box in 2D
-  const allX = projectedCorners.map((corner) => corner[0]);
-  const allY = projectedCorners.map((corner) => corner[1]);
-
-  const minX = Math.min(...allX);
-  const maxX = Math.max(...allX);
-  const minY = Math.min(...allY);
-  const maxY = Math.max(...allY);
-
-  // calculate the 2D bounding box top-left corner and dimensions
-  let xOffset: number;
-  let yOffset: number;
-
-  if (plane === "xy") {
-    xOffset = minX;
-    yOffset = -minY;
-  } else if (plane === "xz") {
-    xOffset = minX;
-    yOffset = -maxY;
-  } else {
-    xOffset = minY;
-    yOffset = -maxY;
-  }
-
-  const tlx = xOffset;
-  const tly = yOffset;
-  const width = maxX - minX;
-  const height = maxY - minY;
-
-  return { tlx, tly, width, height, projectedCorners };
+  return { projectedCorners };
 };

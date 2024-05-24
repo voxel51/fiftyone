@@ -206,18 +206,7 @@ const PainterFactory3D = (
       projectionPlane = "xy";
     }
 
-    let { tlx, tly, width, height, projectedCorners } = getBoundingBox2D(
-      box,
-      projectionPlane
-    );
-
-    tlx = (tlx - xmin) / (xmax - xmin);
-    tly = (tly + ymax) / (ymax - ymin);
-
-    width = width / (xmax - xmin);
-    height = height / (ymax - ymin);
-
-    label.bounding_box = [tlx, tly, width, height];
+    const { projectedCorners } = getBoundingBox2D(box, projectionPlane);
 
     // map projected corners
     const newProjectedCorners = projectedCorners.map(([x, y]) => {
