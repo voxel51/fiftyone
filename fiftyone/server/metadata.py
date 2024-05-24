@@ -552,7 +552,7 @@ async def _create_media_urls(
             else:
                 # Get a URL to use to retrieve metadata (if necessary) and for
                 # the App to use to serve the media
-                url = foc.media_cache.get_url(path, method="GET", hours=24)
+                url = foc.media_cache.get_url(path, method="GET")
         except:
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors

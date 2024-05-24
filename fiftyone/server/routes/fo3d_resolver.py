@@ -43,7 +43,7 @@ def get_resolved_asset_path(asset_path: str, root: str = None):
             asset_path = posixpath.join(root, asset_path)
 
     if needs_url:
-        asset_path = media_cache.get_url(asset_path, method="GET", hours=24)
+        asset_path = media_cache.get_url(asset_path, method="GET")
 
     return asset_path
 

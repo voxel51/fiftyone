@@ -448,7 +448,7 @@ class MediaCache(object):
         if tasks:
             _cache_media(tasks, self.num_workers, progress)
 
-    def get_url(self, remote_path, method="GET", hours=1):
+    def get_url(self, remote_path, method="GET", hours=None):
         """Retrieves a URL for accessing the given remote file.
 
         Note that GCS and S3 URLs are signed URLs that will expire.
@@ -456,7 +456,8 @@ class MediaCache(object):
         Args:
             remote_path: the remote path
             method ("GET"): a valid HTTP method for signed URLs
-            hours (1): a TTL for signed URLs
+            hours (None): a TTL for signed URLs. If not set, set to
+                the default value in ``fo.config.signed_url_expiration``
         """
         fs = fos.get_file_system(remote_path)
 
@@ -464,6 +465,8 @@ class MediaCache(object):
             raise ValueError(
                 "Cannot get URL for local file '%s'" % remote_path
             )
+
+        hours = hours or fo.config.signed_url_expiration
 
         client = fos.get_client(path=remote_path)
         return _get_url(client, remote_path, method=method, hours=hours)

@@ -56,7 +56,6 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 get_url_mock.assert_called_with(
                     "s3://bucket/root/path/to/gltf.gltf",
                     method="GET",
-                    hours=24,
                 )
 
                 self.assertEqual(
@@ -85,7 +84,6 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 get_url_mock.assert_called_with(
                     "s3://bucket1/path/to/gltf.gltf",
                     method="GET",
-                    hours=24,
                 )
 
                 self.assertEqual(
@@ -114,7 +112,6 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                 get_url_mock.assert_called_with(
                     "s3://bucket1/path/to/gltf.gltf",
                     method="GET",
-                    hours=24,
                 )
 
                 self.assertEqual(
