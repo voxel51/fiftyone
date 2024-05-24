@@ -21,6 +21,7 @@ export interface DetectionLabel extends RegularLabel {
   dimensions?: [number, number, number];
   location?: [number, number, number];
   rotation?: [number, number, number];
+  convexHull?: Coordinates[];
 }
 
 export default class DetectionOverlay<

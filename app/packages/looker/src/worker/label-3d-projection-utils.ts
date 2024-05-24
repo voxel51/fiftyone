@@ -54,7 +54,7 @@ export const projectTo2D = (point: Vec3, plane: "xz" | "xy" | "yz"): Vec2 => {
   }
 };
 
-export const getBoundingBox2D = (
+export const getProjectedCorners = (
   box: BoundingBox3D,
   plane: "xz" | "xy" | "yz"
 ) => {

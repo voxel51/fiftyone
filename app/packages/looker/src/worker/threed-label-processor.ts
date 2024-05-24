@@ -3,7 +3,10 @@ import ch from "monotone-convex-hull-2d";
 import { POINTCLOUD_OVERLAY_PADDING } from "../constants";
 import { DetectionLabel } from "../overlays/detection";
 import { OrthogrpahicProjectionMetadata, Sample } from "../state";
-import { BoundingBox3D, getBoundingBox2D } from "./label-3d-projection-utils";
+import {
+  BoundingBox3D,
+  getProjectedCorners,
+} from "./label-3d-projection-utils";
 import { mapId } from "./shared";
 
 type DetectionsLabel = {
@@ -206,20 +209,36 @@ const PainterFactory3D = (
       projectionPlane = "xy";
     }
 
-    const { projectedCorners } = getBoundingBox2D(box, projectionPlane);
+    const { projectedCorners } = getProjectedCorners(box, projectionPlane);
 
-    // map projected corners
+    const xRange = xmax - xmin;
+    const yRange = ymax - ymin;
+    const zRange = zmax - zmin;
+
     const newProjectedCorners = projectedCorners.map(([x, y]) => {
-      const px = (x - xmin) / (xmax - xmin);
-      const py = (ymax - y) / (ymax - ymin);
+      let px, py;
+
+      // todo: need to account for negative / positive normals
+      switch (projectionPlane) {
+        case "xy":
+          px = (x - xmin) / xRange;
+          py = (ymax - y) / yRange;
+          break;
+        case "xz":
+          px = (x - xmin) / xRange;
+          py = (zmax - y) / zRange;
+          break;
+        case "yz":
+          px = (y - ymin) / yRange;
+          py = (zmax - x) / zRange;
+          break;
+      }
       return [px, py];
     });
 
     const convexHullIndices = ch(newProjectedCorners);
 
     const convexHull = convexHullIndices.map((i) => newProjectedCorners[i]);
-
-    // sort convex hull points in clockwise order
 
     label.convexHull = convexHull;
   },
