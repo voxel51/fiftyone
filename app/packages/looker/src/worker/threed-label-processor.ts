@@ -15,79 +15,7 @@ type DetectionsLabel = {
 
 type ThreeDLabel = DetectionsLabel | DetectionLabel;
 
-type LabelId = string;
-
 const COLLECTION_TYPES = new Set(["Detections"]);
-
-const scalingFactorCache: Record<
-  LabelId,
-  {
-    scalingFactor?: { xScale: number; yScale: number };
-  }
-> = {};
-
-/**
- * Get scaling parameters from pointcloud bound range.
- *
- * Cache results of this function because it is called for every label in a sample.
- */
-const getScalingFactorForLabel = ({
-  labelId,
-  normal,
-  width,
-  height,
-  xmin,
-  xmax,
-  ymin,
-  ymax,
-  zmin,
-  zmax,
-}: {
-  labelId: LabelId;
-  normal: [number, number, number];
-  width: number;
-  height: number;
-  xmin: number;
-  xmax: number;
-  ymin: number;
-  ymax: number;
-  zmin: number;
-  zmax: number;
-}) => {
-  if (scalingFactorCache[labelId]?.scalingFactor) {
-    return scalingFactorCache[labelId].scalingFactor;
-  }
-
-  if (!scalingFactorCache[labelId]) {
-    scalingFactorCache[labelId] = {};
-  }
-
-  const [nx, ny, nz] = normal;
-
-  let projectionPlane1Normalizer = 0;
-  let projectionPlane2Normalizer = 0;
-
-  if (nx === 1 || nx === -1) {
-    // project on yz plane
-    projectionPlane1Normalizer = xmax - xmin;
-    projectionPlane2Normalizer = ymax - ymin;
-  } else if (ny === 1 || ny === -1) {
-    // project on xz plane
-    projectionPlane1Normalizer = ymax - ymin;
-    projectionPlane2Normalizer = zmax - zmin;
-  } else if (nz === 1 || nz === -1) {
-    // project on xy plane
-    projectionPlane1Normalizer = xmax - xmin;
-    projectionPlane2Normalizer = ymax - ymin;
-  }
-
-  scalingFactorCache[labelId].scalingFactor = {
-    xScale: width / projectionPlane1Normalizer,
-    yScale: height / projectionPlane2Normalizer,
-  };
-
-  return scalingFactorCache[labelId].scalingFactor;
-};
 
 // cache between sample id and inferred projection params
 const inferredParamsCache: Record<

@@ -240,7 +240,7 @@ export default class DetectionOverlay<
 
     ctx.beginPath();
 
-    // draw a polyline that defines the convex hull of the projected corners
+    // draw a polyline that defines the convex hull of the projected corners and fill it
     ctx.moveTo(...t(state, convexHull[0][0], convexHull[0][1]));
     for (let i = 1; i < convexHull.length; i++) {
       ctx.lineTo(...t(state, convexHull[i][0], convexHull[i][1]));
