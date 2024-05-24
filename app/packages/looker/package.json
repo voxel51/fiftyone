@@ -26,6 +26,7 @@
         "lodash": "^4.17.21",
         "lru-cache": "^6.0.0",
         "mime": "^2.5.2",
+        "monotone-convex-hull-2d": "^1.0.1",
         "uuid": "^8.3.2"
     },
     "devDependencies": {

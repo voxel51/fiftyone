@@ -1,7 +1,12 @@
 import { DETECTIONS, getCls, Schema } from "@fiftyone/utilities";
+import ch from "monotone-convex-hull-2d";
 import { POINTCLOUD_OVERLAY_PADDING } from "../constants";
 import { DetectionLabel } from "../overlays/detection";
 import { OrthogrpahicProjectionMetadata, Sample } from "../state";
+import {
+  BoundingBox3D,
+  getProjectedCorners,
+} from "./label-3d-projection-utils";
 import { mapId } from "./shared";
 
 type DetectionsLabel = {
@@ -10,46 +15,7 @@ type DetectionsLabel = {
 
 type ThreeDLabel = DetectionsLabel | DetectionLabel;
 
-type LabelId = string;
-
 const COLLECTION_TYPES = new Set(["Detections"]);
-
-const scalingFactorCache: Record<
-  LabelId,
-  {
-    scalingFactor?: { xScale: number; yScale: number };
-  }
-> = {};
-
-/**
- * Get scaling parameters from pointcloud bound range.
- *
- * Cache results of this function because it is called for every label in a sample.
- */
-const getScalingFactorForLabel = (
-  labelId: LabelId,
-  width: number,
-  height: number,
-  xmin: number,
-  xmax: number,
-  ymin: number,
-  ymax: number
-) => {
-  if (scalingFactorCache[labelId]?.scalingFactor) {
-    return scalingFactorCache[labelId].scalingFactor;
-  }
-
-  if (!scalingFactorCache[labelId]) {
-    scalingFactorCache[labelId] = {};
-  }
-
-  scalingFactorCache[labelId].scalingFactor = {
-    xScale: width / (xmax - xmin),
-    yScale: height / (ymax - ymin),
-  };
-
-  return scalingFactorCache[labelId].scalingFactor;
-};
 
 // cache between sample id and inferred projection params
 const inferredParamsCache: Record<
@@ -103,6 +69,7 @@ const getInferredParamsForUndefinedProjection = (
   inferredParamsCache[sample.id] = {
     width: minX === Infinity ? 512 : maxX - minX + POINTCLOUD_OVERLAY_PADDING,
     height: minY === Infinity ? 512 : maxY - minY + POINTCLOUD_OVERLAY_PADDING,
+    normal: [0, 0, 1],
     min_bound: [
       minX === Infinity
         ? -POINTCLOUD_OVERLAY_PADDING
@@ -110,6 +77,7 @@ const getInferredParamsForUndefinedProjection = (
       minY === Infinity
         ? -POINTCLOUD_OVERLAY_PADDING
         : minY - POINTCLOUD_OVERLAY_PADDING,
+      0,
     ],
     max_bound: [
       maxX === Infinity
@@ -118,6 +86,7 @@ const getInferredParamsForUndefinedProjection = (
       maxY === Infinity
         ? POINTCLOUD_OVERLAY_PADDING
         : maxY + POINTCLOUD_OVERLAY_PADDING,
+      0,
     ],
   } as OrthogrpahicProjectionMetadata;
 
@@ -139,35 +108,67 @@ const PainterFactory3D = (
    * Impute bounding box parameters.
    */
   Detection: (label: DetectionLabel) => {
-    const {
-      width: canvasWidth,
-      height: canvasHeight,
-      min_bound,
-      max_bound,
-    } = orthographicProjectionParams;
-    const [xmin, ymin] = min_bound;
-    const [xmax, ymax] = max_bound;
+    const { min_bound, max_bound, normal } = orthographicProjectionParams;
+    const [xmin, ymin, zmin] = min_bound;
+    const [xmax, ymax, zmax] = max_bound;
 
-    const [x, y, z] = label.location; // centroid of bounding box
-    const [lx, ly, lz] = label.dimensions; // length of bounding box in each dimension
+    const [lx, ly, lz] = label.location; // centroid of bounding box
+    const [dx, dy, dz] = label.dimensions; // length of bounding box in each dimension
+    const [rx, ry, rz] = label.rotation ?? [0, 0, 0]; // rotation of bounding box
 
-    const { xScale, yScale } = getScalingFactorForLabel(
-      label._id,
-      canvasWidth,
-      canvasHeight,
-      xmin,
-      xmax,
-      ymin,
-      ymax
-    );
+    const [nx, ny, nz] = normal ?? [0, 0, 1];
 
-    const tlx = (xScale * (x - lx / 2 - xmin)) / canvasWidth; // top left x, normalized to [0, 1]
-    const tly = (yScale * (-y - ly / 2 + ymax)) / canvasHeight; // top left y, normalized to [0, 1]
+    const box: BoundingBox3D = {
+      dimensions: [dx, dy, dz],
+      location: [lx, ly, lz],
+      rotation: [rx, ry, rz],
+    };
 
-    const boxWidth = (lx * xScale) / canvasWidth; // width of projected bounding box, normalized to [0, 1]
-    const boxHeight = (ly * yScale) / canvasHeight; // height of projected bounding box, normalized to [0, 1]
+    let projectionPlane: "xy" | "xz" | "yz" = "xy";
 
-    label.bounding_box = [tlx, tly, boxWidth, boxHeight];
+    if (nx === 1 || nx === -1) {
+      // project on yz plane
+      projectionPlane = "yz";
+    } else if (ny === 1 || ny === -1) {
+      // project on xz plane
+      projectionPlane = "xz";
+    } else if (nz === 1 || nz === -1) {
+      // project on xy plane
+      projectionPlane = "xy";
+    }
+
+    const { projectedCorners } = getProjectedCorners(box, projectionPlane);
+
+    const xRange = xmax - xmin;
+    const yRange = ymax - ymin;
+    const zRange = zmax - zmin;
+
+    const newProjectedCorners = projectedCorners.map(([x, y]) => {
+      let px, py;
+
+      // todo: need to account for negative / positive normals
+      switch (projectionPlane) {
+        case "xy":
+          px = (x - xmin) / xRange;
+          py = (ymax - y) / yRange;
+          break;
+        case "xz":
+          px = (x - xmin) / xRange;
+          py = (zmax - y) / zRange;
+          break;
+        case "yz":
+          px = (y - ymin) / yRange;
+          py = (zmax - x) / zRange;
+          break;
+      }
+      return [px, py];
+    });
+
+    const convexHullIndices = ch(newProjectedCorners);
+
+    const convexHull = convexHullIndices.map((i) => newProjectedCorners[i]);
+
+    label.convexHull = convexHull;
   },
 });
 
