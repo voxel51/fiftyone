@@ -23,6 +23,16 @@ const inferredParamsCache: Record<
   OrthogrpahicProjectionMetadata
 > = {};
 
+const remap = (
+  value: number,
+  fromLow: number,
+  fromHigh: number,
+  toLow: number,
+  toHigh: number
+) => {
+  return toLow + ((value - fromLow) * (toHigh - toLow)) / (fromHigh - fromLow);
+};
+
 /**
  * Use label attributes to infer width, height, and bounds.
  */
@@ -108,7 +118,8 @@ const PainterFactory3D = (
    * Impute bounding box parameters.
    */
   Detection: (label: DetectionLabel) => {
-    const { min_bound, max_bound, normal } = orthographicProjectionParams;
+    const { min_bound, max_bound, normal, height, width } =
+      orthographicProjectionParams;
     const [xmin, ymin, zmin] = min_bound;
     const [xmax, ymax, zmax] = max_bound;
 
@@ -136,38 +147,32 @@ const PainterFactory3D = (
       // project on xy plane
       projectionPlane = "xy";
     }
-
     const { projectedCorners } = getProjectedCorners(box, projectionPlane);
-
-    const xRange = xmax - xmin;
-    const yRange = ymax - ymin;
-    const zRange = zmax - zmin;
 
     const newProjectedCorners = projectedCorners.map(([x, y]) => {
       let px, py;
 
-      // todo: need to account for negative / positive normals
+      // adjust normalization for different projection planes
       switch (projectionPlane) {
         case "xy":
-          px = (x - xmin) / xRange;
-          py = (ymax - y) / yRange;
+          px = remap(x, xmin, xmax, 0, 1);
+          py = remap(y, ymin, ymax, 1, 0); // is this right?
           break;
         case "xz":
-          px = (x - xmin) / xRange;
-          py = (zmax - y) / zRange;
+          px = remap(x, xmin, xmax, 0, 1);
+          py = remap(y, ymin, ymax, 1, 0);
           break;
         case "yz":
-          px = (y - ymin) / yRange;
-          py = (zmax - x) / zRange;
+          px = remap(x, ymin, ymax, 1, 0);
+          py = remap(y, xmin, xmax, 1, 0); // is this right?
           break;
       }
+
       return [px, py];
     });
 
     const convexHullIndices = ch(newProjectedCorners);
-
     const convexHull = convexHullIndices.map((i) => newProjectedCorners[i]);
-
     label.convexHull = convexHull;
   },
 });
