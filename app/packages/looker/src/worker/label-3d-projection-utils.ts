@@ -1,3 +1,5 @@
+import { Euler, Vector3 } from "three";
+
 export type Vec3 = [number, number, number];
 export type Vec2 = [number, number];
 
@@ -15,32 +17,10 @@ export interface BoundingBox2D {
 }
 
 export const rotatePoint = (point: Vec3, rotation: Vec3): Vec3 => {
-  // https://en.wikipedia.org/wiki/Rotation_matrix
+  const threePoint = new Vector3(...point);
+  const threeRotation = new Euler(...rotation);
 
-  const [x, y, z] = point;
-  const [rx, ry, rz] = rotation;
-
-  const cosX = Math.cos(rx);
-  const sinX = Math.sin(rx);
-  const cosY = Math.cos(ry);
-  const sinY = Math.sin(ry);
-  const cosZ = Math.cos(rz);
-  const sinZ = Math.sin(rz);
-
-  // rotation around X axis
-  const y1 = cosX * y - sinX * z;
-  const z1 = sinX * y + cosX * z;
-
-  // rotation around Y axis
-  const x2 = cosY * x + sinY * z1;
-  const z2 = cosY * z1 - sinY * x;
-
-  // rotation around Z axis
-  const xRotated = cosZ * x2 - sinZ * y1;
-  const yRotated = sinZ * x2 + cosZ * y1;
-  const zRotated = z2;
-
-  return [xRotated, yRotated, zRotated];
+  return threePoint.applyEuler(threeRotation).toArray() as Vec3;
 };
 
 export const projectTo2D = (point: Vec3, plane: "xz" | "xy" | "yz"): Vec2 => {
