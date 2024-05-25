@@ -78,6 +78,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Quickstart Groups <dataset-zoo-quickstart-groups>`           | image, point-cloud, quickstart                                            |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Quickstart 3D <dataset-zoo-quickstart-3d>`                   | 3d, point-cloud, mesh, quickstart                                         |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Sama-COCO <dataset-zoo-sama-coco>`                           | image, detection, segmentation                                            |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`UCF101 <dataset-zoo-ucf101>`                                 | video, action-recognition                                                 |
@@ -3467,7 +3469,7 @@ Objects have been rescaled and recentered from the original dataset.
 **Details**
 
 -   Dataset name: ``quickstart-3d``
--   Dataset size: 223.40 MB
+-   Dataset size: 542.50 MB
 -   Tags: ``3d, point-cloud, mesh, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3497,8 +3499,8 @@ Objects have been rescaled and recentered from the original dataset.
 
         fiftyone app launch quickstart-3d
 
-.. image:: /images/dataset_zoo/quickstart.png
-   :alt: quickstart
+.. image:: /images/dataset_zoo/quickstart-3d.png
+   :alt: quickstart-3d
    :align: center
 
 .. _dataset-zoo-sama-coco:

@@ -5,8 +5,8 @@ Session class for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
-from dataclasses import asdict
 from functools import wraps
 
 try:
@@ -417,6 +417,7 @@ class Session(object):
             view_name=final_view_name,
             spaces=spaces,
             color_scheme=build_color_scheme(color_scheme, dataset, config),
+            group_slice=(dataset.group_slice if dataset else None),
         )
         self._client = fosc.Client(
             address=address,

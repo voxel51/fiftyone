@@ -3180,7 +3180,8 @@ class QuickstartGroupsDataset(FiftyOneDataset):
 
 
 class Quickstart3DDataset(FiftyOneDataset):
-    """A small 3D dataset with meshes, point clouds, and oriented bounding boxes.
+    """A small 3D dataset with meshes, point clouds, and oriented bounding
+    boxes.
 
     The dataset consists of 200 3D mesh samples from the test split of the
     `ModelNet40 <https://modelnet.cs.princeton.edu>`_ dataset, with point
@@ -3199,7 +3200,7 @@ class Quickstart3DDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        223.40 MB
+        542.50 MB
     """
 
     _GDRIVE_ID = "1EnQ2-gGDktEd8pAWwdXNK-FeHUFTFl5K"

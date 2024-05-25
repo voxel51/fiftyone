@@ -4606,18 +4606,44 @@ to generate orthographic projection images of each scene:
     import fiftyone.zoo as foz
 
     # Load an example 3D dataset
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
+    dataset = foz.load_zoo_dataset("quickstart-3d")
+
+    # The dataset already has orthographic projections populated, but let's
+    # recompute them to demonstrate the idea
+    fou3d.compute_orthographic_projection_images(
+        dataset,
+        (-1, 512),  # (width, height) of each image; -1 means aspect-preserving
+        bounds=((-50, -50, -50), (50, 50, 50)),
+        projection_normal=(0, -1, 0),
+        output_dir="/tmp/quickstart-3d-proj",
+        shading_mode="height",
     )
+
+    session = fo.launch_app(dataset)
+
+Note that the method also supports :ref:`grouped datasets <groups>` that
+contain 3D slice(s):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example group dataset that contains a 3D slice
+    dataset = foz.load_zoo_dataset("quickstart-groups")
 
     # Populate orthographic projections
     fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
 
+    dataset.group_slice = "pcd"
     session = fo.launch_app(dataset)
 
 .. note::
+
+    Orthographic projection images currently only include point clouds, not
+    meshes or 3D shapes.
 
     If a scene contains multiple :ref:`point clouds <3d-point-clouds>`, you can
     control which point cloud to project by initializing it with
@@ -4632,15 +4658,46 @@ Refer to the
 :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
 documentation for available parameters to customize the projections.
 
-.. _example-3d-dataset:
+.. _example-3d-datasets:
 
-Example 3D dataset
-------------------
+Example 3D datasets
+-------------------
 
 To get started exploring 3D datasets, try loading the
-:ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset from the zoo
-and :ref:`clone <saving-and-cloning-views>` the point cloud slice into a
-standalone dataset:
+:ref:`quickstart-3d <dataset-zoo-quickstart-3d>` dataset from the zoo:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-3d")
+    print(dataset)
+
+    print(dataset.count_values("ground_truth.label"))
+    # {'bottle': 5, 'stairs': 5, 'keyboard': 5, 'car': 5, ...}
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart-3d
+    Media type:  3d
+    Num samples: 200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:                               fiftyone.core.fields.ObjectIdField
+        filepath:                         fiftyone.core.fields.StringField
+        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+        bounding_box:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
+
+Also check out the :ref:`quickstart-groups <dataset-zoo-quickstart-groups>`
+dataset, which contains a point cloud slice:
 
 .. code:: python
     :linenos:
@@ -4649,11 +4706,7 @@ standalone dataset:
     import fiftyone.utils.utils3d as fou3d
     import fiftyone.zoo as foz
 
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
+    dataset = foz.load_zoo_dataset("quickstart-groups")
 
     # Populate orthographic projections
     fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
@@ -4664,6 +4717,7 @@ standalone dataset:
     print(dataset.count_values("ground_truth.detections.label"))
     # {'Pedestrian': 133, 'Car': 774, ...}
 
+    dataset.group_slice = "pcd"
     session = fo.launch_app(dataset)
 
 .. code-block:: text
