@@ -1012,7 +1012,7 @@ class Segmentation(_HasID, _HasMedia, Label):
     Args:
         mask (None): a numpy array with integer values encoding the semantic
             labels
-        mask_path (None): the path to the segmentation image on disk
+        mask_path (None): the absolute path to the segmentation image on disk
     """
 
     _MEDIA_FIELD = "mask_path"
