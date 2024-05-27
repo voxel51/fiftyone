@@ -126,6 +126,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
+    :header: Elasticsearch
+    :description: Use our Elasticsearch integration to enable vector search and query your FiftyOne datasets at scale.
+    :link: elasticsearch.html
+    :image: ../_static/images/integrations/elasticsearch.jpg
+    :tags: Brain,Embeddings,Vector-Search
+
+.. customcarditem::
     :header: Hugging Face
     :description: Use our Hugging Face Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
     :link: huggingface.html
@@ -205,6 +212,7 @@ on the cards below to see how!
     MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
+    Elasticsearch <elasticsearch.rst>
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
     Albumentations <albumentations.rst>

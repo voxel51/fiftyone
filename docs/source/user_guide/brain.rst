@@ -431,6 +431,7 @@ another supported backend:
 -   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
+-   **elasticsearch**: a :ref:`Elasticsearch backend <elasticsearch-integration>`
 
 .. code-block:: python
     :linenos:
