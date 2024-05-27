@@ -91,7 +91,7 @@ export const getCubeCorners = (box: BoundingBox3D) => {
 };
 
 export const getProjectionPlaneForNormal = (normal: Vec3): ProjectionPlane => {
-  const [nx, ny, nz] = normal;
+  const [nx, ny, nz] = normal ?? [0, 0, 1];
 
   if (nx === 1 || nx === -1) {
     // project on yz plane
