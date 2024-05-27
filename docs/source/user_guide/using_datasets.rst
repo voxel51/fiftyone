@@ -2697,8 +2697,9 @@ stored directly in the database via the
     :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
     for efficiency.
 
-    Note that you must provide the *absolute path* to the mask on disk in order
-    to use the dataset from a different current working directory in the future.
+    Note that :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>`
+    must contain the **absolute path** to the mask on disk in order to use the
+    dataset from different current working directories in the future.
 
 Segmentation masks can be stored in either of these formats:
 
@@ -2804,8 +2805,9 @@ image's extent when visualizing in the App.
     :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
     efficiency.
 
-    Note that you must provide the *absolute path* to the map on disk in order
-    to use the dataset from a different current working directory in the future.
+    Note that :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>`
+    must contain the **absolute path** to the map on disk in order to use the
+    dataset from different current working directories in the future.
 
 .. code-block:: python
     :linenos:
