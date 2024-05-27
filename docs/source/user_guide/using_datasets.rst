@@ -4673,28 +4673,11 @@ To get started exploring 3D datasets, try loading the
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-3d")
-    print(dataset)
 
     print(dataset.count_values("ground_truth.label"))
     # {'bottle': 5, 'stairs': 5, 'keyboard': 5, 'car': 5, ...}
 
     session = fo.launch_app(dataset)
-
-.. code-block:: text
-
-    Name:        quickstart-3d
-    Media type:  3d
-    Num samples: 200
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:                               fiftyone.core.fields.ObjectIdField
-        filepath:                         fiftyone.core.fields.StringField
-        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
-        bounding_box:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
 
 Also check out the :ref:`quickstart-groups <dataset-zoo-quickstart-groups>`
 dataset, which contains a point cloud slice:
@@ -4711,30 +4694,12 @@ dataset, which contains a point cloud slice:
     # Populate orthographic projections
     fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
 
-    print(dataset)
-
     print(dataset.count("ground_truth.detections"))  # 1100
     print(dataset.count_values("ground_truth.detections.label"))
     # {'Pedestrian': 133, 'Car': 774, ...}
 
     dataset.group_slice = "pcd"
     session = fo.launch_app(dataset)
-
-.. code-block:: text
-
-    Name:        2024.04.13.15.21.08
-    Media type:  3d
-    Num samples: 200
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:                               fiftyone.core.fields.ObjectIdField
-        filepath:                         fiftyone.core.fields.StringField
-        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:                            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
-        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
 
 .. _point-cloud-datasets:
 
