@@ -427,7 +427,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
         max_bound (None): the ``[xmax, ymax]`` of the image in the projection
             plane
         normal (None): the normal vector of the plane onto which the projection
-            was performed
+            was performed. If not specified, ``[0, 0, 1]`` is assumed
         width: the width of the image, in pixels
         height: the height of the image, in pixels
     """
@@ -437,7 +437,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     filepath = fof.StringField()
     min_bound = fof.ListField(fof.FloatField())
     max_bound = fof.ListField(fof.FloatField())
-    normal = fof.ListField(fof.FloatField())
+    normal = fof.ListField(fof.FloatField(), default=None)
     width = fof.IntField()
     height = fof.IntField()
 
@@ -604,8 +604,8 @@ def compute_orthographic_projection_images(
         padding (None): a relative padding(s) in ``[0, 1]]`` to apply to the
             field of view bounds prior to projection. Can either be a single
             value to apply in all directions or a ``[padx, pady, padz]``. For
-            example, pass ``padding=0.05`` with no ``bounds`` to project onto
-            a tight crop of each point cloud with 5% padding around it
+            example, pass ``padding=0.25`` with no ``bounds`` to project onto
+            a tight crop of each point cloud with 25% padding around it
         skip_failures (False): whether to gracefully continue without raising
             an error if a projection fails
         progress (None): whether to render a progress bar (True/False), use the
@@ -725,8 +725,8 @@ def compute_orthographic_projection_image(
         padding (None): a relative padding(s) in ``[0, 1]]`` to apply to the
             field of view bounds prior to projection. Can either be a single
             value to apply in all directions or a ``[padx, pady, padz]``. For
-            example, pass ``padding=0.05`` with no ``bounds`` to project onto
-            a tight crop of the point cloud with 5% padding around it
+            example, pass ``padding=0.25`` with no ``bounds`` to project onto
+            a tight crop of the point cloud with 25% padding around it
 
     Returns:
         a tuple of

@@ -4608,13 +4608,13 @@ to generate orthographic projection images of each scene:
     # Load an example 3D dataset
     dataset = foz.load_zoo_dataset("quickstart-3d")
 
-    # The dataset already has orthographic projections populated, but let's
+    # This dataset already has orthographic projections populated, but let's
     # recompute them to demonstrate the idea
     fou3d.compute_orthographic_projection_images(
         dataset,
         (-1, 512),  # (width, height) of each image; -1 means aspect-preserving
-        bounds=((-50, -50, -50), (50, 50, 50)),
         projection_normal=(0, -1, 0),
+        padding=0.25,
         output_dir="/tmp/quickstart-3d-proj",
         shading_mode="height",
     )
