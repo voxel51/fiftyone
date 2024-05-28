@@ -18,7 +18,10 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
-      - run: git pull origin ${{ inputs.ref_name || github.ref_name }} --no-rebase
+      - run: |
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+          git pull origin ${{ inputs.ref_name || github.ref_name }} --no-rebase
       - uses: peter-evans/create-pull-request@v6
         with:
           author: voxel51-bot <bot@voxel51.com>
