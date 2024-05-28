@@ -2602,6 +2602,7 @@ __metadata:
     lodash: ^4.17.21
     lru-cache: ^6.0.0
     mime: ^2.5.2
+    monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.0.2
@@ -14024,6 +14025,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"monotone-convex-hull-2d@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "monotone-convex-hull-2d@npm:1.0.1"
+  dependencies:
+    robust-orientation: ^1.1.3
+  checksum: 2d788534b29ab568387e2da43057e3fa9912fbac5e73a9e1bd78fae15951258c66d2e4655cdf2df4db7a944f1db619828030ba4824ac5fe794edefd8e8377440
+  languageName: node
+  linkType: hard
+
 "mouse-change@npm:^1.4.0":
   version: 1.4.0
   resolution: "mouse-change@npm:1.4.0"
@@ -16442,6 +16452,42 @@ __metadata:
   languageName: node
   linkType: hard
 
+"robust-orientation@npm:^1.1.3":
+  version: 1.2.1
+  resolution: "robust-orientation@npm:1.2.1"
+  dependencies:
+    robust-scale: ^1.0.2
+    robust-subtract: ^1.0.0
+    robust-sum: ^1.0.0
+    two-product: ^1.0.2
+  checksum: 83b87300009716d96cf17af27b2c787bb7cabe00e82b6740ff4777a601babfcf132b3ec3d10cb1a91886423aa51863026d3befd58058af3b90be98abbda0056e
+  languageName: node
+  linkType: hard
+
+"robust-scale@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "robust-scale@npm:1.0.2"
+  dependencies:
+    two-product: ^1.0.2
+    two-sum: ^1.0.0
+  checksum: 4217f15c94bc803c0c78f6011507102cb603a4e9f71721d44e155c17c1fbe989382c8a150d20e23ca51164077395dab698498b9650d2377cc0a69902d73d0a1c
+  languageName: node
+  linkType: hard
+
+"robust-subtract@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "robust-subtract@npm:1.0.0"
+  checksum: e9dcc39a1a802d4a34d338844d9382ad7e49f58c5d01ce0d66cd18d6477069475af11a80fba0c0e158211c2b272c1c05950e78cbfc29ea7005f4ecc9e9f9d492
+  languageName: node
+  linkType: hard
+
+"robust-sum@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "robust-sum@npm:1.0.0"
+  checksum: b9f32829ba3d6fd9cffeee440e1fb93a7d42f264540bd631abf13d0e8737f3a15a16a15764fa8a2fe86d3db6a1970361cf7ad2ed536c858b59e45f6f493a454b
+  languageName: node
+  linkType: hard
+
 "rollup-plugin-external-globals@npm:^0.6.1":
   version: 0.6.1
   resolution: "rollup-plugin-external-globals@npm:0.6.1"
@@ -18117,6 +18163,20 @@ __metadata:
   dependencies:
     zustand: ^4.3.2
   checksum: 9d5975d589db705e7707dcfd2bdb9f1773b014179a7e56a9cd5aaa1824ee28143efcfea30e826f3fccc0a9cb7a8631b4fd490a5849a20893e37e93e122bd9430
+  languageName: node
+  linkType: hard
+
+"two-product@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "two-product@npm:1.0.2"
+  checksum: b289814957df58b91c910c944e7e247aa01a0a70e8fafdf58f01baf7fa1f96c06dc1cbb6cdafb39525e9a5ac0a9566875f1a76a02ef1f736f26e56fca2f0c847
+  languageName: node
+  linkType: hard
+
+"two-sum@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "two-sum@npm:1.0.0"
+  checksum: 2c6a995b555233b989f473a5d039bd237d75f4824b9b54dc9d9ab28157f3e412b37156acbb48b322c817a26f3cc85e3da281c9aed4b06e892d2d27ae88db7d32
   languageName: node
   linkType: hard
 

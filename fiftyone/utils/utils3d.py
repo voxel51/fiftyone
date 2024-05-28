@@ -426,6 +426,8 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
             plane
         max_bound (None): the ``[xmax, ymax]`` of the image in the projection
             plane
+        normal (None): the normal vector of the plane onto which the projection
+            was performed. If not specified, ``[0, 0, 1]`` is assumed
         width: the width of the image, in pixels
         height: the height of the image, in pixels
     """
@@ -435,6 +437,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     filepath = fof.StringField()
     min_bound = fof.ListField(fof.FloatField())
     max_bound = fof.ListField(fof.FloatField())
+    normal = fof.ListField(fof.FloatField(), default=None)
     width = fof.IntField()
     height = fof.IntField()
 
@@ -532,6 +535,8 @@ def compute_orthographic_projection_images(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    padding=None,
+    overwrite=False,
     skip_failures=False,
     progress=None,
 ):
@@ -597,6 +602,12 @@ def compute_orthographic_projection_images(
             to generate each map. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        padding (None): a relative padding(s) in ``[0, 1]]`` to apply to the
+            field of view bounds prior to projection. Can either be a single
+            value to apply in all directions or a ``[padx, pady, padz]``. For
+            example, pass ``padding=0.25`` with no ``bounds`` to project onto
+            a tight crop of each point cloud with 25% padding around it
+        overwrite (False): whether to overwrite existing images
         skip_failures (False): whether to gracefully continue without raising
             an error if a projection fails
         progress (None): whether to render a progress bar (True/False), use the
@@ -622,7 +633,7 @@ def compute_orthographic_projection_images(
         out_samples = []
 
     filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir
+        output_dir=output_dir, rel_dir=rel_dir, ignore_existing=overwrite
     )
 
     for sample in view.iter_samples(autosave=True, progress=progress):
@@ -644,6 +655,7 @@ def compute_orthographic_projection_images(
                 subsampling_rate=subsampling_rate,
                 projection_normal=projection_normal,
                 bounds=bounds,
+                padding=padding,
             )
         except Exception as e:
             if not skip_failures:
@@ -677,6 +689,7 @@ def compute_orthographic_projection_image(
     subsampling_rate=None,
     projection_normal=None,
     bounds=None,
+    padding=None,
 ):
     """Generates an orthographic projection image for the given PCD file onto
     the specified plane (default xy plane).
@@ -711,6 +724,11 @@ def compute_orthographic_projection_image(
             the projected plane. Either element of the tuple or any/all of its
             values can be None, in which case a tight crop of the point cloud
             along the missing dimension(s) are used
+        padding (None): a relative padding(s) in ``[0, 1]]`` to apply to the
+            field of view bounds prior to projection. Can either be a single
+            value to apply in all directions or a ``[padx, pady, padz]``. For
+            example, pass ``padding=0.25`` with no ``bounds`` to project onto
+            a tight crop of the point cloud with 25% padding around it
 
     Returns:
         a tuple of
@@ -728,6 +746,7 @@ def compute_orthographic_projection_image(
         filepath,
         size=size,
         bounds=bounds,
+        padding=padding,
         projection_normal=projection_normal,
         subsampling_rate=subsampling_rate,
     )
@@ -825,6 +844,7 @@ def _parse_point_cloud(
     filepath,
     size=None,
     bounds=None,
+    padding=None,
     projection_normal=None,
     subsampling_rate=None,
 ):
@@ -857,6 +877,9 @@ def _parse_point_cloud(
             ].as_matrix()
         pc = pc.rotate(R, center=[0, 0, 0])
 
+    if projection_normal is None:
+        projection_normal = [0, 0, 1]
+
     if bounds is None:
         min_bound, max_bound = None, None
     else:
@@ -870,19 +893,24 @@ def _parse_point_cloud(
         _max_bound = pc.get_max_bound()
         max_bound = _fill_none(max_bound, _max_bound)
 
+    min_bound = np.asarray(min_bound, dtype=float)
+    max_bound = np.asarray(max_bound, dtype=float)
+
+    if padding is not None:
+        pad = 0.5 * np.asarray(padding) * (max_bound - min_bound)
+        min_bound -= pad
+        max_bound += pad
+
     # Ensure bbox will not have 0 volume by adding a small value if max_bound
-    #   and min_bound are close to each other
-    delta = np.isclose(
-        np.asarray(max_bound) - np.asarray(min_bound), 0
-    ) * np.repeat(0.000001, 3)
-    max_bound += delta
+    # and min_bound are close to each other
+    max_bound += 1e-6 * np.isclose(max_bound - min_bound, 0)
 
     bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=min_bound, max_bound=max_bound
     )
 
-    # crop bounds and translate so that min bound is at the origin
-    pc = pc.crop(bbox).translate((-min_bound[0], -min_bound[1], -min_bound[2]))
+    # Crop bounds and translate so that min bound is at the origin
+    pc = pc.crop(bbox).translate(-min_bound)
 
     if subsampling_rate is not None and subsampling_rate > 0:
         pc = pc.uniform_down_sample(subsampling_rate)
@@ -896,8 +924,9 @@ def _parse_point_cloud(
         width, height = None, None
 
     metadata = OrthographicProjectionMetadata(
-        min_bound=min_bound,
-        max_bound=max_bound,
+        min_bound=list(min_bound),
+        max_bound=list(max_bound),
+        normal=list(projection_normal),
         width=width,
         height=height,
     )

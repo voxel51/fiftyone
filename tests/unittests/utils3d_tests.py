@@ -285,6 +285,7 @@ class DataModelTests(unittest.TestCase):
         metadata.filepath = "test_path"
         metadata.min_bound = (1, 2, 3)
         metadata.max_bound = (4, 5, 6)
+        metadata.normal = (0, 0, 1)
         metadata.width = 100
         metadata.height = 100
 
@@ -304,6 +305,7 @@ class DataModelTests(unittest.TestCase):
         # tuples after deserialized are converted into np arrays
         self.assertTrue(np.array_equal(field["min_bound"], (1, 2, 3)))
         self.assertTrue(np.array_equal(field["max_bound"], (4, 5, 6)))
+        self.assertTrue(np.array_equal(field["normal"], (0, 0, 1)))
         self.assertEqual(field["width"], 100)
         self.assertEqual(field["height"], 100)
 
