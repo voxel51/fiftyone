@@ -281,3 +281,15 @@ on your team's deployment.
 
    Any member who creates a dataset (including cloning an existing dataset or
    view) will be granted **Can manage** permissions on the new dataset.
+
+.. _teams-roles-page:
+
+Roles page
+__________
+
+Admins can review the actions and permissions available to each user role by
+navigating to the "Settings > Security > Roles" page:
+
+.. image:: /images/teams/admin_roles_page.png
+   :alt: admin-roles-page
+   :align: center

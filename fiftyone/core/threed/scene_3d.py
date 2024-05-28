@@ -114,6 +114,29 @@ class SceneBackground(BaseValidatedDataClass):
 class Scene(Object3D):
     """Represents a scene graph which contains a hierarchy of 3D objects.
 
+    Example usage::
+
+        import fiftyone as fo
+
+        scene = fo.Scene()
+
+        obj_mesh = fo.ObjMesh(
+            "obj_mesh_name", "/path/to/mesh.obj", mtl_path="/path/to/mesh.mtl"
+        )
+        gltf_mesh = fo.GltfMesh("gltf_mesh_name", "/path/to/mesh.gltf")
+        pcd = fo.PointCloud("pcd_name", "/path/to/points.pcd")
+
+        scene.add(obj_mesh)
+        scene.add(gltf_mesh)
+        scene.add(pcd)
+
+        scene.write("/path/to/scene.fo3d")
+
+        sample = fo.Sample("/path/to/scene.fo3d")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
     Args:
         camera (None): the default camera of the scene. If ``None``, a default
             :class:`fiftyone.core.threed.PerspectiveCamera` is created with
@@ -123,27 +146,6 @@ class Scene(Object3D):
             directional lights placed at different angles around the scene
         background (None): the background for the scene. May be a color, image,
             or a skybox
-
-    Usage::
-
-            scene = Scene()
-
-            obj_mesh = ObjMesh(
-                "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
-            )
-            gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
-            pcd = PointCloud("pcd_name", "/path/to/pcd")
-
-            scene.add(obj_mesh)
-            scene.add(gltf_mesh)
-            scene.add(pcd)
-
-            scene.write("/path/to/scene.fo3d")
-
-            dataset = fo.Dataset()
-            dataset.add_sample(fo.Sample("/path/to/scene.fo3d"))
-
-            assert dataset.media_type == "3d"
     """
 
     def __init__(
@@ -162,7 +164,6 @@ class Scene(Object3D):
         self.background = background
 
     def __repr__(self):
-        """Return a string representation of the scene."""
         nodes_summary = self.get_scene_summary()
         repr_str = "fo3d scene with "
         asset_detected = False
@@ -250,9 +251,8 @@ class Scene(Object3D):
         Args:
             include_self: whether to include the current node in the traversal
 
-        Yields:
-            :class:`Object3D`
-
+        Returns:
+            a generator that yields :class:`Object3D` instances
         """
         if include_self:
             yield self
@@ -314,8 +314,12 @@ class Scene(Object3D):
         }
 
     def get_asset_paths(self):
-        """Collect all asset paths in the scene. Asset paths aren't resolved to
-        absolute paths.
+        """Returns a list of all asset paths in the scene.
+
+        Note that any relative asset paths are not resolved to absolute paths.
+
+        Returns:
+            a list of asset paths
         """
         asset_paths = list(
             itertools.chain.from_iterable(
@@ -380,7 +384,14 @@ class Scene(Object3D):
 
     @staticmethod
     def from_fo3d(path: str):
-        """Load a scene from a ``.fo3d`` file."""
+        """Loads a scene from an FO3D file.
+
+        Args:
+            path: the path to an ``.fo3d`` file
+
+        Returns:
+            a :class:`Scene`
+        """
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
 
