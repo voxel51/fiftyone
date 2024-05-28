@@ -3200,7 +3200,7 @@ class Quickstart3DDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        542.50 MB
+        215.7 MB
     """
 
     _GDRIVE_ID = "1EnQ2-gGDktEd8pAWwdXNK-FeHUFTFl5K"
