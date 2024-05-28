@@ -139,7 +139,7 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 
 
 def get_version():
