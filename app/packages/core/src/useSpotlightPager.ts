@@ -35,6 +35,9 @@ const processSamplePageData = (
   });
 };
 
+export type Sample =
+  fos.ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"];
+
 const useFlashlightPager = (
   pageSelector: RecoilValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
@@ -45,7 +48,7 @@ const useFlashlightPager = (
   const page = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector || defaultZoom);
   const handleError = useErrorHandler();
-  const store = useMemo(() => new WeakMap<symbol, object>(), []);
+  const store = useMemo(() => new WeakMap<symbol, Sample>(), []);
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -55,7 +58,7 @@ const useFlashlightPager = (
       const variables = page(pageNumber, PAGE_SIZE);
       const zoomValue = await zoom();
 
-      return new Promise<Response<number, object>>((resolve) => {
+      return new Promise<Response<number, Sample>>((resolve) => {
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
           foq.paginateSamples,
@@ -80,7 +83,7 @@ const useFlashlightPager = (
     };
   }, [environment, handleError, page, schema, store, zoom]);
 
-  const ref = useRef<SpotlightConfig<number, object>["get"]>(pager);
+  const ref = useRef<SpotlightConfig<number, Sample>["get"]>(pager);
   ref.current = pager;
 
   return { page: ref, store };

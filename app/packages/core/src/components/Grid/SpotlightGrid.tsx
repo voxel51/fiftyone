@@ -1,4 +1,4 @@
-import Flashlight, { PageChange } from "@fiftyone/spotlight";
+import Spotlight, { PageChange } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { Lookers } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
@@ -13,7 +13,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
-import useSpotlightPager from "../../useSpotlightPager";
+import useSpotlightPager, { Sample } from "../../useSpotlightPager";
 import { pixels, spotlightLooker } from "./SpotlightGrid.module.css";
 import { pageParameters, rowAspectRatioThreshold } from "./recoil";
 
@@ -75,10 +75,10 @@ function Grid() {
   const setPage = useSetRecoilState(sessionPage);
   useEffect(() => {
     if (showPixels) {
-      return;
+      return null;
     }
 
-    const spotlight = new Flashlight<number, object>({
+    const spotlight = new Spotlight<number, Sample>({
       key: getPage(),
       rowAspectRatioThreshold: threshold,
       get: (next) => page.current(next),
@@ -132,7 +132,11 @@ function Grid() {
   ]);
 
   return (
-    <div id={id} className={spotlightLooker + " " + pixels} data-cy="fo-grid" />
+    <div
+      id={id}
+      className={`${spotlightLooker} + ${pixels}`}
+      data-cy="fo-grid"
+    />
   );
 }
 const Bar = ({ height }) => {
