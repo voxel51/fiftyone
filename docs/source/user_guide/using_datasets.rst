@@ -430,6 +430,17 @@ default:
 
     session.refresh()
 
+You can set ``media_fallback=True`` if you want the App to fallback to the
+``filepath`` field if an alternate media field is missing for a particular
+sample in the grid and/or modal:
+
+.. code-block:: python
+    :linenos:
+
+    # Fallback to `filepath` if an alternate media field is missing
+    dataset.app_config.media_fallback = True
+    dataset.save()
+
 .. _dataset-app-config-color-scheme:
 
 Custom color scheme
