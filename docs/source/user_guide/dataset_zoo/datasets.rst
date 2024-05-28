@@ -3469,7 +3469,7 @@ Objects have been rescaled and recentered from the original dataset.
 **Details**
 
 -   Dataset name: ``quickstart-3d``
--   Dataset size: 542.50 MB
+-   Dataset size: 215.7 MB
 -   Tags: ``3d, point-cloud, mesh, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:

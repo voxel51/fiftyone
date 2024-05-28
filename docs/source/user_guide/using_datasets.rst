@@ -59,6 +59,67 @@ have a bad time:
     dataset4 = fo.load_dataset("my_fourth_dataset")
     # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
+.. _dataset-media-type:
+
+Dataset media type
+------------------
+
+The media type of a dataset is determined by the
+:ref:`media type <using-media-type>` of the |Sample| objects that it contains.
+
+The :meth:`media_type <fiftyone.core.dataset.Dataset.media_type>` property of a
+dataset is set based on the first sample added to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    print(dataset.media_type)
+    # None
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)
+    # "image"
+
+Note that datasets are homogeneous; they must contain samples of the same media
+type (except for :ref:`grouped datasets <groups>`):
+
+.. code-block:: python
+    :linenos:
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+    dataset.add_sample(sample)
+    # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
+
+The following media types are available:
+
+.. table::
+    :widths: 25, 75
+
+    +---------------+---------------------------------------------------+
+    | Media type    | Description                                       |
+    +===============+===================================================+
+    | `image`       | Datasets that contain                             |
+    |               | :ref:`images <image-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `video`       | Datasets that contain                             |
+    |               | :ref:`videos <video-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `3d`          | Datasets that contain                             |
+    |               | :ref:`3D scenes <3d-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `point-cloud` | Datasets that contain                             |
+    |               | :ref:`point clouds <point-cloud-datasets>`        |
+    +---------------+---------------------------------------------------+
+    | `group`       | Datasets that contain                             |
+    |               | :ref:`grouped data slices <groups>`               |
+    +---------------+---------------------------------------------------+
+
 .. _dataset-persistence:
 
 Dataset persistence
@@ -107,50 +168,6 @@ shell and run the command again:
 
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
-
-.. _dataset-media-type:
-
-Dataset media type
-------------------
-
-The media type of a dataset is determined by the
-:ref:`media type <using-media-type>` of the |Sample| objects that it contains.
-
-The :meth:`media_type <fiftyone.core.dataset.Dataset.media_type>` property of a
-dataset is set based on the first sample added to it:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset()
-
-    print(dataset.media_type)
-    # None
-
-    dataset.add_sample(fo.Sample(filepath="/path/to/image.png"))
-
-    print(dataset.media_type)
-    # "image"
-
-Datasets are homogeneous; they must contain samples of the same media type
-(except for :ref:`grouped datasets <groups>`):
-
-.. code-block:: python
-    :linenos:
-
-    dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
-    # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
-
-The following media types are possible:
-
--   `image`: if the dataset contains images
--   `video`: if the dataset contains :ref:`videos <video-datasets>`
--   `3d`: if the dataset contains :ref:`3D scenes <3d-datasets>`
--   `point-cloud`: if the dataset contains
-    :ref:`point clouds <point-cloud-datasets>`
--   `group`: if the dataset contains :ref:`grouped data slices <groups>`
 
 .. _dataset-version:
 
@@ -2697,6 +2714,10 @@ stored directly in the database via the
     :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
     for efficiency.
 
+    Note that :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>`
+    must contain the **absolute path** to the mask on disk in order to use the
+    dataset from different current working directories in the future.
+
 Segmentation masks can be stored in either of these formats:
 
 -   2D 8-bit or 16-bit images or numpy arrays
@@ -2800,6 +2821,10 @@ image's extent when visualizing in the App.
     It is recommended to store heatmaps on disk and reference them via the
     :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
     efficiency.
+
+    Note that :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>`
+    must contain the **absolute path** to the map on disk in order to use the
+    dataset from different current working directories in the future.
 
 .. code-block:: python
     :linenos:
@@ -4092,6 +4117,63 @@ future sessions and manipulated as usual:
         }>,
     }>
 
+.. _image-datasets:
+
+Image datasets
+______________
+
+Any |Sample| whose `filepath` is a file with MIME type  `image/*` is recognized
+as a image sample, and datasets composed of image samples have media type
+`image`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # image
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6655ca275e20e244f2c8fe31',
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+    }>
+
+Example image dataset
+---------------------
+
+To get started exploring image datasets, try loading the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the zoo:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.count("ground_truth.detections"))  # 1232
+    print(dataset.count("predictions.detections"))  # 5620
+    print(dataset.count_values("ground_truth.detections.label"))
+    # {'dog': 15, 'airplane': 24, 'dining table': 15, 'hot dog': 5, ...}
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/quickstart.gif
+   :alt: quickstart
+   :align: center
+
 .. _video-datasets:
 
 Video datasets
@@ -4300,7 +4382,7 @@ Example video dataset
 ---------------------
 
 To get started exploring video datasets, try loading the
-:ref:`quickstart-video <dataset-zoo-quickstart-video>` dataset from the zoo:
+:ref:`quickstart-video dataset <dataset-zoo-quickstart-video>` from the zoo:
 
 .. code:: python
     :linenos:
@@ -4310,8 +4392,6 @@ To get started exploring video datasets, try loading the
 
     dataset = foz.load_zoo_dataset("quickstart-video")
 
-    print(dataset)
-
     print(dataset.count("frames"))  # 1279
     print(dataset.count("frames.detections.detections"))  # 11345
     print(dataset.count_values("frames.detections.detections.label"))
@@ -4319,22 +4399,9 @@ To get started exploring video datasets, try loading the
 
     session = fo.launch_app(dataset)
 
-.. code-block:: text
-
-    Name:        quickstart-video
-    Media type:  video
-    Num samples: 10
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
-    Frame fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        frame_number: fiftyone.core.fields.FrameNumberField
-        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+.. image:: /images/datasets/quickstart-video.gif
+   :alt: quickstart-video
+   :align: center
 
 .. _3d-datasets:
 
@@ -4393,6 +4460,23 @@ serializes the scene into an FO3D file.
     dataset.add_sample(sample)
 
     print(dataset.media_type)  # 3d
+
+To modify an exising scene, load it via
+:meth:`Scene.from_fo3d() <fiftyone.core.threed.Scene.from_fo3d>`, perform any
+necessary updates, and then re-write it to disk:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene.from_fo3d("/path/to/scene.fo3d")
+
+    for node in scene.traverse():
+        if isinstance(node, fo.SphereGeometry):
+            node.visible = False
+
+    scene.write("/path/to/scene.fo3d")
 
 .. _3d-meshes:
 
@@ -4608,7 +4692,7 @@ to generate orthographic projection images of each scene:
     # Load an example 3D dataset
     dataset = foz.load_zoo_dataset("quickstart-3d")
 
-    # The dataset already has orthographic projections populated, but let's
+    # This dataset already has orthographic projections populated, but let's
     # recompute them to demonstrate the idea
     fou3d.compute_orthographic_projection_images(
         dataset,
@@ -4664,7 +4748,7 @@ Example 3D datasets
 -------------------
 
 To get started exploring 3D datasets, try loading the
-:ref:`quickstart-3d <dataset-zoo-quickstart-3d>` dataset from the zoo:
+:ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` from the zoo:
 
 .. code:: python
     :linenos:
@@ -4673,31 +4757,19 @@ To get started exploring 3D datasets, try loading the
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-3d")
-    print(dataset)
 
     print(dataset.count_values("ground_truth.label"))
     # {'bottle': 5, 'stairs': 5, 'keyboard': 5, 'car': 5, ...}
 
     session = fo.launch_app(dataset)
 
-.. code-block:: text
+.. image:: /images/datasets/quickstart-3d.gif
+   :alt: quickstart-3d
+   :align: center
 
-    Name:        quickstart-3d
-    Media type:  3d
-    Num samples: 200
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:                               fiftyone.core.fields.ObjectIdField
-        filepath:                         fiftyone.core.fields.StringField
-        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
-        bounding_box:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
-
-Also check out the :ref:`quickstart-groups <dataset-zoo-quickstart-groups>`
-dataset, which contains a point cloud slice:
+Also check out the
+:ref:`quickstart-groups dataset <dataset-zoo-quickstart-groups>`, which
+contains a point cloud slice:
 
 .. code:: python
     :linenos:
@@ -4711,8 +4783,6 @@ dataset, which contains a point cloud slice:
     # Populate orthographic projections
     fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
 
-    print(dataset)
-
     print(dataset.count("ground_truth.detections"))  # 1100
     print(dataset.count_values("ground_truth.detections.label"))
     # {'Pedestrian': 133, 'Car': 774, ...}
@@ -4720,21 +4790,9 @@ dataset, which contains a point cloud slice:
     dataset.group_slice = "pcd"
     session = fo.launch_app(dataset)
 
-.. code-block:: text
-
-    Name:        2024.04.13.15.21.08
-    Media type:  3d
-    Num samples: 200
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:                               fiftyone.core.fields.ObjectIdField
-        filepath:                         fiftyone.core.fields.StringField
-        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:                            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
-        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
+.. image:: /images/datasets/quickstart-groups.gif
+   :alt: quickstart-groups
+   :align: center
 
 .. _point-cloud-datasets:
 
