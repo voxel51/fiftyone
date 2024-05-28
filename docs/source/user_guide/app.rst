@@ -53,6 +53,10 @@ with the App!
 
     session = fo.launch_app()
 
+.. image:: /images/app/app-empty.png
+   :alt: app-empty
+   :align: center
+
 App sessions are highly flexible. For example, you can launch
 :ref:`launch multiple App instances <faq-multiple-apps>` and connect multiple
 App instances to the  :ref:`same dataset <faq-multiple-sessions-same-dataset>`.
@@ -115,10 +119,6 @@ install if you would like to run the App as a desktop application.
             # Ensures that the App processes are safely launched on Windows
             session = fo.launch_app(dataset)
             session.wait()
-
-.. image:: /images/app/app-empty.gif
-   :alt: app-empty
-   :align: center
 
 Updating a session's dataset
 ----------------------------
@@ -1089,6 +1089,20 @@ the raw JSON description of the sample.
 
 .. image:: /images/app/app-expanded.gif
     :alt: app-expanded
+    :align: center
+
+If your labels contain many :ref:`dynamic attributes <dynamic-attributes>`, you
+may find it helpful to configure which attributes are shown in the tooltip.
+To do so, press `ctrl` while hovering over a label to lock the tooltip
+in-place and then use the show/hide buttons to customize the display.
+
+.. note::
+
+    Tooltip customizations are persisted in your browser's local storage on a
+    per-dataset and per-field basis.
+
+.. image:: /images/app/app-scrollable-tooltip.gif
+    :alt: app-scrollable-tooltip
     :align: center
 
 .. _app-image-visualizer:
