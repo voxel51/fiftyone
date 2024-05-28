@@ -26,9 +26,12 @@ export const SPACES_DEFAULT = {
 };
 
 export interface Session {
-  canEditCustomColors: boolean;
-  canEditSavedViews: boolean;
-  canEditWorkspaces: boolean;
+  canEditCustomColors: { enabled: boolean; message?: string };
+  canEditSavedViews: { enabled: boolean; message?: string };
+  canEditWorkspaces: { enabled: boolean; message?: string };
+  canCreateNewField: { enabled: boolean; message?: string };
+  canModifySidebarGroup: { enabled: boolean; message?: string };
+  canTagSamplesOrLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -39,9 +42,12 @@ export interface Session {
 }
 
 export const SESSION_DEFAULT: Session = {
-  canEditCustomColors: true,
-  canEditSavedViews: true,
-  canEditWorkspaces: true,
+  canEditCustomColors: { enabled: true, message: undefined },
+  canEditSavedViews: { enabled: true, message: undefined },
+  canEditWorkspaces: { enabled: true, message: undefined },
+  canCreateNewField: { enabled: true, message: undefined },
+  canModifySidebarGroup: { enabled: true, message: undefined },
+  canTagSamplesOrLabels: { enabled: true, message: undefined },
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
@@ -63,7 +69,13 @@ export const SESSION_DEFAULT: Session = {
 
 type SetterKeys = keyof Omit<
   Session,
-  "canEditCustomColors" | "canEditSavedViews" | "canEditWorkspaces" | "readOnly"
+  | "canCreateNewField"
+  | "canModifySidebarGroup"
+  | "canEditCustomColors"
+  | "canTagSamplesOrLabels"
+  | "canEditSavedViews"
+  | "canEditWorkspaces"
+  | "readOnly"
 >;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 
@@ -171,7 +183,10 @@ export function sessionAtom<K extends keyof Session>(
       }
 
       if (
+        options.key === "canCreateNewField" ||
+        options.key === "canModifySidebarGroup" ||
         options.key === "canEditCustomColors" ||
+        options.key === "canTagSamplesOrLabels" ||
         options.key === "readOnly" ||
         options.key === "canEditSavedViews" ||
         options.key === "canEditWorkspaces" ||
