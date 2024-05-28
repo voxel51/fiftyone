@@ -9,6 +9,12 @@ FiftyOne Teams 1.7.0
 
 Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
 
+- Added a :ref:`Roles page <teams-roles-page>` that summarizes the actions and
+  permissions available to each user role
+- Added support for customizing the role that a user will have when sending an
+  invitation for a new user to access a specific dataset
+- Added the ability to configure the expiration time for signed URLs used by
+  your FiftyOne Teams deployment
 - Fixed a regression from FiftyOne Teams 1.6 that could cause login errors when
   accepting invites
 
@@ -55,7 +61,7 @@ App
   `#4319 <https://github.com/voxel51/fiftyone/pull/4319>`_
 - Fixed overlay processing for empty label lists
   `#4345 <https://github.com/voxel51/fiftyone/pull/4345>`_
-- Fixed ``support`` filtering in the sample model for |TemporalDetections|
+- Fixed ``support`` filtering in the sample modal for |TemporalDetections|
   fields
   `#4346 <https://github.com/voxel51/fiftyone/pull/4346>`_
 - Fixed a regression from FiftyOne 0.23.8 when viewing dynamically grouped
@@ -96,6 +102,10 @@ Utils
 
 Plugins
 
+- Added a :class:`DrawerView <fiftyone.operators.types.DrawerView>` option to
+  render your operators as a side drawer in the grid/sample visualizer rather
+  than as a modal
+  `#4240 <https://github.com/voxel51/fiftyone/pull/4240>`_
 - Added a
   :meth:`set_spaces() <fiftyone.operators.operations.Operations.set_spaces>`
   method for setting the current spaces layout from operators

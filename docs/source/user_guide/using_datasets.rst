@@ -431,7 +431,7 @@ default:
     session.refresh()
 
 You can set ``media_fallback=True`` if you want the App to fallback to the
-``filepath`` field if an alternate media field is mising for a particular
+``filepath`` field if an alternate media field is missing for a particular
 sample in the grid and/or modal:
 
 .. code-block:: python
