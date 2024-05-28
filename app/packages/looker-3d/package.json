@@ -15,14 +15,14 @@
     "dependencies": {
         "@emotion/react": "^11.11.3",
         "@emotion/styled": "^11.11.0",
-        "@react-three/drei": "^9.105.4",
-        "@react-three/fiber": "^8.16.2",
+        "@react-three/drei": "^9.105.6",
+        "@react-three/fiber": "^8.16.6",
         "leva": "^0.9.35",
         "lodash": "^4.17.21",
         "r3f-perf": "^7.2.1",
         "react-color": "^2.19.3",
         "styled-components": "^6.1.8",
-        "three": "^0.163.0",
+        "three": "^0.164.1",
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {

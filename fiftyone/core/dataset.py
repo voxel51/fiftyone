@@ -7806,7 +7806,7 @@ def _get_frames_pipeline(sample_collection):
         view = None
 
     if dataset._is_clips:
-        # Clips datasets use `sample_id` to associated with frames, but now as
+        # Clips datasets use `sample_id` to associate with frames, but now as
         # a standalone collection, they must use `_id`
         coll = dataset._sample_collection
         pipeline = sample_collection._pipeline(attach_frames=True) + [

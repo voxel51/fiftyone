@@ -363,9 +363,8 @@ def load_zoo_dataset(
             progress=progress,
         )
 
-    if info.classes is not None:
+    if info.classes is not None and not dataset.default_classes:
         dataset.default_classes = info.classes
-        dataset.save()
 
     logger.info("Dataset '%s' created", dataset.name)
 

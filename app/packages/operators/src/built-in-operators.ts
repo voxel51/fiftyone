@@ -8,6 +8,7 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { useSetRecoilState } from "recoil";
@@ -47,7 +48,7 @@ class ReloadDataset extends Operator {
       label: "Reload the dataset",
     });
   }
-  async execute({ state }: ExecutionContext) {
+  async execute() {
     // TODO - improve this... this is a temp. workaround for the fact that
     // there is no way to force reload just the dataset
     window.location.reload();
@@ -109,7 +110,7 @@ class OpenPanel extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("name", {
       view: new types.AutocompleteView({
@@ -138,7 +139,7 @@ class OpenPanel extends Operator {
     const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
     return { availablePanels, openedPanels, spaces };
   }
-  findFirstPanelContainer(node: SpaceNode): SpaceNode {
+  findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
     if (node.isPanelContainer()) {
       return node;
     }
@@ -146,6 +147,8 @@ class OpenPanel extends Operator {
     if (node.hasChildren()) {
       return this.findFirstPanelContainer(node.firstChild());
     }
+
+    return null;
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
@@ -207,7 +210,7 @@ class ClosePanel extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("name", {
       view: new types.AutocompleteView({
@@ -310,7 +313,7 @@ class OpenDataset extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("dataset", { label: "Dataset name", required: true });
     return new types.Property(inputs);
@@ -358,7 +361,7 @@ class ClearAllStages extends Operator {
       label: "Clear all selections, filters, and view",
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       resetExtended: fos.useResetExtendedSelection(),
     };
@@ -412,7 +415,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
       label: "Convert extended selection to selected samples",
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       resetExtended: fos.useResetExtendedSelection(),
     };
@@ -437,7 +440,7 @@ class SetSelectedSamples extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): {} {
+  useHooks(): object {
     return {
       setSelected: fos.useSetSelected(),
     };
@@ -459,7 +462,7 @@ class SetView extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     const refetchableSavedViews = useRefetchableSavedViews();
 
     return {
@@ -468,7 +471,7 @@ class SetView extends Operator {
       setViewName: useSetRecoilState(fos.viewName),
     };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
     inputs.str("name", { label: "Name or slug of a saved view" });
@@ -507,7 +510,7 @@ class ShowSamples extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("samples", new types.String(), {
       label: "Samples",
@@ -519,7 +522,7 @@ class ShowSamples extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       setView: fos.useSetView(),
     };
@@ -573,11 +576,10 @@ class ConsoleLog extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("message", new types.String(), {
       label: "Message",
-      required: true,
     });
     return new types.Property(inputs);
   }
@@ -595,7 +597,7 @@ class ShowOutput extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("outputs", new types.Object(), {
       label: "Outputs",
@@ -607,7 +609,7 @@ class ShowOutput extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       io: useShowOperatorIO(),
     };
@@ -630,7 +632,7 @@ class SetProgress extends Operator {
       unlisted: true,
     });
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("label", new types.String(), { label: "Label" });
     inputs.defineProperty("variant", new types.Enum(["linear", "circular"]), {
@@ -641,7 +643,7 @@ class SetProgress extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       io: useShowOperatorIO(),
     };
@@ -729,7 +731,7 @@ class SetSelectedLabels extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): object {
     return {
       setSelected: fos.useSetSelectedLabels(),
     };
@@ -771,7 +773,14 @@ class SetSpaces extends Operator {
     return { setSessionSpacesState };
   }
   async execute(ctx: ExecutionContext) {
-    ctx.hooks.setSessionSpacesState(ctx.params.spaces);
+    const { name, spaces } = ctx.params || {};
+    if (spaces) {
+      ctx.hooks.setSessionSpacesState(spaces);
+    } else if (name) {
+      executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
+    } else {
+      throw new Error('Param "spaces" or "name" is required to set a space');
+    }
   }
 }
 

@@ -1742,11 +1742,12 @@ format as follows:
 
 .. note::
 
-    You can pass the optional `classes` parameter to
+    You can pass the optional `classes` or `categories` parameters to
     :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
-    explicitly define the class list to use in the exported labels. Otherwise,
-    the strategy outlined in :ref:`this section <export-class-lists>` will be
-    used to populate the class list.
+    explicitly define the class list/category IDs to use in the exported
+    labels. Otherwise, the strategy outlined in
+    :ref:`this section <export-class-lists>` will be used to populate the class
+    list.
 
 You can also perform labels-only exports of COCO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:

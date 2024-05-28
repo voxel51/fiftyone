@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -554,6 +555,22 @@ class DatasetTests(unittest.TestCase):
 
         fo.config.timezone = None
         dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        # Now change system time to something GMT+
+        system_timezone = os.environ.get("TZ")
+        try:
+            os.environ["TZ"] = "Europe/Madrid"
+            time.tzset()
+            dataset.reload()
+        finally:
+            if system_timezone is None:
+                del os.environ["TZ"]
+            else:
+                os.environ["TZ"] = system_timezone
+            time.tzset()
 
         self.assertEqual(type(sample.date), date)
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
