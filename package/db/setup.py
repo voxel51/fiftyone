@@ -37,6 +37,19 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2023-7.0.2.tgz",
         },
     },
+    "centos": {
+        "7": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+        },
+        "8": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-5.0.22.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-5.0.4.tgz",
+        },
+        "9": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
+    },
     "debian": {
         "9": {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.22.tgz",
