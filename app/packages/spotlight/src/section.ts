@@ -28,12 +28,13 @@ export interface Response<K, V> {
 }
 
 interface Edge<K, V> {
-  key?: K;
+  key: K | null;
   remainder?: ItemData<V>[];
 }
 
 export class Section<K, V> {
   readonly #container = create(DIV);
+  readonly #offset: number;
   readonly #section = create(DIV);
   readonly #spacing: number;
   readonly #threshold: number;
@@ -46,15 +47,24 @@ export class Section<K, V> {
   #start: Edge<K, V>;
   #rows: Row<V>[] = [];
 
-  constructor(
-    edge: Edge<K, V> | undefined,
-    direction: DIRECTION,
-    spacing: number,
-    threshold: number,
-    width: number
-  ) {
+  constructor({
+    direction,
+    edge,
+    offset,
+    spacing,
+    threshold,
+    width,
+  }: {
+    direction: DIRECTION;
+    edge: Edge<K, V>;
+    offset: number;
+    spacing: number;
+    threshold: number;
+    width: number;
+  }) {
     this.#direction = direction;
     this.#end = edge;
+    this.#offset = offset;
     this.#spacing = spacing;
     this.#threshold = threshold;
     this.#width = width;
@@ -67,7 +77,7 @@ export class Section<K, V> {
   }
 
   get finished() {
-    return Boolean(this.#end && !this.#end.key);
+    return Boolean(this.#end && this.#end.key === null);
   }
 
   get height() {
@@ -184,7 +194,11 @@ export class Section<K, V> {
       }
     }
 
-    if (index >= this.#rows.length - ONE && this.#end?.key !== undefined) {
+    if (
+      index >= this.#rows.length - ONE &&
+      this.#end &&
+      this.#end.key !== null
+    ) {
       requestMore = true;
     }
 
@@ -207,7 +221,7 @@ export class Section<K, V> {
     get: (key: K) => Promise<{ next?: K; previous?: K; items: ItemData<V>[] }>,
     render: (run: () => { section: Section<K, V>; offset: number }) => void
   ) {
-    if (!this.#end) {
+    if (!this.#end || this.#end.key === null) {
       return;
     }
     const end = this.#end;
@@ -224,7 +238,7 @@ export class Section<K, V> {
 
       if (!this.#start) {
         this.#start = {
-          key: data.previous,
+          key: data.previous ?? null,
           remainder: [],
         };
       }
@@ -235,7 +249,7 @@ export class Section<K, V> {
               key: data.next,
               remainder,
             }
-          : {};
+          : { key: null };
       this.#rows.push(...rows);
 
       const height = rows.reduce(
@@ -248,13 +262,14 @@ export class Section<K, V> {
         return { section: null, offset: height };
       }
 
-      const section = new Section(
-        newEnd,
-        this.#direction,
-        this.#spacing,
-        this.#threshold,
-        this.#width
-      );
+      const section = new Section({
+        direction: this.#direction,
+        edge: newEnd,
+        offset: this.#offset,
+        spacing: this.#spacing,
+        threshold: this.#threshold,
+        width: this.#width,
+      });
       this.#end = this.#start;
       this.#start = newEnd;
 
@@ -265,7 +280,10 @@ export class Section<K, V> {
   }
 
   get #height() {
-    if (!this.#rows.length) return ZERO;
+    if (!this.#rows.length)
+      return this.#direction === DIRECTION.BACKWARD && this.#end?.key === null
+        ? this.#offset
+        : ZERO;
     const row = this.#rows[this.length - ONE];
     return row.from + row.height + this.#spacing;
   }

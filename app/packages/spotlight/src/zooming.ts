@@ -35,7 +35,7 @@ export const createScrollReader = (
         timer = undefined;
         scrolling = false;
         render(false);
-      }, 400);
+      }, 200);
     }
 
     prior = element.scrollTop;
@@ -44,13 +44,15 @@ export const createScrollReader = (
   };
 
   const animate = () => {
-    if (!destroyed) {
-      if (element.parentElement) {
-        updateScrollStatus();
-        scrolling && prior && render(zooming);
-      }
-      requestAnimationFrame(animate);
+    if (destroyed) {
+      return;
     }
+
+    if (element.parentElement) {
+      updateScrollStatus();
+      scrolling && prior && render(zooming);
+    }
+    requestAnimationFrame(animate);
   };
 
   animate();

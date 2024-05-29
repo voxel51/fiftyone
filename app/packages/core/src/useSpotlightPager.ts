@@ -7,6 +7,7 @@ import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import { Subscription } from "relay-runtime";
 import { defaultZoom } from "./useFlashlightPager";
 
 const PAGE_SIZE = 20;
@@ -58,8 +59,9 @@ const useFlashlightPager = (
       const variables = page(pageNumber, PAGE_SIZE);
       const zoomValue = await zoom();
 
+      let subscription: Subscription;
       return new Promise<Response<number, Sample>>((resolve) => {
-        const subscription = fetchQuery<foq.paginateSamplesQuery>(
+        subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
           foq.paginateSamples,
           variables,

@@ -108,12 +108,13 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#fill();
   }
 
-  detach(): void {
+  destroy(): void {
     if (!this.attached) {
       throw new Error("spotlight is not attached");
     }
 
     this.#element.remove();
+    this.#scrollReader?.destroy();
   }
 
   updateItems(updater: Updater): void {
@@ -222,13 +223,14 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   async #fill() {
-    this.#forward = new Section(
-      { key: this.#config.key, remainder: [] },
-      DIRECTION.FORWARD,
-      this.#config.spacing,
-      this.#config.rowAspectRatioThreshold,
-      this.#width
-    );
+    this.#forward = new Section({
+      direction: DIRECTION.FORWARD,
+      edge: { key: this.#config.key, remainder: [] },
+      offset: this.#config.offset,
+      spacing: this.#config.spacing,
+      threshold: this.#config.rowAspectRatioThreshold,
+      width: this.#width,
+    });
     this.#forward.attach(this.#element);
 
     await this.#next(false);
@@ -272,15 +274,17 @@ export default class Spotlight<K, V> extends EventTarget {
   async #get(key: K) {
     const result = await this.#config.get(key);
     if (!this.#backward) {
-      this.#backward = new Section(
-        result.previous !== null
-          ? { key: result.previous, remainder: [] }
-          : undefined,
-        DIRECTION.BACKWARD,
-        this.#config.spacing,
-        this.#config.rowAspectRatioThreshold,
-        this.#width
-      );
+      this.#backward = new Section({
+        direction: DIRECTION.BACKWARD,
+        edge:
+          result.previous !== null
+            ? { key: result.previous, remainder: [] }
+            : { key: null, remainder: [] },
+        offset: this.#config.offset,
+        spacing: this.#config.spacing,
+        threshold: this.#config.rowAspectRatioThreshold,
+        width: this.#width,
+      });
       this.#backward.attach(this.#element);
     }
 

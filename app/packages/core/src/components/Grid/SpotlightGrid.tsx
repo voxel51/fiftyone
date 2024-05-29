@@ -144,9 +144,9 @@ function Grid() {
     });
 
     return () => {
-      spotlight.detach();
-      document.getElementById(id)?.classList.add(pixels);
       spotlight.removeEventListener("pagechange", pagechange);
+      spotlight.destroy();
+      document.getElementById(id)?.classList.add(pixels);
     };
   }, [
     id,
