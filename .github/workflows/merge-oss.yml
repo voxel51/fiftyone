@@ -1,0 +1,45 @@
+name: Merge OSS PR
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        default: develop
+        type: string
+      branch:
+        type: string
+  workflow_dispatch:
+    inputs:
+      base:
+        default: develop
+        type: string
+      branch:
+        type: string
+
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base }}
+          fetch-depth: 0
+      - name: Checkout OSS
+        run: |
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+          git remote add oss https://github.com/voxel51/fiftyone.git
+          git checkout ${{ inputs.branch }} || git checkout -b ${{ inputs.branch }}
+          git push -u origin ${{ inputs.branch }}
+          git checkout ${{ inputs.base }}
+          git pull origin ${{ inputs.branch }} --no-rebase
+          git pull oss ${{ inputs.branch }} --no-rebase
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          author: voxel51-bot <bot@voxel51.com>
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          base: ${{ inputs.base }}
+          body: "Merge ${{ inputs.branch }}"
+          branch: ${{ inputs.branch }}
+          title: "Merge ${{ inputs.branch }}"
