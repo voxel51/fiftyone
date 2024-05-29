@@ -3,7 +3,13 @@ import * as fos from "@fiftyone/state";
 import { Lookers } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   atom,
   useRecoilCallback,
@@ -54,6 +60,10 @@ const sessionPage = fos.sessionAtom({
 });
 
 const showGridPixels = atom({ key: "showGridPixels", default: true });
+export const tileAtom = atom({
+  key: "tileAtom",
+  default: 3,
+});
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
@@ -72,14 +82,17 @@ function Grid() {
 
   const showPixels = useRecoilValue(showGridPixels);
 
+  const tile = useRecoilValue(tileAtom);
   const setPage = useSetRecoilState(sessionPage);
-  useEffect(() => {
+
+  const spotlight = useMemo(() => {
     if (showPixels) {
-      return null;
+      return undefined;
     }
 
-    const spotlight = new Spotlight<number, Sample>({
+    return new Spotlight<number, Sample>({
       key: getPage(),
+
       rowAspectRatioThreshold: threshold,
       get: (next) => page.current(next),
       render: (id, element, dimensions, soft, hide) => {
@@ -105,31 +118,69 @@ function Grid() {
           init(createLooker.current(result));
         }
       },
+      spacing: tile,
     });
-    const pagechange = (e: PageChange<number>) => setPage(e.page);
+  }, [
+    createLooker,
+    getPage,
+    lookerStore,
+    page,
+    showPixels,
+    store,
+    threshold,
+    tile,
+  ]);
 
+  useLayoutEffect(() => {
+    if (!spotlight) {
+      return undefined;
+    }
+
+    const pagechange = (e: PageChange<number>) => setPage(e.page);
+    spotlight.attach(id);
     spotlight.addEventListener("pagechange", pagechange);
     spotlight.addEventListener("load", () => {
       document.getElementById(id)?.classList.remove(pixels);
     });
-    spotlight.attach(id);
 
     return () => {
+      spotlight.detach();
       document.getElementById(id)?.classList.add(pixels);
       spotlight.removeEventListener("pagechange", pagechange);
-      spotlight.detach();
     };
   }, [
-    showPixels,
-    getPage,
     id,
-    page,
-    setPage,
-    store,
-    threshold,
-    lookerStore,
-    createLooker,
+    spotlight,
+    fos.stringifyObj(useRecoilValue(fos.filters)),
+    useRecoilValue(fos.datasetName),
+    useRecoilValue(fos.cropToContent(false)),
+    fos.filterView(useRecoilValue(fos.view)),
+    useRecoilValue(fos.groupSlice),
+    useRecoilValue(fos.refresher),
+    useRecoilValue(fos.similarityParameters),
+    useRecoilValue(fos.selectedMediaField(false)),
+    useRecoilValue(fos.extendedStagesUnsorted),
+    useRecoilValue(fos.extendedStages),
+    useRecoilValue(fos.shouldRenderImaVidLooker),
   ]);
+
+  const { init, deferred } = fos.useDeferrer();
+
+  const selected = useRecoilValue(fos.selectedSamples);
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems((id) => {
+        lookerStore.get(id)?.updateOptions({
+          ...lookerOptions,
+          selected: selected.has(id.toString()),
+        });
+      });
+    });
+  }, [deferred, spotlight, lookerOptions, lookerStore, selected]);
+
+  useEffect(() => {
+    return spotlight ? init() : undefined;
+  }, [spotlight, init]);
 
   return (
     <div

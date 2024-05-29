@@ -1,8 +1,9 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import { ONE, ZERO } from "./constants";
+import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
+import { create, pixels } from "./utilities";
 
 export interface ItemData<V> {
   id?: symbol;
@@ -22,7 +23,7 @@ export default class Row<V> {
   #from: number;
   #hidden: boolean;
 
-  readonly #container: HTMLDivElement = document.createElement("div");
+  readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
   readonly #spacing: number;
   readonly #width: number;
@@ -39,8 +40,8 @@ export default class Row<V> {
     this.#width = width;
 
     this.#row = items.map((item) => {
-      const element = document.createElement("div");
-      element.style.top = `${ZERO}px`;
+      const element = create(DIV);
+      element.style.top = pixels(ZERO);
 
       this.#container.appendChild(element);
       return { element, item };
@@ -55,19 +56,19 @@ export default class Row<V> {
     } of this.#row) {
       const itemWidth = height * aspectRatio;
 
-      element.style.height = `${height}px`;
-      element.style.width = `${itemWidth}px`;
-      element.style.left = `${left}px`;
+      element.style.height = pixels(height);
+      element.style.width = pixels(itemWidth);
+      element.style.left = pixels(left);
 
       left += itemWidth + spacing;
     }
 
-    this.#container.style.height = `${height}px`;
-    this.#container.style.width = `${this.#width}px`;
+    this.#container.style.height = pixels(height);
+    this.#container.style.width = pixels(this.#width);
   }
 
-  get id() {
-    return this.#row[ZERO].item.id;
+  get attached() {
+    return Boolean(this.#container.parentElement);
   }
 
   get from() {
@@ -82,22 +83,12 @@ export default class Row<V> {
     return this.#cleanWidth / this.#cleanAspectRatio;
   }
 
+  get id() {
+    return this.#row[ZERO].item.id;
+  }
+
   get width() {
     return this.#width;
-  }
-
-  get #cleanAspectRatio() {
-    return this.#row
-      .map(({ item }) => item.aspectRatio)
-      .reduce((ar, next) => ar + next, ZERO);
-  }
-
-  get #cleanWidth() {
-    return this.#width - (this.#row.length - ONE) * this.#spacing;
-  }
-
-  get attached() {
-    return Boolean(this.#container.parentElement);
   }
 
   hide(): void {
@@ -108,15 +99,10 @@ export default class Row<V> {
     this.#container.remove();
   }
 
-  switch(attr) {
-    this.#container.style[attr] = `${this.#from}px`;
-    this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
-  }
-
   show(
     element: HTMLDivElement,
     hidden: boolean,
-    attr: "top" | "bottom",
+    attr: typeof BOTTOM | typeof TOP,
     soft: boolean,
     render: Render
   ): void {
@@ -129,7 +115,7 @@ export default class Row<V> {
 
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
-      this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
+      this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
       element.appendChild(this.#container);
     }
 
@@ -141,5 +127,24 @@ export default class Row<V> {
       const width = item.aspectRatio * this.height;
       render(item.id, element, [width, this.height], soft, hidden);
     }
+  }
+
+  switch(attr) {
+    this.#container.style[attr] = `${this.#from}px`;
+    this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
+  }
+
+  updateItems(updater: (id: symbol) => void) {
+    for (const row of this.#row) updater(row.item.id);
+  }
+
+  get #cleanAspectRatio() {
+    return this.#row
+      .map(({ item }) => item.aspectRatio)
+      .reduce((ar, next) => ar + next, ZERO);
+  }
+
+  get #cleanWidth() {
+    return this.#width - (this.#row.length - ONE) * this.#spacing;
   }
 }

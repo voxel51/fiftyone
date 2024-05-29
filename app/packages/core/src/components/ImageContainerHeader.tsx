@@ -1,15 +1,15 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps } from "@mui/icons-material";
 import Color from "color";
-import React, { Suspense, useMemo } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Suspense, useMemo } from "react";
+import { constSelector, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { gridZoom, gridZoomRange } from "./Grid";
+import { tileAtom } from "./Grid/SpotlightGrid";
 import GroupSliceSelector from "./GroupSliceSelector";
 import ResourceCount from "./ResourceCount";
 
@@ -98,14 +98,18 @@ const ImageContainerHeader = () => {
               style={{ padding: 0, margin: 0 }}
             />
           </div>
-          <div
-            title={"Reset zoom"}
-            onClick={() => {
-              setGridZoom(Math.max(gridZoomRangeValue[0], 5));
-            }}
-            style={{ cursor: "pointer", display: "flex" }}
-          >
-            <Apps />
+        </SliderContainer>
+        <SliderContainer>
+          <div style={{ flexGrow: 1 }} title={"Zoom"}>
+            <Slider
+              valueAtom={tileAtom}
+              boundsAtom={constSelector([3, 128])}
+              color={theme.primary.plainColor}
+              showBounds={false}
+              persistValue={false}
+              showValue={false}
+              style={{ padding: 0, margin: 0 }}
+            />
           </div>
         </SliderContainer>
       </RightContainer>

@@ -74,8 +74,9 @@ const useFlashlightPager = (
               next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
               previous: pageNumber > 0 ? pageNumber - 1 : null,
             });
-
-            subscription.closed && subscription.unsubscribe();
+          },
+          complete: () => {
+            subscription?.unsubscribe();
           },
           error: handleError,
         });

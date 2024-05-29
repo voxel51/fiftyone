@@ -1,12 +1,12 @@
 import { savedViewsFragment$key } from "@fiftyone/relay";
 import {
-  clone,
   Field,
-  getFetchFunction,
   GQLError,
   GraphQLError,
   Schema,
   StrictField,
+  clone,
+  getFetchFunction,
 } from "@fiftyone/utilities";
 import React, { MutableRefObject, useCallback, useRef } from "react";
 import {
@@ -38,6 +38,9 @@ export const useDeferrer = () => {
 
   const init = useCallback(() => {
     initialized.current = true;
+    return () => {
+      initialized.current = false;
+    };
   }, []);
 
   return { init, deferred };

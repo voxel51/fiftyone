@@ -45,11 +45,11 @@ export const createScrollReader = (
 
   const animate = () => {
     if (!destroyed) {
-      requestAnimationFrame(animate);
       if (element.parentElement) {
         updateScrollStatus();
         scrolling && prior && render(zooming);
       }
+      requestAnimationFrame(animate);
     }
   };
 
