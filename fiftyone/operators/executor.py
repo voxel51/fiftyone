@@ -219,7 +219,7 @@ async def execute_or_delegate_operator(
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
-        operator, executor, ctx = prepared
+        operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -252,11 +252,21 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            metadata = {"inputs_schema": None, "outputs_schema": None}
+
+            try:
+                metadata["inputs_schema"] = inputs.to_json()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to resolve inputs schema for the operation: {str(e)}"
+                )
+
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
                 label=operator.name,
+                metadata=metadata,
             )
 
             execution = ExecutionResult(
@@ -312,7 +322,7 @@ async def prepare_operator_executor(
             error="Validation error", validation_ctx=validation_ctx
         )
 
-    return operator, executor, ctx
+    return operator, executor, ctx, inputs
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
@@ -364,6 +374,24 @@ async def resolve_type(registry, operator_uri, request_params):
         )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
+
+
+async def resolve_type_with_context(context, target: str = None):
+    """Resolves the "inputs" or "outputs" schema of an operator with the given context.
+
+    Args:
+        context: the :class:`ExecutionContext` of an operator
+        target (None): the target schema ("inputs" or "outputs")
+
+    Returns:
+        the schema of "inputs" or "outputs" :class:`fiftyone.operators.types.Property` of
+        an operator, or None
+    """
+    computed_target = target or context.request_params.get("target", None)
+    request_params = {**context.request_params, "target": computed_target}
+    operator_uri = request_params.get("operator_uri", None)
+    registry = OperatorRegistry()
+    return await resolve_type(registry, operator_uri, request_params)
 
 
 async def resolve_execution_options(registry, operator_uri, request_params):

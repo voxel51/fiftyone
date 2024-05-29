@@ -5,6 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import time
 import unittest
 from unittest import mock
@@ -26,7 +27,6 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
 from fiftyone.operators.operator import Operator, OperatorConfig
 
@@ -42,6 +42,16 @@ class MockDataset:
 
     def delete(self):
         pass
+
+
+class MockInputs:
+    def to_json(self):
+        return {"inputs": {"type": "string"}}
+
+
+class MockOutputs:
+    def to_json(self):
+        return {"outputs": {"type": "string"}}
 
 
 class MockOperator(Operator):
@@ -71,6 +81,14 @@ class MockOperator(Operator):
         if self.sets_progress:
             ctx.set_progress(0.5, "halfway there")
         return ExecutionResult(result={"executed": True})
+
+
+class MockOperatorWithIO(MockOperator):
+    def resolve_input(self, *args, **kwargs):
+        return MockInputs()
+
+    def resolve_output(self, *args, **kwargs):
+        return MockOutputs()
 
 
 class MockGeneratorOperator(Operator):
@@ -171,18 +189,23 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+        self.assertIsNone(doc.metadata)
 
+        doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target="foo",
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
             ),
+            metadata=doc2_metadata,
         )
         self.docs_to_delete.append(doc2)
         self.assertIsNotNone(doc2.queued_at)
         self.assertEqual(doc2.label, "@voxelfiftyone/operator/foo")
         self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
+        self.assertIsNotNone(doc2.metadata)
+        self.assertEqual(doc2.metadata, doc2_metadata)
 
     def test_list_queued_operations(
         self, mock_get_operator, mock_operator_exists
@@ -276,7 +299,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     def test_set_run_states(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
     ):
+        mock_inputs = MockInputs()
+        mock_outputs = MockOutputs()
         mock_load_dataset.return_value = MockDataset()
+        mock_get_operator.return_value = MockOperatorWithIO()
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
@@ -284,6 +310,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_id": str(ObjectId())}
             ),
+            metadata={"inputs_schema": mock_inputs.to_json()},
+        )
+        self.assertEqual(
+            doc.metadata, {"inputs_schema": mock_inputs.to_json()}
         )
 
         original_updated_at = doc.updated_at
@@ -301,6 +331,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
         self.assertNotEqual(doc.updated_at, original_updated_at)
+        self.assertEqual(
+            doc.metadata,
+            {
+                "inputs_schema": mock_inputs.to_json(),
+                "outputs_schema": mock_outputs.to_json(),
+            },
+        )
         original_updated_at = doc.updated_at
         time.sleep(0.1)
 
