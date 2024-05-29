@@ -1,8 +1,15 @@
 import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
-import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useEffect, useMemo } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
-import { isGridOnAtom } from "../state";
+import {
+  gridCellSizeAtom,
+  gridSectionSizeAtom,
+  gridSizeAtom,
+  isGridInfinitelyLargeAtom,
+  isGridOnAtom,
+  shouldGridFadeAtom,
+} from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
 import { useFo3dContext } from "./context";
 
@@ -11,7 +18,7 @@ const AXIS_GREEN_COLOR = "#21DF80";
 const AXIS_BLUE_COLOR = "#2280FF";
 
 const GRID_CELL_COLOR = "#6f6f6f";
-const GRID_SECTION_COLOR = "#a79d9d";
+const GRID_SECTION_COLOR = "#736f73";
 
 const FoAxesHelper = ({
   maxInOrthonormalPlane,
@@ -20,7 +27,8 @@ const FoAxesHelper = ({
 }) => {
   const { upVector } = useFo3dContext();
   const size = useMemo(
-    () => maxInOrthonormalPlane * 20,
+    // multiplier (10) and offset (100) are arbitrary that seem to work well
+    () => maxInOrthonormalPlane * 10 + 100,
     [maxInOrthonormalPlane]
   );
 
@@ -81,12 +89,18 @@ export const Gizmos = () => {
     [upVector]
   );
 
-  const maxInOrthonormalPlane = useMemo(() => {
+  const sceneSize = useMemo(() => {
     if (!sceneBoundingBox) {
       return 0;
     }
 
-    const sceneSize = sceneBoundingBox.getSize(new Vector3());
+    return sceneBoundingBox.getSize(new Vector3());
+  }, [sceneBoundingBox]);
+
+  const maxInOrthonormalPlane = useMemo(() => {
+    if (!sceneSize) {
+      return 0;
+    }
 
     if (upVector.x === 1) {
       return Math.max(sceneSize.y, sceneSize.z);
@@ -97,20 +111,38 @@ export const Gizmos = () => {
     }
 
     return Math.max(sceneSize.x, sceneSize.y);
-  }, [sceneBoundingBox, upVector]);
+  }, [sceneSize, upVector]);
 
-  // cell size is based on max bounding box size
-  // following multipliers (0.5, 10, 30) are arbitrary and can be adjusted
-  const cellSize = useMemo(
-    () => maxInOrthonormalPlane * 0.5,
-    [maxInOrthonormalPlane]
-  );
-  const sectionSize = useMemo(() => cellSize * 10, [cellSize]);
+  const [cellSize, setCellSize] = useRecoilState(gridCellSizeAtom);
+  const [sectionSize, setSectionSize] = useRecoilState(gridSectionSizeAtom);
+  const isGridInfinitelyLarge = useRecoilValue(isGridInfinitelyLargeAtom);
+  const shouldFade = useRecoilValue(shouldGridFadeAtom);
+  const gridSize = useRecoilValue(gridSizeAtom);
 
-  const fadeDistance = useMemo(
-    () => maxInOrthonormalPlane * 30,
-    [maxInOrthonormalPlane]
-  );
+  // This effect dynamically sets initial cell and section size based on the scene size
+  useEffect(() => {
+    if (!sceneSize) {
+      return;
+    }
+
+    const maxDim = Math.max(sceneSize.x, sceneSize.y, sceneSize.z);
+
+    const nominalCellSize = maxDim / 10;
+
+    // round to the nearest 10, but for small values, just use 1
+    const roundedCellSize =
+      nominalCellSize <= 1 ? 1 : Math.ceil(nominalCellSize / 10) * 10;
+    const roundedSectionSize = roundedCellSize * 10;
+
+    setCellSize(roundedCellSize);
+    setSectionSize(roundedSectionSize);
+  }, [sceneSize]);
+
+  // The fade distance is the distance at which the grid will start to fade out
+  // the multipliers and offset are arbitrary
+  const fadeDistance = useMemo(() => {
+    return maxInOrthonormalPlane * 10 + 100;
+  }, [maxInOrthonormalPlane]);
 
   return (
     <>
@@ -118,17 +150,19 @@ export const Gizmos = () => {
         <>
           <Grid
             quaternion={gridHelperQuarternion}
-            infiniteGrid
+            infiniteGrid={isGridInfinitelyLarge}
             side={DoubleSide}
+            args={[gridSize, gridSize]}
             cellSize={cellSize}
             sectionSize={sectionSize}
             sectionColor={GRID_SECTION_COLOR}
             cellColor={GRID_CELL_COLOR}
             fadeDistance={fadeDistance}
-            fadeStrength={1}
-            followCamera
+            fadeStrength={shouldFade ? 1 : 0}
+            followCamera={shouldFade}
+            fadeFrom={0.5}
             cellThickness={0.5}
-            sectionThickness={0.8}
+            sectionThickness={0.4}
           />
           <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
         </>
