@@ -1,6 +1,6 @@
-import { SpaceNodeType, SpaceNodeJSON } from "./types";
-import { Layout, SPACE_TYPES } from "./enums";
 import { v4 as uuid } from "uuid";
+import { Layout, SPACE_TYPES } from "./enums";
+import { SpaceNodeJSON, SpaceNodeType } from "./types";
 
 export default class SpaceNode {
   children: SpaceNode[];

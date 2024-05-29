@@ -1,11 +1,12 @@
 """
 FiftyOne Server GraphQL scalars
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime, timezone
+
+from datetime import date, datetime
 from bson import json_util
 import json
 import strawberry as gql

@@ -6,6 +6,7 @@ import {
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
   useRecoilValueLoadable,
+  useSetRecoilState,
 } from "recoil";
 import { SampleWrapper } from "../Sample";
 import { Sample3d } from "../Sample3d";
@@ -33,7 +34,7 @@ const Sample3dWrapper = () => {
   );
 };
 
-export default () => {
+const GroupPcdWrapper = () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
@@ -99,4 +100,25 @@ export default () => {
   }
 
   return <Sample3dWrapper />;
+};
+
+const GroupFo3dWrapper = () => {
+  const setPinned3DSampleSlice = useSetRecoilState(fos.pinned3DSampleSlice);
+  const fo3dSlice = useRecoilValue(fos.fo3dSlice);
+
+  useEffect(() => {
+    setPinned3DSampleSlice(fo3dSlice);
+  }, [fo3dSlice, setPinned3DSampleSlice]);
+
+  return <Sample3dWrapper />;
+};
+
+export default () => {
+  const hasFo3dSlice = useRecoilValue(fos.hasFo3dSlice);
+
+  if (hasFo3dSlice) {
+    return <GroupFo3dWrapper />;
+  }
+
+  return <GroupPcdWrapper />;
 };

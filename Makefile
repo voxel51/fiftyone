@@ -6,7 +6,7 @@ app:
 	@cd app && yarn && yarn build && cd ..
 
 python: app
-	@python setup.py sdist bdist_wheel
+	@python -Im build
 
 docker: python
 	@docker build -t voxel51/fiftyone .

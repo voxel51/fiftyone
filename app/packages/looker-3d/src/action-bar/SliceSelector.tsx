@@ -4,8 +4,9 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionItem } from "../containers";
-import { ACTION_SET_PCDS, currentActionAtom } from "../state";
+import { currentActionAtom } from "../state";
 import { ActionPopOver } from "./shared";
+import { ACTION_SET_PCDS } from "../constants";
 
 export const SliceSelector = () => {
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);

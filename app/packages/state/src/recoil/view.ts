@@ -7,11 +7,8 @@ import {
   viewFragment,
   viewFragment$key,
 } from "@fiftyone/relay";
-import { Stage } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
-import { dynamicGroupParameters, groupByFieldValue } from "./groups";
+import { DefaultValue, atom, selector } from "recoil";
 import { State } from "./types";
-import { getSanitizedGroupByExpression } from "./utils";
 
 export const stageDefinitions = graphQLSyncFragmentAtom<
   stageDefinitionsFragment$key,
@@ -219,104 +216,6 @@ export const isFramesView = selector<boolean>({
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
-});
-
-export const dynamicGroupViewQuery = selectorFamily<
-  Stage[],
-  { groupByFieldValueExplicit?: string }
->({
-  key: "dynamicGroupViewQuery",
-  get:
-    ({ groupByFieldValueExplicit }) =>
-    ({ get }) => {
-      const params = get(dynamicGroupParameters);
-      if (!params) return [];
-
-      const { groupBy, orderBy } = params;
-
-      // todo: fix sample_id issue
-      // todo: sanitize expressions
-      const groupBySanitized = getSanitizedGroupByExpression(groupBy);
-
-      let groupByValue;
-
-      if (groupByFieldValueExplicit) {
-        groupByValue = String(groupByFieldValueExplicit);
-      } else {
-        groupByValue = get(groupByFieldValue);
-
-        if (groupByValue) {
-          groupByValue = String(groupByValue);
-        }
-      }
-
-      const viewStages: State.Stage[] = [
-        {
-          _cls: MATCH_VIEW_STAGE,
-          kwargs: [
-            [
-              "filter",
-              {
-                $expr: {
-                  $let: {
-                    vars: {
-                      expr: `$${groupBySanitized}`,
-                    },
-                    in: {
-                      $in: [
-                        {
-                          $toString: "$$expr",
-                        },
-                        [groupByValue],
-                      ],
-                    },
-                  },
-                },
-              },
-            ],
-          ],
-        },
-      ];
-
-      if (orderBy?.length) {
-        viewStages.push({
-          _cls: SORT_VIEW_STAGE,
-          kwargs: [
-            ["field_or_expr", orderBy],
-            ["reverse", false],
-          ],
-        });
-      }
-
-      const baseView = [...get(view)];
-      let modalView: State.Stage[] = [];
-      let pastGroup = false;
-      for (let index = 0; index < baseView.length; index++) {
-        const stage = baseView[index];
-        if (stage._cls === GROUP_BY_VIEW_STAGE) {
-          modalView = [...modalView, ...viewStages];
-          pastGroup = true;
-          continue;
-        }
-
-        if (!pastGroup) {
-          modalView.push(stage);
-          continue;
-        }
-
-        // Assume these stages should be filtered out because they apply to the slices
-        // and not a slice list. To be improved
-        if (
-          ![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE, TAKE_VIEW_STAGE].includes(
-            stage._cls
-          )
-        ) {
-          modalView.push(stage);
-        }
-      }
-
-      return modalView;
-    },
 });
 
 export const currentViewSlug = selector<string>({

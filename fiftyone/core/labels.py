@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1012,7 +1012,7 @@ class Segmentation(_HasID, _HasMedia, Label):
     Args:
         mask (None): a numpy array with integer values encoding the semantic
             labels
-        mask_path (None): the path to the segmentation image on disk
+        mask_path (None): the absolute path to the segmentation image on disk
     """
 
     _MEDIA_FIELD = "mask_path"
@@ -1195,7 +1195,7 @@ class Heatmap(_HasID, _HasMedia, Label):
 
     Args:
         map (None): a 2D numpy array
-        map_path (None): the path to the heatmap image on disk
+        map_path (None): the absolute path to the heatmap image on disk
         range (None): an optional ``[min, max]`` range of the map's values. If
             None is provided, ``[0, 1]`` will be assumed if ``map`` contains
             floating point values, ``[0, 255]`` will be assumed if ``map``

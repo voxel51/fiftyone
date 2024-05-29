@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Label Studio <https://labelstud.io>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,6 +18,7 @@ import random
 import string
 import webbrowser
 
+import os
 from bson import ObjectId
 import numpy as np
 

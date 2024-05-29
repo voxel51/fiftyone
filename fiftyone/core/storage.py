@@ -1,7 +1,7 @@
 """
 File storage utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -279,6 +279,19 @@ def join(a, *p):
         the joined path
     """
     return os.path.join(a, *p)
+
+
+def resolve(path):
+    """Resolves path to absolute, resolving symlinks and relative path
+        indicators such as `.` and `..`.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the resolved path
+    """
+    return os.path.realpath(path)
 
 
 def isabs(path):

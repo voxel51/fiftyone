@@ -1,10 +1,11 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -370,6 +371,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
             default=False,
         )
+        self.media_fallback = self.parse_bool(
+            d,
+            "media_fallback",
+            env_var="FIFTYONE_APP_MEDIA_FALLBACK",
+            default=False,
+        )
         self.multicolor_keypoints = self.parse_bool(
             d,
             "multicolor_keypoints",
@@ -495,7 +502,7 @@ class AppConfig(EnvConfig):
             )
             self.color_by = default_color_by
 
-        supported_sidebar_modes = {"all", "best", "fast"}
+        supported_sidebar_modes = {"all", "best", "fast", "disabled"}
         default_sidebar_mode = "best"
         if self.sidebar_mode not in supported_sidebar_modes:
             logger.warning(

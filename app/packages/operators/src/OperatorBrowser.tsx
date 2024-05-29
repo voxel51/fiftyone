@@ -25,7 +25,7 @@ const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
   height: 2.5rem;
   line-height: 2.5rem;
   padding: 0 1rem;
-  :hover {
+  &:hover {
     background: ${({ theme }) => theme.background.level1};
     cursor: pointer;
   }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates documentation for FiftyOne.
 #
-# Copyright 2017-2023, Voxel51, Inc.
+# Copyright 2017-2024, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -75,9 +75,9 @@ fi
 echo "**** Generating documentation ****"
 
 # Symlink to fiftyone-teams
-if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+if [[ -n "${PATH_TO_TEAMS}" ]]; then
     # macOS users may need to run `brew install coreutils` to get `realpath``
-    PATH_TO_TEAMS="$(realpath $PATH_TO_TEAMS)"
+    PATH_TO_TEAMS="$(realpath "$PATH_TO_TEAMS")"
 
     cd "${THIS_DIR}"
     PATH_TO_FIFTYONE_DIR=$(
@@ -86,8 +86,8 @@ if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
     )
     cd -
 
-    ln -sf "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
-    ln -sf "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
+    ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
+    ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
     echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
 fi
@@ -95,7 +95,7 @@ fi
 cd "${THIS_DIR}/.."
 
 # Symlink to fiftyone-brain
-ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
+ln -sfn "$FIFTYONE_BRAIN_DIR" fiftyone/brain
 
 echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
@@ -109,7 +109,7 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
         fiftyone/api
 
 # Remove symlink
-rm fiftyone/brain
+unlink fiftyone/brain
 
 cd docs
 
@@ -128,7 +128,7 @@ echo "Building docs"
 sphinx-build -M html source build $SPHINXOPTS
 
 # Remove symlink to fiftyone-teams
-if [[ ! -z "${PATH_TO_TEAMS}" ]]; then
+if [[ -n "${PATH_TO_TEAMS}" ]]; then
     unlink "$PATH_TO_FIFTYONE_DIR/management"
     unlink "$PATH_TO_FIFTYONE_DIR/api"
 fi

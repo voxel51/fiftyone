@@ -1,5 +1,5 @@
 import { SpacesRoot, usePanelsState, useSpaces } from "@fiftyone/spaces";
-import { useSessionSpaces, constants } from "@fiftyone/state";
+import { constants, useSessionSpaces } from "@fiftyone/state";
 import { isEqual, size } from "lodash";
 import React, { useEffect, useRef } from "react";
 
@@ -42,7 +42,14 @@ function MainSpace() {
     }
     oldSpaces.current = serializedSpaces;
     oldPanelsState.current = panelsState;
-  }, [spaces, panelsState]);
+  }, [
+    oldSpaces,
+    panelsState,
+    sessionSpaces,
+    sessionPanelsState,
+    setSessionSpaces,
+    spaces,
+  ]);
 
   return <SpacesRoot id={FIFTYONE_SPACE_ID} />;
 }

@@ -23,6 +23,7 @@ on:
   pull_request:
     branches:
       - develop
+      - feat/*
       - main
       - rel-*
       - release-*
@@ -58,12 +59,12 @@ jobs:
           python-version: 3.8
       - name: Install pip dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel build
       - name: Install ETA from source
         run: |
           git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
           cd eta
-          python setup.py bdist_wheel
+          python -Im build
           pip install ./dist/*.whl
       - name: Install
         run: |
@@ -72,6 +73,7 @@ jobs:
           pip install -r fiftyone-teams/requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
+          pip install typing_extensions==4.10.0
           pip install .
       - name: Cache Node Modules
         id: node-cache

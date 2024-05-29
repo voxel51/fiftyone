@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3314,6 +3314,31 @@ class ViewStageTests(unittest.TestCase):
         tags = self.dataset.count_values("tags")
         self.assertDictEqual(tags, {})
 
+    def test_tag_samples_none(self):
+        view = self.dataset[:2]
+
+        view.clear_sample_field("tags")
+
+        for tags in view.values("tags"):
+            self.assertIsNone(tags)
+
+        view.untag_samples("test")
+        view.untag_samples(["test1", "test2"])
+
+        counts = view.count_sample_tags()
+        self.assertDictEqual(counts, {})
+
+        view.tag_samples("test")
+        view.tag_samples(["test1", "test2"])
+
+        counts = view.count_sample_tags()
+        self.assertDictEqual(counts, {"test": 2, "test1": 2, "test2": 2})
+
+        view.set_field("tags", []).save()
+
+        for tags in view.values("tags"):
+            self.assertListEqual(tags, [])
+
     def test_tag_labels(self):
         self._setUp_classification()
         self._setUp_detections()
@@ -3343,6 +3368,58 @@ class ViewStageTests(unittest.TestCase):
         view.untag_labels("test", "test_dets")
         tags = self.dataset.count_label_tags("test_dets")
         self.assertDictEqual(tags, {})
+
+    def test_tag_labels_none(self):
+        self._setUp_classification()
+        self._setUp_detections()
+
+        # Test classifications
+        view = self.dataset.filter_labels("test_clf", F("confidence") > 0.95)
+        view.clear_sample_field("test_clf.tags")
+
+        for tags in view.values("test_clf.tags"):
+            self.assertIsNone(tags)
+
+        view.untag_labels("test", label_fields="test_clf")
+        view.untag_labels(["test1", "test2"], label_fields="test_clf")
+
+        counts = view.count_label_tags()
+        self.assertDictEqual(counts, {})
+
+        view.tag_labels("test", label_fields="test_clf")
+        view.tag_labels(["test1", "test2"], label_fields="test_clf")
+
+        counts = view.count_label_tags()
+        self.assertDictEqual(counts, {"test": 1, "test1": 1, "test2": 1})
+
+        view.set_field("test_clf.tags", []).save()
+
+        for tags in view.values("test_clf.tags"):
+            self.assertListEqual(tags, [])
+
+        # Test detections
+        view = self.dataset.filter_labels("test_dets", F("confidence") > 0.7)
+        view.clear_sample_field("test_dets.detections.tags")
+
+        for tags in view.values("test_dets.detections.tags", unwind=True):
+            self.assertIsNone(tags)
+
+        view.untag_labels("test", label_fields="test_dets")
+        view.untag_labels(["test1", "test2"], label_fields="test_dets")
+
+        counts = view.count_label_tags()
+        self.assertDictEqual(counts, {})
+
+        view.tag_labels("test", label_fields="test_dets")
+        view.tag_labels(["test1", "test2"], label_fields="test_dets")
+
+        counts = view.count_label_tags()
+        self.assertDictEqual(counts, {"test": 3, "test1": 3, "test2": 3})
+
+        view.set_field("test_dets.detections.tags", []).save()
+
+        for tags in view.values("test_dets.detections.tags", unwind=True):
+            self.assertListEqual(tags, [])
 
     def test_match(self):
         self.sample1["value"] = "value"

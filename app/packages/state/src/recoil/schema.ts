@@ -17,13 +17,13 @@ import {
   LABEL_LISTS,
   LABEL_LISTS_MAP,
   LIST_FIELD,
+  meetsFieldType,
   OBJECT_ID_FIELD,
-  STRING_FIELD,
   Schema,
   StrictField,
+  STRING_FIELD,
   VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
-  meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
@@ -778,5 +778,19 @@ export const parentField = selectorFamily({
     ({ get }) => {
       const parent = path.split(".").slice(0, -1).join(".");
       return get(field(parent));
+    },
+});
+
+export const isOfDocumentFieldList = selectorFamily({
+  key: "isOfDocumentFieldList",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path.split(".")[0]));
+
+      return [
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+        EMBEDDED_DOCUMENT_FIELD,
+      ].includes(f.subfield || "");
     },
 });

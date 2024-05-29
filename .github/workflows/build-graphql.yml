@@ -21,7 +21,7 @@ jobs:
           python-version: 3.9
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel build
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -32,7 +32,7 @@ jobs:
       - name: Build wheel
         run: |
           cd package/graphql
-          python setup.py sdist bdist_wheel
+          python -Im build
       - name: Upload wheel(s)
         uses: actions/upload-artifact@v3
         with:
