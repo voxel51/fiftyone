@@ -4,7 +4,8 @@
   border: 1px solid var(--fo-palette-primary-plainBorder);
   padding: 0.25rem;
   border-radius: 3px;
-  z-index: 1000;
+  z-index: 100000;
   font-size: 14px;
   color: var(--fo-palette-text-secondary);
+  user-select: none;
 }

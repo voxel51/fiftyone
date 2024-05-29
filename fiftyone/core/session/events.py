@@ -1,10 +1,11 @@
 """
 Session events.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import base64
 from dataclasses import asdict, dataclass
 import re
@@ -321,11 +322,12 @@ class StateUpdate(Event):
 class AppInitializer:
     dataset: t.Optional[str] = None
     view: t.Optional[str] = None
+    workspace: t.Optional[str] = None
 
 
 @dataclass
 class ListenPayload:
-    """A an initialization payload for an event listener request"""
+    """An initialization payload for an event listener request"""
 
     initializer: t.Union[AppInitializer, None, fos.StateDescription]
     events: t.List[str]

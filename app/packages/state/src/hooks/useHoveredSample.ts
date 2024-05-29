@@ -1,9 +1,9 @@
-import { AppSample } from "../recoil";
-import * as fos from "../..";
+import { Sample } from "@fiftyone/looker";
 import { useSetRecoilState } from "recoil";
+import * as fos from "../..";
 
 export default function useHoveredSample(
-  sample: AppSample,
+  sample: Sample,
   auxHandlers: any = {}
 ) {
   const setSample = useSetRecoilState(fos.hoveredSample);

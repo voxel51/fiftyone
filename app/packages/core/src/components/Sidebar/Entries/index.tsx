@@ -5,4 +5,4 @@ import Filter from "./FilterEntry";
 import { PathGroupEntry as PathGroup } from "./GroupEntries";
 import PathValue from "./PathValueEntry";
 
-export { AddGroup, Empty, FilterablePath, Filter, PathGroup, PathValue };
+export { AddGroup, Empty, Filter, FilterablePath, PathGroup, PathValue };

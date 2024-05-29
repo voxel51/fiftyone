@@ -1,7 +1,7 @@
 """
 FiftyOne run-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -128,6 +128,47 @@ class RunTests(unittest.TestCase):
 
         runs = dataset.list_runs(method="test")
         self.assertListEqual(runs, ["custom2"])
+
+    @drop_datasets
+    def test_concurrent_run_updates(self):
+        dataset = fo.Dataset()
+        kwargs = {"foo": "bar", "spam": "eggs"}
+
+        config1 = dataset.init_run(**kwargs)
+        dataset.register_run("custom1", config1)
+
+        results1 = dataset.init_run_results("custom1", **kwargs)
+        dataset.save_run_results("custom1", results1)
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        self.assertIsNot(dataset, also_dataset)
+
+        config2 = also_dataset.init_run(**kwargs)
+        also_dataset.register_run("custom2", config2)
+
+        results2 = also_dataset.init_run_results("custom2", **kwargs)
+        also_dataset.save_run_results("custom2", results2)
+
+        self.assertListEqual(dataset.list_runs(), ["custom1"])
+
+        dataset.rename_run("custom1", "still_custom1")
+        also_dataset.reload()
+
+        self.assertListEqual(
+            also_dataset.list_runs(),
+            ["custom2", "still_custom1"],
+        )
+
+        dataset.delete_run("still_custom1")
+        also_dataset.reload()
+
+        self.assertListEqual(also_dataset.list_runs(), ["custom2"])
+
+        dataset.reload()
+
+        self.assertListEqual(dataset.list_runs(), ["custom2"])
 
 
 if __name__ == "__main__":

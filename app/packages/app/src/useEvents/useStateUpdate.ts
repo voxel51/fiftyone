@@ -1,7 +1,7 @@
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { getDatasetName, getSavedViewName, resolveURL } from "../utils";
+import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState, EventHandlerHook } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
@@ -22,9 +22,10 @@ const useStateUpdate: EventHandlerHook = ({
         nextDataset: stateless
           ? getDatasetName()
           : payload.state.dataset ?? null,
-        nextView: stateless
-          ? getSavedViewName()
-          : payload.state.saved_view_slug,
+        nextView: stateless ? getParam("view") : payload.state.saved_view_slug,
+        extra: {
+          workspace: state.workspace?._name || null,
+        },
       });
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);

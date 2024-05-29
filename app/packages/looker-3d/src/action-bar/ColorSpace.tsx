@@ -6,16 +6,14 @@ import { useCallback, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ActionItem } from "../containers";
 import {
   ACTION_SHADE_BY,
   SHADE_BY_CHOICES,
   SHADE_BY_CUSTOM,
-  ShadeBy,
-  currentActionAtom,
-  customColorMapAtom,
-  shadeByAtom,
-} from "../state";
+} from "../constants";
+import { ActionItem } from "../containers";
+import { currentActionAtom, customColorMapAtom, shadeByAtom } from "../state";
+import { ShadeBy } from "../types";
 import { ActionPopOver } from "./shared";
 
 export const ChooseColorSpace = () => {
@@ -128,7 +126,10 @@ const CustomColorSpace = () => {
   );
 
   if (!defaultPcdSlice || activePcdSlices?.length < 2) {
-    const slice = activePcdSlices?.length > 0 ? defaultPcdSlice : "default";
+    const slice =
+      activePcdSlices?.length > 0
+        ? activePcdSlices?.at(0) ?? defaultPcdSlice
+        : "default";
     return (
       <animated.div style={{ display: "flex", ...springProps }}>
         <ColorPickerBox

@@ -87,14 +87,6 @@ export const parentMediaTypeSelector = selector({
   },
 });
 
-export const savedViewsSelector = selector<State.SavedView[]>({
-  key: "datasetViews",
-  get: ({ get }) => get(datasetAtom)?.savedViews || [],
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(atoms.mediaType) === "video",
@@ -103,6 +95,11 @@ export const isVideoDataset = selector({
 export const isPointcloudDataset = selector({
   key: "isPointcloudDataset",
   get: ({ get }) => get(atoms.mediaType) === "point_cloud",
+});
+
+export const is3DDataset = selector({
+  key: "is3DDataset",
+  get: ({ get }) => get(atoms.mediaType) === "three_d",
 });
 
 export const timeZone = selector<string>({

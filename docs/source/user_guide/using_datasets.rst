@@ -59,6 +59,67 @@ have a bad time:
     dataset4 = fo.load_dataset("my_fourth_dataset")
     # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
+.. _dataset-media-type:
+
+Dataset media type
+------------------
+
+The media type of a dataset is determined by the
+:ref:`media type <using-media-type>` of the |Sample| objects that it contains.
+
+The :meth:`media_type <fiftyone.core.dataset.Dataset.media_type>` property of a
+dataset is set based on the first sample added to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    print(dataset.media_type)
+    # None
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)
+    # "image"
+
+Note that datasets are homogeneous; they must contain samples of the same media
+type (except for :ref:`grouped datasets <groups>`):
+
+.. code-block:: python
+    :linenos:
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+    dataset.add_sample(sample)
+    # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
+
+The following media types are available:
+
+.. table::
+    :widths: 25, 75
+
+    +---------------+---------------------------------------------------+
+    | Media type    | Description                                       |
+    +===============+===================================================+
+    | `image`       | Datasets that contain                             |
+    |               | :ref:`images <image-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `video`       | Datasets that contain                             |
+    |               | :ref:`videos <video-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `3d`          | Datasets that contain                             |
+    |               | :ref:`3D scenes <3d-datasets>`                    |
+    +---------------+---------------------------------------------------+
+    | `point-cloud` | Datasets that contain                             |
+    |               | :ref:`point clouds <point-cloud-datasets>`        |
+    +---------------+---------------------------------------------------+
+    | `group`       | Datasets that contain                             |
+    |               | :ref:`grouped data slices <groups>`               |
+    +---------------+---------------------------------------------------+
+
 .. _dataset-persistence:
 
 Dataset persistence
@@ -107,49 +168,6 @@ shell and run the command again:
 
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
-
-.. _dataset-media-type:
-
-Dataset media type
-------------------
-
-The media type of a dataset is determined by the
-:ref:`media type <using-media-type>` of the |Sample| objects that it contains.
-
-The :meth:`media_type <fiftyone.core.dataset.Dataset.media_type>` property of a
-dataset is set based on the first sample added to it:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset()
-
-    print(dataset.media_type)
-    # None
-
-    dataset.add_sample(fo.Sample(filepath="/path/to/image.png"))
-
-    print(dataset.media_type)
-    # "image"
-
-Datasets are homogeneous; they must contain samples of the same media type
-(except for :ref:`grouped datasets <groups>`):
-
-.. code-block:: python
-    :linenos:
-
-    dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
-    # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
-
-The following media types are possible:
-
--   `image`: if the dataset contains images
--   `video`: if the dataset contains :ref:`videos <video-datasets>`
--   `point-cloud`: if the dataset contains
-    :ref:`point clouds <point-cloud-datasets>`
--   `group`: if the dataset contains :ref:`grouped data slices <groups>`
 
 .. _dataset-version:
 
@@ -411,6 +429,17 @@ default:
     dataset.save()  # must save after edits
 
     session.refresh()
+
+You can set ``media_fallback=True`` if you want the App to fallback to the
+``filepath`` field if an alternate media field is missing for a particular
+sample in the grid and/or modal:
+
+.. code-block:: python
+    :linenos:
+
+    # Fallback to `filepath` if an alternate media field is missing
+    dataset.app_config.media_fallback = True
+    dataset.save()
 
 .. _dataset-app-config-color-scheme:
 
@@ -1471,6 +1500,8 @@ as per the table below:
     | `image/*`           | `image`        | Image sample                     |
     +---------------------+----------------+----------------------------------+
     | `video/*`           | `video`        | Video sample                     |
+    +---------------------+----------------+----------------------------------+
+    | `*.fo3d`            | `3d`           | 3D sample                        |
     +---------------------+----------------+----------------------------------+
     | `*.pcd`             | `point-cloud`  | Point cloud sample               |
     +---------------------+----------------+----------------------------------+
@@ -2694,6 +2725,10 @@ stored directly in the database via the
     :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>` attribute,
     for efficiency.
 
+    Note that :attr:`mask_path <fiftyone.core.labels.Segmentation.mask_path>`
+    must contain the **absolute path** to the mask on disk in order to use the
+    dataset from different current working directories in the future.
+
 Segmentation masks can be stored in either of these formats:
 
 -   2D 8-bit or 16-bit images or numpy arrays
@@ -2797,6 +2832,10 @@ image's extent when visualizing in the App.
     It is recommended to store heatmaps on disk and reference them via the
     :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>` attribute, for
     efficiency.
+
+    Note that :attr:`map_path <fiftyone.core.labels.Heatmap.map_path>`
+    must contain the **absolute path** to the map on disk in order to use the
+    dataset from different current working directories in the future.
 
 .. code-block:: python
     :linenos:
@@ -4089,6 +4128,63 @@ future sessions and manipulated as usual:
         }>,
     }>
 
+.. _image-datasets:
+
+Image datasets
+______________
+
+Any |Sample| whose `filepath` is a file with MIME type  `image/*` is recognized
+as a image sample, and datasets composed of image samples have media type
+`image`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # image
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6655ca275e20e244f2c8fe31',
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+    }>
+
+Example image dataset
+---------------------
+
+To get started exploring image datasets, try loading the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the zoo:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    print(dataset.count("ground_truth.detections"))  # 1232
+    print(dataset.count("predictions.detections"))  # 5620
+    print(dataset.count_values("ground_truth.detections.label"))
+    # {'dog': 15, 'airplane': 24, 'dining table': 15, 'hot dog': 5, ...}
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/quickstart.gif
+   :alt: quickstart
+   :align: center
+
 .. _video-datasets:
 
 Video datasets
@@ -4297,7 +4393,7 @@ Example video dataset
 ---------------------
 
 To get started exploring video datasets, try loading the
-:ref:`quickstart-video <dataset-zoo-quickstart-video>` dataset from the zoo:
+:ref:`quickstart-video dataset <dataset-zoo-quickstart-video>` from the zoo:
 
 .. code:: python
     :linenos:
@@ -4307,8 +4403,6 @@ To get started exploring video datasets, try loading the
 
     dataset = foz.load_zoo_dataset("quickstart-video")
 
-    print(dataset)
-
     print(dataset.count("frames"))  # 1279
     print(dataset.count("frames.detections.detections"))  # 11345
     print(dataset.count_values("frames.detections.detections.label"))
@@ -4316,27 +4410,413 @@ To get started exploring video datasets, try loading the
 
     session = fo.launch_app(dataset)
 
-.. code-block:: text
+.. image:: /images/datasets/quickstart-video.gif
+   :alt: quickstart-video
+   :align: center
 
-    Name:        quickstart-video
-    Media type:  video
-    Num samples: 10
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
-    Frame fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        frame_number: fiftyone.core.fields.FrameNumberField
-        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+.. _3d-datasets:
+
+3D datasets
+___________
+
+Any |Sample| whose `filepath` is a file with extension `.fo3d` is
+recognized as a 3D sample, and datasets composed of 3D
+samples have media type `3d`.
+
+An FO3D file encapsulates a 3D scene constructed using the
+:class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
+to add, remove, and manipulate 3D objects in the scene. A scene is 
+internally represented as a n-ary tree of 3D objects, where each 
+object is a node in the tree. A 3D object is either a
+:ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
+or a :ref:`3D shape geometry <3d-shapes>`.
+
+A scene may be explicitly initialized with additional attributes, such as
+:class:`camera <fiftyone.core.threed.camera>`,
+:class:`lights <fiftyone.core.threed.lights>`, and
+:class:`background <fiftyone.core.threed.SceneBackground>`. By default, a
+scene is created with neutral lighting, and a perspective camera whose
+`up` is set to `Y` axis in a right-handed coordinate system.
+
+After a scene is constructed, it should be written to the disk using the
+:meth:`scene.write() <fiftyone.core.threed.Scene.write>` method, which
+serializes the scene into an FO3D file.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+    scene.camera = fo.PerspectiveCamera(up="Z")
+
+    mesh = fo.GltfMesh("mesh", "mesh.glb")
+    mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    sphere1 = fo.SphereGeometry("sphere1", radius=2.0)
+    sphere1.position = [-1, 0, 0]
+    sphere1.default_material.color = "red"
+
+    sphere2 = fo.SphereGeometry("sphere2", radius=2.0)
+    sphere2.position = [-1, 0, 0]
+    sphere2.default_material.color = "blue"
+
+    scene.add(mesh, sphere1, sphere2)
+
+    scene.write("/path/to/scene.fo3d")
+
+    sample = fo.Sample(filepath="/path/to/scene.fo3d")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(dataset.media_type)  # 3d
+
+To modify an exising scene, load it via
+:meth:`Scene.from_fo3d() <fiftyone.core.threed.Scene.from_fo3d>`, perform any
+necessary updates, and then re-write it to disk:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene.from_fo3d("/path/to/scene.fo3d")
+
+    for node in scene.traverse():
+        if isinstance(node, fo.SphereGeometry):
+            node.visible = False
+
+    scene.write("/path/to/scene.fo3d")
+
+.. _3d-meshes:
+
+3D meshes
+---------
+
+A 3D mesh is a collection of vertices, edges, and faces that define the shape
+of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
+others also store the material properties and textures of the mesh. If a
+mesh file contains material properties and textures, FiftyOne will
+automatically load and display them. You may also
+assign default material for your meshes by setting the
+:attr:`default_material <fiftyone.core.threed.mesh.Mesh.default_material>`
+attribute of the mesh. In the absence of any material information,
+meshes are assigned a
+:class:`MeshStandardMaterial <fiftyone.core.threed.MeshStandardMaterial>`
+with reasonable defaults that can also be dynamically configured from the app.
+Please refer to :mod:`material_3d <fiftyone.core.threed.material_3d>` for more
+details.
+
+FiftyOne currently supports
+:class:`GLTF <fiftyone.core.threed.GltfMesh>`,
+:class:`OBJ <fiftyone.core.threed.ObjMesh>`,
+:class:`PLY <fiftyone.core.threed.PlyMesh>`,
+:class:`STL <fiftyone.core.threed.StlMesh>`, and
+:class:`FBX 7.x+ <fiftyone.core.threed.FbxMesh>` mesh formats.
+
+.. note::
+
+    We recommend the :class:`GLTF <fiftyone.core.threed.GltfMesh>` format for
+    3D meshes where possible, as it is the most compact, efficient, and
+    web-friendly format for storing and transmitting 3D models.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+
+    mesh1 = fo.GltfMesh("mesh1", "mesh.glb")
+    mesh1.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    mesh2 = fo.ObjMesh("mesh2", "mesh.obj")
+    mesh3 = fo.PlyMesh("mesh3", "mesh.ply")
+    mesh4 = fo.StlMesh("mesh4", "mesh.stl")
+    mesh5 = fo.FbxMesh("mesh5", "mesh.fbx")
+
+    scene.add(mesh1, mesh2, mesh3, mesh4, mesh5)
+
+    scene.write("/path/to/scene.fo3d")
+
+.. _3d-point-clouds:
+
+3D point clouds
+---------------
+
+FiftyOne supports the
+`PCD <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+point cloud format. A code snippet to create a PCD object that can be added
+to a FiftyOne 3D scene is shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    pcd = fo.PointCloud("my-pcd", "point-cloud.pcd")
+    pcd.default_material.shading_mode = "custom"
+    pcd.default_material.custom_color = "red"
+    pcd.default_material.point_size = 2
+
+    scene = fo.Scene()
+    scene.add(pcd)
+
+    scene.write("/path/to/scene.fo3d")
+
+You can customize the appearance of a point cloud by setting the
+`default_material` attribute of the point cloud object, or dynamically from
+the app. Please refer to the
+:class:`PointCloudMaterial <fiftyone.core.threed.PointCloudMaterial>`
+class for more details.
+
+.. note::
+
+    If your scene contains multiple point clouds, you can control which point
+    cloud is included in
+    :ref:`orthographic projections <orthographic-projection-images>` by
+    initializing it with `flag_for_projection=True`.
+
+Here's how a typical PCD file is structured:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import open3d as o3d
+
+    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
+    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
+
+.. note::
+
+    When working with modalities such as LIDAR, intensity data is assumed to be
+    encoded in the `r` channel of the `rgb` field of the
+    `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
+
+    When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
+    intensity values are automatically scaled to use the full dynamic range of
+    the colorscale.
+
+.. _3d-shapes:
+
+3D shapes
+---------
+
+FiftyOne provides a set of primitive 3D shape geometries that can be added to
+a 3D scene. The following 3D shape geometries are supported:
+
+- Box: :class:`BoxGeometry <fiftyone.core.threed.BoxGeometry>`
+- Sphere: :class:`SphereGeometry <fiftyone.core.threed.SphereGeometry>`
+- Cylinder: :class:`CylinderGeometry <fiftyone.core.threed.CylinderGeometry>`
+- Plane: :class:`PlaneGeometry <fiftyone.core.threed.PlaneGeometry>`
+
+Similar to meshes and point clouds, shapes can be manipulated by setting their
+position, rotation, and scale. Their appearance can be customized either by
+setting the `default_material` attribute of the shape object, or dynamically
+from the app.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+
+    box = fo.BoxGeometry("box", width=0.5, height=0.5, depth=0.5)
+    box.position = [0, 0, 1]
+    box.default_material.color = "red"
+
+    sphere = fo.SphereGeometry("sphere", radius=2.0)
+    sphere.position = [-1, 0, 0]
+    sphere.default_material.color = "blue"
+
+    cylinder = fo.CylinderGeometry("cylinder", radius_top=0.5, height=1)
+    cylinder.position = [0, 1, 0]
+
+    plane = fo.PlaneGeometry("plane", width=2, height=2)
+    plane.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    scene.add(box, sphere, cylinder, plane)
+
+    scene.write("/path/to/scene.fo3d")
+
+.. _3d-annotations:
+
+3D annotations
+--------------
+
+3D samples may contain any type and number of custom fields, including
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`,
+which are natively visualizable by the App's
+:ref:`3D visualizer <app-3d-visualizer>`.
+
+Because 3D annotations are stored in dedicated fields of datasets rather than
+being embedded in FO3D files, they can be queried and filtered via
+:ref:`dataset views <view-filtering>` and :ref:`in the App <app-filtering>`
+just like other primitive/label fields.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+    scene.add(fo.GltfMesh("mesh", "mesh.gltf"))
+    scene.write("/path/to/scene.fo3d")
+
+    detection = fo.Detection(
+        label="vehicle",
+        location=[0.47, 1.49, 69.44],
+        dimensions=[2.85, 2.63, 12.34],
+        rotation=[0, -1.56, 0],
+    )
+
+    sample = fo.Sample(
+        filepath="/path/to/scene.fo3d",
+        ground_truth=fo.Detections(detections=[detection]),
+    )
+
+.. _orthographic-projection-images:
+
+Orthographic projection images
+------------------------------
+
+In order to visualize 3D datasets in the App's grid view, you can use
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate orthographic projection images of each scene:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example 3D dataset
+    dataset = foz.load_zoo_dataset("quickstart-3d")
+
+    # This dataset already has orthographic projections populated, but let's
+    # recompute them to demonstrate the idea
+    fou3d.compute_orthographic_projection_images(
+        dataset,
+        (-1, 512),  # (width, height) of each image; -1 means aspect-preserving
+        bounds=((-50, -50, -50), (50, 50, 50)),
+        projection_normal=(0, -1, 0),
+        output_dir="/tmp/quickstart-3d-proj",
+        shading_mode="height",
+    )
+
+    session = fo.launch_app(dataset)
+
+Note that the method also supports :ref:`grouped datasets <groups>` that
+contain 3D slice(s):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example group dataset that contains a 3D slice
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    dataset.group_slice = "pcd"
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Orthographic projection images currently only include point clouds, not
+    meshes or 3D shapes.
+
+    If a scene contains multiple :ref:`point clouds <3d-point-clouds>`, you can
+    control which point cloud to project by initializing it with
+    `flag_for_projection=True`.
+
+The above method populates an |OrthographicProjectionMetadata| field on each
+sample that contains the path to its projection image and other necessary
+information to properly
+:ref:`visualize it in the App <app-3d-orthographic-projections>`.
+
+Refer to the
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+documentation for available parameters to customize the projections.
+
+.. _example-3d-datasets:
+
+Example 3D datasets
+-------------------
+
+To get started exploring 3D datasets, try loading the
+:ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` from the zoo:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-3d")
+
+    print(dataset.count_values("ground_truth.label"))
+    # {'bottle': 5, 'stairs': 5, 'keyboard': 5, 'car': 5, ...}
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/quickstart-3d.gif
+   :alt: quickstart-3d
+   :align: center
+
+Also check out the
+:ref:`quickstart-groups dataset <dataset-zoo-quickstart-groups>`, which
+contains a point cloud slice:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    print(dataset.count("ground_truth.detections"))  # 1100
+    print(dataset.count_values("ground_truth.detections.label"))
+    # {'Pedestrian': 133, 'Car': 774, ...}
+
+    dataset.group_slice = "pcd"
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/quickstart-groups.gif
+   :alt: quickstart-groups
+   :align: center
 
 .. _point-cloud-datasets:
 
 Point cloud datasets
 ____________________
+
+.. warning::
+
+    The `point-cloud` media type has been deprecated in favor of the
+    :ref:`3D media type <3d-datasets>`.
+
+    While we'll keep supporting the `point-cloud` media type for backward
+    compatibility, we recommend using the `3d` media type for new datasets.
 
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
@@ -4366,124 +4846,10 @@ composed of point cloud samples have media type `point-cloud`:
         'metadata': None,
     }>
 
-.. note::
-
-    Point cloud samples may contain any type and number of custom fields,
-    including :ref:`3D detections <3d-detections>` and
-    :ref:`3D polylines <3d-polylines>`, which are natively visualizable by the
-    App's :ref:`3D visualizer <app-3d-visualizer>`.
-
-Here's how a typical PCD file is structured:
-
-.. code-block:: python
-    :linenos:
-
-    import numpy as np
-    import open3d as o3d
-
-    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
-    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
-    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
-
-.. note::
-
-    When working with modalities such as LIDAR, intensity data is assumed to be
-    encoded in the `r` channel of the `rgb` field of the
-    `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
-
-    When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
-    intensity values are automatically scaled to use the full dynamic range of
-    the colorscale.
-
-.. _orthographic-projection-images:
-
-Orthographic projection images
-------------------------------
-
-In order to visualize point cloud datasets in the App's grid view, you can use
-:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-to generate orthographic projection images of each point cloud:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-    import fiftyone.zoo as foz
-
-    # Load an example point cloud dataset
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
-
-    # Populate orthographic projections
-    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
-
-    session = fo.launch_app(dataset)
-
-The above method populates an |OrthographicProjectionMetadata| field on each
-sample that contains the path to its projection image and the necessary to
-properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
-
-.. note::
-
-    Refer to the
-    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-    documentation for available parameters to customize the projections.
-
-Example point cloud dataset
----------------------------
-
-To get started exploring point cloud datasets, try loading the
-:ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset from the zoo
-and :ref:`clone <saving-and-cloning-views>` the point cloud slice into a
-standalone dataset:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-    import fiftyone.zoo as foz
-
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
-
-    # Populate orthographic projections
-    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
-
-    print(dataset)
-
-    print(dataset.count("ground_truth.detections"))  # 1100
-    print(dataset.count_values("ground_truth.detections.label"))
-    # {'Pedestrian': 133, 'Car': 774, ...}
-
-    session = fo.launch_app(dataset)
-
-.. code-block:: text
-
-    Name:        2023.03.04.15.21.08
-    Media type:  point-cloud
-    Num samples: 200
-    Persistent:  False
-    Tags:        []
-    Sample fields:
-        id:                               fiftyone.core.fields.ObjectIdField
-        filepath:                         fiftyone.core.fields.StringField
-        tags:                             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:                            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
-        ground_truth:                     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        orthographic_projection_metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.utils.utils3d.OrthographicProjectionMetadata)
+Point cloud samples may contain any type and number of custom fields, including
+:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`,
+which are natively visualizable by the App's
+:ref:`3D visualizer <app-3d-visualizer>`.
 
 DatasetViews
 ____________
