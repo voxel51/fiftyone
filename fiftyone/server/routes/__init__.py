@@ -15,8 +15,8 @@ from .frames import Frames
 from .media import Media
 from .plugins import Plugins
 from .fo3d_resolver import ResolveFo3d
-from .sort import Sort
 from .screenshot import Screenshot
+from .signed_url import GetSignedUrl
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
@@ -36,6 +36,7 @@ routes = (
         ("/media", Media),
         ("/plugins", Plugins),
         ("/resolve-fo3d", ResolveFo3d),
+        ("/signed-url", GetSignedUrl),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),

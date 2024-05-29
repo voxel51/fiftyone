@@ -21,12 +21,6 @@ from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
 
-async def load_variables(request: Request):
-    body = await request.body()
-    payload = body.decode("utf-8")
-    return json_util.loads(payload) if payload else {}
-
-
 class Encoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, np.floating):
@@ -36,6 +30,12 @@ class Encoder(JSONEncoder):
             return int(o)
 
         return JSONEncoder.default(self, o)
+
+
+async def load_variables(request: Request):
+    body = await request.body()
+    payload = body.decode("utf-8")
+    return json_util.loads(payload) if payload else {}
 
 
 async def create_response(response: dict):
