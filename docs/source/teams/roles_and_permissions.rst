@@ -109,7 +109,8 @@ datasets.
 
 Admins can manage groups through the "Settings > Team > Groups" page.
 Each group can be given specific dataset access permissions, which apply to
-all users within the group (except for guests).
+all users within the group. Collaborators' and guests' access to the dataset is 
+limited by the maximum dataset access level of the role. 
 
 .. image:: /images/teams/admin_team_groups_page.png
    :alt: admin-team-groups-page
@@ -280,3 +281,15 @@ on your team's deployment.
 
    Any member who creates a dataset (including cloning an existing dataset or
    view) will be granted **Can manage** permissions on the new dataset.
+
+.. _teams-roles-page:
+
+Roles page
+__________
+
+Admins can review the actions and permissions available to each user role by
+navigating to the "Settings > Security > Roles" page:
+
+.. image:: /images/teams/admin_roles_page.png
+   :alt: admin-roles-page
+   :align: center

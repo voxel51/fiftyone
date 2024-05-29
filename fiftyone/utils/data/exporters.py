@@ -1243,12 +1243,19 @@ class MediaExporter(object):
             scene.write(fo3d_output_path)
         else:
             if export_mode == "symlink":
+                # No cloud version of symlink (ensured above), so we're fine
+                #   to use regular etau symlink_file here
                 etau.symlink_file(fo3d_path, fo3d_output_path)
+            elif not fos.is_local(fo3d_path) or not fos.is_local(
+                fo3d_output_path
+            ):
+                self._inpaths.append(fo3d_path)
+                self._outpaths.append(fo3d_output_path)
             else:
-                etau.copy_file(fo3d_path, fo3d_output_path)
+                fos.copy_file(fo3d_path, fo3d_output_path)
 
         if export_mode == "move":
-            etau.delete_file(fo3d_path)
+            fos.delete_file(fo3d_path)
 
     def __enter__(self):
         self.setup()

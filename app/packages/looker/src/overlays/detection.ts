@@ -21,6 +21,7 @@ export interface DetectionLabel extends RegularLabel {
   dimensions?: [number, number, number];
   location?: [number, number, number];
   rotation?: [number, number, number];
+  convexHull?: Coordinates[];
 }
 
 export default class DetectionOverlay<
@@ -229,48 +230,32 @@ export default class DetectionOverlay<
     state: Readonly<State>,
     color: string
   ) {
-    const [tlx, tly, w, h] = this.label.bounding_box;
-    const [boxCenterX, boxCenterY] = t(state, tlx + w / 2, tly + h / 2);
-
-    const hasRotationAroundZAxis =
-      this.label.rotation && this.label.rotation[2] !== 0;
-
-    if (hasRotationAroundZAxis) {
-      // translate to center of box before rotating
-      ctx.translate(boxCenterX, boxCenterY);
-      // modifies current transformation matrix so that all subsequent drawings are rotated
-      ctx.rotate(-this.label.rotation[2]);
-      // translate back to undo the translation into the center of the box
-      ctx.translate(-boxCenterX, -boxCenterY);
-    }
+    const convexHull = this.label.convexHull;
 
     const previousAlpha = ctx.globalAlpha;
-    ctx.beginPath();
     // use double stoke width to make the box more visible
     ctx.lineWidth = state.strokeWidth * 2;
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
-    ctx.moveTo(...t(state, tlx, tly));
-    ctx.lineTo(...t(state, tlx + w, tly));
-    ctx.lineTo(...t(state, tlx + w, tly + h));
-    ctx.lineTo(...t(state, tlx, tly + h));
+
+    ctx.beginPath();
+
+    // draw a polyline that defines the convex hull of the projected corners and fill it
+    ctx.moveTo(...t(state, convexHull[0][0], convexHull[0][1]));
+    for (let i = 1; i < convexHull.length; i++) {
+      ctx.lineTo(...t(state, convexHull[i][0], convexHull[i][1]));
+    }
+
     ctx.closePath();
     ctx.stroke();
 
     // fill with some transparency
-    ctx.globalAlpha = state.options.alpha * 0.5;
-    ctx.fillRect(...t(state, tlx, tly), w, h);
+    ctx.globalAlpha = state.options.alpha * 0.3;
+
     ctx.fill();
 
     // restore previous alpha
     ctx.globalAlpha = previousAlpha;
-
-    if (hasRotationAroundZAxis) {
-      // undo rotation to reset current transformation matrix
-      ctx.translate(boxCenterX, boxCenterY);
-      ctx.rotate(this.label.rotation[2]);
-      ctx.translate(-boxCenterX, -boxCenterY);
-    }
   }
 
   private strokeRect(
