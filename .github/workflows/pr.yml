@@ -19,9 +19,6 @@ jobs:
   lint:
     uses: ./.github/workflows/lint-app.yml
 
-  test:
-    uses: ./.github/workflows/test.yml
-
   teams:
     runs-on: ubuntu-latest
     if: github.base_ref == 'develop'
@@ -39,6 +36,9 @@ jobs:
           propagate_failure: true
           trigger_workflow: true
           wait_workflow: true
+
+  test:
+    uses: ./.github/workflows/test.yml
 
   all-tests:
     runs-on: ubuntu-latest
