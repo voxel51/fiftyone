@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { getCls } from "@fiftyone/utilities";
@@ -20,7 +20,7 @@ export interface BaseLabel {
   index?: number;
 }
 
-export interface PointInfo<Label extends BaseLabel> {
+export interface PointInfo<Label extends BaseLabel = BaseLabel> {
   color: string;
   field: string;
   label: Label;

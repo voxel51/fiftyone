@@ -21,11 +21,15 @@ echo "Fiftyone root dir: $FIFTYONE_ROOT_DIR"
 echo "Copying fiftyone directory into .build..."
 rsync -aq "$FIFTYONE_ROOT_DIR"/* --exclude-from '.gitignore' \
         --exclude e2e-pw --exclude e2e --exclude app \
+        --exclude .build --exclude *.zip \
         --exclude .git --exclude .github --exclude .vscode \
         --exclude .gitignore --exclude .gitmodules \
+        --exclude .pytest_cache --exclude .idea \
+        --exclude .build --exclude __pycache__ \
         --exclude fiftyone.egg-info \
         ${BUILD_DIR_NAME}
 
+echo "Building docker image..."
 docker build -t screenshot -f scripts/generate-screenshots-docker-image/Dockerfile .
 
 echo "Cleanup..."

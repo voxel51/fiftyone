@@ -463,7 +463,7 @@ def set_dataset_user_permission(
         assert fom.get_permissions(dataset_name=dataset_name, user=guest) == fom.VIEW
 
         # Nonexisting user
-        fom.set_dataset_user_permission(dataset_name, new_guest, invite=True)
+        fom.set_dataset_user_permission(dataset_name, new_guest, fom.VIEW, invite=True)
         assert guest in [i.invitee_email for i in fom.list_pending_invitations()]
 
     Args:

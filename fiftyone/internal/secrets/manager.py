@@ -177,7 +177,6 @@ class SecretsManager(ISecretProvider):
     def get_sync(self, key: str, **kwargs) -> Optional[fois.UnencryptedSecret]:
         """Get a secret with plaintext value for the given key. Local
         environment variables will take priority if they exist."""
-        print("secretmanager.get_sync")
         return self._get_secret_from_providers_sync(key, **kwargs)
 
     async def get_multiple(

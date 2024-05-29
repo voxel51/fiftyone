@@ -1,5 +1,5 @@
 import { subscribe } from "@fiftyone/relay";
-import { DefaultValue, atom, atomFamily, selectorFamily } from "recoil";
+import { atom, atomFamily, DefaultValue, selectorFamily } from "recoil";
 
 export const sidebarExpandedStore = atomFamily<
   { [key: string]: boolean },
@@ -29,7 +29,7 @@ export const sidebarExpanded = selectorFamily<
 });
 
 export const granularSidebarExpandedStore = atom<{ [key: string]: boolean }>({
-  key: "granularSidebarExpanded",
+  key: "granularSidebarExpandedStore",
   default: {},
   effects: [({ node }) => subscribe((_, { set }) => set(node, {}))],
 });

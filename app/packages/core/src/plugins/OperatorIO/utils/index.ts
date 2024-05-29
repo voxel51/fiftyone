@@ -23,7 +23,7 @@ const outputComponentsByType = {
   File: "FileExplorerView",
   UploadedFile: "FileView",
 };
-const baseViews = ["View", "PromptView"];
+const baseViews = ["View", "PromptView", "DrawerView"];
 const viewAliases = {
   Button: "ButtonView",
   Dropdown: "DropdownView",

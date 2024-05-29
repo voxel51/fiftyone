@@ -26,7 +26,7 @@ const onSetDataset: RegisteredSetter =
         },
       });
 
-    subscribeBefore<DatasetPageQuery>((entry) => {
+    const unsubscribe = subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
@@ -37,6 +37,8 @@ const onSetDataset: RegisteredSetter =
       );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
+
+      unsubscribe();
     });
 
     router.history.push(
@@ -44,9 +46,13 @@ const onSetDataset: RegisteredSetter =
         currentPathname: router.history.location.pathname,
         currentSearch: router.history.location.search,
         nextDataset: datasetName || null,
+        extra: {
+          workspace: null,
+        },
       }),
       {
         view: [],
+        workspace: null,
       }
     );
   };

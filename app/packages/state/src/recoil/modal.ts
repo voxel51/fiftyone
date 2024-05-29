@@ -1,22 +1,26 @@
-import { AbstractLooker, type Sample } from "@fiftyone/looker";
-import { BaseState } from "@fiftyone/looker/src/state";
+import {
+  AbstractLooker,
+  BaseState,
+  PointInfo,
+  type Sample,
+} from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
+import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ResponseFrom } from "../utils";
+import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
   activeModalSidebarSample,
   groupId,
   groupSlice,
   hasGroupSlices,
-  imaVidLookerState,
   modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
-  shouldRenderImaVidLooker,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -201,6 +205,21 @@ export const modalSample = graphQLSelector<
       },
     };
   },
+});
+
+export const tooltipCoordinates = atom<ComputeCoordinatesReturnType | null>({
+  key: "tooltipCoordinates",
+  default: null,
+});
+
+export const tooltipDetail = atom<PointInfo | null>({
+  key: "tooltipDetail",
+  default: null,
+});
+
+export const isTooltipLocked = atom<boolean>({
+  key: "isTooltipLocked",
+  default: false,
 });
 
 export class SampleNotFound extends Error {}

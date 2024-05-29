@@ -17,10 +17,8 @@ export class ModalVideoControlsPom {
     this.modal = modal;
     this.assert = new ModalVideoControlsAsserter(this);
 
-    this.controls = this.modal.locator.getByTestId("looker-video-controls");
-    this.optionsPanel = this.modal.locator.getByTestId(
-      "looker-video-options-panel"
-    );
+    this.controls = this.modal.locator.getByTestId("looker-controls");
+    this.optionsPanel = this.modal.locator.getByTestId("looker-options-panel");
     this.time = this.modal.locator.getByTestId("looker-video-time");
     this.playPauseButton = this.controls.getByTestId(
       "looker-video-play-button"
@@ -35,7 +33,7 @@ export class ModalVideoControlsPom {
   }
 
   private async clickSettings() {
-    return this.controls.getByTestId("looker-video-controls-settings").click();
+    return this.controls.getByTestId("looker-controls-settings").click();
   }
 
   async getCurrentTime() {

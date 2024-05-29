@@ -18,7 +18,7 @@ or `contact us on Slack <https://slack.voxel51.com>`_.
 
     .. code-block:: shell
 
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip setuptools wheel build
         pip install fiftyone
 
 .. _troubleshooting-pip:

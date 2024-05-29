@@ -39,13 +39,15 @@ these plugins available in the
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_ | ✏️ Utilities for integrating FiftyOne with annotation tools                                                               |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           |  🧠 Utilities for working with the FiftyOne Brain                                                                         |
+    | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           | 🧠 Utilities for working with the FiftyOne Brain                                                                         |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ |  ✅ Utilities for evaluating models with FiftyOne                                                                         |
+    | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ | ✅ Utilities for evaluating models with FiftyOne                                                                         |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_                 | 📁 A collection of import/export utilities                                                                                |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
-    | `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/indexes/README.md>`_       | 📈 Utilities working with FiftyOne database indexes                                                                       |
+    | `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/indexes/README.md>`_       | 📈 Utilities for working with FiftyOne database indexes                                                                       |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/runs <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/runs/README.md>`_             | 📈 Utilities for working with custom runs                                                                       |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/utils <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/utils/README.md>`_           | ⚒️ Call your favorite SDK utilities from the App                                                                          |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -54,13 +56,13 @@ these plugins available in the
     | `@voxel51/zoo <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/zoo/README.md>`_               | 🌎 Download datasets and run inference with models from the FiftyOne Zoo, all without leaving the App                     |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
 
-For example, wish you could import data from within the App? With the
+For example, do you wish you could import data from within the App? With the
 `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_,
-plugin you can!
+plugin, you can!
 
 .. image:: /images/plugins/operators/examples/import.gif
 
-Want to send data for annotation from within the App? Sure thing, just install the
+Want to send data for annotation from within the App? Sure thing! Just install the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_
 plugin:
 

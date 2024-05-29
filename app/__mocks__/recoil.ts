@@ -23,7 +23,13 @@ export const getValue = (atom) => {
   if (atom.params !== undefined) {
     return mockValues[atom.key](atom.params);
   }
-  return mockValues[atom.key];
+
+  const mockValue = mockValues[atom.key];
+  if (mockValue instanceof Function) {
+    return mockValue();
+  }
+
+  return mockValue;
 };
 
 const resetValue = (atom) => {
@@ -37,9 +43,12 @@ const resetValue = (atom) => {
 const setValue = (atom, value) => {
   if (atom.params) {
     if (!mockValuesStore[atom.key]) mockValuesStore[atom.key] = {};
-    mockValuesStore[atom.key][JSON.stringify(atom.params)] = value;
+    const current = mockValuesStore[atom.key][JSON.stringify(atom.params)];
+    mockValuesStore[atom.key][JSON.stringify(atom.params)] =
+      value instanceof Function ? value(current) : value;
   } else {
-    mockValues[atom.key] = value;
+    const current = mockValues[atom.key];
+    mockValues[atom.key] = value instanceof Function ? value(current) : value;
   }
 };
 
@@ -103,7 +112,10 @@ export function selectorFamily<
     resolver.key = options.key;
     resolver.params = params;
     resolver.set = (value) =>
-      options.set({ set: setValue, get: getValue, reset: resetValue }, value);
+      options.set(params)(
+        { set: setValue, get: getValue, reset: resetValue },
+        value
+      );
     return resolver;
   };
 }
@@ -119,6 +131,7 @@ export type TestSelectorFamily<
   P = any
 > = {
   (): ReturnType<T>["__tag"][0];
+  set: (params: ReturnType<T>["__tag"][0]) => void;
   key: string;
   params: P;
 };

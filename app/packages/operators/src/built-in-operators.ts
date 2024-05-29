@@ -8,8 +8,12 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
+import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
+import { useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
+import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import {
   ExecutionContext,
   Operator,
@@ -19,9 +23,6 @@ import {
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
-import { useSetRecoilState } from "recoil";
-import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
-import { toSlug } from "@fiftyone/utilities";
 
 //
 // BUILT-IN OPERATORS
@@ -735,7 +736,18 @@ class SetSelectedLabels extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.labels);
+    const labels = params?.labels;
+    const formattedLabels = Array.isArray(labels)
+      ? labels.map((label) => {
+          return {
+            field: label.field,
+            sampleId: label.sampleId ?? label.sample_id,
+            labelId: label.labelId ?? label.label_id,
+            frameNumber: label.frameNumber ?? label.frame_number,
+          };
+        })
+      : [];
+    hooks.setSelected(formattedLabels);
   }
 }
 
@@ -748,6 +760,26 @@ class ClearSelectedLabels extends Operator {
   }
   async execute({ state }: ExecutionContext) {
     state.set(fos.selectedLabels, []);
+  }
+}
+
+class SetSpaces extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+  }
+  useHooks() {
+    const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
+    return { setSessionSpacesState };
+  }
+  async execute(ctx: ExecutionContext) {
+    const { name, spaces } = ctx.params || {};
+    if (spaces) {
+      ctx.hooks.setSessionSpacesState(spaces);
+    } else if (name) {
+      executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
+    } else {
+      throw new Error('Param "spaces" or "name" is required to set a space');
+    }
   }
 }
 
@@ -780,6 +812,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SplitPanel);
     _registerBuiltInOperator(SetSelectedLabels);
     _registerBuiltInOperator(ClearSelectedLabels);
+    _registerBuiltInOperator(SetSpaces);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

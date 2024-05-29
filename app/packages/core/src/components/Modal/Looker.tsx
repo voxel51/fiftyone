@@ -12,7 +12,12 @@ import React, {
   useState,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { v4 as uuid } from "uuid";
 import { useInitializeImaVidSubscriptions } from "./hooks";
 
@@ -98,6 +103,10 @@ const Looker = ({
   const setModalLooker = useSetRecoilState(fos.modalLooker);
   const { subscribeToImaVidStateChanges } = useInitializeImaVidSubscriptions();
 
+  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+    fos.isTooltipLocked
+  );
+
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
   });
@@ -150,10 +159,15 @@ const Looker = ({
     looker,
     "close",
     useCallback(() => {
+      if (isTooltipLocked) {
+        setIsTooltipLocked(false);
+        return;
+      }
+
       jsonPanel.close();
       helpPanel.close();
       clearModal();
-    }, [clearModal, jsonPanel, helpPanel])
+    }, [clearModal, jsonPanel, helpPanel, isTooltipLocked])
   );
 
   useEventHandler(looker, "select", useOnSelectLabel());

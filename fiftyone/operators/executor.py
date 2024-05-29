@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -764,7 +764,7 @@ class ExecutionContext(object):
                 ExecutionProgress(progress, label),
             )
         else:
-            self.log(f"Progress: {progress.progress} - {progress.label}")
+            self.log(f"Progress: {progress} - {label}")
 
 
 class ExecutionResult(object):

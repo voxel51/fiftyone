@@ -3,6 +3,7 @@ import { get } from "lodash";
 import { useRelayEnvironment } from "react-relay";
 import { CallbackInterface, RecoilState, useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
+import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
 import * as modalAtoms from "../recoil/modal";
@@ -114,7 +115,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
         const dynamicGroupParameters = await snapshot.getPromise(
-          groupAtoms.dynamicGroupParameters
+          dynamicGroupAtoms.dynamicGroupParameters
         );
 
         const getItemAtIndex = async (index: number) => {

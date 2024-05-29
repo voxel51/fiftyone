@@ -730,5 +730,5 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     . fiftyone-env/bin/activate
 
     # Python packages
-    pip install --upgrade pip setuptools wheel
+    pip install --upgrade pip setuptools wheel build
     pip install ipython

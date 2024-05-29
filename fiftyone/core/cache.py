@@ -152,8 +152,9 @@ class MediaCache(object):
             filepath: a filepath
 
         Returns:
-            tuple of the (possibly locally-cached) filepath, and whether the
-            returned path is local
+            a tuple of:
+            -   the (possibly locally-cached) filepath
+            -   True/False whether the returned path is local
         """
 
         # Function will report exists as True if we have previously
@@ -176,9 +177,19 @@ class MediaCache(object):
             filepaths: a list of filepaths
 
         Returns:
-            a list of (possibly locally-cached) filepaths
+            a tuple of:
+            -   a list of (possibly locally-cached) filepaths
+            -   True/False whether all returned paths are local
         """
-        return [self.use_cached_path(f)[0] for f in filepaths]
+        cached_paths = []
+        all_local = True
+
+        for filepath in filepaths:
+            cached_path, is_local = self.use_cached_path(filepath)
+            cached_paths.append(cached_path)
+            all_local &= is_local
+
+        return cached_paths, all_local
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.
@@ -437,7 +448,7 @@ class MediaCache(object):
         if tasks:
             _cache_media(tasks, self.num_workers, progress)
 
-    def get_url(self, remote_path, method="GET", hours=1):
+    def get_url(self, remote_path, method="GET", hours=None):
         """Retrieves a URL for accessing the given remote file.
 
         Note that GCS and S3 URLs are signed URLs that will expire.
@@ -445,7 +456,8 @@ class MediaCache(object):
         Args:
             remote_path: the remote path
             method ("GET"): a valid HTTP method for signed URLs
-            hours (1): a TTL for signed URLs
+            hours (None): a TTL for signed URLs. If not set, set to
+                the default value in ``fo.config.signed_url_expiration``
         """
         fs = fos.get_file_system(remote_path)
 
@@ -453,6 +465,8 @@ class MediaCache(object):
             raise ValueError(
                 "Cannot get URL for local file '%s'" % remote_path
             )
+
+        hours = hours or fo.config.signed_url_expiration
 
         client = fos.get_client(path=remote_path)
         return _get_url(client, remote_path, method=method, hours=hours)

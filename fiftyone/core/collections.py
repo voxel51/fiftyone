@@ -1,10 +1,11 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -50,6 +51,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 
 
 logger = logging.getLogger(__name__)
@@ -1392,6 +1394,7 @@ class SampleCollection(object):
         path=None,
         include_private=False,
         use_db_fields=False,
+        media_types=None,
     ):
         if path is not None:
             field = self.get_field(path, leaf=True)
@@ -1403,11 +1406,17 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
+            # These fields are currently not declared by default on 3D
             # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            media_types = media_types if media_types else set()
+            if issubclass(field.document_type, fol.Detection) and (
+                (
+                    self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                    or self._contains_media_type(fom.THREE_D, any_slice=True)
+                    or fom.POINT_CLOUD in media_types
+                    or fom.THREE_D in media_types
+                )
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1458,11 +1467,12 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
-            # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            # These fields are currently not declared by default on 3D
+            # datasets/slices, but they should be
+            if issubclass(field.document_type, fol.Detection) and (
+                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                or self._contains_media_type(fom.THREE_D, any_slice=True)
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1976,7 +1986,27 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-        view._edit_sample_tags(update)
+
+        try:
+            view._edit_sample_tags(update)
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                none_tags = self.exists("tags", bool=False)
+                none_tags.set_field("tags", []).save()
+
+                view._edit_sample_tags(update)
+            else:
+                raise e
 
     @mutates_data
     def untag_samples(self, tags):
@@ -2047,9 +2077,31 @@ class SampleCollection(object):
             tags = list(tags)
             update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
 
-        return self._edit_label_tags(
-            update_fcn, label_field, ids=ids, label_ids=label_ids
-        )
+        try:
+            return self._edit_label_tags(
+                update_fcn, label_field, ids=ids, label_ids=label_ids
+            )
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                _, tags_path = self._get_label_field_path(label_field, "tags")
+                none_tags = self.filter_labels(label_field, F("tags") == None)
+                none_tags.set_field(tags_path, []).save()
+
+                return self._edit_label_tags(
+                    update_fcn, label_field, ids=ids, label_ids=label_ids
+                )
+            else:
+                raise e
 
     @mutates_data
     def untag_labels(self, tags, label_fields=None):
@@ -3400,8 +3452,25 @@ class SampleCollection(object):
 
         media_fields = [self._resolve_media_field(f) for f in media_fields]
 
-        # When flat=False, return lists of lists of media paths, one per sample
-        if not flat:
+        if flat:
+            # Generate flat list of all media paths
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            filepaths = view.values(media_fields, unwind=True)
+
+            if len(media_fields) > 1:
+                filepaths = list(itertools.chain.from_iterable(filepaths))
+            else:
+                filepaths = filepaths[0]
+        else:
+            # Generate lists of lists of media paths, one per sample
+            filepaths = []
+
             if self.media_type == fom.GROUP:
                 id_field = self.group_field + ".id"
                 view = self.select_group_slices(
@@ -3412,28 +3481,43 @@ class SampleCollection(object):
                 for _id, _paths in zip(group_ids, zip(*paths)):
                     paths_map[_id].extend(_merge_paths(_paths))
 
-                # Intentionally only returns paths for groups in active slice
-                return [paths_map[_id] for _id in self.values(id_field)]
+                # Intentionally only includes paths for groups in active slice
+                for _id in self.values(id_field):
+                    filepaths.append(paths_map[_id])
             else:
-                paths = self.values(media_fields)
-                return [_merge_paths(p) for p in zip(*paths)]
+                for p in zip(*self.values(media_fields)):
+                    filepaths.append(_merge_paths(p))
 
-        # When flat=True, return flat list of all media paths
-        if self.media_type == fom.GROUP:
-            view = self.select_group_slices(
-                slices=group_slices, _allow_mixed=True
-            )
-        else:
-            view = self
-
-        filepaths = view.values(media_fields, unwind=True)
-
-        if len(media_fields) > 1:
-            filepaths = list(itertools.chain.from_iterable(filepaths))
-        else:
-            filepaths = filepaths[0]
+        if "filepath" in media_fields and self._contains_media_type(
+            fom.THREE_D, any_slice=True
+        ):
+            self._inject_fo3d_asset_paths(filepaths, flat=flat)
 
         return filepaths
+
+    def _inject_fo3d_asset_paths(self, filepaths, flat=True):
+        if flat:
+            _filepaths = filepaths
+        else:
+            _filepaths = itertools.chain.from_iterable(filepaths)
+
+        scene_paths = [p for p in _filepaths if p.endswith(".fo3d")]
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, abs_paths=True, skip_failures=True
+        )
+
+        if flat:
+            asset_paths = itertools.chain.from_iterable(asset_map.values())
+            filepaths.extend(set(asset_paths))
+        else:
+            for sample_paths in filepaths:
+                asset_paths = set()
+                for path in sample_paths:
+                    _asset_paths = asset_map.get(path, None)
+                    if _asset_paths is not None:
+                        asset_paths.update(_asset_paths)
+
+                sample_paths.extend(asset_paths)
 
     @mutates_data
     def apply_model(

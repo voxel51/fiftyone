@@ -1,16 +1,18 @@
 import { useSpring } from "@react-spring/web";
-import React, { ForwardedRef, PropsWithChildren } from "react";
+import React, { ForwardedRef, PropsWithChildren, CSSProperties } from "react";
 import PopoutDiv from "./PopoutDiv";
+import { ClickAwayListener } from "@mui/material";
 
 export { PopoutDiv };
 
 export type PopoutProps = PropsWithChildren<{
-  style?: any;
+  style?: CSSProperties;
   modal?: boolean;
+  onClose?: () => void;
 }>;
 
 function Popout(
-  { children, style = {}, modal }: PopoutProps,
+  { children, style = {}, modal, onClose }: PopoutProps,
   ref: ForwardedRef<HTMLDivElement>
 ) {
   const show = useSpring({
@@ -24,12 +26,23 @@ function Popout(
   });
 
   return (
-    <PopoutDiv
-      ref={ref}
-      style={{ ...show, zIndex: 100001, right: modal ? 0 : "unset", ...style }}
+    <ClickAwayListener
+      onClickAway={() => {
+        if (onClose) onClose();
+      }}
     >
-      {children}
-    </PopoutDiv>
+      <PopoutDiv
+        ref={ref}
+        style={{
+          ...show,
+          zIndex: 100001,
+          right: modal ? 0 : "unset",
+          ...style,
+        }}
+      >
+        {children}
+      </PopoutDiv>
+    </ClickAwayListener>
   );
 }
 

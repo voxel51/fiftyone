@@ -51,3 +51,21 @@ describe("hasFilter resolves correctly", () => {
     expect(test2()).toBe(true);
   });
 });
+
+describe("setting a filter does not use async state", () => {
+  const test = <TestSelectorFamily<typeof filters.filter>>(
+    (<unknown>filters.filter({ modal: false, path: "my_field" }))
+  );
+
+  it("does not use lightningUnlocked ", () => {
+    setMockAtoms({
+      granularSidebarExpandedStore: {},
+      lightning: true,
+      lightningPaths: () => new Set(["my_field"]),
+      lightningUnlocked: () => {
+        throw new Error("do not call me");
+      },
+    });
+    test.set({ exclude: false, isMatching: false, values: ["value"] });
+  });
+});

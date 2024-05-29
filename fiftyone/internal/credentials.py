@@ -5,6 +5,7 @@ FiftyOne Teams internal cloud credential management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import re
 from collections import defaultdict
 import configparser
 from datetime import datetime, timedelta
@@ -20,7 +21,6 @@ import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.storage as fos
 from fiftyone.internal.constants import (
-    ENCRYPTION_KEY_ENV_VAR,
     TTL_CACHE_LIFETIME_SECONDS,
 )
 
@@ -38,14 +38,14 @@ logger = logging.getLogger(__name__)
 class CloudCredentialsManager(object):
     """Class for managing cloud credentials."""
 
-    def __init__(self):
+    def __init__(self, encryption_key):
         self._default_creds = {}
-        self._bucket_creds = defaultdict(dict)
+        self._bucket_creds_exact = defaultdict(dict)
+        self._bucket_creds_regex = defaultdict(list)
         self._creds_dir = os.path.dirname(foc.locate_config())
         self._expiration_time = None
         self._fernet = None
 
-        encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
         if encryption_key is not None:
             self._fernet = Fernet(encryption_key)
 
@@ -85,7 +85,14 @@ class CloudCredentialsManager(object):
         Returns:
             True/False
         """
-        return bucket in self._bucket_creds[fs]
+        if bucket in self._bucket_creds_exact[fs]:
+            return True
+
+        for regex, _, _ in self._bucket_creds_regex[fs]:
+            if regex.fullmatch(bucket):
+                return True
+
+        return False
 
     def get_file_systems_with_credentials(self):
         """Returns the list of file systems with at least one set of
@@ -95,8 +102,12 @@ class CloudCredentialsManager(object):
             a list of :class:`fiftyone.core.storage.FileSystem` values
         """
         file_systems = set(self._default_creds.keys())
-        for fs, creds_dict in self._bucket_creds.items():
+        for fs, creds_dict in self._bucket_creds_exact.items():
             if creds_dict:
+                file_systems.add(fs)
+
+        for fs, creds_list in self._bucket_creds_regex.items():
+            if creds_list:
                 file_systems.add(fs)
 
         return list(file_systems)
@@ -105,13 +116,16 @@ class CloudCredentialsManager(object):
         """Returns the list of buckets with bucket-specific credentials for the
         given file system.
 
+        This method does not include buckets that only match patterned
+        credentials.
+
         Args:
             fs: a :class:`fiftyone.core.storage.FileSystem`
 
         Returns:
             a list of buckets
         """
-        return list(self._bucket_creds[fs].keys())
+        return list(self._bucket_creds_exact[fs].keys())
 
     def get_credentials(self, fs, bucket=None):
         """Retrieves the specified credentials.
@@ -129,7 +143,13 @@ class CloudCredentialsManager(object):
         creds_path = None
 
         if bucket is not None:
-            creds_path = self._bucket_creds[fs].get(bucket, None)
+            creds_path = self._bucket_creds_exact[fs].get(bucket, None)
+
+            if creds_path is None:
+                for regex, _, _creds_path in self._bucket_creds_regex[fs]:
+                    if regex.fullmatch(bucket):
+                        creds_path = _creds_path
+                        break
 
         if creds_path is None:
             creds_path = self._default_creds.get(fs, None)
@@ -145,20 +165,36 @@ class CloudCredentialsManager(object):
         Returns:
             a list of credential paths
         """
-        creds_paths = []
+        creds_paths = set()
 
         creds_path = self._default_creds.get(fs, None)
         if creds_path:
-            creds_paths.append(creds_path)
+            creds_paths.add(creds_path)
 
-        for creds_path in self._bucket_creds[fs].values():
-            creds_paths.append(creds_path)
+        for creds_path in self._bucket_creds_exact[fs].values():
+            creds_paths.add(creds_path)
 
-        return creds_paths
+        for _, _, creds_path in self._bucket_creds_regex[fs]:
+            creds_paths.add(creds_path)
+
+        return list(creds_paths)
+
+    def get_patterned_credentials(self, fs):
+        """Returns all credentials for the given file system that have a bucket
+        pattern associated with them.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of ``(regex, patt, credentials_path)`` tuples
+        """
+        return self._bucket_creds_regex[fs]
 
     def _refresh_credentials(self):
-        self._bucket_creds.clear()
         self._default_creds.clear()
+        self._bucket_creds_exact.clear()
+        self._bucket_creds_regex.clear()
 
         for credentials in foo.get_cloud_credentials():
             provider = credentials.get("provider", "")
@@ -191,7 +227,26 @@ class CloudCredentialsManager(object):
 
             if credentials.get("prefixes"):
                 for bucket in credentials["prefixes"]:
-                    self._bucket_creds[fs][bucket] = creds_path
+                    if "*" in bucket or "?" in bucket:
+                        # Bucket has a wildcard so convert and compile as regex
+                        try:
+                            # Escape it in the weird case that other regex
+                            # escape chars like '[' are in here
+                            regex = re.escape(bucket)
+                            regex = regex.replace(r"\*", ".*")
+                            regex = regex.replace(r"\?", ".")
+                            self._bucket_creds_regex[fs].append(
+                                (re.compile(regex), bucket, creds_path)
+                            )
+                        except re.error:
+                            logger.warning(
+                                "Bad regex provided for provider '%s': '%s'",
+                                provider,
+                                bucket,
+                            )
+                    else:
+                        # Exact bucket match
+                        self._bucket_creds_exact[fs][bucket] = creds_path
             else:
                 self._default_creds[fs] = creds_path
 

@@ -14,18 +14,33 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 const datasetName = getUniqueDatasetNameWithPrefix(`modal-multi-pcd`);
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone.zoo as foz
+const pcd1Path = `/tmp/test-pcd1-${datasetName}.pcd`;
+const pcd2Path = `/tmp/test-pcd2-${datasetName}.pcd`;
 
-    dataset = foz.load_zoo_dataset(
-        "quickstart-groups", dataset_name="${datasetName}", max_samples=3
-    )
+test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+  mediaFactory.createPcd({
+    outputPath: pcd1Path,
+    shape: "cube",
+    numPoints: 100,
+  });
+
+  mediaFactory.createPcd({
+    outputPath: pcd2Path,
+    shape: "diagonal",
+    numPoints: 5,
+  });
+
+  await fiftyoneLoader.executePythonCode(`
+    import fiftyone as fo
+
+    dataset = fo.Dataset("${datasetName}")
     dataset.persistent = True
-    dataset.group_slice = "pcd"
-    extra = dataset.first().copy()
-    extra.group.name = "extra"
-    dataset.add_sample(extra)`);
+
+    group = fo.Group()
+    sample1 = fo.Sample(filepath="${pcd1Path}", group=group.element("pcd1"))
+    sample2 = fo.Sample(filepath="${pcd2Path}", group=group.element("pcd2"))
+  
+    dataset.add_samples([sample1, sample2])`);
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -35,20 +50,22 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 test.describe("multi-pcd", () => {
   test("multi-pcd slice in modal", async ({ grid, modal }) => {
     await grid.openFirstSample();
-    await modal.group.toggleMedia("carousel");
-    await modal.group.toggleMedia("viewer");
+
     await modal.clickOnLooker3d();
 
-    await modal.toggleLooker3dSlice("extra");
+    await modal.toggleLooker3dSlice("pcd2");
 
-    await modal.sidebar.assert.verifySidebarEntryText("pcd-group.name", "pcd");
     await modal.sidebar.assert.verifySidebarEntryText(
-      "extra-group.name",
-      "extra"
+      "pcd1-group.name",
+      "pcd1"
+    );
+    await modal.sidebar.assert.verifySidebarEntryText(
+      "pcd2-group.name",
+      "pcd2"
     );
 
-    await modal.toggleLooker3dSlice("pcd");
+    await modal.toggleLooker3dSlice("pcd1");
 
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "extra");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "pcd2");
   });
 });
