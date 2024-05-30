@@ -276,7 +276,7 @@ class Scene(Object3D):
                 asset_path = getattr(node, path_attribute, None)
                 new_asset_path = asset_rewrite_paths.get(asset_path)
 
-                if asset_path is not None and asset_path != new_asset_path:
+                if new_asset_path is not None and asset_path != new_asset_path:
                     setattr(node, path_attribute, new_asset_path)
                     scene_modified = True
 
@@ -284,13 +284,16 @@ class Scene(Object3D):
         if self.background is not None:
             if self.background.image is not None:
                 new_asset_path = asset_rewrite_paths.get(self.background.image)
-                if new_asset_path != self.background.image:
+                if (
+                    new_asset_path is not None
+                    and new_asset_path != self.background.image
+                ):
                     self.background.image = new_asset_path
                     scene_modified = True
 
             if self.background.cube is not None:
                 new_cube = [
-                    asset_rewrite_paths.get(face)
+                    asset_rewrite_paths.get(face, face)
                     for face in self.background.cube
                 ]
                 if new_cube != self.background.cube:
