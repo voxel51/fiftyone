@@ -125,6 +125,15 @@ Zoo
 - Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
   `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
 
+FiftyOne Teams 1.6.1
+--------------------
+*Released May 10, 2024*
+
+Bugs
+
+- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
+  enviornments
+
 FiftyOne Teams 1.6.0
 --------------------
 *Released April 30, 2024*
