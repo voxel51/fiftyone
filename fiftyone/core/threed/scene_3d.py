@@ -186,7 +186,7 @@ class Scene(Object3D):
         return Scene._from_fo3d_dict(self.as_dict())
 
     def _resolve_node_asset_paths(self, node, fo3d_path_dir):
-        for asset_path_field in node._asset_path_fields or []:
+        for asset_path_field in node._asset_path_fields:
             asset_path = getattr(node, asset_path_field, None)
             if asset_path:
                 resolved_asset_path = self._resolve_asset_path(

@@ -71,6 +71,36 @@ class TestScene(unittest.TestCase):
             },
         )
 
+    def test_update_asset_paths(self):
+        d = {
+            "/path/to/pcd.pcd": "new.pcd",
+            "../background.jpeg": "new_background.jpeg",
+            "n3.jpeg": "new_n3.jpeg",
+        }
+
+        self.scene.update_asset_paths(d)
+
+        asset_paths = set(self.scene.get_asset_paths())
+        self.assertSetEqual(
+            asset_paths,
+            {
+                "/path/to/gltf.gltf",
+                "new.pcd",
+                "new_background.jpeg",
+                "/path/to/stl.stl",
+                "/path/to/fbx.fbx",
+                "/path/to/ply.ply",
+                "/path/to/obj.obj",
+                "relative.gltf",
+                "n1.jpeg",
+                "n2.jpeg",
+                "new_n3.jpeg",
+                "n4.jpeg",
+                "n5.jpeg",
+                "n6.jpeg",
+            },
+        )
+
     def test_write(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = os.path.join(temp_dir, "blah.fo3d")
