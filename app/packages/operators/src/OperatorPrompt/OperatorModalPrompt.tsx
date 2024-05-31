@@ -28,6 +28,7 @@ export default function OperatorModalPrompt(props: OperatorPromptPropsType) {
           : "Cannot execute operator while validating form"
       }
       loading={resolving || pendingResolve}
+      dialogProps={{ PaperProps: { "data-cy": "operators-prompt-modal" } }}
     >
       <PaletteContentContainer>
         <OperatorPromptBody operatorPrompt={prompt} />

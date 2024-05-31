@@ -32,6 +32,7 @@ export default function OperatorDrawerPrompt(props: OperatorPromptPropsType) {
       onResizeReset={() => {
         setWidth(DEFAULT_WIDTH);
       }}
+      data-cy="operators-prompt-drawer"
     >
       <IconButton
         onClick={prompt.close}
@@ -42,7 +43,9 @@ export default function OperatorDrawerPrompt(props: OperatorPromptPropsType) {
       <Box sx={{ p: 1 }}>
         <OperatorPromptHeader title={title} />
       </Box>
-      <OperatorPromptBody operatorPrompt={prompt} />
+      <Box data-cy="operators-prompt-drawer-content">
+        <OperatorPromptBody operatorPrompt={prompt} />
+      </Box>
       <Stack direction="row" spacing={1} justifyContent="center">
         <OperatorPromptFooter {...otherConfigs} />
       </Stack>
