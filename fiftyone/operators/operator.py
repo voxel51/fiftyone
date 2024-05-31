@@ -1,10 +1,11 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from .types import Object, PromptView
 
 
@@ -25,6 +26,8 @@ class OperatorConfig(object):
         unlisted (False): whether the operator should be hidden from the
             Operator Browser
         on_startup (False): whether the operator should be executed on startup
+        on_dataset_open (False): whether the operator should be executed on
+            opening a dataset
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
         icon (None): icon to show for the operator in the Operator Browser
@@ -52,6 +55,7 @@ class OperatorConfig(object):
         execute_as_generator=False,
         unlisted=False,
         on_startup=False,
+        on_dataset_open=False,
         disable_schema_validation=False,
         delegation_target=None,
         icon=None,
@@ -70,6 +74,7 @@ class OperatorConfig(object):
         self.execute_as_generator = execute_as_generator
         self.unlisted = unlisted
         self.on_startup = on_startup
+        self.on_dataset_open = on_dataset_open
         self.disable_schema_validation = disable_schema_validation
         self.delegation_target = delegation_target
         self.icon = icon
@@ -95,6 +100,7 @@ class OperatorConfig(object):
             "unlisted": self.unlisted,
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
+            "on_dataset_open": self.on_dataset_open,
             "disable_schema_validation": self.disable_schema_validation,
             "delegation_target": self.delegation_target,
             "icon": self.icon,
@@ -123,9 +129,6 @@ class Operator(object):
         self._builtin = _builtin
         self._plugin_secrets = None
         self.plugin_name = plugin_name
-        self.definition = Object()
-        self.definition.define_property("inputs", Object())
-        self.definition.define_property("outputs", Object())
 
     @property
     def name(self):
@@ -147,41 +150,6 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
-
-    def resolve_definition(self, resolve_dynamic, ctx):
-        """Returns a resolved definition of the operator.
-
-        The resolved definition is a clone of the default definition using
-        :meth:`resolve_input` and :meth:`resolve_output` to resolve the inputs
-        and output properties of the operator.
-
-        Passing ``resolve_dynamic=False`` allows resolution of dynamic
-        operators to be deferred to execution time. If the operator
-        ``is_dyanmic`` and ``resolve_dynamic`` is False, a clone of default
-        definition is returned.
-
-        Args:
-            resolve_dynamic: whether to resolve dynamic inputs and outputs
-            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
-
-        Returns:
-            a definition :class:`fiftyone.operators.types.Object`
-        """
-        definition = self.definition.clone()
-        if self.config.dynamic and not resolve_dynamic:
-            return definition
-
-        # pylint: disable=assignment-from-none
-        input_property = self.resolve_type(ctx, "inputs")
-        output_property = self.resolve_type(ctx, "outputs")
-
-        if input_property is not None:
-            definition.add_property("inputs", input_property)
-
-        if output_property is not None:
-            definition.add_property("outputs", output_property)
-
-        return definition
 
     def resolve_delegation(self, ctx):
         """Returns the resolved *forced* delegation flag.
@@ -235,6 +203,9 @@ class Operator(object):
 
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            JSON serializable data, or None
         """
         raise NotImplementedError("subclass must implement execute()")
 
@@ -316,21 +287,14 @@ class Operator(object):
         """
         return None
 
-    def to_json(self, ctx, resolve_dynamic=False):
+    def to_json(self):
         """Returns a JSON representation of the operator.
-
-        Args:
-            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
-            resolve_dynamic (False): whether to resolve dynamic inputs and
-                outputs
 
         Returns:
             a JSON dict
         """
-        definition = self.resolve_definition(resolve_dynamic, ctx)
         return {
             "config": self.config.to_json(),
-            "definition": definition.to_json(),
             "plugin_name": self.plugin_name,
             "_builtin": self._builtin,
             "uri": self.uri,

@@ -23,6 +23,7 @@ on:
   pull_request:
     branches:
       - develop
+      - feat/*
       - main
       - rel-*
       - release-*
@@ -72,6 +73,7 @@ jobs:
           pip install -r fiftyone-teams/requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
+          pip install typing_extensions==4.10.0
           pip install .
       - name: Cache Node Modules
         id: node-cache

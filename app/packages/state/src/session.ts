@@ -9,22 +9,26 @@ import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
 export const SPACES_DEFAULT = {
-  id: "root",
+  id: "",
+  _cls: "Space",
+  component_id: "root",
   children: [
     {
-      id: "default-samples-node",
-      children: [],
-      type: "Samples",
+      id: "",
+      _cls: "Panel",
+      component_id: "default-samples-node",
       pinned: true,
+      type: "Samples",
+      children: [],
     },
   ],
-  type: "panel-container",
-  activeChild: "default-samples-node",
+  active_child: "default-samples-node",
 };
 
 export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
+  canEditWorkspaces: boolean;
   colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
@@ -37,6 +41,7 @@ export interface Session {
 export const SESSION_DEFAULT: Session = {
   canEditCustomColors: true,
   canEditSavedViews: true,
+  canEditWorkspaces: true,
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
@@ -58,7 +63,7 @@ export const SESSION_DEFAULT: Session = {
 
 type SetterKeys = keyof Omit<
   Session,
-  "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+  "canEditCustomColors" | "canEditSavedViews" | "canEditWorkspaces" | "readOnly"
 >;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 
@@ -169,6 +174,7 @@ export function sessionAtom<K extends keyof Session>(
         options.key === "canEditCustomColors" ||
         options.key === "readOnly" ||
         options.key === "canEditSavedViews" ||
+        options.key === "canEditWorkspaces" ||
         typeof newValue === "boolean"
       ) {
         throw new Error(`cannot set ${options.key}`);

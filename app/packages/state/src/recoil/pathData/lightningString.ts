@@ -12,7 +12,9 @@ export const lightningStringResults = selectorFamily<
       const [data] = get(lightningQuery([params]));
 
       if (data.__typename !== "StringLightningResult") {
-        throw new Error("bad");
+        throw new Error(
+          `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`
+        );
       }
 
       if (!data.values) {

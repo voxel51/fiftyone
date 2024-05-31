@@ -275,6 +275,7 @@ test.describe("saved views", () => {
       updatedView2.color
     );
 
+    await savedViews.openSelect();
     await savedViews.clickEdit(updatedView2.slug);
     await savedViews.assert.verifyInputUpdated(updatedView2);
   });

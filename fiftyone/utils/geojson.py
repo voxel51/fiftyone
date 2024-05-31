@@ -1,7 +1,7 @@
 """
 GeoJSON utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -142,15 +142,20 @@ def load_location_data(
         logger.info("No matching location data found")
         return
 
-    logger.info("Loading location data for %d samples...", len(found_keys))
-    _samples = samples.select_fields(location_field)
-    with fou.ProgressBar(progress=progress) as pb:
-        for key in pb(found_keys):
-            sample_id = lookup[key]
-            geometry = geometries[key]
-            sample = _samples[sample_id]
-            sample[location_field] = location_cls.from_geo_json(geometry)
-            sample.save()
+    locations = {}
+
+    try:
+        logger.info("Loading location data...")
+        with fou.ProgressBar(progress=progress) as pb:
+            for key in pb(found_keys):
+                sample_id = lookup[key]
+                geometry = geometries[key]
+                locations[sample_id] = location_cls.from_geo_json(geometry)
+    finally:
+        logger.info("Saving location data...")
+        samples.set_values(
+            location_field, locations, key_field="id", progress=progress
+        )
 
 
 def to_geo_json_geometry(label):

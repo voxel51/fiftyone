@@ -4,7 +4,7 @@ The FiftyOne Dataset Zoo.
 This package defines a collection of open source datasets made available for
 download via FiftyOne.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -363,9 +363,8 @@ def load_zoo_dataset(
             progress=progress,
         )
 
-    if info.classes is not None:
+    if info.classes is not None and not dataset.default_classes:
         dataset.default_classes = info.classes
-        dataset.save()
 
     logger.info("Dataset '%s' created", dataset.name)
 

@@ -28,8 +28,8 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test.describe("quickstart", () => {
-  test("smoke", async ({ page, grid, modal }) => {
-    await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
+  test("smoke", async ({ grid, modal }) => {
+    await grid.assert.isEntryCountTextEqualTo("5 samples");
 
     // test navigation
     await grid.openFirstSample();

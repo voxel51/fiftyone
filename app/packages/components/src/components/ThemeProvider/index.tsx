@@ -17,6 +17,9 @@ let theme = extendMuiTheme({
   cssVarPrefix: "fo",
   typography: {
     fontFamily: "Palanquin, sans-serif",
+    button: {
+      textTransform: "none",
+    },
   },
   zIndex: {
     // Samples modal zIndex is set to 1000
@@ -210,6 +213,25 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          "&:hover": {
+            backgroundColor: dynamicTheme("palette.background.level2"),
+          },
+        },
+      },
+    },
+    MuiSlider: {
+      styleOverrides: {
+        root: {
+          ".MuiSlider-thumb": {
+            transform: "translate(-50%, -50%)",
+            top: "50%",
+          },
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
@@ -221,6 +243,10 @@ let theme = extendMuiTheme({
 
 export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
+};
+
+export const useFont = () => {
+  return theme.typography.fontFamily;
 };
 
 const ThemeProvider: React.FC<

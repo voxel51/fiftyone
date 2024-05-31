@@ -1,7 +1,6 @@
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
 import { isLightningPath, lightning } from "../lightning";
-import { noneCount } from "./counts";
 import { lightningBooleanResults } from "./lightningBoolean";
 
 export const booleanResults = selectorFamily<
@@ -19,7 +18,7 @@ export const booleanResults = selectorFamily<
         return get(lightningBooleanResults(params));
       }
 
-      return booleanCountResults(params);
+      return get(booleanCountResults(params));
     },
 });
 
@@ -29,7 +28,6 @@ export const booleanCountResults = selectorFamily({
     (params: { path: string; modal: boolean; extended: boolean }) =>
     ({ get }) => {
       const data = get(aggregation(params));
-      const none = get(noneCount(params));
 
       if (data.__typename !== "BooleanAggregation") {
         throw new Error("unexpected");
@@ -42,9 +40,7 @@ export const booleanCountResults = selectorFamily({
           { value: "True", count: data.true },
         ].filter(({ count }) => count),
       };
-      if (none) {
-        result.results.push({ value: null, count: none });
-      }
+
       return result;
     },
 });

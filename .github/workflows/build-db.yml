@@ -64,8 +64,7 @@ jobs:
         run: |
           cd package/db
           python -Im build --sdist
-      - name: Upload sdist
-        if: ${{ matrix.platform == 'sdist' }}
+      - name: Upload
         uses: actions/upload-artifact@v3
         with:
           name: dist-${{ matrix.platform }}

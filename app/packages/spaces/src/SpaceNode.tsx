@@ -1,6 +1,6 @@
-import { SpaceNodeType, SpaceNodeJSON } from "./types";
-import { Layout, SPACE_TYPES } from "./enums";
 import { v4 as uuid } from "uuid";
+import { Layout, SPACE_TYPES } from "./enums";
+import { SpaceNodeJSON, SpaceNodeType } from "./types";
 
 export default class SpaceNode {
   children: SpaceNode[];
@@ -11,6 +11,7 @@ export default class SpaceNode {
   // if layout is set, render as space container instead of panel container
   layout?: Layout;
   pinned?: boolean;
+  sizes?: number[];
   constructor(
     id?: string,
     children?: SpaceNode[],
@@ -109,6 +110,7 @@ export default class SpaceNode {
       layout: this.layout,
       pinned: this.pinned,
       activeChild: this.activeChild,
+      sizes: this.sizes,
     };
   }
 }

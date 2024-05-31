@@ -1,10 +1,11 @@
 """
 FiftyOne Server /tagging route
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 
 from starlette.endpoints import HTTPEndpoint
@@ -33,7 +34,7 @@ class Tagging(HTTPEndpoint):
         slices = data.get("slices", None)
         group_id = data.get("group_id", None)
         slice = data.get("slice", None)
-        view = fost.get_tag_view(
+        view = await fost.get_tag_view(
             dataset,
             stages=stages,
             filters=filters,
@@ -42,11 +43,11 @@ class Tagging(HTTPEndpoint):
             labels=labels,
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(
-                    slice=slice, id=group_id, slices=slices
+                group=(
+                    GroupElementFilter(slice=slice, id=group_id, slices=slices)
+                    if not sample_ids
+                    else None
                 )
-                if not sample_ids
-                else None
             ),
             sample_ids=sample_ids,
             target_labels=target_labels,

@@ -17,14 +17,11 @@ export const getDatasetName = (pathname?: string) => {
   return null;
 };
 
-export const getSavedViewName = (search?: string) => {
+export const getParam = (name: string, search?: string) => {
   const params = new URLSearchParams(search || window.location.search);
-  const viewName = params.get("view");
-  if (viewName) {
-    return decodeURIComponent(viewName);
-  }
+  const value = params.get(name);
 
-  return null;
+  return value ? decodeURIComponent(value) : null;
 };
 
 export function resolveURL(params: {
@@ -32,6 +29,7 @@ export function resolveURL(params: {
   currentPathname: string;
   nextDataset?: string | null;
   nextView?: string;
+  extra?: { [key: string]: string | null };
 }): string {
   const searchParams = new URLSearchParams(params.currentSearch);
 
@@ -43,6 +41,16 @@ export function resolveURL(params: {
     params.nextView
       ? searchParams.set("view", encodeURIComponent(params.nextView))
       : searchParams.delete("view");
+  }
+
+  for (const param in params.extra) {
+    const value = params.extra[param];
+    if (value === null) {
+      searchParams.delete(param);
+      continue;
+    }
+
+    searchParams.set(param, encodeURIComponent(value));
   }
 
   let newSearch = searchParams.toString();

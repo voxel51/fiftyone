@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operator related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1054,12 +1054,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             delegation_target=f"test_target",
             context=ctx.serialize(),
         )
-        self.assertEquals(doc.label, mock_get_operator.return_value.name)
+        self.assertEqual(doc.label, mock_get_operator.return_value.name)
 
         self.docs_to_delete.append(doc)
 
         doc = self.svc.set_label(doc.id, "this is my delegated operation run.")
-        self.assertEquals(doc.label, "this is my delegated operation run.")
+        self.assertEqual(doc.label, "this is my delegated operation run.")
 
         doc = self.svc.get(doc.id)
-        self.assertEquals(doc.label, "this is my delegated operation run.")
+        self.assertEqual(doc.label, "this is my delegated operation run.")

@@ -146,11 +146,39 @@ your datasets and turn your good models into *great models*.
     :tags: Brain,Visualization
 
 .. customcarditem::
+    :header: Zero-Shot Image Classification
+    :description: Run and evaluate zero-shot image classification models with OpenCLIP, Hugging Face Transformers, and FiftyOne.
+    :link: zero_shot_classification.html
+    :image: ../_static/images/tutorials/zero_shot_classification.png
+    :tags: Filtering,Model-Evaluation,Model-Zoo
+
+.. customcarditem::
     :header: Augmenting Datasets with Albumentations
     :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
     :link: data_augmentation.html
     :image: ../_static/images/tutorials/data_augmentation.png
     :tags: App,Dataset-Curation,Visualization
+
+.. customcarditem::
+    :header: Clustering Images with Embeddings
+    :description: Use embeddings to cluster images in your dataset and visualize the results in FiftyOne.
+    :link: clustering.html
+    :image: ../_static/images/tutorials/clustering.jpg
+    :tags: App,Brain,Dataset-Curation,Embeddings,Visualization
+
+.. customcarditem::
+    :header: Small Object Detection with SAHI
+    :description: Detect small objects in your images with Slicing-Aided Hyper-Inference (SAHI) and FiftyOne.
+    :link: small_object_detection.html
+    :image: ../_static/images/tutorials/small_object_detection.jpg
+    :tags: Model-Evaluation,Model-Zoo
+
+.. customcarditem::
+    :header: Anomaly Detection with Anomalib
+    :description: Detect anomalies in your images with Anomalib and FiftyOne.
+    :link: anomaly_detection.html
+    :image: ../_static/images/tutorials/anomaly_detection.jpg
+    :tags: Embeddings,Model-Evaluation,Model-Training,Visualization
 
 .. End of tutorial cards
 
@@ -192,4 +220,8 @@ your datasets and turn your good models into *great models*.
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
    Dimensionality reduction <dimension_reduction.ipynb>
+   Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
+   Clustering images <clustering.ipynb>
+   Detecting small objects <small_object_detection.ipynb>
+   Anomaly detection <anomaly_detection.ipynb>

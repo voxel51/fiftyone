@@ -1,0 +1,37 @@
+language: "en"
+early_access: false
+reviews:
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: true
+  review_status: true
+  collapse_walkthrough: false
+  path_filters:
+    - "!**/.xml"
+    - "!**/__generated__/**"
+    - "!**/generated/**"
+    - "!**/*.json"
+    - "!**/*.svg"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.gif"
+    - "!**/*.lock"
+  path_instructions:
+    - path: "**/*.{ts,tsx}"
+      instructions:
+        "Review the Typescript and React code for conformity with best practices in React, Recoil,
+        Graphql, and Typescript. Highlight any deviations."
+  auto_review:
+    enabled: true
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "DRAFT"
+    drafts: false
+    base_branches:
+      - "develop"
+      - "main"
+      - "release/.*"
+      - "feat/.*"
+chat:
+  auto_reply: true

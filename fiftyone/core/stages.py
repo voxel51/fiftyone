@@ -1,10 +1,12 @@
 """
 View stages.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import builtins
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
@@ -941,8 +943,8 @@ def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
             base, leaf = key.split(".", 1)
             info_filter[leaf] = val
 
-    matcher = (
-        lambda q, v: q.lower() in v.lower()
+    matcher = lambda q, v: (
+        q.lower() in v.lower()
         if isinstance(v, str) and isinstance(q, str)
         else (
             q.lower() in str(v).lower()
@@ -951,8 +953,8 @@ def _get_meta_filtered_fields(sample_collection, meta_filter, frames=False):
         )
     )
 
-    type_matcher = (
-        lambda query, field: (
+    type_matcher = lambda query, field: (
+        (
             type(field.document_type).__name__ == query
             or field.document_type.__name__ == query
             if isinstance(field, EmbeddedDocumentField)
@@ -4711,7 +4713,12 @@ class SelectGroupSlices(ViewStage):
         }
 
     def _kwargs(self):
-        return [["slices", self._slices], ["media_type", self._media_type]]
+        return [
+            ["slices", self._slices],
+            ["media_type", self._media_type],
+            ["_allow_mixed", self._allow_mixed],
+            ["_force_mixed", self._force_mixed],
+        ]
 
     @classmethod
     def _params(cls):
@@ -4726,6 +4733,16 @@ class SelectGroupSlices(ViewStage):
                 "name": "media_type",
                 "type": "NoneType|str",
                 "placeholder": "media_type (default=None)",
+                "default": "None",
+            },
+            {
+                "name": "_allow_mixed",
+                "type": "NoneType|bool",
+                "default": "None",
+            },
+            {
+                "name": "_force_mixed",
+                "type": "NoneType|bool",
                 "default": "None",
             },
         ]
@@ -5339,6 +5356,11 @@ class MatchTags(ViewStage):
             tags = [tags]
         else:
             tags = list(tags)
+            if not builtins.all(etau.is_str(t) for t in tags):
+                raise ValueError(
+                    "The `tags` argument must be a string or iterable of "
+                    "strings."
+                )
 
         if bool is None:
             bool = True
@@ -5886,6 +5908,7 @@ class SelectFields(ViewStage):
         field_names=None,
         meta_filter=None,
         _allow_missing=False,
+        _media_types=None,
     ):
         if etau.is_str(field_names):
             field_names = [field_names]
@@ -5895,6 +5918,7 @@ class SelectFields(ViewStage):
         self._field_names = field_names
         self._meta_filter = meta_filter
         self._allow_missing = _allow_missing
+        self._media_types = _media_types
 
     @property
     def field_names(self):
@@ -5936,7 +5960,7 @@ class SelectFields(ViewStage):
 
         for path in roots:
             default_paths = sample_collection._get_default_sample_fields(
-                path=path, include_private=True
+                path=path, include_private=True, media_types=self._media_types
             )
             selected_paths.update(default_paths)
 
@@ -6669,7 +6693,7 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def seed(self):
@@ -7217,7 +7241,7 @@ class SortBySimilarity(ViewStage):
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
-                context.enter_context(results)  # pylint: disable=no-member
+                context.enter_context(results)
 
             return results.sort_by_similarity(
                 self._query,
@@ -7322,7 +7346,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def size(self):

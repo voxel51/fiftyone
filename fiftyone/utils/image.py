@@ -1,7 +1,7 @@
 """
 Image utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -347,11 +347,11 @@ def _transform_images_single(
         output_field = media_field
 
     diff_field = output_field != media_field
+    save = update_filepaths
 
     view = sample_collection.select_fields(media_field)
-
-    with fou.ProgressBar(progress=progress) as pb:
-        for sample in pb(view):
+    with fou.ProgressBar(total=view, progress=progress) as pb:
+        for sample in pb(view.iter_samples(autosave=save)):
             inpath = sample[media_field]
 
             outpath = _get_outpath(
@@ -375,7 +375,6 @@ def _transform_images_single(
 
             if update_filepaths and (diff_field or outpath != inpath):
                 sample[output_field] = outpath
-                sample.save()
 
 
 def _transform_images_multi(

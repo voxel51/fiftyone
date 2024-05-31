@@ -9,6 +9,7 @@ export function spaceNodeFromJSON(json: SpaceNodeJSON, parent?: SpaceNode) {
   node.children = json.children.map((child) => spaceNodeFromJSON(child, node));
   node.parent = parent;
   node.pinned = json.pinned;
+  node.sizes = json.sizes;
   return node;
 }
 

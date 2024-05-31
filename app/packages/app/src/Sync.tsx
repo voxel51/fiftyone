@@ -3,6 +3,8 @@ import { usePlugins } from "@fiftyone/plugins";
 import {
   setDataset,
   setDatasetMutation,
+  setSpaces,
+  setSpacesMutation,
   setView,
   setViewMutation,
   subscribe,
@@ -141,7 +143,7 @@ const dispatchSideEffect = ({
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
-    session.sessionSpaces = fos.SPACES_DEFAULT;
+    session.sessionSpaces = nextEntry.state?.workspace ?? fos.SPACES_DEFAULT;
   }
 
   commitMutation<setViewMutation>(environment, {
@@ -152,6 +154,16 @@ const dispatchSideEffect = ({
       form: {},
       datasetName: nextDataset,
       subscription,
+    },
+    onCompleted: () => {
+      nextEntry.state?.workspace &&
+        commitMutation<setSpacesMutation>(environment, {
+          mutation: setSpaces,
+          variables: {
+            spaces: nextEntry.state?.workspace,
+            subscription,
+          },
+        });
     },
   });
 };

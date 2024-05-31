@@ -140,6 +140,13 @@ on the cards below to see how!
     :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
+    :header: Albumentations
+    :description: Use our Albumentations integration to test out data augmentation transformations in real-time on your FiftyOne datasets.
+    :link: albumentations.html
+    :image: ../_static/images/integrations/albumentations.png
+    :tags: Datasets,Model-Training
+
+.. customcarditem::
     :header: SuperGradients
     :description: Use our SuperGradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
     :link: super_gradients.html
@@ -200,6 +207,7 @@ on the cards below to see how!
     LanceDB <lancedb.rst>
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
+    Albumentations <albumentations.rst>
     SuperGradients <super_gradients.rst>
     OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>

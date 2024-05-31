@@ -2,7 +2,7 @@
 `Segment Anything <https://segment-anything.com>`_ wrapper for the FiftyOne
 Model Zoo.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -46,7 +46,7 @@ class SegmentAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError("mask_index must be 0, 1, or 2")
 
 
-class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
+class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """Wrapper for running `Segment Anything <https://segment-anything.com>`_
     inference.
 
@@ -121,10 +121,9 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     """
 
     def __init__(self, config):
-        super().__init__(config)
         fout.TorchSamplesMixin.__init__(self)
+        fout.TorchImageModel.__init__(self, config)
 
-        self._preprocess = False
         self._curr_prompt_type = None
         self._curr_prompts = None
         self._curr_classes = None
@@ -161,9 +160,14 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
     def _get_field(self):
         if "prompt_field" in self.needs_fields:
-            return self.needs_fields["prompt_field"]
+            prompt_field = self.needs_fields["prompt_field"]
+        else:
+            prompt_field = next(iter(self.needs_fields.values()), None)
 
-        return next(iter(self.needs_fields.values()), None)
+        if prompt_field is not None and prompt_field.startswith("frames."):
+            prompt_field = prompt_field[len("frames.") :]
+
+        return prompt_field
 
     def _parse_samples(self, samples, field_name):
         prompt_type = self._get_prompt_type(samples, field_name)

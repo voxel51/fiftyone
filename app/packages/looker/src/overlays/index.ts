@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
@@ -25,11 +25,13 @@ import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
-const fromLabel = (overlayType) => (field, label) =>
-  [new overlayType(field, label)];
+export type { PointInfo } from "./base";
 
-const fromLabelList = (overlayType, list_key) => (field, labels) =>
-  labels[list_key].map((label) => new overlayType(field, label));
+export const fromLabel = (overlayType) => (field, label) =>
+  label ? [new overlayType(field, label)] : [];
+
+export const fromLabelList = (overlayType, list_key) => (field, labels) =>
+  labels?.[list_key]?.map((label) => new overlayType(field, label)) ?? [];
 
 export { ClassificationsOverlay };
 
@@ -45,14 +47,14 @@ export const FROM_FO = {
 };
 
 export const POINTS_FROM_FO = {
-  Detection: (label) => getDetectionPoints([label]),
-  Detections: (label) => getDetectionPoints(label.detections),
-  Heatmap: (label) => getHeatmapPoints([label]),
-  Keypoint: (label) => getKeypointPoints([label]),
-  Keypoints: (label) => getKeypointPoints(label.keypoints),
-  Polyline: (label) => getPolylinePoints([label]),
-  Poylines: (label) => getPolylinePoints(label.polylines),
-  Segmentation: (label) => getSegmentationPoints([label]),
+  Detection: (label) => getDetectionPoints(label ? [label] : []),
+  Detections: (label) => getDetectionPoints(label?.detections ?? []),
+  Heatmap: (label) => getHeatmapPoints(label ? [label] : []),
+  Keypoint: (label) => getKeypointPoints(label ? [label] : []),
+  Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
+  Polyline: (label) => getPolylinePoints(label ? [label] : []),
+  Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
+  Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
 };
 
 const LABEL_LISTS = LABEL_LISTS_MAP;

@@ -96,7 +96,6 @@ export class SavedViewsPom {
     await this.descriptionInput().clear();
     await this.descriptionInput().pressSequentially(description);
     // need to force click otherwise intercepted by material-ui
-    // eslint-disable-next-line playwright/no-force-option
     await this.colorInputContainer().click({ force: true });
     await this.colorOption(newColor).click();
 
@@ -143,7 +142,8 @@ export class SavedViewsPom {
   }
 
   async openSelect() {
-    await this.selector().click({ timeout: 2000 });
+    // need to force click otherwise intercepted by material-ui backdrop
+    await this.selector().click({ timeout: 2000, force: true });
   }
 
   async openCreateModal() {

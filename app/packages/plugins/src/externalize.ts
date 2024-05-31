@@ -2,6 +2,7 @@ import * as foc from "@fiftyone/components";
 import * as foo from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
+import * as fosp from "@fiftyone/spaces";
 import * as mui from "@mui/material";
 import React from "react";
 import ReactDOM from "react-dom";
@@ -17,6 +18,7 @@ declare global {
     __foc__: typeof foc;
     __fou__: typeof fou;
     __foo__: typeof foo;
+    __fosp__: typeof fosp;
     __mui__: typeof mui;
     __styled__: typeof styled;
   }
@@ -32,6 +34,7 @@ if (typeof window !== "undefined") {
   window.__foc__ = foc;
   window.__fou__ = fou;
   window.__foo__ = foo;
+  window.__fosp__ = fosp;
   window.__mui__ = mui;
   window.__styled__ = styled;
 }

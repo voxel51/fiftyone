@@ -1,3 +1,4 @@
+import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
@@ -17,6 +18,7 @@ const Container = styled.div`
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
   const disabled = useRecoilValue(fos.disabledPaths);
+  const isModalOpen = useRecoilValue(fos.isModalActive);
 
   const renderGridEntry = useCallback(
     (
@@ -99,8 +101,14 @@ function SamplesContainer() {
   );
   return (
     <Container>
+      {!isModalOpen && (
+        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+      )}
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
       <MainSpace />
+      {!isModalOpen && (
+        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+      )}
     </Container>
   );
 }

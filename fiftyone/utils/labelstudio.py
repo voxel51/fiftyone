@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Label Studio <https://labelstud.io>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,6 +18,7 @@ import random
 import string
 import webbrowser
 
+import os
 from bson import ObjectId
 import numpy as np
 
@@ -236,8 +237,6 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
     def _prepare_tasks(self, samples, label_schema, media_field):
         """Prepares Label Studio tasks for the given data."""
-        samples.compute_metadata()
-
         ids, mime_types, filepaths = samples.values(
             ["id", "metadata.mime_type", media_field]
         )
@@ -449,6 +448,9 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         project = self._init_project(config, samples)
 
+        samples.compute_metadata()
+
+        # @todo can we add support for uploading tasks in batches?
         tasks, predictions, id_map = self._prepare_tasks(
             samples,
             config.label_schema,

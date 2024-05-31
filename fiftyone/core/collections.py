@@ -1,10 +1,11 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -79,14 +80,32 @@ class SaveContext(object):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        batch_size (None): the batching strategy to use. Can either be an
-            integer specifying the number of samples to save in a batch, or a
-            float number of seconds between batched saves
+        batch_size (None): the batch size to use. If a ``batching_strategy`` is
+            provided, this parameter configures the strategy as described below.
+            If no ``batching_strategy`` is provided, this can either be an
+            integer specifying the number of samples to save in a batch (in
+            which case ``batching_strategy`` is implicitly set to ``"static"``)
+            or a float number of seconds between batched saves (in which case
+            ``batching_strategy`` is implicitly set to ``"latency"``)
+        batching_strategy (None): the batching strategy to use for each save
+            operation. Supported values are:
+
+            -   ``"static"``: a fixed sample batch size for each save
+            -   ``"size"``: a target batch size, in bytes, for each save
+            -   ``"latency"``: a target latency, in seconds, between saves
+
+            By default, ``fo.config.default_batcher`` is used
     """
 
-    def __init__(self, sample_collection, batch_size=None):
-        if batch_size is None:
-            batch_size = 0.2
+    def __init__(
+        self,
+        sample_collection,
+        batch_size=None,
+        batching_strategy=None,
+    ):
+        batch_size, batching_strategy = fou.parse_batching_strategy(
+            batch_size=batch_size, batching_strategy=batching_strategy
+        )
 
         self.sample_collection = sample_collection
         self.batch_size = batch_size
@@ -99,15 +118,19 @@ class SaveContext(object):
         self._frame_ops = []
         self._reload_parents = []
 
+        self._batching_strategy = batching_strategy
         self._curr_batch_size = None
-        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
+        self._curr_batch_size_bytes = None
         self._last_time = None
 
     def __enter__(self):
-        if self._dynamic_batches:
+        if self._batching_strategy == "static":
+            self._curr_batch_size = 0
+        elif self._batching_strategy == "size":
+            self._curr_batch_size_bytes = 0
+        elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
 
-        self._curr_batch_size = 0
         return self
 
     def __exit__(self, *args):
@@ -129,8 +152,6 @@ class SaveContext(object):
         sample_ops, frame_ops = sample._save(deferred=True)
         updated = sample_ops or frame_ops
 
-        self._curr_batch_size += 1
-
         if sample_ops:
             self._sample_ops.extend(sample_ops)
 
@@ -140,16 +161,31 @@ class SaveContext(object):
         if updated and isinstance(sample, fosa.SampleView):
             self._reload_parents.append(sample)
 
-        if self._dynamic_batches:
+        if self._batching_strategy == "static":
+            self._curr_batch_size += 1
+            if self._curr_batch_size >= self.batch_size:
+                self._save_batch()
+                self._curr_batch_size = 0
+        elif self._batching_strategy == "size":
+            if sample_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in sample_ops
+                )
+
+            if frame_ops:
+                self._curr_batch_size_bytes += sum(
+                    len(str(op)) for op in frame_ops
+                )
+
+            if self._curr_batch_size_bytes >= self.batch_size:
+                self._save_batch()
+                self._curr_batch_size_bytes = 0
+        elif self._batching_strategy == "latency":
             if timeit.default_timer() - self._last_time >= self.batch_size:
                 self._save_batch()
                 self._last_time = timeit.default_timer()
-        elif self._curr_batch_size >= self.batch_size:
-            self._save_batch()
 
     def _save_batch(self):
-        self._curr_batch_size = 0
-
         if self._sample_ops:
             foo.bulk_write(self._sample_ops, self._sample_coll, ordered=False)
             self._sample_ops.clear()
@@ -826,7 +862,13 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self, progress=False, autosave=False, batch_size=None):
+    def iter_samples(
+        self,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+    ):
         """Returns an iterator over the samples in the collection.
 
         Args:
@@ -835,9 +877,23 @@ class SampleCollection(object):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
@@ -851,6 +907,7 @@ class SampleCollection(object):
         progress=False,
         autosave=False,
         batch_size=None,
+        batching_strategy=None,
     ):
         """Returns an iterator over the groups in the collection.
 
@@ -861,9 +918,23 @@ class SampleCollection(object):
                 (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
-            batch_size (None): a batch size to use when autosaving samples. Can
-                either be an integer specifying the number of samples to save
-                in a batch, or a float number of seconds between batched saves
+            batch_size (None): the batch size to use when autosaving samples.
+                If a ``batching_strategy`` is provided, this parameter
+                configures the strategy as described below. If no
+                ``batching_strategy`` is provided, this can either be an
+                integer specifying the number of samples to save in a batch
+                (in which case ``batching_strategy`` is implicitly set to
+                ``"static"``) or a float number of seconds between batched
+                saves (in which case ``batching_strategy`` is implicitly set to
+                ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation when autosaving samples. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             an iterator that emits dicts mapping group slice names to
@@ -888,7 +959,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_group()")
 
-    def save_context(self, batch_size=None):
+    def save_context(self, batch_size=None, batching_strategy=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
 
@@ -910,6 +981,12 @@ class SampleCollection(object):
                 sample.ground_truth.label = make_label()
                 sample.save()
 
+            # Save using default batching strategy
+            with dataset.save_context() as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample.ground_truth.label = make_label()
+                    context.save(sample)
+
             # Save in batches of 10
             with dataset.save_context(batch_size=10) as context:
                 for sample in dataset.iter_samples(progress=True):
@@ -923,20 +1000,36 @@ class SampleCollection(object):
                     context.save(sample)
 
         Args:
-            batch_size (None): the batching strategy to use. Can either be an
-                integer specifying the number of samples to save in a batch, or
-                a float number of seconds between batched saves
+            batch_size (None): the batch size to use. If a ``batching_strategy``
+                is provided, this parameter configures the strategy as
+                described below. If no ``batching_strategy`` is provided, this
+                can either be an integer specifying the number of samples to
+                save in a batch (in which case ``batching_strategy`` is
+                implicitly set to ``"static"``) or a float number of seconds
+                between batched saves (in which case ``batching_strategy`` is
+                implicitly set to ``"latency"``)
+            batching_strategy (None): the batching strategy to use for each
+                save operation. Supported values are:
+
+                -   ``"static"``: a fixed sample batch size for each save
+                -   ``"size"``: a target batch size, in bytes, for each save
+                -   ``"latency"``: a target latency, in seconds, between saves
+
+                By default, ``fo.config.default_batcher`` is used
 
         Returns:
             a :class:`SaveContext`
         """
-        return SaveContext(self, batch_size=batch_size)
+        return SaveContext(
+            self, batch_size=batch_size, batching_strategy=batching_strategy
+        )
 
     def _get_default_sample_fields(
         self,
         path=None,
         include_private=False,
         use_db_fields=False,
+        media_types=None,
     ):
         if path is not None:
             field = self.get_field(path, leaf=True)
@@ -948,11 +1041,17 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
+            # These fields are currently not declared by default on 3D
             # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            media_types = media_types if media_types else set()
+            if issubclass(field.document_type, fol.Detection) and (
+                (
+                    self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                    or self._contains_media_type(fom.THREE_D, any_slice=True)
+                    or fom.POINT_CLOUD in media_types
+                    or fom.THREE_D in media_types
+                )
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1003,11 +1102,12 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            # These fields are currently not declared by default on point cloud
-            # datasets/slices, but they should be considered as default
-            if issubclass(
-                field.document_type, fol.Detection
-            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+            # These fields are currently not declared by default on 3D
+            # datasets/slices, but they should be
+            if issubclass(field.document_type, fol.Detection) and (
+                self._contains_media_type(fom.POINT_CLOUD, any_slice=True)
+                or self._contains_media_type(fom.THREE_D, any_slice=True)
+            ):
                 field_names = tuple(
                     set(field_names) | {"location", "dimensions", "rotation"}
                 )
@@ -1520,7 +1620,27 @@ class SampleCollection(object):
 
         # We only need to process samples that are missing a tag of interest
         view = self.match_tags(tags, bool=False, all=True)
-        view._edit_sample_tags(update)
+
+        try:
+            view._edit_sample_tags(update)
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                none_tags = self.exists("tags", bool=False)
+                none_tags.set_field("tags", []).save()
+
+                view._edit_sample_tags(update)
+            else:
+                raise e
 
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
@@ -1589,9 +1709,31 @@ class SampleCollection(object):
             tags = list(tags)
             update_fcn = lambda path: {"$addToSet": {path: {"$each": tags}}}
 
-        return self._edit_label_tags(
-            update_fcn, label_field, ids=ids, label_ids=label_ids
-        )
+        try:
+            return self._edit_label_tags(
+                update_fcn, label_field, ids=ids, label_ids=label_ids
+            )
+        except ValueError as e:
+            #
+            # $addToSet cannot handle null-valued fields, so if we get an error
+            # about null-valued fields, replace them with [] and try again.
+            # Note that its okay to run $addToSet multiple times as the tag
+            # won't be added multiple times.
+            #
+            # For future reference, the error message looks roughly like this:
+            #   ValueError: Cannot apply $addToSet to non-array field. Field
+            #               named 'tags' has non-array type null
+            #
+            if "null" in str(e):
+                _, tags_path = self._get_label_field_path(label_field, "tags")
+                none_tags = self.filter_labels(label_field, F("tags") == None)
+                none_tags.set_field(tags_path, []).save()
+
+                return self._edit_label_tags(
+                    update_fcn, label_field, ids=ids, label_ids=label_ids
+                )
+            else:
+                raise e
 
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
@@ -10002,8 +10144,11 @@ class SampleCollection(object):
             schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
-        if not include_filepath:
-            app_media_fields.discard("filepath")
+            if include_filepath:
+                # 'filepath' should already be in set, but add it just in case
+                app_media_fields.add("filepath")
+            else:
+                app_media_fields.discard("filepath")
 
         for field_name, field in schema.items():
             if field_name in app_media_fields:
@@ -10024,6 +10169,26 @@ class SampleCollection(object):
             }
 
         return media_fields
+
+    def _resolve_media_field(self, media_field):
+        if media_field in self._dataset.app_config.media_fields:
+            return media_field
+
+        _media_field, is_frame_field = self._handle_frame_field(media_field)
+
+        media_fields = self._get_media_fields(frames=is_frame_field)
+        for root, leaf in media_fields.items():
+            if leaf is not None:
+                leaf = root + "." + leaf
+
+            if _media_field in (root, leaf):
+                _resolved_field = leaf if leaf is not None else root
+                if is_frame_field:
+                    _resolved_field = self._FRAMES_PREFIX + _resolved_field
+
+                return _resolved_field
+
+        raise ValueError("'%s' is not a valid media field" % media_field)
 
     def _get_label_fields(self):
         return [path for path, _ in _iter_label_fields(self)]

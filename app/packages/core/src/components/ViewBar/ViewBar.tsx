@@ -43,6 +43,7 @@ const IconsContainer = styled.div`
   display: flex;
   align-items: center;
   position: absolute;
+  top: 2px;
   z-index: 1;
   height: 100%;
   border-radius: 3px;
@@ -132,6 +133,7 @@ const ViewBar = React.memo(() => {
           state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
         }
         ref={barRef}
+        data-cy="view-bar"
       >
         {state.matches("running")
           ? stages.map((stage, i) => {

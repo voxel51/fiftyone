@@ -216,9 +216,8 @@ which includes standard image types like JPEG, PNG, and BMP.
 
 Some browsers like Safari natively support other image types such as TIFF,
 while others do not. You may be able to install a browser extension to work
-with additional image types. For example, you can install
-`this extension <https://github.com/my-codeworks/tiff-viewer-extension>`_ to
-view TIFF images in Chrome or Firefox.
+with additional image types, but Voxel51 does not currently recommend any
+such extensions in particular.
 
 .. note::
 
@@ -706,10 +705,10 @@ instructions on using the various Brain methods.
 Does FiftyOne track me?
 -----------------------
 
-FiftyOne tracks anonymous UUID-based usage of the Python library and the App by
-default. We are a small team building an open source project, and basic
-knowledge of how users are engaging with the project is critical to informing
-the roadmap of the project.
+FiftyOne tracks anonymous UUID-based usage of the App by default. We are a
+small team building an open source project, and basic knowledge of how users
+are engaging with the project is critical to informing the roadmap of the
+project.
 
 .. note::
 

@@ -1,11 +1,13 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export { freeVideos } from "./elements/util";
 export * from "./lookers";
+export type { PointInfo } from "./overlays";
 export type {
+  BaseState,
   Coloring,
   CustomizeColor,
   FrameConfig,

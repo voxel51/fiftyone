@@ -1,7 +1,7 @@
 """
 FiftyOne Zoo Datasets provided natively by the library.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -26,6 +26,7 @@ import fiftyone.utils.kitti as foukt
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
 import fiftyone.utils.sama as fous
+import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
@@ -2431,19 +2432,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
     def _patch_if_necessary(self, dataset_dir, split):
-        try:
-            # This data is in FiftyOneDataset format
-            split_dir = os.path.join(dataset_dir, split)
-            metadata_path = os.path.join(split_dir, "metadata.json")
-            metadata = etas.read_json(metadata_path)
-            config = metadata["app_config"]["plugins"]["3d"]
-            is_legacy = "itemRotation" in config["overlay"]
-        except:
-            is_legacy = False
-
-        if is_legacy:
+        split_dir = os.path.join(dataset_dir, split)
+        if _should_patch_pcd(split_dir):
             logger.info("Patching existing download...")
-            foukt._prepare_kitti_split(split_dir, overwrite=True)
+            foukt._prepare_kitti_split(split_dir, overwrite=False)
 
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
@@ -2893,6 +2885,69 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class PlacesDataset(FiftyOneDataset):
+    """Places is a scene recognition dataset of 10 million images comprising
+    ~400 unique scene categories.
+
+    The images are labeled with scene semantic categories, comprising a large
+    and diverse list of the types of environments encountered in the world.
+
+    Full split stats:
+
+    -   Train split: 1,803,460 images, with between 3,068 and 5,000 per category
+    -   Test split: 328,500 images, with 900 images per category
+    -   Validation split: 36,500 images, with 100 images per category
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("places", split="validation")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        29 GB
+
+    Source
+        http://places2.csail.mit.edu/download-private.html
+    """
+
+    @property
+    def name(self):
+        return "places"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return False
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes, _ = foup.download_places_dataset_split(
+            dataset_dir,
+            split,
+            raw_dir=self._get_raw_dir(dataset_dir),
+        )
+
+        dataset_type = fot.PlacesDataset()
+
+        return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
+
+
 class QuickstartDataset(FiftyOneDataset):
     """A small dataset with ground truth bounding boxes and predictions.
 
@@ -3075,10 +3130,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        516.3 MB
+        576 MB
     """
 
-    _GDRIVE_ID = "1mLfmb0Bj9L7SaDwcgpKVetvKEGt-b7Lb"
+    _GDRIVE_ID = "1OcuP2daa_usoinLm64CueObGFxLBwOjE"
     _ARCHIVE_NAME = "quickstart-groups.zip"
     _DIR_IN_ARCHIVE = "quickstart-groups"
 
@@ -3117,20 +3172,69 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
     def _patch_if_necessary(self, dataset_dir, _):
-        try:
-            # This data is in LegacyFiftyOneDataset format
-            metadata_path = os.path.join(dataset_dir, "metadata.json")
-            metadata = etas.read_json(metadata_path)
-            config = metadata["info"]["app_config"]["plugins"]["3d"]
-            is_legacy = "itemRotation" in config["overlay"]
-        except:
-            is_legacy = False
-
-        if is_legacy:
+        if _should_patch_pcd(dataset_dir):
             logger.info("Downloading patched dataset...")
             scratch_dir = os.path.join(dataset_dir, "tmp-download")
             self._download_and_prepare(dataset_dir, scratch_dir, None)
             etau.delete_dir(scratch_dir)
+
+
+class Quickstart3DDataset(FiftyOneDataset):
+    """A small 3D dataset with meshes, point clouds, and oriented bounding
+    boxes.
+
+    The dataset consists of 200 3D mesh samples from the test split of the
+    `ModelNet40 <https://modelnet.cs.princeton.edu>`_ dataset, with point
+    clouds generated using a Poisson disk sampling method, and oriented
+    bounding boxes generated based on the convex hull.
+
+    Objects have been rescaled and recentered from the original dataset.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-3d")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        215.7 MB
+    """
+
+    _GDRIVE_ID = "1EnQ2-gGDktEd8pAWwdXNK-FeHUFTFl5K"
+    _ARCHIVE_NAME = "quickstart-3d.zip"
+    _DIR_IN_ARCHIVE = "quickstart-3d"
+
+    @property
+    def name(self):
+        return "quickstart-3d"
+
+    @property
+    def tags(self):
+        return ("3d", "point-cloud", "mesh", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
 
 
 class UCF101Dataset(FiftyOneDataset):
@@ -3238,13 +3342,48 @@ AVAILABLE_DATASETS = {
     "lfw": LabeledFacesInTheWildDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
+    "places": PlacesDataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-groups": QuickstartGroupsDataset,
+    "quickstart-3d": Quickstart3DDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
 }
+
+
+def _should_patch_pcd(dataset_dir):
+    try:
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        metadata = etas.read_json(metadata_path)
+    except:
+        return False
+
+    try:
+        # v1 patch: for LegacyFiftyOneDataset format
+        config = metadata["info"]["app_config"]["plugins"]["3d"]
+        if "itemRotation" in config["overlay"]:
+            return True
+    except:
+        pass
+
+    try:
+        # v1 patch: for FiftyOneDataset format
+        config = metadata["app_config"]["plugins"]["3d"]
+        if "itemRotation" in config["overlay"]:
+            return True
+    except:
+        pass
+
+    try:
+        # v2 patch: point-cloud -> 3D conversion
+        if metadata.get("group_media_types", {}).get("pcd", None) != "3d":
+            return True
+    except:
+        pass
+
+    return False
 
 
 def _download_and_extract_archive(

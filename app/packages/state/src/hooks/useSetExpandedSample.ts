@@ -9,6 +9,7 @@ import {
   currentModalSample,
   dynamicGroupCurrentElementIndex,
 } from "../recoil";
+import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 
 export default () => {
@@ -28,13 +29,13 @@ export default () => {
         set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
 
-        reset(groupAtoms.dynamicGroupIndex);
+        reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
-        groupByFieldValue &&
-          set(groupAtoms.groupByFieldValue, groupByFieldValue);
+        groupByFieldValue !== undefined &&
+          set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
 
         let fallback = r.current;
-        if (map[groupSlice] === "point_cloud") {
+        if (map[fallback] === "point_cloud") {
           fallback = types
             .filter(({ mediaType }) => mediaType !== "point_cloud")
             .map(({ name }) => name)

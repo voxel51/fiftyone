@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1605,6 +1605,61 @@ def get_default_batcher(iterable, progress=False, total=None):
         )
 
 
+def parse_batching_strategy(batch_size=None, batching_strategy=None):
+    """Parses the given batching strategy configuration, applying any default
+    config settings as necessary.
+
+    Args:
+        batch_size (None): the batch size to use. If a ``batching_strategy`` is
+            provided, this parameter configures that strategy as described
+            below. If no ``batching_strategy`` is provided, this can either be
+            an integer specifying the number of samples to save in a batch (in
+            which case ``batching_strategy`` is implicitly set to ``"static"``)
+            or a float number of seconds between batched saves (in which case
+            ``batching_strategy`` is implicitly set to ``"latency"``)
+        batching_strategy (None): the batching strategy to use for each save
+            operation. Supported values are:
+
+            -   ``"static"``: a fixed sample batch size for each save
+            -   ``"size"``: a target batch size, in bytes, for each save
+            -   ``"latency"``: a target latency, in seconds, between saves
+
+            By default, ``fo.config.default_batcher`` is used
+
+    Returns:
+        a tuple of ``(batch_size, batching_strategy)``
+    """
+    if batching_strategy is None:
+        if batch_size is None:
+            batching_strategy = fo.config.default_batcher
+        elif isinstance(batch_size, numbers.Integral):
+            batching_strategy = "static"
+        elif isinstance(batch_size, numbers.Number):
+            batching_strategy = "latency"
+        else:
+            raise ValueError(
+                "Unsupported batch size %s; must be an integer or float"
+                % batch_size
+            )
+
+    supported_batching_strategies = ("static", "size", "latency")
+    if batching_strategy not in supported_batching_strategies:
+        raise ValueError(
+            "Unsupported batching strategy '%s'; supported values are %s"
+            % (batching_strategy, supported_batching_strategies)
+        )
+
+    if batch_size is None:
+        if batching_strategy == "static":
+            batch_size = fo.config.batcher_static_size
+        elif batching_strategy == "size":
+            batch_size = fo.config.batcher_target_size_bytes
+        elif batching_strategy == "latency":
+            batch_size = fo.config.batcher_target_latency
+
+    return batch_size, batching_strategy
+
+
 def recommend_batch_size_for_value(value, alpha=0.9, max_size=None):
     """Computes a recommended batch size for the given value type such that a
     request involving a list of values of this size will be less than
@@ -1681,6 +1736,9 @@ class UniqueFilenameMaker(object):
             :func:`fiftyone.core.storage.normalize_path`
         alt_dir (None): an optional alternate directory in which to generate
             paths when :meth:`get_alt_path` is called
+        chunk_size (None): if provided, output paths will be nested in
+            subdirectories of ``output_dir`` with at most this many files per
+            subdirectory. Has no effect if a ``rel_dir`` is provided
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
@@ -1697,6 +1755,7 @@ class UniqueFilenameMaker(object):
         output_dir=None,
         rel_dir=None,
         alt_dir=None,
+        chunk_size=None,
         default_ext=None,
         ignore_exts=False,
         ignore_existing=False,
@@ -1704,10 +1763,12 @@ class UniqueFilenameMaker(object):
     ):
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
+            chunk_size = None
 
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.alt_dir = alt_dir
+        self.chunk_size = chunk_size
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
         self.ignore_existing = ignore_existing
@@ -1719,10 +1780,21 @@ class UniqueFilenameMaker(object):
             default_ext or ""
         )
         self._idx = 0
+        self._chunk_root = None
+        self._chunk_num = 0
+        self._chunk_count = 0
 
         self._setup()
 
     def _setup(self):
+        if self.chunk_size is not None:
+            if self.output_dir:
+                chunk_root = os.path.basename(fos.normpath(self.output_dir))
+            else:
+                chunk_root = "chunk"
+
+            self._chunk_root = chunk_root
+
         if not self.output_dir:
             return
 
@@ -1794,6 +1866,15 @@ class UniqueFilenameMaker(object):
         count = self._filename_counts[key]
         if count > 1:
             filename = name + ("-%d" % count) + ext
+
+        if self.chunk_size is not None:
+            chunk_dir = self._chunk_root + "_" + str(self._chunk_num)
+            filename = os.path.join(chunk_dir, filename)
+
+            self._chunk_count += 1
+            if self._chunk_count >= self.chunk_size:
+                self._chunk_num += 1
+                self._chunk_count = 0
 
         if self.output_dir:
             output_path = os.path.join(self.output_dir, filename)
@@ -1961,10 +2042,20 @@ def iter_slices(sliceable, batch_size):
         yield sliceable
         return
 
+    try:
+        end = len(sliceable)
+    except:
+        end = None
+
     start = 0
     while True:
+        if end is not None and start >= end:
+            return
+
         chunk = sliceable[start : (start + batch_size)]
-        if len(chunk) == 0:  # works for numpy arrays, Torch tensors, etc
+
+        # works for numpy arrays, Torch tensors, etc
+        if end is None and len(chunk) == 0:
             return
 
         start += batch_size

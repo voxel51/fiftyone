@@ -71,20 +71,31 @@ export const dynamicGroupsViewMode = atom<"carousel" | "pagination" | "video">({
 });
 
 export const configuredSidebarModeDefault = selectorFamily<
-  "all" | "best" | "fast",
+  "all" | "best" | "fast" | "disabled",
   boolean
 >({
   key: "configuredSidebarModeDefault",
   get:
     (modal) =>
     ({ get }) => {
+      if (modal) {
+        return "all";
+      }
+
+      const appDefault = get(configData).config.sidebarMode;
+      if (appDefault === "disabled") {
+        return appDefault;
+      }
+
+      const datasetDefault = get(datasetAppConfig)?.sidebarMode;
+      if (datasetDefault === "disabled") {
+        return datasetDefault;
+      }
+
       const setting = get(sidebarMode(modal));
       if (setting) {
         return setting;
       }
-
-      const appDefault = get(configData).config.sidebarMode;
-      const datasetDefault = get(datasetAppConfig)?.sidebarMode;
 
       if (
         appDefault === "%future added value" ||
@@ -105,7 +116,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
       const mode = get(configuredSidebarModeDefault(modal));
 
       if (mode !== "best") {
-        return mode;
+        return mode === "disabled" ? "fast" : mode;
       }
 
       // see https://docs.voxel51.com/user_guide/app.html#sidebar-mode

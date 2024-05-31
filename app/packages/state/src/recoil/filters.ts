@@ -4,8 +4,8 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
-import { lightning, lightningPaths, lightningUnlocked } from "./lightning";
+import { atom, DefaultValue, selector, selectorFamily } from "recoil";
+import { lightning, lightningPaths } from "./lightning";
 import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import {
@@ -79,29 +79,26 @@ export const filter = selectorFamily<
     ({ get, reset, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
+      const currentLightningPaths = get(lightningPaths(""));
 
-      if (!modal && get(lightningUnlocked)) {
-        const paths = get(lightningPaths(""));
+      if (!modal && currentLightningPaths.has(path)) {
+        for (const p in newFilters) {
+          if (!currentLightningPaths.has(p)) {
+            delete newFilters[p];
+          }
+        }
+        reset(granularSidebarExpandedStore);
+        set(sidebarExpandedStore(false), (current) => {
+          const next = { ...current };
 
-        if (paths.has(path)) {
-          for (const p in newFilters) {
-            if (!paths.has(p)) {
-              delete newFilters[p];
+          for (const parent in next) {
+            if (![...currentLightningPaths].some((p) => p.startsWith(parent))) {
+              delete next[parent];
             }
           }
-          reset(granularSidebarExpandedStore);
-          set(sidebarExpandedStore(false), (current) => {
-            const next = { ...current };
 
-            for (const parent in next) {
-              if (![...paths].some((p) => p.startsWith(parent))) {
-                delete next[parent];
-              }
-            }
-
-            return next;
-          });
-        }
+          return next;
+        });
       }
 
       if (filter === null || filter instanceof DefaultValue) {

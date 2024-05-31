@@ -23,6 +23,7 @@ export default r(graphql`
       theme
       timezone
       useFrameNumber
+      mediaFallback
     }
     colorscale
   }

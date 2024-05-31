@@ -1,10 +1,11 @@
 """
 FiftyOne Server /tag route
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -39,7 +40,7 @@ class Tag(HTTPEndpoint):
         slices = data.get("slices", None)
         slice = data.get("slice", None)
         group_id = data.get("group_id", None)
-        view = fost.get_tag_view(
+        view = await fost.get_tag_view(
             dataset,
             stages=stages,
             filters=filters,
@@ -47,11 +48,11 @@ class Tag(HTTPEndpoint):
             labels=labels,
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(
-                    slice=slice, id=group_id, slices=slices
+                group=(
+                    GroupElementFilter(slice=slice, id=group_id, slices=slices)
+                    if not sample_ids
+                    else None
                 )
-                if not sample_ids
-                else None
             ),
             target_labels=target_labels,
             sample_ids=sample_ids,
@@ -65,7 +66,7 @@ class Tag(HTTPEndpoint):
         if not modal:
             return {"samples": []}
 
-        view = fost.get_tag_view(
+        view = await fost.get_tag_view(
             dataset,
             stages=stages,
             filters=filters,
@@ -74,9 +75,11 @@ class Tag(HTTPEndpoint):
             hidden_labels=hidden_labels,
             sample_ids=sample_ids,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slices=slices)
-                if not sample_ids
-                else None
+                group=(
+                    GroupElementFilter(id=group_id, slices=slices)
+                    if not sample_ids
+                    else None
+                )
             ),
             target_labels=False,
         )

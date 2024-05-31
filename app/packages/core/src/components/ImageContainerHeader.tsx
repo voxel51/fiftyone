@@ -52,8 +52,8 @@ const RightContainer = styled.div`
 const SliderContainer = styled.div`
   display: flex;
   align-items: center;
-  width: 8rem;
-  padding-right: 1rem;
+  width: 7.375rem;
+  padding-right: 0.375rem;
 `;
 
 const ImageContainerHeader = () => {

@@ -4,10 +4,11 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import re
 import sys
@@ -74,6 +75,7 @@ autodoc_default_options = {
     "inherited-members": True,
     "member-order": "bysource",
     "autosummary": True,
+    "exclude-members": "objects",
 }
 autodoc_inherit_docstrings = True
 autoclass_content = "class"
@@ -211,7 +213,7 @@ html_context = {
     "link_voxel51_slack": "https://slack.voxel51.com",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",
-    "banner_link": "https://docs.voxel51.com/integrations/coco.html",
+    "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
 }
 
 # -- Custom app setup --------------------------------------------------------
