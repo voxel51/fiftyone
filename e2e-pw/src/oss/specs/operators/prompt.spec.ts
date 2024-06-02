@@ -111,7 +111,11 @@ test("Prompt: Say hello in drawer", async ({
   await operatorsBrowser.search("E2E");
   await operatorsBrowser.choose("E2E: Say hello in drawer");
   await operatorsPromptDrawer.assert.isOpen();
-  await operatorsPromptDrawer.locator.locator("input").first().fill("E2E");
+  await operatorsPromptDrawer.locator
+    .locator("input")
+    .first()
+    .pressSequentially("E2E");
+  await operatorsPromptDrawer.waitForValidation();
   await operatorsPromptDrawer.execute();
   await operatorsPromptDrawer.assert.isExecuting();
   await expect(operatorsPromptDrawer.content).toContainText("Message:Hi E2E!");

@@ -22,16 +22,14 @@ export class OperatorsPromptPom {
   }
 
   get footer() {
+    if (this.type === "drawer") {
+      return this.locator.getByTestId("operators-prompt-drawer-footer");
+    }
     return this.locator.locator(".MuiDialogActions-root").first();
   }
 
   get executeButton() {
-    return this.locator.locator('button:text("Execute")');
-  }
-
-  async execute() {
-    await this.assert.canExecute();
-    return this.executeButton.click();
+    return this.footer.locator('button:text("Execute")');
   }
 
   async waitForValidation() {
@@ -43,16 +41,21 @@ export class OperatorsPromptPom {
     ).not.toBeVisible();
   }
 
+  async execute() {
+    await this.assert.canExecute();
+    return this.executeButton.click();
+  }
+
   cancel() {
-    return this.locator.locator('button:text("Cancel")').click();
+    return this.footer.locator('button:text("Cancel")').click();
   }
 
   close() {
-    return this.locator.locator('button:text("Close")').click();
+    return this.footer.locator('button:text("Close")').click();
   }
 
   done() {
-    return this.locator.locator('button:text("Done")').click();
+    return this.footer.locator('button:text("Done")').click();
   }
 }
 
