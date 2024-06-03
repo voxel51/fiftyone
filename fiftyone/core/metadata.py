@@ -7,12 +7,13 @@ Metadata stored in dataset samples.
 """
 from collections import defaultdict
 import itertools
+import json
 import logging
 import multiprocessing.dummy
 import os
 
 import backoff
-from PIL import ExifTags, Image
+from PIL import Image
 import requests
 
 import eta.core.utils as etau
@@ -311,13 +312,16 @@ class SceneMetadata(Metadata):
         Returns:
             a :class:`SceneMetadata`
         """
-        if scene_path.startswith("http"):
-            return cls._build_for_url(
+        scene_path, is_local = fo.media_cache.use_cached_path(scene_path)
+
+        if is_local:
+            return cls._build_for_local(
                 scene_path, mime_type=mime_type, cache=_cache
             )
 
-        return cls._build_for_local(
-            scene_path, mime_type=mime_type, cache=_cache
+        url = fos.get_url(scene_path)
+        return cls._build_for_url(
+            url, scene_path, mime_type=mime_type, cache=_cache
         )
 
     @classmethod
@@ -340,10 +344,34 @@ class SceneMetadata(Metadata):
         )
 
     @classmethod
-    def _build_for_url(cls, scene_path, mime_type=None, cache=None):
-        # Unclear how asset paths should be handled; the rest of the library is
-        # not equipped to handle URL asset paths
-        raise ValueError("Scene URLs are not currently supported")
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
+    def _build_for_url(cls, url, scene_path, mime_type=None, cache=None):
+        if mime_type is None:
+            mime_type = "application/octet-stream"
+
+        r = requests.get(url)
+        r.raise_for_status()
+        scene_size = int(r.headers["Content-Length"])
+        scene = fo3d.Scene._from_fo3d_dict(r.json())
+
+        asset_counts, asset_size = _parse_assets(
+            scene, scene_path, cache=cache
+        )
+        size_bytes = scene_size + asset_size
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            asset_counts=asset_counts,
+        )
 
 
 def _parse_assets(scene, scene_path, cache=None):
@@ -513,9 +541,9 @@ def get_metadata(
 
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
-    tasks = [(p, skip_failures) for p in filepaths]
-
+    cache = {}
     metadata = {}
+    tasks = [(p, skip_failures, cache) for p in filepaths]
 
     if not tasks:
         return metadata
@@ -690,7 +718,7 @@ def _compute_sample_metadata(
 
 
 def _do_get_metadata(args):
-    filepath, skip_failures = args
+    filepath, skip_failures, cache = args
     if not filepath:
         return None, None
 
@@ -698,7 +726,7 @@ def _do_get_metadata(args):
     media_type = fom.get_media_type(filepath)
 
     try:
-        metadata = _get_metadata(filepath, media_type)
+        metadata = _get_metadata(filepath, media_type, cache=cache)
     except Exception as e:
         if not skip_failures:
             raise
