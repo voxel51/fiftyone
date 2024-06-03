@@ -324,19 +324,19 @@ class Scene(Object3D):
         Returns:
             a list of asset paths
         """
-        asset_paths = list(
+        asset_paths = set(
             itertools.chain.from_iterable(
                 node._get_asset_paths() for node in self.traverse()
             )
         )
 
-        # append paths in scene background, if any
         if self.background is not None:
             if self.background.image is not None:
-                asset_paths.append(self.background.image)
+                asset_paths.add(self.background.image)
             if self.background.cube is not None:
-                asset_paths.extend(self.background.cube)
-        return asset_paths
+                asset_paths.update(self.background.cube)
+
+        return list(asset_paths)
 
     def _resolve_asset_path(self, root: str, path: str):
         if path is None:

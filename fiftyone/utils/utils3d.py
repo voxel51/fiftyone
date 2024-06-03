@@ -470,12 +470,10 @@ def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
     asset_paths = scene.get_asset_paths()
 
     if abs_paths:
-        # Convert any relative-to-scene paths to absolute
         scene_dir = os.path.dirname(original_scene_path)
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
-                asset_path = fos.join(scene_dir, asset_path)
-            asset_paths[i] = fos.resolve(asset_path)
+                asset_paths[i] = fos.resolve(fos.join(scene_dir, asset_path))
 
     return asset_paths
 

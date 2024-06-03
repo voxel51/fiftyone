@@ -1186,17 +1186,15 @@ class MediaExporter(object):
         self._filename_maker = None
         self._manifest = None
         self._manifest_path = None
-
         self._tmpdir = None
         self._inpaths = []
         self._outpaths = []
 
-    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
-        if export_mode in (False, "manifest"):
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
+        if self.export_mode in (False, "manifest"):
             return
 
         scene = fo3d.Scene.from_fo3d(fo3d_path)
-
         asset_paths = scene.get_asset_paths()
 
         input_to_output_paths = {}
@@ -1223,39 +1221,33 @@ class MediaExporter(object):
             if not fos.is_local(absolute_asset_path) or not fos.is_local(
                 asset_output_path
             ):
-                if self.export_mode in (True, "move"):
-                    self._inpaths.append(absolute_asset_path)
-                    self._outpaths.append(asset_output_path)
-                continue
-
-            if export_mode is True:
+                self._inpaths.append(absolute_asset_path)
+                self._outpaths.append(asset_output_path)
+            elif self.export_mode is True:
                 etau.copy_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "move":
+            elif self.export_mode == "move":
                 etau.move_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "symlink":
+            elif self.export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
         is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
-            # note: we can't have different behavior for "symlink" because
-            # scene is modified, so we just copy the file regardless
             scene.write(fo3d_output_path)
+            if self.export_mode == "move":
+                etau.delete_file(fo3d_path)
         else:
-            if export_mode == "symlink":
-                # No cloud version of symlink (ensured above), so we're fine
-                #   to use regular etau symlink_file here
-                etau.symlink_file(fo3d_path, fo3d_output_path)
-            elif not fos.is_local(fo3d_path) or not fos.is_local(
+            if not fos.is_local(fo3d_path) or not fos.is_local(
                 fo3d_output_path
             ):
                 self._inpaths.append(fo3d_path)
                 self._outpaths.append(fo3d_output_path)
-            else:
-                fos.copy_file(fo3d_path, fo3d_output_path)
-
-        if export_mode == "move":
-            fos.delete_file(fo3d_path)
+            elif self.export_mode is True:
+                etau.copy_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "move":
+                etau.move_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
 
     def __enter__(self):
         self.setup()
@@ -1345,20 +1337,15 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
-                is_fo3d_file = media_path.endswith(".fo3d")
-
                 if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
-                elif is_fo3d_file:
-                    self._handle_fo3d_file(
-                        media_path, outpath, self.export_mode
-                    )
+                elif media_path.endswith(".fo3d"):
+                    self._handle_fo3d_file(media_path, outpath)
                 elif self.export_mode != False and (
                     not fos.is_local(outpath) or not fos.is_local(media_path)
                 ):
-                    if self.export_mode in (True, "move"):
-                        self._inpaths.append(media_path)
-                        self._outpaths.append(outpath)
+                    self._inpaths.append(media_path)
+                    self._outpaths.append(outpath)
                 elif self.export_mode is True:
                     etau.copy_file(media_path, outpath)
                 elif self.export_mode == "move":
