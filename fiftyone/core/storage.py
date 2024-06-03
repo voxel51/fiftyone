@@ -1395,8 +1395,8 @@ def join(a, *p):
 
 
 def resolve(path):
-    """Resolves path to absolute, resolving symlinks and relative path
-        indicators such as `.` and `..`.
+    """Resolves the given path to absolute, resolving symlinks and relative
+    path indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath
