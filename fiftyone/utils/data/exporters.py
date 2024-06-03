@@ -1164,8 +1164,8 @@ class MediaExporter(object):
         self._manifest = None
         self._manifest_path = None
 
-    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
-        if export_mode in (False, "manifest"):
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
+        if self.export_mode in (False, "manifest"):
             return
 
         scene = fo3d.Scene.from_fo3d(fo3d_path)
@@ -1192,27 +1192,26 @@ class MediaExporter(object):
             if seen:
                 continue
 
-            if export_mode is True:
+            if self.export_mode is True:
                 etau.copy_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "move":
+            elif self.export_mode == "move":
                 etau.move_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "symlink":
+            elif self.export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
         is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
-            # note: we can't have different behavior for "symlink" because
-            # scene is modified, so we just copy the file regardless
             scene.write(fo3d_output_path)
+            if self.export_mode == "move":
+                etau.delete_file(fo3d_path)
         else:
-            if export_mode == "symlink":
-                etau.symlink_file(fo3d_path, fo3d_output_path)
-            else:
+            if self.export_mode is True:
                 etau.copy_file(fo3d_path, fo3d_output_path)
-
-        if export_mode == "move":
-            etau.delete_file(fo3d_path)
+            elif self.export_mode == "move":
+                etau.move_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
 
     def __enter__(self):
         self.setup()
@@ -1302,21 +1301,16 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
-                is_fo3d_file = media_path.endswith(".fo3d")
-
-                if self.export_mode is True and not is_fo3d_file:
-                    etau.copy_file(media_path, outpath)
-                elif self.export_mode == "move" and not is_fo3d_file:
-                    etau.move_file(media_path, outpath)
-                elif self.export_mode == "symlink" and not is_fo3d_file:
-                    etau.symlink_file(media_path, outpath)
-                elif self.export_mode == "manifest":
+                if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
-
-                if is_fo3d_file:
-                    self._handle_fo3d_file(
-                        media_path, outpath, self.export_mode
-                    )
+                elif media_path.endswith(".fo3d"):
+                    self._handle_fo3d_file(media_path, outpath)
+                elif self.export_mode is True:
+                    etau.copy_file(media_path, outpath)
+                elif self.export_mode == "move":
+                    etau.move_file(media_path, outpath)
+                elif self.export_mode == "symlink":
+                    etau.symlink_file(media_path, outpath)
         else:
             media = media_or_path
 
