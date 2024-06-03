@@ -300,7 +300,7 @@ class SceneMetadata(Metadata):
     asset_counts = fof.DictField()
 
     @classmethod
-    def build_for(cls, scene_path, mime_type=None):
+    def build_for(cls, scene_path, mime_type=None, _cache=None):
         """Builds a :class:`SceneMetadata` object for the given 3D scene.
 
         Args:
@@ -311,52 +311,62 @@ class SceneMetadata(Metadata):
         Returns:
             a :class:`SceneMetadata`
         """
-        return cls._build_for(scene_path, mime_type=mime_type)
+        if scene_path.startswith("http"):
+            return cls._build_for_url(
+                scene_path, mime_type=mime_type, cache=_cache
+            )
+
+        return cls._build_for_local(
+            scene_path, mime_type=mime_type, cache=_cache
+        )
 
     @classmethod
-    def _build_for(cls, scene_path, mime_type=None, cache=None):
+    def _build_for_local(cls, scene_path, mime_type=None, cache=None):
         if mime_type is None:
             mime_type = "application/octet-stream"
 
-        # Unclear how asset paths should be handled; the rest of the library is
-        # not equipped to handle URL asset paths
-        if scene_path.startswith("http"):
-            raise ValueError("Scene URLs are not currently supported")
-
-        total_size = os.path.getsize(scene_path)
-
+        scene_size = os.path.getsize(scene_path)
         scene = fo3d.Scene.from_fo3d(scene_path)
-        asset_paths = scene.get_asset_paths()
 
-        asset_counts = defaultdict(int)
-        scene_dir = os.path.dirname(scene_path)
-        for i, asset_path in enumerate(asset_paths):
-            if not fos.isabs(asset_path):
-                asset_path = fos.resolve(fos.join(scene_dir, asset_path))
-                asset_paths[i] = asset_path
-
-            file_type = os.path.splitext(asset_path)[1][1:]
-            asset_counts[file_type] += 1
-
-        asset_counts = dict(asset_counts)
-        total_size += _compute_asset_sizes(asset_paths, cache=cache)
+        asset_counts, asset_size = _parse_assets(
+            scene, scene_path, cache=cache
+        )
+        size_bytes = scene_size + asset_size
 
         return cls(
-            size_bytes=total_size,
+            size_bytes=size_bytes,
             mime_type=mime_type,
             asset_counts=asset_counts,
         )
 
+    @classmethod
+    def _build_for_url(cls, scene_path, mime_type=None, cache=None):
+        # Unclear how asset paths should be handled; the rest of the library is
+        # not equipped to handle URL asset paths
+        raise ValueError("Scene URLs are not currently supported")
 
-def _compute_asset_sizes(asset_paths, cache=None):
-    total_size = 0
+
+def _parse_assets(scene, scene_path, cache=None):
+    asset_paths = scene.get_asset_paths()
+
+    asset_counts = defaultdict(int)
+    scene_dir = os.path.dirname(scene_path)
+    for i, asset_path in enumerate(asset_paths):
+        if not fos.isabs(asset_path):
+            asset_path = fos.resolve(fos.join(scene_dir, asset_path))
+            asset_paths[i] = asset_path
+
+        file_type = os.path.splitext(asset_path)[1][1:]
+        asset_counts[file_type] += 1
+
+    asset_size = 0
 
     tasks = []
     for asset_path in asset_paths:
         if cache is not None:
             metadata = cache.get(asset_path, None)
             if metadata is not None:
-                total_size += metadata.size_bytes
+                asset_size += metadata.size_bytes
                 continue
 
         tasks.append((None, asset_path, fom.MIXED, cache))
@@ -372,13 +382,13 @@ def _compute_asset_sizes(asset_paths, cache=None):
 
     for task, result in zip(tasks, results):
         metadata = result[1]
-        total_size += metadata.size_bytes
+        asset_size += metadata.size_bytes
 
         if cache is not None:
             scene_path = task[1]
             cache[scene_path] = metadata
 
-    return total_size
+    return dict(asset_counts), asset_size
 
 
 def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
@@ -710,7 +720,7 @@ def _get_metadata(filepath, media_type, cache=None):
     elif media_type == fom.VIDEO:
         metadata = VideoMetadata.build_for(filepath)
     elif media_type == fom.THREE_D:
-        metadata = SceneMetadata._build_for(filepath, cache=cache)
+        metadata = SceneMetadata.build_for(filepath, _cache=cache)
     else:
         metadata = Metadata.build_for(filepath)
 
