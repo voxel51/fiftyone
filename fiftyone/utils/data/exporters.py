@@ -242,13 +242,13 @@ def export_samples(
 
     sample_collection = samples
 
-    if isinstance(dataset_exporter, BatchDatasetExporter):
-        _write_batch_dataset(dataset_exporter, samples, progress=progress)
-        return
-
     if isinstance(
         dataset_exporter,
-        (GenericSampleDatasetExporter, GroupDatasetExporter),
+        (
+            BatchDatasetExporter,
+            GenericSampleDatasetExporter,
+            GroupDatasetExporter,
+        ),
     ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
@@ -392,7 +392,9 @@ def write_dataset(
     if sample_collection is None and isinstance(samples, foc.SampleCollection):
         sample_collection = samples
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(dataset_exporter, BatchDatasetExporter):
+        _write_batch_dataset(dataset_exporter, samples, progress=progress)
+    elif isinstance(dataset_exporter, GenericSampleDatasetExporter):
         _write_generic_sample_dataset(
             dataset_exporter,
             samples,
