@@ -21,6 +21,11 @@ jobs:
       - run: |
           git config user.name 'voxel51-bot'
           git config user.email 'bot@voxel51.com'
+          git checkout merge/${{ inputs.ref_name || github.ref_name }} \
+          || git checkout -b merge/${{ inputs.ref_name || github.ref_name }}
+          git push -u origin merge/${{ inputs.ref_name || github.ref_name }}
+          git checkout develop
+          git pull origin merge/${{ inputs.ref_name || github.ref_name }} --no-rebase
           git pull origin ${{ inputs.ref_name || github.ref_name }} --no-rebase
       - uses: peter-evans/create-pull-request@v6
         with:
