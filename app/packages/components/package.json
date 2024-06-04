@@ -50,7 +50,6 @@
         "react-input-autosize": "^3.0.0",
         "react-laag": "^2.0.3",
         "react-syntax-highlighter": "^15.5.0",
-        "react-use": "^17.3.2",
-        "searchable-react-json-view": "^0.0.8"
+        "react-use": "^17.3.2"
     }
 }
