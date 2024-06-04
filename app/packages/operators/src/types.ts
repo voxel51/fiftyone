@@ -1050,6 +1050,16 @@ export class MarkdownView extends View {
   }
 }
 
+export class MediaPlayerView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "MediaPlayerView";
+  }
+  static fromJSON(json) {
+    return new MediaPlayerView(json);
+  }
+}
+
 /**
  * Operator class for interacting with files.
  */
@@ -1207,6 +1217,7 @@ const VIEWS = {
   MapView,
   ProgressView,
   MarkdownView,
+  MediaPlayerView,
   PromptView,
   FieldView,
   TextFieldView,

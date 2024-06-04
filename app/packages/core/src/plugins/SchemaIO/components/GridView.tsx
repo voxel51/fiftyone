@@ -39,8 +39,8 @@ export default function GridView(props: ViewPropsType) {
           const itemPath = getPath(path, id);
           const baseItemProps: BoxProps = {
             sx: {
-              justifySelf: alignX || align_x || "start",
-              alignSelf: alignY || align_y || "start",
+              justifySelf: alignX || align_x || "unset",
+              alignSelf: alignY || align_y || "unset",
               maxHeight:
                 orientation === "vertical"
                   ? spaceToHeight(space, layoutHeight)
