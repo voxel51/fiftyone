@@ -13,6 +13,7 @@ export default function OperatorViewModal() {
       onSubmit={io.hide}
       onClose={io.hide}
       submitButtonText="Done"
+      dialogProps={{ PaperProps: { "data-cy": "operators-prompt-view-modal" } }}
     >
       <PaletteContentContainer>
         <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
