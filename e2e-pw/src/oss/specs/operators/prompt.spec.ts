@@ -81,7 +81,7 @@ test("Prompt: Say hello in modal", async ({
     .locator("input")
     .first()
     .pressSequentially("E2E");
-  await operatorsPrompt.waitForValidation();
+  await operatorsPrompt.assert.isValidated();
   await operatorsPrompt.execute();
   await operatorsPrompt.assert.isExecuting();
   await expect(operatorsPrompt.content).toContainText("Message:Hi E2E!");
@@ -115,7 +115,7 @@ test("Prompt: Say hello in drawer", async ({
     .locator("input")
     .first()
     .pressSequentially("E2E");
-  await operatorsPromptDrawer.waitForValidation();
+  await operatorsPromptDrawer.assert.isValidated();
   await operatorsPromptDrawer.execute();
   await operatorsPromptDrawer.assert.isExecuting();
   await expect(operatorsPromptDrawer.content).toContainText("Message:Hi E2E!");

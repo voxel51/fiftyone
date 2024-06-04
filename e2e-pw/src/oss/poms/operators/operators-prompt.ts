@@ -32,15 +32,6 @@ export class OperatorsPromptPom {
     return this.footer.locator('button:text("Execute")');
   }
 
-  async waitForValidation() {
-    await expect(
-      this.footer.locator(".MuiCircularProgress-root")
-    ).toBeVisible();
-    await expect(
-      this.footer.locator(".MuiCircularProgress-root")
-    ).not.toBeVisible();
-  }
-
   async execute() {
     await this.assert.canExecute();
     return this.executeButton.click();
@@ -73,6 +64,15 @@ class OperatorsPromptAsserter {
   }
   async canExecute() {
     await expect(this.panelPom.executeButton).toBeEnabled();
+  }
+
+  async isValidated() {
+    await expect(
+      this.panelPom.footer.locator(".MuiCircularProgress-root")
+    ).toBeVisible();
+    await expect(
+      this.panelPom.footer.locator(".MuiCircularProgress-root")
+    ).not.toBeVisible();
   }
 }
 
