@@ -54,11 +54,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("Prompt: Cancel modal", async ({
-  page,
-  operatorsBrowser,
-  operatorsPrompt,
-}) => {
+test("Prompt: Cancel modal", async ({ operatorsBrowser, operatorsPrompt }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
   await operatorsBrowser.choose("E2E: Say hello in modal");
@@ -69,7 +65,6 @@ test("Prompt: Cancel modal", async ({
 });
 
 test("Prompt: Say hello in modal", async ({
-  page,
   operatorsBrowser,
   operatorsPrompt,
 }) => {
@@ -103,7 +98,6 @@ test("Prompt: Cancel drawer", async ({
 });
 
 test("Prompt: Say hello in drawer", async ({
-  page,
   operatorsBrowser,
   operatorsPromptDrawer,
 }) => {
