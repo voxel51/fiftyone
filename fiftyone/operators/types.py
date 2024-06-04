@@ -330,8 +330,67 @@ class Object(BaseType):
         self.define_property(name, obj, view=plot)
         return obj
 
+    def h_stack(self, name, **kwargs):
+        """Defines a horizontal stack object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        stack = HStackView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=stack)
+        return obj
+
+    def v_stack(self, name, **kwargs):
+        """Defines a vertical stack object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        stack = VStackView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=stack)
+        return obj
+
+    def menu(self, name, **kwargs):
+        """Defines a menu object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        menu = MenuView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=menu)
+        return obj
+
+    def btn_group(self, name, **kwargs):
+        """Defines a button group object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        btn_group = ButtonGroupView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=btn_group)
+        return obj
+
     def clone(self):
         """Clones the definition of the object.
+
+        Args:
+            name: the name of the property
 
         Returns:
             an :class:`Object`
@@ -1935,3 +1994,60 @@ class IconButtonView(Button):
         if "icon" not in kwargs or not isinstance(kwargs["icon"], str):
             raise ValueError("The 'icon' parameter of type str is required.")
         super().__init__(**kwargs)
+
+
+class HStackView(GridView):
+    """Displays properties of an object as a horizontal stack of components.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(orientation="horizontal", **kwargs)
+
+
+class VStackView(GridView):
+    """Displays properties of an object as a vertical stack of components.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(orientation="vertical", **kwargs)
+
+    def to_json(self):
+        return {**super().to_json(), "name": "GridView"}
+
+
+class ButtonGroupView(GridView):
+    """Displays a group of buttons in a horizontal stack.
+
+    .. note::
+
+        Must be used with :class:`Button` properties.
+    """
+
+    def __init__(self, orientation="horizontal", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
+
+    def to_json(self):
+        return {**super().to_json(), "name": "GridView"}
+
+
+class MenuView(GridView):
+    """Displays a menu of options in a vertical stack.
+
+    .. note::
+
+        Must be used with :class:`Button` properties.
+    """
+
+    def __init__(self, orientation="horizontal", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
+
+    def to_json(self):
+        return {**super().to_json(), "name": "GridView"}
