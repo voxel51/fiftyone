@@ -1189,8 +1189,10 @@ class MediaExporter(object):
         self._manifest = None
         self._manifest_path = None
         self._tmpdir = None
+        self._tmpdir_size_bytes = None
         self._inpaths = []
         self._outpaths = []
+        self._delpaths = []
 
     def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
         if self.export_mode in (False, "manifest"):
@@ -1239,8 +1241,7 @@ class MediaExporter(object):
             if not fos.is_local(fo3d_path) or not fos.is_local(
                 fo3d_output_path
             ):
-                # self._write_temp_scene(scene, fo3d_path, fo3d_output_path)
-                pass
+                self._write_temp_scene(scene, fo3d_path, fo3d_output_path)
             else:
                 scene.write(fo3d_output_path)
                 if self.export_mode == "move":
@@ -1257,6 +1258,22 @@ class MediaExporter(object):
                 etau.move_file(fo3d_path, fo3d_output_path)
             elif self.export_mode == "symlink":
                 etau.symlink_file(fo3d_path, fo3d_output_path)
+
+    def _write_temp_scene(self, scene, fo3d_path, fo3d_output_path):
+        if self._tmpdir is None:
+            self._tmpdir = fos.make_temp_dir()
+
+        rel_basename = fou.safe_relpath(fo3d_output_path, self.export_path)
+        local_path = os.path.join(self._tmpdir, rel_basename)
+
+        scene.write(local_path)
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(fo3d_output_path)
+        if self.export_mode == "move":
+            self._delpaths.append(fo3d_path)
+
+        self._flush_temp_dir_if_necessary(local_path)
 
     def __enter__(self):
         self.setup()
@@ -1371,19 +1388,10 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if self.export_mode is True:
-                if fos.is_local(outpath):
-                    local_path = outpath
+                if not fos.is_local(outpath):
+                    self._write_temp_media(media, outpath)
                 else:
-                    if self._tmpdir is None:
-                        self._tmpdir = fos.make_temp_dir()
-
-                    rel_basename = fou.safe_relpath(outpath, self.export_path)
-                    local_path = os.path.join(self._tmpdir, rel_basename)
-
-                    self._inpaths.append(local_path)
-                    self._outpaths.append(outpath)
-
-                self._write_media(media, local_path)
+                    self._write_media(media, outpath)
             elif self.export_mode is not False:
                 raise ValueError(
                     "Cannot export in-memory media when 'export_mode=%s'"
@@ -1392,15 +1400,42 @@ class MediaExporter(object):
 
         return outpath, uuid
 
-    def close(self):
-        """Performs any necessary actions to complete the export."""
+    def _write_temp_media(self, media, outpath):
+        if self._tmpdir is None:
+            self._tmpdir = fos.make_temp_dir()
+
+        rel_basename = fou.safe_relpath(outpath, self.export_path)
+        local_path = os.path.join(self._tmpdir, rel_basename)
+
+        self._write_media(media, local_path)
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(outpath)
+
+        self._flush_temp_dir_if_necessary(local_path)
+
+    def _flush_temp_dir_if_necessary(self, last_path):
+        threshold = fo.media_cache_config.download_size_bytes
+        if threshold is None or threshold < 0:
+            return
+
+        if self._tmpdir_size_bytes is None:
+            self._tmpdir_size_bytes = 0
+
+        self._tmpdir_size_bytes += os.path.getsize(last_path)
+        if self._tmpdir_size_bytes <= threshold:
+            return
+
+        self._flush_export()
+
+        fos.ensure_dir(self._tmpdir)
+        self._tmpdir_size_bytes = 0
+
+    def _flush_export(self):
         try:
-            if self.export_mode == "manifest":
-                fos.write_json(self._manifest, self._manifest_path)
+            progress = fo.config.show_progress_bars
 
             if self._inpaths:
-                progress = fo.config.show_progress_bars
-
                 if progress:
                     logger.info("Exporting %s...", self._MEDIA_TYPE)
 
@@ -1415,9 +1450,23 @@ class MediaExporter(object):
                         use_cache=True,
                         progress=progress,
                     )
+
+            if self._delpaths:
+                fos.delete_files(self._delpaths, progress=progress)
         finally:
+            self._inpaths.clear()
+            self._outpaths.clear()
+            self._delpaths.clear()
+
             if self._tmpdir is not None:
                 etau.delete_dir(self._tmpdir)
+
+    def close(self):
+        """Performs any necessary actions to complete the export."""
+        if self.export_mode == "manifest":
+            fos.write_json(self._manifest, self._manifest_path)
+
+        self._flush_export()
 
 
 class ImageExporter(MediaExporter):

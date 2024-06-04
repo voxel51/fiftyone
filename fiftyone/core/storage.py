@@ -2307,16 +2307,9 @@ def upload_media(
             _allow_mixed=True
         )
 
+    contains_3d = sample_collection._contains_media_type(fom.THREE_D)
     media_field = sample_collection._resolve_media_field(media_field)
     filepaths = sample_collection.values(media_field)
-
-    if sample_collection._contains_media_type(fom.THREE_D):
-        scene_paths = [p for p in filepaths if p.endswith(".fo3d")]
-        asset_map = fou3d.get_scene_asset_paths(
-            scene_paths, skip_failures=True
-        )
-    else:
-        asset_map = None
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
@@ -2330,52 +2323,10 @@ def upload_media(
         if filepath not in paths_map:
             paths_map[filepath] = filename_maker.get_output_path(filepath)
 
-    scene_rewrite_paths = defaultdict(dict)
-    if asset_map is not None:
-        for scene_path, asset_paths in asset_map.items():
-            out_scene_path = filename_maker.get_output_path(scene_path)
-            out_scene_dir = os.path.dirname(out_scene_path)
-            in_scene_dir = os.path.dirname(scene_path)
-
-            for asset_path in asset_paths:
-                abs_asset_path = asset_path
-                if not isabs(asset_path):
-                    abs_asset_path = join(in_scene_dir, asset_path)
-                abs_asset_path = resolve(abs_asset_path)
-
-                out_asset_path = filename_maker.get_output_path(abs_asset_path)
-
-                out_asset_path = resolve(out_asset_path)
-                if abs_asset_path not in paths_map:
-                    paths_map[abs_asset_path] = out_asset_path
-
-                new_relative_path = os.path.relpath(
-                    out_asset_path, out_scene_dir
-                )
-                if asset_path != new_relative_path:
-                    scene_rewrite_paths[scene_path][
-                        asset_path
-                    ] = new_relative_path
-
     remote_paths = [paths_map[f] for f in filepaths]
 
-    # Update asset paths in FO3D scenes and rewrite those files into place.
-    if scene_rewrite_paths:
-        tasks = [
-            (
-                scene_path,
-                filename_maker.get_output_path(scene_path),
-                asset_rewrite_paths,
-            )
-            for scene_path, asset_rewrite_paths in scene_rewrite_paths.items()
-        ]
-        run(_update_scene_asset_paths_and_write, tasks)
-
-        # Remove scenes we already wrote above from paths_map, so we don't
-        #   copy them and overwrite our changes
-        paths_map = {
-            f: r for f, r in paths_map.items() if f not in scene_rewrite_paths
-        }
+    if contains_3d:
+        _update_scene_asset_paths(paths_map, filename_maker)
 
     if not overwrite:
         client = get_client(path=remote_dir)
@@ -2397,6 +2348,48 @@ def upload_media(
         sample_collection.set_values(media_field, remote_paths)
 
     return remote_paths
+
+
+def _update_scene_asset_paths(paths_map, filename_maker):
+    scene_paths = [p for p in paths_map.keys() if p.endswith(".fo3d")]
+    if not scene_paths:
+        return
+
+    scene_rewrite_paths = defaultdict(dict)
+    asset_map = fou3d.get_scene_asset_paths(scene_paths, skip_failures=True)
+    for scene_path, asset_paths in asset_map.items():
+        in_scene_dir = os.path.dirname(scene_path)
+        out_scene_dir = os.path.dirname(paths_map[scene_path])
+
+        for asset_path in asset_paths:
+            abs_asset_path = asset_path
+            if not isabs(asset_path):
+                abs_asset_path = join(in_scene_dir, asset_path)
+            abs_asset_path = resolve(abs_asset_path)
+
+            out_asset_path = filename_maker.get_output_path(abs_asset_path)
+
+            if abs_asset_path not in paths_map:
+                paths_map[abs_asset_path] = out_asset_path
+
+            # Note that, by convention, we always write *relative* asset paths
+            out_rel_path = os.path.relpath(out_asset_path, out_scene_dir)
+            if asset_path != out_rel_path:
+                scene_rewrite_paths[scene_path][asset_path] = out_rel_path
+
+    if not scene_rewrite_paths:
+        return
+
+    # Update asset paths in 3D scenes and write those files into place
+    tasks = [
+        (scene_path, paths_map[scene_path], asset_rewrite_paths)
+        for scene_path, asset_rewrite_paths in scene_rewrite_paths.items()
+    ]
+    run(_update_scene_asset_paths_and_write, tasks)
+
+    # Remove scenes we already wrote so we don't overwrite them later
+    for scene_path in scene_rewrite_paths.keys():
+        paths_map.pop(scene_path)
 
 
 def _update_scene_asset_paths_and_write(task):
