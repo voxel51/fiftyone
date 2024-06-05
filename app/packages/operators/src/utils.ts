@@ -77,6 +77,12 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   const validationErrorsStr = formatValidationErrors(
     operatorPrompt.validationErrors
   );
+  const loading = resolving || pendingResolve;
+  const disableSubmit = hasValidationErrors || resolving || pendingResolve;
+  const disabledReason = hasValidationErrors
+    ? "Cannot execute operator with validation errors\n\n" + validationErrorsStr
+    : "Cannot execute operator while validating form";
+  const onClose = onCancel || operatorPrompt.close;
 
   return {
     title,
@@ -99,6 +105,10 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
     cancelButtonText,
     onSubmit,
     onCancel,
+    loading,
+    disableSubmit,
+    disabledReason,
+    onClose,
   };
 }
 
