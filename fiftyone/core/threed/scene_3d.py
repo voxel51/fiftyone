@@ -343,9 +343,9 @@ class Scene(Object3D):
             return None
 
         if not fos.isabs(path):
-            path = fos.join(root, path)
+            path = fos.abspath(fos.join(root, path))
 
-        return fos.resolve(path)
+        return path
 
     def _to_dict_extra(self):
         return {

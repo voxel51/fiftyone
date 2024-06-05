@@ -1394,8 +1394,8 @@ def join(a, *p):
     return posixpath.join(a, *p)
 
 
-def resolve(path):
-    """Resolves the given path to absolute, resolving symlinks and relative
+def realpath(path):
+    """Converts the given path to absolute, resolving symlinks and relative
     path indicators such as ``.`` and ``..``.
 
     Args:
@@ -1426,8 +1426,6 @@ def resolve(path):
 def isabs(path):
     """Determines whether the given path is absolute.
 
-    Remote paths are always considered absolute.
-
     Args:
         path: the filepath
 
@@ -1441,9 +1439,8 @@ def isabs(path):
 
 
 def abspath(path):
-    """Converts the given path to an absolute path.
-
-    Remote paths are returned unchanged.
+    """Converts the given path to an absolute path, resolving relative path
+    indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath
@@ -2364,8 +2361,7 @@ def _update_scene_asset_paths(paths_map, filename_maker):
         for asset_path in asset_paths:
             abs_asset_path = asset_path
             if not isabs(asset_path):
-                abs_asset_path = join(in_scene_dir, asset_path)
-            abs_asset_path = resolve(abs_asset_path)
+                abs_asset_path = abspath(join(in_scene_dir, asset_path))
 
             out_asset_path = filename_maker.get_output_path(abs_asset_path)
 

@@ -381,7 +381,7 @@ def _parse_assets(scene, scene_path, cache=None):
     scene_dir = os.path.dirname(scene_path)
     for i, asset_path in enumerate(asset_paths):
         if not fos.isabs(asset_path):
-            asset_path = fos.resolve(fos.join(scene_dir, asset_path))
+            asset_path = fos.abspath(fos.join(scene_dir, asset_path))
             asset_paths[i] = asset_path
 
         file_type = os.path.splitext(asset_path)[1][1:]
