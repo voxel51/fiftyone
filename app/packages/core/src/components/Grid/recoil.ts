@@ -34,6 +34,13 @@ export const gridCropCallback = selector({
   },
 });
 
+export const gridCrop = selector({
+  key: "gridCrop",
+  get: ({ get }) => {
+    return get(fos.isPatchesView) && get(fos.cropToContent(false));
+  },
+});
+
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {

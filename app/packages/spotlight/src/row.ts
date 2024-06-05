@@ -39,11 +39,11 @@ export default class Row<K, V> {
       if (config.onItemClick) {
         element.addEventListener("click", (event) => {
           event.preventDefault();
-          config.onItemClick(item, event);
+          config.onItemClick({ item, event });
         });
         element.addEventListener("contextmenu", (event) => {
           event.preventDefault();
-          config.onItemClick(item, event);
+          config.onItemClick({ item, event });
         });
       }
 

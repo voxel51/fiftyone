@@ -204,7 +204,7 @@ export class Section<K, V> {
     render: (run: () => { section: Section<K, V>; offset: number }) => void
   ) {
     if (!this.#end || this.#end.key === null) {
-      return;
+      return Boolean(this.#end.key === null);
     }
     const end = this.#end;
     this.#end = undefined;
@@ -260,6 +260,8 @@ export class Section<K, V> {
         offset: height,
       };
     });
+
+    return true;
   }
 
   get #height() {

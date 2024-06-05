@@ -38,8 +38,6 @@ export interface SpotlightConfig<K, V> {
   onItemClick?: (callbackInterface: {
     event: MouseEvent;
     item: ItemData<K, V>;
-    next: Promise<void>;
-    previous: Promise<void>;
   }) => void;
   render: Render;
   rowAspectRatioThreshold: number;

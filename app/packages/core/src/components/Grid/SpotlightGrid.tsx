@@ -3,13 +3,7 @@ import * as fos from "@fiftyone/state";
 import { Lookers } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
   useRecoilCallback,
@@ -17,11 +11,12 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
+import { commitLocalUpdate } from "relay-runtime";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 import useSpotlightPager, { Sample } from "../../useSpotlightPager";
 import { pixels, spotlightLooker } from "./SpotlightGrid.module.css";
-import { pageParameters, rowAspectRatioThreshold } from "./recoil";
+import { gridCrop, pageParameters, rowAspectRatioThreshold } from "./recoil";
 
 const Contain = styled.div`
   position: relative;
@@ -60,6 +55,7 @@ const sessionPage = fos.sessionAtom({
 });
 
 const showGridPixels = atom({ key: "showGridPixels", default: true });
+
 export const tileAtom = atom({
   key: "tileAtom",
   default: 3,
@@ -68,7 +64,7 @@ export const tileAtom = atom({
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
-  const { page, store } = useSpotlightPager(pageParameters);
+  const { page, store, records } = useSpotlightPager(pageParameters, gridCrop);
   const lookerOptions = fos.useLookerOptions(false);
   const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
 
@@ -84,6 +80,7 @@ function Grid() {
 
   const tile = useRecoilValue(tileAtom);
   const setPage = useSetRecoilState(sessionPage);
+  const setSample = fos.useExpandSpotlightSample(store);
 
   const spotlight = useMemo(() => {
     if (showPixels) {
@@ -92,9 +89,9 @@ function Grid() {
 
     return new Spotlight<number, Sample>({
       key: getPage(),
-
+      onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
-      get: (next) => page.current(next),
+      get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
         if (lookerStore.has(id)) {
           const looker = lookerStore.get(id);
@@ -110,6 +107,9 @@ function Grid() {
         }
 
         const init = (l) => {
+          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
+            selectSample.current(detail);
+          });
           lookerStore.set(id, l);
           l.attach(element, dimensions);
         };
@@ -131,7 +131,11 @@ function Grid() {
     tile,
   ]);
 
-  useLayoutEffect(() => {
+  const select = fos.useSelectFlashlightSample();
+  const selectSample = useRef(select);
+  selectSample.current = select;
+
+  useEffect(() => {
     if (!spotlight) {
       return undefined;
     }
@@ -151,6 +155,7 @@ function Grid() {
   }, [
     id,
     spotlight,
+    page,
     fos.stringifyObj(useRecoilValue(fos.filters)),
     useRecoilValue(fos.datasetName),
     useRecoilValue(fos.cropToContent(false)),
@@ -158,7 +163,6 @@ function Grid() {
     useRecoilValue(fos.groupSlice),
     useRecoilValue(fos.refresher),
     useRecoilValue(fos.similarityParameters),
-    useRecoilValue(fos.selectedMediaField(false)),
     useRecoilValue(fos.extendedStagesUnsorted),
     useRecoilValue(fos.extendedStages),
     useRecoilValue(fos.shouldRenderImaVidLooker),
@@ -172,7 +176,7 @@ function Grid() {
       spotlight?.updateItems((id) => {
         lookerStore.get(id)?.updateOptions({
           ...lookerOptions,
-          selected: selected.has(id.toString()),
+          selected: selected.has(id.description),
         });
       });
     });
@@ -181,6 +185,15 @@ function Grid() {
   useEffect(() => {
     return spotlight ? init() : undefined;
   }, [spotlight, init]);
+
+  useEffect(() => {
+    const current = records.current;
+    return () => {
+      commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
+        for (const id of Array.from(current)) store.get(id).invalidateRecord();
+      });
+    };
+  }, [records, useRecoilValue(fos.refresher)]);
 
   return (
     <div
@@ -202,6 +215,8 @@ const Bar = ({ height }) => {
     throw new Error("WRONG");
   }
 
+  const setDragging = useSetRecoilState(showGridPixels);
+
   const bind = useDrag(({ down, movement: [_, my] }) => {
     setDragging(down && my !== 0);
 
@@ -218,24 +233,20 @@ const Bar = ({ height }) => {
     api.start({ y: ((page * 20) / count) * (height - 48) + 48 });
   }, [api, count, page, height]);
 
-  const setDragging = useSetRecoilState(showGridPixels);
-
   return <Drag {...bind()} style={{ top: y, right: 0 }} />;
 };
 
 const Wrap = () => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [height, setHeight] = useState<DOMRect>();
+  const [height, setHeight] = useState<number>();
   const set = useSetRecoilState(showGridPixels);
 
   const observer = useMemo(() => {
     let timeout: ReturnType<typeof setTimeout>;
     return new ResizeObserver(() => {
-      set(true);
-
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
-        setHeight(ref.current?.getBoundingClientRect());
+        setHeight(ref.current?.getBoundingClientRect().height);
         set(false);
       }, 1000);
     });
@@ -256,8 +267,8 @@ const Wrap = () => {
 
   return (
     <Contain ref={ref}>
-      <Grid />
-      {height && <Bar height={height?.height} />}
+      <Grid key={"grid"} />
+      {height && <Bar height={height} key={"bar"} />}
     </Contain>
   );
 };

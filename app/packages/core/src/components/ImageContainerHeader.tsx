@@ -103,7 +103,7 @@ const ImageContainerHeader = () => {
           <div style={{ flexGrow: 1 }} title={"Zoom"}>
             <Slider
               valueAtom={tileAtom}
-              boundsAtom={constSelector([3, 128])}
+              boundsAtom={constSelector([0, 128])}
               color={theme.primary.plainColor}
               showBounds={false}
               persistValue={false}

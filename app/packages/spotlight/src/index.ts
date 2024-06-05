@@ -104,6 +104,14 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#scrollReader?.destroy();
   }
 
+  async next() {
+    return await this.#next();
+  }
+
+  async previous() {
+    return await this.#previous();
+  }
+
   updateItems(updater: Updater): void {
     this.#backward?.updateItems(updater);
     this.#forward?.updateItems(updater);
@@ -143,7 +151,7 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    await this.#forward.next(forward, (runner) => {
+    return await this.#forward.next(forward, (runner) => {
       if (!render) {
         runner();
         return;
@@ -178,7 +186,7 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    await this.#backward.next(backward, (runner) => {
+    return await this.#backward.next(backward, (runner) => {
       if (!render) {
         runner();
         return;
