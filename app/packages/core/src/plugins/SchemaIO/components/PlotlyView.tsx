@@ -16,7 +16,6 @@ export default function PlotlyView(props) {
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
   const panelId = usePanelId();
-  const [selectedpoints, setSelectedPoints] = React.useState(null);
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
@@ -51,18 +50,9 @@ export default function PlotlyView(props) {
       if (selected.length === 0) {
         selected = null;
       }
-      setSelectedPoints(selected);
     }
 
     const eventHandlerOperator = view[snakeCase(event)];
-
-    if (event === "onDeselect") {
-      setSelectedPoints(null);
-    }
-
-    if (event === "onSelected" && e?.lassoPoints) {
-      setSelectedPoints(data);
-    }
 
     if (eventHandlerOperator) {
       let params = {};
@@ -91,9 +81,7 @@ export default function PlotlyView(props) {
   };
   const eventHandlers = createPlotlyHandlers(handleEvent);
 
-  const dataDefaults = {
-    selectedpoints,
-  };
+  const dataDefaults = {};
   const layoutDefaults = {
     font: { family: "var(--fo-fontFamily-body)", size: 14 },
     showlegend: false,
