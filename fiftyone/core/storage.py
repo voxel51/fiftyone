@@ -1407,20 +1407,7 @@ def realpath(path):
     if is_local(path):
         return os.path.realpath(path)
 
-    # Remote path but doesn't have ./ or ../
-    if "./" not in path and "../" not in path:
-        return path
-
-    # Remote path, handle . and ..
-    prefix, blob_locator = path.split("://")
-    remote_folders = blob_locator.split(posixpath.sep)
-    resolved_folders = []
-    for folder in remote_folders:
-        if folder == "..":
-            resolved_folders.pop()
-        elif folder != ".":
-            resolved_folders.append(folder)
-    return prefix + "://" + posixpath.sep.join(resolved_folders)
+    return abspath(path)
 
 
 def isabs(path):
@@ -1451,7 +1438,20 @@ def abspath(path):
     if is_local(path):
         return os.path.abspath(path)
 
-    return path
+    # Optimization: if path contains "../" then it also contains "./"
+    if "./" not in path:
+        return path
+
+    # Resolve "." and ".."
+    prefix, blob = path.split("://")
+    resolved_folders = []
+    for folder in blob.split("/"):
+        if folder == "..":
+            resolved_folders.pop()
+        elif folder != ".":
+            resolved_folders.append(folder)
+
+    return prefix + "://" + "/".join(resolved_folders)
 
 
 def normpath(path):
@@ -2368,7 +2368,7 @@ def _update_scene_asset_paths(paths_map, filename_maker):
             if abs_asset_path not in paths_map:
                 paths_map[abs_asset_path] = out_asset_path
 
-            # Note that, by convention, we always write *relative* asset paths
+            # By convention, we always write *relative* asset paths
             out_rel_path = os.path.relpath(out_asset_path, out_scene_dir)
             if asset_path != out_rel_path:
                 scene_rewrite_paths[scene_path][asset_path] = out_rel_path
