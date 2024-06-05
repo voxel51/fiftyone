@@ -108,8 +108,10 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   useEffect(() => {
     if (props.onLoad && !panelState?.loaded) {
-      onLoad();
-      setPanelStateLocal((s) => ({ ...s, loaded: true }));
+      executeOperator(props.onLoad, { panel_id: panelId }, (result) => {
+        const { error: onLoadError } = result;
+        setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
+      });
     }
 
     return () => {
