@@ -1176,7 +1176,7 @@ class MediaExporter(object):
         input_to_output_paths = {}
         for asset_path in asset_paths:
             if not os.path.isabs(asset_path):
-                absolute_asset_path = fos.abspath(
+                absolute_asset_path = os.path.abspath(
                     os.path.join(os.path.dirname(fo3d_path), asset_path)
                 )
             else:
