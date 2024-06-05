@@ -7,6 +7,7 @@ FiftyOne operator types.
 """
 
 import enum
+from textwrap import dedent
 
 
 class BaseType(object):
@@ -384,6 +385,33 @@ class Object(BaseType):
         btn_group = ButtonGroupView(**kwargs)
         obj = Object()
         self.define_property(name, obj, view=btn_group)
+        return obj
+
+    def md(self, markdown, name="markdown", **kwargs):
+        """Defines a markdown object.
+
+        Args:
+            markdown: the markdown to display
+            name: the name of the property
+        """
+        return self.str(
+            name, default=dedent(markdown), view=MarkdownView(**kwargs)
+        )
+
+    def media_player(self, name, url, **kwargs):
+        """Defines a media player object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        media_player = MediaPlayerView(**kwargs)
+        obj = Object()
+        self.define_property(
+            name, obj, view=media_player, default={"url": url}
+        )
         return obj
 
     def clone(self):
@@ -1741,6 +1769,13 @@ class MarkdownView(View):
         super().__init__(**kwargs)
 
 
+class MediaPlayerView(View):
+    """Renders a media player for audio and video files."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class FileExplorerView(View):
     """Displays a file explorer for interacting with files.
 
@@ -2017,7 +2052,8 @@ class VStackView(GridView):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", **kwargs)
+        kwargs["orientation"] = kwargs.get("orientation", "vertical")
+        super().__init__(**kwargs)
 
     def to_json(self):
         return {**super().to_json(), "name": "GridView"}
@@ -2032,6 +2068,7 @@ class ButtonGroupView(GridView):
     """
 
     def __init__(self, orientation="horizontal", **kwargs):
+        kwargs["align_y"] = kwargs.get("align_y", "center")
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
