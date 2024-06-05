@@ -1206,7 +1206,7 @@ class MediaExporter(object):
         for asset_path in asset_paths:
             if not fos.isabs(asset_path):
                 absolute_asset_path = fos.abspath(
-                    os.path.join(os.path.dirname(fo3d_path), asset_path)
+                    fos.join(os.path.dirname(fo3d_path), asset_path)
                 )
             else:
                 absolute_asset_path = asset_path
