@@ -1176,8 +1176,8 @@ class MediaExporter(object):
         input_to_output_paths = {}
         for asset_path in asset_paths:
             if not os.path.isabs(asset_path):
-                absolute_asset_path = os.path.join(
-                    os.path.dirname(fo3d_path), asset_path
+                absolute_asset_path = fos.abspath(
+                    os.path.join(os.path.dirname(fo3d_path), asset_path)
                 )
             else:
                 absolute_asset_path = asset_path
@@ -1187,6 +1187,7 @@ class MediaExporter(object):
             asset_output_path = self._filename_maker.get_output_path(
                 absolute_asset_path
             )
+            # By convention, we always write *relative* asset paths
             input_to_output_paths[asset_path] = os.path.relpath(
                 asset_output_path, os.path.dirname(fo3d_output_path)
             )

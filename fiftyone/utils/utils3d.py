@@ -452,7 +452,6 @@ def _get_scene_paths(scene_paths):
 def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
     scene_path, original_scene_path = task
 
-    # Read scene file which is JSON
     try:
         scene = Scene.from_fo3d(scene_path)
     except Exception as e:
@@ -471,7 +470,7 @@ def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
         scene_dir = os.path.dirname(original_scene_path)
         for i, asset_path in enumerate(asset_paths):
             if not fos.isabs(asset_path):
-                asset_paths[i] = fos.resolve(fos.join(scene_dir, asset_path))
+                asset_paths[i] = fos.abspath(fos.join(scene_dir, asset_path))
 
     return asset_paths
 
@@ -833,9 +832,9 @@ def _get_pcd_filepath_from_scene(scene_path: str):
         return None
 
     if not fos.isabs(pcd_path):
-        pcd_path = fos.join(os.path.dirname(scene_path), pcd_path)
+        pcd_path = fos.abspath(fos.join(os.path.dirname(scene_path), pcd_path))
 
-    return fos.resolve(pcd_path)
+    return pcd_path
 
 
 def _parse_point_cloud(
