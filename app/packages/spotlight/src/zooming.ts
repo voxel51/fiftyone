@@ -2,6 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { SCROLL_TIMEOUT } from "./constants";
+
 export const createScrollReader = (
   element: HTMLElement,
   render: (zooming: boolean) => void,
@@ -35,7 +37,7 @@ export const createScrollReader = (
         timer = undefined;
         scrolling = false;
         render(false);
-      }, 200);
+      }, SCROLL_TIMEOUT);
     }
 
     prior = element.scrollTop;

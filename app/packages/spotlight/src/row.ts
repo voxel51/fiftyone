@@ -1,47 +1,51 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import type { ItemData, SpotlightConfig } from "./types";
+
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
 import { create, pixels } from "./utilities";
 
-export interface ItemData<V> {
-  id?: symbol;
-  aspectRatio: number;
-  data: V;
-}
-
-export type Render = (
-  id: symbol,
-  element: HTMLDivElement,
-  dimensions: [number, number],
-  soft: boolean,
-  disable: boolean
-) => void;
-
-export default class Row<V> {
+export default class Row<K, V> {
   #from: number;
   #hidden: boolean;
 
+  readonly #config: SpotlightConfig<K, V>;
   readonly #container: HTMLDivElement = create(DIV);
-  readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
-  readonly #spacing: number;
+  readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
   readonly #width: number;
 
-  constructor(
-    from: number,
-    items: ItemData<V>[],
-    spacing: number,
-    width: number
-  ) {
+  constructor({
+    config,
+    from,
+    items,
+    width,
+  }: {
+    config: SpotlightConfig<K, V>;
+    from: number;
+    items: ItemData<K, V>[];
+    width: number;
+  }) {
+    this.#config = config;
     this.#container.classList.add(styles.spotlightRow);
     this.#from = from;
-    this.#spacing = spacing;
     this.#width = width;
 
     this.#row = items.map((item) => {
       const element = create(DIV);
       element.style.top = pixels(ZERO);
+
+      if (config.onItemClick) {
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          config.onItemClick(item, event);
+        });
+        element.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          config.onItemClick(item, event);
+        });
+      }
 
       this.#container.appendChild(element);
       return { element, item };
@@ -60,7 +64,7 @@ export default class Row<V> {
       element.style.width = pixels(itemWidth);
       element.style.left = pixels(left);
 
-      left += itemWidth + spacing;
+      left += itemWidth + config.spacing;
     }
 
     this.#container.style.height = pixels(height);
@@ -104,7 +108,7 @@ export default class Row<V> {
     hidden: boolean,
     attr: typeof BOTTOM | typeof TOP,
     soft: boolean,
-    render: Render
+    config: SpotlightConfig<K, V>
   ): void {
     if (hidden !== this.#hidden) {
       hidden
@@ -125,7 +129,7 @@ export default class Row<V> {
 
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
-      render(item.id, element, [width, this.height], soft, hidden);
+      config.render(item.id, element, [width, this.height], soft, hidden);
     }
   }
 
@@ -145,6 +149,6 @@ export default class Row<V> {
   }
 
   get #cleanWidth() {
-    return this.#width - (this.#row.length - ONE) * this.#spacing;
+    return this.#width - (this.#row.length - ONE) * this.#config.spacing;
   }
 }

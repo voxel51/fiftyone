@@ -3,13 +3,13 @@
  */
 
 export class Load<K> extends Event {
-  constructor(readonly page: K) {
+  constructor(readonly page: K, readonly id: symbol) {
     super("load");
   }
 }
 
 export class PageChange<K> extends Event {
-  constructor(readonly page: K) {
+  constructor(readonly page: K, readonly id: symbol) {
     super("pagechange");
   }
 }

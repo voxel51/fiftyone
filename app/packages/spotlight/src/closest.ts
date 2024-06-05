@@ -3,12 +3,11 @@
  */
 
 import { ONE, TWO, ZERO } from "./constants";
-import type Row from "./row";
 
-export function closest<V>(
-  rows: Row<V>[],
+export function closest<I>(
+  rows: I[],
   target: number,
-  top: (row: Row<V>) => number,
+  top: (item: I) => number,
   lo = ZERO,
   hi = rows.length - ONE
 ): { index: number; delta: number } {
@@ -17,10 +16,10 @@ export function closest<V>(
   }
 
   const loDelta = target - top(rows[lo]);
-
   if (loDelta < ZERO) {
     return { index: lo, delta: loDelta };
   }
+
   const hiDelta = target - top(rows[hi]);
   if (hiDelta > ZERO) {
     return { index: hi, delta: hiDelta };
@@ -34,7 +33,6 @@ export function closest<V>(
 
   const mid = Math.floor((hi + lo) / TWO);
   const midDelta = target - top(rows[mid]);
-
   if (midDelta < ZERO) {
     return closest(rows, target, top, lo, mid);
   }

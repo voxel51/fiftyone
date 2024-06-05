@@ -5,9 +5,7 @@
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
-import type { Render } from "./row";
-import type { Response } from "./section";
-import type { Updater } from "./types";
+import type { SpotlightConfig, Updater } from "./types";
 
 import {
   DEFAULT_MARGIN,
@@ -16,9 +14,9 @@ import {
   DIRECTION,
   DIV,
   ONE,
-  SCROLL_TIMEOUT,
   TWO,
   ZERO,
+  ZOOMING_COEFFICIENT,
 } from "./constants";
 import { Load, PageChange } from "./events";
 import { Section } from "./section";
@@ -26,18 +24,7 @@ import { create } from "./utilities";
 import { createScrollReader } from "./zooming";
 
 export { Load, PageChange } from "./events";
-export type { Response } from "./section";
-export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
-
-export interface SpotlightConfig<K, V> {
-  get: Get<K, V>;
-  render: Render;
-  key: K;
-  rowAspectRatioThreshold: number;
-  offset?: number;
-  spacing?: number;
-  margin?: number;
-}
+export type * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
@@ -123,8 +110,14 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#updater = updater;
   }
 
+  get #pivot() {
+    let base = this.#backward.height;
+    if (base) base += this.#config.spacing;
+    return base;
+  }
+
   get #containerHeight() {
-    return this.#forward.height + this.#backward.height;
+    return this.#forward.height + this.#pivot;
   }
 
   get #height() {
@@ -166,7 +159,7 @@ export default class Spotlight<K, V> extends EventTarget {
           this.#forward.attach(this.#element);
           this.#backward.remove();
           this.#backward = backward;
-          offset = before - this.#containerHeight - this.#config.offset;
+          offset = before - this.#containerHeight + this.#config.spacing;
         }
 
         this.#render({ zooming: false, offset, go: false });
@@ -201,10 +194,11 @@ export default class Spotlight<K, V> extends EventTarget {
             requestAnimationFrame(run);
             return;
           }
-          const { section, offset } = runner();
-          if (section) {
+          const result = runner();
+          const offset = result.offset;
+          if (result.section) {
             const forward = this.#backward;
-            this.#backward = section;
+            this.#backward = result.section;
             this.#backward.attach(this.#element);
 
             this.#forward.remove();
@@ -224,11 +218,9 @@ export default class Spotlight<K, V> extends EventTarget {
 
   async #fill() {
     this.#forward = new Section({
+      config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      offset: this.#config.offset,
-      spacing: this.#config.spacing,
-      threshold: this.#config.rowAspectRatioThreshold,
       width: this.#width,
     });
     this.#forward.attach(this.#element);
@@ -247,7 +239,7 @@ export default class Spotlight<K, V> extends EventTarget {
     requestAnimationFrame(() => {
       this.#render({
         zooming: false,
-        offset: -this.#backward.height + this.#config.offset,
+        offset: -this.#pivot,
       });
 
       requestAnimationFrame(() => {
@@ -261,7 +253,7 @@ export default class Spotlight<K, V> extends EventTarget {
               (this.#width /
                 (this.#height *
                   Math.max(this.#config.rowAspectRatioThreshold, ONE))) *
-              SCROLL_TIMEOUT
+              ZOOMING_COEFFICIENT
             );
           }
         );
@@ -275,14 +267,12 @@ export default class Spotlight<K, V> extends EventTarget {
     const result = await this.#config.get(key);
     if (!this.#backward) {
       this.#backward = new Section({
+        config: this.#config,
         direction: DIRECTION.BACKWARD,
         edge:
           result.previous !== null
             ? { key: result.previous, remainder: [] }
             : { key: null, remainder: [] },
-        offset: this.#config.offset,
-        spacing: this.#config.spacing,
-        threshold: this.#config.rowAspectRatioThreshold,
         width: this.#width,
       });
       this.#backward.attach(this.#element);
@@ -305,14 +295,14 @@ export default class Spotlight<K, V> extends EventTarget {
     zooming: boolean;
   }) {
     if (go && offset !== false) {
-      this.#forward.top = this.#backward.height + this.#config.spacing;
-      this.#backward.top = ZERO;
+      this.#forward.top = this.#pivot + this.#config.offset;
+      this.#backward.top = this.#config.offset;
     }
 
     const top = this.#element.scrollTop - (offset === false ? ZERO : offset);
 
     const backward = this.#backward.render({
-      render: this.#config.render,
+      config: this.#config,
       target: top + this.#height + this.#padding,
       threshold: (n) => n > top - this.#padding,
       top: top + this.#config.offset,
@@ -321,7 +311,7 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     const forward = this.#forward.render({
-      render: this.#config.render,
+      config: this.#config,
       target: top - this.#padding - this.#backward.height,
       threshold: (n) => {
         return n < top + this.#height + this.#padding - this.#backward.height;
@@ -346,8 +336,8 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     if (!go && offset !== false) {
-      this.#forward.top = this.#backward.height + this.#config.spacing;
-      this.#backward.top = ZERO;
+      this.#forward.top = this.#pivot + this.#config.offset;
+      this.#backward.top = this.#config.offset;
     }
 
     if (offset !== false && top) {

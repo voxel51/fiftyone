@@ -4,8 +4,8 @@
 
 import styles from "./styles.module.css";
 
-import type { ItemData, Render } from "./row";
-import type { Updater } from "./types";
+import Row from "./row";
+import type { Edge, ItemData, SpotlightConfig, Updater } from "./types";
 
 import { closest } from "./closest";
 import {
@@ -17,56 +17,36 @@ import {
   TOP,
   ZERO,
 } from "./constants";
-import Row from "./row";
 import tile from "./tile";
 import { create } from "./utilities";
 
-export interface Response<K, V> {
-  items: ItemData<V>[];
-  next: K | null;
-  previous: K | null;
-}
-
-interface Edge<K, V> {
-  key: K | null;
-  remainder?: ItemData<V>[];
-}
-
 export class Section<K, V> {
+  readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
-  readonly #offset: number;
   readonly #section = create(DIV);
-  readonly #spacing: number;
-  readonly #threshold: number;
   readonly #width: number;
 
   #direction: DIRECTION;
-  #dirty: Set<Row<V>> = new Set();
+  #dirty: Set<Row<K, V>> = new Set();
   #end: Edge<K, V>;
-  #shown: Set<Row<V>> = new Set();
+  #shown: Set<Row<K, V>> = new Set();
   #start: Edge<K, V>;
-  #rows: Row<V>[] = [];
+  #rows: Row<K, V>[] = [];
 
   constructor({
+    config,
     direction,
     edge,
-    offset,
-    spacing,
-    threshold,
     width,
   }: {
+    config: SpotlightConfig<K, V>;
     direction: DIRECTION;
     edge: Edge<K, V>;
-    offset: number;
-    spacing: number;
-    threshold: number;
     width: number;
   }) {
+    this.#config = config;
     this.#direction = direction;
     this.#end = edge;
-    this.#offset = offset;
-    this.#spacing = spacing;
-    this.#threshold = threshold;
     this.#width = width;
 
     this.#container.classList.add(styles.spotlightContainer);
@@ -108,14 +88,14 @@ export class Section<K, V> {
   }
 
   render({
-    render,
+    config,
     target,
     threshold,
     top,
     updater,
     zooming,
   }: {
-    render: Render;
+    config: SpotlightConfig<K, V>;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -140,8 +120,8 @@ export class Section<K, V> {
       }
     );
 
-    let pageRow = undefined;
-    let delta = undefined;
+    let pageRow: Row<K, V>;
+    let delta: number;
 
     const minus =
       this.#direction === DIRECTION.FORWARD
@@ -176,7 +156,7 @@ export class Section<K, V> {
           this.#dirty.has(row) && zooming,
           this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           zooming,
-          render
+          config
         );
 
         this.#shown.add(row);
@@ -218,7 +198,9 @@ export class Section<K, V> {
   }
 
   async next(
-    get: (key: K) => Promise<{ next?: K; previous?: K; items: ItemData<V>[] }>,
+    get: (
+      key: K
+    ) => Promise<{ next?: K; previous?: K; items: ItemData<K, V>[] }>,
     render: (run: () => { section: Section<K, V>; offset: number }) => void
   ) {
     if (!this.#end || this.#end.key === null) {
@@ -253,7 +235,7 @@ export class Section<K, V> {
       this.#rows.push(...rows);
 
       const height = rows.reduce(
-        (acc, cur) => acc + cur.height + this.#spacing,
+        (acc, cur) => acc + cur.height + this.#config.spacing,
         ZERO
       );
 
@@ -263,11 +245,9 @@ export class Section<K, V> {
       }
 
       const section = new Section({
+        config: this.#config,
         direction: this.#direction,
         edge: newEnd,
-        offset: this.#offset,
-        spacing: this.#spacing,
-        threshold: this.#threshold,
         width: this.#width,
       });
       this.#end = this.#start;
@@ -275,23 +255,20 @@ export class Section<K, V> {
 
       this.#reverse();
 
-      return { section, offset: height };
+      return {
+        section,
+        offset: height,
+      };
     });
   }
 
   get #height() {
-    if (!this.#rows.length)
-      return this.#direction === DIRECTION.BACKWARD && this.#end?.key === null
-        ? this.#offset
-        : ZERO;
+    if (!this.#rows.length) return ZERO;
     const row = this.#rows[this.length - ONE];
-    return row.from + row.height + this.#spacing;
+    return row.from + row.height;
   }
 
   #reverse() {
-    const from =
-      this.#height -
-      (this.#direction === DIRECTION.FORWARD ? this.#spacing : ZERO);
     this.#rows.reverse();
     const old = this.#direction;
     this.#direction =
@@ -299,35 +276,45 @@ export class Section<K, V> {
         ? DIRECTION.FORWARD
         : DIRECTION.BACKWARD;
 
+    let offset = 0;
     for (const row of this.#rows) {
-      row.from = from - row.from - row.height;
+      row.from = offset;
+      offset += this.#config.spacing + row.height;
       row.switch(this.#direction === DIRECTION.BACKWARD ? BOTTOM : TOP);
     }
 
     this.#section.classList.remove(old);
-
     this.#section.classList.add(this.#direction);
   }
 
   #tile(
-    items: ItemData<V>[],
+    items: ItemData<K, V>[],
     from: number,
     useRemainder: boolean
-  ): { rows: Row<V>[]; remainder: ItemData<V>[]; offset: number } {
+  ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
-    const breakpoints = tile(data, this.#threshold, useRemainder);
+    const breakpoints = tile(
+      data,
+      this.#config.rowAspectRatioThreshold,
+      useRemainder
+    );
 
+    let offset = this.#rows.length ? this.#config.spacing : ZERO;
     let previous = ZERO;
-    let offset = ZERO;
-    const rows: Row<V>[] = [];
+    const rows: Row<K, V>[] = [];
     for (let index = ZERO; index < breakpoints.length; index++) {
       const rowItems = items.slice(previous, breakpoints[index]);
 
       this.#direction === DIRECTION.BACKWARD && rowItems.reverse();
 
-      const row = new Row(from + offset, rowItems, this.#spacing, this.#width);
+      const row = new Row({
+        config: this.#config,
+        from: from + offset,
+        items: rowItems,
+        width: this.#width,
+      });
       rows.push(row);
-      offset += row.height + this.#spacing;
+      offset += row.height + this.#config.spacing;
       previous = breakpoints[index];
     }
 
