@@ -116,12 +116,12 @@ class TestScene(unittest.TestCase):
                 resolve_relative_paths=True,
             )
             scene2 = threed.Scene.from_fo3d(path)
-            real_background = os.path.realpath(
+            real_background = os.path.abspath(
                 os.path.join(temp_dir, "../background.jpeg")
             )
             self.assertEqual(scene2.background.image, real_background)
             real_cubes = [
-                os.path.realpath(os.path.join(temp_dir, ci))
+                os.path.abspath(os.path.join(temp_dir, ci))
                 for ci in self.scene.background.cube
             ]
             self.assertListEqual(scene2.background.cube, real_cubes)
@@ -129,7 +129,7 @@ class TestScene(unittest.TestCase):
                 if node.name == "gltf2":
                     self.assertEqual(
                         node.gltf_path,
-                        os.path.realpath(
+                        os.path.abspath(
                             os.path.join(temp_dir, "relative.gltf")
                         ),
                     )
