@@ -711,6 +711,8 @@ def _do_compute_metadata(args):
 def _compute_sample_metadata(
     filepath, media_type, skip_failures=False, cache=None
 ):
+    filepath, _ = foc.media_cache.use_cached_path(filepath)
+
     if not skip_failures:
         return _get_metadata(filepath, media_type, cache=cache)
 
