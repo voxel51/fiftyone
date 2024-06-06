@@ -1198,7 +1198,16 @@ class MediaExporter(object):
         if self.export_mode in (False, "manifest"):
             return
 
-        scene = fo3d.Scene.from_fo3d(fo3d_path)
+        _fo3d_path, is_local = fo.media_cache.use_cached_path(fo3d_path)
+        if not is_local:
+            msg = (
+                "This export requires reading FO3D files into memory, but not "
+                "all are available locally; consider using download_scenes() "
+                "to cache them and accelerate the export"
+            )
+            warnings.warn(msg)
+
+        scene = fo3d.Scene.from_fo3d(_fo3d_path)
         asset_paths = scene.get_asset_paths()
 
         input_to_output_paths = {}
