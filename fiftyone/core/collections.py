@@ -99,6 +99,7 @@ class DownloadContext(object):
             :meth:`app_config` are used
         group_slices (None): an optional subset of group slices to download
             media for. Only applicable when the collection contains groups
+        include_assets (True): whether to include 3D scene assets
         update (False): whether to re-download media whose checksums no longer
             match
         skip_failures (True): whether to gracefully continue without raising an
@@ -118,6 +119,7 @@ class DownloadContext(object):
         target_size_bytes=None,
         media_fields=None,
         group_slices=None,
+        include_assets=True,
         update=False,
         skip_failures=True,
         clear=False,
@@ -135,6 +137,7 @@ class DownloadContext(object):
         self.target_size_bytes = target_size_bytes
         self.media_fields = media_fields
         self.group_slices = group_slices
+        self.include_assets = include_assets
         self.update = update
         self.skip_failures = skip_failures
         self.clear = clear
@@ -159,6 +162,7 @@ class DownloadContext(object):
         self._filepaths = self.sample_collection._get_media_paths(
             media_fields=media_fields,
             group_slices=self.group_slices,
+            include_assets=self.include_assets,
             flat=False,
         )
         if not self._filepaths:
@@ -290,7 +294,8 @@ def _get_sizes(sample_collection, media_fields, filepaths):
 
     # Compute any missing metadata
     if metadata_paths:
-        for filepath, metadata in fomt.get_metadata(metadata_paths).items():
+        metadatas = fomt.get_metadata(metadata_paths, media_type=fom.MIXED)
+        for filepath, metadata in metadatas.items():
             if metadata is not None and metadata.size_bytes is not None:
                 file_sizes[filepath] = metadata.size_bytes
 
@@ -1247,6 +1252,7 @@ class SampleCollection(object):
         target_size_bytes=None,
         media_fields=None,
         group_slices=None,
+        include_assets=True,
         update=False,
         skip_failures=True,
         clear=False,
@@ -1297,6 +1303,7 @@ class SampleCollection(object):
                 :meth:`app_config` are used
             group_slices (None): an optional subset of group slices to download
                 media for. Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -1317,6 +1324,7 @@ class SampleCollection(object):
             target_size_bytes=target_size_bytes,
             media_fields=media_fields,
             group_slices=group_slices,
+            include_assets=include_assets,
             update=update,
             skip_failures=skip_failures,
             clear=clear,
@@ -3323,6 +3331,7 @@ class SampleCollection(object):
         self,
         media_fields=None,
         group_slices=None,
+        include_assets=True,
         update=False,
         skip_failures=True,
         progress=None,
@@ -3341,6 +3350,7 @@ class SampleCollection(object):
             group_slices (None): an optional subset of group slices for which
                 to download media. Only applicable when the collection contains
                 groups
+            include_assets (True): whether to include 3D scene assets
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -3351,7 +3361,9 @@ class SampleCollection(object):
                 callback function to invoke instead
         """
         filepaths = self._get_media_paths(
-            media_fields=media_fields, group_slices=group_slices
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
         )
 
         if update:
@@ -3368,9 +3380,49 @@ class SampleCollection(object):
                 progress=progress,
             )
 
+    def download_scenes(self, update=False, skip_failures=True, progress=None):
+        """Downloads all ``.fo3d`` files for the samples in the collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            update (False): whether to re-download files whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+        """
+        if not self._contains_media_type(fom.THREE_D, any_slice=True):
+            return
+
+        if self.media_type == fom.GROUP:
+            group_slices = [
+                k
+                for k, v in self.group_media_types.items()
+                if v == fom.THREE_D
+            ]
+        else:
+            group_slices = None
+
+        self.download_media(
+            media_fields=["filepath"],
+            group_slices=group_slices,
+            include_assets=False,
+            update=update,
+            skip_failures=skip_failures,
+            progress=progress,
+        )
+
     def get_local_paths(
         self,
         media_field="filepath",
+        include_assets=True,
         download=True,
         skip_failures=True,
         progress=None,
@@ -3381,6 +3433,7 @@ class SampleCollection(object):
 
         Args:
             media_field ("filepath"): the field containing the media paths
+            include_assets (True): whether to include 3D scene assets
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
@@ -3392,7 +3445,10 @@ class SampleCollection(object):
         Returns:
             a list of local filepaths
         """
-        filepaths = self._get_media_paths(media_fields=[media_field])
+        filepaths = self._get_media_paths(
+            media_fields=[media_field],
+            include_assets=include_assets,
+        )
         return foc.media_cache.get_local_paths(
             filepaths,
             download=download,
@@ -3400,7 +3456,12 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def clear_media(self, media_fields=None, group_slices=None):
+    def clear_media(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
@@ -3413,13 +3474,21 @@ class SampleCollection(object):
             group_slices (None): an optional subset of group slices for which
                 to clear media. Only applicable when the collection contains
                 groups
+            include_assets (True): whether to include 3D scene assets
         """
         filepaths = self._get_media_paths(
-            media_fields=media_fields, group_slices=group_slices
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
         )
         foc.media_cache.clear(filepaths=filepaths)
 
-    def cache_stats(self, media_fields=None, group_slices=None):
+    def cache_stats(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
@@ -3431,17 +3500,24 @@ class SampleCollection(object):
                 :meth:`app_config` are included
             group_slices (None): an optional subset of group slices to include.
                 Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
 
         Returns:
             a stats dict
         """
         filepaths = self._get_media_paths(
-            media_fields=media_fields, group_slices=group_slices
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
         )
         return foc.media_cache.stats(filepaths=filepaths)
 
     def _get_media_paths(
-        self, media_fields=None, group_slices=None, flat=True
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        flat=True,
     ):
         if media_fields is None:
             media_fields = list(self._get_media_fields().keys())
@@ -3488,8 +3564,10 @@ class SampleCollection(object):
                 for p in zip(*self.values(media_fields)):
                     filepaths.append(_merge_paths(p))
 
-        if "filepath" in media_fields and self._contains_media_type(
-            fom.THREE_D, any_slice=True
+        if (
+            include_assets
+            and "filepath" in media_fields
+            and self._contains_media_type(fom.THREE_D, any_slice=True)
         ):
             self._inject_fo3d_asset_paths(filepaths, flat=flat)
 
