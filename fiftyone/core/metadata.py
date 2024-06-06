@@ -520,12 +520,17 @@ def compute_metadata(
 
 
 def get_metadata(
-    filepaths, num_workers=None, skip_failures=True, progress=None
+    filepaths,
+    media_type=None,
+    num_workers=None,
+    skip_failures=True,
+    progress=None,
 ):
     """Gets :class:`Metadata` instances for the given filepaths.
 
     Args:
         filepaths: an iterable of filepaths
+        media_type (None): an optional media type to use
         num_workers (None): the number of worker threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a file
@@ -543,7 +548,7 @@ def get_metadata(
 
     cache = {}
     metadata = {}
-    tasks = [(p, skip_failures, cache) for p in filepaths]
+    tasks = [(p, media_type, skip_failures, cache) for p in filepaths]
 
     if not tasks:
         return metadata
@@ -718,12 +723,13 @@ def _compute_sample_metadata(
 
 
 def _do_get_metadata(args):
-    filepath, skip_failures, cache = args
+    filepath, media_type, skip_failures, cache = args
     if not filepath:
         return None, None
 
     filepath, _ = foc.media_cache.use_cached_path(filepath)
-    media_type = fom.get_media_type(filepath)
+    if media_type is None:
+        media_type = fom.get_media_type(filepath)
 
     try:
         metadata = _get_metadata(filepath, media_type, cache=cache)

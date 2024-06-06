@@ -290,7 +290,8 @@ def _get_sizes(sample_collection, media_fields, filepaths):
 
     # Compute any missing metadata
     if metadata_paths:
-        for filepath, metadata in fomt.get_metadata(metadata_paths).items():
+        metadatas = fomt.get_metadata(metadata_paths, media_type=fom.MIXED)
+        for filepath, metadata in metadatas.items():
             if metadata is not None and metadata.size_bytes is not None:
                 file_sizes[filepath] = metadata.size_bytes
 
