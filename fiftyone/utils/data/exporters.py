@@ -238,13 +238,13 @@ def export_samples(
 
     sample_collection = samples
 
-    if isinstance(dataset_exporter, BatchDatasetExporter):
-        _write_batch_dataset(dataset_exporter, samples, progress=progress)
-        return
-
     if isinstance(
         dataset_exporter,
-        (GenericSampleDatasetExporter, GroupDatasetExporter),
+        (
+            BatchDatasetExporter,
+            GenericSampleDatasetExporter,
+            GroupDatasetExporter,
+        ),
     ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
@@ -406,7 +406,9 @@ def write_dataset(
     if sample_collection is None and isinstance(samples, foc.SampleCollection):
         sample_collection = samples
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(dataset_exporter, BatchDatasetExporter):
+        _write_batch_dataset(dataset_exporter, samples, progress=progress)
+    elif isinstance(dataset_exporter, GenericSampleDatasetExporter):
         _write_generic_sample_dataset(
             dataset_exporter,
             samples,
@@ -1164,8 +1166,8 @@ class MediaExporter(object):
         self._manifest = None
         self._manifest_path = None
 
-    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
-        if export_mode in (False, "manifest"):
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
+        if self.export_mode in (False, "manifest"):
             return
 
         scene = fo3d.Scene.from_fo3d(fo3d_path)
@@ -1174,8 +1176,8 @@ class MediaExporter(object):
         input_to_output_paths = {}
         for asset_path in asset_paths:
             if not os.path.isabs(asset_path):
-                absolute_asset_path = os.path.join(
-                    os.path.dirname(fo3d_path), asset_path
+                absolute_asset_path = os.path.abspath(
+                    os.path.join(os.path.dirname(fo3d_path), asset_path)
                 )
             else:
                 absolute_asset_path = asset_path
@@ -1185,6 +1187,7 @@ class MediaExporter(object):
             asset_output_path = self._filename_maker.get_output_path(
                 absolute_asset_path
             )
+            # By convention, we always write *relative* asset paths
             input_to_output_paths[asset_path] = os.path.relpath(
                 asset_output_path, os.path.dirname(fo3d_output_path)
             )
@@ -1192,27 +1195,26 @@ class MediaExporter(object):
             if seen:
                 continue
 
-            if export_mode is True:
+            if self.export_mode is True:
                 etau.copy_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "move":
+            elif self.export_mode == "move":
                 etau.move_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "symlink":
+            elif self.export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
         is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
-            # note: we can't have different behavior for "symlink" because
-            # scene is modified, so we just copy the file regardless
             scene.write(fo3d_output_path)
+            if self.export_mode == "move":
+                etau.delete_file(fo3d_path)
         else:
-            if export_mode == "symlink":
-                etau.symlink_file(fo3d_path, fo3d_output_path)
-            else:
+            if self.export_mode is True:
                 etau.copy_file(fo3d_path, fo3d_output_path)
-
-        if export_mode == "move":
-            etau.delete_file(fo3d_path)
+            elif self.export_mode == "move":
+                etau.move_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
 
     def __enter__(self):
         self.setup()
@@ -1302,21 +1304,16 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
-                is_fo3d_file = media_path.endswith(".fo3d")
-
-                if self.export_mode is True and not is_fo3d_file:
-                    etau.copy_file(media_path, outpath)
-                elif self.export_mode == "move" and not is_fo3d_file:
-                    etau.move_file(media_path, outpath)
-                elif self.export_mode == "symlink" and not is_fo3d_file:
-                    etau.symlink_file(media_path, outpath)
-                elif self.export_mode == "manifest":
+                if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
-
-                if is_fo3d_file:
-                    self._handle_fo3d_file(
-                        media_path, outpath, self.export_mode
-                    )
+                elif media_path.endswith(".fo3d"):
+                    self._handle_fo3d_file(media_path, outpath)
+                elif self.export_mode is True:
+                    etau.copy_file(media_path, outpath)
+                elif self.export_mode == "move":
+                    etau.move_file(media_path, outpath)
+                elif self.export_mode == "symlink":
+                    etau.symlink_file(media_path, outpath)
         else:
             media = media_or_path
 
