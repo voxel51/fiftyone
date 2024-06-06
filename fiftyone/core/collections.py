@@ -1261,6 +1261,8 @@ class SampleCollection(object):
         """Returns a context that can be used to pre-download media in batches
         when iterating over samples in this collection.
 
+        This method is only useful for collections that contain remote media.
+
         By default, all media will be downloaded when the context is entered,
         but you can configure a batching strategy via the `batch_size` or
         `target_size_bytes` parameters.
