@@ -705,7 +705,7 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `sidebar_mode`            | `FIFTYONE_APP_SIDEBAR_MODE`            | `fast`                      | The default loading behavior of the App's sidebar. Supported values are                   |
 |                           |                                        |                             | `{"fast", "all", "best", "disabled"}`. See :ref:`this section <app-sidebar-mode>`         |
-|                           |                                        |                             |  more details.                                                                            |
+|                           |                                        |                             | more details.                                                                             |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `theme`                   | `FIFTYONE_APP_THEME`                   | `"browser"`                 | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`. |
 |                           |                                        |                             | If `"browser"`, your current theme will be persisted in your browser's storage.           |
