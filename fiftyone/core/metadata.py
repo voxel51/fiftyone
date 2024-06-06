@@ -5,16 +5,16 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import collections
+from collections import defaultdict
+import itertools
 import json
 import logging
 import multiprocessing.dummy
 import os
-import pathlib
-import requests
 
 import backoff
-from PIL import ExifTags, Image
+from PIL import Image
+import requests
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -22,9 +22,9 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.cache as foc
 from fiftyone.core.config import HTTPRetryConfig
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
@@ -92,71 +92,6 @@ class Metadata(DynamicEmbeddedDocument):
             size_bytes = int(r.headers["Content-Length"])
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
-
-
-class SceneMetadata(Metadata):
-    """Class for storing metadata about 3D scene samples.
-
-    Args:
-        size_bytes (None): the size of scene definition and all children
-            assets on disk, in bytes
-        mime_type (None): the MIME type of the scene media. Always set to
-            application/octet-stream
-        asset_counts (None): dict of child asset file type to count
-    """
-
-    asset_counts = fof.DictField
-
-    @classmethod
-    def build_for(cls, scene_path, mime_type=None):
-        """Builds a :class:`SceneMetadata` object for the given 3D Scene.
-
-        Args:
-            scene_path: a scene path or URL
-            mime_type (None): Ignored. mime_type always set to
-                application/octet-stream
-
-        Returns:
-            a :class:`SceneMetadata`
-        """
-        if not etau.is_str(scene_path):
-            raise ValueError("Invalid scene or path:", scene_path)
-
-        scene = fo3d.Scene.from_fo3d(scene_path)
-        scene_dict = scene.as_dict()
-        total_size = len(json.dumps(scene_dict))
-        asset_counts = collections.defaultdict(int)
-        mime_type = "application/octet-stream"
-
-        # Get asset paths and resolve all to absolute
-        asset_paths = scene.get_asset_paths()
-        scene_dir = os.path.dirname(scene_path)
-        for i, asset_path in enumerate(asset_paths):
-            if not fos.isabs(asset_path):
-                asset_path = fos.join(scene_dir, asset_path)
-            asset_paths[i] = fos.resolve(asset_path)
-            file_type = pathlib.Path(asset_path).suffix[1:]
-            asset_counts[file_type] += 1
-
-        # Dedupe asset paths within this single scene
-        asset_paths = list(set(asset_paths))
-
-        # compute metadata for all asset paths
-        asset_metadatas = fos.run(
-            _do_compute_metadata,
-            [
-                (i, asset_path, fom.MIXED)
-                for i, asset_path in enumerate(asset_paths)
-            ],
-            progress=False,
-        )
-        total_size += sum(m[1].size_bytes for m in asset_metadatas)
-
-        return cls(
-            size_bytes=total_size,
-            mime_type=mime_type,
-            asset_counts=asset_counts,
-        )
 
 
 class ImageMetadata(Metadata):
@@ -353,6 +288,137 @@ class VideoMetadata(Metadata):
         )
 
 
+class SceneMetadata(Metadata):
+    """Class for storing metadata about 3D scene samples.
+
+    Args:
+        size_bytes (None): the size of scene definition and all children
+            assets on disk, in bytes
+        mime_type (None): the MIME type of the scene
+        asset_counts (None): dict of child asset file type to count
+    """
+
+    asset_counts = fof.DictField()
+
+    @classmethod
+    def build_for(cls, scene_path, mime_type=None, _cache=None):
+        """Builds a :class:`SceneMetadata` object for the given 3D scene.
+
+        Args:
+            scene_path: a scene path
+            mime_type (None): the MIME type of the scene. If not provided,
+                defaults to ``application/octet-stream``
+
+        Returns:
+            a :class:`SceneMetadata`
+        """
+        scene_path, is_local = fo.media_cache.use_cached_path(scene_path)
+
+        if is_local:
+            return cls._build_for_local(
+                scene_path, mime_type=mime_type, cache=_cache
+            )
+
+        url = fos.get_url(scene_path)
+        return cls._build_for_url(
+            url, scene_path, mime_type=mime_type, cache=_cache
+        )
+
+    @classmethod
+    def _build_for_local(cls, scene_path, mime_type=None, cache=None):
+        if mime_type is None:
+            mime_type = "application/octet-stream"
+
+        scene_size = os.path.getsize(scene_path)
+        scene = fo3d.Scene.from_fo3d(scene_path)
+
+        asset_counts, asset_size = _parse_assets(
+            scene, scene_path, cache=cache
+        )
+        size_bytes = scene_size + asset_size
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            asset_counts=asset_counts,
+        )
+
+    @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
+    def _build_for_url(cls, url, scene_path, mime_type=None, cache=None):
+        if mime_type is None:
+            mime_type = "application/octet-stream"
+
+        r = requests.get(url)
+        r.raise_for_status()
+        scene_size = int(r.headers["Content-Length"])
+        scene = fo3d.Scene._from_fo3d_dict(r.json())
+
+        asset_counts, asset_size = _parse_assets(
+            scene, scene_path, cache=cache
+        )
+        size_bytes = scene_size + asset_size
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            asset_counts=asset_counts,
+        )
+
+
+def _parse_assets(scene, scene_path, cache=None):
+    asset_paths = scene.get_asset_paths()
+
+    asset_counts = defaultdict(int)
+    scene_dir = os.path.dirname(scene_path)
+    for i, asset_path in enumerate(asset_paths):
+        if not fos.isabs(asset_path):
+            asset_path = fos.abspath(fos.join(scene_dir, asset_path))
+            asset_paths[i] = asset_path
+
+        file_type = os.path.splitext(asset_path)[1][1:]
+        asset_counts[file_type] += 1
+
+    asset_size = 0
+
+    tasks = []
+    for asset_path in asset_paths:
+        if cache is not None:
+            metadata = cache.get(asset_path, None)
+            if metadata is not None:
+                asset_size += metadata.size_bytes
+                continue
+
+        tasks.append((None, asset_path, fom.MIXED, cache))
+
+    results = []
+    if len(tasks) <= 1:
+        for task in tasks:
+            results.append(_do_compute_metadata(task))
+    else:
+        num_workers = fou.recommend_thread_pool_workers(min(len(tasks), 8))
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            results.extend(pool.imap(_do_compute_metadata, tasks))
+
+    for task, result in zip(tasks, results):
+        metadata = result[1]
+        asset_size += metadata.size_bytes
+
+        if cache is not None:
+            scene_path = task[1]
+            cache[scene_path] = metadata
+
+    return dict(asset_counts), asset_size
+
+
 def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     """Populates the ``metadata`` field of the sample.
 
@@ -454,12 +520,17 @@ def compute_metadata(
 
 
 def get_metadata(
-    filepaths, num_workers=None, skip_failures=True, progress=None
+    filepaths,
+    media_type=None,
+    num_workers=None,
+    skip_failures=True,
+    progress=None,
 ):
     """Gets :class:`Metadata` instances for the given filepaths.
 
     Args:
         filepaths: an iterable of filepaths
+        media_type (None): an optional media type to use
         num_workers (None): the number of worker threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a file
@@ -475,9 +546,9 @@ def get_metadata(
 
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
-    tasks = [(p, skip_failures) for p in filepaths]
-
+    cache = {}
     metadata = {}
+    tasks = [(p, media_type, skip_failures, cache) for p in filepaths]
 
     if not tasks:
         return metadata
@@ -570,8 +641,9 @@ def _compute_metadata(
 
     logger.info("Computing metadata...")
 
-    inputs = zip(ids, filepaths, media_types)
+    cache = {}
     values = {}
+    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
 
     try:
         with fou.ProgressBar(total=num_samples, progress=progress) as pb:
@@ -608,8 +680,9 @@ def _compute_metadata_multi(
 
     logger.info("Computing metadata...")
 
-    inputs = zip(ids, filepaths, media_types)
+    cache = {}
     values = {}
+    inputs = zip(ids, filepaths, media_types, itertools.repeat(cache))
 
     try:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
@@ -628,35 +701,38 @@ def _compute_metadata_multi(
 
 
 def _do_compute_metadata(args):
-    sample_id, filepath, media_type = args
+    sample_id, filepath, media_type, cache = args
     metadata = _compute_sample_metadata(
-        filepath, media_type, skip_failures=True
+        filepath, media_type, skip_failures=True, cache=cache
     )
     return sample_id, metadata
 
 
-def _compute_sample_metadata(filepath, media_type, skip_failures=False):
+def _compute_sample_metadata(
+    filepath, media_type, skip_failures=False, cache=None
+):
     filepath, _ = foc.media_cache.use_cached_path(filepath)
 
     if not skip_failures:
-        return _get_metadata(filepath, media_type)
+        return _get_metadata(filepath, media_type, cache=cache)
 
     try:
-        return _get_metadata(filepath, media_type)
+        return _get_metadata(filepath, media_type, cache=cache)
     except:
         return None
 
 
 def _do_get_metadata(args):
-    filepath, skip_failures = args
+    filepath, media_type, skip_failures, cache = args
     if not filepath:
         return None, None
 
     filepath, _ = foc.media_cache.use_cached_path(filepath)
-    media_type = fom.get_media_type(filepath)
+    if media_type is None:
+        media_type = fom.get_media_type(filepath)
 
     try:
-        metadata = _get_metadata(filepath, media_type)
+        metadata = _get_metadata(filepath, media_type, cache=cache)
     except Exception as e:
         if not skip_failures:
             raise
@@ -667,13 +743,18 @@ def _do_get_metadata(args):
     return filepath, metadata
 
 
-def _get_metadata(filepath, media_type):
+def _get_metadata(filepath, media_type, cache=None):
+    if cache is not None:
+        metadata = cache.get(filepath, None)
+        if metadata is not None:
+            return metadata
+
     if media_type == fom.IMAGE:
         metadata = ImageMetadata.build_for(filepath)
     elif media_type == fom.VIDEO:
         metadata = VideoMetadata.build_for(filepath)
     elif media_type == fom.THREE_D:
-        metadata = SceneMetadata.build_for(filepath)
+        metadata = SceneMetadata.build_for(filepath, _cache=cache)
     else:
         metadata = Metadata.build_for(filepath)
 

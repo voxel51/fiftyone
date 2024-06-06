@@ -187,7 +187,7 @@ class Scene(Object3D):
         return Scene._from_fo3d_dict(self.as_dict())
 
     def _resolve_node_asset_paths(self, node, fo3d_path_dir):
-        for asset_path_field in node._asset_path_fields or []:
+        for asset_path_field in node._asset_path_fields:
             asset_path = getattr(node, asset_path_field, None)
             if asset_path:
                 resolved_asset_path = self._resolve_asset_path(
@@ -277,7 +277,7 @@ class Scene(Object3D):
                 asset_path = getattr(node, path_attribute, None)
                 new_asset_path = asset_rewrite_paths.get(asset_path)
 
-                if asset_path is not None and asset_path != new_asset_path:
+                if new_asset_path is not None and asset_path != new_asset_path:
                     setattr(node, path_attribute, new_asset_path)
                     scene_modified = True
 
@@ -285,13 +285,16 @@ class Scene(Object3D):
         if self.background is not None:
             if self.background.image is not None:
                 new_asset_path = asset_rewrite_paths.get(self.background.image)
-                if new_asset_path != self.background.image:
+                if (
+                    new_asset_path is not None
+                    and new_asset_path != self.background.image
+                ):
                     self.background.image = new_asset_path
                     scene_modified = True
 
             if self.background.cube is not None:
                 new_cube = [
-                    asset_rewrite_paths.get(face)
+                    asset_rewrite_paths.get(face, face)
                     for face in self.background.cube
                 ]
                 if new_cube != self.background.cube:
@@ -321,28 +324,28 @@ class Scene(Object3D):
         Returns:
             a list of asset paths
         """
-        asset_paths = list(
+        asset_paths = set(
             itertools.chain.from_iterable(
                 node._get_asset_paths() for node in self.traverse()
             )
         )
 
-        # append paths in scene background, if any
         if self.background is not None:
             if self.background.image is not None:
-                asset_paths.append(self.background.image)
+                asset_paths.add(self.background.image)
             if self.background.cube is not None:
-                asset_paths.extend(self.background.cube)
-        return asset_paths
+                asset_paths.update(self.background.cube)
+
+        return list(asset_paths)
 
     def _resolve_asset_path(self, root: str, path: str):
         if path is None:
             return None
 
         if not fos.isabs(path):
-            path = fos.join(root, path)
+            path = fos.abspath(fos.join(root, path))
 
-        return fos.resolve(path)
+        return path
 
     def _to_dict_extra(self):
         return {

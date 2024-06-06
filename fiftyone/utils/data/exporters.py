@@ -242,13 +242,13 @@ def export_samples(
 
     sample_collection = samples
 
-    if isinstance(dataset_exporter, BatchDatasetExporter):
-        _write_batch_dataset(dataset_exporter, samples, progress=progress)
-        return
-
     if isinstance(
         dataset_exporter,
-        (GenericSampleDatasetExporter, GroupDatasetExporter),
+        (
+            BatchDatasetExporter,
+            GenericSampleDatasetExporter,
+            GroupDatasetExporter,
+        ),
     ):
         sample_parser = None
     elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
@@ -392,7 +392,9 @@ def write_dataset(
     if sample_collection is None and isinstance(samples, foc.SampleCollection):
         sample_collection = samples
 
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+    if isinstance(dataset_exporter, BatchDatasetExporter):
+        _write_batch_dataset(dataset_exporter, samples, progress=progress)
+    elif isinstance(dataset_exporter, GenericSampleDatasetExporter):
         _write_generic_sample_dataset(
             dataset_exporter,
             samples,
@@ -1186,24 +1188,33 @@ class MediaExporter(object):
         self._filename_maker = None
         self._manifest = None
         self._manifest_path = None
-
         self._tmpdir = None
+        self._tmpdir_size_bytes = None
         self._inpaths = []
         self._outpaths = []
+        self._delpaths = []
 
-    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path, export_mode):
-        if export_mode in (False, "manifest"):
+    def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
+        if self.export_mode in (False, "manifest"):
             return
 
-        scene = fo3d.Scene.from_fo3d(fo3d_path)
+        _fo3d_path, is_local = fo.media_cache.use_cached_path(fo3d_path)
+        if not is_local:
+            msg = (
+                "This export requires reading FO3D files into memory, but not "
+                "all are available locally; consider using download_scenes() "
+                "to cache them and accelerate the export"
+            )
+            warnings.warn(msg)
 
+        scene = fo3d.Scene.from_fo3d(_fo3d_path)
         asset_paths = scene.get_asset_paths()
 
         input_to_output_paths = {}
         for asset_path in asset_paths:
             if not fos.isabs(asset_path):
-                absolute_asset_path = fos.join(
-                    os.path.dirname(fo3d_path), asset_path
+                absolute_asset_path = fos.abspath(
+                    fos.join(os.path.dirname(fo3d_path), asset_path)
                 )
             else:
                 absolute_asset_path = asset_path
@@ -1213,6 +1224,7 @@ class MediaExporter(object):
             asset_output_path = self._filename_maker.get_output_path(
                 absolute_asset_path
             )
+            # By convention, we always write *relative* asset paths
             input_to_output_paths[asset_path] = os.path.relpath(
                 asset_output_path, os.path.dirname(fo3d_output_path)
             )
@@ -1223,39 +1235,54 @@ class MediaExporter(object):
             if not fos.is_local(absolute_asset_path) or not fos.is_local(
                 asset_output_path
             ):
-                if self.export_mode in (True, "move"):
-                    self._inpaths.append(absolute_asset_path)
-                    self._outpaths.append(asset_output_path)
-                continue
-
-            if export_mode is True:
+                self._inpaths.append(absolute_asset_path)
+                self._outpaths.append(asset_output_path)
+            elif self.export_mode is True:
                 etau.copy_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "move":
+            elif self.export_mode == "move":
                 etau.move_file(absolute_asset_path, asset_output_path)
-            elif export_mode == "symlink":
+            elif self.export_mode == "symlink":
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
         is_scene_modified = scene.update_asset_paths(input_to_output_paths)
 
         if is_scene_modified:
-            # note: we can't have different behavior for "symlink" because
-            # scene is modified, so we just copy the file regardless
-            scene.write(fo3d_output_path)
+            if not fos.is_local(fo3d_path) or not fos.is_local(
+                fo3d_output_path
+            ):
+                self._write_temp_scene(scene, fo3d_path, fo3d_output_path)
+            else:
+                scene.write(fo3d_output_path)
+                if self.export_mode == "move":
+                    etau.delete_file(fo3d_path)
         else:
-            if export_mode == "symlink":
-                # No cloud version of symlink (ensured above), so we're fine
-                #   to use regular etau symlink_file here
-                etau.symlink_file(fo3d_path, fo3d_output_path)
-            elif not fos.is_local(fo3d_path) or not fos.is_local(
+            if not fos.is_local(fo3d_path) or not fos.is_local(
                 fo3d_output_path
             ):
                 self._inpaths.append(fo3d_path)
                 self._outpaths.append(fo3d_output_path)
-            else:
-                fos.copy_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode is True:
+                etau.copy_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "move":
+                etau.move_file(fo3d_path, fo3d_output_path)
+            elif self.export_mode == "symlink":
+                etau.symlink_file(fo3d_path, fo3d_output_path)
 
-        if export_mode == "move":
-            fos.delete_file(fo3d_path)
+    def _write_temp_scene(self, scene, fo3d_path, fo3d_output_path):
+        if self._tmpdir is None:
+            self._tmpdir = fos.make_temp_dir()
+
+        rel_basename = fou.safe_relpath(fo3d_output_path, self.export_path)
+        local_path = os.path.join(self._tmpdir, rel_basename)
+
+        scene.write(local_path)
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(fo3d_output_path)
+        if self.export_mode == "move":
+            self._delpaths.append(fo3d_path)
+
+        self._flush_temp_dir_if_necessary(local_path)
 
     def __enter__(self):
         self.setup()
@@ -1345,20 +1372,15 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
-                is_fo3d_file = media_path.endswith(".fo3d")
-
                 if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
-                elif is_fo3d_file:
-                    self._handle_fo3d_file(
-                        media_path, outpath, self.export_mode
-                    )
+                elif media_path.endswith(".fo3d"):
+                    self._handle_fo3d_file(media_path, outpath)
                 elif self.export_mode != False and (
                     not fos.is_local(outpath) or not fos.is_local(media_path)
                 ):
-                    if self.export_mode in (True, "move"):
-                        self._inpaths.append(media_path)
-                        self._outpaths.append(outpath)
+                    self._inpaths.append(media_path)
+                    self._outpaths.append(outpath)
                 elif self.export_mode is True:
                     etau.copy_file(media_path, outpath)
                 elif self.export_mode == "move":
@@ -1375,19 +1397,10 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if self.export_mode is True:
-                if fos.is_local(outpath):
-                    local_path = outpath
+                if not fos.is_local(outpath):
+                    self._write_temp_media(media, outpath)
                 else:
-                    if self._tmpdir is None:
-                        self._tmpdir = fos.make_temp_dir()
-
-                    rel_basename = fou.safe_relpath(outpath, self.export_path)
-                    local_path = os.path.join(self._tmpdir, rel_basename)
-
-                    self._inpaths.append(local_path)
-                    self._outpaths.append(outpath)
-
-                self._write_media(media, local_path)
+                    self._write_media(media, outpath)
             elif self.export_mode is not False:
                 raise ValueError(
                     "Cannot export in-memory media when 'export_mode=%s'"
@@ -1396,15 +1409,42 @@ class MediaExporter(object):
 
         return outpath, uuid
 
-    def close(self):
-        """Performs any necessary actions to complete the export."""
+    def _write_temp_media(self, media, outpath):
+        if self._tmpdir is None:
+            self._tmpdir = fos.make_temp_dir()
+
+        rel_basename = fou.safe_relpath(outpath, self.export_path)
+        local_path = os.path.join(self._tmpdir, rel_basename)
+
+        self._write_media(media, local_path)
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(outpath)
+
+        self._flush_temp_dir_if_necessary(local_path)
+
+    def _flush_temp_dir_if_necessary(self, last_path):
+        threshold = fo.media_cache_config.download_size_bytes
+        if threshold is None or threshold < 0:
+            return
+
+        if self._tmpdir_size_bytes is None:
+            self._tmpdir_size_bytes = 0
+
+        self._tmpdir_size_bytes += os.path.getsize(last_path)
+        if self._tmpdir_size_bytes <= threshold:
+            return
+
+        self._flush_export()
+
+        fos.ensure_dir(self._tmpdir)
+        self._tmpdir_size_bytes = 0
+
+    def _flush_export(self):
         try:
-            if self.export_mode == "manifest":
-                fos.write_json(self._manifest, self._manifest_path)
+            progress = fo.config.show_progress_bars
 
             if self._inpaths:
-                progress = fo.config.show_progress_bars
-
                 if progress:
                     logger.info("Exporting %s...", self._MEDIA_TYPE)
 
@@ -1419,9 +1459,23 @@ class MediaExporter(object):
                         use_cache=True,
                         progress=progress,
                     )
+
+            if self._delpaths:
+                fos.delete_files(self._delpaths, progress=progress)
         finally:
+            self._inpaths.clear()
+            self._outpaths.clear()
+            self._delpaths.clear()
+
             if self._tmpdir is not None:
                 etau.delete_dir(self._tmpdir)
+
+    def close(self):
+        """Performs any necessary actions to complete the export."""
+        if self.export_mode == "manifest":
+            fos.write_json(self._manifest, self._manifest_path)
+
+        self._flush_export()
 
 
 class ImageExporter(MediaExporter):
