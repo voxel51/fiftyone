@@ -391,6 +391,7 @@ _____________
     import fiftyone as fo
 
     fo.Dataset.download_media?
+    fo.Dataset.download_scenes?
     fo.Dataset.download_context?
     fo.Dataset.get_local_paths?
     fo.Dataset.cache_stats?
@@ -402,6 +403,7 @@ _____________
         self,
         media_fields=None,
         group_slices=None,
+        include_assets=True,
         update=False,
         skip_failures=True,
         progress=None,
@@ -420,7 +422,34 @@ _____________
             group_slices (None): an optional subset of group slices for which
                 to download media. Only applicable when the collection contains
                 groups
+            include_assets (True): whether to include 3D scene assets
             update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+        """
+
+.. code-block:: python
+
+    fo.Dataset.download_scenes(
+        self,
+        update=False,
+        skip_failures=True,
+        progress=None,
+    ):
+        """Downloads all ``.fo3d`` files for the samples in the collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            update (False): whether to re-download files whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
@@ -438,6 +467,7 @@ _____________
         target_size_bytes=None,
         media_fields=None,
         group_slices=None,
+        include_assets=True,
         update=False,
         skip_failures=True,
         clear=False,
@@ -445,6 +475,12 @@ _____________
     ):
         """Returns a context that can be used to pre-download media in batches
         when iterating over samples in this collection.
+
+        This method is only useful for collections that contain remote media.
+
+        By default, all media will be downloaded when the context is entered,
+        but you can configure a batching strategy via the `batch_size` or
+        `target_size_bytes` parameters.
 
         If no ``batch_size`` or ``target_size_bytes`` is provided, media are
         downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
@@ -459,6 +495,7 @@ _____________
                 :meth:`app_config` are used
             group_slices (None): an optional subset of group slices to download
                 media for. Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -480,6 +517,7 @@ _____________
     fo.Dataset.get_local_paths(
         self,
         media_field="filepath",
+        include_assets=True,
         download=True,
         skip_failures=True,
         progress=None,
@@ -490,6 +528,7 @@ _____________
 
         Args:
             media_field ("filepath"): the field containing the media paths
+            include_assets (True): whether to include 3D scene assets
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
@@ -504,7 +543,12 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.cache_stats(self, media_fields=None, group_slices=None):
+    fo.Dataset.cache_stats(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
@@ -516,6 +560,7 @@ _____________
                 :meth:`app_config` are included
             group_slices (None): an optional subset of group slices to include.
                 Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
 
         Returns:
             a stats dict
@@ -523,7 +568,12 @@ _____________
 
 .. code-block:: python
 
-    fo.Dataset.clear_media(self, media_fields=None, group_slices=None):
+    fo.Dataset.clear_media(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
@@ -536,6 +586,7 @@ _____________
             group_slices (None): an optional subset of group slices for which
                 to clear media. Only applicable when the collection contains
                 groups
+            include_assets (True): whether to include 3D scene assets
         """
 
 `fiftyone.core.storage`
