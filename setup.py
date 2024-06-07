@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.24.0"
+VERSION = "0.24.1"
 
 
 def get_version():
@@ -45,7 +45,7 @@ INSTALL_REQUIRES = [
     "humanize",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
-    "Jinja2>=3",
+    "Jinja2==3.0.3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
@@ -59,7 +59,6 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pydantic>=2",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
@@ -116,7 +115,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.34.0"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.34.1"]}
 
 
 with open("README.md", "r") as fh:
@@ -139,12 +138,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(
         exclude=["app", "eta", "package", "requirements", "tests", "tools"]
-    )
-    + ["fiftyone.recipes", "fiftyone.tutorials"],
-    package_dir={
-        "fiftyone.recipes": "docs/source/recipes",
-        "fiftyone.tutorials": "docs/source/tutorials",
-    },
+    ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
     ),

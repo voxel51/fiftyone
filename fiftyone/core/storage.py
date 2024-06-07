@@ -281,9 +281,9 @@ def join(a, *p):
     return os.path.join(a, *p)
 
 
-def resolve(path):
-    """Resolves path to absolute, resolving symlinks and relative path
-        indicators such as `.` and `..`.
+def realpath(path):
+    """Converts the given path to absolute, resolving symlinks and relative
+    path indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath
@@ -297,8 +297,6 @@ def resolve(path):
 def isabs(path):
     """Determines whether the given path is absolute.
 
-    Remote paths are always considered absolute.
-
     Args:
         path: the filepath
 
@@ -309,9 +307,8 @@ def isabs(path):
 
 
 def abspath(path):
-    """Converts the given path to an absolute path.
-
-    Remote paths are returned unchanged.
+    """Converts the given path to an absolute path, resolving relative path
+    indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath

@@ -1226,6 +1226,69 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(view), 6)
         self.assertEqual(view.media_type, "image")
 
+    @drop_datasets
+    def test_concurrent_group_slice_updates(self):
+        dataset = fo.Dataset()
+        group = fo.Group()
+        slice1 = "slice1"
+        dataset.add_sample(fo.Sample("blah.jpg", group=group.element(slice1)))
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test rename group slice safety
+        also_dataset.add_group_slice("slice2", fo.core.media.IMAGE)
+        dataset.rename_group_slice("slice1", "also-slice1")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {
+                "slice2": fo.core.media.IMAGE,
+                "also-slice1": fo.core.media.IMAGE,
+            },
+        )
+
+        # Test delete group slice safety
+        also_dataset.reload()
+        also_dataset.add_group_slice("slice3", fo.core.media.IMAGE)
+        dataset.delete_group_slice("also-slice1")
+
+        also_dataset.reload()
+        self.assertDictEqual(
+            also_dataset.group_media_types,
+            {"slice2": fo.core.media.IMAGE, "slice3": fo.core.media.IMAGE},
+        )
+
+        # Test default group slice safety with delete
+        dataset.reload()
+        dataset.default_group_slice = "slice3"
+        dataset.save()
+        also_dataset.reload()
+
+        dataset.rename_group_slice("slice2", "slice2-1")
+        also_dataset.delete_group_slice("slice3")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {"slice2-1": fo.core.media.IMAGE},
+        )
+        self.assertEqual(dataset.default_group_slice, "slice2-1")
+
+        # Test default group slice safety with rename
+        dataset.add_group_slice("slice3", fo.core.media.IMAGE)
+        also_dataset.reload()
+        also_dataset.default_group_slice = "slice3"
+        also_dataset.save()
+        dataset.rename_group_slice("slice3", "slice3-1")
+        dataset.reload()
+        self.assertDictEqual(
+            dataset.group_media_types,
+            {"slice2-1": fo.core.media.IMAGE, "slice3-1": fo.core.media.IMAGE},
+        )
+        self.assertEqual(dataset.default_group_slice, "slice3-1")
+
 
 class GroupImportExportTests(unittest.TestCase):
     def setUp(self):

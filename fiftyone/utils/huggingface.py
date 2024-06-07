@@ -8,9 +8,12 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+import inspect
 import logging
+import math
 import os
 from packaging.requirements import Requirement
+import re
 import requests
 
 import yaml
@@ -42,6 +45,7 @@ DATASETS_SERVER_URL = "https://datasets-server.huggingface.co"
 DEFAULT_MEDIA_TYPE = "image"
 DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 DATASETS_MAX_BATCH_SIZE = 100
+DEFAULT_BATCH_SIZE = 100
 DEFAULT_IMAGE_FILEPATH_FEATURE = "image"
 FIFTYONE_BUILTIN_FIELDS = ("id", "filepath", "tags", "metadata")
 SUPPORTED_DTYPES = (
@@ -73,6 +77,7 @@ def push_to_hub(
     frame_labels_field=None,
     token=None,
     preview_path=None,
+    chunk_size=None,
     **data_card_kwargs,
 ):
     """Push a FiftyOne dataset to the Hugging Face Hub.
@@ -110,11 +115,27 @@ def push_to_hub(
             the ``HF_TOKEN`` environment variable
         preview_path (None): a path to a preview image or video to display on
             the readme of the dataset repo.
+        chunk_size (None): the number of media files to put in each
+            subdirectory, to avoid having too many files in a single directory.
+            If None, no chunking is performed. If the dataset has more than
+            10,000 samples, it will be chunked by default to avoid exceeding
+            the maximum number of files in a directory on Hugging Face Hub.
+            This parameter is only applicable to
+            `:class:fiftyone.types.dataset_types.FiftyOneDataset` datasets.
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
     if dataset_type is None:
         dataset_type = fot.FiftyOneDataset
+
+    if dataset_type == fot.FiftyOneDataset and chunk_size is None:
+        if dataset.count() > 10000:
+            logger.info(
+                "Dataset has more than 10,000 samples. Chunking by default to avoid "
+                "exceeding the maximum number of files in a directory on Hugging"
+                " Face Hub. Setting chunk_size to 1000."
+            )
+            chunk_size = 1000
 
     if tags is not None:
         if isinstance(tags, str):
@@ -131,12 +152,17 @@ def push_to_hub(
     with etau.TempDir() as tmp_dir:
         config_filepath = os.path.join(tmp_dir, "fiftyone.yml")
 
+        export_kwargs = {}
+        if dataset_type == fot.FiftyOneDataset:
+            export_kwargs["chunk_size"] = chunk_size
+
         dataset.export(
             export_dir=tmp_dir,
             dataset_type=dataset_type,
             label_field=label_field,
             frame_labels_field=frame_labels_field,
             export_media=True,
+            **export_kwargs,
         )
 
         _populate_config_file(
@@ -161,10 +187,11 @@ def push_to_hub(
         ## Upload the dataset to the repo
         api = hfh.HfApi(token=token)
         with _no_progress_bars():
-            api.upload_folder(
-                folder_path=tmp_dir,
-                repo_id=repo_id,
-                repo_type="dataset",
+            _upload_data_to_repo(
+                api,
+                repo_id,
+                tmp_dir,
+                dataset_type,
             )
 
         # Upload preview image or video if provided
@@ -339,13 +366,145 @@ import fiftyone as fo
 import fiftyone.utils.huggingface as fouh
 
 # Load the dataset
-# Note: other available arguments include 'split', 'max_samples', etc
+# Note: other available arguments include 'max_samples', etc
 dataset = fouh.load_from_hub("{repo_id}")
 
 # Launch the App
 session = fo.launch_app(dataset)
 ```
 """
+
+
+def _extract_number(filename):
+    match = re.search(r"\d+", filename)
+    # Return a very large number for filenames without numbers
+    return int(match.group(0)) if match else float("inf")
+
+
+def _is_already_uploaded(api, repo_id, folder_path):
+    filenames = os.listdir(folder_path)
+    if len(filenames) == 0:
+        return False
+    sorted_filenames = sorted(filenames, key=_extract_number)
+    first_last = [sorted_filenames[0], sorted_filenames[-1]]
+    first_last = [os.path.join(folder_path, f) for f in first_last]
+    response = api.get_paths_info(
+        repo_id, paths=first_last, repo_type="dataset"
+    )
+    return len(response) == 2
+
+
+def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
+    if not dataset_type == fot.FiftyOneDataset:
+        api.upload_folder(
+            folder_path=tmp_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message="Adding dataset",
+        )
+        return
+
+    base_dir_contents = os.listdir(tmp_dir)
+    filenames = [
+        f
+        for f in base_dir_contents
+        if os.path.isfile(os.path.join(tmp_dir, f))
+    ]
+    subdirs = [
+        d for d in base_dir_contents if os.path.isdir(os.path.join(tmp_dir, d))
+    ]
+
+    for filename in filenames:
+        if "." in filename:
+            api.upload_file(
+                path_or_fileobj=os.path.join(tmp_dir, filename),
+                path_in_repo=filename,
+                repo_id=repo_id,
+                repo_type="dataset",
+            )
+
+    for runtype in ("annotations", "brain", "evaluations", "runs"):
+        if runtype in subdirs:
+            api.upload_folder(
+                folder_path=os.path.join(tmp_dir, runtype),
+                path_in_repo=runtype,
+                repo_id=repo_id,
+                repo_type="dataset",
+            )
+
+    first_chunk_dir = os.path.join(tmp_dir, "data", "data_0")
+    if os.path.exists(first_chunk_dir):
+        chunk_size = len(os.listdir(first_chunk_dir))
+        num_chunks = len(os.listdir(os.path.join(tmp_dir, "data")))
+    else:
+        chunk_size = None
+        num_chunks = 1
+
+    if os.path.exists(os.path.join(tmp_dir, "fields")):
+        field_dirs = os.listdir(os.path.join(tmp_dir, "fields"))
+    else:
+        field_dirs = []
+
+    from tqdm import tqdm
+
+    num_total_chunks = num_chunks * (len(field_dirs) + 1)
+
+    message = "Uploading media files"
+    if num_total_chunks > 1:
+        message += f" in {num_total_chunks} batches  of size {chunk_size}"
+
+    def _upload_media_dir(i):
+        path_in_repo = (
+            os.path.join("data", f"data_{i}")
+            if chunk_size is not None
+            else "data"
+        )
+        media_dir = os.path.join(tmp_dir, path_in_repo)
+
+        if not os.path.exists(media_dir):
+            return
+        if _is_already_uploaded(api, repo_id, media_dir):
+            return
+        api.upload_folder(
+            folder_path=media_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo=path_in_repo,
+            commit_message=f"Adding media files in dir {path_in_repo}",
+        )
+
+    def _upload_field_dir(field_dir, i):
+        path_in_repo = (
+            os.path.join("fields", field_dir, f"{field_dir}_{i}")
+            if chunk_size is not None
+            else os.path.join("fields", field_dir)
+        )
+        field_media_dir = os.path.join(tmp_dir, path_in_repo)
+
+        if not os.path.exists(field_media_dir):
+            return
+        if _is_already_uploaded(api, repo_id, field_media_dir):
+            return
+        api.upload_folder(
+            folder_path=field_media_dir,
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo=path_in_repo,
+            commit_message=f"Adding media field files in dir {path_in_repo}",
+        )
+
+    for n in tqdm(
+        range(num_total_chunks),
+        desc=message,
+    ):
+        i = n // (len(field_dirs) + 1)
+        j = n % (len(field_dirs) + 1)
+
+        if j == 0:
+            _upload_media_dir(i)
+        else:
+            field_dir = field_dirs[j - 1]
+            _upload_field_dir(field_dir, i)
 
 
 def _populate_config_file(
@@ -357,9 +516,12 @@ def _populate_config_file(
     tags=None,
     min_fiftyone_version=None,
 ):
+
+    dataset_type_name = dataset_type.__name__
+
     config_dict = {
         "name": dataset.name,
-        "format": dataset_type.__name__,
+        "format": dataset_type_name,
         "tags": tags,
     }
 
@@ -387,7 +549,7 @@ def _get_dataset_tasks(dataset):
     if _has_label(fol.Detections):
         tasks.append("object-detection")
     if _has_label(fol.Segmentation):
-        tasks.append("semantic-segmentation")
+        tasks.append("image-segmentation")
     return tasks
 
 
@@ -410,6 +572,30 @@ def _generate_dataset_summary(repo_id, dataset, preview_path):
     return DATASET_CONTENT_TEMPLATE.format(**format_kwargs)
 
 
+def _get_size_category(num_samples):
+    if num_samples < 1e3:
+        return "n<1K"
+    if num_samples < 1e4:
+        return "1K<n<10K"
+    if num_samples < 1e5:
+        return "10K<n<100K"
+    if num_samples < 1e6:
+        return "100K<n<1M"
+    if num_samples < 1e7:
+        return "1M<n<10M"
+    if num_samples < 1e8:
+        return "10M<n<100M"
+    if num_samples < 1e9:
+        return "100M<n<1B"
+    if num_samples < 1e10:
+        return "1B<n<10B"
+    if num_samples < 1e11:
+        return "10B<n<100B"
+    if num_samples < 1e12:
+        return "100B<n<1T"
+    return "n>1T"
+
+
 def _create_dataset_card(
     repo_id,
     dataset,
@@ -425,6 +611,7 @@ def _create_dataset_card(
         "task_ids": [],
         "pretty_name": dataset.name,
         "license": license,
+        "size_categories": [_get_size_category(dataset.count())],
         "tags": tags,
     }
 
@@ -789,26 +976,38 @@ def _download_images(urls_and_filepaths, num_workers):
             executor.map(_download_image, urls_and_filepaths)
 
 
-def _build_media_field_converter(
-    media_field_key, media_field_name, feature, download_dir
-):
-    def convert_media_field(sample_dict, row):
+class MediaFieldConverter:
+    def __init__(
+        self, media_field_key, media_field_name, feature, download_dir
+    ):
+        self.media_field_key = media_field_key
+        self.media_field_name = media_field_name
+        self.feature = feature
+        self.download_dir = download_dir
+
+    def convert_media_field(self, sample_dict, row):
         row_content = row["row"]
         row_index = row["row_idx"]
 
-        filename = f"{media_field_name}_{row_index}.png"
-        filepath = os.path.join(download_dir, filename)
+        filename = f"{self.media_field_name}_{row_index}.png"
+        filepath = os.path.join(self.download_dir, filename)
 
-        if feature["_type"] == "Image":
-            url = row_content[media_field_name]["src"]
+        if self.feature["_type"] == "Image":
+            url = row_content[self.media_field_name]["src"]
         else:
-            url = row_content[media_field_name]
+            url = row_content[self.media_field_name]
 
-        sample_dict[media_field_key] = filepath
+        sample_dict[self.media_field_key] = filepath
 
         return (url, filepath)
 
-    return convert_media_field
+
+def _build_media_field_converter(
+    media_field_key, media_field_name, feature, download_dir
+):
+    return MediaFieldConverter(
+        media_field_key, media_field_name, feature, download_dir
+    ).convert_media_field
 
 
 def _get_image_shape(image_path):
@@ -844,7 +1043,7 @@ def _convert_bounding_box(hf_bbox, img_size):
 
 
 def _build_label_field_converter(
-    field_name, field_type, feature, config, download_dir
+    field_name, field_type, feature, download_dir
 ):
     def convert_classification_field(sample_dict, row):
         row_content = row["row"]
@@ -926,7 +1125,16 @@ def _build_dtype_field_converter(field_name, feature, config):
             fo_field_name = f"hf_{field_name}"
         sample_dict[fo_field_name] = row_content[field_name]
 
-    if (
+    def convert_list_field(sample_dict, row):
+        row_content = row["row"]
+        fo_field_name = field_name
+        if field_name in FIFTYONE_BUILTIN_FIELDS:
+            fo_field_name = f"hf_{field_name}"
+        sample_dict[fo_field_name] = row_content[field_name]
+
+    if isinstance(feature, list):
+        return convert_list_field
+    elif (
         feature["_type"] == "Value"
         and feature["dtype"] not in SUPPORTED_DTYPES
     ):
@@ -970,7 +1178,7 @@ def _build_parquet_to_fiftyone_conversion(config, split, subset, **kwargs):
     for lfn, lft in zip(lf_names, lf_types):
         feature = features[lfn]
         feature_converters[lfn] = _build_label_field_converter(
-            lfn, lft.replace("_fields", ""), feature, config, download_dir
+            lfn, lft.replace("_fields", ""), feature, download_dir
         )
 
     for feature_name, feature in features.items():
@@ -993,7 +1201,10 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
     )
     max_samples = kwargs.get("max_samples", None)
     if max_samples is not None:
-        num_rows = min(num_rows, max_samples)
+        curr_num_rows = dataset.count()
+        if max_samples == curr_num_rows:
+            return
+        num_rows = min(num_rows, max_samples - curr_num_rows)
 
     num_workers = fou.recommend_thread_pool_workers(
         kwargs.get("num_workers", None)
@@ -1032,6 +1243,18 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
                 revision=config._revision,
             )
 
+            ## get urls and filepaths for media fields
+            for row in rows:
+                for convert in feature_converters.values():
+                    if inspect.ismethod(convert) and isinstance(
+                        convert.__self__, MediaFieldConverter
+                    ):
+                        res = convert({}, row)
+                        if res is not None:
+                            urls_and_filepaths.append(res)
+
+            _download_images(urls_and_filepaths, num_workers)
+
             samples = []
             for row in rows:
                 sample_dict = {}
@@ -1047,8 +1270,6 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
 
             dataset.add_samples(samples, progress=False)
 
-            _download_images(urls_and_filepaths, num_workers)
-
             pb.update(count=len(samples))
 
 
@@ -1056,9 +1277,10 @@ def _configure_dataset_media_fields(dataset, config):
     media_fields = config.media_fields
     media_field_keys = list(media_fields.keys())
     if len(media_field_keys) > 1:
-        dataset.app_config_media_fields = media_field_keys
+        dataset.app_config.media_fields = media_field_keys
     if "thumbnail_path" in media_field_keys:
         dataset.app_config.grid_media_field = "thumbnail_path"
+
     dataset.save()
 
 
@@ -1099,7 +1321,10 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     overwrite = kwargs.get("overwrite", False)
     persistent = kwargs.get("persistent", False)
     max_samples = kwargs.get("max_samples", None)
+    batch_size = kwargs.get("batch_size", None)
     splits = _parse_split_kwargs(**kwargs)
+
+    batch_size = DEFAULT_BATCH_SIZE if batch_size is None else batch_size
 
     download_dir = _get_download_dir(config._repo_id, **kwargs)
 
@@ -1111,7 +1336,7 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
 
     dataset_type_name = config._format.strip()
 
-    if dataset_type_name == "FiftyOneDataset" and max_samples is not None:
+    if dataset_type_name == "FiftyOneDataset":
         # If the dataset is a FiftyOneDataset, download only the necessary files
         with _no_progress_bars():
             hfh.snapshot_download(
@@ -1147,15 +1372,31 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
         return dataset
 
     filepaths = _get_files_to_download(dataset)
+
     if filepaths:
-        logger.info(f"Downloading {len(filepaths)} media files...")
-        filenames = [os.path.basename(fp) for fp in filepaths]
-        allowed_globs = ["data/" + fn for fn in filenames]
+        _download_files_in_batches(
+            filepaths, download_dir, batch_size, **init_download_kwargs
+        )
+    return dataset
+
+
+def _download_files_in_batches(
+    filepaths, download_dir, batch_size, **init_download_kwargs
+):
+    logger.info(f"Downloading {len(filepaths)} media files...")
+    rel_paths = [os.path.relpath(fp, download_dir) for fp in filepaths]
+    num_files = len(filepaths)
+    num_batches = math.ceil(num_files / batch_size)
+    from tqdm import tqdm
+
+    for i in tqdm(range(num_batches)):
+        start_idx = i * batch_size
+        end_idx = min((i + 1) * batch_size, num_files)
+        batch_paths = rel_paths[start_idx:end_idx]
         with _no_progress_bars():
             hfh.snapshot_download(
-                **init_download_kwargs, allow_patterns=allowed_globs
+                **init_download_kwargs, allow_patterns=batch_paths
             )
-    return dataset
 
 
 def _load_parquet_files_dataset_from_config(config, **kwargs):

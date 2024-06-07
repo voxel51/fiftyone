@@ -1,23 +1,18 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
-import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix(`built-in-operators`);
+const datasetName = getUniqueDatasetNameWithPrefix("built-in-operators");
 const test = base.extend<{
   operatorsBrowser: OperatorsBrowserPom;
   viewBar: ViewBarPom;
-  histogramPanel: HistogramPom;
 }>({
   operatorsBrowser: async ({ page }, use) => {
     await use(new OperatorsBrowserPom(page));
   },
   viewBar: async ({ page }, use) => {
     await use(new ViewBarPom(page));
-  },
-  histogramPanel: async ({ page, eventUtils }, use) => {
-    await use(new HistogramPom(page, eventUtils));
   },
 });
 

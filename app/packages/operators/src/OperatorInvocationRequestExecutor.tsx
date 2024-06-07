@@ -31,7 +31,9 @@ function RequestExecutor({ queueItem, onSuccess, onError }) {
   useEffect(() => {
     executor.execute(queueItem.request.params, {
       callback: queueItem.callback,
+      ...(queueItem?.request?.options || {}),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;

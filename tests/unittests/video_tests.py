@@ -13,7 +13,9 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.video as fov
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -2198,6 +2200,62 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.first().frames.first().filepath, "BAR.JPG")
 
     @drop_datasets
+    def test_make_frames_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+        )
+        sample1.frames[1] = fo.Frame(filepath="frame11.jpg", hello="world")
+        sample1.frames[2] = fo.Frame(
+            filepath="frame12.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            ),
+        )
+        sample1.frames[3] = fo.Frame(filepath="frame13.jpg", hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+        )
+        sample2.frames[1] = fo.Frame(
+            filepath="frame21.jpg",
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame(filepath="frame23.jpg")
+        sample2.frames[5] = fo.Frame(filepath="frame25.jpg", hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        frames_view = dataset.to_frames()
+        frames_dataset = fov.make_frames_dataset(dataset)
+
+        self.assertNotEqual(
+            frames_dataset._sample_collection_name,
+            dataset._sample_collection_name,
+        )
+        self.assertIsNone(frames_dataset._frame_collection_name)
+        self.assertTrue(frames_view._is_generated)
+        self.assertFalse(frames_dataset._is_generated)
+        self.assertEqual(len(frames_dataset), dataset.count("frames"))
+        self.assertEqual(len(frames_dataset), len(frames_view))
+
+    @drop_datasets
     def test_to_clip_frames(self):
         dataset = fo.Dataset()
 
@@ -3223,6 +3281,77 @@ class VideoTests(unittest.TestCase):
 
         schema = trajectories.get_frame_field_schema()
         self.assertIn("detections", schema)
+
+    @drop_datasets
+    def test_make_clips_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="party", support=[3, 5]),
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                ]
+            ),
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        clips_view = dataset.to_clips("events")
+        clips_dataset = foc.make_clips_dataset(dataset, "events")
+
+        self.assertNotEqual(
+            clips_dataset._sample_collection_name,
+            dataset._sample_collection_name,
+        )
+        self.assertNotEqual(
+            clips_dataset._frame_collection_name,
+            dataset._frame_collection_name,
+        )
+        self.assertTrue(clips_view._is_generated)
+        self.assertFalse(clips_dataset._is_generated)
+        self.assertEqual(len(clips_dataset), len(clips_view))
+        self.assertEqual(
+            clips_dataset.count("frames"), clips_view.count("frames")
+        )
 
 
 if __name__ == "__main__":

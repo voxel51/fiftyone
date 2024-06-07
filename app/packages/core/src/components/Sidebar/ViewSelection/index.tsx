@@ -43,11 +43,9 @@ export default function ViewSelection() {
   const setEditView = useSetRecoilState(viewDialogContent);
   const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
-  const isReadOnly = useRecoilValue(fos.readOnly);
-  const canEdit = useMemo(
-    () => canEditSavedViews && !isReadOnly,
-    [canEditSavedViews, isReadOnly]
-  );
+
+  const disabled = canEditSavedViews.enabled !== true;
+  const disabledMsg = canEditSavedViews.message;
 
   const [data, refetch] = useRefetchableSavedViews();
 
@@ -145,7 +143,7 @@ export default function ViewSelection() {
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
-      if (!canEdit) {
+      if (disabled) {
         return;
       }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
@@ -160,13 +158,13 @@ export default function ViewSelection() {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView, canEdit]);
+  }, [isEmptyView, disabled]);
 
   return (
     <Suspense fallback="Loading saved views...">
       <Box>
         <ViewDialog
-          canEdit={canEdit}
+          canEdit={!disabled}
           id="saved-views"
           savedViews={items}
           onEditSuccess={(
@@ -204,7 +202,7 @@ export default function ViewSelection() {
           }}
         />
         <Selection
-          readonly={!canEdit}
+          readonly={disabled}
           id="saved-views"
           selected={selected}
           setSelected={(item: fos.DatasetViewOption) => {
@@ -235,18 +233,14 @@ export default function ViewSelection() {
           lastFixedOption={
             <LastOption
               data-cy={`saved-views-create-new`}
-              onClick={() => canEdit && !isEmptyView && setIsOpen(true)}
-              disabled={isEmptyView || !canEdit}
-              title={
-                canEdit
-                  ? undefined
-                  : "Can not save filters as a view in read-only mode"
-              }
+              onClick={() => !disabled && !isEmptyView && setIsOpen(true)}
+              disabled={isEmptyView || disabled}
+              title={disabledMsg}
             >
               <Box style={{ width: "12%" }}>
-                <AddIcon fontSize="small" disabled={isEmptyView || !canEdit} />
+                <AddIcon fontSize="small" disabled={isEmptyView || disabled} />
               </Box>
-              <TextContainer disabled={isEmptyView || !canEdit}>
+              <TextContainer disabled={isEmptyView || disabled}>
                 Save current filters as view
               </TextContainer>
             </LastOption>

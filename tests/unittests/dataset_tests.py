@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -554,6 +555,22 @@ class DatasetTests(unittest.TestCase):
 
         fo.config.timezone = None
         dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        # Now change system time to something GMT+
+        system_timezone = os.environ.get("TZ")
+        try:
+            os.environ["TZ"] = "Europe/Madrid"
+            time.tzset()
+            dataset.reload()
+        finally:
+            if system_timezone is None:
+                del os.environ["TZ"]
+            else:
+                os.environ["TZ"] = system_timezone
+            time.tzset()
 
         self.assertEqual(type(sample.date), date)
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
@@ -2858,6 +2875,40 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertListEqual(dataset._doc.saved_views, [])
 
+    @drop_datasets
+    def test_concurrent_saved_view_updates(self):
+        dataset = fo.Dataset()
+        v = dataset.limit(2)
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        v2 = also_dataset.limit(5)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test add save view safety
+        dataset.save_view("view1", v)
+        also_dataset.save_view("view2", v2)
+
+        self.assertListEqual(dataset.list_saved_views(), ["view1"])
+
+        dataset.reload()
+        self.assertListEqual(dataset.list_saved_views(), ["view1", "view2"])
+
+        # Test delete saved view safety
+        also_dataset.reload()
+        dataset.delete_saved_view("view1")
+        also_dataset.delete_saved_view("view2")
+        dataset.reload()
+        self.assertListEqual(dataset.list_saved_views(), [])
+
+        # Test delete all saved views safety
+        also_dataset.reload()
+        dataset.save_view("view1", v)
+        also_dataset.delete_saved_views()
+        also_dataset.reload()
+        self.assertListEqual(also_dataset.list_saved_views(), [])
+
     def test_workspaces(self):
         dataset = self.dataset
 
@@ -3050,6 +3101,39 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset.delete_workspaces()
 
         self.assertListEqual(dataset._doc.workspaces, [])
+
+    @drop_datasets
+    def test_concurrent_workspace_updates(self):
+        dataset = fo.Dataset()
+        space = fo.Space()
+
+        # Don't reuse singleton; we want to test concurrent edits here
+        dataset._instances.pop(dataset.name)
+        also_dataset = fo.load_dataset(dataset.name)
+        self.assertIsNot(dataset, also_dataset)
+
+        # Test add workspace safety
+        dataset.save_workspace("ws1", space)
+        also_dataset.save_workspace("ws2", space)
+
+        self.assertListEqual(dataset.list_workspaces(), ["ws1"])
+
+        dataset.reload()
+        self.assertListEqual(dataset.list_workspaces(), ["ws1", "ws2"])
+
+        # Test delete workspace safety
+        also_dataset.reload()
+        dataset.delete_workspace("ws1")
+        also_dataset.delete_workspace("ws2")
+        dataset.reload()
+        self.assertListEqual(dataset.list_workspaces(), [])
+
+        # Test delete all workspaces safety
+        also_dataset.reload()
+        dataset.save_workspace("ws1", space)
+        also_dataset.delete_workspaces()
+        also_dataset.reload()
+        self.assertListEqual(also_dataset.list_workspaces(), [])
 
     def test_runs(self):
         dataset = self.dataset

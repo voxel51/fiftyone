@@ -8,9 +8,8 @@
 import itertools
 import os
 from collections import Counter
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic.dataclasses import dataclass
 
 import fiftyone.core.storage as fos
 
@@ -21,6 +20,7 @@ from .object_3d import Object3D
 from .pointcloud import PointCloud
 from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
+from .validators import BaseValidatedDataClass, validate_color, validate_list
 
 fo3d_path_attributes = [
     "pcd_path",
@@ -33,8 +33,7 @@ fo3d_path_attributes = [
 ]
 
 
-@dataclass
-class SceneBackground:
+class SceneBackground(BaseValidatedDataClass):
     """Represents the background of the scene.
 
     Args:
@@ -49,12 +48,51 @@ class SceneBackground:
             to ``1.0``. This only applies for ``image`` and ``cube`` backgrounds
     """
 
-    color: Optional[str] = None
-    image: Optional[str] = None
-    cube: Optional[List[str]] = None
-    intensity: Optional[float] = 1.0
+    def __init__(
+        self,
+        color: Optional[str] = None,
+        image: Optional[str] = None,
+        cube: Optional[List[str]] = None,
+        intensity: Optional[float] = 1.0,
+    ):
+        self.color = color
+        self.image = image
+        self.cube = cube
+        self.intensity = intensity
 
-    def as_dict(self):
+    @property
+    def color(self) -> Union[str, None]:
+        return self._color
+
+    @color.setter
+    def color(self, value: Optional[str]) -> None:
+        self._color = validate_color(value, nullable=True)
+
+    @property
+    def image(self) -> Union[str, None]:
+        return self._image
+
+    @image.setter
+    def image(self, value: Optional[str]) -> None:
+        self._image = None if value is None else str(value)
+
+    @property
+    def cube(self) -> Union[List[str], None]:
+        return self._cube
+
+    @cube.setter
+    def cube(self, value: Optional[List[str]]) -> None:
+        self._cube = validate_list(value, length=6, nullable=True)
+
+    @property
+    def intensity(self) -> Union[float, None]:
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value: Optional[float]) -> None:
+        self._intensity = None if value is None else float(value)
+
+    def as_dict(self) -> dict:
         return {
             "color": self.color,
             "image": self.image,
@@ -75,6 +113,29 @@ class SceneBackground:
 class Scene(Object3D):
     """Represents a scene graph which contains a hierarchy of 3D objects.
 
+    Example usage::
+
+        import fiftyone as fo
+
+        scene = fo.Scene()
+
+        obj_mesh = fo.ObjMesh(
+            "obj_mesh_name", "/path/to/mesh.obj", mtl_path="/path/to/mesh.mtl"
+        )
+        gltf_mesh = fo.GltfMesh("gltf_mesh_name", "/path/to/mesh.gltf")
+        pcd = fo.PointCloud("pcd_name", "/path/to/points.pcd")
+
+        scene.add(obj_mesh)
+        scene.add(gltf_mesh)
+        scene.add(pcd)
+
+        scene.write("/path/to/scene.fo3d")
+
+        sample = fo.Sample("/path/to/scene.fo3d")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
     Args:
         camera (None): the default camera of the scene. If ``None``, a default
             :class:`fiftyone.core.threed.PerspectiveCamera` is created with
@@ -84,27 +145,6 @@ class Scene(Object3D):
             directional lights placed at different angles around the scene
         background (None): the background for the scene. May be a color, image,
             or a skybox
-
-    Usage::
-
-            scene = Scene()
-
-            obj_mesh = ObjMesh(
-                "obj_mesh_name", "/path/to/obj", mtl_path="/path/to/mtl"
-            )
-            gltf_mesh = GltfMesh("gltf_mesh_name", "/path/to/gltf")
-            pcd = PointCloud("pcd_name", "/path/to/pcd")
-
-            scene.add(obj_mesh)
-            scene.add(gltf_mesh)
-            scene.add(pcd)
-
-            scene.write("/path/to/scene.fo3d")
-
-            dataset = fo.Dataset()
-            dataset.add_sample(fo.Sample("/path/to/scene.fo3d"))
-
-            assert dataset.media_type == "3d"
     """
 
     def __init__(
@@ -123,7 +163,6 @@ class Scene(Object3D):
         self.background = background
 
     def __repr__(self):
-        """Return a string representation of the scene."""
         nodes_summary = self.get_scene_summary()
         repr_str = "fo3d scene with "
         asset_detected = False
@@ -147,7 +186,7 @@ class Scene(Object3D):
         return Scene._from_fo3d_dict(self.as_dict())
 
     def _resolve_node_asset_paths(self, node, fo3d_path_dir):
-        for asset_path_field in node._asset_path_fields or []:
+        for asset_path_field in node._asset_path_fields:
             asset_path = getattr(node, asset_path_field, None)
             if asset_path:
                 resolved_asset_path = self._resolve_asset_path(
@@ -210,12 +249,58 @@ class Scene(Object3D):
 
         Args:
             include_self: whether to include the current node in the traversal
+
+        Returns:
+            a generator that yields :class:`Object3D` instances
         """
         if include_self:
             yield self
 
         for child in self.children:
             yield from child.traverse(include_self=True)
+
+    def update_asset_paths(self, asset_rewrite_paths: dict):
+        """Update asset paths in this scene according to an input dict mapping.
+
+        Asset path is unchanged if it does not exist in ``asset_rewrite_paths``
+
+        Args:
+            asset_rewrite_paths: ``dict`` mapping asset path to new asset path
+
+        Returns:
+            ``True`` if the scene was modified.
+        """
+        scene_modified = False
+        for node in self.traverse():
+            for path_attribute in node._asset_path_fields:
+                asset_path = getattr(node, path_attribute, None)
+                new_asset_path = asset_rewrite_paths.get(asset_path)
+
+                if new_asset_path is not None and asset_path != new_asset_path:
+                    setattr(node, path_attribute, new_asset_path)
+                    scene_modified = True
+
+        # modify scene background paths, if any
+        if self.background is not None:
+            if self.background.image is not None:
+                new_asset_path = asset_rewrite_paths.get(self.background.image)
+                if (
+                    new_asset_path is not None
+                    and new_asset_path != self.background.image
+                ):
+                    self.background.image = new_asset_path
+                    scene_modified = True
+
+            if self.background.cube is not None:
+                new_cube = [
+                    asset_rewrite_paths.get(face, face)
+                    for face in self.background.cube
+                ]
+                if new_cube != self.background.cube:
+                    self.background.cube = new_cube
+                    scene_modified = True
+
+        return scene_modified
 
     def get_scene_summary(self):
         """Returns a summary of the scene."""
@@ -231,31 +316,35 @@ class Scene(Object3D):
         }
 
     def get_asset_paths(self):
-        """Collect all asset paths in the scene. Asset paths aren't resolved to
-        absolute paths.
+        """Returns a list of all asset paths in the scene.
+
+        Note that any relative asset paths are not resolved to absolute paths.
+
+        Returns:
+            a list of asset paths
         """
-        asset_paths = list(
+        asset_paths = set(
             itertools.chain.from_iterable(
                 node._get_asset_paths() for node in self.traverse()
             )
         )
 
-        # append paths in scene background, if any
         if self.background is not None:
             if self.background.image is not None:
-                asset_paths.append(self.background.image)
+                asset_paths.add(self.background.image)
             if self.background.cube is not None:
-                asset_paths.extend(self.background.cube)
-        return asset_paths
+                asset_paths.update(self.background.cube)
+
+        return list(asset_paths)
 
     def _resolve_asset_path(self, root: str, path: str):
         if path is None:
             return None
 
         if not fos.isabs(path):
-            path = fos.join(root, path)
+            path = fos.abspath(fos.join(root, path))
 
-        return fos.resolve(path)
+        return path
 
     def _to_dict_extra(self):
         return {
@@ -297,7 +386,14 @@ class Scene(Object3D):
 
     @staticmethod
     def from_fo3d(path: str):
-        """Load a scene from a ``.fo3d`` file."""
+        """Loads a scene from an FO3D file.
+
+        Args:
+            path: the path to an ``.fo3d`` file
+
+        Returns:
+            a :class:`Scene`
+        """
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
 

@@ -11,18 +11,21 @@ from typing import Optional
 
 from .material_3d import MeshMaterial
 from .mesh import Mesh
+from .transformation import Quaternion, Vec3UnionType
 
 
 class Shape3D(Mesh):
     """Represents an abstract 3D shape.
 
     Args:
-        name (str): the name of the mesh
+        name: the name of the mesh
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the shape mesh. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial` if not provided
-        **kwargs: keyword arguments for the :class:`fiftyone.core.threed.Mesh`
-            parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     pass
@@ -39,7 +42,10 @@ class BoxGeometry(Shape3D):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the box. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Shape3D` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     def __init__(
@@ -49,9 +55,19 @@ class BoxGeometry(Shape3D):
         height: float = 1,
         depth: float = 1,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.width = width
         self.height = height
         self.depth = depth
@@ -90,7 +106,10 @@ class CylinderGeometry(Shape3D):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the cylinder. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Shape3D` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     def __init__(
@@ -105,9 +124,19 @@ class CylinderGeometry(Shape3D):
         theta_start: float = 0,
         theta_length: float = 2 * math.pi,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.radius_top = radius_top
         self.radius_bottom = radius_bottom
         self.height = height
@@ -154,7 +183,10 @@ class SphereGeometry(Shape3D):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the sphere. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Shape3D` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     def __init__(
@@ -168,9 +200,19 @@ class SphereGeometry(Shape3D):
         theta_start: float = 0,
         theta_length: float = math.pi,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.radius = radius
         self.width_segments = width_segments
         self.height_segments = height_segments
@@ -204,7 +246,10 @@ class PlaneGeometry(Shape3D):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             the default material for the plane. Defaults to
             :class:`fiftyone.core.threed.MeshStandardMaterial`
-        **kwargs: keyword arguments for the :class:`Shape3D` parent class
+        visible (True): default visibility of the mesh in the scene
+        position (None): the position of the mesh in object space
+        quaternion (None): the quaternion of the mesh in object space
+        scale (None): the scale of the mesh in object space
     """
 
     def __init__(
@@ -213,9 +258,19 @@ class PlaneGeometry(Shape3D):
         width: float = 1,
         height: float = 1,
         default_material: Optional[MeshMaterial] = None,
-        **kwargs
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
     ):
-        super().__init__(name=name, material=default_material, **kwargs)
+        super().__init__(
+            name=name,
+            material=default_material,
+            visible=visible,
+            position=position,
+            scale=scale,
+            quaternion=quaternion,
+        )
         self.width = width
         self.height = height
 

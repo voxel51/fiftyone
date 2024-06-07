@@ -15,7 +15,7 @@ import {
 import AddPanelButton from "./AddPanelButton";
 import Panel from "./Panel";
 import PanelTab from "./PanelTab";
-import SavedSpaces from "./SavedSpaces";
+import Workspaces from "./Workspaces";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
 
@@ -50,7 +50,7 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && <SavedSpaces />}
+        {node.isRoot() && <Workspaces />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -80,7 +80,7 @@ export default function Space({ node, id }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && <SavedSpaces />}
+        {node.isRoot() && <Workspaces />}
         <PanelTabs data-type="panel-container" data-cy="panel-container">
           <ReactSortable
             group="panel-tabs"
