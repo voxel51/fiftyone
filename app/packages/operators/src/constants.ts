@@ -7,3 +7,9 @@ export enum OPERATOR_PROMPT_AREAS {
   DRAWER_LEFT = "operator_prompt_area_drawer_left",
   DRAWER_RIGHT = "operator_prompt_area_drawer_right",
 }
+export enum QueueItemStatus {
+  Pending,
+  Executing,
+  Completed,
+  Failed,
+}
