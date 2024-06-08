@@ -1263,6 +1263,93 @@ class FileWriter(object):
             self.register_path(inpath, outpath)
 
 
+class GreedyFileReader(object):
+    """File reader that greedily reads a configurable batch size of files
+    every time it is asked to read an uncached file.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        with fos.GreedyFileReader(filepaths) as f:
+            for filepath in filepaths:
+                file_bytes = f.read(filepath)
+
+    Args:
+        filepaths: a list of filepaths that will be read
+        binary (False): whether to read the files in binary mode
+        parser (None): an optional function to apply to the loaded file bytes
+            prior to returning them
+        use_cache (False): whether to use the locally cached versions of any
+            remote files, if they exist
+        batch_size (100): the number of files to read in a batch
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+
+    def __init__(
+        self,
+        filepaths,
+        binary=False,
+        parser=None,
+        use_cache=False,
+        batch_size=100,
+        progress=None,
+    ):
+        self.filepaths = list(filepaths)
+        self.binary = binary
+        self.parser = parser
+        self.use_cache = use_cache
+        self.batch_size = batch_size
+        self.progress = progress
+
+        self._cache = {}
+        self._offset = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._cache.clear()
+
+    def _read_next_batch(self):
+        i = self._offset
+        j = self._offset + self.batch_size
+        filepaths = self.filepaths[i:j]
+
+        if self.use_cache:
+            _filepaths, _ = foc.media_cache.use_cached_paths(filepaths)
+        else:
+            _filepaths = filepaths
+
+        files_bytes = read_files(
+            _filepaths, binary=self.binary, progress=self.progress
+        )
+
+        self._cache.update(zip(filepaths, files_bytes))
+        self._offset += self.batch_size
+
+    def read(self, filepath):
+        file_bytes = self._cache.pop(filepath, None)
+        if file_bytes is None:
+            self._read_next_batch()
+
+            file_bytes = self._cache.pop(filepath, None)
+            if file_bytes is None:
+                if self.use_cache:
+                    _filepath, _ = foc.media_cache.use_cached_path(filepath)
+                else:
+                    _filepath = filepath
+
+                file_bytes = read_file(_filepath, binary=self.binary)
+
+        if self.parser is not None:
+            return self.parser(file_bytes)
+
+        return file_bytes
+
+
 def open_file(path, mode="r"):
     """Opens the given file for reading or writing.
 
