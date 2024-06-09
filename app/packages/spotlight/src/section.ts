@@ -4,8 +4,13 @@
 
 import styles from "./styles.module.css";
 
-import Row from "./row";
-import type { Edge, ItemData, SpotlightConfig, Updater } from "./types";
+import type {
+  Edge,
+  ItemData,
+  Request,
+  SpotlightConfig,
+  Updater,
+} from "./types";
 
 import { closest } from "./closest";
 import {
@@ -17,8 +22,13 @@ import {
   TOP,
   ZERO,
 } from "./constants";
+import Row from "./row";
 import tile from "./tile";
 import { create } from "./utilities";
+
+type Renderer<K, V> = (
+  run: () => { section: Section<K, V>; offset: number }
+) => void;
 
 export class Section<K, V> {
   readonly #config: SpotlightConfig<K, V>;
@@ -29,6 +39,8 @@ export class Section<K, V> {
   #direction: DIRECTION;
   #dirty: Set<Row<K, V>> = new Set();
   #end: Edge<K, V>;
+  #nextMap: WeakMap<symbol, symbol> = new WeakMap();
+  #previousMap: WeakMap<symbol, symbol> = new WeakMap();
   #shown: Set<Row<K, V>> = new Set();
   #start: Edge<K, V>;
   #rows: Row<K, V>[] = [];
@@ -197,11 +209,28 @@ export class Section<K, V> {
     for (const row of this.#rows) !this.#shown.has(row) && this.#dirty.add(row);
   }
 
+  async first(
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: () => Section<K, V>
+  ) {
+    if (!this.#rows.length) {
+      await this.next(request, renderer, sibling);
+    }
+
+    if (!this.#rows.length) {
+      return undefined;
+    }
+
+    return this.#direction === DIRECTION.BACKWARD
+      ? this.#rows[0].last
+      : this.#rows[0].first;
+  }
+
   async next(
-    get: (
-      key: K
-    ) => Promise<{ next?: K; previous?: K; items: ItemData<K, V>[] }>,
-    render: (run: () => { section: Section<K, V>; offset: number }) => void
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: () => Section<K, V>
   ) {
     if (!this.#end || this.#end.key === null) {
       return Boolean(this.#end.key === null);
@@ -209,13 +238,17 @@ export class Section<K, V> {
     const end = this.#end;
     this.#end = undefined;
 
-    const data = await get(end.key);
+    const data = await request(end.key);
 
-    render(() => {
+    renderer(() => {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items],
         this.#height,
-        Boolean(data.next)
+        Boolean(data.next),
+        data.focus,
+        request,
+        renderer,
+        sibling
       );
 
       if (!this.#start) {
@@ -270,6 +303,48 @@ export class Section<K, V> {
     return row.from + row.height;
   }
 
+  async #next(
+    id: symbol,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: () => Section<K, V>
+  ) {
+    const next = this.#nextMap.get(id);
+    if (next) {
+      return next;
+    }
+
+    if (this.#direction === DIRECTION.FORWARD) {
+      const result = await this.next(request, renderer, sibling);
+      if (result) return this.#nextMap.get(id);
+    } else {
+      return await sibling().first(request, renderer, sibling);
+    }
+
+    return undefined;
+  }
+  async #previous(
+    id: symbol,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: () => Section<K, V>
+  ) {
+    const previous = this.#previousMap.get(id);
+    if (previous) {
+      return previous;
+    }
+
+    if (this.#direction === DIRECTION.BACKWARD) {
+      const result = await this.next(request, renderer, sibling);
+
+      if (result) return this.#previousMap.get(id);
+    } else {
+      return await sibling().first(request, renderer, sibling);
+    }
+
+    return undefined;
+  }
+
   #reverse() {
     this.#rows.reverse();
     const old = this.#direction;
@@ -292,7 +367,11 @@ export class Section<K, V> {
   #tile(
     items: ItemData<K, V>[],
     from: number,
-    useRemainder: boolean
+    useRemainder: boolean,
+    focus: (id?: symbol) => symbol,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: () => Section<K, V>
   ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
     const breakpoints = tile(
@@ -304,14 +383,72 @@ export class Section<K, V> {
     let offset = this.#rows.length ? this.#config.spacing : ZERO;
     let previous = ZERO;
     const rows: Row<K, V>[] = [];
+
+    const chain = (
+      first: symbol,
+      next: WeakMap<symbol, symbol>,
+      previous: WeakMap<symbol, symbol>
+    ) => {
+      let last = first;
+
+      return (id: symbol) => {
+        if (last) {
+          previous.set(id, last);
+          next.set(last, id);
+        }
+
+        last = id;
+      };
+    };
+
+    const forward =
+      this.#direction === DIRECTION.BACKWARD
+        ? this.#previousMap
+        : this.#nextMap;
+    const backward =
+      this.#direction === DIRECTION.BACKWARD
+        ? this.#nextMap
+        : this.#previousMap;
+
+    const first = !this.#rows.length
+      ? undefined
+      : this.#rows[this.#rows.length - 1][
+          this.#direction === DIRECTION.BACKWARD ? "first" : "last"
+        ];
+
+    const link = chain(first, forward, backward);
     for (let index = ZERO; index < breakpoints.length; index++) {
       const rowItems = items.slice(previous, breakpoints[index]);
+      for (const row of rowItems) link(row.id);
 
-      this.#direction === DIRECTION.BACKWARD && rowItems.reverse();
+      if (this.#direction === DIRECTION.BACKWARD) {
+        rowItems.reverse();
+      }
 
       const row = new Row({
         config: this.#config,
+        focus,
         from: from + offset,
+        next: async (from: number) => {
+          let answer = focus();
+          const iter =
+            from >= ZERO
+              ? (id) => this.#next(id, request, renderer, sibling)
+              : (id) => this.#previous(id, request, renderer, sibling);
+          let current = Math.abs(from);
+          while (current !== ZERO) {
+            const result = await iter(answer);
+            if (!result) {
+              answer = undefined;
+              break;
+            }
+            answer = result;
+            current--;
+          }
+
+          answer && focus(answer);
+          return answer;
+        },
         items: rowItems,
         width: this.#width,
       });

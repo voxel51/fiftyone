@@ -41,6 +41,7 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
+        sample_id (None): a sample ID `str`
         color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
@@ -50,18 +51,20 @@ class StateDescription(etas.Serializable):
     def __init__(
         self,
         config=None,
+        color_scheme=None,
+        field_visibility_stage=None,
+        group_slice=None,
         dataset=None,
+        sample_id=None,
         selected=None,
         selected_labels=None,
         spaces=None,
-        color_scheme=None,
         view=None,
         view_name=None,
-        field_visibility_stage=None,
-        group_slice=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
+        self.sample_id = sample_id
         self.selected = selected or []
         self.selected_labels = selected_labels or []
         if dataset is not None:
@@ -191,6 +194,7 @@ class StateDescription(etas.Serializable):
         return cls(
             config=config,
             dataset=dataset,
+            sample_id=d.get("sample_id", None),
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
             view=view,

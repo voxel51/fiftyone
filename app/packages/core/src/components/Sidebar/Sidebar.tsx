@@ -1,4 +1,4 @@
-import { useTheme, Resizable } from "@fiftyone/components";
+import { Resizable, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
@@ -721,7 +721,7 @@ const InteractiveSidebar = ({
           <ViewSelection id="saved-views" />
         </Box>
       )}
-      <Filter modal={modal} />
+      {!modal && <Filter />}
       <SidebarColumn
         ref={container}
         data-cy="sidebar-column"

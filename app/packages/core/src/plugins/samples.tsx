@@ -1,15 +1,13 @@
+import { FilterAndSelectionIndicator } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import * as fos from "@fiftyone/state";
 import AppsIcon from "@mui/icons-material/Apps";
-import React, { Suspense } from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
-import Grid from "../components/Grid";
+import Grid from "../components/Grid/SpotlightGrid";
 import ContainerHeader from "../components/ImageContainerHeader";
-import * as fos from "@fiftyone/state";
-import { FilterAndSelectionIndicator } from "@fiftyone/components";
-import { EmptySamples } from "../components";
 
-const FlashlightContainer = styled.div`
+const Container = styled.div`
   position: relative;
   padding: 0 0 0 1rem;
   height: 100%;
@@ -18,12 +16,14 @@ const FlashlightContainer = styled.div`
 registerComponent({
   name: "Samples",
   label: "Samples",
-  component: () => (
-    <FlashlightContainer>
-      <Grid key={"grid"} />
-      <ContainerHeader key={"header"} />
-    </FlashlightContainer>
-  ),
+  component: () => {
+    return (
+      <Container>
+        <Grid key={"grid"} />
+        <ContainerHeader key={"header"} />
+      </Container>
+    );
+  },
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,

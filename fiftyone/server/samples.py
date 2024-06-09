@@ -5,6 +5,7 @@ FiftyOne Server samples pagination
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import strawberry as gql
 import typing as t
@@ -107,7 +108,7 @@ async def paginate_samples(
         after = "-1"
 
     if int(after) > -1:
-        view = view.skip(int(after) + 1)
+        view = view.skip(int(after))
 
     pipeline = view._pipeline(
         attach_frames=has_frames,

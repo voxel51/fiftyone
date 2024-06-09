@@ -1,13 +1,16 @@
+import type { Response } from "@fiftyone/spotlight";
+import type { Schema } from "@fiftyone/utilities";
+import type { VariablesOf } from "react-relay";
+import type { RecoilValueReadOnly } from "recoil";
+import type { Subscription } from "relay-runtime";
+
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
-import { Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { Schema } from "@fiftyone/utilities";
 import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
-import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import { Subscription } from "relay-runtime";
+import { fetchQuery, useRelayEnvironment } from "react-relay";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 const PAGE_SIZE = 20;
 
@@ -52,47 +55,53 @@ const useSpotlightPager = (
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
-  const store = useMemo(() => new WeakMap<symbol, Sample>(), []);
-  const records = useRef(new Set<string>());
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  const store = useMemo(
+    () => new WeakMap<symbol, { sample: Sample; index: number }>(),
+    []
   );
+  const records = useRef(new Set<string>());
 
-  const page = useMemo(() => {
-    return async (pageNumber: number) => {
-      const variables = pager(pageNumber, PAGE_SIZE);
-      let subscription: Subscription;
-      return new Promise<Response<number, Sample>>((resolve) => {
-        subscription = fetchQuery<foq.paginateSamplesQuery>(
-          environment,
-          foq.paginateSamples,
-          variables,
-          { networkCacheConfig: {}, fetchPolicy: "store-or-network" }
-        ).subscribe({
-          next: (data) => {
-            const items = processSamplePageData(
-              pageNumber,
-              store,
-              data,
-              schema,
-              zoom,
-              records.current
-            );
+  const page = useRecoilCallback(
+    ({ snapshot }) => {
+      return async (pageNumber: number) => {
+        const variables = pager(pageNumber, PAGE_SIZE);
+        let subscription: Subscription;
+        const schema = await snapshot.getPromise(
+          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+        );
+        return new Promise<Response<number, Sample>>((resolve) => {
+          subscription = fetchQuery<foq.paginateSamplesQuery>(
+            environment,
+            foq.paginateSamples,
+            variables,
+            { networkCacheConfig: {}, fetchPolicy: "store-or-network" }
+          ).subscribe({
+            next: (data) => {
+              const items = processSamplePageData(
+                pageNumber,
+                store,
+                data,
+                schema,
+                zoom,
+                records.current
+              );
 
-            resolve({
-              items,
-              next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
-              previous: pageNumber > 0 ? pageNumber - 1 : null,
-            });
-          },
-          complete: () => {
-            subscription?.unsubscribe();
-          },
-          error: handleError,
+              resolve({
+                items,
+                next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
+                previous: pageNumber > 0 ? pageNumber - 1 : null,
+              });
+            },
+            complete: () => {
+              subscription?.unsubscribe();
+            },
+            error: handleError,
+          });
         });
-      });
-    };
-  }, [environment, handleError, pager, schema, store, zoom]);
+      };
+    },
+    [environment, handleError, pager, store, zoom]
+  );
 
   return { page, store, records };
 };

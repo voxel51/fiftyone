@@ -47,18 +47,18 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   if (countLoadable.state === "hasValue") {
     count.current = countLoadable.contents;
   }
-  const index = useRecoilValue(fos.modalSampleIndex);
+  const navigation = useRecoilValue(fos.currentModalNavigation);
   const setModal = fos.useSetExpandedSample();
 
   const navigateNext = useCallback(() => {
     onNavigate();
-    setModal((i) => i + 1);
-  }, [onNavigate, setModal]);
+    navigation?.next().then(setModal);
+  }, [navigation, onNavigate, setModal]);
 
   const navigatePrevious = useCallback(() => {
     onNavigate();
-    setModal((i) => i - 1);
-  }, [onNavigate, setModal]);
+    navigation?.previous().then(setModal);
+  }, [onNavigate, navigation, setModal]);
 
   const keyboardHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -77,7 +77,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         if (e.key === "x") {
           const current = await snapshot.getPromise(fos.currentModalSample);
           set(fos.selectedSamples, (selected) => {
-            const newSelected = new Set([...selected]);
+            const newSelected = new Set([...Array.from(selected)]);
             if (current) {
               if (newSelected.has(current.id)) {
                 newSelected.delete(current.id);
@@ -104,7 +104,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   return (
     <>
-      {!isNavigationHidden && index > 0 && (
+      {!isNavigationHidden && navigation?.previous && (
         <Arrow>
           <LookerArrowLeftIcon
             data-cy="nav-left-button"
@@ -112,7 +112,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           />
         </Arrow>
       )}
-      {!isNavigationHidden && count.current && index < count.current - 1 && (
+      {!isNavigationHidden && navigation?.next && (
         <Arrow isRight>
           <LookerArrowRightIcon
             data-cy="nav-right-button"

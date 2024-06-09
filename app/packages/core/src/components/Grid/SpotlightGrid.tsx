@@ -26,7 +26,6 @@ const Contain = styled.div`
 `;
 
 const Drag = styled(animated.div)`
-  z-index: 10000000;
   width: 100%;
   background: ${({ theme }) => theme.primary.plainColor};
   height: 4px;
@@ -134,6 +133,7 @@ function Grid() {
   const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
   selectSample.current = select;
+  const setNavigation = fos.useExpandSpotlightSample(spotlight, store);
 
   useEffect(() => {
     if (!spotlight) {

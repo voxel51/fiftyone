@@ -293,6 +293,13 @@ class SetDatasetColorScheme(Event):
 
 
 @dataclass
+class SetSample(Event):
+    """Set sample event"""
+
+    sample_id: t.Optional[str] = None
+
+
+@dataclass
 class SetSpaces(Event):
     """Set spaces event"""
 
@@ -321,6 +328,7 @@ class StateUpdate(Event):
 @dataclass
 class AppInitializer:
     dataset: t.Optional[str] = None
+    sample: t.Optional[str] = None
     view: t.Optional[str] = None
     workspace: t.Optional[str] = None
 

@@ -1,8 +1,10 @@
+import type { EventHandlerHook } from "./registerEvent";
+
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { getDatasetName, getParam, resolveURL } from "../utils";
-import { AppReadyState, EventHandlerHook } from "./registerEvent";
+import { AppReadyState } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -28,6 +30,7 @@ const useStateUpdate: EventHandlerHook = ({
           : payload.state.dataset ?? null,
         nextView: stateless ? getParam("view") : payload.state.saved_view_slug,
         extra: {
+          sampleId: state.sampleId || null,
           workspace: state.workspace?._name || null,
         },
       });

@@ -7,13 +7,17 @@ export interface Edge<K, V> {
   remainder?: ItemData<K, V>[];
 }
 
+export type Focus = (id?: symbol) => symbol | undefined;
+
 export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
 
 export interface ItemData<K, V> {
-  id: symbol;
-  key: K;
   aspectRatio: number;
   data: V;
+  id: symbol;
+  key: K;
+  next: symbol;
+  previous: symbol;
 }
 
 export type Render = (
@@ -30,15 +34,29 @@ export interface Response<K, V> {
   previous: K | null;
 }
 
+export type Request<K, V> = (key: K) => Promise<{
+  items: ItemData<K, V>[];
+  focus: Focus;
+  next?: K;
+  previous?: K;
+}>;
+
+export interface ItemClickInterface<K, V> {
+  event: MouseEvent;
+  item: ItemData<K, V>;
+  next: (from: number) => Promise<symbol | undefined>;
+}
+
+export type ItemClick<K, V> = (
+  callbackInterface: ItemClickInterface<K, V>
+) => boolean;
+
 export interface SpotlightConfig<K, V> {
   get: Get<K, V>;
   key: K;
   margin?: number;
   offset?: number;
-  onItemClick?: (callbackInterface: {
-    event: MouseEvent;
-    item: ItemData<K, V>;
-  }) => void;
+  onItemClick?: ItemClick<K, V>;
   render: Render;
   rowAspectRatioThreshold: number;
   spacing?: number;

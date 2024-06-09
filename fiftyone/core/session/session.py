@@ -5,6 +5,7 @@ Session class for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from dataclasses import asdict
 from functools import wraps
@@ -38,6 +39,7 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
+import fiftyone.core.sample as fosa
 from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -53,6 +55,7 @@ from fiftyone.core.session.events import (
     SelectSamples,
     SetColorScheme,
     SetDatasetColorScheme,
+    SetSample,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -139,6 +142,7 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
+    sample: fosa.Sample = None,
     spaces: Space = None,
     color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
@@ -161,6 +165,7 @@ def launch_app(
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        sample (None): an optional :class:`fiftyone.core.sample.Sample` to load
         spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
             defining a space configuration to load
         color_scheme (None): an optional
@@ -196,6 +201,7 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
+        sample=sample,
         spaces=spaces,
         color_scheme=color_scheme,
         plots=plots,
@@ -308,6 +314,7 @@ class Session(object):
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
+        sample (None): an optional :class:`fiftyone.core.sample.Sample` to load
         spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
             defining a space configuration to load
         color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
@@ -341,6 +348,7 @@ class Session(object):
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
         view_name: str = None,
+        sample: fosa.Sample = None,
         spaces: Space = None,
         color_scheme: food.ColorScheme = None,
         plots: fop.PlotManager = None,
@@ -415,6 +423,7 @@ class Session(object):
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
             view_name=final_view_name,
+            sample_id=sample.id if sample is not None else None,
             spaces=spaces,
             color_scheme=build_color_scheme(color_scheme, dataset, config),
         )
@@ -598,6 +607,31 @@ class Session(object):
             )
 
         self._state.config = config
+
+    @property
+    def sample(self) -> fosa.Sample:
+        """The layout state for the session."""
+        sample_id = self._state.sample_id
+        if sample_id is None:
+            return None
+
+        collection = self._state.view
+        if collection is None:
+            collection = self._state.dataset
+
+        if collection is None:
+            raise RuntimeError("no dataset or view is attached")
+
+        return collection[self._state.sample_id]
+
+    @sample.setter  # type: ignore
+    def sample(self, sample: t.Optional[t.Union[fosa.Sample, str]]) -> None:
+        if not isinstance(sample, (fosa.Sample, str)) and sample is not None:
+            raise ValueError(f"unexpected sample value '{sample}'")
+
+        sample_id = sample.id if isinstance(sample, fosa.Sample) else sample
+        self._state.sample = sample_id
+        self._client.send_event(SetSample(sample_id=sample_id))
 
     @property
     def spaces(self) -> Space:
@@ -1190,6 +1224,13 @@ def _attach_listeners(session: "Session"):
         event.slice,
     )
     session._client.add_event_listener("set_group_slice", on_set_group_slice)
+
+    on_set_sample: t.Callable[[SetSample], None] = lambda event: setattr(
+        session._state,
+        "sample",
+        event.sample_id,
+    )
+    session._client.add_event_listener("set_sample", on_set_sample)
 
     on_set_spaces: t.Callable[[SetSpaces], None] = lambda event: setattr(
         session._state,

@@ -8,8 +8,8 @@ import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
-import { Nullable } from "vitest";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
+import { sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
 import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
@@ -100,11 +100,10 @@ type ModalSampleResponse = ResponseFrom<mainSampleQuery> & {
 
 type ModalSelector = {
   id: string;
-  index: number;
 };
 
-export const currentModalSample = atom<ModalSelector | null>({
-  key: "currentModalSample",
+export const currentModalSample = sessionAtom({
+  key: "sessionSampleId",
   default: null,
 });
 
@@ -113,25 +112,14 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => Boolean(get(currentModalSample)),
 });
 
-export type ModalNavigation = (
-  index: number
-) => Promise<{ id: string; groupId?: string; groupByFieldValue?: string }>;
+export type ModalNavigation = () => Promise<ModalSelector>;
 
-export const currentModalNavigation = atom<Nullable<ModalNavigation>>({
+export const currentModalNavigation = atom<{
+  next?: ModalNavigation;
+  previous?: ModalNavigation;
+}>({
   key: "currentModalNavigation",
   default: null,
-});
-
-export const modalSampleIndex = selector<number>({
-  key: "modalSampleIndex",
-  get: ({ get }) => {
-    const current = get(currentModalSample);
-    if (!current) {
-      throw new Error("modal sample is not defined");
-    }
-
-    return current.index;
-  },
 });
 
 export const modalSampleId = selector<string>({

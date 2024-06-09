@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { atom, DefaultValue, RecoilState, selector } from "recoil";
+import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
 export const SPACES_DEFAULT = {
@@ -39,20 +39,18 @@ export interface Session {
   sessionPage: number;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
+  sessionSampleId?: { id: string };
+  sessionGroupId?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
 }
 
 export const SESSION_DEFAULT: Session = {
+  canCreateNewField: { enabled: true, message: undefined },
   canEditCustomColors: { enabled: true, message: undefined },
   canEditSavedViews: { enabled: true, message: undefined },
   canEditWorkspaces: { enabled: true, message: undefined },
-  canCreateNewField: { enabled: true, message: undefined },
   canModifySidebarGroup: { enabled: true, message: undefined },
   canTagSamplesOrLabels: { enabled: true, message: undefined },
-  readOnly: false,
-  selectedSamples: new Set(),
-  selectedLabels: [],
-  sessionSpaces: SPACES_DEFAULT,
   colorScheme: {
     colorPool: [],
     colorBy: "field",
@@ -65,18 +63,22 @@ export const SESSION_DEFAULT: Session = {
     defaultColorscale: { name: "viridis", list: null },
     defaultMaskTargetsColors: [],
   },
+  sessionSpaces: SPACES_DEFAULT,
   fieldVisibilityStage: undefined,
+  readOnly: false,
+  selectedSamples: new Set(),
+  selectedLabels: [],
   sessionPage: 0,
 };
 
 type SetterKeys = keyof Omit<
   Session,
   | "canCreateNewField"
-  | "canModifySidebarGroup"
   | "canEditCustomColors"
-  | "canTagSamplesOrLabels"
   | "canEditSavedViews"
   | "canEditWorkspaces"
+  | "canModifySidebarGroup"
+  | "canTagSamplesOrLabels"
   | "readOnly"
 >;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
@@ -186,12 +188,12 @@ export function sessionAtom<K extends keyof Session>(
 
       if (
         options.key === "canCreateNewField" ||
-        options.key === "canModifySidebarGroup" ||
         options.key === "canEditCustomColors" ||
-        options.key === "canTagSamplesOrLabels" ||
-        options.key === "readOnly" ||
         options.key === "canEditSavedViews" ||
         options.key === "canEditWorkspaces" ||
+        options.key === "canModifySidebarGroup" ||
+        options.key === "canTagSamplesOrLabels" ||
+        options.key === "readOnly" ||
         typeof newValue === "boolean"
       ) {
         throw new Error(`cannot set ${options.key}`);

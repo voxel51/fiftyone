@@ -25,9 +25,10 @@ const compilePath = (path: string): CompilePathResult => {
 };
 
 export type LocationState<T extends OperationType = OperationType> = {
-  view?: State.Stage[];
-  savedViewSlug?: string;
   fieldVisibility?: State.FieldVisibilityStage;
+  sampleId?: string;
+  savedViewSlug?: string;
+  view?: State.Stage[];
   workspace?: SpaceNodeJSON;
 } & VariablesOf<T>;
 

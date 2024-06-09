@@ -10,7 +10,7 @@ import {
   createMemoryHistory,
   Location,
 } from "history";
-import React from "react";
+import { default as React } from "react";
 import { loadQuery, PreloadedQuery } from "react-relay";
 import {
   ConcreteRequest,

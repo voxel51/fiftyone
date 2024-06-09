@@ -32,6 +32,7 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #keys = new WeakMap<symbol, K>();
 
   #backward: Section<K, V>;
+  #focused?: symbol;
   #forward: Section<K, V>;
   #page: K;
   #rect?: DOMRect;
@@ -104,12 +105,18 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#scrollReader?.destroy();
   }
 
-  async next() {
-    return await this.#next();
+  next() {
+    if (this.#forward.finished) return undefined;
+    return async () => {
+      this.#next();
+    };
   }
 
   async previous() {
-    return await this.#previous();
+    if (this.#backward.finished) return undefined;
+    return async () => {
+      await this.#previous();
+    };
   }
 
   updateItems(updater: Updater): void {
@@ -145,34 +152,44 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
+        focus: (id?: symbol) => {
+          if (id) {
+            this.#focused = id;
+          }
+          return this.#focused;
+        },
         items,
         next,
         previous,
       };
     };
 
-    return await this.#forward.next(forward, (runner) => {
-      if (!render) {
-        runner();
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        const { section } = runner();
-        const before = this.#containerHeight;
-        let offset: false | number = false;
-        if (section) {
-          const backward = this.#forward;
-          this.#forward = section;
-          this.#forward.attach(this.#element);
-          this.#backward.remove();
-          this.#backward = backward;
-          offset = before - this.#containerHeight + this.#config.spacing;
+    return await this.#forward.next(
+      forward,
+      (runner) => {
+        if (!render) {
+          runner();
+          return;
         }
 
-        this.#render({ zooming: false, offset, go: false });
-      });
-    });
+        requestAnimationFrame(() => {
+          const { section } = runner();
+          const before = this.#containerHeight;
+          let offset: false | number = false;
+          if (section) {
+            const backward = this.#forward;
+            this.#forward = section;
+            this.#forward.attach(this.#element);
+            this.#backward.remove();
+            this.#backward = backward;
+            offset = before - this.#containerHeight + this.#config.spacing;
+          }
+
+          this.#render({ zooming: false, offset, go: false });
+        });
+      },
+      () => this.#backward
+    );
   }
 
   async #previous(render = true) {
@@ -180,48 +197,58 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
+        focus: (id?: symbol) => {
+          if (id) {
+            this.#focused = id;
+          }
+          return this.#focused;
+        },
         items: [...items].reverse(),
         next: previous,
         previous: next,
       };
     };
 
-    return await this.#backward.next(backward, (runner) => {
-      if (!render) {
-        runner();
-        return;
-      }
+    return await this.#backward.next(
+      backward,
+      (runner) => {
+        if (!render) {
+          runner();
+          return;
+        }
 
-      const run = () =>
-        requestAnimationFrame(() => {
-          if (
-            this.#element.scrollTop > this.#containerHeight ||
-            this.#element.scrollTop < ZERO ||
-            this.#scrollReader.zooming()
-          ) {
-            requestAnimationFrame(run);
-            return;
-          }
-          const result = runner();
-          const offset = result.offset;
-          if (result.section) {
-            const forward = this.#backward;
-            this.#backward = result.section;
-            this.#backward.attach(this.#element);
+        const run = () =>
+          requestAnimationFrame(() => {
+            if (
+              this.#element.scrollTop > this.#containerHeight ||
+              this.#element.scrollTop < ZERO ||
+              this.#scrollReader.zooming()
+            ) {
+              requestAnimationFrame(run);
+              return;
+            }
+            const result = runner();
+            const offset = result.offset;
+            if (result.section) {
+              const forward = this.#backward;
+              this.#backward = result.section;
+              this.#backward.attach(this.#element);
 
-            this.#forward.remove();
-            this.#forward = forward;
-          }
+              this.#forward.remove();
+              this.#forward = forward;
+            }
 
-          this.#render({
-            go: false,
-            offset: typeof offset === "number" ? -offset : false,
-            zooming: false,
+            this.#render({
+              go: false,
+              offset: typeof offset === "number" ? -offset : false,
+              zooming: false,
+            });
           });
-        });
 
-      run();
-    });
+        run();
+      },
+      () => this.#forward
+    );
   }
 
   async #fill() {
@@ -336,7 +363,7 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     if (offset === false && pageRow && !zooming) {
-      const page = this.#keys.get(pageRow.id);
+      const page = this.#keys.get(pageRow.first);
       if (page !== this.#page) {
         this.#page = page;
         this.dispatchEvent(new PageChange(page));

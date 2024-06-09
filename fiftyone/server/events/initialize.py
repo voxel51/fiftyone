@@ -107,7 +107,8 @@ def handle_app_initializer(subscription: str, initializer: AppInitializer):
         dataset_change = True
         handle_dataset_change(state, initializer)
     else:
-        update = handle_saved_view(state, initializer.view)
+        update = handle_sample(state, initializer.sample)
+        update = handle_saved_view(state, initializer.view) or update
         update = handle_workspace(state, initializer.workspace) or update
 
     if not update:
@@ -134,16 +135,20 @@ def handle_dataset_change(
         state.dataset = fod.load_dataset(initializer.dataset)
         state.selected = []
         state.selected_labels = []
-        state.view = None
+        state.sample_id = None
         state.spaces = None
-
+        state.view = None
     except:
         state.dataset = None
         state.selected = []
         state.selected_labels = []
-        state.view = None
+        state.sample_id = None
         state.spaces = None
+        state.view = None
         return
+
+    if initializer.sample:
+        state.sample_id = initializer.sample
 
     if initializer.view:
         try:
@@ -163,6 +168,27 @@ def handle_dataset_change(
             state.spaces = state.dataset.load_workspace(doc.name)
         except:
             pass
+
+
+def handle_sample(
+    state: fos.StateDescription, sample_id: t.Optional[str] = None
+):
+    """Handle a saved view slug request.
+
+    Args:
+        state: the state description
+        sample_id (None): an optional sample ID
+
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
+    if state.sample_id != sample_id:
+        if sample_id is not None:
+            state.sample_id = sample_id
+            return True
+
+    return False
 
 
 def handle_saved_view(

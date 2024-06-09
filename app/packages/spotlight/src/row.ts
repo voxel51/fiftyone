@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import type { ItemData, SpotlightConfig } from "./types";
+import type { Focus, ItemData, SpotlightConfig } from "./types";
 
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
@@ -19,12 +19,16 @@ export default class Row<K, V> {
   constructor({
     config,
     from,
+    focus,
     items,
+    next,
     width,
   }: {
     config: SpotlightConfig<K, V>;
+    focus: Focus;
     from: number;
     items: ItemData<K, V>[];
+    next: (from: number) => Promise<symbol | undefined>;
     width: number;
   }) {
     this.#config = config;
@@ -39,11 +43,21 @@ export default class Row<K, V> {
       if (config.onItemClick) {
         element.addEventListener("click", (event) => {
           event.preventDefault();
-          config.onItemClick({ item, event });
+          focus(item.id);
+          config.onItemClick({
+            event,
+            item,
+            next,
+          });
         });
         element.addEventListener("contextmenu", (event) => {
           event.preventDefault();
-          config.onItemClick({ item, event });
+          focus(item.id);
+          config.onItemClick({
+            event,
+            item,
+            next,
+          });
         });
       }
 
@@ -75,6 +89,10 @@ export default class Row<K, V> {
     return Boolean(this.#container.parentElement);
   }
 
+  get first() {
+    return this.#row[ZERO].item.id;
+  }
+
   get from() {
     return this.#from;
   }
@@ -87,8 +105,8 @@ export default class Row<K, V> {
     return this.#cleanWidth / this.#cleanAspectRatio;
   }
 
-  get id() {
-    return this.#row[ZERO].item.id;
+  get last() {
+    return this.#row[this.#row.length - 1].item.id;
   }
 
   get width() {
