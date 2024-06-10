@@ -110,6 +110,6 @@ jobs:
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
       - name: publish
         run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com
