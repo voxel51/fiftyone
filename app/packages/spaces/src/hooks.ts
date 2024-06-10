@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
   useRecoilCallback,
@@ -8,7 +8,6 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import SpaceNode from "./SpaceNode";
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
 import {
@@ -32,15 +31,18 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
 
   useEffect(() => {
-    if (!state) {
-      const baseState = new SpaceNode("root").toJSON();
-      setState(defaultState || baseState);
+    if (!state && defaultState) {
+      setState(defaultState);
     }
-  }, []);
+  }, [state, setState, defaultState]);
 
   const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
     setState(spaces);
   });
+
+  const clearSpaces = useCallback(() => {
+    setState(undefined);
+  }, [setState]);
 
   return {
     spaces,
@@ -57,6 +59,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
         setState(serializedTreeOrUpdater);
       }
     },
+    clearSpaces,
   };
 }
 
