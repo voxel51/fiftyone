@@ -8,11 +8,16 @@ const { FIFTYONE_SPACE_ID } = constants;
 function MainSpace() {
   const [sessionSpaces, setSessionSpaces, sessionPanelsState] =
     useSessionSpaces();
-  const { spaces, updateSpaces } = useSpaces(FIFTYONE_SPACE_ID, sessionSpaces);
+  const { spaces, updateSpaces, clearSpaces } = useSpaces(
+    FIFTYONE_SPACE_ID,
+    sessionSpaces
+  );
   const [panelsState, setPanelsState] = usePanelsState();
   const oldSpaces = useRef(spaces);
   const oldPanelsState = useRef(panelsState);
   const isMounted = useRef(false);
+
+  useEffect(() => clearSpaces, [clearSpaces]);
 
   useEffect(() => {
     if (!spaces.equals(sessionSpaces)) {
