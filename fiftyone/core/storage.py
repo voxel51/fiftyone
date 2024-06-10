@@ -2420,31 +2420,6 @@ def run(fcn, tasks, return_results=True, num_workers=None, progress=None):
     )
 
 
-def _copy_files(inpaths, outpaths, skip_failures, progress):
-    tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
-    _run(_do_copy_file, tasks, return_results=False, progress=progress)
-
-
-def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
-    try:
-        num_tasks = len(tasks)
-    except:
-        num_tasks = None
-
-<<<<<<< HEAD
-    kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
-
-    if num_workers <= 1:
-        with fou.ProgressBar(**kwargs) as pb:
-            results = [fcn(task) for task in pb(tasks)]
-    else:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(**kwargs) as pb:
-                results = list(pb(pool.imap(fcn, tasks)))
-
-    return results
-
-
 def _get_client(fs=None, path=None, credentials_path=None):
     # Client creation may not be thread-safe, so we lock for safety
     # https://stackoverflow.com/a/61943955/16823653
@@ -2878,13 +2853,15 @@ def _copy_files(
         (i, o, skip_failures, cache, use_cache)
         for i, o in zip(inpaths, outpaths)
     ]
-    _run(_do_copy_file, tasks, progress=progress)
+    _run(_do_copy_file, tasks, return_results=False, progress=progress)
 
 
-def _run(fcn, tasks, num_workers=None, progress=None):
-    num_tasks = len(tasks)
-=======
->>>>>>> oss/merge/v0.24.1-to-main
+def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
+    try:
+        num_tasks = len(tasks)
+    except:
+        num_tasks = None
+
     if num_tasks == 0:
         return [] if return_results else None
 
@@ -3058,7 +3035,6 @@ def _read_file(filepath, binary=False):
         return f.read()
 
 
-<<<<<<< HEAD
 def _copy_file(inpath, outpath, use_cache=False, cleanup=False):
     if use_cache:
         inpath, local_in = foc.media_cache.use_cached_path(inpath)
@@ -3095,14 +3071,6 @@ def _copy_file(inpath, outpath, use_cache=False, cleanup=False):
         cliento.upload_bytes(b, outpath)
         if cleanup:
             clienti.delete(inpath)
-=======
-def _copy_file(inpath, outpath, cleanup=False):
-    etau.ensure_basedir(outpath)
-    if cleanup:
-        shutil.move(inpath, outpath)
-    else:
-        shutil.copy(inpath, outpath)
->>>>>>> oss/merge/v0.24.1-to-main
 
 
 def _delete_file(filepath):
