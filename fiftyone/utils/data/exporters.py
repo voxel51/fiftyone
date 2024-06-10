@@ -7,6 +7,7 @@ Dataset exporters.
 """
 
 import inspect
+import json
 import logging
 import os
 import warnings
@@ -1186,6 +1187,7 @@ class MediaExporter(object):
         self.ignore_exts = ignore_exts
 
         self._filename_maker = None
+        self._fo3d_reader = None
         self._manifest = None
         self._manifest_path = None
         self._tmpdir = None
@@ -1194,20 +1196,50 @@ class MediaExporter(object):
         self._outpaths = []
         self._delpaths = []
 
+    def init_fo3d_reader(self, filepaths, batch_size=100):
+        """Prepares the exporter to efficiently read FO3D files that will be
+        encountered later during export.
+
+        Whenever an uncached FO3D filepath is encountered by :meth:`export`,
+        the next ``batch_size`` FO3D files in the provided ``filepaths`` are
+        greedily loaded into memory.
+
+        Args:
+            filepaths: the list of filepaths that will be passed to
+                :meth:`export` **in the same order**
+            batch_size (100): the batch size to use when reading FO3D files
+        """
+        fo3d_paths = [f for f in filepaths if f.endswith(".fo3d")]
+        if not fo3d_paths:
+            return
+
+        self._fo3d_reader = fos.GreedyFileReader(
+            fo3d_paths,
+            parser=lambda b: fo3d.Scene._from_fo3d_dict(json.loads(b)),
+            use_cache=True,
+            batch_size=batch_size,
+            progress=False,
+        )
+        self._fo3d_reader.__enter__()
+
     def _handle_fo3d_file(self, fo3d_path, fo3d_output_path):
         if self.export_mode in (False, "manifest"):
             return
 
-        _fo3d_path, is_local = fo.media_cache.use_cached_path(fo3d_path)
-        if not is_local:
-            msg = (
-                "This export requires reading FO3D files into memory, but not "
-                "all are available locally; consider using download_scenes() "
-                "to cache them and accelerate the export"
-            )
-            warnings.warn(msg)
+        if self._fo3d_reader is not None:
+            scene = self._fo3d_reader.read(fo3d_path)
+        else:
+            _fo3d_path, is_local = fo.media_cache.use_cached_path(fo3d_path)
+            if not is_local:
+                msg = (
+                    "This export requires reading FO3D files into memory, but "
+                    "not all are available locally; consider using "
+                    "download_scenes() to cache them and accelerate the export"
+                )
+                warnings.warn(msg)
 
-        scene = fo3d.Scene.from_fo3d(_fo3d_path)
+            scene = fo3d.Scene.from_fo3d(_fo3d_path)
+
         asset_paths = scene.get_asset_paths()
 
         input_to_output_paths = {}
@@ -1476,6 +1508,9 @@ class MediaExporter(object):
             fos.write_json(self._manifest, self._manifest_path)
 
         self._flush_export()
+
+        if self._fo3d_reader is not None:
+            self._fo3d_reader.__exit__()
 
 
 class ImageExporter(MediaExporter):
@@ -1974,6 +2009,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             files. If provided, media files will be nested in subdirectories
             of the output directory with at most this many media files per
             subdirectory. Has no effect if a ``rel_dir`` is provided
+        fo3d_batch_size (100): a batch size to use when reading FO3D files.
+            Provide a number <= 1 to disable
         abs_paths (False): whether to store absolute paths to the media in the
             exported labels
         export_saved_views (True): whether to include saved views in the export.
@@ -1992,6 +2029,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         export_media=None,
         rel_dir=None,
         chunk_size=None,
+        fo3d_batch_size=100,
         abs_paths=False,
         export_saved_views=True,
         export_runs=True,
@@ -2010,6 +2048,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self.export_media = export_media
         self.rel_dir = rel_dir
         self.chunk_size = chunk_size
+        self.fo3d_batch_size = fo3d_batch_size
         self.abs_paths = abs_paths
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
@@ -2071,6 +2110,24 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if sample_collection._contains_videos(any_slice=True):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
+
+        if (
+            self.export_media is not False
+            and sample_collection._contains_media_type(fomm.THREE_D)
+            and self.fo3d_batch_size is not None
+            and self.fo3d_batch_size > 1
+        ):
+            if sample_collection.media_type == fomm.GROUP:
+                _sample_collection = sample_collection.select_group_slices(
+                    _allow_mixed=True
+                )
+            else:
+                _sample_collection = sample_collection
+
+            self._media_exporter.init_fo3d_reader(
+                _sample_collection.values("filepath"),
+                batch_size=self.fo3d_batch_size,
+            )
 
         self._media_fields = sample_collection._get_media_fields(
             include_filepath=False
@@ -2291,6 +2348,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             files. If provided, media files will be nested in subdirectories
             of the output directory with at most this many media files per
             subdirectory. Has no effect if a ``rel_dir`` is provided
+        fo3d_batch_size (100): a batch size to use when reading FO3D files.
+            Provide a number <= 1 to disable
         export_saved_views (True): whether to include saved views in the export.
             Only applicable when exporting full datasets
         export_runs (True): whether to include annotation/brain/evaluation
@@ -2309,6 +2368,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         export_media=None,
         rel_dir=None,
         chunk_size=None,
+        fo3d_batch_size=100,
         export_saved_views=True,
         export_runs=True,
         export_workspaces=True,
@@ -2327,6 +2387,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self.export_media = export_media
         self.rel_dir = rel_dir
         self.chunk_size = chunk_size
+        self.fo3d_batch_size = fo3d_batch_size
         self.export_saved_views = export_saved_views
         self.export_runs = export_runs
         self.export_workspaces = export_workspaces
@@ -2380,6 +2441,17 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             )
         else:
             _sample_collection = sample_collection
+
+        if (
+            self.export_media is not False
+            and _sample_collection._contains_media_type(fomm.THREE_D)
+            and self.fo3d_batch_size is not None
+            and self.fo3d_batch_size > 1
+        ):
+            self._media_exporter.init_fo3d_reader(
+                _sample_collection.values("filepath"),
+                batch_size=self.fo3d_batch_size,
+            )
 
         self._media_fields = sample_collection._get_media_fields(
             include_filepath=False
