@@ -29,7 +29,7 @@ export default function usePanelEvent() {
     if (prompt) {
       promptForOperator(operator, actualParams, { callback: options.callback });
     } else {
-      executeOperator(operator, actualParams, options.callback);
+      executeOperator(operator, actualParams, { callback: options.callback });
     }
   });
 }

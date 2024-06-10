@@ -573,15 +573,22 @@ function resolveOperatorURIWithMethod(operatorURI, params) {
 }
 
 export async function executeOperator(
-  uri,
-  p: any = {},
-  callback?: ExecutionCallback
+  uri: string,
+  params: unknown = {},
+  options?: OperatorExecutorOptions
 ) {
-  const { operatorURI, params } = resolveOperatorURIWithMethod(uri, p);
+  const { operatorURI, params: computedParams } = resolveOperatorURIWithMethod(
+    uri,
+    params
+  );
   const resolvedOperatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
-  const request = new InvocationRequest(resolvedOperatorURI, params);
-  queue.add(request, callback);
+  const request = new InvocationRequest(
+    resolvedOperatorURI,
+    computedParams,
+    options
+  );
+  queue.add(request);
 }
 
 export async function validateOperatorInputs(

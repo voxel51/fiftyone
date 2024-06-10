@@ -13,17 +13,17 @@ import {
 
 export interface CustomPanelProps {
   panelId: string;
-  onLoad?: Function;
-  onChange?: Function;
-  onUnLoad?: Function;
-  onChangeCtx?: Function;
-  onViewChange?: Function;
-  onChangeView?: Function;
-  onChangeDataset?: Function;
-  onChangeCurrentSample?: Function;
-  onChangeSelected?: Function;
-  onChangeSelectedLabels?: Function;
-  onChangeExtendedSelection?: Function;
+  onLoad?: string;
+  onChange?: string;
+  onUnLoad?: string;
+  onChangeCtx?: string;
+  onViewChange?: string;
+  onChangeView?: string;
+  onChangeDataset?: string;
+  onChangeCurrentSample?: string;
+  onChangeSelected?: string;
+  onChangeSelectedLabels?: string;
+  onChangeExtendedSelection?: string;
   dimensions: {
     bounds: {
       height?: number;
@@ -108,10 +108,16 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   useEffect(() => {
     if (props.onLoad && !panelState?.loaded) {
-      executeOperator(props.onLoad, { panel_id: panelId }, (result) => {
-        const { error: onLoadError } = result;
-        setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
-      });
+      executeOperator(
+        props.onLoad,
+        { panel_id: panelId },
+        {
+          callback(result) {
+            const { error: onLoadError } = result;
+            setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
+          },
+        }
+      );
     }
 
     return () => {
