@@ -56,7 +56,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         id: pip-cache
         with:
           python-version: ${{ matrix.python }}
