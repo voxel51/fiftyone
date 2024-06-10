@@ -102,7 +102,8 @@ export class PlyAsset {
   constructor(
     readonly plyPath?: string,
     readonly preTransformedPlyPath?: string,
-    readonly defaultMaterial?: FoMeshMaterial
+    readonly defaultMaterial?: FoMeshMaterial,
+    readonly isPcd?: boolean
   ) {}
 }
 
@@ -304,7 +305,8 @@ export const useFo3d = (
             asset = new PlyAsset(
               node["plyPath"],
               node["preTransformedPlyPath"],
-              material as FoMeshMaterial
+              material as FoMeshMaterial,
+              node["isPointCloud"] ?? false
             );
           }
         }

@@ -109,7 +109,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
   );
 }
 
-type SubmitButtonOption = {
+export type SubmitButtonOption = {
   id: string;
   label: string;
 };

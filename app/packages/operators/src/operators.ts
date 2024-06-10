@@ -3,20 +3,33 @@ import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
-import { ExecutionCallback } from "./types-internal";
+import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
+
+type RawInvocationRequest = {
+  operator_uri?: string;
+  operator_name?: string;
+  params: object;
+  options: object;
+};
 
 class InvocationRequest {
-  constructor(public operatorURI: string, public params: any = {}) {}
-  static fromJSON(json: any) {
+  constructor(
+    public operatorURI: string,
+    public params: unknown = {},
+    public options?: OperatorExecutorOptions
+  ) {}
+  static fromJSON(json: RawInvocationRequest): InvocationRequest {
     return new InvocationRequest(
       json.operator_uri || json.operator_name,
-      json.params
+      json.params,
+      json.options
     );
   }
   toJSON() {
     return {
       operatorURI: this.operatorURI,
       params: this.params,
+      options: this.options,
     };
   }
 }
@@ -36,13 +49,13 @@ export class Executor {
       queue.add(request);
     }
   }
-  static fromJSON(json: any) {
+  static fromJSON(json: { requests: RawInvocationRequest[]; logs: string[] }) {
     return new Executor(
       json.requests.map((r: any) => InvocationRequest.fromJSON(r)),
       json.logs
     );
   }
-  trigger(operatorURI: string, params: any = {}) {
+  trigger(operatorURI: string, params: object = {}) {
     operatorURI = resolveOperatorURI(operatorURI);
     this.requests.push(new InvocationRequest(operatorURI, params));
   }
@@ -58,12 +71,26 @@ class Panel {
   }
 }
 
+export type RawContext = {
+  datasetName: string;
+  extended: boolean;
+  view: string;
+  filters: object;
+  selectedSamples: Set<string>;
+  selectedLabels: any[];
+  currentSample: string;
+  viewName: string;
+  delegationTarget: string;
+  requestDelegation: boolean;
+  state: CallbackInterface;
+};
+
 export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
-    public params: any = {},
-    public _currentContext: CurrentContext,
-    public hooks: any = {},
+    public params: object = {},
+    public _currentContext: RawContext,
+    public hooks: object = {},
     public executor: Executor = null
   ) {
     this.state = _currentContext.state;
@@ -101,7 +128,7 @@ export class ExecutionContext {
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }
-  trigger(operatorURI: string, params: any = {}) {
+  trigger(operatorURI: string, params: object = {}) {
     if (!this.executor) {
       throw new Error(
         "Cannot trigger operator from outside of an execution context"
@@ -125,9 +152,9 @@ function isObjWithContent(obj: any) {
 export class OperatorResult {
   constructor(
     public operator: Operator,
-    public result: any = {},
+    public result: object = {},
     public executor: Executor = null,
-    public error: any,
+    public error: string,
     public delegated: boolean = false
   ) {}
   hasOutputContent() {
@@ -259,7 +286,7 @@ export class Operator {
     }
     return false;
   }
-  useHooks(ctx: ExecutionContext) {
+  useHooks(): object {
     // This can be overridden to use hooks in the execute function
     return {};
   }
@@ -275,19 +302,23 @@ export class Operator {
     }
     return null;
   }
-  async resolvePlacement(
-    ctx: ExecutionContext
-  ): Promise<void | types.Placement> {}
-  async execute(ctx: ExecutionContext) {
+  async resolvePlacement(): Promise<void | types.Placement> {
+    return null;
+  }
+  async execute() {
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
-  public isRemote: boolean = false;
-  static fromRemoteJSON(json: any) {
+  public isRemote = false;
+  static fromRemoteJSON(json: object) {
     const operator = this.fromJSON(json);
     operator.isRemote = true;
     return operator;
   }
-  static fromJSON(json: any) {
+  static fromJSON(json: {
+    plugin_name: string;
+    _builtin: boolean;
+    config: object;
+  }) {
     const config = OperatorConfig.fromJSON(json.config);
     const operator = new Operator(json.plugin_name, json._builtin, config);
     return operator;
@@ -535,7 +566,6 @@ export function getTargetOperatorMethod(operatorURI) {
 
 function resolveOperatorURIWithMethod(operatorURI, params) {
   const targetMethod = getTargetOperatorMethod(operatorURI);
-  operatorURI = resolveOperatorURI(operatorURI);
   if (targetMethod) {
     params = { ...params, __method__: targetMethod };
   }
@@ -548,8 +578,9 @@ export async function executeOperator(
   callback?: ExecutionCallback
 ) {
   const { operatorURI, params } = resolveOperatorURIWithMethod(uri, p);
+  const resolvedOperatorURI = resolveOperatorURI(operatorURI);
   const queue = getInvocationRequestQueue();
-  const request = new InvocationRequest(operatorURI, params);
+  const request = new InvocationRequest(resolvedOperatorURI, params);
   queue.add(request, callback);
 }
 

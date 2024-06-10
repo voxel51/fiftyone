@@ -9,6 +9,7 @@ import {
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import {
@@ -28,6 +29,7 @@ import {
   resolveOperatorURI,
 } from "./operators";
 import { Places } from "./types";
+import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { ExecutionCallback } from "./types-internal";
 import usePanelEvent from "./usePanelEvent";
@@ -66,8 +68,8 @@ export const usePromptOperatorInput = () => {
 
   const prompt = (operatorName, params = {}, options = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
-      const update = new Set([...recentlyUsedOperators, operatorName]);
-      return Array.from(update).slice(-5);
+      const update = new Set([operatorName, ...recentlyUsedOperators]);
+      return Array.from(update).slice(0, 5);
     });
 
     setPromptingOperator({ operatorName, params, options });
@@ -85,7 +87,6 @@ const globalContextSelector = selector({
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
-    const currentSample = get(fos.currentSampleId);
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
 
@@ -96,7 +97,6 @@ const globalContextSelector = selector({
       filters,
       selectedSamples,
       selectedLabels,
-      currentSample,
       viewName,
       extendedSelection,
     };
@@ -127,6 +127,7 @@ export function useGlobalExecutionContext(): ExecutionContext {
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
+  const currentSample = useCurrentSample();
   const {
     datasetName,
     view,
@@ -135,7 +136,6 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     params,
     selectedLabels,
-    currentSample,
     viewName,
     extendedSelection,
   } = curCtx;
@@ -637,12 +637,13 @@ export const operatorBrowserQueryState = atom({
 });
 
 function sortResults(results, recentlyUsedOperators) {
+  const recentlyUsedOperatorsCount = recentlyUsedOperators.length;
   return results
     .map((result) => {
       let score = (result.description || result.label).charCodeAt(0);
       if (recentlyUsedOperators.includes(result.value)) {
-        const recentIdx = recentlyUsedOperators.indexOf(result.label);
-        score = recentIdx * -1;
+        const recentIdx = recentlyUsedOperators.indexOf(result.value);
+        score = (recentlyUsedOperatorsCount - recentIdx) * -1;
       }
       if (result.canExecute === false) {
         score += results.length;
@@ -656,7 +657,7 @@ function sortResults(results, recentlyUsedOperators) {
       if (a.score < b.score) {
         return -1;
       }
-      if (a.scrote > b.scrote) {
+      if (a.score > b.score) {
         return 1;
       }
       return 0;
@@ -692,8 +693,18 @@ export const operatorChoiceState = atom({
 export const recentlyUsedOperatorsState = atom({
   key: "recentlyUsedOperators",
   default: [],
-  effects: [fos.getBrowserStorageEffectForKey("operators-recently-used")],
+  effects: [
+    fos.getBrowserStorageEffectForKey("recently-used-operators", {
+      useJsonSerialization: true,
+    }),
+  ],
 });
+
+export function useCurrentSample() {
+  // 'currentSampleId' may suspend for group datasets, so we use a loadable
+  const currentSample = useRecoilValueLoadable(fos.currentSampleId);
+  return currentSample.state === "hasValue" ? currentSample.contents : null;
+}
 
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
@@ -862,8 +873,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
-  const ctx = useExecutionContext(uri);
-  const hooks = operator.useHooks(ctx);
+  const context = useExecutionContext(uri);
+  const currentSample = useCurrentSample();
+  const hooks = operator.useHooks(context);
   const notify = fos.useNotification();
 
   const clear = useCallback(() => {
@@ -876,7 +888,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
-      const { delegationTarget, requestDelegation, callback, skipOutput } =
+      const { delegationTarget, requestDelegation, skipOutput, callback } =
         options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
@@ -885,7 +897,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
       const ctx = new ExecutionContext(
         paramOverrides || params,
-        currentContext,
+        { ...currentContext, currentSample },
         hooks
       );
       ctx.state = state;
@@ -919,7 +931,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       setHasExecuted(true);
       setIsExecuting(false);
     },
-    [ctx]
+    [currentSample, context]
   );
   return {
     isExecuting,

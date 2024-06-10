@@ -19,7 +19,6 @@ from .executor import (
     resolve_type,
     resolve_placement,
     resolve_execution_options,
-    ExecutionContext,
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry

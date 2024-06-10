@@ -1,4 +1,4 @@
-import { Resizable } from "@fiftyone/components";
+import { Resizable, scrollable } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useState } from "react";
@@ -32,6 +32,7 @@ export default function OperatorDrawerPrompt(props: OperatorPromptPropsType) {
       onResizeReset={() => {
         setWidth(DEFAULT_WIDTH);
       }}
+      data-cy="operators-prompt-drawer"
     >
       <IconButton
         onClick={prompt.close}
@@ -42,8 +43,21 @@ export default function OperatorDrawerPrompt(props: OperatorPromptPropsType) {
       <Box sx={{ p: 1 }}>
         <OperatorPromptHeader title={title} />
       </Box>
-      <OperatorPromptBody operatorPrompt={prompt} />
-      <Stack direction="row" spacing={1} justifyContent="center">
+      <Box
+        data-cy="operators-prompt-drawer-content"
+        sx={{ overflow: "auto" }}
+        className={scrollable}
+      >
+        <OperatorPromptBody operatorPrompt={prompt} />
+      </Box>
+      <Stack
+        direction="row"
+        spacing={1}
+        justifyContent="center"
+        alignItems="center"
+        data-cy="operators-prompt-drawer-footer"
+        sx={{ py: 1 }}
+      >
         <OperatorPromptFooter {...otherConfigs} />
       </Stack>
     </Resizable>

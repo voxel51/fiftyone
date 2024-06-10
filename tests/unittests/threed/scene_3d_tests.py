@@ -15,6 +15,12 @@ from unittest.mock import mock_open, patch
 from fiftyone.core import threed
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
+from dataclass_test_utils import (
+    assert_color_prop,
+    assert_float_prop,
+    assert_string_prop,
+)
+
 
 class TestScene(unittest.TestCase):
     def setUp(self):
@@ -65,6 +71,36 @@ class TestScene(unittest.TestCase):
             },
         )
 
+    def test_update_asset_paths(self):
+        d = {
+            "/path/to/pcd.pcd": "new.pcd",
+            "../background.jpeg": "new_background.jpeg",
+            "n3.jpeg": "new_n3.jpeg",
+        }
+
+        self.scene.update_asset_paths(d)
+
+        asset_paths = set(self.scene.get_asset_paths())
+        self.assertSetEqual(
+            asset_paths,
+            {
+                "/path/to/gltf.gltf",
+                "new.pcd",
+                "new_background.jpeg",
+                "/path/to/stl.stl",
+                "/path/to/fbx.fbx",
+                "/path/to/ply.ply",
+                "/path/to/obj.obj",
+                "relative.gltf",
+                "n1.jpeg",
+                "n2.jpeg",
+                "new_n3.jpeg",
+                "n4.jpeg",
+                "n5.jpeg",
+                "n6.jpeg",
+            },
+        )
+
     def test_write(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = os.path.join(temp_dir, "blah.fo3d")
@@ -80,12 +116,12 @@ class TestScene(unittest.TestCase):
                 resolve_relative_paths=True,
             )
             scene2 = threed.Scene.from_fo3d(path)
-            real_background = os.path.realpath(
+            real_background = os.path.abspath(
                 os.path.join(temp_dir, "../background.jpeg")
             )
             self.assertEqual(scene2.background.image, real_background)
             real_cubes = [
-                os.path.realpath(os.path.join(temp_dir, ci))
+                os.path.abspath(os.path.join(temp_dir, ci))
                 for ci in self.scene.background.cube
             ]
             self.assertListEqual(scene2.background.cube, real_cubes)
@@ -93,7 +129,7 @@ class TestScene(unittest.TestCase):
                 if node.name == "gltf2":
                     self.assertEqual(
                         node.gltf_path,
-                        os.path.realpath(
+                        os.path.abspath(
                             os.path.join(temp_dir, "relative.gltf")
                         ),
                     )
@@ -162,3 +198,23 @@ class TestScene(unittest.TestCase):
             "another_key": "value",
         }
         self.assertEqual(convert_keys_to_snake_case(input_dict), expected_dict)
+
+
+class TestSceneBackground(unittest.TestCase):
+    def test_it(self):
+        obj = threed.SceneBackground()
+        self.assertEqual(obj, threed.SceneBackground(None, None, None, 1.0))
+        self.assertRaises(ValueError, setattr, obj, "another_field", 51)
+
+        assert_color_prop(self, obj, "color", nullable=True)
+        assert_string_prop(self, obj, "image", nullable=True)
+        assert_float_prop(self, obj, "intensity", nullable=True)
+
+        # Custom cube tests
+        self.assertRaises(ValueError, setattr, obj, "cube", 51.51)
+        self.assertRaises(ValueError, setattr, obj, "cube", ["1", "2"])
+        obj.cube = ["1", "2", "3", "4", "5", "6"]
+        self.assertListEqual(obj.cube, ["1", "2", "3", "4", "5", "6"])
+
+        obj2 = threed.SceneBackground._from_dict(obj.as_dict())
+        self.assertEqual(obj, obj2)

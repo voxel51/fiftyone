@@ -59,6 +59,10 @@ export const ActionBar = ({
   const componentsToRender = useMemo(() => {
     const components = [];
 
+    if (isFo3d) {
+      components.push(<ViewFo3d jsonPanel={jsonPanel} key="inspect-fo3d" />);
+    }
+
     components.push(<ToggleGridHelper key="grid-helper" />);
 
     if (fo3dContainsBackground) {
@@ -114,7 +118,6 @@ export const ActionBar = ({
       onMouseLeave={onMouseLeave}
     >
       {hasMultiplePcdSlices && <SliceSelector />}
-      {isFo3d && <ViewFo3d jsonPanel={jsonPanel} />}
       <ActionsBar>
         {componentsToRender}
         <FullScreenToggler />

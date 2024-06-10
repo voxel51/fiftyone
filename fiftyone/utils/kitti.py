@@ -20,6 +20,7 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
+import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -532,9 +533,11 @@ def download_kitti_multiview_dataset(
 
     for split in splits:
         split_dir = os.path.join(dataset_dir, split)
-        _prepare_kitti_split(
-            split_dir, overwrite=overwrite, num_workers=num_workers
-        )
+        samples_path = os.path.join(split_dir, "samples.json")
+        if overwrite or not os.path.isfile(samples_path):
+            _prepare_kitti_split(
+                split_dir, overwrite=overwrite, num_workers=num_workers
+            )
 
     if cleanup:
         etau.delete_dir(scratch_dir)
@@ -815,10 +818,6 @@ def _make_kitti_detection_row(detection, frame_size):
 
 
 def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
-    samples_path = os.path.join(split_dir, "samples.json")
-    if not overwrite and os.path.isfile(samples_path):
-        return
-
     group_field = "group"
     label_field = "ground_truth"
 
@@ -836,6 +835,7 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
     left_images_dir = os.path.join(split_dir, "left")
     right_images_dir = os.path.join(split_dir, "right")
     pcd_dir = os.path.join(split_dir, "pcd")
+    fo3d_dir = os.path.join(split_dir, "fo3d")
 
     make_map = lambda d: {
         os.path.splitext(os.path.basename(p))[0]: p
@@ -856,9 +856,11 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
         num_workers=num_workers,
     )
 
+    _write_fo3d_files(pcd_dir, fo3d_dir, overwrite=overwrite)
+
     left_map = make_map(left_images_dir)
     right_map = make_map(right_images_dir)
-    pcd_map = make_map(pcd_dir)
+    fo3d_map = make_map(fo3d_dir)
 
     is_labeled = os.path.isdir(labels_dir)
     if is_labeled:
@@ -873,7 +875,7 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
 
             left_filepath = left_map[uuid]
             right_filepath = right_map[uuid]
-            pcd_filepath = pcd_map[uuid]
+            scene_filepath = fo3d_map[uuid]
 
             left_sample = fo.Sample(filepath=left_filepath)
             left_sample[group_field] = group.element("left")
@@ -881,7 +883,7 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
             right_sample = fo.Sample(filepath=right_filepath)
             right_sample[group_field] = group.element("right")
 
-            pcd_sample = fo.Sample(filepath=pcd_filepath)
+            pcd_sample = fo.Sample(filepath=scene_filepath)
             pcd_sample[group_field] = group.element("pcd")
 
             if is_labeled:
@@ -915,11 +917,13 @@ def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
 
             samples.extend([left_sample, right_sample, pcd_sample])
 
+    logger.info("Adding samples...")
     dataset.add_samples(samples)
 
     if is_labeled:
         dataset.compute_metadata()
 
+    logger.info("Writing samples...")
     dataset.export(
         export_dir=split_dir,
         dataset_type=fo.types.FiftyOneDataset,
@@ -1120,3 +1124,19 @@ def _do_conversion(input):
     pcd.colors = o3d.utility.Vector3dVector(colors)
 
     o3d.io.write_point_cloud(pcd_path, pcd)
+
+
+def _write_fo3d_files(pcd_dir, fo3d_dir, overwrite=False, abs_paths=False):
+    for pcd_filepath in etau.list_files(pcd_dir, abs_paths=True):
+        scene_filepath = os.path.join(
+            fo3d_dir,
+            os.path.splitext(os.path.basename(pcd_filepath))[0] + ".fo3d",
+        )
+
+        if overwrite or not os.path.isfile(scene_filepath):
+            if not abs_paths:
+                pcd_filepath = os.path.relpath(pcd_filepath, fo3d_dir)
+
+            scene = fo3d.Scene(camera=fo3d.PerspectiveCamera(up="Z"))
+            scene.add(fo3d.PointCloud("point cloud", pcd_filepath))
+            scene.write(scene_filepath)

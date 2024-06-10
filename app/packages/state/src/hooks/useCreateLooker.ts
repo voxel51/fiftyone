@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import { ImaVidConfig } from "@fiftyone/looker/src/state";
+import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -27,7 +27,7 @@ import {
   selectedMediaField,
 } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
-import * as groupAtoms from "../recoil/groups";
+import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -35,7 +35,7 @@ import { getSampleSrc, getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
 
-export default <T extends AbstractLooker>(
+export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
@@ -60,7 +60,7 @@ export default <T extends AbstractLooker>(
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(
-    groupAtoms.shouldRenderImaVidLooker
+    dynamicGroupAtoms.shouldRenderImaVidLooker
   );
 
   // callback to get the latest promise inside another recoil callback
@@ -174,34 +174,35 @@ export default <T extends AbstractLooker>(
 
         if (constructor === ImaVidLooker) {
           const { groupBy } = snapshot
-            .getLoadable(groupAtoms.dynamicGroupParameters)
+            .getLoadable(dynamicGroupAtoms.dynamicGroupParameters)
             .valueMaybe();
           const groupByFieldValue = get(
             sample,
             getSanitizedGroupByExpression(groupBy)
           );
-          const groupByFieldValueTransformed = groupByFieldValue
-            ? String(groupByFieldValue)
-            : null;
+          const groupByFieldValueTransformed =
+            groupByFieldValue !== null ? String(groupByFieldValue) : null;
 
           const totalFrameCountPromise = getPromise(
             dynamicGroupsElementCount(groupByFieldValueTransformed)
           );
           const page = snapshot
             .getLoadable(
-              groupAtoms.dynamicGroupPageSelector(groupByFieldValueTransformed)
+              dynamicGroupAtoms.dynamicGroupPageSelector(
+                groupByFieldValueTransformed
+              )
             )
             .valueMaybe();
 
           const firstFrameNumber = isModal
             ? snapshot
-                .getLoadable(groupAtoms.dynamicGroupCurrentElementIndex)
+                .getLoadable(dynamicGroupAtoms.dynamicGroupCurrentElementIndex)
                 .valueMaybe() ?? 1
             : 1;
 
           const imavidKey = snapshot
             .getLoadable(
-              groupAtoms.imaVidStoreKey({
+              dynamicGroupAtoms.imaVidStoreKey({
                 groupByFieldValue: groupByFieldValueTransformed,
                 modal: isModal,
               })
@@ -228,7 +229,9 @@ export default <T extends AbstractLooker>(
             frameRate: 24,
             firstFrameNumber: isModal
               ? snapshot
-                  .getLoadable(groupAtoms.dynamicGroupCurrentElementIndex)
+                  .getLoadable(
+                    dynamicGroupAtoms.dynamicGroupCurrentElementIndex
+                  )
                   .valueMaybe() ?? 1
               : 1,
           } as ImaVidConfig;

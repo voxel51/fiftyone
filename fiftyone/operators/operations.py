@@ -514,6 +514,21 @@ class Operations(object):
             },
         )
 
+    def set_spaces(self, spaces=None, name=None):
+        """Set space in the App by name or :class:`fiftyone.core.odm.workspace.Space`.
+
+        Args:
+            spaces: the spaces (:class:`fiftyone.core.odm.workspace.Space`) to load
+            name: the name of the workspace to load
+        """
+        params = {}
+        if spaces is not None:
+            params["spaces"] = spaces.to_dict()
+        elif name is not None:
+            params["spaces"] = self._ctx.dataset.load_workspace(name).to_dict()
+
+        return self._ctx.trigger("set_spaces", params=params)
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
