@@ -9,7 +9,9 @@ import {
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
-export const spacesAtom = atom<{ [spaceId: string]: SpaceNodeJSON }>({
+export const spacesAtom = atom<{
+  [spaceId: string]: SpaceNodeJSON | undefined;
+}>({
   key: "spaces",
   default: {},
 });
