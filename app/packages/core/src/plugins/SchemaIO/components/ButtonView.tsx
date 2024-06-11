@@ -1,11 +1,9 @@
-import React from "react";
-import { Box } from "@mui/material";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import Button from "./Button";
-import { getComponentProps } from "../utils";
-import { useCustomPanelState, usePanelId } from "@fiftyone/spaces";
-import { usePromptOperatorInput } from "@fiftyone/operators/src/state";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelId } from "@fiftyone/spaces";
+import { Box } from "@mui/material";
+import React from "react";
+import { getComponentProps } from "../utils";
+import Button from "./Button";
 
 export default function ButtonView(props) {
   return props?.schema?.view?.operator ? (
@@ -18,11 +16,11 @@ export default function ButtonView(props) {
 function BaseButtonView(props) {
   const { schema, onClick } = props;
   const { view = {} } = schema;
-  const { label, href } = view;
+  const { label, href, variant } = view;
   return (
     <Box {...getComponentProps(props, "container")}>
       <Button
-        variant="contained"
+        variant={variant || "contained"}
         href={href}
         onClick={onClick}
         {...getComponentProps(props, "button")}
