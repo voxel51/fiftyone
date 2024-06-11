@@ -5,6 +5,7 @@ FiftyOne delegated operation repository document.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 from datetime import datetime
 
@@ -48,6 +49,7 @@ class DelegatedOperationDocument(object):
         self.result = None
         self.id = None
         self._doc = None
+        self.metadata = None
 
     def from_pymongo(self, doc: dict):
         # required fields
@@ -102,6 +104,8 @@ class DelegatedOperationDocument(object):
         # internal fields
         self.id = doc["_id"]
         self._doc = doc
+
+        self.metadata = doc["metadata"] if "metadata" in doc else None
 
         return self
 
