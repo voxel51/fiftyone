@@ -1150,9 +1150,7 @@ def load_annotations(
                     if unexpected == "return":
                         if is_frames_view:
                             _label_field = dataset._FRAMES_PREFIX + label_field
-                            _annos = _to_frames_id_map(
-                                annos, results.sample_id_map
-                            )
+                            _annos = results._to_sample_annos(annos)
                             unexpected_annos[_label_field][anno_type] = _annos
                         else:
                             unexpected_annos[label_field][anno_type] = annos
@@ -1164,15 +1162,6 @@ def load_annotations(
 
     if unexpected == "return":
         return dict(unexpected_annos) if unexpected_annos else None
-
-
-def _to_frames_id_map(annos, sample_id_map):
-    id_map = defaultdict(dict)
-    for frame_id, label_ids in annos.items():
-        sample_id = sample_id_map[frame_id]
-        id_map[sample_id][frame_id] = label_ids
-
-    return dict(id_map)
 
 
 def _handle_frame_fields(dataset, field, ref_field):
@@ -2312,6 +2301,18 @@ class AnnotationResults(foa.AnnotationResults):
             return list(sample_ids)
 
         return ids
+
+    def _to_sample_annos(self, annos):
+        if self._is_frames:
+            id_map = self.id_map["_frames"]
+            _annos = defaultdict(dict)
+            for frame_id, label_ids in annos.items():
+                sample_id = id_map[frame_id]
+                _annos[sample_id][frame_id] = label_ids
+
+            return dict(_annos)
+
+        return annos
 
     def _format_label_ids(self, ids1, ids2):
         return _unwrap(_to_list(ids1) + _to_list(ids2))
