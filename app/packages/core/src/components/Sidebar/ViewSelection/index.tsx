@@ -79,6 +79,10 @@ export default function ViewSelection() {
   );
 
   useEffect(() => {
+    refetch({ name: datasetName });
+  }, [datasetName]);
+
+  useEffect(() => {
     if (
       selected &&
       selected?.id !== fos.DEFAULT_SELECTED.id &&
