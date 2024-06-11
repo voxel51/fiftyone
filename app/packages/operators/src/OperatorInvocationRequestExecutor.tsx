@@ -1,15 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   useInvocationRequestExecutor,
   useInvocationRequestQueue,
 } from "./state";
+import { QueueItemStatus } from "./constants";
 
 export default function OperatorInvocationRequestExecutor() {
   const { requests, onSuccess, onError } = useInvocationRequestQueue();
+  const pendingRequests = useMemo(() => {
+    return requests.filter(
+      (queueItem) => queueItem.status === QueueItemStatus.Pending
+    );
+  }, [requests]);
 
   return (
     <>
-      {requests.map((queueItem) => (
+      {pendingRequests.map((queueItem) => (
         <RequestExecutor
           key={queueItem.id}
           queueItem={queueItem}

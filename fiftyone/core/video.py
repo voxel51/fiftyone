@@ -484,6 +484,8 @@ def make_frames_dataset(
     skip_failures=True,
     verbose=False,
     name=None,
+    persistent=False,
+    _generated=False,
 ):
     """Creates a dataset that contains one sample per frame in the video
     collection.
@@ -556,11 +558,6 @@ def make_frames_dataset(
         True, existing frames will not be resampled unless you set
         ``force_sample`` to True.
 
-    .. note::
-
-        The returned dataset is independent from the source collection;
-        modifying it will not affect the source collection.
-
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -609,6 +606,8 @@ def make_frames_dataset(
         verbose (False): whether to log information about the frames that will
             be sampled, if any
         name (None): a name for the dataset
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -632,7 +631,7 @@ def make_frames_dataset(
     # Create dataset with proper schema
     #
 
-    dataset = fod.Dataset(name=name, _frames=True)
+    dataset = fod.Dataset(name=name, persistent=persistent, _frames=_generated)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
 

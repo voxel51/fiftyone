@@ -26,7 +26,7 @@ from .utils import FO3D_VERSION_KEY
 threed = fou.lazy_import("fiftyone.core.threed")
 
 
-class Object3D:
+class Object3D(object):
     """The base class for all 3D objects in the scene.
 
     Args:
@@ -37,7 +37,7 @@ class Object3D:
         scale (None): the scale of the object in object space
     """
 
-    _asset_path_fields = None
+    _asset_path_fields = []
 
     def __init__(
         self,
@@ -227,7 +227,7 @@ class Object3D:
         """Get asset paths for this node"""
         return [
             getattr(self, f, None)
-            for f in (self._asset_path_fields or [])
+            for f in self._asset_path_fields
             if getattr(self, f, None) is not None
         ]
 
