@@ -188,9 +188,10 @@ export default <T extends AbstractLooker<BaseState>>(
           );
           const page = snapshot
             .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector(
-                groupByFieldValueTransformed
-              )
+              dynamicGroupAtoms.dynamicGroupPageSelector({
+                value: groupByFieldValueTransformed,
+                modal: isModal,
+              })
             )
             .valueMaybe();
 
@@ -257,6 +258,7 @@ export default <T extends AbstractLooker<BaseState>>(
       highlight,
       isClip,
       isFrame,
+      isModal,
       shouldRenderImaVidLooker,
       isPatch,
       mediaField,
