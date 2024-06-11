@@ -14,7 +14,7 @@ import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspa
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { merge } from "lodash";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilCallback } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
@@ -1105,6 +1105,40 @@ class SetExtendedSelection extends Operator {
   }
 }
 
+export class SetActiveFields extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_active_fields",
+      label: "Set active fields",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    return {
+      setActiveFields: useRecoilCallback(
+        ({ snapshot, set }) =>
+          async (fields) => {
+            const modal = !!(await snapshot.getPromise(fos.modal));
+            set(fos.activeFields({ modal }), fields);
+          }
+      ),
+    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("fields", new types.String(), {
+      label: "Fields",
+      required: true,
+    });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.setActiveFields(ctx.params.fields);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1147,6 +1181,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(PromptUserForOperation);
     _registerBuiltInOperator(Notify);
     _registerBuiltInOperator(SetExtendedSelection);
+    _registerBuiltInOperator(SetActiveFields);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
