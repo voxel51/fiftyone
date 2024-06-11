@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { merge, isEqual } from "lodash";
 
@@ -54,7 +54,7 @@ function useCtxChangePanelEvent(panelId, value, operator) {
 
 export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const { panelId } = props;
-  const [panelState, setPanelState] = usePanelState(null, panelId);
+  const [panelState] = usePanelState(null, panelId);
   const [panelStateLocal, setPanelStateLocal] = usePanelState(
     null,
     panelId,
@@ -75,14 +75,14 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   });
   const ctx = useGlobalExecutionContext();
 
-  function onLoad() {
+  const onLoad = useCallback(() => {
     if (props.onLoad) {
       executeOperator(props.onLoad, {
         panel_id: panelId,
         panel_state: panelState?.state,
       });
     }
-  }
+  }, [props.onLoad, panelId, panelState?.state]);
   useCtxChangePanelEvent(panelId, ctx._currentContext, props.onChangeCtx);
   useCtxChangePanelEvent(panelId, ctx.view, props.onChangeView);
   useCtxChangePanelEvent(panelId, ctx.viewName, props.onChangeView);
@@ -105,16 +105,19 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     ctx.selectedLabels,
     props.onChangeSelectedLabels
   );
+  const isLoaded = useMemo(() => {
+    return panelStateLocal?.loaded;
+  }, [panelStateLocal?.loaded]);
 
   useEffect(() => {
-    if (props.onLoad && !panelState?.loaded) {
+    if (props.onLoad && !isLoaded) {
       executeOperator(
         props.onLoad,
         { panel_id: panelId },
         {
           callback(result) {
             const { error: onLoadError } = result;
-            setPanelState((s) => ({ ...s, onLoadError, loaded: true }));
+            setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
           },
         }
       );
@@ -124,7 +127,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       if (props.onUnLoad)
         executeOperator(props.onUnLoad, { panel_id: panelId });
     };
-  }, [panelId, props.onLoad, props.onUnLoad]);
+  }, [panelId, props.onLoad, props.onUnLoad, isLoaded, setPanelStateLocal]);
 
   // Trigger panel "onLoad" operator when panel state changes externally
   useEffect(() => {
@@ -132,13 +135,20 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       lastPanelLoadState.current?.count !== panelsStateUpdatesCount &&
       !isEqual(lastPanelLoadState.current?.state, panelState)
     ) {
+      setPanelStateLocal({});
       onLoad();
     }
     lastPanelLoadState.current = {
       count: panelsStateUpdatesCount,
       state: panelState,
     };
-  }, [panelsStateUpdatesCount, panelState, panelId, props.onLoad]);
+  }, [
+    panelsStateUpdatesCount,
+    panelState,
+    panelId,
+    onLoad,
+    setPanelStateLocal,
+  ]);
 
   useEffect(() => {
     if (props.onViewChange)
