@@ -256,6 +256,7 @@ class Object(BaseType):
         on_click=None,
         prompt=False,
         params=None,
+        space=None,
     ):
         """Defines a button or icon button to display to the user as a :class:`Button`.
 
@@ -281,9 +282,15 @@ class Object(BaseType):
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
+            space (None): An int specifying how much vertical/horizontal space to allocate out
+                of ``12`` depending on the orientation of the parent container
         """
         btn = Button(
-            label=label, operator=on_click, prompt=prompt, params=params
+            label=label,
+            operator=on_click,
+            prompt=prompt,
+            params=params,
+            space=space,
         )
         if icon:
             btn = IconButtonView(
@@ -293,6 +300,7 @@ class Object(BaseType):
                 params=params,
                 icon=icon,
                 variant=icon_variant,
+                space=space,
             )
         return self.view(name, btn)
 
@@ -801,8 +809,8 @@ class View(object):
         label (None): a label for the view
         description (None): a description for the view
         caption (None): a caption for the view
-        space (12): An int specifying how much vertical space to allocate out
-            of ``12``
+        space (12): An int specifying how much vertical/horizontal space to allocate out
+            of ``12`` depending on the orientation of the parent container
         placeholder (None): string to display placeholder text
         read_only (False): whether the view is read-only
         component (None): specifying custom component to use as the view
