@@ -529,6 +529,16 @@ class Operations(object):
 
         return self._ctx.trigger("set_spaces", params=params)
 
+    def set_active_fields(self, fields=[]):
+        """Set the active fields in the App.
+
+        Args:
+            fields: the fields to set such as "ground_truth", "metadata.width", etc.
+        """
+        return self._ctx.trigger(
+            "set_active_fields", params={"fields": fields}
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
