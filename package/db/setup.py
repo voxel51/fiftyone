@@ -37,6 +37,19 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2023-7.0.2.tgz",
         },
     },
+    "centos": {
+        "7": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+        },
+        "8": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-5.0.22.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-5.0.4.tgz",
+        },
+        "9": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
+    },
     "debian": {
         "9": {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.22.tgz",
@@ -87,7 +100,8 @@ LINUX_DOWNLOADS = {
 
 WINDOWS = "Windows"
 WINDOWS_DOWNLOADS = {
-    "x86_64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip"
+    "x86_64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip",
+    "amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip",
 }
 
 
@@ -113,7 +127,7 @@ def _get_download():
             return DARWIN_DOWNLOADS[MACHINE]
 
         if SYSTEM == WINDOWS:
-            return WINDOWS_DOWNLOADS[MACHINE]
+            return WINDOWS_DOWNLOADS[MACHINE.lower()]
 
         if SYSTEM == LINUX:
             return _get_linux_download()
@@ -125,7 +139,7 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.1.1"
+VERSION = "1.1.3"
 
 
 def get_version():

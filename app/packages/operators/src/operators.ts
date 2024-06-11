@@ -4,6 +4,7 @@ import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
+import { QueueItemStatus } from "./constants";
 
 type RawInvocationRequest = {
   operator_uri?: string;
@@ -788,16 +789,6 @@ export async function resolveLocalPlacements(ctx: ExecutionContext) {
   }
 
   return localPlacements;
-}
-
-// and allows for the execution of the requests in order of arrival
-// and removing the requests that have been completed
-
-enum QueueItemStatus {
-  Pending,
-  Executing,
-  Completed,
-  Failed,
 }
 
 class QueueItem {
