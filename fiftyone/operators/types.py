@@ -252,11 +252,13 @@ class Object(BaseType):
         name,
         label,
         icon=None,
-        icon_variant=None,
+        variant=None,
         on_click=None,
         prompt=False,
         params=None,
         space=None,
+        href=None,
+        **kwargs,
     ):
         """Defines a button or icon button to display to the user as a :class:`Button`.
 
@@ -269,6 +271,7 @@ class Object(BaseType):
                 "greet",
                 label="Say Hi!",
                 icon="waving_hand",
+                variant="round",
                 on_click="print_stdout",
                 params={"msg": "Hi!"},
             )
@@ -276,14 +279,16 @@ class Object(BaseType):
         Args:
             name: the name of the property
             label: the label of the button
+            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
+                ``"text"``. Additionally, when ``"icon"`` is provided, the variant can also be
+                ``"round"`` or ``"square"``
             icon (None): the name of the icon to display
-            icon_variant (None): the optional variant of the icon. Can be ``"round"`` or
-                ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
             space (None): An int specifying how much vertical/horizontal space to allocate out
                 of ``12`` depending on the orientation of the parent container
+            href (None): the URL to navigate to when the button is clicked
         """
         btn = Button(
             label=label,
@@ -291,6 +296,9 @@ class Object(BaseType):
             prompt=prompt,
             params=params,
             space=space,
+            variant=variant,
+            href=href,
+            **kwargs,
         )
         if icon:
             btn = IconButtonView(
@@ -299,8 +307,10 @@ class Object(BaseType):
                 prompt=prompt,
                 params=params,
                 icon=icon,
-                variant=icon_variant,
+                variant=variant,
                 space=space,
+                href=href,
+                **kwargs,
             )
         return self.view(name, btn)
 
@@ -1119,6 +1129,7 @@ class Button(View):
         operator (None): the name of the operator to execute when the button is
             clicked
         params (None): the parameters to pass to the operator
+        href (None): the URL to navigate to when the button is clicked
     """
 
     def __init__(self, **kwargs):
@@ -1127,6 +1138,7 @@ class Button(View):
         self.operator = kwargs.get("operator", None)
         self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
+        self.href = kwargs.get("href", None)
 
     def to_json(self):
         return _convert_callables_to_operator_uris(
@@ -2029,8 +2041,15 @@ class IconButtonView(Button):
 
     Args:
         icon (None): a icon for the button. See https://marella.me/material-icons/demo/
-        variant (None): the optional variant of the icon button. Can be either ``"round"``
-            or ``"square"``.
+        variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
+            ``"outlined"``, or ``"contained"``.
+        label (None): a label for the button
+        description (None): a description for the button
+        caption (None): a caption for the button
+        operator (None): the name of the operator to execute when the button is
+            clicked
+        params (None): the parameters to pass to the operator
+        href (None): the URL to navigate to when the button is clicked
     """
 
     def __init__(self, **kwargs):
