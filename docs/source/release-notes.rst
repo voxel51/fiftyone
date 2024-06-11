@@ -3,6 +3,56 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.7.1
+--------------------
+*Released June 11, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.24.1 <release-notes-v0.24.1>`, plus:
+
+- Improved stability of loading/navigating to saved views in the App
+- Fixed a notification error when deleting users from the Team Settings page
+- Improved stability of the Team Groups page after deleting users
+- Optimized export of cloud-backed 3D scenes
+
+.. _release-notes-v0.24.1:
+
+FiftyOne 0.24.1
+---------------
+*Released June 11, 2024*
+
+What's New
+
+- Added :ref:`Ultralytics YOLOv8 models <ultralytics-integration>` trained on
+  Open Images v7 to the model zoo!
+  `#4398 <https://github.com/voxel51/fiftyone/pull/4398>`_
+
+App
+
+- Fixed a regression from FiftyOne 0.24.0 that would prevent operator outputs
+  and error states from displaying in the App
+  `#4445 <https://github.com/voxel51/fiftyone/pull/4445>`_
+
+Core
+
+- Optimized metadata computation for 3D scenes
+  `#4442 <https://github.com/voxel51/fiftyone/pull/4442>`_
+- Fixed a bug that could cause 3D assets to be omitted when exporting 3D scenes
+  `#4442 <https://github.com/voxel51/fiftyone/pull/4442>`_
+
+Utils
+
+- The
+  :func:`make_patches_dataset() <fiftyone.core.patches.make_patches_dataset>`,
+  :func:`make_frames_dataset() <fiftyone.core.video.make_frames_dataset>`,
+  and :func:`make_clips_dataset() <fiftyone.core.clips.make_clips_dataset>`
+  utilities can now be directly called
+  `#4416 <https://github.com/voxel51/fiftyone/pull/4416>`_
+
+Annotation
+
+- Added support loading annotations for large CVAT tasks with many jobs
+  `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
+
 FiftyOne Teams 1.7.0
 --------------------
 *Released May 29, 2024*
@@ -38,9 +88,6 @@ What's New
   `#4254 <https://github.com/voxel51/fiftyone/pull/4254>`_
 - FiftyOne now lazily connects to the database only when needed
   `#4236 <https://github.com/voxel51/fiftyone/pull/4236>`_
-- Added :ref:`Ultralytics YOLOv8 models <ultralytics-integration>` trained on
-  Open Images v7 to the model zoo!
-  `#4398 <https://github.com/voxel51/fiftyone/pull/4398>`_
 - Added :ref:`Grounding DINO <huggingface-transformers-zero-shot-detection>`
   as an option for zero shot object detection
   `#4292 <https://github.com/voxel51/fiftyone/pull/4292>`_
@@ -93,12 +140,6 @@ Utils
   tracking utility
   `#4372 <https://github.com/voxel51/fiftyone/pull/4372>`_,
   `#4296 <https://github.com/voxel51/fiftyone/pull/4296>`_
-- The
-  :func:`make_patches_dataset() <fiftyone.core.patches.make_patches_dataset>`,
-  :func:`make_frames_dataset() <fiftyone.core.video.make_frames_dataset>`,
-  and :func:`make_clips_dataset() <fiftyone.core.clips.make_clips_dataset>`
-  utilities can now be directly called
-  `#4416 <https://github.com/voxel51/fiftyone/pull/4416>`_
 
 Plugins
 
@@ -124,6 +165,15 @@ Zoo
 
 - Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
   `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
+
+FiftyOne Teams 1.6.1
+--------------------
+*Released May 10, 2024*
+
+Bugs
+
+- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
+  enviornments
 
 FiftyOne Teams 1.6.0
 --------------------

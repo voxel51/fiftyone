@@ -46,6 +46,7 @@ ARG SDK_VERSION
 RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
     export PIP_EXTRA_INDEX_URL=$(cat /run/secrets/PIP_EXTRA_INDEX_URL) \
     && pip wheel --wheel-dir=/tmp/wheels \
+    albumentations \
     darwin-fiftyone \
     fiftyone=="${SDK_VERSION}" \
     pyperclip \
@@ -57,10 +58,10 @@ FROM ${GPT_PLUGIN_IMAGE_NAME} as internalrelease
 RUN --mount=type=cache,from=internal-wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
     --find-links=/wheelhouse/tmp/wheels \
-    sentence_transformers \
+    albumentations \
+    darwin-fiftyone \
     pyperclip \
-    darwin-fiftyone
-
+    sentence_transformers
 
 ### `fiftyone-app` image - last to make it the default
 FROM python:${PYTHON_VERSION}-slim as release

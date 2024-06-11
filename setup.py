@@ -30,7 +30,7 @@ INSTALL_REQUIRES = [
     "humanize",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
-    "Jinja2>=3",
+    "Jinja2==3.0.3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
@@ -113,7 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.24.0"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.24.1"]}
 
 
 with open("README.md", "r") as fh:
@@ -122,7 +122,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.17.0",
+    version="0.17.1rc7",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

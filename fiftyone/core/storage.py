@@ -1263,6 +1263,93 @@ class FileWriter(object):
             self.register_path(inpath, outpath)
 
 
+class GreedyFileReader(object):
+    """File reader that greedily reads a configurable batch size of files
+    every time it is asked to read an uncached file.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        with fos.GreedyFileReader(filepaths) as f:
+            for filepath in filepaths:
+                file_bytes = f.read(filepath)
+
+    Args:
+        filepaths: a list of filepaths that will be read
+        binary (False): whether to read the files in binary mode
+        parser (None): an optional function to apply to the loaded file bytes
+            prior to returning them
+        use_cache (False): whether to use the locally cached versions of any
+            remote files, if they exist
+        batch_size (100): the number of files to read in a batch
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+
+    def __init__(
+        self,
+        filepaths,
+        binary=False,
+        parser=None,
+        use_cache=False,
+        batch_size=100,
+        progress=None,
+    ):
+        self.filepaths = list(filepaths)
+        self.binary = binary
+        self.parser = parser
+        self.use_cache = use_cache
+        self.batch_size = batch_size
+        self.progress = progress
+
+        self._cache = {}
+        self._offset = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._cache.clear()
+
+    def _read_next_batch(self):
+        i = self._offset
+        j = self._offset + self.batch_size
+        filepaths = self.filepaths[i:j]
+
+        if self.use_cache:
+            _filepaths, _ = foc.media_cache.use_cached_paths(filepaths)
+        else:
+            _filepaths = filepaths
+
+        files_bytes = read_files(
+            _filepaths, binary=self.binary, progress=self.progress
+        )
+
+        self._cache.update(zip(filepaths, files_bytes))
+        self._offset += self.batch_size
+
+    def read(self, filepath):
+        file_bytes = self._cache.pop(filepath, None)
+        if file_bytes is None:
+            self._read_next_batch()
+
+            file_bytes = self._cache.pop(filepath, None)
+            if file_bytes is None:
+                if self.use_cache:
+                    _filepath, _ = foc.media_cache.use_cached_path(filepath)
+                else:
+                    _filepath = filepath
+
+                file_bytes = read_file(_filepath, binary=self.binary)
+
+        if self.parser is not None:
+            return self.parser(file_bytes)
+
+        return file_bytes
+
+
 def open_file(path, mode="r"):
     """Opens the given file for reading or writing.
 
@@ -1314,7 +1401,7 @@ def open_files(paths, mode="r", skip_failures=False, progress=None):
         a list of open file-like objects
     """
     tasks = [(p, mode, skip_failures) for p in paths]
-    return _run(_do_open_file, tasks, progress=progress)
+    return _run(_do_open_file, tasks, return_results=True, progress=progress)
 
 
 def read_file(path, binary=False):
@@ -1346,7 +1433,7 @@ def read_files(paths, binary=False, skip_failures=False, progress=None):
         a list of file contents
     """
     tasks = [(p, binary, skip_failures) for p in paths]
-    return _run(_do_read_file, tasks, progress=progress)
+    return _run(_do_read_file, tasks, return_results=True, progress=progress)
 
 
 def write_file(str_or_bytes, path):
@@ -1394,9 +1481,9 @@ def join(a, *p):
     return posixpath.join(a, *p)
 
 
-def resolve(path):
-    """Resolves path to absolute, resolving symlinks and relative path
-        indicators such as `.` and `..`.
+def realpath(path):
+    """Converts the given path to absolute, resolving symlinks and relative
+    path indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath
@@ -1407,26 +1494,11 @@ def resolve(path):
     if is_local(path):
         return os.path.realpath(path)
 
-    # Remote path but doesn't have ./ or ../
-    if "./" not in path and "../" not in path:
-        return path
-
-    # Remote path, handle . and ..
-    prefix, blob_locator = path.split("://")
-    remote_folders = blob_locator.split(posixpath.sep)
-    resolved_folders = []
-    for folder in remote_folders:
-        if folder == "..":
-            resolved_folders.pop()
-        elif folder != ".":
-            resolved_folders.append(folder)
-    return prefix + "://" + posixpath.sep.join(resolved_folders)
+    return abspath(path)
 
 
 def isabs(path):
     """Determines whether the given path is absolute.
-
-    Remote paths are always considered absolute.
 
     Args:
         path: the filepath
@@ -1441,9 +1513,8 @@ def isabs(path):
 
 
 def abspath(path):
-    """Converts the given path to an absolute path.
-
-    Remote paths are returned unchanged.
+    """Converts the given path to an absolute path, resolving relative path
+    indicators such as ``.`` and ``..``.
 
     Args:
         path: the filepath
@@ -1454,7 +1525,20 @@ def abspath(path):
     if is_local(path):
         return os.path.abspath(path)
 
-    return path
+    # Optimization: if path contains "../" then it also contains "./"
+    if "./" not in path:
+        return path
+
+    # Resolve "." and ".."
+    prefix, blob = path.split("://")
+    resolved_folders = []
+    for folder in blob.split("/"):
+        if folder == "..":
+            resolved_folders.pop()
+        elif folder != ".":
+            resolved_folders.append(folder)
+
+    return prefix + "://" + "/".join(resolved_folders)
 
 
 def normpath(path):
@@ -2174,7 +2258,7 @@ def move_files(inpaths, outpaths, skip_failures=False, progress=None):
             progress callback function to invoke instead
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
-    _run(_do_move_file, tasks, progress=progress)
+    _run(_do_move_file, tasks, return_results=False, progress=progress)
 
 
 def move_dir(
@@ -2239,7 +2323,7 @@ def delete_files(paths, skip_failures=False, progress=None):
             progress callback function to invoke instead
     """
     tasks = [(p, skip_failures) for p in paths]
-    _run(_do_delete_file, tasks, progress=progress)
+    _run(_do_delete_file, tasks, return_results=False, progress=progress)
 
 
 def delete_dir(dirpath):
@@ -2307,16 +2391,9 @@ def upload_media(
             _allow_mixed=True
         )
 
+    contains_3d = sample_collection._contains_media_type(fom.THREE_D)
     media_field = sample_collection._resolve_media_field(media_field)
     filepaths = sample_collection.values(media_field)
-
-    if sample_collection._contains_media_type(fom.THREE_D):
-        scene_paths = [p for p in filepaths if p.endswith(".fo3d")]
-        asset_map = fou3d.get_scene_asset_paths(
-            scene_paths, skip_failures=True
-        )
-    else:
-        asset_map = None
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
@@ -2330,52 +2407,10 @@ def upload_media(
         if filepath not in paths_map:
             paths_map[filepath] = filename_maker.get_output_path(filepath)
 
-    scene_rewrite_paths = defaultdict(dict)
-    if asset_map is not None:
-        for scene_path, asset_paths in asset_map.items():
-            out_scene_path = filename_maker.get_output_path(scene_path)
-            out_scene_dir = os.path.dirname(out_scene_path)
-            in_scene_dir = os.path.dirname(scene_path)
-
-            for asset_path in asset_paths:
-                abs_asset_path = asset_path
-                if not isabs(asset_path):
-                    abs_asset_path = join(in_scene_dir, asset_path)
-                abs_asset_path = resolve(abs_asset_path)
-
-                out_asset_path = filename_maker.get_output_path(abs_asset_path)
-
-                out_asset_path = resolve(out_asset_path)
-                if abs_asset_path not in paths_map:
-                    paths_map[abs_asset_path] = out_asset_path
-
-                new_relative_path = os.path.relpath(
-                    out_asset_path, out_scene_dir
-                )
-                if asset_path != new_relative_path:
-                    scene_rewrite_paths[scene_path][
-                        asset_path
-                    ] = new_relative_path
-
     remote_paths = [paths_map[f] for f in filepaths]
 
-    # Update asset paths in FO3D scenes and rewrite those files into place.
-    if scene_rewrite_paths:
-        tasks = [
-            (
-                scene_path,
-                filename_maker.get_output_path(scene_path),
-                asset_rewrite_paths,
-            )
-            for scene_path, asset_rewrite_paths in scene_rewrite_paths.items()
-        ]
-        run(_update_scene_asset_paths_and_write, tasks)
-
-        # Remove scenes we already wrote above from paths_map, so we don't
-        #   copy them and overwrite our changes
-        paths_map = {
-            f: r for f, r in paths_map.items() if f not in scene_rewrite_paths
-        }
+    if contains_3d:
+        _update_scene_asset_paths(paths_map, filename_maker)
 
     if not overwrite:
         client = get_client(path=remote_dir)
@@ -2399,6 +2434,47 @@ def upload_media(
     return remote_paths
 
 
+def _update_scene_asset_paths(paths_map, filename_maker):
+    scene_paths = [p for p in paths_map.keys() if p.endswith(".fo3d")]
+    if not scene_paths:
+        return
+
+    scene_rewrite_paths = defaultdict(dict)
+    asset_map = fou3d.get_scene_asset_paths(scene_paths, skip_failures=True)
+    for scene_path, asset_paths in asset_map.items():
+        in_scene_dir = os.path.dirname(scene_path)
+        out_scene_dir = os.path.dirname(paths_map[scene_path])
+
+        for asset_path in asset_paths:
+            abs_asset_path = asset_path
+            if not isabs(asset_path):
+                abs_asset_path = abspath(join(in_scene_dir, asset_path))
+
+            out_asset_path = filename_maker.get_output_path(abs_asset_path)
+
+            if abs_asset_path not in paths_map:
+                paths_map[abs_asset_path] = out_asset_path
+
+            # By convention, we always write *relative* asset paths
+            out_rel_path = os.path.relpath(out_asset_path, out_scene_dir)
+            if asset_path != out_rel_path:
+                scene_rewrite_paths[scene_path][asset_path] = out_rel_path
+
+    if not scene_rewrite_paths:
+        return
+
+    # Update asset paths in 3D scenes and write those files into place
+    tasks = [
+        (scene_path, paths_map[scene_path], asset_rewrite_paths)
+        for scene_path, asset_rewrite_paths in scene_rewrite_paths.items()
+    ]
+    run(_update_scene_asset_paths_and_write, tasks)
+
+    # Remove scenes we already wrote so we don't overwrite them later
+    for scene_path in scene_rewrite_paths.keys():
+        paths_map.pop(scene_path)
+
+
 def _update_scene_asset_paths_and_write(task):
     in_scene_path, out_scene_path, asset_rewrite_paths = task
     scene = fo3d.Scene.from_fo3d(in_scene_path)
@@ -2407,38 +2483,28 @@ def _update_scene_asset_paths_and_write(task):
     scene.write(out_scene_path)
 
 
-def run(fcn, tasks, num_workers=None, progress=None):
+def run(fcn, tasks, return_results=True, num_workers=None, progress=None):
     """Applies the given function to each element of the given tasks.
 
     Args:
         fcn: a function that accepts a single argument
         tasks: an iterable of function arguments
+        return_results (True): whether to return the function results
         num_workers (None): a suggested number of threads to use
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
 
     Returns:
-        the list of function outputs
+        the list of function outputs, or None if ``return_results == False``
     """
-    num_workers = fou.recommend_thread_pool_workers(num_workers)
-
-    try:
-        num_tasks = len(tasks)
-    except:
-        num_tasks = None
-
-    kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
-
-    if num_workers <= 1:
-        with fou.ProgressBar(**kwargs) as pb:
-            results = [fcn(task) for task in pb(tasks)]
-    else:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(**kwargs) as pb:
-                results = list(pb(pool.imap(fcn, tasks)))
-
-    return results
+    return _run(
+        fcn,
+        tasks,
+        return_results=return_results,
+        num_workers=num_workers,
+        progress=progress,
+    )
 
 
 def _get_client(fs=None, path=None, credentials_path=None):
@@ -2874,31 +2940,39 @@ def _copy_files(
         (i, o, skip_failures, cache, use_cache)
         for i, o in zip(inpaths, outpaths)
     ]
-    _run(_do_copy_file, tasks, progress=progress)
+    _run(_do_copy_file, tasks, return_results=False, progress=progress)
 
 
-def _run(fcn, tasks, num_workers=None, progress=None):
-    num_tasks = len(tasks)
+def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
+    try:
+        num_tasks = len(tasks)
+    except:
+        num_tasks = None
+
     if num_tasks == 0:
-        return []
+        return [] if return_results else None
 
     num_workers = fou.recommend_thread_pool_workers(num_workers)
-
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
-    results = []
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
-            for task in pb(tasks):
-                result = fcn(task)
-                results.append(result)
+            if return_results:
+                results = [fcn(task) for task in pb(tasks)]
+            else:
+                for task in pb(tasks):
+                    fcn(task)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(**kwargs) as pb:
-                for result in pb(pool.imap_unordered(fcn, tasks)):
-                    results.append(result)
+                if return_results:
+                    results = list(pb(pool.imap(fcn, tasks)))
+                else:
+                    for _ in pb(pool.imap_unordered(fcn, tasks)):
+                        pass
 
-    return results
+    if return_results:
+        return results
 
 
 def _do_copy_file(arg):
