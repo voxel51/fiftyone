@@ -20,13 +20,7 @@ jobs:
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
       - name: Run
-        run: cd app && yarn test --coverage && mv ./coverage/coverage-final.json ../
-      - name: Upload
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage-final.json
-          flags: app
+        run: cd app && yarn test
 
   test-python:
     runs-on: ${{ matrix.os }}
@@ -92,13 +86,6 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-      - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: python
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
