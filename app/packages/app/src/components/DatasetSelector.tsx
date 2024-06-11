@@ -35,6 +35,7 @@ const DatasetSelector: React.FC<{
 
   return (
     <Selector<string>
+      cy={"dataset"}
       component={DatasetLink}
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}

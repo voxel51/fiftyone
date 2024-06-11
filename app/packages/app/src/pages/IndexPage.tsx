@@ -5,6 +5,7 @@ import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
 import { Route } from "../routing";
 import { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
+import style from "./index.module.css";
 
 const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
@@ -28,7 +29,11 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   return (
     <>
       <Nav fragment={queryRef} hasDataset={false} />
-      <Starter mode={totalDatasets === 0 ? "ADD_DATASET" : "SELECT_DATASET"} />
+      <div className={style.page} data-cy={"index-page"}>
+        <Starter
+          mode={totalDatasets === 0 ? "ADD_DATASET" : "SELECT_DATASET"}
+        />
+      </div>
       <Snackbar />
     </>
   );
