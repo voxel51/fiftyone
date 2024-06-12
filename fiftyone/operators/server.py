@@ -25,6 +25,8 @@ from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
 from .registry import OperatorRegistry
 from fiftyone.plugins.permissions import get_token_from_request
+from .utils import is_method_overridden
+from .operator import Operator
 
 
 async def _get_operator_registry_for_route(
@@ -71,6 +73,14 @@ class ListOperators(HTTPEndpoint):
             if role_scoped_registry.can_execute(operator.uri):
                 serialized_op = operator.to_json()
                 config = serialized_op["config"]
+                skip_input = not is_method_overridden(
+                    Operator, operator, "resolve_input"
+                )
+                skip_output = not is_method_overridden(
+                    Operator, operator, "resolve_output"
+                )
+                config["skip_input"] = skip_input
+                config["skip_output"] = skip_output
                 config["can_execute"] = registry.can_execute(
                     serialized_op["uri"]
                 )

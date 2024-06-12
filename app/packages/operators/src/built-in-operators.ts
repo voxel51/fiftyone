@@ -315,7 +315,7 @@ class OpenDataset extends Operator {
   }
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.str("dataset", { label: "Dataset name", required: true });
+    inputs.str("dataset", { label: "Dataset name" });
     return new types.Property(inputs);
   }
   useHooks(): object {
