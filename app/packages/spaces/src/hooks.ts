@@ -127,9 +127,9 @@ export function usePanelTitle(id?: string): [string, (title: string) => void] {
   const panelId = id || panelContext?.node?.id;
   const panelTitle = panelTitles.get(panelId);
 
-  function setPanelTitle(title: string) {
+  function setPanelTitle(title: string, id?: string) {
     const updatedPanelTitles = new Map(panelTitles);
-    updatedPanelTitles.set(panelId, title);
+    updatedPanelTitles.set(id || panelId, title);
     setPanelTitles(updatedPanelTitles);
   }
   return [panelTitle, setPanelTitle];
