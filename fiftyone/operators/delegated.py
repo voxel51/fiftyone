@@ -125,26 +125,12 @@ class DelegatedOperationService(object):
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
 
-        outputs_schema = None
-        try:
-            doc = self._repo.get(_id=doc_id)
-            outputs = asyncio.run(
-                resolve_type_with_context(doc.context, "outputs")
-            )
-            outputs_schema = outputs.to_json()
-        except:
-            logger.warning(
-                "Failed to resolve output schema for the operation."
-                + traceback.format_exc(),
-            )
-
         return self._repo.update_run_state(
             _id=doc_id,
             run_state=ExecutionRunState.COMPLETED,
             result=result,
             progress=progress,
             run_link=run_link,
-            outputs_schema=outputs_schema,
         )
 
     def set_failed(
@@ -410,4 +396,24 @@ class DelegatedOperationService(object):
             raise prepared.to_exception()
 
         operator, _, ctx, __ = prepared
-        return await do_execute_operator(operator, ctx, exhaust=True)
+
+        result = await do_execute_operator(operator, ctx, exhaust=True)
+
+        outputs_schema = None
+        request_params = {**context.request_params, "results": result}
+        try:
+            outputs = await resolve_type_with_context(
+                request_params, "outputs"
+            )
+            outputs_schema = outputs.to_json()
+        except (AttributeError, Exception):
+            logger.warning(
+                "Failed to resolve output schema for the operation."
+                + traceback.format_exc(),
+            )
+
+        execution_result = ExecutionResult(
+            result=result, outputs_schema=outputs_schema
+        )
+
+        return execution_result
