@@ -317,13 +317,16 @@ class Operations(object):
         """Open all available panels in the App."""
         return self._ctx.trigger("open_all_panel")
 
-    def close_panel(self, name):
+    def close_panel(self, name=None, id=None):
         """Close the panel with the given name in the App.
 
         Args:
             name: the name of the panel to close
+            id: the id of the panel to close
         """
-        return self._ctx.trigger("close_panel", params={"name": name})
+        return self._ctx.trigger(
+            "close_panel", params={"name": name, "id": id}
+        )
 
     def close_all_panels(self):
         """Close all open panels in the App."""
