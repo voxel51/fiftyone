@@ -1,32 +1,59 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  FRAME_SUPPORT_FIELD,
   formatDate,
   formatDateTime,
-  FRAME_SUPPORT_FIELD,
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
-import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  atomFamily,
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField } from "./utils";
 
+const expandedPathValueEntry = atomFamily<boolean, string>({
+  key: "expandedPathValueEntry",
+  default: false,
+  effects: (path) => [
+    fos.getBrowserStorageEffectForKey(`expandedPathValueEntry-${path}`, {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+const TitleDiv = styled.div`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.text.secondary};
+`;
+
 const ScalarDiv = styled.div`
+  & {
+    text-selection
+  }
+
   & > div {
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;
     text-overflow: ellipsis;
-    user-select: all;
     white-space: nowrap;
+  }
+
+  &.expanded > div {
+    white-space: unset;
   }
 `;
 
@@ -80,6 +107,7 @@ const ScalarValueEntry = ({
 
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
+  const [expanded, setExpanded] = useRecoilState(expandedPathValueEntry(path));
 
   return (
     <RegularEntry
@@ -89,7 +117,11 @@ const ScalarValueEntry = ({
       heading={null}
       trigger={trigger}
     >
-      <ScalarDiv>
+      <ScalarDiv
+        title={expanded ? "click to minimize" : "click to expand"}
+        className={expanded ? "expanded" : ""}
+        onClick={() => setExpanded((cur) => !cur)}
+      >
         <Suspense fallback={<LoadingDots text="" />}>
           {slices ? <SlicesLoadable path={path} /> : <Loadable path={path} />}
         </Suspense>
@@ -97,14 +129,11 @@ const ScalarValueEntry = ({
           field={field ?? pseudoField}
           color={color}
           template={({ label, hoverTarget }) => (
-            <div
-              style={{
-                fontSize: "0.8rem",
-                color: theme.text.secondary,
-              }}
-            >
-              <span ref={hoverTarget}>{label}</span>
-            </div>
+            <TitleDiv>
+              <span onClick={(e) => e.stopPropagation()} ref={hoverTarget}>
+                {label}
+              </span>
+            </TitleDiv>
           )}
         />
       </ScalarDiv>
@@ -119,6 +148,14 @@ const ListContainer = styled(ScalarDiv)`
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+
+  &.expanded > div {
+    margin-bottom: 0.5rem;
+  }
+
+  &.expanded > div {
+    white-space: unset;
+  }
 `;
 
 const ListValueEntry = ({
@@ -144,12 +181,13 @@ const ListValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
+  const field = useRecoilValue(fos.field(path));
+  const pseudoField = makePseudoField(path);
   const { ftype, subfield, embeddedDocType } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-
-  const OVERRIDE = {
-    tags: "sample tags",
-  };
+  const [textExpanded, setTextExpanded] = useRecoilState(
+    expandedPathValueEntry(path)
+  );
 
   return (
     <RegularEntry
@@ -165,7 +203,27 @@ const ListValueEntry = ({
       color={color}
       heading={
         <NameAndCountContainer>
-          <span key="path">{OVERRIDE[path] ?? path}</span>
+          <FieldLabelAndInfo
+            field={field ?? pseudoField}
+            color={color}
+            template={({ label, hoverTarget }) => (
+              <>
+                <span
+                  onClick={(e) => e.stopPropagation()}
+                  ref={hoverTarget}
+                  style={{ flex: "unset" }}
+                >
+                  {label}
+                </span>
+                <span
+                  title={textExpanded ? "click to minimize" : "click to expand"}
+                  style={{ flex: 1, height: "100%" }}
+                  onClick={() => setTextExpanded((cur) => !cur)}
+                />
+              </>
+            )}
+          />
+
           <span key="value" data-cy={`sidebar-entry-${path}`}>
             <Suspense fallback={<LoadingDots text="" />}>
               {slices ? (
@@ -223,9 +281,10 @@ const ListLoadable = ({ path }: { path: string }) => {
       ? Array.from(data).map((value) => prettify(value as string))
       : [];
   }, [data]);
+  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
 
   return (
-    <ListContainer>
+    <ListContainer className={textExpanded ? "expanded" : ""}>
       {values.map((v, i) => (
         <div key={i} title={typeof v === "string" ? v : undefined}>
           {v}
@@ -239,11 +298,13 @@ const ListLoadable = ({ path }: { path: string }) => {
 const SlicesListLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<(string | number | null)[]>(path);
   const theme = useTheme();
+  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
+
   return (
     <>
       {Object.entries(values).map(([slice, data]) => {
         return (
-          <ListContainer key={slice}>
+          <ListContainer key={slice} className={textExpanded ? "expanded" : ""}>
             <div
               style={{
                 color: theme.text.secondary,
@@ -270,6 +331,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const theme = useTheme();
+  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
 
   return (
     <>
@@ -282,8 +344,9 @@ const SlicesLoadable = ({ path }: { path: string }) => {
           <div
             style={{
               display: "flex",
-              justifyContent: "left",
+              justifyContent: "space-between",
               columnGap: "0.5rem",
+              marginBottom: "0.5rem",
             }}
             key={i}
           >
@@ -293,9 +356,10 @@ const SlicesLoadable = ({ path }: { path: string }) => {
               style={{
                 ...add,
                 flex: 1,
-                whiteSpace: "nowrap",
+                whiteSpace: textExpanded ? "unset" : "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                textAlign: "right",
               }}
             >
               {none ? "None" : formatted}
@@ -351,8 +415,9 @@ const Loadable = ({ path }: { path: string }) => {
   return (
     <div
       data-cy={`sidebar-entry-${path}`}
-      title={typeof formatted === "string" ? formatted : undefined}
+      onClick={(e) => e.stopPropagation()}
       style={none ? { color } : {}}
+      title={typeof formatted === "string" ? formatted : undefined}
     >
       {none ? "None" : formatted}
     </div>
