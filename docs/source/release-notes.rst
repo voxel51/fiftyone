@@ -5,19 +5,20 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.7.1
 --------------------
-*Released June 7, 2024*
+*Released June 11, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.24.1 <release-notes-v0.24.1>`, plus:
 
 - Improved stability of loading/navigating to saved views in the App
 - Fixed a notification error when deleting users from the Team Settings page
 - Improved stability of the Team Groups page after deleting users
+- Optimized export of cloud-backed 3D scenes
 
 .. _release-notes-v0.24.1:
 
 FiftyOne 0.24.1
 ---------------
-*Released June 7, 2024*
+*Released June 11, 2024*
 
 What's New
 
