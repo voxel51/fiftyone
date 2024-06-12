@@ -248,7 +248,7 @@ class PanelRef:
 
     def close(self):
         """Closes the panel."""
-        self._ctx.ops.close_panel()
+        self._ctx.ops.close_panel(id=self.id)
 
     def set_state(self, key, value):
         """
