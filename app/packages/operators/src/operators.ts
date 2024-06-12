@@ -147,6 +147,8 @@ export type OperatorConfigOptions = {
   darkIcon?: string;
   lightIcon?: string;
   resolveExecutionOptionsOnChange?: boolean;
+  skipInput?: boolean;
+  skipOutput?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -163,6 +165,9 @@ export class OperatorConfig {
   public darkIcon = null;
   public lightIcon = null;
   public resolveExecutionOptionsOnChange = false;
+  public skipInput: boolean;
+  public skipOutput: boolean;
+
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -180,6 +185,8 @@ export class OperatorConfig {
     this.lightIcon = options.lightIcon;
     this.resolveExecutionOptionsOnChange =
       options.resolveExecutionOptionsOnChange || false;
+    this.skipInput = options.skipInput || false;
+    this.skipOutput = options.skipOutput || false;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -197,6 +204,8 @@ export class OperatorConfig {
       darkIcon: json.dark_icon,
       lightIcon: json.light_icon,
       resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
+      skipInput: json.skip_input,
+      skipOutput: json.skip_output,
     });
   }
 }
@@ -253,12 +262,16 @@ export class Operator {
     return {};
   }
   async resolveInput(ctx: ExecutionContext) {
+    if (this.config.skipInput) return null;
+
     if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "inputs");
     }
     return null;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
+    if (this.config.skipOutput) return null;
+
     if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "outputs", result);
     }
