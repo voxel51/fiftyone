@@ -44,7 +44,6 @@ class DelegatedOperationRepo(object):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
-        outputs_schema: dict = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -236,7 +235,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
-        outputs_schema: dict = None,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -244,19 +242,25 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if result is not None and not isinstance(result, ExecutionResult):
             execution_result = ExecutionResult(result=result)
 
+        execution_result_json = (
+            execution_result.to_json() if execution_result else None
+        )
+        outputs_schema = (
+            execution_result_json.pop("outputs_schema", None)
+            if execution_result_json
+            else None
+        )
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
                     "run_state": run_state,
                     "completed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
-                    "result": (
-                        execution_result.to_json()
-                        if execution_result
-                        else None
-                    ),
+                    "result": execution_result_json,
                 }
             }
+
         if outputs_schema:
             update["$set"]["metadata.outputs_schema"] = {
                 "$ifNull": [outputs_schema, {}]
@@ -268,11 +272,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "run_state": run_state,
                     "failed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
-                    "result": (
-                        execution_result.to_json()
-                        if execution_result
-                        else None
-                    ),
+                    "result": execution_result_json,
                 }
             }
         elif run_state == ExecutionRunState.RUNNING:
