@@ -542,6 +542,17 @@ class Operations(object):
             "set_active_fields", params={"fields": fields}
         )
 
+    def set_panel_title(self, id=None, title=None):
+        """Set the title of the specified panel in the App.
+
+        Args:
+            id: the ID of the panel to set the title
+            title: the title to set
+        """
+        return self._ctx.trigger(
+            "set_panel_title", params={"id": id, "title": title}
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
