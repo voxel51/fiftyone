@@ -10,6 +10,7 @@ import classnames from "classnames";
 import React, {
   ComponentType,
   PropsWithChildren,
+  useEffect,
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
@@ -108,6 +109,20 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
   return FallbackComponent;
 };
 
+const TrackFallback = (Fallback, onReset, disableReset) => (props) => {
+  Fallback = Fallback || Errors(onReset, disableReset);
+
+  useEffect(() => {
+    if (window && window.analytics) {
+      window.analytics.trackEvent("error_boundry", {
+        error: props.error,
+      });
+    }
+  }, []);
+
+  return <Fallback {...props} />;
+};
+
 const ErrorBoundary: React.FC<
   PropsWithChildren<{
     onReset?: () => void;
@@ -117,7 +132,9 @@ const ErrorBoundary: React.FC<
 > = ({ children, onReset, disableReset, Fallback }) => {
   // @ts-ignore
   return (
-    <Boundary FallbackComponent={Fallback || Errors(onReset, disableReset)}>
+    <Boundary
+      FallbackComponent={TrackFallback(Fallback, onReset, disableReset)}
+    >
       {children}
     </Boundary>
   );
