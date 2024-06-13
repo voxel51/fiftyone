@@ -1139,6 +1139,27 @@ export class SetActiveFields extends Operator {
   }
 }
 
+export class TrackEvent extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "track_event",
+      label: "Track event",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("event", { label: "Event", required: true });
+    inputs.obj("properties", { label: "Properties" });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    if (window && window.analytics) {
+      window.analytics.trackEvent(ctx.params.event, ctx.params.properties);
+    }
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1182,6 +1203,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(Notify);
     _registerBuiltInOperator(SetExtendedSelection);
     _registerBuiltInOperator(SetActiveFields);
+    _registerBuiltInOperator(TrackEvent);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

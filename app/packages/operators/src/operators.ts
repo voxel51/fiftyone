@@ -601,6 +601,30 @@ export async function validateOperatorInputs(
   return [validationCtx, validationErrors];
 }
 
+function trackOperatorExecution(
+  operatorURI,
+  params,
+  { delegated, isRemote, error }
+) {
+  if (window && window.analytics) {
+    window.analytics.trackEvent("execute_operator", {
+      uri: operatorURI,
+      isRemote,
+      delegated,
+      params,
+    });
+    if (error) {
+      window.analytics.trackEvent("execute_operator_error", {
+        uri: operatorURI,
+        isRemote,
+        delegated,
+        params,
+        error,
+      });
+    }
+  }
+}
+
 export async function executeOperatorWithContext(
   uri: string,
   ctx: ExecutionContext
@@ -688,6 +712,8 @@ export async function executeOperatorWithContext(
   }
 
   if (executor) executor.queueRequests();
+
+  trackOperatorExecution(operatorURI, params, { delegated, isRemote, error });
 
   return new OperatorResult(operator, result, executor, error, delegated);
 }

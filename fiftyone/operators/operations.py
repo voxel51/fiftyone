@@ -539,6 +539,17 @@ class Operations(object):
             "set_active_fields", params={"fields": fields}
         )
 
+    def track_event(self, event, properties=None):
+        """Track an event in the App.
+
+        Args:
+            event: the event to track
+            data (None): the data to track
+        """
+        return self._ctx.trigger(
+            "track_event", params={"event": event, "properties": properties}
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
