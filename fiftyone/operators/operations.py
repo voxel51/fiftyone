@@ -247,7 +247,7 @@ class Operations(object):
             },
         )
 
-    def open_panel(self, name, is_active=True, layout=None):
+    def open_panel(self, name, is_active=True, layout=None, force=False):
         """Open a panel with the given name and layout options in the App.
 
         Args:
@@ -255,8 +255,10 @@ class Operations(object):
             is_active (True): whether to activate the panel immediately
             layout (None): the layout orientation
                 ``("horizontal", "vertical")``, if applicable
+            force (False): whether to force open the panel. Skips the check to see if a panel with
+                the same name exists or not. Note: this also skips allowDuplicates check
         """
-        params = {"name": name, "isActive": is_active}
+        params = {"name": name, "isActive": is_active, "force": force}
         if layout is not None:
             params["layout"] = layout
 
