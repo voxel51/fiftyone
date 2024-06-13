@@ -23,12 +23,14 @@ from fiftyone.teams.authorize import (
 
 from fiftyone.internal.requests import make_request
 from fiftyone.internal.util import get_api_url
+from package.teams.fiftyone.teams.authenticate import authenticate
 
 logger = logging.getLogger(__name__)
 
 _API_URL = get_api_url()
 
 authorize_gql_class(fosm.Mutation)
+
 
 @gql.type
 class Mutation(fosm.Mutation):
@@ -96,9 +98,11 @@ async def _update_view_activity(
 ):
     """Record the last load time and total load count
     for a particular saved view and user"""
-
-    uid = info.context.request.user.sub
-    token = info.context.request.headers.get("Authorization", None)
+    token = info.context.request.cookies.get("next-auth.session-token", None)
+    uid = None
+    if token:
+        decoded = authenticate(token)
+        uid = decoded.get("sub")
 
     if not uid:
         logging.warning("[teams/mutation.py] No id found for the current user")
