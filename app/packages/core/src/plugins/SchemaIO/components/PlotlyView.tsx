@@ -1,14 +1,12 @@
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
+import { merge, snakeCase } from "lodash";
 import React from "react";
 import Plot from "react-plotly.js";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
-import { merge } from "lodash";
-import { usePanelId, usePanelState } from "@fiftyone/spaces";
-import { executeOperator } from "@fiftyone/operators";
-import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
-import { snakeCase } from "lodash";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
@@ -83,17 +81,27 @@ export default function PlotlyView(props) {
 
   const dataDefaults = {};
   const layoutDefaults = {
-    font: { family: "var(--fo-fontFamily-body)", size: 14 },
+    font: {
+      family: "var(--fo-fontFamily-body)",
+      size: 14,
+      color: theme.text.secondary,
+    },
     showlegend: false,
     xaxis: {
       showgrid: true,
-      zeroline: false,
+      zeroline: true,
       visible: true,
+      zerolinecolor: theme.text.tertiary,
+      color: theme.text.secondary,
+      gridcolor: theme.primary.softBorder,
     },
     yaxis: {
-      showgrid: false,
-      zeroline: false,
+      showgrid: true,
+      zeroline: true,
       visible: true,
+      zerolinecolor: theme.text.tertiary,
+      color: theme.text.secondary,
+      gridcolor: theme.primary.softBorder,
     },
     autosize: true,
     margin: {
@@ -103,12 +111,12 @@ export default function PlotlyView(props) {
       r: 0,
       pad: 0,
     },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
+    paper_bgcolor: theme.background.mediaSpace,
+    plot_bgcolor: theme.background.mediaSpace,
     legend: {
       x: 1,
       y: 1,
-      bgcolor: theme.background.level1,
+      bgcolor: theme.background.mediaSpace,
       font: { color: theme.text.secondary },
     },
   };
