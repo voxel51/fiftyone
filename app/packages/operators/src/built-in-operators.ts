@@ -29,6 +29,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 //
 // BUILT-IN OPERATORS
@@ -1147,6 +1148,14 @@ export class TrackEvent extends Operator {
       unlisted: true,
     });
   }
+  useHooks(ctx: ExecutionContext): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    const trackEvent = useTrackEvent();
+    return {
+      trackEvent,
+    };
+  }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("event", { label: "Event", required: true });
@@ -1154,9 +1163,7 @@ export class TrackEvent extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    if (window && window.analytics) {
-      window.analytics.trackEvent(ctx.params.event, ctx.params.properties);
-    }
+    ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
   }
 }
 
