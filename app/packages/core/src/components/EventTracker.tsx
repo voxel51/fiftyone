@@ -22,10 +22,10 @@ const useTrackViewChanges = () => {
       const count = snapshot.getLoadable(fos.count).contents;
 
       if (view !== changes.view) {
-        newChanges.view = view;
+        newChanges.view = getStageNames(view);
       }
       if (extendedStages !== changes.extendedStages) {
-        newChanges.extendedStages = extendedStages;
+        newChanges.extendedStages = getStageNames(extendedStages);
       }
       if (count !== changes.count) {
         newChanges.count = count;
@@ -49,6 +49,11 @@ const useTrackViewChanges = () => {
     }
   }, [changes]);
 };
+
+function getStageNames(stages: fos.State.Stage[]) {
+  if (!stages) return [];
+  return stages.map((stage: fos.State.Stage) => stage._cls);
+}
 
 export default function EventTracker() {
   if (window && window.analytics) {

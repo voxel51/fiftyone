@@ -606,19 +606,20 @@ function trackOperatorExecution(
   params,
   { delegated, isRemote, error }
 ) {
+  const paramKeys = Object.keys(params || {});
   if (window && window.analytics) {
     window.analytics.trackEvent("execute_operator", {
       uri: operatorURI,
       isRemote,
       delegated,
-      params,
+      params: paramKeys,
     });
     if (error) {
       window.analytics.trackEvent("execute_operator_error", {
         uri: operatorURI,
         isRemote,
         delegated,
-        params,
+        params: paramKeys,
         error,
       });
     }
