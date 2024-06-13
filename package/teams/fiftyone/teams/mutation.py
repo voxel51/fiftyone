@@ -22,7 +22,7 @@ from fiftyone.teams.authorize import (
 )
 
 from fiftyone.internal.requests import make_request
-from fiftyone.internal.util import get_api_url
+from fiftyone.internal.util import get_api_url, get_session_cookie_name
 from package.teams.fiftyone.teams.authenticate import authenticate
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,9 @@ async def _update_view_activity(
 ):
     """Record the last load time and total load count
     for a particular saved view and user"""
-    token = info.context.request.cookies.get("next-auth.session-token", None)
+
+    token_key = get_session_cookie_name()
+    token = info.context.request.cookies.get(token_key, None)
 
     if not token:
         logging.debug(
