@@ -99,10 +99,15 @@ async def _update_view_activity(
     """Record the last load time and total load count
     for a particular saved view and user"""
     token = info.context.request.cookies.get("next-auth.session-token", None)
-    uid = None
-    if token:
-        decoded = authenticate(token)
-        uid = decoded.get("sub")
+
+    if not token:
+        logging.debug(
+            "[teams/mutation.py] Cannot update recent views without auth token. "
+        )
+        return
+
+    decoded = authenticate(token)
+    uid = decoded.get("sub")
 
     if not uid:
         logging.warning("[teams/mutation.py] No id found for the current user")
