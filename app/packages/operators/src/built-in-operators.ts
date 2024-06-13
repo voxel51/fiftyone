@@ -136,6 +136,10 @@ class OpenPanel extends Operator {
       default: true,
     });
     inputs.enum("layout", ["horizontal", "vertical"]);
+    inputs.bool("force", {
+      label: "Force (skips panel exists check)",
+      default: false,
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -158,15 +162,16 @@ class OpenPanel extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout } = params;
+    const { name, isActive, layout, force } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const panel = availablePanels.find((panel) => name === panel.name);
-    if (!panel) return console.warn(`Panel with name ${name} does not exist`);
-    const allowDuplicate = panel?.panelOptions?.allowDuplicates;
+    if (!panel && !force)
+      return console.warn(`Panel with name ${name} does not exist`);
+    const allowDuplicate = force ? true : panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
       return;
