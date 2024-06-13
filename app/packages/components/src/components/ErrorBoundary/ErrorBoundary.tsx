@@ -115,8 +115,10 @@ const TrackFallback = (Fallback, onReset, disableReset) => (props) => {
   const trackEvent = useTrackEvent();
 
   useEffect(() => {
+    console.log(props);
     trackEvent("uncaught_app_error", {
-      error: props.error,
+      error: props?.error?.message || props?.error?.name || props?.error,
+      stack: props?.error?.stack,
     });
   }, []);
 

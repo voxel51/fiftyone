@@ -84,7 +84,7 @@ export type RawContext = {
   delegationTarget: string;
   requestDelegation: boolean;
   state: CallbackInterface;
-  info: { dev: "prod" | "dev"; doNotTrack: boolean };
+  info: { buildType: "prod" | "dev"; doNotTrack: boolean };
 };
 
 export class ExecutionContext {

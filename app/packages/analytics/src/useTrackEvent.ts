@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { usingAnalytics } from "./usingAnalytics";
+import usingAnalytics from "./usingAnalytics";
 import { useRecoilValue } from "recoil";
 import { useCallback } from "react";
 
@@ -11,7 +11,7 @@ import { useCallback } from "react";
 export default function useTrackEvent() {
   const info = useRecoilValue(fos.info);
   return useCallback(
-    (eventName: string, properties: Record<string, any>) => {
+    (eventName: string, properties?: Record<string, any>) => {
       const analytics = usingAnalytics(info);
       analytics.trackEvent(eventName, properties);
     },

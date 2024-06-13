@@ -115,11 +115,15 @@ const Nav: React.FC<{
         version
       }
     `,
-    fragment
+    data
   );
-  const setInfo = useResetRecoilState(fos.info);
+  const setInfo = useSetRecoilState(fos.info);
   useEffect(() => {
-    setInfo(info);
+    const buildType = info.dev ? "dev" : "prod";
+    setInfo({
+      ...info,
+      buildType,
+    });
   }, [info, setInfo]);
   useGA(info);
 

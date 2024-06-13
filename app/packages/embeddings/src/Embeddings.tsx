@@ -52,6 +52,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   );
 
   useEffect(() => {
+    throw new Error("hello world");
     setPanelCloseEffect(() => {
       plotSelection.clearSelection();
     });

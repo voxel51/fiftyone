@@ -16,8 +16,12 @@ export default function usingAnalytics(info): Analytics {
 
 class Analytics {
   private _segment?: AnalyticsBrowser;
-  constructor(private info: { doNotTrack: boolean; dev: "prod" | "dev" }) {
+  constructor(
+    private info: { doNotTrack: boolean; buildType: "prod" | "dev" }
+  ) {
     if (!info || info.doNotTrack) {
+      console.warn("Analytics disabled ----------------");
+      console.log(info);
       return;
     }
     this.enable();
@@ -25,7 +29,7 @@ class Analytics {
 
   enable(writeKey?: string) {
     this._segment = AnalyticsBrowser.load({
-      writeKey: writeKey || getWriteKey(this.info.dev),
+      writeKey: writeKey || getWriteKey(this.info.buildType),
     });
     const userId = getUserId(this.info);
     if (userId) {
@@ -65,12 +69,11 @@ class Analytics {
   }
 }
 
-function getWriteKey(mode: "dev" | "prod") {
+function getWriteKey(buildType: "dev" | "prod") {
   if (window && window.FIFTYONE_SEGMENT_WRITE_KEY) {
     return window.FIFTYONE_SEGMENT_WRITE_KEY;
   }
-  const env = process.env.NODE_ENV;
-  return DEFAULT_WRITE_KEYS[env];
+  return DEFAULT_WRITE_KEYS[buildType || "dev"];
 }
 
 function getUserId(info) {
