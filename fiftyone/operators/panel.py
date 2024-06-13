@@ -248,7 +248,7 @@ class PanelRef:
 
     def close(self):
         """Closes the panel."""
-        self._ctx.ops.close_panel()
+        self._ctx.ops.close_panel(id=self.id)
 
     def set_state(self, key, value):
         """
@@ -282,3 +282,14 @@ class PanelRef:
             value (any): The data value.
         """
         self._data.set(key, value)
+
+    def set_title(self, title):
+        """
+        Sets the title of the panel.
+
+        Args:
+            title (str): The title.
+        """
+        if title is None:
+            raise ValueError("title cannot be None")
+        self._ctx.ops.set_panel_title(id=self.id, title=title)

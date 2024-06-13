@@ -2,6 +2,7 @@ import {
   Layout,
   SpaceNode,
   usePanelState,
+  usePanelTitle,
   usePanels,
   useSetPanelStateById,
   useSpaceNodes,
@@ -137,6 +138,10 @@ class OpenPanel extends Operator {
       default: true,
     });
     inputs.enum("layout", ["horizontal", "vertical"]);
+    inputs.bool("force", {
+      label: "Force (skips panel exists check)",
+      default: false,
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -159,15 +164,16 @@ class OpenPanel extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout } = params;
+    const { name, isActive, layout, force } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const panel = availablePanels.find((panel) => name === panel.name);
-    if (!panel) return console.warn(`Panel with name ${name} does not exist`);
-    const allowDuplicate = panel?.panelOptions?.allowDuplicates;
+    if (!panel && !force)
+      return console.warn(`Panel with name ${name} does not exist`);
+    const allowDuplicate = force ? true : panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
       return;
@@ -1012,8 +1018,7 @@ class PromptUserForOperation extends Operator {
     return { triggerEvent };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    const { params, operator_uri, on_success, on_error, on_cancel } =
-      ctx.params;
+    const { params, operator_uri, on_success, on_error } = ctx.params;
     const { triggerEvent } = ctx.hooks;
     const panelId = ctx.getCurrentPanelId();
 
@@ -1114,7 +1119,7 @@ export class SetActiveFields extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {
+  useHooks(): {
     setActiveFields: (fields: string[]) => void;
   } {
     return {
@@ -1127,7 +1132,7 @@ export class SetActiveFields extends Operator {
       ),
     };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("fields", new types.String(), {
       label: "Fields",
@@ -1164,6 +1169,30 @@ export class TrackEvent extends Operator {
   }
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
+  }
+}
+
+export class SetPanelTitle extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_title",
+      label: "Set panel title",
+      unlisted: true,
+    });
+  }
+  useHooks() {
+    const [_, setTitle] = usePanelTitle();
+    return { setTitle };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("id", { label: "Panel ID", required: true });
+    inputs.str("title", { label: "Title", required: true });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { title, id } = ctx.params;
+    ctx.hooks.setTitle(title, id);
   }
 }
 
@@ -1211,6 +1240,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetExtendedSelection);
     _registerBuiltInOperator(SetActiveFields);
     _registerBuiltInOperator(TrackEvent);
+    _registerBuiltInOperator(SetPanelTitle);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

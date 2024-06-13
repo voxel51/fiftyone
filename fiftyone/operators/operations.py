@@ -247,7 +247,7 @@ class Operations(object):
             },
         )
 
-    def open_panel(self, name, is_active=True, layout=None):
+    def open_panel(self, name, is_active=True, layout=None, force=False):
         """Open a panel with the given name and layout options in the App.
 
         Args:
@@ -255,8 +255,10 @@ class Operations(object):
             is_active (True): whether to activate the panel immediately
             layout (None): the layout orientation
                 ``("horizontal", "vertical")``, if applicable
+            force (False): whether to force open the panel. Skips the check to see if a panel with
+                the same name exists or not. Note: this also skips allowDuplicates check
         """
-        params = {"name": name, "isActive": is_active}
+        params = {"name": name, "isActive": is_active, "force": force}
         if layout is not None:
             params["layout"] = layout
 
@@ -317,13 +319,16 @@ class Operations(object):
         """Open all available panels in the App."""
         return self._ctx.trigger("open_all_panel")
 
-    def close_panel(self, name):
+    def close_panel(self, name=None, id=None):
         """Close the panel with the given name in the App.
 
         Args:
             name: the name of the panel to close
+            id: the id of the panel to close
         """
-        return self._ctx.trigger("close_panel", params={"name": name})
+        return self._ctx.trigger(
+            "close_panel", params={"name": name, "id": id}
+        )
 
     def close_all_panels(self):
         """Close all open panels in the App."""
@@ -544,10 +549,21 @@ class Operations(object):
 
         Args:
             event: the event to track
-            data (None): the data to track
+            properties (None): the properties to track
         """
         return self._ctx.trigger(
             "track_event", params={"event": event, "properties": properties}
+        )
+
+    def set_panel_title(self, id=None, title=None):
+        """Set the title of the specified panel in the App.
+
+        Args:
+            id: the ID of the panel to set the title
+            title: the title to set
+        """
+        return self._ctx.trigger(
+            "set_panel_title", params={"id": id, "title": title}
         )
 
 
