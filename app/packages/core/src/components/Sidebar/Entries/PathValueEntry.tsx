@@ -40,8 +40,11 @@ const TitleDiv = styled.div`
 `;
 
 const ScalarDiv = styled.div`
-  & {
-    text-selection
+  & > div:last-child {
+    cursor: pointer;
+  }
+  & > div > span {
+    cursor: text;
   }
 
   & > div {
@@ -118,7 +121,7 @@ const ScalarValueEntry = ({
       trigger={trigger}
     >
       <ScalarDiv
-        title={expanded ? "click to minimize" : "click to expand"}
+        title={`Click to ${expanded ? "minimize" : "expand"}`}
         className={expanded ? "expanded" : ""}
         onClick={() => setExpanded((cur) => !cur)}
       >
@@ -149,11 +152,8 @@ const ListContainer = styled(ScalarDiv)`
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
 
-  &.expanded > div {
+  & > div {
     margin-bottom: 0.5rem;
-  }
-
-  &.expanded > div {
     white-space: unset;
   }
 `;
@@ -185,9 +185,6 @@ const ListValueEntry = ({
   const pseudoField = makePseudoField(path);
   const { ftype, subfield, embeddedDocType } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const [textExpanded, setTextExpanded] = useRecoilState(
-    expandedPathValueEntry(path)
-  );
 
   return (
     <RegularEntry
@@ -207,20 +204,9 @@ const ListValueEntry = ({
             field={field ?? pseudoField}
             color={color}
             template={({ label, hoverTarget }) => (
-              <>
-                <span
-                  onClick={(e) => e.stopPropagation()}
-                  ref={hoverTarget}
-                  style={{ flex: "unset" }}
-                >
-                  {label}
-                </span>
-                <span
-                  title={textExpanded ? "click to minimize" : "click to expand"}
-                  style={{ flex: 1, height: "100%" }}
-                  onClick={() => setTextExpanded((cur) => !cur)}
-                />
-              </>
+              <span onClick={(e) => e.stopPropagation()} ref={hoverTarget}>
+                {label}
+              </span>
             )}
           />
 
@@ -281,10 +267,8 @@ const ListLoadable = ({ path }: { path: string }) => {
       ? Array.from(data).map((value) => prettify(value as string))
       : [];
   }, [data]);
-  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
-
   return (
-    <ListContainer className={textExpanded ? "expanded" : ""}>
+    <ListContainer>
       {values.map((v, i) => (
         <div key={i} title={typeof v === "string" ? v : undefined}>
           {v}
