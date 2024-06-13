@@ -10,6 +10,7 @@ export * from "./dynamicGroups";
 export * from "./filters";
 export * from "./groupEntries";
 export * from "./groups";
+export * from "./info";
 export * from "./internal";
 export * from "./labels";
 export * from "./lightning";

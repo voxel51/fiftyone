@@ -18,6 +18,7 @@ import { scrollable } from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
 
@@ -111,13 +112,12 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
 
 const TrackFallback = (Fallback, onReset, disableReset) => (props) => {
   Fallback = Fallback || Errors(onReset, disableReset);
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
-    if (window && window.analytics) {
-      window.analytics.trackEvent("error_boundry", {
-        error: props.error,
-      });
-    }
+    trackEvent("uncaught_app_error", {
+      error: props.error,
+    });
   }, []);
 
   return <Fallback {...props} />;

@@ -139,6 +139,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     extendedSelection,
   } = curCtx;
+  const info = useRecoilValue(fos.info);
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -152,6 +153,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         currentSample,
         viewName,
         extendedSelection,
+        info,
       },
       hooks
     );

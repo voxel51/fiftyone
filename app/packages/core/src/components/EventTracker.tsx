@@ -2,12 +2,7 @@ import { useRecoilTransactionObserver_UNSTABLE } from "recoil";
 import React, { useEffect, useState, useCallback } from "react";
 import { viewAtom, extendedStagesAtom, countAtom } from "./atoms"; // Replace with actual atom imports
 import * as fos from "@fiftyone/state";
-
-function trackEvent(eventName, properties) {
-  if (window && window.analytics) {
-    window.analytics.track(eventName, properties);
-  }
-}
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const useTrackViewChanges = () => {
   const [changes, setChanges] = useState({});
@@ -39,6 +34,7 @@ const useTrackViewChanges = () => {
   );
 
   useRecoilTransactionObserver_UNSTABLE(handleStateChange);
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     const now = Date.now();
@@ -56,7 +52,8 @@ function getStageNames(stages: fos.State.Stage[]) {
 }
 
 export default function EventTracker() {
-  if (window && window.analytics) {
+  const info = useRecoilValue(fos.info);
+  if (!info.doNotTrack) {
     return <ActualTracker />;
   }
   return null;

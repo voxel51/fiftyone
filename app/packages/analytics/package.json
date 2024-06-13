@@ -1,0 +1,16 @@
+{
+    "name": "@fiftyone/analytics",
+    "author": "Voxel51, Inc.",
+    "version": "0.0.0",
+    "description": "FiftyOne analytics",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/analytics",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone/"
+    },
+    "main": "./src/index.ts",
+    "private": true,
+    "dependencies": {
+        "@segment/analytics-next": "^1.70.0"
+    }
+}
