@@ -112,8 +112,10 @@ async def _update_view_activity(
     uid = decoded.get("sub")
 
     if not uid:
-        logging.warning("[teams/mutation.py] No id found for the current user")
-        uid = "MISSING"
+        logging.warning(
+            "[teams/mutation.py] Cannot update recent views without a user id."
+        )
+        return
 
     # use `ObjectId` instead of `name` to avoid issues resolving renamed
     # views and datasets
