@@ -470,6 +470,107 @@ class LabelTests(unittest.TestCase):
                 decimal=1,
             )
 
+            # check conversion X -> detections_mask
+            dets1_to_dm = dets1.to_detections_mask(
+                frame_size=frame_size,
+            )
+            seg1_to_dm = seg1.to_detections_mask(
+                mask_targets=mask_targets, mask_types="thing"
+            )
+            seg3_to_dm = seg3.to_detections_mask(
+                mask_targets=mask_targets, mask_types="thing"
+            )
+            seg4_to_dm = seg4.to_detections_mask(
+                mask_targets=mask_targets, mask_types="stuff"
+            )
+
+            poly3_to_dm = poly3.to_detections_mask(frame_size=frame_size)
+            poly4_to_dm = poly4.to_detections_mask(frame_size=frame_size)
+
+            self.assertEqual(dets1_to_dm.get_mask().max(), 2)
+            self.assertEqual(seg1_to_dm.get_mask().max(), 2)
+            self.assertEqual(
+                poly3_to_dm.get_mask().max(), len(poly3.polylines)
+            )
+            self.assertEqual(
+                poly4_to_dm.get_mask().max(), len(poly4.polylines)
+            )
+
+            self.assertEqual(dets1_to_dm.get_idx_label(1), label)
+            self.assertEqual(dets1_to_dm.get_idx_label(2), label)
+            self.assertEqual(seg1_to_dm.get_idx_label(1), label)
+            self.assertEqual(seg1_to_dm.get_idx_label(2), label)
+            self.assertEqual(poly3_to_dm.get_idx_label(1), label)
+            self.assertEqual(poly3_to_dm.get_idx_label(2), label)
+            self.assertEqual(poly4_to_dm.get_idx_label(1), label)
+
+            nptest.assert_array_equal(
+                dets1_to_dm.get_mask(),
+                seg1_to_dm.get_mask(),
+            )
+
+            nptest.assert_array_equal(
+                seg3_to_dm.get_mask(), poly3_to_dm.get_mask()
+            )
+            nptest.assert_array_equal(
+                seg4_to_dm.get_mask(), poly4_to_dm.get_mask()
+            )
+
+            # check conversion detections_mask -> X
+            dm_to_dets = dets1_to_dm.to_detections()
+            dm_to_seg = dets1_to_dm.to_segmentation(mask_targets=mask_targets)
+            dm_to_poly = dets1_to_dm.to_polylines()
+
+            self.assertEqual(len(dm_to_dets.detections), 2)
+            self.assertEqual(len(dm_to_poly.polylines), 2)
+
+            self.assertEqual(dm_to_dets.detections[0].label, label)
+            self.assertEqual(dm_to_dets.detections[1].label, label)
+
+            self.assertEqual(dm_to_poly.polylines[0].label, label)
+            self.assertEqual(dm_to_poly.polylines[1].label, label)
+
+            # check that detections_mask -> detections ->
+            # detections_mask is identical
+            dm_to_dm = dm_to_dets.to_detections_mask(
+                frame_size=frame_size,
+            )
+            nptest.assert_array_equal(
+                dets1_to_dm.get_mask(),
+                dm_to_dm.get_mask(),
+            )
+
+            # check that detections_mask -> segmentation is the same
+            # as detections_mask -> detections -> segmentation
+            dm_to_dets_to_seg = dm_to_dets.to_segmentation(
+                frame_size=frame_size, mask_targets=mask_targets
+            )
+            nptest.assert_array_equal(
+                dm_to_seg.get_mask(), dm_to_dets_to_seg.get_mask()
+            )
+
+    @drop_datasets
+    def test_parse_stuff_instance(self):
+        label_mask = np.ones((3, 3), dtype=bool)
+        offset = (0, 0)
+        frame_size = (6, 6)
+        bbox, instance_mask = focl._parse_stuff_instance(
+            label_mask, offset, frame_size
+        )
+        self.assertEqual(bbox, [0.0, 0.0, 0.5, 0.5])
+        nptest.assert_array_equal(instance_mask, label_mask)
+
+    @drop_datasets
+    def test_parse_thing_instance(self):
+        label_mask = np.ones((3, 3), dtype=bool)
+        offset = (0, 0)
+        frame_size = (6, 6)
+        results = focl._parse_thing_instances(label_mask, offset, frame_size)
+        self.assertEqual(len(results), 1)
+        bbox, instance_mask = results[0]
+        self.assertEqual(bbox, [0, 0, 0.5, 0.5])
+        nptest.assert_array_equal(instance_mask, label_mask)
+
     @drop_datasets
     def test_transform_mask(self):
         # int to int

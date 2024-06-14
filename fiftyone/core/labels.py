@@ -8,6 +8,8 @@ Labels stored in dataset samples.
 from functools import partial
 import itertools
 import warnings
+from collections import defaultdict
+import pathlib
 
 from bson import ObjectId
 import cv2
@@ -15,6 +17,7 @@ import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
+import tifffile
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
@@ -557,6 +560,47 @@ class Detections(_HasLabelList, Label):
             ]
         )
 
+    def to_detections_mask(self, frame_size, default_label=None):
+        """Returns a :class:`DetectionsMask` representation of this instance.
+
+        Only detections with instance masks (i.e., their :attr:`mask`
+        attributes populated) will be rendered.
+
+        Args:
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+
+        Returns:
+            a :class:`DetectionsMask`
+
+        """
+        valid_detections = list(
+            d for d in self.detections if d.mask is not None
+        )
+        if len(valid_detections) < len(self.detections):
+            msg = "Skipping detection(s) with no instance mask"
+            warnings.warn(msg)
+
+        maxval = len(valid_detections) + 1
+        width, height = frame_size
+        dtype = DetectionsMask._get_uint_dtype(maxval)
+        mask = np.zeros((height, width), dtype=dtype)
+
+        # pylint: disable=not-an-iterable
+        labels = {}
+        for i, detection in enumerate(valid_detections):
+            idx = i + 1
+            _render_instance(mask, detection, idx)
+            if detection.label is not None and (
+                detection.label != default_label or default_label is None
+            ):
+                labels[idx] = detection.label
+
+        return DetectionsMask(
+            mask=mask, labels=labels, default_label=default_label
+        )
+
     def to_segmentation(self, mask=None, frame_size=None, mask_targets=None):
         """Returns a :class:`Segmentation` representation of this instance.
 
@@ -601,6 +645,243 @@ class Detections(_HasLabelList, Label):
             _render_instance(mask, detection, target)
 
         return Segmentation(mask=mask)
+
+
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
+
+
+class _HasMask(_HasMedia):
+    """Mixin for :class:`Label` classes that have a mask and mask_path."""
+
+    _MEDIA_FIELD = "mask_path"
+
+    mask = fof.ArrayField()
+    mask_path = fof.StringField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the segmentation mask for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.mask is not None:
+            return self.mask
+
+        if self.mask_path is not None:
+            return self._read_mask(self.mask_path)
+
+        return None
+
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
+        if self.mask_path is not None:
+            self.mask = self._read_mask(self.mask_path)
+
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
+        """
+        # NOTE: if both `mask` and `mask_path` are set, treat `mask`
+        # as the current value.
+        if self.mask is None and self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            self._write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
+
+    def _read_mask(self, mask_path):
+        raise NotImplementedError()
+
+    def _write_mask(self, mask, outpath):
+        raise NotImplementedError()
+
+
+class DetectionsMask(_HasID, _HasMask, Label):
+    """A mask of object detections in an image.
+
+    `mask` must be a 2D array of unsigned ints. 0 represents
+    background.
+
+    `mask_path` only supports grayscale PNG (uint8 or uint16) or
+    unsigned integer-valued TIFF files.
+
+    `labels`: an dictionary mapping object index to labels.
+
+    `default_label`: any object index not in `labels` is assumed to
+    have this label.
+
+    """
+
+    labels = fof.MaskTargetsField()
+    default_label = fof.StringField()
+
+    def get_idx_label(self, idx):
+        """Look up the label of the given object index in the mask.
+
+        Note that this function does not check if the object index is
+        actually in the mask.
+
+        """
+        if self.labels is None or idx not in self.labels:
+            return self.default_label
+        return self.labels[idx]
+
+    @staticmethod
+    def _get_extension(path):
+        extension = pathlib.Path(path).suffix
+        supported_extensions = (".png", ".tif", ".tiff")
+        if extension not in supported_extensions:
+            raise ValueError(
+                f"unsupported file extension in {path}."
+                f" supported extensions are: {supported_extensions}"
+            )
+
+        return extension
+
+    @staticmethod
+    def _get_uint_dtype(maxval):
+        if maxval < 2**8:
+            return np.uint8
+        elif maxval < 2**16:
+            return np.uint16
+        elif maxval < 2**32:
+            return np.uint32
+        elif maxval < 2**64:
+            return np.uint64
+
+        raise ValueError(f"max value of {maxval} exceeds upper limit of 2^64")
+
+    @staticmethod
+    def _to_image(mask, extension):
+        """prepare an object detection mask for writing as a grayscale TIFF or PNG."""
+        if mask.dtype not in (np.uint8, np.uint16, np.uint32, np.uint64):
+            raise ValueError(
+                f"object detection mask dtype is '{mask.dtype}',"
+                f" but only uint dtypes are supported."
+            )
+
+        if mask.ndim != 2:
+            raise ValueError("detection mask ndim {mask.ndim} != 2")
+
+        # cast to smallest dtype possible
+        maxval = mask.max()
+        if extension == ".png" and maxval >= 2**16:
+            raise ValueError(
+                f"max value of {maxval} exceeds upper limit of of uint16 for PNG file"
+            )
+        dtype = DetectionsMask._get_uint_dtype(maxval)
+        return mask.astype(dtype)
+
+    def _read_mask(self, mask_path):
+        # pylint: disable=no-member
+        extension = DetectionsMask._get_extension(mask_path)
+        if extension == ".png":
+            mask = foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+        else:
+            mask = tifffile.imread(mask_path)
+
+        # do this here even though we're not writing a mask because it
+        # converts to smallest possible dtype, and also checks type
+        # and bounds
+        mask = DetectionsMask._to_image(mask, extension)
+        return mask
+
+    def _write_mask(self, mask, mask_path):
+        extension = DetectionsMask._get_extension(mask_path)
+        mask = DetectionsMask._to_image(mask, extension)
+        if extension == ".png":
+            foui.write(mask, mask_path)
+        else:
+            tifffile.imwrite(mask_path, mask, compression="zlib")
+
+    def to_detections(self):
+        """Returns a :class:`Detections` representation of this instance with
+        instance masks populated.
+
+        Returns:
+            a :class:`Detections`
+        """
+        mask = self.get_mask()
+        detections = _convert_mask(
+            mask,
+            mask_targets=self.labels,
+            mask_types="stuff",
+            converter=_mask_to_detections,
+            default_label=self.default_label,
+        )
+        return Detections(detections=detections)
+
+    def to_segmentation(self, mask_targets=None):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values
+                to label strings defining which object classes to
+                render and which pixel values to use for each
+                class. If omitted, all objects are rendered with
+                pixel value 255.
+
+        Returns:
+            a :class:`Segmentation`
+
+        """
+        # This could be implemented by first converting to
+        # `Detections`, then calling `to_segmentation()`. However,
+        # since it basically comes down to a mask transformation we do
+        # it that way. We can compare the results in unit tests to
+        # make sure they are the same.
+
+        # note, mask_targets may be many-to-one, but this inverse is
+        # one-to-one.
+        if mask_targets is None:
+            label_to_seg_idx = defaultdict(lambda: 255)
+        else:
+            label_to_seg_idx = defaultdict(lambda: None)
+            update_dict = dict((v, k) for k, v in mask_targets.items())
+            label_to_seg_idx.update(update_dict)
+
+        mask = self.get_mask()
+        unique_indices = set(np.unique(mask)) - set([0])
+        targets_map = list(
+            (source_idx, label_to_seg_idx[self.get_idx_label(source_idx)])
+            for source_idx in unique_indices
+        )
+
+        # filter out invalid targets
+        targets_map = dict((k, v) for k, v in targets_map if v is not None)
+
+        mask = _transform_mask(mask, targets_map)
+        return Segmentation(mask=mask)
+
+    def to_polylines(self, tolerance=2, filled=True):
+        detections = self.to_detections()
+        return detections.to_polylines(tolerance=tolerance, filled=filled)
 
 
 class Polyline(_HasAttributesDict, _HasID, Label):
@@ -906,6 +1187,68 @@ class Polylines(_HasLabelList, Label):
             ]
         )
 
+    def _to_mask(
+        self,
+        mask,
+        frame_size,
+        mask_targets,
+        thickness,
+        default_target=None,
+        default_label=None,
+    ):
+        mask, labels_to_targets = _parse_segmentation_mask_targets(
+            mask, frame_size, mask_targets
+        )
+
+        # pylint: disable=not-an-iterable
+        labels = {}
+        for i, polyline in enumerate(self.polylines):
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(polyline.label, None)
+                if target is None:
+                    continue  # skip unknown target
+            elif default_target is None:
+                target = i + 1
+                if (
+                    polyline.label is not None
+                    and polyline.label != default_label
+                ):
+                    labels[target] = polyline.label
+            else:
+                target = default_target
+
+            _render_polyline(mask, polyline, target, thickness)
+        return mask, labels
+
+    def to_detections_mask(
+        self,
+        frame_size,
+        thickness=1,
+        default_label=None,
+    ):
+        """Returns a :class:`DetectionsMask` representation of this instance.
+
+        Args:
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render.
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines.
+
+        Returns:
+            a :class:`DetectionsMask`
+
+        """
+        mask, labels = self._to_mask(
+            mask=None,
+            frame_size=frame_size,
+            mask_targets=None,
+            thickness=thickness,
+            default_label=default_label,
+        )
+        return DetectionsMask(
+            mask=mask, labels=labels, default_label=default_label
+        )
+
     def to_segmentation(
         self, mask=None, frame_size=None, mask_targets=None, thickness=1
     ):
@@ -930,21 +1273,13 @@ class Polylines(_HasLabelList, Label):
         Returns:
             a :class:`Segmentation`
         """
-        mask, labels_to_targets = _parse_segmentation_mask_targets(
-            mask, frame_size, mask_targets
+        mask, _ = self._to_mask(
+            mask=mask,
+            frame_size=frame_size,
+            mask_targets=mask_targets,
+            thickness=thickness,
+            default_target=255,
         )
-
-        # pylint: disable=not-an-iterable
-        for polyline in self.polylines:
-            if labels_to_targets is not None:
-                target = labels_to_targets.get(polyline.label, None)
-                if target is None:
-                    continue  # skip unknown target
-            else:
-                target = 255
-
-            _render_polyline(mask, polyline, target, thickness)
-
         return Segmentation(mask=mask)
 
 
@@ -997,13 +1332,7 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class _HasMedia(object):
-    """Mixin for :class:`Label` classes that contain a media field."""
-
-    _MEDIA_FIELD = None
-
-
-class Segmentation(_HasID, _HasMedia, Label):
+class Segmentation(_HasID, _HasMask, Label):
     """A semantic segmentation for an image.
 
     Provide either the ``mask`` or ``mask_path`` argument to define the
@@ -1015,62 +1344,13 @@ class Segmentation(_HasID, _HasMedia, Label):
         mask_path (None): the absolute path to the segmentation image on disk
     """
 
-    _MEDIA_FIELD = "mask_path"
+    def _read_mask(self, mask_path):
+        # pylint: disable=no-member
+        return foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
 
-    mask = fof.ArrayField()
-    mask_path = fof.StringField()
-
-    @property
-    def has_mask(self):
-        """Whether this instance has a mask."""
-        return self.mask is not None or self.mask_path is not None
-
-    def get_mask(self):
-        """Returns the segmentation mask for this instance.
-
-        Returns:
-            a numpy array, or ``None``
-        """
-        if self.mask is not None:
-            return self.mask
-
-        if self.mask_path is not None:
-            return _read_mask(self.mask_path)
-
-        return None
-
-    def import_mask(self, update=False):
-        """Imports this instance's mask from disk to its :attr:`mask`
-        attribute.
-
-        Args:
-            outpath: the path to write the map
-            update (False): whether to clear this instance's :attr:`mask_path`
-                attribute after importing
-        """
-        if self.mask_path is not None:
-            self.mask = _read_mask(self.mask_path)
-
-            if update:
-                self.mask_path = None
-
-    def export_mask(self, outpath, update=False):
-        """Exports this instance's mask to the given path.
-
-        Args:
-            outpath: the path to write the mask
-            update (False): whether to clear this instance's :attr:`mask`
-                attribute and set its :attr:`mask_path` attribute when
-                exporting in-database segmentations
-        """
-        if self.mask_path is not None:
-            etau.copy_file(self.mask_path, outpath)
-        else:
-            _write_mask(self.mask, outpath)
-
-            if update:
-                self.mask = None
-                self.mask_path = outpath
+    def _write_mask(self, mask, mask_path):
+        mask = _segmentation_mask_to_image(mask)
+        foui.write(mask, mask_path)
 
     def transform_mask(self, targets_map, outpath=None, update=False):
         """Transforms this instance's mask according to the provided targets
@@ -1102,14 +1382,14 @@ class Segmentation(_HasID, _HasMedia, Label):
         mask = _transform_mask(mask, targets_map)
 
         if outpath is not None:
-            _write_mask(mask, outpath)
+            self._write_mask(mask, outpath)
 
             if update:
                 self.mask = None
                 self.mask_path = outpath
         elif update:
             if self.mask_path is not None:
-                _write_mask(mask, self.mask_path)
+                self._write_mask(mask, self.mask_path)
             else:
                 self.mask = mask
 
@@ -1142,11 +1422,55 @@ class Segmentation(_HasID, _HasMedia, Label):
 
         Returns:
             a :class:`Detections`
+
         """
-        detections = _segmentation_to_detections(
-            self, mask_targets, mask_types
+        mask = self.get_mask()
+        detections = _convert_mask(
+            mask, mask_targets, mask_types, _mask_to_detections
         )
         return Detections(detections=detections)
+
+    def to_detections_mask(
+        self,
+        mask_targets=None,
+        mask_types="stuff",
+        default_label=None,
+    ):
+        """Returns a :class:`DetectionsMask` representation of this
+        instance with instance masks populated.
+
+        Each ``"stuff"`` class will be converted to a single mask value
+        that spans all region(s) of the class.
+
+        Each ``"thing"`` class will result in one mask value per
+        connected region of that class in the segmentation.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
+            mask_types ("stuff"): whether the classes are ``"stuff"``
+                (amorphous regions of pixels) or ``"thing"`` (connected
+                regions, each representing an instance of the thing). Can be
+                any of the following:
+
+                -   ``"stuff"`` if all classes are stuff classes
+                -   ``"thing"`` if all classes are thing classes
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` or ``"thing"`` for each class
+
+        Returns:
+            a :class:`DetectionsMask`
+
+        """
+        mask = self.get_mask()
+        detections = self.to_detections(mask_targets, mask_types)
+        frame_size = mask.shape[0:2][::-1]
+        dets_mask = detections.to_detections_mask(
+            frame_size=frame_size, default_label=default_label
+        )
+        return dets_mask
 
     def to_polylines(
         self,
@@ -1182,9 +1506,9 @@ class Segmentation(_HasID, _HasMedia, Label):
         Returns:
             a :class:`Polylines`
         """
-        polylines = _segmentation_to_polylines(
-            self, mask_targets, mask_types, tolerance
-        )
+        converter = partial(_mask_to_polylines, tolerance=tolerance)
+        mask = self.get_mask()
+        polylines = _convert_mask(mask, mask_targets, mask_types, converter)
         return Polylines(polylines=polylines)
 
 
@@ -1480,19 +1804,15 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 }
 
 
-def _read_mask(mask_path):
-    # pylint: disable=no-member
-    return foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
-
-
-def _write_mask(mask, mask_path):
-    mask = _mask_to_image(mask)
-    foui.write(mask, mask_path)
-
-
 def _transform_mask(in_mask, targets_map):
-    rgb_in = fof.is_rgb_mask_targets(targets_map)
-    rgb_out = fof.is_rgb_mask_targets({v: k for k, v in targets_map.items()})
+    if targets_map:
+        rgb_in = fof.is_rgb_mask_targets(targets_map)
+        rgb_out = fof.is_rgb_mask_targets(
+            {v: k for k, v in targets_map.items()}
+        )
+    else:
+        rgb_in = False
+        rgb_out = False
 
     if rgb_in:
         if in_mask.ndim != 3:
@@ -1531,7 +1851,8 @@ def _transform_mask(in_mask, targets_map):
     return out_mask
 
 
-def _mask_to_image(mask):
+def _segmentation_mask_to_image(mask):
+    """prepare a segmentation mask to write with the eta libraries."""
     if mask.dtype in (np.uint8, np.uint16):
         return mask
 
@@ -1600,10 +1921,10 @@ def _parse_segmentation_target(mask, frame_size, target):
 
 
 def _parse_segmentation_mask_targets(mask, frame_size, mask_targets):
-    if mask_targets is not None:
-        is_rgb = fof.is_rgb_mask_targets(mask_targets)
-    else:
+    if mask_targets is None:
         is_rgb = False
+    else:
+        is_rgb = fof.is_rgb_mask_targets(mask_targets)
 
     if mask is None:
         if frame_size is None:
@@ -1676,22 +1997,39 @@ def _find_slices(mask):
     return dict((backward[idx + 1], slc) for idx, slc in enumerate(slices))
 
 
-def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
-    """Convert segmentation to a collection of detections, polylines, etc.
+def _convert_mask(
+    mask,
+    mask_targets,
+    mask_types,
+    converter,
+    default_label=None,
+):
+    """Convert mask to a collection of detections, polylines, etc.
 
     `converter(label_mask, label, label_type, offset, frame_size)` is
     a function that returns a list of detections, polylines, etc. It
     gets called for each value in `mask_targets`, or for all values in
     the mask if `mask_targets` is `None`.
-    """
-    if isinstance(mask_types, dict):
-        default = None
-    else:
-        default = mask_types
-        mask_types = {}
 
-    mask = segmentation.get_mask()
+    """
     is_rgb = mask.ndim == 3
+
+    # if `mask_targets` or `mask_types` are strings, they are assumed
+    # to be the default for all objects in the mask.
+    convert_idx_to_label = False
+    if isinstance(mask_targets, str):
+        default_label = mask_targets
+        mask_targets = {}
+    elif mask_targets is None:
+        mask_targets = {}
+        convert_idx_to_label = True
+
+    default_type = None
+    if isinstance(mask_types, str):
+        default_type = mask_types
+        mask_types = {}
+    elif mask_types is None:
+        mask_types = {}
 
     if is_rgb:
         # convert to int, like in transform_mask
@@ -1705,29 +2043,24 @@ def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
 
     objects = _find_slices(mask)
     results = []
-    for target, slices in objects.items():
-        if mask_targets is not None:
-            label = mask_targets.get(target, None)
-
-            if label is None:
-                continue  # skip unknown target
+    for idx, slices in objects.items():
+        if convert_idx_to_label:
+            label = str(idx)
         else:
-            label = str(target)
+            label = mask_targets.get(idx, default_label)
+            if label is None:
+                continue  # skip unknown idx
 
-        label_type = mask_types.get(target, None)
-
+        label_type = mask_types.get(idx, default_type)
         if label_type is None:
-            if default is None:
-                continue  # skip unknown type
+            continue  # skip unknown type
 
-            label_type = default
-
-        label_mask = mask[slices] == target
+        cropped_mask = mask[slices] == idx
         offset = list(s.start for s in slices)[::-1]
         frame_size = mask.shape[:2][::-1]
 
         new_results = converter(
-            label_mask, label, label_type, offset, frame_size
+            cropped_mask, label, label_type, offset, frame_size
         )
         results.extend(new_results)
 
@@ -1774,21 +2107,6 @@ def _mask_to_polylines(
     return list(
         Polyline(label=label, points=points, filled=True, closed=True)
         for points in polygons
-    )
-
-
-def _segmentation_to_detections(segmentation, mask_targets, mask_types):
-    return _convert_segmentation(
-        segmentation, mask_targets, mask_types, _mask_to_detections
-    )
-
-
-def _segmentation_to_polylines(
-    segmentation, mask_targets, mask_types, tolerance
-):
-    converter = partial(_mask_to_polylines, tolerance=tolerance)
-    return _convert_segmentation(
-        segmentation, mask_targets, mask_types, converter
     )
 
 
@@ -1855,7 +2173,7 @@ def _parse_stuff_instance(mask, offset=None, frame_size=None):
     h = (ymax - ymin + 1) / height
 
     bbox = [x, y, w, h]
-    instance_mask = mask[ymin:ymax, xmin:xmax]
+    instance_mask = mask[ymin : (ymax + 1), xmin : (xmax + 1)]
 
     return bbox, instance_mask
 
@@ -1873,23 +2191,19 @@ def _parse_thing_instances(mask, offset=None, frame_size=None):
 
     labeled = skm.label(mask)
     objects = _find_slices(labeled)
-
     instances = []
-    for idx, (yslice, xslice) in objects.items():
+    for slc in objects.values():
+        yslice, xslice = slc
         xmin = xslice.start
-        xmax = xslice.stop
         ymin = yslice.start
-        ymax = yslice.stop
-
-        x = (xmin + x_offset) / width
-        y = (ymin + y_offset) / height
-        w = (xmax - xmin) / width
-        h = (ymax - ymin) / height
-
-        bbox = [x, y, w, h]
-        instance_mask = mask[ymin:ymax, xmin:xmax]
-
-        instances.append((bbox, instance_mask))
+        instance_offset = (
+            offset[0] + xmin,
+            offset[1] + ymin,
+        )
+        instance = _parse_stuff_instance(
+            mask[slc], instance_offset, frame_size
+        )
+        instances.append(instance)
 
     return instances
 
