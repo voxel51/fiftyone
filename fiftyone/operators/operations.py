@@ -544,6 +544,17 @@ class Operations(object):
             "set_active_fields", params={"fields": fields}
         )
 
+    def track_event(self, event, properties=None):
+        """Track an event in the App.
+
+        Args:
+            event: the event to track
+            properties (None): the properties to track
+        """
+        return self._ctx.trigger(
+            "track_event", params={"event": event, "properties": properties}
+        )
+
     def set_panel_title(self, id=None, title=None):
         """Set the title of the specified panel in the App.
 

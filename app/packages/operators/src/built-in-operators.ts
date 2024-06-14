@@ -30,6 +30,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 //
 // BUILT-IN OPERATORS
@@ -1144,6 +1145,33 @@ export class SetActiveFields extends Operator {
   }
 }
 
+export class TrackEvent extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "track_event",
+      label: "Track event",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    const trackEvent = useTrackEvent();
+    return {
+      trackEvent,
+    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("event", { label: "Event", required: true });
+    inputs.obj("properties", { label: "Properties" });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
+  }
+}
+
 export class SetPanelTitle extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -1211,6 +1239,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(Notify);
     _registerBuiltInOperator(SetExtendedSelection);
     _registerBuiltInOperator(SetActiveFields);
+    _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
   } catch (e) {
     console.error("Error registering built-in operators");

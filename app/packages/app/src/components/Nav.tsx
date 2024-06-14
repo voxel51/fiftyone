@@ -16,14 +16,19 @@ import React, { Suspense, useEffect, useMemo } from "react";
 import ReactGA from "react-ga4";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import { graphql } from "relay-runtime";
 import gaConfig from "../ga";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
-import { NavGA$key } from "./__generated__/NavGA.graphql";
+import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -64,22 +69,9 @@ const getUseSearch = (fragment: NavDatasets$key) => {
   };
 };
 
-export const useGA = (fragment: NavGA$key) => {
-  const info = useFragment(
-    graphql`
-      fragment NavGA on Query {
-        context
-        dev
-        doNotTrack
-        uid
-        version
-      }
-    `,
-    fragment
-  );
-
+export const useGA = (info) => {
   useEffect(() => {
-    if (info.doNotTrack) {
+    if (!info || info.doNotTrack) {
       return;
     }
     const dev = info.dev;
@@ -98,7 +90,7 @@ export const useGA = (fragment: NavGA$key) => {
         checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-  }, []);
+  }, [info]);
 };
 
 const Nav: React.FC<{
@@ -114,7 +106,31 @@ const Nav: React.FC<{
     `,
     fragment
   );
-  useGA(data);
+  const info = useFragment(
+    graphql`
+      fragment NavGA on Query {
+        context
+        dev
+        doNotTrack
+        uid
+        version
+      }
+    `,
+    data
+  );
+  const [analyticsInfo, setAnalyticsInfo] = useAnalyticsInfo();
+  useEffect(() => {
+    const buildType = info.dev ? "dev" : "prod";
+    const writeKey = DEFAULT_WRITE_KEYS[buildType];
+    setAnalyticsInfo({
+      userId: info.uid,
+      userGroup: "fiftyone-oss",
+      writeKey,
+      doNotTrack: info.doNotTrack,
+    });
+  }, [info, setAnalyticsInfo]);
+  useGA(info);
+
   const useSearch = getUseSearch(data);
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();

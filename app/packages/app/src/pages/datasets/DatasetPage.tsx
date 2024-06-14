@@ -14,6 +14,7 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import EventTracker from "@fiftyone/core/src/components/EventTracker";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -120,6 +121,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
             <datasetQueryContext.Provider value={data}>
               <OperatorCore />
               <Dataset />
+              <EventTracker />
             </datasetQueryContext.Provider>
           </div>
           <Snackbar />

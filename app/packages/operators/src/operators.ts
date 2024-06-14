@@ -4,6 +4,7 @@ import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
+import { Analytics, AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 
 type RawInvocationRequest = {
   operator_uri?: string;
@@ -83,6 +84,7 @@ export type RawContext = {
   delegationTarget: string;
   requestDelegation: boolean;
   state: CallbackInterface;
+  analyticsInfo: AnalyticsInfo;
 };
 
 export class ExecutionContext {
@@ -601,6 +603,30 @@ export async function validateOperatorInputs(
   return [validationCtx, validationErrors];
 }
 
+function trackOperatorExecution(
+  operatorURI,
+  params,
+  { info, delegated, isRemote, error }
+) {
+  const analytics = usingAnalytics(info);
+  const paramKeys = Object.keys(params || {});
+  analytics.trackEvent("execute_operator", {
+    uri: operatorURI,
+    isRemote,
+    delegated,
+    params: paramKeys,
+  });
+  if (error) {
+    analytics.trackEvent("execute_operator_error", {
+      uri: operatorURI,
+      isRemote,
+      delegated,
+      params: paramKeys,
+      error,
+    });
+  }
+}
+
 export async function executeOperatorWithContext(
   uri: string,
   ctx: ExecutionContext
@@ -688,6 +714,13 @@ export async function executeOperatorWithContext(
   }
 
   if (executor) executor.queueRequests();
+
+  trackOperatorExecution(operatorURI, params, {
+    info: ctx._currentContext.info,
+    delegated,
+    isRemote,
+    error,
+  });
 
   return new OperatorResult(operator, result, executor, error, delegated);
 }
