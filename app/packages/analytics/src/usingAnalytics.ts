@@ -35,7 +35,6 @@ export class Analytics {
       return;
     }
     this.enable(info);
-    this.track("fiftyone_app_loaded");
   }
 
   enable(info: AnalyticsInfo) {
@@ -60,6 +59,7 @@ export class Analytics {
   }
 
   track(name: string, properties?: {}) {
+    console.log("track", name, properties);
     if (!this._segment) return;
     this._segment.track(name, properties);
   }
