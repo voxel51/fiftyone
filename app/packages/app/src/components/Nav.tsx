@@ -28,6 +28,7 @@ import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
+import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -117,14 +118,17 @@ const Nav: React.FC<{
     `,
     data
   );
-  const setInfo = useSetRecoilState(fos.info);
+  const [analyticsInfo, setAnalyticsInfo] = useAnalyticsInfo();
   useEffect(() => {
     const buildType = info.dev ? "dev" : "prod";
-    setInfo({
-      ...info,
-      buildType,
+    const writeKey = DEFAULT_WRITE_KEYS[buildType];
+    setAnalyticsInfo({
+      userId: info.uid,
+      userGroup: "fiftyone-oss",
+      writeKey,
+      doNotTrack: info.doNotTrack,
     });
-  }, [info, setInfo]);
+  }, [info, setAnalyticsInfo]);
   useGA(info);
 
   const useSearch = getUseSearch(data);

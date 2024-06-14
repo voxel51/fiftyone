@@ -33,6 +33,7 @@ import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { ExecutionCallback } from "./types-internal";
 import usePanelEvent from "./usePanelEvent";
+import { useAnalyticsInfo } from "@fiftyone/analytics";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -139,7 +140,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     extendedSelection,
   } = curCtx;
-  const info = useRecoilValue(fos.info);
+  const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -153,7 +154,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         currentSample,
         viewName,
         extendedSelection,
-        info,
+        analyticsInfo,
       },
       hooks
     );

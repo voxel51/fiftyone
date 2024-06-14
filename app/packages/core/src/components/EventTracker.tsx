@@ -2,7 +2,7 @@ import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
 import React, { useEffect, useState, useCallback } from "react";
 import { viewAtom, extendedStagesAtom, countAtom } from "./atoms"; // Replace with actual atom imports
 import * as fos from "@fiftyone/state";
-import { useTrackEvent } from "@fiftyone/analytics";
+import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 
 const useTrackViewChanges = () => {
   const [changes, setChanges] = useState({});
@@ -89,7 +89,7 @@ function getFilterNames(filters: { [path: string]: any }) {
 }
 
 export default function EventTracker() {
-  const info = useRecoilValue(fos.info);
+  const info = useRecoilValue(analyticsInfo);
   if (!info?.doNotTrack) {
     return <ActualTracker />;
   }

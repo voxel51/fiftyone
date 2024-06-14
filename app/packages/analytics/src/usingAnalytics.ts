@@ -1,42 +1,53 @@
 import { AnalyticsBrowser } from "@segment/analytics-next";
 
-const DEFAULT_WRITE_KEYS = {
-  dev: "MrAGfUuvQq2FOJIgAgbwgjMQgRNgruRa", // oss-dev
-  prod: "SjCRPH72QTHlVhFZIT5067V9rhuq80Dl", // oss-prod
+export type AnalyticsInfo = {
+  writeKey: string;
+  userId: string;
+  userGroup: string;
+  doNotTrack?: boolean;
 };
 
 let _analytics: Analytics = null;
 
-export default function usingAnalytics(info): Analytics {
+export default function usingAnalytics(info: AnalyticsInfo): Analytics {
   if (!_analytics) {
-    _analytics = new Analytics(info);
+    _analytics = new Analytics();
+  }
+  if (info) {
+    _analytics.load(info);
   }
   return _analytics;
 }
 
-class Analytics {
+export class Analytics {
   private _segment?: AnalyticsBrowser;
-  constructor(
-    private info: { doNotTrack: boolean; buildType: "prod" | "dev" }
-  ) {
+  load(info: AnalyticsInfo) {
+    if (this._segment) return;
     if (!info || info.doNotTrack) {
-      console.warn("Analytics disabled ----------------");
+      console.warn("Analytics disabled");
       console.log(info);
+      this.disable();
       return;
     }
-    this.enable();
+    if (!info.writeKey) {
+      console.warn("Analytics disabled (no write key)");
+      this.disable();
+      return;
+    }
+    this.enable(info);
+    this.track("fiftyone_app_loaded");
   }
 
-  enable(writeKey?: string) {
+  enable(info: AnalyticsInfo) {
     this._segment = AnalyticsBrowser.load({
-      writeKey: writeKey || getWriteKey(this.info.buildType),
+      writeKey: info.writeKey,
     });
-    const userId = getUserId(this.info);
-    if (userId) {
-      this.identify(userId);
+    if (info.userId) {
+      this.identify(info.userId);
     }
-    const group = getUserGroup();
-    this.group(group);
+    if (info.userGroup) {
+      this.group(info.userGroup);
+    }
   }
 
   disable() {
@@ -67,25 +78,4 @@ class Analytics {
     if (!this._segment) return;
     this._segment.group(groupId, traits);
   }
-}
-
-function getWriteKey(buildType: "dev" | "prod") {
-  if (window && window.FIFTYONE_SEGMENT_WRITE_KEY) {
-    return window.FIFTYONE_SEGMENT_WRITE_KEY;
-  }
-  return DEFAULT_WRITE_KEYS[buildType || "dev"];
-}
-
-function getUserId(info) {
-  if (window && window.FIFTYONE_ANLYTICS_ID) {
-    return window.FIFTYONE_USER_ID;
-  }
-  return info.uid;
-}
-
-function getUserGroup() {
-  if (window && window.FIFTYONE_ANLYTICS_GROUP) {
-    return window.FIFTYONE_ANLYTICS_GROUP;
-  }
-  return "fiftyone-oss-users";
 }

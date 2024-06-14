@@ -4,7 +4,7 @@ import * as types from "./types";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
-import { usingAnalytics } from "@fiftyone/analytics";
+import { Analytics, AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 
 type RawInvocationRequest = {
   operator_uri?: string;
@@ -84,7 +84,7 @@ export type RawContext = {
   delegationTarget: string;
   requestDelegation: boolean;
   state: CallbackInterface;
-  info: { buildType: "prod" | "dev"; doNotTrack: boolean };
+  analyticsInfo: AnalyticsInfo;
 };
 
 export class ExecutionContext {
