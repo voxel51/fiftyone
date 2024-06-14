@@ -8,7 +8,6 @@ FROM python:${PYTHON_VERSION} as wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels \
-      "fiftyone>=0.24.0" \
       "langchain-community>=0.2.0" \
       "langchain-core>=0.2.0" \
       "langchain-openai>=0.1.0" \
@@ -24,7 +23,6 @@ FROM ${TORCH_IMAGE_NAME} as gptrelease
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip install --no-cache-dir -q --no-index \
       --find-links=/wheelhouse/tmp/wheels \
-      "fiftyone>=0.24.0" \
       "langchain-community>=0.2.0" \
       "langchain-core>=0.2.0" \
       "langchain-openai>=0.1.0" \
