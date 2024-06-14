@@ -127,6 +127,7 @@ const Nav: React.FC<{
       userGroup: "fiftyone-oss",
       writeKey,
       doNotTrack: info.doNotTrack,
+      debug: info.dev,
     });
   }, [info, setAnalyticsInfo]);
   useGA(info);
