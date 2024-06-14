@@ -5,6 +5,7 @@ export type AnalyticsInfo = {
   userId: string;
   userGroup: string;
   doNotTrack?: boolean;
+  debug: boolean;
 };
 
 let _analytics: Analytics = null;
@@ -21,8 +22,10 @@ export default function usingAnalytics(info: AnalyticsInfo): Analytics {
 
 export class Analytics {
   private _segment?: AnalyticsBrowser;
+  private _debug = false;
   load(info: AnalyticsInfo) {
     if (this._segment) return;
+    this._debug = info?.debug;
     if (!info || info.doNotTrack) {
       console.warn("Analytics disabled");
       console.log(info);
@@ -59,7 +62,9 @@ export class Analytics {
   }
 
   track(name: string, properties?: {}) {
-    console.log("track", name, properties);
+    if (this._debug) {
+      console.log("track", name, properties);
+    }
     if (!this._segment) return;
     this._segment.track(name, properties);
   }
