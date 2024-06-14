@@ -297,7 +297,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
           }}
           onChange={(e) => {
             send({ type: "CHANGE", value: e.target.value });
-            trackAdd(e.target.value);
           }}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
