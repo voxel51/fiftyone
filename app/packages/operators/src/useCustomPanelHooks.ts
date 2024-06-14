@@ -43,10 +43,10 @@ export interface CustomPanelHooks {
   loaded: boolean;
 }
 
-function useCtxChangePanelEvent(panelId, value, operator) {
+function useCtxChangePanelEvent(loaded, panelId, value, operator) {
   const triggerCtxChangedEvent = usePanelEvent();
   useEffect(() => {
-    if (operator) {
+    if (loaded && operator) {
       triggerCtxChangedEvent(panelId, { operator, params: { value } });
     }
   }, [value, operator]);
@@ -66,7 +66,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     data: panelStateLocal?.data,
   });
   const panelSchema = panelStateLocal?.schema;
-  const [loaded] = useState(false);
   const view = useRecoilValue(fos.view);
   const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
   const lastPanelLoadState = useRef({
@@ -74,6 +73,9 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     state: panelState,
   });
   const ctx = useGlobalExecutionContext();
+  const isLoaded = useMemo(() => {
+    return panelStateLocal?.loaded;
+  }, [panelStateLocal?.loaded]);
 
   const onLoad = useCallback(() => {
     if (props.onLoad) {
@@ -83,31 +85,46 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       });
     }
   }, [props.onLoad, panelId, panelState?.state]);
-  useCtxChangePanelEvent(panelId, ctx._currentContext, props.onChangeCtx);
-  useCtxChangePanelEvent(panelId, ctx.view, props.onChangeView);
-  useCtxChangePanelEvent(panelId, ctx.viewName, props.onChangeView);
-  useCtxChangePanelEvent(panelId, ctx.filters, props.onChangeView);
-  useCtxChangePanelEvent(panelId, ctx.extended, props.onChangeView);
-  useCtxChangePanelEvent(panelId, ctx.datasetName, props.onChangeDataset);
   useCtxChangePanelEvent(
+    isLoaded,
+    panelId,
+    ctx._currentContext,
+    props.onChangeCtx
+  );
+  useCtxChangePanelEvent(isLoaded, panelId, ctx.view, props.onChangeView);
+  useCtxChangePanelEvent(isLoaded, panelId, ctx.viewName, props.onChangeView);
+  useCtxChangePanelEvent(isLoaded, panelId, ctx.filters, props.onChangeView);
+  useCtxChangePanelEvent(isLoaded, panelId, ctx.extended, props.onChangeView);
+  useCtxChangePanelEvent(
+    isLoaded,
+    panelId,
+    ctx.datasetName,
+    props.onChangeDataset
+  );
+  useCtxChangePanelEvent(
+    isLoaded,
     panelId,
     ctx.extendedSelection,
     props.onChangeExtendedSelection
   );
   useCtxChangePanelEvent(
+    isLoaded,
     panelId,
     ctx.currentSample,
     props.onChangeCurrentSample
   );
-  useCtxChangePanelEvent(panelId, ctx.selectedSamples, props.onChangeSelected);
   useCtxChangePanelEvent(
+    isLoaded,
+    panelId,
+    ctx.selectedSamples,
+    props.onChangeSelected
+  );
+  useCtxChangePanelEvent(
+    isLoaded,
     panelId,
     ctx.selectedLabels,
     props.onChangeSelectedLabels
   );
-  const isLoaded = useMemo(() => {
-    return panelStateLocal?.loaded;
-  }, [panelStateLocal?.loaded]);
 
   useEffect(() => {
     if (props.onLoad && !isLoaded) {
@@ -193,7 +210,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     handlePanelStatePathChange,
     data,
     panelSchema,
-    loaded,
   };
 }
 
