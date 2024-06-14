@@ -61,7 +61,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
 
           if (isVideo) {
             const videoText = document.createElement("p");
-            videoText.innerHTML = `You can use
+            videoText.textContent = `You can use
               <code>
                 <a>
                   fiftyone.utils.video.reencode_videos()

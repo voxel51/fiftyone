@@ -41,8 +41,6 @@ import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
 
-import _ from "lodash";
-
 interface TagData {
   color: string;
   title: string;
@@ -90,7 +88,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     if (this.playing !== playing) {
       this.playing = playing;
       if (playing) {
-        this.element.innerHTML = "";
+        this.element.textContent = "";
         return this.element;
       }
     } else if (
@@ -425,7 +423,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.colorBy = coloring.by;
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
-    this.element.innerHTML = "";
+    this.element.textContent = "";
     this.customizedColors = customizeColorSetting;
     this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
@@ -440,24 +438,35 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     elements
       .filter((e) => Boolean(e))
       .forEach(({ path, value, color, title }) => {
-        const div = document.createElement("div");
-        const child = prettify(value);
-        child instanceof HTMLElement
-          ? div.appendChild(child)
-          : (div.innerHTML = child);
-        div.title = title;
-        div.style.backgroundColor = color;
-        const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
-        const attribute = ["tags", "_label_tags"].includes(path)
-          ? `tag-${path}-${tagValue}`
-          : `tag-${path}`;
-        div.setAttribute("data-cy", attribute);
-        this.element.appendChild(div);
+        this.element.appendChild(applyTagValue(color, path, title, value));
       });
 
     return this.element;
   }
 }
+
+export const applyTagValue = (
+  color: string,
+  path: string,
+  title: string,
+  value: string
+) => {
+  const div = document.createElement("div");
+  const child = prettify(value);
+  child instanceof HTMLElement
+    ? div.appendChild(child)
+    : (div.textContent = child);
+
+  div.title = title;
+  div.style.backgroundColor = color;
+
+  const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
+  const attribute = ["tags", "_label_tags"].includes(path)
+    ? `tag-${path}-${tagValue}`
+    : `tag-${path}`;
+  div.setAttribute("data-cy", attribute);
+  return div;
+};
 
 const arraysAreEqual = (a: any[], b: any[]): boolean => {
   if (a === b) return true;
