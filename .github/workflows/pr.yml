@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'develop'
     steps:
-      - uses: convictional/trigger-workflow-and-wait@v1.6.1
+      - uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: voxel51
           repo: fiftyone-teams
