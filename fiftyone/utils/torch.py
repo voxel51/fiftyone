@@ -342,6 +342,8 @@ class TorchImageModelConfig(foc.Config):
             # Use the `image_XXX` parameters defined below to build a transform
             transforms = build_transforms(image_XXX, ...)
 
+            # Set `transforms_args.ragged_batches` to `True` or `False` depending on the case
+
     3.  OutputProcessor::
 
             # Directly provide an OutputProcessor
