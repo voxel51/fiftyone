@@ -5,6 +5,7 @@ FiftyOne Teams mutations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 import strawberry as gql
@@ -22,13 +23,14 @@ from fiftyone.teams.authorize import (
 )
 
 from fiftyone.internal.requests import make_request
-from fiftyone.internal.util import get_api_url
+from fiftyone.internal.util import get_api_url, get_session_cookie_name
 
 logger = logging.getLogger(__name__)
 
 _API_URL = get_api_url()
 
 authorize_gql_class(fosm.Mutation)
+
 
 @gql.type
 class Mutation(fosm.Mutation):
@@ -61,13 +63,15 @@ class Mutation(fosm.Mutation):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
-                sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
+                sample_filter=(
+                    SampleFilter(
+                        group=GroupElementFilter(
+                            slice=form.slice, slices=[form.slice]
+                        )
                     )
-                )
-                if form.slice
-                else None,
+                    if form.slice
+                    else None
+                ),
             )
 
         result_view = fosm._build_result_view(result_view, form)
@@ -97,12 +101,14 @@ async def _update_view_activity(
     """Record the last load time and total load count
     for a particular saved view and user"""
 
-    uid = info.context.request.user.sub
-    token = info.context.request.headers.get("Authorization", None)
+    token_key = get_session_cookie_name()
+    token = info.context.request.cookies.get(token_key, None)
 
-    if not uid:
-        logging.warning("[teams/mutation.py] No id found for the current user")
-        uid = "MISSING"
+    if not token:
+        logging.debug(
+            "[teams/mutation.py] Cannot update recent views without auth token. "
+        )
+        return
 
     # use `ObjectId` instead of `name` to avoid issues resolving renamed
     # views and datasets
