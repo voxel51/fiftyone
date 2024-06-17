@@ -68,7 +68,7 @@ jobs:
           python tests/utils/github_actions_flags.py
 
       - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v2
+        uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
