@@ -1,6 +1,7 @@
 export interface Field {
   ftype: string;
   dbField: string | null;
+  pathWithDbField: string | null;
   description: string | null;
   info: object | null;
   name: string;
@@ -24,12 +25,19 @@ export function getFieldInfo(
 ): Field | undefined {
   const keys = fieldPath.split(".");
   let field: Field;
+
+  const dbFields = [];
+
   for (let index = 0; index < keys.length; index++) {
     if (!schema) return undefined;
 
-    field = schema[keys[index]];
+    field = { ...schema[keys[index]] };
     schema = field?.fields;
+
+    dbFields.push(field?.dbField);
   }
+
+  field.pathWithDbField = dbFields.filter(Boolean).join(".");
 
   return field;
 }
