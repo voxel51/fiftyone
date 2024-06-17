@@ -789,7 +789,7 @@ class TorchImageModel(
         return model
 
     def _build_transforms(self, config):
-        ragged_batches = True
+        ragged_batches = config.transforms_args.get("ragged_batches", True)
 
         if config.transforms is not None:
             return config.transforms, ragged_batches
