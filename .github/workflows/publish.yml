@@ -55,7 +55,7 @@ jobs:
       - name: docker
         run: make docker-export -o python
       - name: Upload image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docker-image
           path: fiftyone.tar.gz
