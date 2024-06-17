@@ -186,7 +186,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
       this.isBuffering !== buffering ||
       !loaded
     ) {
-      this.element.innerHTML = "";
+      this.element.textContent = "";
       if (buffering || !loaded) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading";
@@ -378,14 +378,14 @@ export class TimeElement extends BaseElement<VideoState> {
     options: { useFrameNumber },
   }: Readonly<VideoState>) {
     if (typeof duration !== "number") {
-      this.element.innerHTML = "";
+      this.element.textContent = "";
       return this.element;
     }
 
     const timestamp = useFrameNumber
       ? getFrameString(frameNumber, duration, frameRate)
       : getFullTimeString(frameNumber, frameRate, duration);
-    this.element.innerHTML = timestamp;
+    this.element.textContent = timestamp;
     return this.element;
   }
 }

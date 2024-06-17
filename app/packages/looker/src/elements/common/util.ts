@@ -65,7 +65,7 @@ export const makeCheckboxRow = function (
   const label = document.createElement("label");
   label.setAttribute("data-cy", `looker-checkbox-${text}`);
   label.classList.add(lookerLabel);
-  label.innerHTML = text;
+  label.textContent = text;
 
   const checkbox = document.createElement("input");
   checkbox.setAttribute("data-cy", `looker-checkbox-input-${text}`);
@@ -91,7 +91,7 @@ export const prettify = (
     const a = document.createElement("a");
     a.onclick = onClick;
     a.href = url;
-    a.innerHTML = url;
+    a.textContent = url;
     return a;
   }
 

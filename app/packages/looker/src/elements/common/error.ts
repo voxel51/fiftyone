@@ -3,7 +3,7 @@
  */
 import copy from "copy-to-clipboard";
 
-import { BaseState, StateUpdate } from "../../state";
+import { BaseState } from "../../state";
 import { BaseElement } from "../base";
 
 import { AppError } from "@fiftyone/utilities";
