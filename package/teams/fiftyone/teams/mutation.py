@@ -5,6 +5,7 @@ FiftyOne Teams mutations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 import strawberry as gql
@@ -23,7 +24,6 @@ from fiftyone.teams.authorize import (
 
 from fiftyone.internal.requests import make_request
 from fiftyone.internal.util import get_api_url, get_session_cookie_name
-from fiftyone.teams.authenticate import authenticate
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +63,15 @@ class Mutation(fosm.Mutation):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
-                sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
+                sample_filter=(
+                    SampleFilter(
+                        group=GroupElementFilter(
+                            slice=form.slice, slices=[form.slice]
+                        )
                     )
-                )
-                if form.slice
-                else None,
+                    if form.slice
+                    else None
+                ),
             )
 
         result_view = fosm._build_result_view(result_view, form)
