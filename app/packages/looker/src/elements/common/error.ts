@@ -3,7 +3,7 @@
  */
 import copy from "copy-to-clipboard";
 
-import { BaseState, StateUpdate } from "../../state";
+import { BaseState } from "../../state";
 import { BaseElement } from "../base";
 
 import { AppError } from "@fiftyone/utilities";
@@ -61,7 +61,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
 
           if (isVideo) {
             const videoText = document.createElement("p");
-            videoText.textContent = `You can use
+            videoText.innerHTML = `You can use
               <code>
                 <a>
                   fiftyone.utils.video.reencode_videos()
