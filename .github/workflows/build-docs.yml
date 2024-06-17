@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docs
           path: docs-download/
