@@ -23,7 +23,7 @@ from fiftyone.teams.authorize import (
 
 from fiftyone.internal.requests import make_request
 from fiftyone.internal.util import get_api_url, get_session_cookie_name
-from package.teams.fiftyone.teams.authenticate import authenticate
+from fiftyone.teams.authenticate import authenticate
 
 logger = logging.getLogger(__name__)
 
