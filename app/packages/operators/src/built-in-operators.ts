@@ -164,7 +164,7 @@ class OpenPanel extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout, force } = params;
+    const { name, isActive, layout, force, forceDuplicate } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
@@ -173,7 +173,9 @@ class OpenPanel extends Operator {
     const panel = availablePanels.find((panel) => name === panel.name);
     if (!panel && !force)
       return console.warn(`Panel with name ${name} does not exist`);
-    const allowDuplicate = force ? true : panel?.panelOptions?.allowDuplicates;
+    const allowDuplicate = force
+      ? Boolean(forceDuplicate)
+      : panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
       return;
