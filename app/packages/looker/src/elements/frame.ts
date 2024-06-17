@@ -26,7 +26,11 @@ export class FrameNumberElement extends BaseElement<FrameState> {
     config: { frameRate, frameNumber },
   }: Readonly<FrameState>) {
     if (duration) {
-      this.element.innerHTML = getFrameString(frameNumber, duration, frameRate);
+      this.element.textContent = getFrameString(
+        frameNumber,
+        duration,
+        frameRate
+      );
     }
     return this.element;
   }
