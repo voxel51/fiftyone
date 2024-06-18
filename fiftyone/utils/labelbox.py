@@ -696,9 +696,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         labels_json = self._download_project_labels(project=project)
 
         dataset = results.samples._root_dataset
-        is_video = dataset._contains_videos(any_slice=True) and any(
-            dataset._is_frame_field(f) for f in label_schema.keys()
-        )
+        is_video = any(dataset._is_frame_field(f) for f in label_schema.keys())
 
         annotations = {}
 
