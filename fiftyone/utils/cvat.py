@@ -4562,6 +4562,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
         if is_clips:
+            # We must store clip start frame numbers because this information
+            # is required when downloading annotations to map the CVAT frame
+            # IDs back to the correct frame numbers
             frame_starts = [s[0] for s in samples.values("support")]
             results.id_map["_clips_frame_start"] = dict(
                 zip(task_ids, frame_starts)
