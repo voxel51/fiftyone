@@ -4403,6 +4403,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         batch_size = self._get_batch_size(samples, task_size)
         num_batches = math.ceil(num_samples / batch_size)
         is_video = samples.media_type == fom.VIDEO
+        is_clips = samples._is_clips
 
         if is_video:
             # The current implementation requires frame IDs for all frames that
@@ -4560,6 +4561,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             backend=backend,
         )
 
+        if is_clips:
+            frame_starts = [s[0] for s in samples.values("support")]
+            results.id_map["_clips_frame_start"] = dict(
+                zip(task_ids, frame_starts)
+            )
+
         if save_config:
             results.save_config()
 
@@ -4583,6 +4590,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
+        is_clips = results._is_clips
 
         _, project_id = self._parse_project_details(
             results.config.project_name, results.config.project_id
@@ -4632,6 +4640,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame_start = data_resp["start_frame"]
                 frame_stop = data_resp["stop_frame"]
                 frame_step = _parse_frame_step(data_resp)
+
+                if is_clips:
+                    offset = results.id_map["_clips_frame_start"][task_id]
+                    frame_start -= offset
+                    frame_stop -= offset
 
                 # Download task data
                 attr_id_map, _class_map_rev = self._get_attr_class_maps(
@@ -5344,6 +5357,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _issue_tracker = issue_tracker
 
         is_video = samples_batch.media_type == fom.VIDEO
+        is_clips = samples_batch._is_clips
+
+        if is_clips:
+            _frame_start, _frame_stop = samples_batch.values("support")[0]
+
+            if frame_start is not None:
+                frame_start = _frame_start + frame_start
+            else:
+                frame_start = _frame_start
+
+            if frame_stop is not None:
+                frame_stop = min(_frame_start + frame_stop, _frame_stop)
+            else:
+                frame_stop = _frame_stop
 
         if is_video:
             # Videos are uploaded in multiple tasks with 1 job per task

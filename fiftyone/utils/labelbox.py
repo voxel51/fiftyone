@@ -620,10 +620,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
-        is_video = (samples.media_type == fomm.VIDEO) or (
-            samples.media_type == fomm.GROUP
-            and samples.group_media_types[samples.group_slice] == fomm.VIDEO
-        )
+        is_video = samples.media_type == fomm.VIDEO
+
+        if samples._is_clips:
+            raise ValueError(
+                "The Labelbox backend does not yet support annotating clip "
+                "views"
+            )
 
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
@@ -691,13 +694,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
-        is_video = (results._samples.media_type == fomm.VIDEO) or (
-            results._samples.media_type == fomm.GROUP
-            and results._samples.group_media_types[
-                results._samples.group_slice
-            ]
-            == fomm.VIDEO
+
+        dataset = results.samples._root_dataset
+        is_video = dataset._contains_videos(any_slice=True) and any(
+            dataset._is_frame_field(f) for f in label_schema.keys()
         )
+
         annotations = {}
 
         if classes_as_attrs:
