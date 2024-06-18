@@ -783,7 +783,7 @@ class DetectionsMask(_HasID, _HasMask, Label):
         if mask.dtype not in (np.uint8, np.uint16, np.uint32, np.uint64):
             raise ValueError(
                 f"object detection mask dtype is '{mask.dtype}',"
-                f" but only uint dtypes are supported."
+                f" but only numpy uint dtypes are supported."
             )
 
         if mask.ndim != 2:
@@ -793,7 +793,7 @@ class DetectionsMask(_HasID, _HasMask, Label):
         maxval = mask.max()
         if extension == ".png" and maxval >= 2**16:
             raise ValueError(
-                f"max value of {maxval} exceeds upper limit of of uint16 for PNG file"
+                f"max value of {maxval} exceeds upper limit of np.uint16 for PNG file"
             )
         dtype = DetectionsMask._get_uint_dtype(maxval)
         return mask.astype(dtype)

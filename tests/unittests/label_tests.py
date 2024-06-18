@@ -6,6 +6,8 @@ FiftyOne Label-related unit tests.
 |
 """
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from bson import Binary, ObjectId
 import numpy as np
@@ -600,6 +602,39 @@ class LabelTests(unittest.TestCase):
         )
         rgb_to_rgb = focl._transform_mask(int_to_rgb, targets_map)
         nptest.assert_array_equal(rgb_to_rgb, np.zeros((3, 3, 3), dtype=int))
+
+    @drop_datasets
+    def test_detections_mask_io(self):
+        for dtype in (np.uint8, np.uint16, np.uint32, np.uint64):
+            for extension in ("png", "tif"):
+                for test_max in (False, True):
+                    mask = np.arange(9, dtype=dtype).reshape((3, 3))
+                    png_info = np.iinfo(np.uint16)
+                    info = np.iinfo(dtype)
+                    if test_max:
+                        mask[-1, -1] = info.max
+
+                    export_should_fail = (
+                        test_max
+                        and extension == "png"
+                        and mask.max() > png_info.max
+                    )
+
+                    dm = fo.DetectionsMask(mask=mask)
+
+                    with TemporaryDirectory() as tmp_dir:
+                        outpath = Path(tmp_dir) / f"mask.{extension}"
+                        if export_should_fail:
+                            self.assertRaises(
+                                ValueError,
+                                dm.export_mask,
+                                outpath,
+                                update=True,
+                            )
+                        else:
+                            dm.export_mask(outpath, update=True)
+                            imported_mask = dm.get_mask()
+                            nptest.assert_array_equal(mask, imported_mask)
 
 
 class LabelUtilsTests(unittest.TestCase):
