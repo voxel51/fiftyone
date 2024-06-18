@@ -297,5 +297,3 @@ if you love it 😊):
   year={2020}
 }
 ```
-
-<!-- bump -->
