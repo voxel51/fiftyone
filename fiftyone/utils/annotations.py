@@ -189,9 +189,6 @@ def annotate(
     Returns:
         an :class:`AnnotationResults`
     """
-    # @todo support this?
-    if samples._dataset._is_clips:
-        raise ValueError("Annotating clips views is not supported")
 
     # Convert to equivalent regular view containing the same labels
     if samples._dataset._is_patches:
@@ -1034,6 +1031,7 @@ def load_annotations(
     results = dataset.load_annotation_results(anno_key, **kwargs)
     annotations = results.backend.download_annotations(results)
     label_schema = results.config.label_schema
+    is_clips_view = results._is_clips
     is_frames_view = results._is_frames
 
     unexpected_annos = defaultdict(dict)
@@ -1148,7 +1146,10 @@ def load_annotations(
                         logger.info("Skipping labels of type '%s'", anno_type)
 
                     if unexpected == "return":
-                        if is_frames_view:
+                        if is_clips_view:
+                            _annos = results._to_sample_annos(annos)
+                            unexpected_annos[label_field][anno_type] = _annos
+                        elif is_frames_view:
                             _label_field = dataset._FRAMES_PREFIX + label_field
                             _annos = results._to_sample_annos(annos)
                             unexpected_annos[_label_field][anno_type] = _annos
@@ -1311,6 +1312,13 @@ def _merge_scalars(
     uploaded_ids = set(k for k, v in id_map.items() if v is not None)
     sample_ids = list(uploaded_ids | set(anno_dict.keys()))
 
+    is_clips_view = results._is_clips
+    if is_clips_view:
+        _sample_ids_to_clip_ids = results._sample_ids_to_clip_ids()
+
+        # Map clip IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+
     is_frames_view = results._is_frames
     if is_frames_view:
         _label_field = dataset._FRAMES_PREFIX + label_field
@@ -1343,7 +1351,16 @@ def _merge_scalars(
 
     logger.info("Loading scalars for field '%s'...", _label_field)
     for sample in view.iter_samples(progress=progress, autosave=True):
-        if is_frames_view:
+        if is_clips_view:
+            _clip_ids = _sample_ids_to_clip_ids.get(sample.id, None)
+            if _clip_ids:
+                sample_annos = {}
+                for _clip_id, _annos in anno_dict.items():
+                    if _clip_id in _clip_ids:
+                        sample_annos.update(_annos)
+            else:
+                sample_annos = None
+        elif is_frames_view:
             sample_annos = anno_dict
         else:
             sample_annos = anno_dict.get(sample.id, None)
@@ -1423,6 +1440,14 @@ def _merge_labels(
 
     sample_ids = list(anno_dict.keys())
 
+    is_clips_view = results._is_clips
+    if is_clips_view:
+        _sample_ids_to_clip_ids = results._sample_ids_to_clip_ids()
+        _frame_ids_to_clip_ids = {}  # will populate below
+
+        # Map clip IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+
     is_frames_view = results._is_frames
     if is_frames_view:
         _label_field = dataset._FRAMES_PREFIX + label_field
@@ -1466,6 +1491,10 @@ def _merge_labels(
     # Record existing label IDs
     existing_ids = set()
     for sample_id, sample_labels in id_map.items():
+        if is_clips_view:
+            for frame_id in sample_labels.keys():
+                _frame_ids_to_clip_ids[frame_id] = sample_id
+
         if is_frame_field and not is_frames_view:
             for frame_id, frame_labels in sample_labels.items():
                 for label_id in _to_list(frame_labels):
@@ -1478,6 +1507,10 @@ def _merge_labels(
     anno_ids = set()
     anno_id_counts = defaultdict(int)
     for sample_id, sample_labels in anno_dict.items():
+        if is_clips_view:
+            for frame_id in sample_labels.keys():
+                _frame_ids_to_clip_ids[frame_id] = sample_id
+
         if is_frame_field and not is_frames_view:
             for frame_id, frame_labels in sample_labels.items():
                 for label_id in frame_labels.keys():
@@ -1543,7 +1576,16 @@ def _merge_labels(
     for sample in view.iter_samples(progress=progress, autosave=True):
         sample_id = sample.id
 
-        if is_frames_view:
+        if is_clips_view:
+            _clip_ids = _sample_ids_to_clip_ids.get(sample_id, None)
+            if _clip_ids:
+                sample_annos = {}
+                for _clip_id, _annos in anno_dict.items():
+                    if _clip_id in _clip_ids:
+                        sample_annos.update(_annos)
+            else:
+                sample_annos = None
+        elif is_frames_view:
             sample_annos = anno_dict
         else:
             sample_annos = anno_dict[sample_id]
@@ -1562,6 +1604,9 @@ def _merge_labels(
             else:
                 image_annos = sample_annos
 
+            if is_clips_view:
+                clip_id = _frame_ids_to_clip_ids.get(frame_id, None)
+
             image_label = image[field]
 
             if image_label is None and allow_additions:
@@ -1572,7 +1617,9 @@ def _merge_labels(
                         **{list_field: list(image_annos.values())}
                     )
 
-                    if is_frames_view:
+                    if is_clips_view:
+                        added_id_map[clip_id][frame_id].extend(label_ids)
+                    elif is_frames_view:
                         added_id_map[frame_id].extend(label_ids)
                     elif is_frame_field:
                         added_id_map[sample_id][frame_id].extend(label_ids)
@@ -1582,7 +1629,9 @@ def _merge_labels(
                     label_id, anno_label = next(iter(image_annos.items()))
                     image[field] = anno_label
 
-                    if is_frames_view:
+                    if is_clips_view:
+                        added_id_map[clip_id][frame_id] = label_id
+                    elif is_frames_view:
                         added_id_map[frame_id] = label_id
                     elif is_frame_field:
                         added_id_map[sample_id][frame_id] = label_id
@@ -1597,7 +1646,9 @@ def _merge_labels(
                 # Merge labels that existed before and after annotation
                 for label in labels:
                     label_id = label.id
-                    if is_frames_view:
+                    if is_clips_view:
+                        key = (clip_id, frame_id, label_id)
+                    elif is_frames_view:
                         key = (frame_id, label_id)
                     elif is_frame_field:
                         key = (sample_id, frame_id, label_id)
@@ -1621,7 +1672,9 @@ def _merge_labels(
                 # Add new labels to label list fields
                 if is_list and allow_additions:
                     for label_id, anno_label in image_annos.items():
-                        if is_frames_view:
+                        if is_clips_view:
+                            key = (clip_id, frame_id, label_id)
+                        elif is_frames_view:
                             key = (frame_id, label_id)
                         elif is_frame_field:
                             key = (sample_id, frame_id, label_id)
@@ -1632,8 +1685,9 @@ def _merge_labels(
                             continue
 
                         labels.append(anno_label)
-
-                        if is_frames_view:
+                        if is_clips_view:
+                            added_id_map[clip_id][frame_id].append(label_id)
+                        elif is_frames_view:
                             added_id_map[frame_id].append(label_id)
                         elif is_frame_field:
                             added_id_map[sample_id][frame_id].append(label_id)
@@ -2234,6 +2288,11 @@ class AnnotationResults(foa.AnnotationResults):
         raise NotImplementedError("subclass must implement cleanup()")
 
     @property
+    def _is_clips(self):
+        """Whether this annotation run was perfromed on a clips view."""
+        return "_clips" in self.id_map
+
+    @property
     def _is_frames(self):
         """Whether this annotation run was perfromed on a frames view."""
         return "_frames" in self.id_map
@@ -2242,6 +2301,10 @@ class AnnotationResults(foa.AnnotationResults):
         """Internal method that is (only) called prior to saving annotation
         results for the first time.
         """
+        if self.samples._is_clips:
+            id_map = dict(zip(*self.samples.values(["id", "sample_id"])))
+            self.id_map["_clips"] = id_map
+
         if self.samples._is_frames:
             id_map = dict(zip(*self.samples.values(["id", "sample_id"])))
             self.id_map["_frames"] = id_map
@@ -2294,6 +2357,12 @@ class AnnotationResults(foa.AnnotationResults):
                 )
 
     def _to_sample_ids(self, ids):
+        if self._is_clips:
+            id_map = self.id_map["_clips"]
+            sample_ids = set(id_map.get(id, None) for id in ids)
+            sample_ids.discard(None)
+            return list(sample_ids)
+
         if self._is_frames:
             id_map = self.id_map["_frames"]
             sample_ids = set(id_map.get(id, None) for id in ids)
@@ -2302,7 +2371,23 @@ class AnnotationResults(foa.AnnotationResults):
 
         return ids
 
+    def _sample_ids_to_clip_ids(self):
+        id_map = defaultdict(set)
+        for _clip_id, _sample_id in self.id_map["_clips"].items():
+            id_map[_sample_id].add(_clip_id)
+
+        return id_map
+
     def _to_sample_annos(self, annos):
+        if self._is_clips:
+            id_map = self.id_map["_clips"]
+            _annos = defaultdict(dict)
+            for clip_id, clip_annos in annos.items():
+                sample_id = id_map[clip_id]
+                _annos[sample_id].update(clip_annos)
+
+            return dict(_annos)
+
         if self._is_frames:
             id_map = self.id_map["_frames"]
             _annos = defaultdict(dict)
