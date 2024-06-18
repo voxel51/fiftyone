@@ -342,8 +342,6 @@ class TorchImageModelConfig(foc.Config):
             # Use the `image_XXX` parameters defined below to build a transform
             transforms = build_transforms(image_XXX, ...)
 
-            # Set `transforms_args.ragged_batches` to `True` or `False` depending on the case
-
     3.  OutputProcessor::
 
             # Directly provide an OutputProcessor
@@ -376,6 +374,9 @@ class TorchImageModelConfig(foc.Config):
             function to apply
         transforms_args (None): a dictionary of arguments for
             ``transforms_args``
+        ragged_batches (None): whether the provided ``transforms`` or
+            ``transforms_fcn`` may return tensors of different sizes. This must
+            be set to ``False`` to enable batch inference, if it is desired
         raw_inputs (None): whether to feed the raw list of images to the model
             rather than stacking them as a Torch tensor
         output_processor (None): an :class:`OutputProcessor` instance to use
@@ -446,6 +447,9 @@ class TorchImageModelConfig(foc.Config):
         self.transforms_fcn = self.parse_raw(d, "transforms_fcn", default=None)
         self.transforms_args = self.parse_dict(
             d, "transforms_args", default=None
+        )
+        self.ragged_batches = self.parse_bool(
+            d, "ragged_batches", default=None
         )
         self.raw_inputs = self.parse_bool(d, "raw_inputs", default=None)
         self.output_processor = self.parse_raw(
@@ -791,7 +795,10 @@ class TorchImageModel(
         return model
 
     def _build_transforms(self, config):
-        ragged_batches = config.transforms_args.get("ragged_batches", True)
+        if config.ragged_batches is not None:
+            ragged_batches = config.ragged_batches
+        else:
+            ragged_batches = True
 
         if config.transforms is not None:
             return config.transforms, ragged_batches
