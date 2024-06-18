@@ -6,6 +6,9 @@ on:
       base:
         default: develop
         type: string
+      body:
+        type: string
+        default: ""
       branch:
         type: string
   workflow_dispatch:
@@ -13,6 +16,9 @@ on:
       base:
         default: develop
         type: string
+      body:
+        type: string
+        default: ""
       branch:
         type: string
 
@@ -38,8 +44,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           author: voxel51-bot <bot@voxel51.com>
-          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           base: ${{ inputs.base }}
-          body: "Merge ${{ inputs.branch }}"
+          body: ${{ inputs.body }}
           branch: ${{ inputs.branch }}
-          title: "Merge ${{ inputs.branch }}"
+          title: Merge ${{ inputs.branch }}
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
