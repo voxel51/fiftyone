@@ -45,7 +45,7 @@ const Renderer = () => {
   useEffect(() => {
     router.load().then(setRouteEntry);
     subscribe((_, { set }) => {
-      set(entry, router.get());
+      set(entry, router.get(true));
       set(pendingEntry, false);
     });
   }, [router, setRouteEntry]);

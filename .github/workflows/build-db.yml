@@ -26,7 +26,7 @@ jobs:
       - name: Clone fiftyone
         uses: actions/checkout@v4
       - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Install dependencies
@@ -69,6 +69,12 @@ jobs:
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*
+      - name: Upload wheel
+        if: ${{ matrix.platform != 'sdist' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-${{ matrix.platform }}
+          path: package/db/dist/*.whl
 
   test:
     runs-on: ubuntu-20.04

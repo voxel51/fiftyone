@@ -54,7 +54,7 @@ jobs:
           token: ${{ secrets.TEAMS_GITHUB_PAT }}
           ref: main
       - name: Set up Python 3.8
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: Install pip dependencies
@@ -106,10 +106,10 @@ jobs:
           name: docs
           path: docs-download/
       - name: Authorize gcloud
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
       - name: publish
         run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com
