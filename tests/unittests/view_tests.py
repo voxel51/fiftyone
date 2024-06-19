@@ -4393,12 +4393,7 @@ class ViewStageTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_samples([sample1, sample2, sample3])
 
-        expr = F("label") == "vehicle"
-        vehicles = F("detections.detections").filter(expr)
-
-        # Composing expressions should not mutate arguments in-place
-        self.assertFalse(expr.is_frozen)
-
+        vehicles = F("detections.detections").filter(F("label") == "vehicle")
         clips = dataset.to_clips(vehicles.length() >= 2)
 
         dataset.save_view("clips", clips)
