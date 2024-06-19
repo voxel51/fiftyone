@@ -257,6 +257,11 @@ class ViewExpression(object):
     def _freeze_prefix(self, prefix):
         _do_freeze_prefix(self, prefix)
 
+    def _with_prefix(self, prefix):
+        expr = deepcopy(self)
+        expr._freeze_prefix(prefix)
+        return expr
+
     @property
     def is_frozen(self):
         """Whether this expression's prefix is frozen."""
@@ -1825,8 +1830,8 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        expr._freeze_prefix("$$expr")
-        return ViewExpression({"$let": {"vars": {"expr": self}, "in": expr}})
+        _expr = expr._with_prefix("$$expr")
+        return ViewExpression({"$let": {"vars": {"expr": self}, "in": _expr}})
 
     def if_else(self, true_expr, false_expr):
         """Returns either ``true_expr`` or ``false_expr`` depending on the
@@ -1947,8 +1952,8 @@ class ViewExpression(object):
         """
         branches = []
         for key, value in mapping.items():
-            key._freeze_prefix("$$expr")
-            branches.append({"case": key, "then": value})
+            _key = key._with_prefix("$$expr")
+            branches.append({"case": _key, "then": value})
 
         switch = {"branches": branches}
         if default is not None:
@@ -2739,9 +2744,9 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        expr._freeze_prefix("$$this")
+        _expr = expr._with_prefix("$$this")
         return ViewExpression(
-            {"$filter": {"input": self, "as": "this", "cond": expr}}
+            {"$filter": {"input": self, "as": "this", "cond": _expr}}
         )
 
     def map(self, expr):
@@ -2775,9 +2780,9 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        expr._freeze_prefix("$$this")
+        _expr = expr._with_prefix("$$this")
         return ViewExpression(
-            {"$map": {"input": self, "as": "this", "in": expr}}
+            {"$map": {"input": self, "as": "this", "in": _expr}}
         )
 
     def reduce(self, expr, init_val=0):
@@ -2840,9 +2845,9 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        expr._freeze_prefix("$$this")
+        _expr = expr._with_prefix("$$this")
         return ViewExpression(
-            {"$reduce": {"input": self, "initialValue": init_val, "in": expr}}
+            {"$reduce": {"input": self, "initialValue": init_val, "in": _expr}}
         )
 
     def prepend(self, value):
