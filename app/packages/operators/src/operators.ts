@@ -86,6 +86,10 @@ export type RawContext = {
   requestDelegation: boolean;
   state: CallbackInterface;
   analyticsInfo: AnalyticsInfo;
+  extendedSelection: {
+    selection: string[] | null;
+    scope: string;
+  };
 };
 
 export class ExecutionContext {
@@ -99,7 +103,7 @@ export class ExecutionContext {
     this.state = _currentContext.state;
   }
   public delegationTarget: string = null;
-  public requestDelegation: boolean = false;
+  public requestDelegation = false;
   public currentPanel?: Panel = null;
   public get datasetName(): string {
     return this._currentContext.datasetName;
@@ -777,6 +781,8 @@ export async function resolveRemoteType(
       operator_uri: operatorURI,
       params: ctx.params,
       request_delegation: ctx.requestDelegation,
+      results: results ? results.result : null,
+      target,
       selected: currentContext.selectedSamples
         ? Array.from(currentContext.selectedSamples)
         : [],
