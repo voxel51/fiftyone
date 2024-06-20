@@ -34,7 +34,7 @@ jobs:
           cd package/graphql
           python -Im build
       - name: Upload wheel(s)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: package/graphql/dist/*

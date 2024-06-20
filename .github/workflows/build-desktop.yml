@@ -72,7 +72,7 @@ jobs:
         working-directory: package/desktop
         run: RELEASE_DIR=${PWD}/../../app/packages/desktop/release python -Im build -C="--build-option=--plat-name=${{ matrix.platform }}"
       - name: Upload wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.platform }}
           path: package/desktop/dist/*.whl
