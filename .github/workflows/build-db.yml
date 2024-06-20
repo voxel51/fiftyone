@@ -44,25 +44,21 @@ jobs:
         run: |
           cd package/db
           FODB_MACHINE=arm64 FODB_SYSTEM=Darwin python -Im build
-          python -Im build --sdist
       - name: Build Darwin x86_64 wheel
         if: ${{ matrix.platform == 'darwin-x86_64' }}
         run: |
           cd package/db
           FODB_MACHINE=x86_64 FODB_SYSTEM=Darwin python -Im build
-          python -Im build --sdist
       - name: Build Windows 32 wheel
         if: ${{ matrix.platform == 'windows-32' }}
         run: |
           cd package/db
           FODB_MACHINE=32 FODB_SYSTEM=Windows python -Im build
-          python -Im build --sdist
       - name: Build Windows x86_64 wheel
         if: ${{ matrix.platform == 'windows-x86_64' }}
         run: |
           cd package/db
           FODB_MACHINE=x86_64 FODB_SYSTEM=Windows python -Im build
-          python -Im build --sdist
       - name: Build sdist
         if: ${{ matrix.platform == 'sdist' }}
         run: |
