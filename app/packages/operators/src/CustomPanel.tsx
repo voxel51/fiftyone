@@ -1,52 +1,24 @@
-import { useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
 import { CenteredStack, CodeBlock } from "@fiftyone/components";
-import {
-  PanelSkeleton,
-  usePanelState,
-  useSetCustomPanelState,
-} from "@fiftyone/spaces";
+import { PanelSkeleton } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
-import { merge } from "lodash";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
-import { executeOperator } from "./operators";
-import * as types from "./types";
+import { Property } from "./types";
 
-import {
-  useCustomPanelHooks,
-  CustomPanelHooks,
-  CustomPanelProps,
-} from "./useCustomPanelHooks";
+import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 
 export function CustomPanel(props: CustomPanelProps) {
-  const {
-    panelId,
-    onLoad,
-    onChange,
-    onUnLoad,
-    onChangeCtx,
-    onChangeView,
-    onChangeDataset,
-    onChangeCurrentSample,
-    onChangeSelected,
-    onChangeSelectedLabels,
-    onChangeExtendedSelection,
-    dimensions,
-    panelName,
-    panelLabel,
-  } = props;
+  const { panelId, dimensions, panelName, panelLabel } = props;
   const { height, width } = dimensions?.bounds || {};
 
   const {
-    panelState,
     handlePanelStateChange,
     handlePanelStatePathChange,
     panelSchema,
     data,
+    onLoadError,
   } = useCustomPanelHooks(props);
-  const onLoadError = panelState?.onLoadError;
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
 
   if (pending && !panelSchema && !onLoadError) {
@@ -73,7 +45,7 @@ export function CustomPanel(props: CustomPanelProps) {
       </CenteredStack>
     );
 
-  const schema = types.Property.fromJSON(panelSchema);
+  const schema = Property.fromJSON(panelSchema);
 
   return (
     <Box sx={{ height: "100%", width: "100%" }}>

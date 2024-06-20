@@ -35,12 +35,16 @@ export interface CustomPanelProps {
 }
 
 export interface CustomPanelHooks {
-  panelState: any;
-  handlePanelStateChange: Function;
-  handlePanelStatePathChange: Function;
-  data: any;
-  panelSchema: any;
+  handlePanelStateChange: (state: unknown) => unknown;
+  handlePanelStatePathChange: (
+    path: string,
+    value: unknown,
+    schema: unknown
+  ) => void;
+  data: unknown;
+  panelSchema: unknown;
   loaded: boolean;
+  onLoadError?: string;
 }
 
 function useCtxChangePanelEvent(loaded, panelId, value, operator) {
@@ -73,7 +77,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     state: panelState,
   });
   const ctx = useGlobalExecutionContext();
-  const isLoaded = useMemo(() => {
+  const isLoaded: boolean = useMemo(() => {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
 
@@ -205,11 +209,12 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   };
 
   return {
-    panelState,
+    loaded: isLoaded,
     handlePanelStateChange,
     handlePanelStatePathChange,
     data,
     panelSchema,
+    onLoadError: panelStateLocal?.onLoadError,
   };
 }
 
