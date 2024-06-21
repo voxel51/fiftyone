@@ -2066,8 +2066,8 @@ class HStackView(GridView):
         Must be used with :class:`Object` properties.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(orientation="horizontal", **kwargs)
+    def __init__(self, orientation="horizontal", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
 
 
 class VStackView(GridView):
@@ -2078,9 +2078,8 @@ class VStackView(GridView):
         Must be used with :class:`Object` properties.
     """
 
-    def __init__(self, **kwargs):
-        kwargs["orientation"] = kwargs.get("orientation", "vertical")
-        super().__init__(**kwargs)
+    def __init__(self, orientation="vertical", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
         return {**super().to_json(), "name": "GridView"}
