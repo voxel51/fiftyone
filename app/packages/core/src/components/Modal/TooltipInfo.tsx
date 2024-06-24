@@ -88,6 +88,7 @@ const ContentItemContainer = styled.div`
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
+  width: 100%;
 `;
 
 const VisibilityIconContainer = animated(styled.div`
@@ -104,7 +105,6 @@ const ContentValue = styled.div`
   color: ${({ theme }) => theme.text.primary};
   text-overflow: ellipsis;
   overflow: hidden;
-  white-space: nowrap;
 `;
 
 const ContentName = styled.div`
