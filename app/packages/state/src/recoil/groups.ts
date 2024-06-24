@@ -452,7 +452,7 @@ export const fo3dContent = atom({
 export const fo3dSample = selector({
   key: "fo3dSample",
   get: ({ get }) => {
-    if (!get(isGroup)) return get(modalSample);
+    if (!get(isGroup) || get(isDynamicGroup)) return get(modalSample);
 
     if (!get(hasFo3dSlice)) return null;
 
