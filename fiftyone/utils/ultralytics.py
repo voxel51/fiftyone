@@ -84,9 +84,14 @@ def _to_detections(result, confidence_thresh=None):
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
+    track_ids = (
+        result.boxes.id.detach().cpu().numpy().astype(int)
+        if result.boxes.is_track
+        else [None] * len(boxes)
+    )
 
     detections = []
-    for cls, box, conf in zip(classes, boxes, confs):
+    for cls, box, conf, idx in zip(classes, boxes, confs, track_ids):
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
@@ -97,6 +102,7 @@ def _to_detections(result, confidence_thresh=None):
             label=label,
             bounding_box=[xc - 0.5 * w, yc - 0.5 * h, w, h],
             confidence=conf,
+            index=idx,
         )
         detections.append(detection)
 
