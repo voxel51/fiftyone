@@ -4340,6 +4340,72 @@ class ViewStageTests(unittest.TestCase):
         field = F("$ground_truth")
         self.assertEqual(str(field), str(deepcopy(field)))
 
+    def test_views_with_frozen_expressions(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                    )
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                    )
+                ]
+            )
+        )
+        sample1.frames[4] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                    )
+                ]
+            )
+        )
+        sample1.frames[5] = fo.Frame()
+        sample1.frames[6] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                    )
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        vehicles = F("detections.detections").filter(F("label") == "vehicle")
+        clips = dataset.to_clips(vehicles.length() >= 2)
+
+        dataset.save_view("clips", clips)
+
+        also_clips = dataset.load_saved_view("clips")
+
+        # Here we're making sure that serializing + reloading a view that
+        # involves the `ToClips` stage successfully detects that it can reuse
+        # the same `_state`
+        self.assertTrue(clips is not also_clips)
+        self.assertEqual(clips._dataset.name, also_clips._dataset.name)
+
     def test_make_optimized_select_view_group_dataset(self):
         dataset, sample_ids = self._make_group_dataset()
 
