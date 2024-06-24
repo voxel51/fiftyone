@@ -979,9 +979,12 @@ def _write_expr_clips(
         _, path = src_collection._get_label_field_path(expr)
         leaf, _ = src_collection._handle_frame_field(path)
         expr = F(leaf).length() > 0
-
-    if isinstance(expr, dict):
+    elif isinstance(expr, dict):
         expr = foe.ViewExpression(expr)
+    else:
+        # map() modifies the expression in-place and we don't want to cause
+        # side effects to the caller
+        expr = deepcopy(expr)
 
     frame_numbers, bools = src_collection.values(
         ["frames.frame_number", F("frames").map(expr)]
