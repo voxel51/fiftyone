@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Cache
         id: node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             app/node_modules
