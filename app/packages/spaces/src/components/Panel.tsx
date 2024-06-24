@@ -1,15 +1,16 @@
 import { CenteredStack } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Typography } from "@mui/material";
 import React from "react";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import { PanelContext } from "../contexts";
 import { useReactivePanel } from "../hooks";
 import { PanelProps } from "../types";
+import PanelNotFound from "./PanelNotFound";
 import PanelSkeleton from "./PanelSkeleton";
 import { StyledPanel } from "./StyledElements";
 
-function Panel({ node }: PanelProps) {
+function Panel(props: PanelProps) {
+  const { node } = props;
   const panelName = node.type as string;
   const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
@@ -22,9 +23,7 @@ function Panel({ node }: PanelProps) {
           {pending ? (
             <PanelSkeleton />
           ) : (
-            <Typography>
-              Panel &quot;{panelName}&quot; no longer exists!
-            </Typography>
+            <PanelNotFound panelName={panelName} {...props} />
           )}
         </CenteredStack>
       </StyledPanel>

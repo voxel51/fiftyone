@@ -231,6 +231,17 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
 }
 
 /**
+ * A react hook that returns a component plugin by name if exist.
+ * @param name The name of the plugin
+ * @param ctx Argument passed to the plugin's activator function
+ * @returns The plugin component or `undefined`
+ */
+export function usePluginComponent(name: string, ctx?: unknown) {
+  const plugins = useActivePlugins(PluginComponentType.Component, ctx);
+  return plugins.find((p) => p.name === name);
+}
+
+/**
  * The type of plugin component.
  *
  * - `Panel` - A panel that can be added to `@fiftyone/spaces`
