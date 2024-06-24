@@ -16,9 +16,11 @@ function Panel(props: PanelProps) {
   const dimensions = fos.useDimensions();
   const pending = fos.useTimeout(PANEL_LOADING_TIMEOUT);
 
+  const panelContentTestId = `panel-content-${panelName}`;
+
   if (!panel) {
     return (
-      <StyledPanel>
+      <StyledPanel data-cy={panelContentTestId}>
         <CenteredStack>
           {pending ? (
             <PanelSkeleton />
@@ -33,7 +35,7 @@ function Panel(props: PanelProps) {
   const { component: Component } = panel;
 
   return (
-    <StyledPanel id={node.id} ref={dimensions.ref}>
+    <StyledPanel id={node.id} ref={dimensions.ref} data-cy={panelContentTestId}>
       <PanelContext.Provider value={{ node }}>
         <Component panelNode={node} dimensions={dimensions} />
       </PanelContext.Provider>
