@@ -9,7 +9,7 @@ jobs:
       changes: ${{ steps.filter.outputs.changes }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -35,7 +35,7 @@ jobs:
           pip install --upgrade pip setuptools wheel build
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             app/node_modules
