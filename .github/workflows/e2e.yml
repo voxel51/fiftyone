@@ -43,7 +43,7 @@ jobs:
 
       - name: Cache Node Modules
         id: app-node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             app/node_modules
@@ -73,7 +73,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             e2e-pw/node_modules
@@ -91,7 +91,7 @@ jobs:
         working-directory: e2e-pw
 
       - name: Cache playwright browser
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: playwright-browser-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
