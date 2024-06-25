@@ -48,7 +48,7 @@ RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
     && pip wheel --wheel-dir=/tmp/wheels \
     albumentations \
     darwin-fiftyone \
-    fiftyone=="${SDK_VERSION}" \
+    /tmp/wheels/fiftyone-*-py3-none-any.whl \
     pyperclip \
     sentence_transformers
 
