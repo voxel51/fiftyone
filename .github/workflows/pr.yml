@@ -34,9 +34,9 @@ jobs:
           wait_interval: 20
           client_payload: |
             {
-              "author": ${{ github.event.pull_request.user.login }},
+              "author": "${{ github.event.pull_request.user.login }}",
               "branch": "${{ github.head_ref || github.ref_name }}",
-              "pr": "${{ github.event.pull_request.number }}"
+              "pr": ${{ github.event.pull_request.number }}
             }
           propagate_failure: true
           trigger_workflow: true
