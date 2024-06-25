@@ -500,8 +500,8 @@ const Header = ({ title }: { title: string }) => {
 const CtrlToLock = () => {
   return (
     <CtrlToLockContainer>
-      <Typography variant="caption" color="gray" fontSize={"0.5em"}>
-        Press Ctrl to lock
+      <Typography variant="caption" color="gray" fontSize={"0.43em"}>
+        Press Ctrl to modify tooltip
       </Typography>
     </CtrlToLockContainer>
   );
