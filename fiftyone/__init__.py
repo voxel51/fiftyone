@@ -9,6 +9,22 @@ See https://voxel51.com/fiftyone for more information.
 """
 
 from pkgutil import extend_path as _extend_path
+from sys import hexversion
+from os import getenv
+
+# Python 3.8 goes EoL in October, 2024
+#  We should tell folks we won't support those Python versions after 9/24
+
+PYTHON_38_NOTICE = getenv(
+    'FIFTYONE_PYTHON_38_DEPRECATION_NOTICE', "True"
+) == "True"
+
+if hexversion < 0x30900f0 and hexversion >= 0x30800f0 and PYTHON_38_NOTICE:
+    print("***Python 3.8 Deprecation Notice***")
+    print("Python 3.8 will no longer be supported in new releases after October"
+          " 1, 2024.")
+    print("Please upgrade to Python 3.9 or later.")
+    print("For additional details please see https://deprecation.voxel51.com")
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the

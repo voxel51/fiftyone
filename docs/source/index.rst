@@ -414,4 +414,5 @@ us at support@voxel51.com.
    CLI <cli/index>
    API Reference <api/fiftyone>
    Release Notes <release-notes>
+   Deprecation Notices <deprecation>
    FAQ <faq/index>
