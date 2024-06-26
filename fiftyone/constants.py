@@ -58,8 +58,8 @@ TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
-URL = _META["home-page"]
-LICENSE = _META["license"]
+URL = "https://github.com/voxel51/fiftyone"
+LICENSE = "Apache"
 VERSION_LONG = "FiftyOne Teams v%s, %s" % (TEAMS_VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
