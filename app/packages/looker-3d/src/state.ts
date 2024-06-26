@@ -5,6 +5,11 @@ import { SHADE_BY_HEIGHT } from "./constants";
 import { FoSceneNode } from "./hooks";
 import { Actions, ShadeBy } from "./types";
 
+export const cameraPositionAtom = atom<[number, number, number] | null>({
+  key: "fo3d-cameraPosition",
+  default: null,
+});
+
 export const shadeByAtom = atom<ShadeBy>({
   key: "fo3d-shadeBy",
   default: SHADE_BY_HEIGHT,
