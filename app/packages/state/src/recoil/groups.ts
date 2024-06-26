@@ -454,6 +454,10 @@ export const fo3dSample = selector({
   get: ({ get }) => {
     if (!get(isGroup)) return get(modalSample);
 
+    if (get(isDynamicGroup) && !get(hasFo3dSlice)) {
+      return get(modalSample);
+    }
+
     if (!get(hasFo3dSlice)) return null;
 
     const sample = get(
