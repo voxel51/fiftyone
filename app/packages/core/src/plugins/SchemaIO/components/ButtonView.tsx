@@ -32,6 +32,7 @@ function BaseButtonView(props) {
 }
 
 function OperatorButtonView(props) {
+  const path = props.path;
   let { operator, params = {}, prompt } = props.schema.view;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
@@ -39,6 +40,7 @@ function OperatorButtonView(props) {
     <BaseButtonView
       {...props}
       onClick={() => {
+        params = { ...params, path };
         handleClick(panelId, { params, operator, prompt });
       }}
     />
