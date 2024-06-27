@@ -135,8 +135,9 @@ You will need:
 -   [Python](https://www.python.org) (3.8 or newer)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
-    Yarn via `npm install -g yarn`
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
+    [enable Yarn](https://yarnpkg.com/getting-started/install) via
+	`corepack enable`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
     `libcurl3` instead of `libcurl`, depending on the age of your distribution.
