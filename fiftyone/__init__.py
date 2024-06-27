@@ -8,6 +8,7 @@ See https://voxel51.com/fiftyone for more information.
 |
 """
 
+from logging import warning
 from pkgutil import extend_path as _extend_path
 from sys import hexversion
 from os import getenv
@@ -20,11 +21,11 @@ PYTHON_38_NOTICE = getenv(
 ) == "True"
 
 if hexversion < 0x30900f0 and hexversion >= 0x30800f0 and PYTHON_38_NOTICE:
-    print("***Python 3.8 Deprecation Notice***")
-    print("Python 3.8 will no longer be supported in new releases after October"
-          " 1, 2024.")
-    print("Please upgrade to Python 3.9 or later.")
-    print("For additional details please see https://deprecation.voxel51.com")
+    warning("***Python 3.8 Deprecation Notice***")
+    warning("Python 3.8 will no longer be supported in new releases after"
+            "October 1, 2024.")
+    warning("Please upgrade to Python 3.9 or later.")
+    warning("For additional details please see https://deprecation.voxel51.com")
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
