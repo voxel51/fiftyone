@@ -132,7 +132,7 @@ to make adjustments. If you are working in Google Colab,
 
 You will need:
 
--   [Python](https://www.python.org) (3.8, 3.9, 3.10, or 3.11)
+-   [Python](https://www.python.org) (3.8 - 3.11)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
