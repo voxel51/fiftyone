@@ -91,29 +91,29 @@ def get_db_config():
         a :class:`DatabaseConfigDocument`
     """
     conn = get_db_conn()
-    save = False
+
     config_docs = list(conn.config.find())
-    if not config_docs:
-        save = True
-        config = DatabaseConfigDocument(conn)
-    elif len(config_docs) > 1:
-        config = DatabaseConfigDocument(
-            conn, **cleanup_multiple_config_docs(conn, config_docs)
-        )
+    if config_docs:
+        if len(config_docs) > 1:
+            config_doc = _cleanup_multiple_config_docs(conn, config_docs)
+        else:
+            config_doc = config_docs[0]
+
+        config = DatabaseConfigDocument(conn, **config_doc)
+        save = False
     else:
-        config = DatabaseConfigDocument(conn, **config_docs[0])
+        config = DatabaseConfigDocument(conn)
+        save = True
 
     if config.version is None:
         #
-        # The database version was added to this config in v0.15.0, so if no
-        # version is available, assume the database is at the preceding
-        # release. It's okay if the database's version is actually older,
-        # because there are no significant admin migrations prior to v0.14.4.
+        # If the database has no version, then assume the version of the client
+        # that is currently connecting to it.
         #
         # This needs to be implemented here rather than in a migration because
         # this information is required in order to run migrations...
         #
-        config.version = "0.14.4"
+        config.version = foc.VERSION
         save = True
 
     if config.type is None:
@@ -135,25 +135,19 @@ def get_db_config():
     return config
 
 
-def cleanup_multiple_config_docs(conn, config_docs):
-    """Internal utility that ensures that there is only one
-    :class:`DatabaseConfigDocument` in the database.
-    """
-
+def _cleanup_multiple_config_docs(conn, config_docs):
     if not config_docs:
         return {}
-    elif len(config_docs) <= 1:
+
+    if len(config_docs) <= 1:
         return config_docs[0]
 
     logger.warning(
         "Unexpectedly found %d documents in the 'config' collection; assuming "
-        "the one with latest 'version' is the correct one",
+        "the newest one is the correct one",
         len(config_docs),
     )
-    # Keep config with latest version. If no version key, use 0.0 so it sorts
-    #   to the bottom.
-    keep_doc = max(config_docs, key=lambda d: Version(d.get("version", "0.0")))
-
+    keep_doc = max(config_docs, key=lambda d: d["_id"])
     conn.config.delete_many({"_id": {"$ne": keep_doc["_id"]}})
     return keep_doc
 
