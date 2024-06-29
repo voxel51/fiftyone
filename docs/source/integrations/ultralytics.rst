@@ -74,6 +74,13 @@ You can directly pass Ultralytics YOLO detection models to
     # model = YOLO("yolov9c.pt")
     # model = YOLO("yolov9e.pt")
 
+    # YOLOv10
+    # model = YOLO("yolov10n.pt)
+    # model = YOLO("yolov10s.pt)
+    # model = YOLO("yolov10m.pt)
+    # model = YOLO("yolov10l.pt)
+    # model = YOLO("yolov10x.pt)
+
     dataset.apply_model(model, label_field="boxes")
 
     session = fo.launch_app(dataset)
