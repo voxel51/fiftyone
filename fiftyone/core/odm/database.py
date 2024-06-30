@@ -72,8 +72,8 @@ class DatabaseConfigDocument:
     type: str
 
     def __init__(self, conn, version=None, type=None, *args, **kwargs):
-        # Create our own __init__ so we can ignore extra kwargs / unknown
-        #   fields from other versions
+        # Create our own __init__ so we can ignore extra kwargs/unknown fields
+        # from other versions
         self._conn = conn
         self.version = version
         self.type = type
@@ -95,7 +95,7 @@ def get_db_config():
     config_docs = list(conn.config.find())
     if config_docs:
         if len(config_docs) > 1:
-            config_doc = _cleanup_multiple_config_docs(conn, config_docs)
+            config_doc = _handle_multiple_config_docs(conn, config_docs)
         else:
             config_doc = config_docs[0]
 
@@ -135,20 +135,23 @@ def get_db_config():
     return config
 
 
-def _cleanup_multiple_config_docs(conn, config_docs):
-    if not config_docs:
-        return {}
-
-    if len(config_docs) <= 1:
-        return config_docs[0]
-
-    logger.warning(
-        "Unexpectedly found %d documents in the 'config' collection; assuming "
-        "the newest one is the correct one",
-        len(config_docs),
-    )
+def _handle_multiple_config_docs(conn, config_docs):
+    # Use the newest one
     keep_doc = max(config_docs, key=lambda d: d["_id"])
-    conn.config.delete_many({"_id": {"$ne": keep_doc["_id"]}})
+
+    if fo.config.database_admin:
+        logger.warning(
+            "Unexpectedly found %d documents in the 'config' collection; "
+            "deleting all but the newest one",
+            len(config_docs),
+        )
+
+        # Use aggregation to be sure that even under heavy concurrency, we
+        # don't accidentally delete all the docs
+        conn.config.aggregate(
+            [{"$sort": {"_id": -1}}, {"$limit": 1}, {"$out": "config"}]
+        )
+
     return keep_doc
 
 
