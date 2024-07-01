@@ -52,7 +52,7 @@ the following sample dataset:
 Object detection
 ----------------
 
-You can directly pass Ultralytics YOLO detection models to
+You can directly pass Ultralytics `YOLO` or `RTDETR` detection models to
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
 .. code-block:: python
@@ -80,6 +80,10 @@ You can directly pass Ultralytics YOLO detection models to
     # model = YOLO("yolov10m.pt)
     # model = YOLO("yolov10l.pt)
     # model = YOLO("yolov10x.pt)
+
+    # RTDETR
+    # model = YOLO("rtdetr-l.pt")
+     # model = YOLO("rtdetr-x.pt")
 
     dataset.apply_model(model, label_field="boxes")
 
@@ -112,6 +116,7 @@ You can also load any of these models directly from the
     # model_name = "yolov8m-coco-torch"
     # model_name = "yolov9e-coco-torch"
     # model_name = "yolov10s-coco-torch"
+    # model_name = "rtdetr-l-coco-torch"
 
     model = foz.load_zoo_model(
         model_name,
@@ -132,7 +137,7 @@ available YOLO models that are compatible with Ultralytics or SuperGradients:
 
     print(foz.list_zoo_models(tags="yolo"))
 
-In general, model names will contain "yolov", followed by the version number,
+In general, YOLO model names will contain "yolov", followed by the version number,
 then the model size ("n", "s", "m",  "l", or "x"), and an indicator of the
 label classes ("coco" for MS COCO or "world" for open-world), followed by
 "torch".
