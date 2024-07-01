@@ -39,6 +39,7 @@ export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetSessionColorScheme } from "./useSetSessionColorScheme";
 export { default as useSetSpaces } from "./useSetSpaces";
 export { default as useSetView } from "./useSetView";
+export { default as useTimeout } from "./useTimeout";
 export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useToPatches } from "./useToPatches";

@@ -1,7 +1,9 @@
-import { size } from "lodash";
-import { useMemo } from "react";
+import { debounce, size } from "lodash";
+import { useCallback, useMemo } from "react";
 import { useRecoilState } from "recoil";
 import { sessionSpaces } from "../recoil";
+
+const SESSION_UPDATE_DEBOUNCE = 500;
 
 const useSessionSpaces = () => {
   const [sessionSpacesState, setSessionSpacesState] =
@@ -17,11 +19,26 @@ const useSessionSpaces = () => {
     [computedSessionSpaces]
   );
 
-  function setSessionSpaces(spaces: object, panelsState?: object) {
-    const formattedSpaces = toAPIFormat(spaces, panelsState);
-    setSessionSpacesState(formattedSpaces);
-  }
-  return [computedSessionSpaces, setSessionSpaces, computedPanelsState];
+  const setSessionSpaces = useCallback(
+    (spaces: object, panelsState?: object) => {
+      const formattedSpaces = toAPIFormat(spaces, panelsState);
+      setSessionSpacesState(formattedSpaces);
+    },
+    [setSessionSpacesState]
+  );
+
+  const setSessionSpacesDebounced = useMemo(() => {
+    return debounce(setSessionSpaces, SESSION_UPDATE_DEBOUNCE, {
+      leading: true,
+      trailing: true,
+    });
+  }, [setSessionSpaces]);
+
+  return [
+    computedSessionSpaces,
+    setSessionSpacesDebounced,
+    computedPanelsState,
+  ];
 };
 
 export default useSessionSpaces;

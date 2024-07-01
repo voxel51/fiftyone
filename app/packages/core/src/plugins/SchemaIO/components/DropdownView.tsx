@@ -76,7 +76,7 @@ export default function DropdownView(props) {
             Array.isArray(value) && type !== "array"
               ? value.join(separator)
               : value;
-          onChange(path, computedValue);
+          onChange(path, computedValue, schema);
           setUserChanged();
         }}
         multiple={multiple}

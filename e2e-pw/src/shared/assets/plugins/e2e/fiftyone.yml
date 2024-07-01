@@ -8,3 +8,4 @@ operators:
   - e2e_say_hello_in_modal
   - e2e_say_hello_in_drawer
   - e2e_progress
+  - e2e_counter_python_panel

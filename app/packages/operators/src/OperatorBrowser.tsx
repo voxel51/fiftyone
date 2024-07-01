@@ -12,6 +12,7 @@ import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorIcon, { CustomIconPropsType } from "./OperatorIcon";
 import OperatorPalette from "./OperatorPalette";
 import { PaletteContentContainer } from "./styled-components";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const QueryInput = styled.input`
   width: 100%;
@@ -124,6 +125,14 @@ export default function OperatorBrowser() {
   const theme = useTheme();
   const browser = useOperatorBrowser();
   const queryInputRef = useRef();
+
+  const trackEvent = useTrackEvent();
+
+  useEffect(() => {
+    if (browser.isVisible) {
+      trackEvent("open_operator_browser");
+    }
+  }, [trackEvent, browser.isVisible]);
 
   useEffect(() => {
     const { current } = queryInputRef;

@@ -12,6 +12,7 @@ import {
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -102,6 +103,7 @@ export default function ViewSelection() {
   const extendedStagesVal = useRecoilValue(fos.extendedStages);
   const isEmptyView =
     !bookmarkIconOn && !loadedView?.length && extendedStagesVal?.length > 2;
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     if (savedViewParam) {
@@ -186,6 +188,7 @@ export default function ViewSelection() {
                       ...createSavedView,
                       label: createSavedView.name,
                     });
+                    trackEvent("created_saved_view");
                   }
                 },
               }
@@ -212,6 +215,7 @@ export default function ViewSelection() {
           setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
             setViewName(item.slug);
+            trackEvent("select_saved_view");
           }}
           onClear={() => {
             setSelected(fos.DEFAULT_SELECTED);

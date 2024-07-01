@@ -287,6 +287,17 @@ class Operator(object):
         """
         return None
 
+    def method_to_uri(self, method_name):
+        """Converts a method name to a URI.
+
+        Args:
+            method_name: the method name
+
+        Returns:
+            a URI
+        """
+        return "%s#%s" % (self.uri, method_name)
+
     def to_json(self):
         """Returns a JSON representation of the operator.
 

@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import SpaceNode from "../SpaceNode";
@@ -12,11 +13,13 @@ export default function AddPanelItem({
   onClick,
   spaceId,
 }: AddPanelItemProps) {
+  const trackEvent = useTrackEvent();
   const { spaces } = useSpaces(spaceId);
   return (
     <StyledPanelItem
       data-cy={`new-panel-option-${name}`}
       onClick={(e) => {
+        trackEvent("open_panel", { panel: name });
         const newNode = new SpaceNode();
         newNode.type = name;
         spaces.addNodeAfter(node, newNode);

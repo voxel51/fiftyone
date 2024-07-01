@@ -10,6 +10,7 @@ import classnames from "classnames";
 import React, {
   ComponentType,
   PropsWithChildren,
+  useEffect,
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
@@ -17,6 +18,7 @@ import { scrollable } from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
 
@@ -108,6 +110,21 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
   return FallbackComponent;
 };
 
+const TrackFallback = (Fallback, onReset, disableReset) => (props) => {
+  Fallback = Fallback || Errors(onReset, disableReset);
+  const trackEvent = useTrackEvent();
+
+  useEffect(() => {
+    trackEvent("uncaught_app_error", {
+      error: props?.error?.message || props?.error?.name || props?.error,
+      stack: props?.error?.stack,
+      messages: props?.error?.errors?.map((e) => e.message),
+    });
+  }, []);
+
+  return <Fallback {...props} />;
+};
+
 const ErrorBoundary: React.FC<
   PropsWithChildren<{
     onReset?: () => void;
@@ -117,7 +134,9 @@ const ErrorBoundary: React.FC<
 > = ({ children, onReset, disableReset, Fallback }) => {
   // @ts-ignore
   return (
-    <Boundary FallbackComponent={Fallback || Errors(onReset, disableReset)}>
+    <Boundary
+      FallbackComponent={TrackFallback(Fallback, onReset, disableReset)}
+    >
       {children}
     </Boundary>
   );

@@ -104,6 +104,7 @@ function getSchema(property, options = {}) {
     type,
     view: { readOnly, ...getViewSchema(property) },
     default: defaultValue,
+    onChange: property.onChange,
     required,
   };
   const component = getComponent(property, options);

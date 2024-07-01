@@ -1,5 +1,6 @@
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
+export { default as CenteredStack } from "./CenteredStack";
 export { default as CodeBlock } from "./CodeBlock";
 export { default as CodeTabs } from "./CodeTabs";
 export { default as ColoredDot } from "./ColoredDot";
@@ -29,4 +30,5 @@ export { default as TabOption } from "./TabOption";
 export { default as TextField } from "./TextField";
 export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
+export { default as MuiIconFont } from "./MuiIconFont";
 export { default as MuiButton } from "./MuiButton";

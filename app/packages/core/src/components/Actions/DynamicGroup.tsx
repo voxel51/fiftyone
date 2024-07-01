@@ -19,6 +19,7 @@ import React, {
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import Popout from "./Popout";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const SELECTOR_RESULTS_ID = "dynamic-group-selector-results";
 
@@ -64,6 +65,7 @@ export default ({
   const setView = useSetView();
 
   const [validationError, setValidationError] = useState<string>("");
+  const trackEvent = useTrackEvent();
 
   const canSubmitRequest = useMemo(() => {
     if (isProcessing) {
@@ -97,6 +99,11 @@ export default ({
     const unsubscribe = subscribe(() => {
       setIsProcessing(false);
       unsubscribe();
+    });
+    trackEvent("dynamic_group", {
+      groupBy,
+      orderBy,
+      useOrdered,
     });
     setView((v) => [
       ...v,

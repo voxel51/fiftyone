@@ -14,6 +14,7 @@ import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
 import { getMatch } from "./utils";
 import ViewStageParameter from "./ViewStageParameter";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem;
@@ -95,6 +96,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     },
     config: config.stiff,
   }));
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     set({
@@ -266,6 +268,11 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     isEditing && inputRef.current && inputRef.current.focus();
     !isEditing && inputRef.current && inputRef.current.blur();
   }, [isEditing, inputRef.current]);
+  const trackEvent = useTrackEvent();
+
+  const trackAdd = (stageName: strint) => {
+    trackEvent("viewbar_choose_stage", { stage: stageName });
+  };
 
   return (
     <ViewStageContainer
@@ -288,21 +295,27 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             state.matches("input.editing.searchResults.notHovering") &&
               send("BLUR");
           }}
-          onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+          onChange={(e) => {
+            send({ type: "CHANGE", value: e.target.value });
+          }}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               const match = getMatch(
                 stageInfo.map((s) => s.name),
                 e.target.value
               );
+              const value = match
+                ? match
+                : bestMatch.value
+                ? bestMatch.value
+                : e.target.value;
               send({
                 type: "COMMIT",
-                value: match
-                  ? match
-                  : bestMatch.value
-                  ? bestMatch.value
-                  : e.target.value,
+                value,
               });
+              if (match || bestMatch.value) {
+                trackAdd(match || bestMatch.value);
+              }
             }
           }}
           onKeyDown={(e) => {
