@@ -24,7 +24,7 @@ import {
   SET_TOP_VIEW_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
-import { useFo3d, useHotkey } from "../hooks";
+import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
 import { activeNodeAtom, isFo3dBackgroundOnAtom } from "../state";
@@ -365,6 +365,8 @@ export const MediaTypeFo3dComponent = () => {
       onChangeView("pov", false);
     }
   }, [foScene, onChangeView]);
+
+  useTrackStatus();
 
   if (isParsingFo3d) {
     return (

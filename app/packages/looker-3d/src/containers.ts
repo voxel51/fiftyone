@@ -36,7 +36,8 @@ export const ActionBarContainer = styled.div`
   width: 100%;
 
   opacity: 0.95;
-  height: 37px;
+  min-height: 37px;
+  max-height: 50px;
   background-color: var(--fo-palette-background-level3);
   border: 1px solid var(--fo-palette-primary-plainBorder);
   border-left: 0;
@@ -93,6 +94,7 @@ export const StatusBarRootContainer = styled.div`
   margin-bottom: 3vh;
   left: 1vw;
   z-index: 1000;
+  width: 100%;
 
   & .looker-3d-core-stats-panel {
     position: relative !important;
