@@ -66,9 +66,10 @@ jobs:
           python -Im build --sdist
       - name: Upload
         uses: actions/upload-artifact@v3
+        if: ${{ matrix.platform == 'sdist' }}
         with:
           name: dist-${{ matrix.platform }}
-          path: package/db/dist/*
+          path: package/db/dist/*.tar.gz
       - name: Upload wheel
         if: ${{ matrix.platform != 'sdist' }}
         uses: actions/upload-artifact@v3
