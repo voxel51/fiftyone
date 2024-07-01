@@ -62,27 +62,27 @@ export const StatusBar = ({
   cameraRef: RefObject<PerspectiveCamera>;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showStatus, setShowStatus] = useRecoilState(isStatusBarOnAtom);
+  const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
 
   const springProps = useSpring({
-    transform: showStatus ? "translateY(10%)" : "translateY(0%)",
+    transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
   });
 
   const onClickHandler = useCallback(() => {
-    setShowStatus((prev) => !prev);
+    setShowPerfStatus((prev) => !prev);
     setActiveNode(null);
   }, []);
 
   return (
     <animated.div ref={containerRef} style={{ ...springProps }}>
-      {!showStatus && (
+      {!showPerfStatus && (
         <IconButton style={{ opacity: 0.5 }} onClick={onClickHandler}>
           <InfoIcon />
         </IconButton>
       )}
 
-      {showStatus && (
+      {showPerfStatus && (
         <StatusBarContainer>
           <div
             style={{

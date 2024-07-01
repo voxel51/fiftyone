@@ -30,3 +30,8 @@ export type NodeName = string;
 export type VisibilityMap = Record<NodeName, boolean>;
 
 export type NodeUuid = string;
+
+export type AssetLoadingLog = {
+  message: string;
+  status: "info" | "success" | "error";
+};

@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { useHotkey } from "../hooks";
@@ -118,6 +119,7 @@ export const ActionBar = ({
       onMouseLeave={onMouseLeave}
     >
       {hasMultiplePcdSlices && <SliceSelector />}
+      <Logs />
       <ActionsBar>
         {componentsToRender}
         <FullScreenToggler />

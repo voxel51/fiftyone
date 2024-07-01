@@ -1,6 +1,7 @@
 import { useControls } from "leva";
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
 import {
   BoxGeometryAsset,
@@ -183,7 +184,11 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
     return null;
   }
 
-  return <AssetErrorBoundary>{jsx}</AssetErrorBoundary>;
+  return (
+    <AssetErrorBoundary>
+      <Suspense fallback={null}>{jsx}</Suspense>
+    </AssetErrorBoundary>
+  );
 };
 
 const R3fNode = ({
@@ -276,7 +281,11 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   return (
     <>
       {isFo3dBackgroundOn && scene.background && (
-        <Fo3dBackground background={scene.background} />
+        <Fo3dErrorBoundary ignoreError boundaryName="background">
+          <Suspense fallback={null}>
+            <Fo3dBackground background={scene.background} />
+          </Suspense>
+        </Fo3dErrorBoundary>
       )}
       <SceneR3f scene={scene} visibilityMap={visibilityMap} />
     </>
