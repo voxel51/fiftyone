@@ -1,7 +1,9 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
+import { getFieldInfo } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRelayEnvironment } from "react-relay";
 import { CallbackInterface, RecoilState, useRecoilCallback } from "recoil";
+import { State } from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as filterAtoms from "../recoil/filters";
@@ -10,7 +12,6 @@ import * as modalAtoms from "../recoil/modal";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
-import { getSanitizedGroupByExpression } from "../recoil/utils";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
 
@@ -138,12 +139,15 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
           let groupByFieldValue: string;
           if (dynamicGroupParameters?.groupBy) {
-            groupByFieldValue = String(
-              get(
-                sample.sample,
-                getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-              )
+            const fieldSchema = await snapshot.getPromise(
+              schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
             );
+            const fieldInfo = getFieldInfo(
+              dynamicGroupParameters.groupBy,
+              fieldSchema
+            );
+            const groupByKeyDbField = fieldInfo.pathWithDbField;
+            groupByFieldValue = String(get(sample.sample, groupByKeyDbField));
           }
 
           return { id, groupId, groupByFieldValue };

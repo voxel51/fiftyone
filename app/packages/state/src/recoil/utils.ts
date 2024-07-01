@@ -24,14 +24,6 @@ export const getSampleSrc = (url: string) => {
   return `${params.origin}${path}?filepath=${encodeURIComponent(url)}`;
 };
 
-export const getSanitizedGroupByExpression = (expression: string) => {
-  // todo: why this special case for sample_id...?
-  if (expression === "sample_id") {
-    return "_sample_id";
-  }
-  return expression;
-};
-
 export const mapSampleResponse = <
   T extends Nullable<{
     readonly sample?: Sample;
