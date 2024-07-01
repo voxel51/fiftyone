@@ -13,7 +13,8 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: any
+  state: any,
+  params: URLSearchParams
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
@@ -33,14 +34,21 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
+    session.sessionPage = Number.parseInt(params.get("page") || "") || 0;
+    session.sessionSampleId = state.sample_id
+      ? { id: state.sample_id }
+      : undefined;
+
     unsubscribe();
   });
 
   if (env().VITE_NO_STATE) {
     return { view: [], fieldVisibility: undefined };
   }
+
   return {
     fieldVisibility: state.field_visibility_stage,
+    sampleId: state.sample_id,
     view: state.view || [],
     workspace: state.spaces,
   };

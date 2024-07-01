@@ -1,8 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "ESNext",
-        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "target": "ES2022",
         "noImplicitAny": false,
         "sourceMap": true,
         "outDir": "dist",

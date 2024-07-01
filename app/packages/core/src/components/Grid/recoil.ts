@@ -34,12 +34,24 @@ export const gridCropCallback = selector({
   },
 });
 
+export const gridCrop = selector({
+  key: "gridCrop",
+  get: ({ get }) => {
+    return get(fos.isPatchesView) && get(fos.cropToContent(false));
+  },
+});
+
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
     const slice = get(fos.groupSlice);
+    const dataset = get(fos.datasetName);
+
+    if (!dataset) {
+      throw new Error("dataset is not defined");
+    }
     const params = {
-      dataset: get(fos.datasetName),
+      dataset,
       view: get(fos.view),
       filters: get(fos.filters),
       filter: {

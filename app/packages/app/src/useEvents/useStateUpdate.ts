@@ -1,8 +1,10 @@
+import type { EventHandlerHook } from "./registerEvent";
+
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { getDatasetName, getParam, resolveURL } from "../utils";
-import { AppReadyState, EventHandlerHook } from "./registerEvent";
+import { AppReadyState } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -14,7 +16,11 @@ const useStateUpdate: EventHandlerHook = ({
 
   return useCallback(
     (payload: any) => {
-      const state = processState(session.current, payload.state);
+      const state = processState(
+        session.current,
+        payload.state,
+        new URLSearchParams(router.history.location.search)
+      );
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
@@ -24,6 +30,7 @@ const useStateUpdate: EventHandlerHook = ({
           : payload.state.dataset ?? null,
         nextView: stateless ? getParam("view") : payload.state.saved_view_slug,
         extra: {
+          sampleId: state.sampleId || null,
           workspace: state.workspace?._name || null,
         },
       });

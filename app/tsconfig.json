@@ -1,13 +1,20 @@
 {
-  "files": [],
-  "references": [
-    { "path": "packages/app" },
-    { "path": "packages/components" },
-    { "path": "packages/flashlight" },
-    { "path": "packages/looker" },
-    { "path": "packages/utilities" },
-    { "path": "packages/plugins" },
-    { "path": "packages/state" },
-    { "path": "packages/aggregations" }
-  ]
+    "compilerOptions": {
+        "lib": ["ES2022"],
+        "sourceMap": true,
+        "noEmit": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true
+    },
+    "references": [
+        { "path": "packages/aggregations" },
+        { "path": "packages/components" },
+        { "path": "packages/flashlight" },
+        { "path": "packages/looker" },
+        { "path": "packages/plugins" },
+        { "path": "packages/state" },
+        { "path": "packages/spotlight" },
+        { "path": "packages/utilities" }
+    ]
 }

@@ -58,7 +58,7 @@ export abstract class BaseElement<
 
     this.element = this.createHTMLElement(dispatchEvent, config);
 
-    for (const [eventType, handler] of Object.entries(this.getEvents())) {
+    for (const [eventType, handler] of Object.entries(this.getEvents(config))) {
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
       this.element &&
@@ -100,7 +100,7 @@ export abstract class BaseElement<
     sample: Readonly<Sample>
   ): Element | null;
 
-  protected getEvents(): Events<State> {
+  protected getEvents(config: Readonly<State["config"]>): Events<State> {
     return {};
   }
 

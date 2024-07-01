@@ -10,7 +10,7 @@ import {
   createMemoryHistory,
   Location,
 } from "history";
-import React from "react";
+import { default as React } from "react";
 import { loadQuery, PreloadedQuery } from "react-relay";
 import {
   ConcreteRequest,
@@ -84,6 +84,10 @@ export const createRouter = <T extends OperationType>(
   >();
 
   const update = (location: FiftyOneLocation, action?: Action) => {
+    if (action === "REPLACE") {
+      return;
+    }
+
     requestAnimationFrame(() =>
       subscribers.forEach(([_, onPending]) => onPending && onPending())
     );

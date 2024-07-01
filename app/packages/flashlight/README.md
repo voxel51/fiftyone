@@ -1,3 +1,3 @@
-# Looker
+# Flashlight
 
-Looker is a client-side JavaScript media viewer that can render label overlays
+An infinite scrolling justified-layout virtualized grid

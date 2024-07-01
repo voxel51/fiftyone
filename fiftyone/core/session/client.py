@@ -5,6 +5,7 @@ Session server-sent events client.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 import logging
@@ -95,6 +96,7 @@ class Client:
                                     "set_color_scheme",
                                     "set_dataset_color_scheme",
                                     "set_group_slice",
+                                    "set_sample",
                                     "set_spaces",
                                     "state_update",
                                 ],

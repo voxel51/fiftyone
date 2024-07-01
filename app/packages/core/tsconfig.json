@@ -1,21 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "ESNext",
-        "lib": ["ESNext", "DOM", "DOM.Iterable"],
-        "noImplicitAny": false,
-        "sourceMap": true,
-        "outDir": "dist",
+        "lib": ["ES2023"],
         "jsx": "preserve",
         "types": ["vite/client"]
     },
-    "include": ["index.ts"],
-    "references": [
-        { "path": "../components" },
-        { "path": "../flashlight" },
-        { "path": "../looker" },
-        { "path": "../map" },
-        { "path": "../state" },
-        { "path": "../utilities" }
-    ]
+    "extends": "../../tsconfig.json"
 }

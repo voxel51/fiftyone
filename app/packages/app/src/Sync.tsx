@@ -1,22 +1,21 @@
 import { Loading } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
+  Writer,
   setDataset,
   setDatasetMutation,
   setSpaces,
   setSpacesMutation,
   setView,
   setViewMutation,
-  subscribe,
-  Writer,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Session, SESSION_DEFAULT, stateSubscription } from "@fiftyone/state";
+import { SESSION_DEFAULT, Session, stateSubscription } from "@fiftyone/state";
 import { Action } from "history";
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { commitMutation, Environment, OperationType } from "relay-runtime";
+import { Environment, OperationType, commitMutation } from "relay-runtime";
 import Setup from "./components/Setup";
 import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import {
@@ -24,8 +23,8 @@ import {
   DatasetPageQuery$data,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
-import { AppReadyState } from "./useEvents/registerEvent";
 import useEventSource from "./useEventSource";
+import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
@@ -48,13 +47,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   useWriters(subscription, environment, router, sessionRef);
 
   const readyState = useEventSource(router, sessionRef);
-  useEffect(
-    () =>
-      subscribe((_, { reset }) => {
-        reset(fos.currentModalSample);
-      }),
-    []
-  );
 
   return (
     <SessionContext.Provider value={sessionRef.current}>

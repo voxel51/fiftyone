@@ -54,6 +54,7 @@ const useEventSource = (
       {
         initializer: {
           dataset: getDatasetName(),
+          sample: getParam("sampleId"),
           view: getParam("view"),
           workspace: getParam("workspace"),
         },

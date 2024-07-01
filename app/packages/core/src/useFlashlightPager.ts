@@ -35,7 +35,7 @@ const processSamplePageData = (
   });
 };
 
-const defaultZoom = selector({
+export const defaultZoom = selector({
   key: "defaultZoomCallback",
   get: () => async () => false,
 });
