@@ -1,5 +1,5 @@
 import Flashlight from "@fiftyone/flashlight";
-import { Sample } from "@fiftyone/looker/src/state";
+import type { Sample } from "@fiftyone/looker";
 import { useRecoilCallback } from "recoil";
 import { selectedSampleObjects, selectedSamples } from "../recoil/atoms";
 import useSetSelected from "./useSetSelected";

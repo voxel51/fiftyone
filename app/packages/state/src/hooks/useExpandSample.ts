@@ -1,38 +1,50 @@
-import { FlashlightConfig } from "@fiftyone/flashlight";
+import type * as foq from "@fiftyone/relay";
+import type { SpotlightConfig } from "@fiftyone/spotlight";
+import type { ResponseFrom } from "../utils";
+
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 import { getSanitizedGroupByExpression } from "../recoil/utils";
-import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
-export default <T extends Lookers>(store: LookerStore<T>) => {
+export type Sample = Exclude<
+  Exclude<
+    ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"],
+    {
+      readonly __typename: "%other";
+    }
+  >,
+  null
+>;
+
+export default (store: WeakMap<symbol, Sample>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
-
-  return useRecoilCallback<
-    Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
-    void
-  >(
+  return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (next, sampleId, itemIndexMap, event) => {
+      async ({
+        event,
+        item,
+        next,
+      }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
             const newSelected = new Set([...selected]);
-            if (newSelected.has(sampleId)) {
-              newSelected.delete(sampleId);
+            if (newSelected.has(item.id.description)) {
+              newSelected.delete(item.id.description);
             } else {
-              newSelected.add(sampleId);
+              newSelected.add(item.id.description);
             }
 
             return newSelected;
           });
-          return;
+          return false;
         }
-        const clickedIndex = itemIndexMap[sampleId];
+
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices
         );
@@ -41,18 +53,13 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           dynamicGroupAtoms.dynamicGroupParameters
         );
 
-        const getItemAtIndex = async (index: number) => {
-          if (!store.indices.has(index)) await next();
+        const iter = async (request: Promise<symbol | undefined>) => {
+          const id = await request;
+          const sample = store.get(id);
 
-          const id = store.indices.get(index);
-
-          if (!id) {
-            throw new Error(
-              `unable to paginate to next sample, index = ${index}`
-            );
+          if (!sample) {
+            throw new Error("unable to paginate to next sample");
           }
-
-          const sample = store.samples.get(id);
 
           let groupId: string;
           if (hasGroupSlices) {
@@ -69,13 +76,18 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             );
           }
 
-          return { id, groupId, groupByFieldValue };
+          return { id: id.description, groupId, groupByFieldValue };
         };
 
-        setModalState(getItemAtIndex).then(() =>
-          setExpandedSample(clickedIndex)
-        );
+        setModalState({
+          next: () => iter(next(1)),
+          previous: () => iter(next(-1)),
+        })
+          .then(() => iter(Promise.resolve(item.id)))
+          .then((data) => setExpandedSample(data));
+
+        return true;
       },
-    [setExpandedSample, setModalState, store]
+    [setExpandedSample, setModalState]
   );
 };

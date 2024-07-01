@@ -34,6 +34,7 @@ EventType = t.Union[
     "SelectLabels",
     "SetColorScheme",
     "SetGroupSlice",
+    "SetSample",
     "SetSpaces",
     "StateUpdate",
     "SetFieldVisibilityStage",
@@ -296,6 +297,7 @@ class SetDatasetColorScheme(Event):
 class SetSample(Event):
     """Set sample event"""
 
+    group_id: t.Optional[str] = None
     sample_id: t.Optional[str] = None
 
 
@@ -328,7 +330,9 @@ class StateUpdate(Event):
 @dataclass
 class AppInitializer:
     dataset: t.Optional[str] = None
-    sample: t.Optional[str] = None
+    group_id: t.Optional[str] = None
+    group_slice: t.Optional[str] = None
+    sample_id: t.Optional[str] = None
     view: t.Optional[str] = None
     workspace: t.Optional[str] = None
 

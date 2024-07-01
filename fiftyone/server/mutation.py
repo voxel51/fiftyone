@@ -115,6 +115,20 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
+    async def set_sample(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        group_id: t.Optional[str],
+        sample_id: t.Optional[str],
+    ) -> bool:
+        await dispatch_event(
+            subscription,
+            fose.SetSample(group_id=group_id, sample_id=sample_id),
+        )
+        return True
+
+    @gql.mutation
     async def set_sidebar_groups(
         self,
         subscription: str,

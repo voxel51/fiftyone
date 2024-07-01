@@ -14,6 +14,7 @@ import {
   DIRECTION,
   DIV,
   ONE,
+  SCROLLBAR_WIDTH,
   TWO,
   ZERO,
   ZOOMING_COEFFICIENT,
@@ -49,6 +50,8 @@ export default class Spotlight<K, V> extends EventTarget {
     };
 
     this.#element.classList.add(styles.spotlight);
+
+    this.#config.scrollbar && this.#element.classList.add(styles.scrollbar);
 
     this.#page = config.key;
   }
@@ -144,7 +147,11 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #width() {
-    return this.#rect.width - this.#config.margin * TWO;
+    const width = this.#rect.width - this.#config.margin * TWO;
+    if (this.#config.scrollbar) {
+      return width - SCROLLBAR_WIDTH;
+    }
+    return width;
   }
 
   async #next(render = true) {

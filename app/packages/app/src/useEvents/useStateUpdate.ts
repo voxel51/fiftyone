@@ -16,11 +16,7 @@ const useStateUpdate: EventHandlerHook = ({
 
   return useCallback(
     (payload: any) => {
-      const state = processState(
-        session.current,
-        payload.state,
-        new URLSearchParams(router.history.location.search)
-      );
+      const state = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
@@ -30,10 +26,13 @@ const useStateUpdate: EventHandlerHook = ({
           : payload.state.dataset ?? null,
         nextView: stateless ? getParam("view") : payload.state.saved_view_slug,
         extra: {
+          groupId: state.groupId || null,
+          slice: state.groupSlice || null,
           sampleId: state.sampleId || null,
           workspace: state.workspace?._name || null,
         },
       });
+
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));

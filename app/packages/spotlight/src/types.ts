@@ -60,6 +60,7 @@ export interface SpotlightConfig<K, V> {
   render: Render;
   rowAspectRatioThreshold: number;
   spacing?: number;
+  scrollbar?: boolean;
 }
 
 export type Updater = (id: symbol) => void;

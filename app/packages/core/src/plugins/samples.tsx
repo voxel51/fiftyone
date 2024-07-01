@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
-import Grid from "../components/Grid/SpotlightGrid";
+import Grid from "../components/Grid/Grid";
 import ContainerHeader from "../components/ImageContainerHeader";
 
 const Container = styled.div`

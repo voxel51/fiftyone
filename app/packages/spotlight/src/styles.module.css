@@ -11,27 +11,17 @@
 
   --light-color: var(--fo-palette-text-tertiary);
   --dark-color: var(--fo-palette-background-level2);
-
-  scrollbar-color: transparent;
-}
-
-.spotlight::-webkit-scrollbar {
-  display: none;
+  scrollbar-width: 14px;
 }
 
 .spotlight::-webkit-scrollbar-track {
-  border: solid 4px transparent var(--light-color);
+  box-shadow: inset 0 0 14px 14px var(--dark-color);
+  border: solid 4px transparent;
 }
 
 .spotlight::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px transparent;
-  border: solid 4px transparent;
-  border-radius: 16px;
-  transition: box-shadow linear 0.5s;
-}
-
-.spotlight:hover::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px var(--light-color);
+  box-shadow: inset 0 0 10px 10px red;
+  border: solid 3px transparent;
 }
 
 .spotlightSection {

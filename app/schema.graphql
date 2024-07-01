@@ -262,8 +262,10 @@ type DatasetStrConnection {
 }
 
 type DatasetStrEdge {
-  node: Dataset!
   cursor: String!
+  node: Dataset!
+  next: String
+  previous: String
 }
 
 type DatasetStrPageInfo {
@@ -512,6 +514,12 @@ type Mutation {
     session: String
     slice: String!
   ): Boolean!
+  setSample(
+    subscription: String!
+    session: String
+    groupId: String
+    sampleId: String
+  ): Boolean!
   setSidebarGroups(
     subscription: String!
     session: String
@@ -682,8 +690,10 @@ type SampleItemStrConnection {
 }
 
 type SampleItemStrEdge {
-  node: SampleItem!
   cursor: String!
+  node: SampleItem!
+  next: String
+  previous: String
 }
 
 type SampleItemStrPageInfo {

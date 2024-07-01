@@ -1,22 +1,18 @@
-import { FlashlightConfig } from "@fiftyone/flashlight";
 import * as fos from "@fiftyone/state";
 import { get as getPath } from "lodash";
-import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
+import { useRecoilCallback } from "recoil";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
-  const groupField = useRecoilValue(fos.groupField);
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (_, id: string, __) => {
+        const current = await snapshot.getPromise(fos.currentModalSample);
 
-  return useRecoilTransaction_UNSTABLE<
-    Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>
-  >(
-    ({ get, set }) =>
-      (_, id, __) => {
-        const current = get(fos.currentModalSample);
         if (current === null) {
           throw new Error("modal sample not defined");
         }
+        const groupField = await snapshot.getPromise(fos.groupField);
 
-        set(fos.currentModalSample, { index: current.index, id });
         const sample = store.samples.get(id);
 
         if (!sample) {
@@ -28,6 +24,6 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
           getPath(sample.sample, groupField).name as string
         );
       },
-    [groupField]
+    []
   );
 };

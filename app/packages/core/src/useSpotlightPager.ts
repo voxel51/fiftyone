@@ -12,7 +12,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 
-const PAGE_SIZE = 20;
+export const PAGE_SIZE = 20;
 
 const processSamplePageData = (
   page: number,

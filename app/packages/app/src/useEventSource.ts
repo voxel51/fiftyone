@@ -1,10 +1,12 @@
-import { Session, stateSubscription, useClearModal } from "@fiftyone/state";
+import type { Session } from "@fiftyone/state";
+import { stateSubscription, useClearModal } from "@fiftyone/state";
 import { env, getEventSource } from "@fiftyone/utilities";
-import { MutableRefObject, useEffect, useMemo, useRef } from "react";
+import type { MutableRefObject } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Queries } from "./makeRoutes";
-import { RoutingContext } from "./routing";
+import type { Queries } from "./makeRoutes";
+import type { RoutingContext } from "./routing";
 import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
@@ -54,7 +56,9 @@ const useEventSource = (
       {
         initializer: {
           dataset: getDatasetName(),
-          sample: getParam("sampleId"),
+          group_id: getParam("groupId"),
+          group_slice: getParam("slice"),
+          sample_id: getParam("sampleId"),
           view: getParam("view"),
           workspace: getParam("workspace"),
         },

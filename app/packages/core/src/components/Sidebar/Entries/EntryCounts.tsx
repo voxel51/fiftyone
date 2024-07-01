@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
@@ -39,12 +39,13 @@ export const PathEntryCounts = ({
   ignoreSidebarMode,
 }: PathEntryCountsProps) => {
   const getAtom = useCallback(
-    (extended: boolean) =>
-      fos.count({
+    (extended: boolean) => {
+      return fos.count({
         extended,
         modal,
         path,
-      }),
+      });
+    },
     [modal, path]
   );
 
@@ -64,7 +65,7 @@ const labelTagCount = selectorFamily<
   number,
   { modal: boolean; tag: string; extended: boolean }
 >({
-  key: `labelTagCount`,
+  key: "labelTagCount",
   get:
     ({ tag, ...rest }) =>
     ({ get }) => {
@@ -79,7 +80,7 @@ const labelTagCount = selectorFamily<
 });
 
 export const labelTagsCount = selectorFamily({
-  key: `labelTagsCount`,
+  key: "labelTagsCount",
   get:
     (props: { modal: boolean; extended: boolean }) =>
     ({ get }) => {

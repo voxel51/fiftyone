@@ -1,9 +1,11 @@
-import { ColorSchemeInput, subscribeBefore } from "@fiftyone/relay";
-import { Session, State, ensureColorScheme } from "@fiftyone/state";
+import type { ColorSchemeInput } from "@fiftyone/relay";
+import { subscribeBefore } from "@fiftyone/relay";
+import type { Session, State } from "@fiftyone/state";
+import { ensureColorScheme } from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
-import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { LocationState } from "../routing";
+import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import type { LocationState } from "../routing";
 import { AppReadyState } from "./registerEvent";
 
 export const appReadyState = atom<AppReadyState>({
@@ -13,8 +15,7 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: any,
-  params: URLSearchParams
+  state: any
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
@@ -26,18 +27,17 @@ export const processState = (
       return;
     }
 
-    session.sessionGroupSlice =
-      state.group_slice ?? data.dataset?.defaultGroupSlice;
+    session.sessionGroupSlice = state.group_slice;
     session.selectedLabels = toCamelCase(
       state.selected_labels
     ) as State.SelectedLabel[];
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
-    session.sessionPage = Number.parseInt(params.get("page") || "") || 0;
-    session.sessionSampleId = state.sample_id
-      ? { id: state.sample_id }
-      : undefined;
+    session.sessionSampleId =
+      state.sample_id || state.group_id
+        ? { id: state.sample_id, groupId: state.group_id }
+        : undefined;
 
     unsubscribe();
   });
@@ -48,6 +48,8 @@ export const processState = (
 
   return {
     fieldVisibility: state.field_visibility_stage,
+    groupId: state.group_id,
+    groupSlice: state.group_slice,
     sampleId: state.sample_id,
     view: state.view || [],
     workspace: state.spaces,

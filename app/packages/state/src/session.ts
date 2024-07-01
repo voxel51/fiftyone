@@ -36,10 +36,9 @@ export interface Session {
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
-  sessionPage: number;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
-  sessionSampleId?: { id: string };
+  sessionSampleId?: { groupId?: string; id: string };
   sessionGroupId?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
 }
@@ -68,7 +67,6 @@ export const SESSION_DEFAULT: Session = {
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
-  sessionPage: 0,
 };
 
 type SetterKeys = keyof Omit<

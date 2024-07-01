@@ -60,6 +60,7 @@ export default () => {
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
           [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
+          [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
         ];
 
         const slice = await snapshot.getPromise(groupAtoms.groupSlice);

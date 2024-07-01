@@ -1,7 +1,7 @@
-import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { State } from "@fiftyone/state";
+import type { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { State } from "@fiftyone/state";
 import { Key, pathToRegexp } from "path-to-regexp";
-import { OperationType, VariablesOf } from "relay-runtime";
+import type { OperationType, VariablesOf } from "relay-runtime";
 
 interface StringKey extends Key {
   name: string;
@@ -26,6 +26,8 @@ const compilePath = (path: string): CompilePathResult => {
 
 export type LocationState<T extends OperationType = OperationType> = {
   fieldVisibility?: State.FieldVisibilityStage;
+  groupId?: string;
+  groupSlice: string;
   sampleId?: string;
   savedViewSlug?: string;
   view?: State.Stage[];

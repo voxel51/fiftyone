@@ -609,28 +609,29 @@ class Session(object):
         self._state.config = config
 
     @property
-    def sample(self) -> fosa.Sample:
-        """The layout state for the session."""
-        sample_id = self._state.sample_id
-        if sample_id is None:
-            return None
+    def group_id(self) -> t.Optional[str]:
+        """The current expanded :class:`fiftyone.core.groups.Group` id"""
+        return self._state.group_id
 
-        collection = self._state.view
-        if collection is None:
-            collection = self._state.dataset
+    @group_id.setter  # type: ignore
+    def group_id(self, group_id: t.Optional[str]) -> None:
+        if group_id is not None and not isinstance(group_id, str):
+            raise ValueError(f"unexpected group id value '{group_id}'")
 
-        if collection is None:
-            raise RuntimeError("no dataset or view is attached")
+        self._state.group_id = group_id
+        self._client.send_event(SetSample(group_id=group_id))
 
-        return collection[self._state.sample_id]
+    @property
+    def sample_id(self) -> t.Optional[str]:
+        """The current expanded :class:`fiftyone.core.sample.Sample` id"""
+        return self._state.sample_id
 
-    @sample.setter  # type: ignore
-    def sample(self, sample: t.Optional[t.Union[fosa.Sample, str]]) -> None:
-        if not isinstance(sample, (fosa.Sample, str)) and sample is not None:
-            raise ValueError(f"unexpected sample value '{sample}'")
+    @sample_id.setter  # type: ignore
+    def sample_id(self, sample_id: t.Optional[str]) -> None:
+        if sample_id is not None and not isinstance(sample_id, str):
+            raise ValueError(f"unexpected sample id value '{sample_id}'")
 
-        sample_id = sample.id if isinstance(sample, fosa.Sample) else sample
-        self._state.sample = sample_id
+        self._state.sample_id = sample_id
         self._client.send_event(SetSample(sample_id=sample_id))
 
     @property
@@ -1225,11 +1226,10 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("set_group_slice", on_set_group_slice)
 
-    on_set_sample: t.Callable[[SetSample], None] = lambda event: setattr(
-        session._state,
-        "sample",
-        event.sample_id,
-    )
+    def on_set_sample(event: SetSample) -> None:
+        session._state.sample_id = event.sample_id
+        session._state.group_id = event.group_id
+
     session._client.add_event_listener("set_sample", on_set_sample)
 
     on_set_spaces: t.Callable[[SetSpaces], None] = lambda event: setattr(

@@ -9,7 +9,7 @@ import LoadingDots from "../../../components/src/components/Loading/LoadingDots"
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { gridZoom, gridZoomRange } from "./Grid";
-import { tileAtom } from "./Grid/SpotlightGrid";
+import { tileAtom } from "./Grid/Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
 import ResourceCount from "./ResourceCount";
 

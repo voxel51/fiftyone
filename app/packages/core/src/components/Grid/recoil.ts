@@ -7,6 +7,11 @@ export const defaultGridZoom = selector<number>({
   get: ({ get }) => get(fos.config)?.gridZoom,
 });
 
+export const gridPage = atom({
+  key: "gridPage",
+  default: 0,
+});
+
 export const gridZoom = atom<number>({
   key: "gridZoom",
   default: defaultGridZoom,
@@ -67,9 +72,11 @@ export const pageParameters = selector({
     return (page: number, pageSize: number) => {
       return {
         ...params,
-        after: page ? String(page * pageSize - 1) : null,
+        after: page ? String(page * pageSize) : null,
         first: pageSize,
       };
     };
   },
 });
+
+export const showGridPixels = atom({ key: "showGridPixels", default: false });
