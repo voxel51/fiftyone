@@ -2800,6 +2800,166 @@
             "date_added": "2024-04-02 19:22:51"
         },
         {
+            "base_name": "yolov10n-coco-torch",
+            "base_filename": "yolov10n-coco.pt",
+            "description": "YOLOv10-N model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 5860383,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10n.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10s-coco-torch",
+            "base_filename": "yolov10s-coco.pt",
+            "description": "YOLOv10-S model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 16623111,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10s.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10m-coco-torch",
+            "base_filename": "yolov10m-coco.pt",
+            "description": "YOLOv10-M model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 33643667,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10m.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10l-coco-torch",
+            "base_filename": "yolov10l-coco.pt",
+            "description": "YOLOv10-L model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 52425230,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10l.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10x-coco-torch",
+            "base_filename": "yolov10x-coco.pt",
+            "description": "YOLOv10-X model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 64395854,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10x.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
             "base_name": "yolov8s-world-torch",
             "base_filename": "yolov8s-world.pt",
             "description": "YOLOv8s-World model",
