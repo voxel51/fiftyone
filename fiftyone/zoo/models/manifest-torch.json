@@ -2960,6 +2960,70 @@
             "date_added": "2024-07-01 19:22:51"
         },
         {
+            "base_name": "rtdetr-l-coco-torch",
+            "base_filename": "rtdetr-l-coco.pt",
+            "description": "RT-DETR-l model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "size_bytes": 66511432,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/rtdetr-l.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformer"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "rtdetr-x-coco-torch",
+            "base_filename": "rtdetr-x-coco.pt",
+            "description": "RT-DETR-x model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "size_bytes": 135755662,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/rtdetr-x.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformer"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
             "base_name": "yolov8s-world-torch",
             "base_filename": "yolov8s-world.pt",
             "description": "YOLOv8s-World model",
