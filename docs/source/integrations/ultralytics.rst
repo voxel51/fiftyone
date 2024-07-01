@@ -83,7 +83,7 @@ You can directly pass Ultralytics `YOLO` or `RTDETR` detection models to
 
     # RTDETR
     # model = YOLO("rtdetr-l.pt")
-     # model = YOLO("rtdetr-x.pt")
+    # model = YOLO("rtdetr-x.pt")
 
     dataset.apply_model(model, label_field="boxes")
 
