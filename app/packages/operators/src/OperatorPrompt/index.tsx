@@ -25,8 +25,6 @@ function DynamicOperatorPrompt() {
   const target = getPromptTarget(prompt);
   const Component = getPromptComponent(prompt);
 
-  if (!prompt.resolvedIO.input && !prompt.resolvedIO.output) return null;
-
   return createPortal(<Component prompt={prompt} />, target);
 }
 

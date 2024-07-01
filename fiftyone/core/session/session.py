@@ -7,7 +7,6 @@ Session class for interacting with the FiftyOne App.
 """
 
 from collections import defaultdict
-from dataclasses import asdict
 from functools import wraps
 
 try:
@@ -426,6 +425,7 @@ class Session(object):
             sample_id=sample.id if sample is not None else None,
             spaces=spaces,
             color_scheme=build_color_scheme(color_scheme, dataset, config),
+            group_slice=_pull_group_slice(dataset, view),
         )
         self._client = fosc.Client(
             address=address,
@@ -1357,3 +1357,15 @@ def _on_refresh(session: Session, state: t.Optional[StateDescription]):
 
     if session.dataset is not None:
         session.dataset.reload()
+
+
+def _pull_group_slice(
+    dataset: t.Optional[fod.Dataset], view: t.Optional[fov.DatasetView]
+) -> t.Union[None, str]:
+    if view is not None:
+        return view.group_slice
+
+    if dataset is not None:
+        return dataset.group_slice
+
+    return None

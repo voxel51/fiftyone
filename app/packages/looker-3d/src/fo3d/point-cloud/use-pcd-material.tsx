@@ -109,6 +109,7 @@ export const usePcdMaterial = (
       case SHADE_BY_RGB:
         return (
           <RgbShader
+            key={key}
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}

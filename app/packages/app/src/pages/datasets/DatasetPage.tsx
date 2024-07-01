@@ -106,19 +106,17 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   return (
     <>
       <Nav fragment={data} hasDataset={!isEmpty} />
-      {isEmpty ? (
-        <Starter mode="ADD_SAMPLE" />
-      ) : (
-        <>
-          <div className={style.page}>
-            <datasetQueryContext.Provider value={data}>
-              <OperatorCore />
-              <Dataset />
-            </datasetQueryContext.Provider>
-          </div>
-          <Snackbar />
-        </>
-      )}
+      <div className={style.page} data-cy={"dataset-page"}>
+        {isEmpty ? (
+          <Starter mode="ADD_SAMPLE" />
+        ) : (
+          <datasetQueryContext.Provider value={data}>
+            <OperatorCore />
+            <Dataset />
+          </datasetQueryContext.Provider>
+        )}
+      </div>
+      <Snackbar />
     </>
   );
 };

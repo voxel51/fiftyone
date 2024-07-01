@@ -6,7 +6,12 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import { currentSlice, hasGroupSlices } from "./groups";
+import {
+  currentSlice,
+  groupSlice,
+  hasGroupSlices,
+  modalGroupSlice,
+} from "./groups";
 import { modalLooker } from "./modal";
 import { dynamicGroupsViewMode } from "./options";
 import { fieldPaths } from "./schema";
@@ -70,25 +75,25 @@ export const dynamicGroupPageSelector = selectorFamily<
     after: string | null;
     count: number;
     dataset: string;
-    filter: Record<string, never>;
+    filter: { group: { slice?: string } };
     view: State.Stage[];
   },
-  string
+  { modal: boolean; value: string }
 >({
   key: "paginateDynamicGroupVariables",
   get:
-    (value) =>
+    ({ modal, value }) =>
     ({ get }) => {
       const params = {
         dataset: get(datasetName),
         view: get(dynamicGroupViewQuery(value)),
+        filter: { group: { slice: get(modal ? modalGroupSlice : groupSlice) } },
       };
 
       return (cursor: number, pageSize: number) => ({
         ...params,
         after: cursor ? String(cursor) : null,
         count: pageSize,
-        filter: {},
       });
     },
 });

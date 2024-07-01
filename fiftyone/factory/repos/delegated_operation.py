@@ -5,6 +5,7 @@ FiftyOne delegated operation repository.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 from datetime import datetime
 from typing import Any, List
@@ -163,6 +164,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
+        # also set the metadata (not required)
+        metadata = kwargs.get("metadata", None)
+        if metadata:
+            setattr(op, "metadata", metadata)
+
         context = None
         if isinstance(op.context, dict):
             context = ExecutionContext(
@@ -228,26 +234,37 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if result is not None and not isinstance(result, ExecutionResult):
             execution_result = ExecutionResult(result=result)
 
+        execution_result_json = (
+            execution_result.to_json() if execution_result else None
+        )
+        outputs_schema = (
+            execution_result_json.pop("outputs_schema", None)
+            if execution_result_json
+            else None
+        )
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
                     "run_state": run_state,
                     "completed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
-                    "result": execution_result.to_json()
-                    if execution_result
-                    else None,
+                    "result": execution_result_json,
                 }
             }
+
+        if outputs_schema:
+            update["$set"]["metadata.outputs_schema"] = {
+                "$ifNull": [outputs_schema, {}]
+            }
+
         elif run_state == ExecutionRunState.FAILED:
             update = {
                 "$set": {
                     "run_state": run_state,
                     "failed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
-                    "result": execution_result.to_json()
-                    if execution_result
-                    else None,
+                    "result": execution_result_json,
                 }
             }
         elif run_state == ExecutionRunState.RUNNING:
@@ -271,7 +288,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
-            update=update,
+            update=[update],
             return_document=pymongo.ReturnDocument.AFTER,
         )
 

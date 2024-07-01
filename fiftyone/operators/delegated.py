@@ -5,6 +5,7 @@ FiftyOne delegated operations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import logging
 import traceback
@@ -16,6 +17,7 @@ from fiftyone.operators.executor import (
     do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
+    resolve_type_with_context,
 )
 
 
@@ -32,7 +34,12 @@ class DelegatedOperationService(object):
         self._repo = repo
 
     def queue_operation(
-        self, operator, label=None, delegation_target=None, context=None
+        self,
+        operator,
+        label=None,
+        delegation_target=None,
+        context=None,
+        metadata=None,
     ):
         """Queues the given delegated operation for execution.
 
@@ -43,6 +50,10 @@ class DelegatedOperationService(object):
                 the operator if not supplied)
             context (None): an
                 :class:`fiftyone.operators.executor.ExecutionContext`
+            metadata (None): an optional metadata dict containing properties below:
+                - inputs_schema: the schema of the operator's inputs
+                - outputs_schema: the schema of the operator's outputs
+
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -52,6 +63,7 @@ class DelegatedOperationService(object):
             label=label if label else operator,
             delegation_target=delegation_target,
             context=context,
+            metadata=metadata,
         )
 
     def set_progress(self, doc_id, progress):
@@ -112,6 +124,7 @@ class DelegatedOperationService(object):
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
+
         return self._repo.update_run_state(
             _id=doc_id,
             run_state=ExecutionRunState.COMPLETED,
@@ -382,5 +395,25 @@ class DelegatedOperationService(object):
         if isinstance(prepared, ExecutionResult):
             raise prepared.to_exception()
 
-        operator, _, ctx = prepared
-        return await do_execute_operator(operator, ctx, exhaust=True)
+        operator, _, ctx, __ = prepared
+
+        result = await do_execute_operator(operator, ctx, exhaust=True)
+
+        outputs_schema = None
+        request_params = {**context.request_params, "results": result}
+        try:
+            outputs = await resolve_type_with_context(
+                request_params, "outputs"
+            )
+            outputs_schema = outputs.to_json()
+        except (AttributeError, Exception):
+            logger.warning(
+                "Failed to resolve output schema for the operation."
+                + traceback.format_exc(),
+            )
+
+        execution_result = ExecutionResult(
+            result=result, outputs_schema=outputs_schema
+        )
+
+        return execution_result

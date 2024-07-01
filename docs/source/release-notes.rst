@@ -3,6 +3,178 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.7.1
+--------------------
+*Released June 11, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.24.1 <release-notes-v0.24.1>`, plus:
+
+- Improved stability of loading/navigating to saved views in the App
+- Fixed a notification error when deleting users from the Team Settings page
+- Improved stability of the Team Groups page after deleting users
+- Optimized export of cloud-backed 3D scenes
+
+.. _release-notes-v0.24.1:
+
+FiftyOne 0.24.1
+---------------
+*Released June 11, 2024*
+
+What's New
+
+- Added :ref:`Ultralytics YOLOv8 models <ultralytics-integration>` trained on
+  Open Images v7 to the model zoo!
+  `#4398 <https://github.com/voxel51/fiftyone/pull/4398>`_
+
+App
+
+- Fixed a regression from FiftyOne 0.24.0 that would prevent operator outputs
+  and error states from displaying in the App
+  `#4445 <https://github.com/voxel51/fiftyone/pull/4445>`_
+
+Core
+
+- Optimized metadata computation for 3D scenes
+  `#4442 <https://github.com/voxel51/fiftyone/pull/4442>`_
+- Fixed a bug that could cause 3D assets to be omitted when exporting 3D scenes
+  `#4442 <https://github.com/voxel51/fiftyone/pull/4442>`_
+
+Utils
+
+- The
+  :func:`make_patches_dataset() <fiftyone.core.patches.make_patches_dataset>`,
+  :func:`make_frames_dataset() <fiftyone.core.video.make_frames_dataset>`,
+  and :func:`make_clips_dataset() <fiftyone.core.clips.make_clips_dataset>`
+  utilities can now be directly called
+  `#4416 <https://github.com/voxel51/fiftyone/pull/4416>`_
+
+Annotation
+
+- Added support loading annotations for large CVAT tasks with many jobs
+  `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
+
+FiftyOne Teams 1.7.0
+--------------------
+*Released May 29, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
+
+- Added a :ref:`Roles page <teams-roles-page>` that summarizes the actions and
+  permissions available to each user role
+- Added support for customizing the role that a user will have when sending an
+  invitation for a new user to access a specific dataset
+- Added the ability to configure the expiration time for signed URLs used by
+  your FiftyOne Teams deployment
+- Fixed a regression from FiftyOne Teams 1.6 that could cause login errors when
+  accepting invites
+
+.. _release-notes-v0.24.0:
+
+FiftyOne 0.24.0
+---------------
+*Released May 29, 2024*
+
+What's New
+
+- Added support for :ref:`3D meshes and 3D geometries <3d-datasets>`!
+  `#3985 <https://github.com/voxel51/fiftyone/pull/3985>`_
+- Added a :ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` to the zoo!
+  `#4406 <https://github.com/voxel51/fiftyone/pull/4406>`_
+- Added support for :ref:`saving custom workspaces <app-workspaces>`!
+  `#4205 <https://github.com/voxel51/fiftyone/pull/4205>`_,
+  `#4211 <https://github.com/voxel51/fiftyone/pull/4211>`_
+- You can now scroll/customize the content displayed in the
+  :ref:`App tooltip <app-sample-view>`!
+  `#4254 <https://github.com/voxel51/fiftyone/pull/4254>`_
+- FiftyOne now lazily connects to the database only when needed
+  `#4236 <https://github.com/voxel51/fiftyone/pull/4236>`_
+- Added :ref:`Grounding DINO <huggingface-transformers-zero-shot-detection>`
+  as an option for zero shot object detection
+  `#4292 <https://github.com/voxel51/fiftyone/pull/4292>`_
+- Added a new :doc:`anomaly detection tutorial </tutorials/anomaly_detection>`
+  `#4312 <https://github.com/voxel51/fiftyone/pull/4312>`_
+
+App
+
+- Added a ``media_fallback`` option to the
+  :ref:`dataset App config <dataset-app-config-media-fields>`
+  `#4280 <https://github.com/voxel51/fiftyone/pull/4280>`_
+- :meth:`launch_app() <fiftyone.core.session.launch_app>` now respects the
+  current  :meth:`group_slice <fiftyone.core.dataset.Dataset.group_slice>`
+  when loading grouped datasets
+  `#4423 <https://github.com/voxel51/fiftyone/pull/4423>`_
+- Allow sidebar changes during
+  :ref:`lightning loading states <app-lightning-mode>`
+  `#4319 <https://github.com/voxel51/fiftyone/pull/4319>`_
+- Fixed overlay processing for empty label lists
+  `#4345 <https://github.com/voxel51/fiftyone/pull/4345>`_
+- Fixed ``support`` filtering in the sample modal for |TemporalDetections|
+  fields
+  `#4346 <https://github.com/voxel51/fiftyone/pull/4346>`_
+- Fixed a regression from FiftyOne 0.23.8 when viewing dynamically grouped
+  views into group datasets
+  `#4299 <https://github.com/voxel51/fiftyone/pull/4299>`_
+
+Core
+
+- Gracefully handle None-valued ``tags`` fields
+  `#4351 <https://github.com/voxel51/fiftyone/pull/4351>`_
+- More robust path normalization when importing
+  :ref:`FiftyOneDataset <FiftyOneDataset-import>` exports from other operating
+  systems
+  `#4353 <https://github.com/voxel51/fiftyone/pull/4353>`_
+- Fixed possible concurrency bugs when updating/deleting runs
+  `#4323 <https://github.com/voxel51/fiftyone/pull/4323>`_
+- Fixed possible concurrency bugs when updating views, workspaces, and group
+  slices `#4350 <https://github.com/voxel51/fiftyone/pull/4350>`_
+- Fixed a timezone bug with |DateField| for GMT+ users
+  `#4371 <https://github.com/voxel51/fiftyone/pull/4371>`_
+
+Utils
+
+- Added support for non-sequential category IDs when importing/exporting data
+  in :ref:`COCO format <COCODetectionDataset-import>`
+  `#4354 <https://github.com/voxel51/fiftyone/pull/4354>`_,
+  `#4309 <https://github.com/voxel51/fiftyone/pull/4309>`_
+- Added a :class:`DeepSort <fiftyone.utils.tracking.deepsort.DeepSort>`
+  tracking utility
+  `#4372 <https://github.com/voxel51/fiftyone/pull/4372>`_,
+  `#4296 <https://github.com/voxel51/fiftyone/pull/4296>`_
+
+Plugins
+
+- Added a :class:`DrawerView <fiftyone.operators.types.DrawerView>` option to
+  render your operators as a side drawer in the grid/sample visualizer rather
+  than as a modal
+  `#4240 <https://github.com/voxel51/fiftyone/pull/4240>`_
+- Added a
+  :meth:`set_spaces() <fiftyone.operators.operations.Operations.set_spaces>`
+  method for setting the current spaces layout from operators
+  `#4381 <https://github.com/voxel51/fiftyone/pull/4381>`_
+- Added support for numpy dtypes when serializing operator results
+  `#4324 <https://github.com/voxel51/fiftyone/pull/4324>`_
+- Fixed a bug where recently used operators may not appear first in the
+  :ref:`Operator browser <using-operators>`
+  `#4287 <https://github.com/voxel51/fiftyone/pull/4287>`_
+- Fixed logging syntax in the builtin
+  :meth:`set_progress() <fiftyone.operators.operations.Operations.set_progress>`
+  operation
+  `#4417 <https://github.com/voxel51/fiftyone/pull/4417>`_
+
+Zoo
+
+- Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
+  `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
+
+FiftyOne Teams 1.6.1
+--------------------
+*Released May 10, 2024*
+
+Bugs
+
+- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
+  enviornments
+
 FiftyOne Teams 1.6.0
 --------------------
 *Released April 30, 2024*
@@ -2579,8 +2751,8 @@ Core
 
 - Added support for :ref:`grouped datasets <groups>`, e.g., multiple camera
   view scenes `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
-- Added support for :ref:`point cloud samples <groups-point-clouds>` in grouped
-  datasets `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
+- Added support for point cloud samples in grouped datasets
+  `#1765 <https://github.com/voxel51/fiftyone/pull/1765>`_
 - Added an :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>`
   property to datasets for :ref:`configuring App behavior <dataset-app-config>`
   on a per-dataset basis

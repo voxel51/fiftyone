@@ -133,6 +133,7 @@ def handle_dataset_change(
     """
     try:
         state.dataset = fod.load_dataset(initializer.dataset)
+        state.group_slice = state.dataset.group_slice
         state.selected = []
         state.selected_labels = []
         state.sample_id = None
@@ -140,6 +141,7 @@ def handle_dataset_change(
         state.view = None
     except:
         state.dataset = None
+        state.group_slice = None
         state.selected = []
         state.selected_labels = []
         state.sample_id = None
@@ -156,7 +158,6 @@ def handle_dataset_change(
                 initializer.view, slug=True
             )
             state.view = state.dataset.load_saved_view(doc.name)
-            state.view_name = doc.name
         except:
             pass
 
@@ -217,7 +218,6 @@ def handle_saved_view(
         if slug:
             doc = state.dataset._get_saved_view_doc(slug, slug=True)
             state.view = state.dataset.load_saved_view(doc.name)
-            state.view_name = doc.name
         state.selected = []
         state.selected_labels = []
     except:
