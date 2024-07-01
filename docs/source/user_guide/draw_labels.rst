@@ -32,7 +32,7 @@ your datasets that you have identified by constructing a |DatasetView|.
         import fiftyone as fo
 
         # The Dataset or DatasetView containing the samples you wish to draw
-        dataset_or_view = fo.Dataset(...)
+        dataset_or_view = fo.load_dataset(...)
 
         # The directory to which to write the annotated media
         output_dir = "/path/for/output"
