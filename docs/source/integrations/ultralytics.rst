@@ -111,6 +111,7 @@ You can also load any of these models directly from the
     model_name = "yolov5l-coco-torch"
     # model_name = "yolov8m-coco-torch"
     # model_name = "yolov9e-coco-torch"
+    # model_name = "yolov10s-coco-torch"
 
     model = foz.load_zoo_model(
         model_name,
