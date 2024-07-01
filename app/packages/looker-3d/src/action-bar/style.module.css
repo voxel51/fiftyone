@@ -35,6 +35,34 @@
   align-content: center;
 }
 
+.gridConfigContainer {
+  display: flex;
+  flex-direction: column;
+  margin: 5px;
+}
+
+.gridSizeContainer {
+  display: flex;
+  justify-content: space-between;
+}
+
+.gridLabel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  column-gap: 1em;
+}
+
+.gridLabel > :first-child {
+  flex: 0.5;
+}
+
+.gridLabel > :last-child {
+  flex: 1;
+  align-self: flex-start;
+  border-radius: 0;
+}
+
 .pointSizeBaseContainer {
   margin: 1em;
 }

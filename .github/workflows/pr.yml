@@ -10,14 +10,37 @@ on:
       - release/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
-  lint:
-    uses: ./.github/workflows/lint-app.yml
-
   build:
     uses: ./.github/workflows/build.yml
 
   e2e:
     uses: ./.github/workflows/e2e.yml
+
+  lint:
+    uses: ./.github/workflows/lint-app.yml
+
+  teams:
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'develop'
+    steps:
+      - uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: voxel51
+          repo: fiftyone-teams
+          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          github_user: voxel51-bot
+          workflow_file_name: merge-oss.yml
+          ref: develop
+          wait_interval: 20
+          client_payload: |
+            {
+              "author": "${{ github.event.pull_request.user.login }}",
+              "branch": "${{ github.head_ref || github.ref_name }}",
+              "pr": ${{ github.event.pull_request.number }}
+            }
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
 
   test:
     uses: ./.github/workflows/test.yml
@@ -27,4 +50,7 @@ jobs:
     needs: [build, lint, test]
     if: always()
     steps:
-      - run: sh -c ${{ needs.build.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success' }}
+      - run: sh -c ${{
+          needs.build.result == 'success' &&
+          needs.lint.result == 'success' &&
+          needs.test.result == 'success' }}

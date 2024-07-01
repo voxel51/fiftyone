@@ -219,7 +219,7 @@ async def execute_or_delegate_operator(
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
-        operator, executor, ctx = prepared
+        operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -252,11 +252,21 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            metadata = {"inputs_schema": None, "outputs_schema": None}
+
+            try:
+                metadata["inputs_schema"] = inputs.to_json()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to resolve inputs schema for the operation: {str(e)}"
+                )
+
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
                 label=operator.name,
+                metadata=metadata,
             )
 
             execution = ExecutionResult(
@@ -312,7 +322,7 @@ async def prepare_operator_executor(
             error="Validation error", validation_ctx=validation_ctx
         )
 
-    return operator, executor, ctx
+    return operator, executor, ctx, inputs
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
@@ -364,6 +374,24 @@ async def resolve_type(registry, operator_uri, request_params):
         )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
+
+
+async def resolve_type_with_context(request_params, target: str = None):
+    """Resolves the "inputs" or "outputs" schema of an operator with the given context.
+
+    Args:
+        request_params: a dictionary of request parameters
+        target (None): the target schema ("inputs" or "outputs")
+
+    Returns:
+        the schema of "inputs" or "outputs" :class:`fiftyone.operators.types.Property` of
+        an operator, or None
+    """
+    computed_target = target or request_params.get("target", None)
+    computed_request_params = {**request_params, "target": computed_target}
+    operator_uri = request_params.get("operator_uri", None)
+    registry = OperatorRegistry()
+    return await resolve_type(registry, operator_uri, computed_request_params)
 
 
 async def resolve_execution_options(registry, operator_uri, request_params):
@@ -732,7 +760,7 @@ class ExecutionContext(object):
                 ExecutionProgress(progress, label),
             )
         else:
-            self.log(f"Progress: {progress.progress} - {progress.label}")
+            self.log(f"Progress: {progress} - {label}")
 
 
 class ExecutionResult(object):
@@ -744,6 +772,7 @@ class ExecutionResult(object):
         error (None): an error message
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
+        outputs_schema (None): a JSON dict representing the output schema of the operator
     """
 
     def __init__(
@@ -753,12 +782,14 @@ class ExecutionResult(object):
         error=None,
         validation_ctx=None,
         delegated=False,
+        outputs_schema=None,
     ):
         self.result = result
         self.executor = executor
         self.error = error
         self.validation_ctx = validation_ctx
         self.delegated = delegated
+        self.outputs_schema = outputs_schema
 
     @property
     def is_generator(self):
@@ -807,6 +838,7 @@ class ExecutionResult(object):
             "validation_ctx": (
                 self.validation_ctx.to_json() if self.validation_ctx else None
             ),
+            "outputs_schema": self.outputs_schema,
         }
 
 

@@ -7,4 +7,7 @@ export default styled.div`
   font-size: 1rem;
   line-height: 2;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 `;

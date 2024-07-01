@@ -1,5 +1,5 @@
-import ffmpeg from "fluent-ffmpeg";
-
+import { spawnSync } from "child_process";
+import { Duration } from "src/oss/utils";
 interface CreateBlankVideoOptions {
   /**
    * Duration of the video in seconds
@@ -32,44 +32,20 @@ export const createBlankVideo = async (
   options: CreateBlankVideoOptions
 ): Promise<void> => {
   const { duration, width, height, frameRate, color, outputPath } = options;
-  return new Promise((resolve, reject) => {
-    const startTime = performance.now();
+  const startTime = performance.now();
 
-    ffmpeg()
-      .input(`color=c=${color}:s=${width}x${height}`)
-      .inputOptions(["-f", "lavfi", "-t", String(duration)])
-      .outputOptions([
-        "-r",
-        String(frameRate),
-        "-c:v",
-        // use libvpx for webm, (libx264 for h264 WHICH IS NOT SUPPORTED IN CHROMIUM)
-        "libvpx",
-        // bitrate is 1M per second
-        "-b:v",
-        "1M",
-        "-pix_fmt",
-        "yuv420p",
-      ])
-      .output(outputPath)
-      .on("start", () => {
-        console.log(
-          `Creating blank video with options: ${JSON.stringify(options)}`
-        );
-      })
-      .on("end", () => {
-        const endTime = performance.now();
-        const timeTaken = endTime - startTime;
-        console.log(
-          `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
-        );
-        resolve();
-      })
-      .on("error", (error) => {
-        console.log(
-          `An error occurred while creating the video, path = ${outputPath}, error = ${error}`
-        );
-        reject(error);
-      })
-      .run();
+  const ffmpegCommand = `ffmpeg -filter_complex 'color=c=${color}:s=${width}x${height}' -t ${duration} -r ${String(
+    frameRate
+  )} -c:v libvpx -b:v 1M -pix_fmt yuv420p ${outputPath}`;
+
+  const proc = spawnSync(ffmpegCommand, {
+    shell: true,
+    timeout: Duration.Seconds(5),
   });
+
+  const endTime = performance.now();
+  const timeTaken = endTime - startTime;
+  console.log(
+    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
+  );
 };

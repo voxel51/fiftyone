@@ -93,7 +93,6 @@ class Mutation(SetColorScheme):
         state.selected = []
         state.selected_labels = []
         state.view = None
-        state.view_name = view_name if view_name is not None else None
         state.spaces = foo.default_workspace_factory()
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
@@ -257,14 +256,7 @@ class Mutation(SetColorScheme):
             result_view = _build_result_view(result_view, form)
 
         # Set view state
-        slug = (
-            fou.to_slug(result_view.name)
-            if result_view.name
-            else saved_view_slug
-        )
         state.view = result_view
-        state.view_name = result_view.name
-        state.saved_view_slug = slug
 
         await dispatch_event(
             subscription,
@@ -314,7 +306,6 @@ class Mutation(SetColorScheme):
         if use_state:
             dataset.reload()
             state.view = dataset.load_saved_view(view_name)
-            state.view_name = view_name
             await dispatch_event(subscription, fose.StateUpdate(state=state))
 
         return next(
@@ -362,7 +353,6 @@ class Mutation(SetColorScheme):
             and state.view.name == view_name
         ):
             state.view = dataset.view()
-            state.view_name = None
 
         await dispatch_event(subscription, fose.StateUpdate(state=state))
 

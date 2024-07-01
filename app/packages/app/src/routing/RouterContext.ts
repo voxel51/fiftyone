@@ -54,7 +54,7 @@ type Subscribe<T extends OperationType> = (
 
 export interface RoutingContext<T extends OperationType> {
   history: ReturnType<typeof createBrowserHistory>;
-  get: () => Entry<T>;
+  get: (next: boolean) => Entry<T>;
   load: (hard?: boolean) => Promise<Entry<T>>;
   subscribe: Subscribe<T>;
 }
@@ -135,11 +135,12 @@ export const createRouter = <T extends OperationType>(
       runUpdate && update(history.location as FiftyOneLocation);
       return currentEntryResource.load();
     },
-    get() {
-      if (!currentEntryResource) {
+    get(next = false) {
+      const resource = next ? nextCurrentEntryResource : currentEntryResource;
+      if (!resource) {
         throw new Error("no entry loaded");
       }
-      const entry = currentEntryResource.get();
+      const entry = resource.get();
       if (!entry) {
         throw new Error("entry is loading");
       }

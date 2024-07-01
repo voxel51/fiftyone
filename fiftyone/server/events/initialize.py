@@ -165,7 +165,6 @@ def handle_dataset_change(
                 initializer.view, slug=True
             )
             state.view = state.dataset.load_saved_view(doc.name)
-            state.view_name = doc.name
         except:
             pass
 
@@ -266,7 +265,6 @@ def handle_saved_view(
         if slug:
             doc = state.dataset._get_saved_view_doc(slug, slug=True)
             state.view = state.dataset.load_saved_view(doc.name)
-            state.view_name = doc.name
         state.selected = []
         state.selected_labels = []
     except:
