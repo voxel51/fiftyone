@@ -37,7 +37,7 @@ export const ActionBarContainer = styled.div`
 
   opacity: 0.95;
   min-height: 37px;
-  max-height: 50px;
+  max-height: 200px;
   background-color: var(--fo-palette-background-level3);
   border: 1px solid var(--fo-palette-primary-plainBorder);
   border-left: 0;

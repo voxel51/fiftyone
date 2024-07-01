@@ -26,9 +26,15 @@ export const Logs = () => {
   }, [logs]);
 
   const isStillLoading = useMemo(() => {
-    return (
-      logs.length > 0 && logs[logs.length - 1].message !== ALL_LOADING_COMPLETE
-    );
+    if (logs.length === 0) {
+      return false;
+    }
+
+    if (logs[logs.length - 1].status === "error") {
+      return false;
+    }
+
+    return logs[logs.length - 1].message !== ALL_LOADING_COMPLETE;
   }, [logs]);
 
   const isFinalStatusSuccess = useMemo(() => {
