@@ -6,11 +6,8 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
 
+from importlib import metadata
 import os
 import re
 from setuptools import setup, find_packages
