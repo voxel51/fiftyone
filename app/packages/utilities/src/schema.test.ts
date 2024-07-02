@@ -35,6 +35,30 @@ const SCHEMA: schema.Schema = {
       },
     },
   },
+  embeddedWithDbFields: {
+    dbField: "embeddedWithDbFields",
+    description: "description",
+    embeddedDocType:
+      "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument",
+    ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+    info: {},
+    name: "top",
+    path: "embeddedWithDbFields",
+    subfield: null,
+    fields: {
+      sample_id: {
+        dbField: "_sample_id",
+        pathWithDbField: "",
+        description: "description",
+        embeddedDocType: "fiftyone.core.labels.EmbeddedLabel",
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        info: {},
+        name: "sample_id",
+        path: "sample_id",
+        subfield: null,
+      },
+    },
+  },
 };
 
 describe("schema", () => {
@@ -57,13 +81,17 @@ describe("schema", () => {
 
   describe("getFieldInfo ", () => {
     it("should get top level field info", () => {
-      expect(schema.getFieldInfo("top", SCHEMA)).toBe(SCHEMA.top);
+      expect(schema.getFieldInfo("top", SCHEMA)).toEqual({
+        ...SCHEMA.top,
+        pathWithDbField: "",
+      });
     });
 
     it("should get embedded field info", () => {
-      expect(schema.getFieldInfo("embedded.field", SCHEMA)).toBe(
-        SCHEMA.embedded.fields.field
-      );
+      expect(schema.getFieldInfo("embedded.field", SCHEMA)).toEqual({
+        ...SCHEMA.embedded.fields.field,
+        pathWithDbField: "",
+      });
     });
 
     it("should return undefined for missing field paths", () => {
@@ -71,6 +99,15 @@ describe("schema", () => {
       expect(schema.getFieldInfo("missing", SCHEMA)).toBe(undefined);
       expect(schema.getCls("missing.path", {})).toBe(undefined);
       expect(schema.getFieldInfo("missing.path", SCHEMA)).toBe(undefined);
+    });
+
+    it("should return correct pathWithDbField", () => {
+      const field = schema.getFieldInfo(
+        "embeddedWithDbFields.sample_id",
+        SCHEMA
+      );
+      console.log("field is ", JSON.stringify(field, null, 2));
+      expect(field?.pathWithDbField).toBe("embeddedWithDbFields._sample_id");
     });
   });
 });

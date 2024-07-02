@@ -1,7 +1,6 @@
 export interface Field {
   ftype: string;
   dbField: string | null;
-  pathWithDbField: string | null;
   description: string | null;
   info: object | null;
   name: string;
@@ -9,6 +8,7 @@ export interface Field {
   subfield: string | null;
   path: string;
   fields?: Schema;
+  pathWithDbField?: string | null;
 }
 
 export interface StrictField extends Omit<Field, "fields"> {
@@ -29,7 +29,7 @@ export function getFieldInfo(
   const dbFields = [];
 
   for (let index = 0; index < keys.length; index++) {
-    if (!schema) return undefined;
+    if (!schema || !schema[keys[index]]) return undefined;
 
     field = { ...schema[keys[index]] };
     schema = field?.fields;
