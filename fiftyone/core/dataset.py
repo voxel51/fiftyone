@@ -58,7 +58,7 @@ class MissingDatasetError(ValueError):
     """Exception raised when a dataset is missing."""
     def __init__(self, name):
         self._dataset_name = name
-        super().__init__("Dataset '%s' not found" % name)
+        super().__init__(f"Dataset {name} not found")
 
 
 def list_datasets(glob_patt=None, tags=None, info=False):
@@ -148,13 +148,12 @@ def load_dataset(name, create_if_missing=False):
     Returns:
         a :class:`Dataset`
     """
-    try:
+    if dataset_exists(name):
         return Dataset(name, _create=False)
-    except MissingDatasetError as ex:
-        if create_if_missing:
-            return Dataset(name)
-        else:
-            raise ex
+    elif create_if_missing:
+        return Dataset(name)
+    else:
+        raise MissingDatasetError(name)
 
 
 def get_default_dataset_name():
