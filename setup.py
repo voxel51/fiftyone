@@ -44,7 +44,6 @@ INSTALL_REQUIRES = [
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",
-    "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
