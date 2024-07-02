@@ -12,8 +12,6 @@ import itertools
 import numpy as np
 from PIL import Image
 
-import eta.core.utils as etau
-
 from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
@@ -435,6 +433,68 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         images = [Image.fromarray(arg) for arg in args]
         predictions = self.model(images, verbose=False)
         return self._format_predictions(predictions)
+
+
+class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
+    """Configuration for a :class:`FiftyOneRTDETRModel`.
+
+    Args:
+        model (None): an ``ultralytics.RTDETR`` model to use
+        model_name (None): the name of an ``ultralytics.RTDETR`` model to load
+        model_path (None): the path to an ``ultralytics.RTDETR`` model checkpoint
+    """
+
+    def __init__(self, d):
+        pass
+
+
+class FiftyOneRTDETRModel(Model):
+    """FiftyOne wrapper around an ``ultralytics.RTDETR`` model.
+
+    Args:
+        config: a :class:`FiftyOneRTDETRModelConfig`
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.model = self._load_model(config)
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        if config.model_path is not None:
+            model = ultralytics.RTDETR(config.model_path)
+        elif config.model_name is not None:
+            model = ultralytics.RTDETR(config.model_name)
+        else:
+            model = ultralytics.RTDETR()
+
+        return model
+
+    @property
+    def media_type(self):
+        return "image"
+
+    @property
+    def ragged_batches(self):
+        return False
+
+    @property
+    def transforms(self):
+        return None
+
+    @property
+    def preprocess(self):
+        return False
+
+    def _format_predictions(self, predictions):
+        return to_detections(predictions)
+
+    def predict(self, arg):
+        image = Image.fromarray(arg)
+        predictions = self.model(image, verbose=False)
+        return self._format_predictions(predictions[0])
 
 
 class FiftyOneYOLOOBBModelConfig(FiftyOneYOLOModelConfig):
