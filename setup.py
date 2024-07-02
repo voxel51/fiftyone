@@ -73,6 +73,7 @@ INSTALL_REQUIRES = [
     "starlette>=0.24.0",
     "strawberry-graphql==0.138.1",
     "tabulate",
+    "tifffile",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages

@@ -93,6 +93,7 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
+    DetectionsMask,
     Polyline,
     Polylines,
     Keypoint,
