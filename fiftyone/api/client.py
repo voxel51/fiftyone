@@ -5,13 +5,7 @@
 """
 import functools
 import os
-
-try:
-    from importlib import metadata
-except ImportError:
-    # for Python 3.7
-    import importlib_metadata as metadata
-
+from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
 
 import backoff

@@ -6,14 +6,12 @@ FiftyOne config.
 |
 """
 
+from importlib import metadata
 import logging
 import multiprocessing
 import os
 
-try:
-    from importlib import metadata as importlib_metadata  # Python 3.8
-except ImportError:
-    import importlib_metadata  # Python < 3.8
+
 
 import pytz
 
@@ -1113,7 +1111,7 @@ def _parse_env_value(value):
 def _get_installed_packages():
     try:
         return set(
-            d.metadata["Name"] for d in importlib_metadata.distributions()
+            d.metadata["Name"] for d in metadata.distributions()
         )
     except:
         logger.debug("Failed to get installed packages")

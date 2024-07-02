@@ -7,14 +7,9 @@ Package-wide constants.
 """
 
 from datetime import datetime
+from importlib.metadata import metadata
 import os
-
 from packaging.version import Version
-
-try:
-    from importlib.metadata import metadata  # Python 3.8
-except ImportError:
-    from importlib_metadata import metadata  # Python < 3.8
 
 
 CLIENT_TYPE = "fiftyone-teams"

@@ -26,7 +26,7 @@
 #    -t "${INTERNAL_IMAGE_NAME}" --target internalrelease .
 
 
-ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.11
 ARG GPT_PLUGIN_IMAGE_NAME=fiftyone-app-gpt:local
 
 FROM python:${PYTHON_VERSION} as builder
