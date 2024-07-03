@@ -106,7 +106,6 @@ describe("schema", () => {
         "embeddedWithDbFields.sample_id",
         SCHEMA
       );
-      console.log("field is ", JSON.stringify(field, null, 2));
       expect(field?.pathWithDbField).toBe("embeddedWithDbFields._sample_id");
     });
   });
