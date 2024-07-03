@@ -4,7 +4,6 @@ import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import {
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -24,7 +23,7 @@ import {
   SET_TOP_VIEW_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
-import { useFo3d, useHotkey } from "../hooks";
+import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
 import {
@@ -388,6 +387,8 @@ export const MediaTypeFo3dComponent = () => {
     }
   }, [foScene, onChangeView]);
 
+  useTrackStatus();
+
   if (isParsingFo3d) {
     return (
       <Canvas>
@@ -414,23 +415,21 @@ export const MediaTypeFo3dComponent = () => {
             pluginSettings: settings,
           }}
         >
-          <Suspense fallback={<SpinningCube />}>
-            <AdaptiveDpr pixelated />
-            <AdaptiveEvents />
-            <CameraControls ref={cameraControlsRef} makeDefault />
-            <Lights lights={foScene?.lights} />
-            <Gizmos />
+          <AdaptiveDpr pixelated />
+          <AdaptiveEvents />
+          <CameraControls ref={cameraControlsRef} makeDefault />
+          <Lights lights={foScene?.lights} />
+          <Gizmos />
 
-            {!isSceneInitialized && <SpinningCube />}
+          {!isSceneInitialized && <SpinningCube />}
 
-            <group ref={assetsGroupRef} visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
-            </group>
+          <group ref={assetsGroupRef} visible={isSceneInitialized}>
+            <FoSceneComponent scene={foScene} />
+          </group>
 
-            <StatusTunnel.Out />
+          <StatusTunnel.Out />
 
-            <ThreeDLabels sampleMap={{ fo3d: sample }} />
-          </Suspense>
+          <ThreeDLabels sampleMap={{ fo3d: sample }} />
         </Fo3dSceneContext.Provider>
       </Canvas>
       <StatusBarRootContainer>

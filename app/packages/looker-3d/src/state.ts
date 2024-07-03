@@ -1,9 +1,14 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { atom } from "recoil";
+import { atom, atomFamily } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
 import { FoSceneNode } from "./hooks";
-import { Actions, ShadeBy } from "./types";
+import { Actions, AssetLoadingLog, ShadeBy } from "./types";
+
+export const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
+  key: "fo3d-assetsParseStatusLog",
+  default: [],
+});
 
 export const cameraPositionAtom = atom<[number, number, number] | null>({
   key: "fo3d-cameraPosition",
