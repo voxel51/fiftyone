@@ -4,6 +4,7 @@ import { get, isEqual } from "lodash";
 import React, { useEffect } from "react";
 import { isPathUserChanged } from "../hooks";
 import { getComponent, getErrorsForView, isCompositeView } from "../utils";
+import ContainerizedComponent from "./ContainerizedComponent";
 
 export default function DynamicIO(props) {
   const { data, schema, onChange, path, parentSchema, relativePath } = props;
@@ -14,7 +15,7 @@ export default function DynamicIO(props) {
     parentSchema,
     relativePath
   );
-  const { default: defaultValue, type } = computedSchema;
+  const { default: defaultValue } = computedSchema;
 
   // todo: need to improve initializing default value in state
   useEffect(() => {
@@ -29,11 +30,13 @@ export default function DynamicIO(props) {
   }, [defaultValue]);
 
   return (
-    <Component
-      {...props}
-      schema={computedSchema}
-      validationErrors={getErrorsForView(props)}
-    />
+    <ContainerizedComponent {...props} schema={computedSchema}>
+      <Component
+        {...props}
+        schema={computedSchema}
+        validationErrors={getErrorsForView(props)}
+      />
+    </ContainerizedComponent>
   );
 }
 
