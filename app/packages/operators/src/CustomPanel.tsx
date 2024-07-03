@@ -48,7 +48,7 @@ export function CustomPanel(props: CustomPanelProps) {
   const schema = Property.fromJSON(panelSchema);
 
   return (
-    <Box sx={{ height: "100%", width: "100%" }}>
+    <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
       <OperatorIO
         schema={schema}
         onChange={handlePanelStateChange}

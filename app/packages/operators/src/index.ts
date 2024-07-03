@@ -22,3 +22,4 @@ export { default as OperatorIO } from "./OperatorIO";
 export { default as useOperatorEvent } from "./usePanelEvent";
 export { default as OperatorPromptArea } from "./OperatorPrompt/OperatorPromptArea";
 export { OPERATOR_PROMPT_AREAS } from "./constants";
+export { default as usePanelEvent } from "./usePanelEvent";

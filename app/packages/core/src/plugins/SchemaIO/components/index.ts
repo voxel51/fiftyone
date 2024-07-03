@@ -47,3 +47,4 @@ export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";
 export { default as LazyFieldView } from "./LazyFieldView";
 export { default as GridView } from "./GridView";
+export { default as ArrowNavView } from "./ArrowNavView";
