@@ -258,6 +258,7 @@ class Object(BaseType):
         params=None,
         space=None,
         href=None,
+        icon_position="left",
         **kwargs,
     ):
         """Defines a button or icon button to display to the user as a :class:`Button`.
@@ -279,10 +280,10 @@ class Object(BaseType):
         Args:
             name: the name of the property
             label: the label of the button
-            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
-                ``"text"``. Additionally, when ``"icon"`` is provided, the variant can also be
-                ``"round"`` or ``"square"``
             icon (None): the name of the icon to display
+            icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
+                ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
@@ -291,27 +292,18 @@ class Object(BaseType):
             href (None): the URL to navigate to when the button is clicked
         """
         btn = Button(
+            href=href,
+            icon=icon,
+            icon_position=icon_position,
             label=label,
             operator=on_click,
-            prompt=prompt,
             params=params,
+            prompt=prompt,
             space=space,
             variant=variant,
-            href=href,
             **kwargs,
         )
-        if icon:
-            btn = IconButtonView(
-                label=label,
-                operator=on_click,
-                prompt=prompt,
-                params=params,
-                icon=icon,
-                variant=variant,
-                space=space,
-                href=href,
-                **kwargs,
-            )
+
         return self.view(name, btn)
 
     def message(self, name, label, **kwargs):
