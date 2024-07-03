@@ -424,6 +424,25 @@ class Object(BaseType):
         )
         return obj
 
+    def arrow_nav(
+        self, name, forward=None, backward=None, position=None, **kwargs
+    ):
+        """Defines a floating navigation arrows as a :class:`ArrowNavView`.
+
+        Args:
+            forward (True): Whether to display the forward arrow
+            backward (True): Whether to display the backward arrow
+            position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+                ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+
+        Returns:
+            a :class:`Property`
+        """
+        view = ArrowNavView(
+            forward=forward, backward=backward, position=position, **kwargs
+        )
+        return self.view(name, view, **kwargs)
+
     def clone(self):
         """Clones the definition of the object.
 
@@ -2106,3 +2125,28 @@ class MenuView(GridView):
 
     def to_json(self):
         return {**super().to_json(), "name": "GridView"}
+
+
+class ArrowNavView(View):
+    """Displays a floating navigation arrows.
+
+    Args:
+        forward (True): Whether to display the forward arrow
+        backward (True): Whether to display the backward arrow
+        position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+            ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.forward = kwargs.get("forward", True)
+        self.backward = kwargs.get("backward", True)
+        self.position = kwargs.get("position", "center")
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "forward": self.forward,
+            "backward": self.backward,
+            "position": self.position,
+        }
