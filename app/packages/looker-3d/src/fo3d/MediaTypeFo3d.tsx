@@ -27,7 +27,11 @@ import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
-import { activeNodeAtom, isFo3dBackgroundOnAtom } from "../state";
+import {
+  activeNodeAtom,
+  cameraPositionAtom,
+  isFo3dBackgroundOnAtom,
+} from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
@@ -173,11 +177,14 @@ export const MediaTypeFo3dComponent = () => {
     }
   }, [sceneBoundingBox, upVector]);
 
+  const overridenCameraPosition = useRecoilValue(cameraPositionAtom);
+
   const defaultCameraPositionComputed = useMemo(() => {
     /**
      * (todo: we should discard (2) since per-dataset camera position no longer makes sense)
      *
      * This is the order of precedence for the camera position:
+     * 0. If the user has set a camera position via operator by writing to `cameraPositionAtom`, use that
      * 1. If the user has set a default camera position in the scene itself, use that
      * 2. If the user has set a default camera position in the plugin settings, use that
      * 3. Compute a default camera position based on the bounding box of the scene
@@ -186,6 +193,14 @@ export const MediaTypeFo3dComponent = () => {
 
     if (isParsingFo3d) {
       return DEFAULT_CAMERA_POSITION();
+    }
+
+    if (overridenCameraPosition?.length === 3) {
+      return new Vector3(
+        overridenCameraPosition[0],
+        overridenCameraPosition[1],
+        overridenCameraPosition[2]
+      );
     }
 
     const defaultCameraPosition = foScene?.cameraProps.position;
@@ -233,7 +248,14 @@ export const MediaTypeFo3dComponent = () => {
     }
 
     return DEFAULT_CAMERA_POSITION();
-  }, [settings, isParsingFo3d, foScene, sceneBoundingBox, upVector]);
+  }, [
+    settings,
+    overridenCameraPosition,
+    isParsingFo3d,
+    foScene,
+    sceneBoundingBox,
+    upVector,
+  ]);
 
   const onCanvasCreated = useCallback((state: RootState) => {
     cameraRef.current = state.camera as PerspectiveCamera;
