@@ -19,10 +19,11 @@ import {
   ZERO,
   ZOOMING_COEFFICIENT,
 } from "./constants";
+import createResizeReader from "./createResizeReader";
+import createScrollReader from "./createScrollReader";
 import { Load, PageChange } from "./events";
 import { Section } from "./section";
 import { create } from "./utilities";
-import { createScrollReader } from "./zooming";
 
 export { Load, PageChange } from "./events";
 export type * from "./types";
@@ -37,6 +38,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #forward: Section<K, V>;
   #page: K;
   #rect?: DOMRect;
+  #resizeReader?: ReturnType<typeof createResizeReader>;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
 
@@ -106,6 +108,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     this.#element.remove();
     this.#scrollReader?.destroy();
+    this.#resizeReader?.destroy();
   }
 
   next() {
@@ -229,11 +232,13 @@ export default class Spotlight<K, V> extends EventTarget {
             if (
               this.#element.scrollTop > this.#containerHeight ||
               this.#element.scrollTop < ZERO ||
-              this.#scrollReader.zooming()
+              this.#scrollReader.zooming() ||
+              (this.#scrollReader.guard() && this.#element.scrollTop === ZERO)
             ) {
               requestAnimationFrame(run);
               return;
             }
+
             const result = runner();
             const offset = result.offset;
             if (result.section) {
@@ -263,7 +268,7 @@ export default class Spotlight<K, V> extends EventTarget {
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      width: this.#width,
+      width: () => this.#width,
     });
     this.#forward.attach(this.#element);
 
@@ -294,9 +299,24 @@ export default class Spotlight<K, V> extends EventTarget {
             return (
               (this.#width /
                 (this.#height *
-                  Math.max(this.#config.rowAspectRatioThreshold, ONE))) *
+                  Math.max(
+                    this.#config.rowAspectRatioThreshold(this.#width),
+                    ONE
+                  ))) *
               ZOOMING_COEFFICIENT
             );
+          }
+        );
+
+        this.#resizeReader = createResizeReader(
+          this.#element,
+          (resizing: boolean) => {
+            if (resizing) {
+              this.#rect = this.#element.getBoundingClientRect();
+
+              return;
+            }
+            this.#render({});
           }
         );
       });
@@ -315,7 +335,7 @@ export default class Spotlight<K, V> extends EventTarget {
           result.previous !== null
             ? { key: result.previous, remainder: [] }
             : { key: null, remainder: [] },
-        width: this.#width,
+        width: () => this.#width,
       });
       this.#backward.attach(this.#element);
     }
@@ -329,12 +349,15 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #render({
     go = true,
+    muted = false,
     offset = false,
+
     zooming,
   }: {
     go?: boolean;
+    muted?: boolean;
     offset?: number | false;
-    zooming: boolean;
+    zooming?: boolean;
   }) {
     if (go && offset !== false) {
       this.#forward.top = this.#pivot + this.#config.offset;
@@ -345,6 +368,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const backward = this.#backward.render({
       config: this.#config,
+      muted,
       target: top + this.#height + this.#padding,
       threshold: (n) => n > top - this.#padding,
       top: top + this.#config.offset,
@@ -354,6 +378,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const forward = this.#forward.render({
       config: this.#config,
+      muted,
       target: top - this.#padding - this.#backward.height,
       threshold: (n) => {
         return n < top + this.#height + this.#padding - this.#backward.height;

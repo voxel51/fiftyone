@@ -11,16 +11,20 @@
 
   --light-color: var(--fo-palette-text-tertiary);
   --dark-color: var(--fo-palette-background-level2);
-  scrollbar-width: 14px;
 }
 
-.spotlight::-webkit-scrollbar-track {
+.spotlight.scrollbar::-webkit-scrollbar,
+.spotlight.scrollbar {
+  scrollbar-width: 14px !important;
+}
+
+.spotlight.scrollbar::-webkit-scrollbar-track {
   box-shadow: inset 0 0 14px 14px var(--dark-color);
   border: solid 4px transparent;
 }
 
-.spotlight::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px red;
+.spotlight.scrollbar::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px var(--light-color);
   border: solid 3px transparent;
 }
 

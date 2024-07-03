@@ -1,17 +1,19 @@
+import { setSample, setSampleMutation } from "@fiftyone/relay";
+import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 
-const handleGroupId = (search: URLSearchParams, groupId: string) => {
+export const handleGroupId = (search: URLSearchParams, groupId: string) => {
   search.delete("sampleId");
   search.set("groupId", groupId);
 };
 
-const handleSampleId = (search: URLSearchParams, sampleId: string) => {
+export const handleSampleId = (search: URLSearchParams, sampleId: string) => {
   search.delete("groupId");
   search.set("sampleId", sampleId);
 };
 
 const onSetSample: RegisteredWriter<"sessionSampleId"> =
-  ({ router }) =>
+  ({ environment, router, subscription }) =>
   (data) => {
     const search = new URLSearchParams(router.history.location.search);
     if (data?.groupId) {
@@ -30,6 +32,14 @@ const onSetSample: RegisteredWriter<"sessionSampleId"> =
 
     const pathname = router.history.location.pathname + string;
     router.history.push(pathname, router.history.location.state);
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: data?.groupId,
+        sampleId: data?.id,
+        subscription,
+      },
+    });
   };
 
 export default onSetSample;

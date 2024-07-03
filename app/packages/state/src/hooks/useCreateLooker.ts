@@ -21,11 +21,7 @@ import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import {
-  ModalSample,
-  dynamicGroupsElementCount,
-  selectedMediaField,
-} from "../recoil";
+import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
@@ -72,12 +68,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
-      ({
-        frameNumber,
-        frameRate,
-        sample,
-        urls: rawUrls,
-      }: ModalSample["sample"]): T => {
+      ({ frameNumber, frameRate, sample, urls: rawUrls }): T => {
         let constructor:
           | typeof FrameLooker
           | typeof ImageLooker

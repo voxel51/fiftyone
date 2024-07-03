@@ -23,6 +23,7 @@ from fiftyone.core.session.events import (
     SelectSamples,
     SetColorScheme,
     SetGroupSlice,
+    SetSample,
     SetSpaces,
     StateUpdate,
     SetFieldVisibilityStage,
@@ -55,6 +56,10 @@ async def dispatch_event(
         state.color_scheme = foo.ColorScheme.from_dict(
             asdict(event.color_scheme)
         )
+
+    if isinstance(event, SetSample):
+        state.group_id = event.group_id
+        state.sample_id = event.sample_id
 
     if isinstance(event, SetSpaces):
         state.spaces = foo.Space.from_dict(event.spaces)

@@ -29,8 +29,6 @@ export { default as useResetExtendedSelection } from "./useResetExtendedSelectio
 export { default as useSavedViews } from "./useSavedViews";
 export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useScreenshot } from "./useScreenshot";
-export { default as useSelectFlashlightSample } from "./useSelectFlashlightSample";
-export { default as useSelectSample } from "./useSelectSample";
 export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";

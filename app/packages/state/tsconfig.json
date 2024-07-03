@@ -17,6 +17,10 @@
         "jsx": "react",
         "rootDir": "../../"
     },
-    "include": ["../../__mocks__", "./src"],
+    "include": [
+        "../../__mocks__",
+        "./src",
+        "../core/src/components/Grid/useSelectSample.ts"
+    ],
     "exclude": ["node_modules"]
 }

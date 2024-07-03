@@ -21,7 +21,7 @@ export type Sample = Exclude<
   null
 >;
 
-export default (store: WeakMap<symbol, Sample>) => {
+export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
   return useRecoilCallback(
@@ -42,7 +42,7 @@ export default (store: WeakMap<symbol, Sample>) => {
 
             return newSelected;
           });
-          return false;
+          return;
         }
 
         const hasGroupSlices = await snapshot.getPromise(
@@ -85,8 +85,6 @@ export default (store: WeakMap<symbol, Sample>) => {
         })
           .then(() => iter(Promise.resolve(item.id)))
           .then((data) => setExpandedSample(data));
-
-        return true;
       },
     [setExpandedSample, setModalState]
   );

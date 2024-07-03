@@ -141,7 +141,8 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
-    sample: fosa.Sample = None,
+    group_id: str = None,
+    sample_id: str = None,
     spaces: Space = None,
     color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
@@ -164,12 +165,16 @@ def launch_app(
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        sample (None): an optional :class:`fiftyone.core.sample.Sample` to load
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
-            defining a space configuration to load
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
+        group_id (None): an optional expanded
+            :class:`fiftyone.core.groups.Group` id
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -200,7 +205,8 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
-        sample=sample,
+        group_id=group_id,
+        sample_id=sample_id,
         spaces=spaces,
         color_scheme=color_scheme,
         plots=plots,
@@ -313,11 +319,15 @@ class Session(object):
             :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        sample (None): an optional :class:`fiftyone.core.sample.Sample` to load
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
-            defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
-            defining a custom color scheme to use
+        group_id (None): an optional expanded
+            :class:`fiftyone.core.groups.Group` id
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+        color_scheme (None): an optional
+            :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
+            color scheme to use
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
@@ -346,8 +356,9 @@ class Session(object):
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
+        group_id: str = None,
+        sample_id: str = None,
         view_name: str = None,
-        sample: fosa.Sample = None,
         spaces: Space = None,
         color_scheme: food.ColorScheme = None,
         plots: fop.PlotManager = None,
@@ -418,14 +429,15 @@ class Session(object):
             spaces = default_workspace_factory()
 
         self._state = StateDescription(
-            config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
-            view_name=final_view_name,
-            sample_id=sample.id if sample is not None else None,
-            spaces=spaces,
             color_scheme=build_color_scheme(color_scheme, dataset, config),
+            config=config,
+            group_id=group_id,
             group_slice=_pull_group_slice(dataset, view),
+            sample_id=sample_id,
+            spaces=spaces,
+            view_name=final_view_name,
         )
         self._client = fosc.Client(
             address=address,
@@ -993,6 +1005,12 @@ class Session(object):
             type_ = "desktop"
         else:
             type_ = None
+
+        if self.group_id:
+            elements.append(("Expaned group:", self.group_id))
+
+        if self.sample_id:
+            elements.append(("Expaned sample:", self.sample_id))
 
         if type_ is None:
             elements.append(("Session URL:", self.url))

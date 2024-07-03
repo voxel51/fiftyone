@@ -4,9 +4,8 @@
         "composite": true,
         "lib": ["ESNext"],
         "module": "ESNext",
-        "moduleResolution": "node",
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
         "target": "ES2022"
     },
-    "include": ["./src"]
+    "include": ["./src/**/*"]
 }

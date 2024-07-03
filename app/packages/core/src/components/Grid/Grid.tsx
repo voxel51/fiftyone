@@ -1,36 +1,28 @@
+import { subscribe } from "@fiftyone/relay";
 import Spotlight, { PageChange } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { Lookers } from "@fiftyone/state";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   atom,
   useRecoilCallback,
-  useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { commitLocalUpdate } from "relay-runtime";
 import { v4 as uuid } from "uuid";
-import useSpotlightPager, { Sample } from "../../useSpotlightPager";
+import useSpotlightPager from "../../useSpotlightPager";
 import { pixels, spotlightLooker } from "./Grid.module.css";
-import {
-  gridCrop,
-  gridPage,
-  pageParameters,
-  rowAspectRatioThreshold,
-  showGridPixels,
-} from "./recoil";
+import { gridCrop, gridPage, pageParameters } from "./recoil";
+import useRefreshers from "./useRefreshers";
+import useThreshold from "./useThreshold";
 
 export const tileAtom = atom({
   key: "tileAtom",
   default: 3,
 });
 
-let timeout;
-
 function Grid() {
   const id = useMemo(() => uuid(), []);
-  const threshold = useRecoilValue(rowAspectRatioThreshold);
   const { page, store, records } = useSpotlightPager(pageParameters, gridCrop);
   const lookerOptions = fos.useLookerOptions(false);
   const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
@@ -43,18 +35,15 @@ function Grid() {
     []
   );
 
-  const [showPixels, setShowPixels] = useRecoilState(showGridPixels);
-
-  const tile = useRecoilValue(tileAtom);
+  const refreshers = useRefreshers();
   const setPage = useSetRecoilState(gridPage);
   const setSample = fos.useExpandSample(store);
+  const threshold = useThreshold();
+  const tile = useRecoilValue(tileAtom);
 
   const spotlight = useMemo(() => {
-    if (showPixels) {
-      return undefined;
-    }
-
-    return new Spotlight<number, Sample>({
+    refreshers;
+    return new Spotlight<number, fos.Sample>({
       key: getPage(),
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
@@ -93,94 +82,29 @@ function Grid() {
     getPage,
     lookerStore,
     page,
-    showPixels,
+    refreshers,
+    setSample,
     store,
     threshold,
     tile,
   ]);
 
-  const select = fos.useSelectFlashlightSample();
-  const selectSample = useRef(select);
-  selectSample.current = select;
-
   useEffect(() => {
-    if (!spotlight) {
-      return undefined;
-    }
-
-    const pagechange = (e: PageChange<number>) => setPage(e.page);
-
     const element = document.getElementById(id);
-    let width;
-    const observer = new ResizeObserver(() => {
-      if (!width) {
-        width = element.getBoundingClientRect().width;
-        return;
-      }
-      if (width !== element.getBoundingClientRect().width) {
-        setShowPixels(true);
-        observer.unobserve(element);
-        timeout && clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          timeout = undefined;
-          setShowPixels(false);
-        }, 1000);
-      }
-    });
+    const pagechange = (e: PageChange<number>) => setPage(e.page);
 
     spotlight.attach(element);
     spotlight.addEventListener("pagechange", pagechange);
     spotlight.addEventListener("load", () => element.classList.remove(pixels));
-
-    observer.observe(element);
 
     return () => {
       spotlight.removeEventListener("pagechange", pagechange);
       spotlight.destroy();
       element?.classList.add(pixels);
     };
-  }, [
-    id,
-    spotlight,
-    page,
-    fos.stringifyObj(useRecoilValue(fos.filters)),
-    useRecoilValue(fos.datasetName),
-    useRecoilValue(fos.cropToContent(false)),
-    fos.filterView(useRecoilValue(fos.view)),
-    useRecoilValue(fos.groupSlice),
-    useRecoilValue(fos.refresher),
-    useRecoilValue(fos.similarityParameters),
-    useRecoilValue(fos.extendedStagesUnsorted),
-    useRecoilValue(fos.extendedStages),
-    useRecoilValue(fos.shouldRenderImaVidLooker),
-  ]);
+  }, [id, setPage, spotlight]);
 
-  const { init, deferred } = fos.useDeferrer();
-
-  const selected = useRecoilValue(fos.selectedSamples);
-  useEffect(() => {
-    deferred(() => {
-      spotlight?.updateItems((id) => {
-        lookerStore.get(id)?.updateOptions({
-          ...lookerOptions,
-          selected: selected.has(id.description),
-        });
-      });
-    });
-  }, [deferred, spotlight, lookerOptions, lookerStore, selected]);
-
-  useEffect(() => {
-    return spotlight ? init() : undefined;
-  }, [spotlight, init]);
-
-  useEffect(() => {
-    const current = records.current;
-    return () => {
-      commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(current)) store.get(id).invalidateRecord();
-      });
-    };
-  }, [records, useRecoilValue(fos.refresher)]);
+  useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
 
   return (
     <div

@@ -4,16 +4,25 @@
 
 import { SCROLL_TIMEOUT } from "./constants";
 
-export const createScrollReader = (
+export default function createScrollReader(
   element: HTMLElement,
   render: (zooming: boolean) => void,
   getScrollSpeedThreshold: () => number
-) => {
-  let prior: number;
-  let timer: ReturnType<typeof setTimeout>;
-  let zooming = false;
+) {
   let destroyed = false;
+  let guard = false;
+  let prior: number;
   let scrolling = undefined;
+  let timeout: ReturnType<typeof setTimeout>;
+  let zooming = false;
+
+  element.addEventListener("scroll", () => {
+    guard = true;
+  });
+
+  element.addEventListener("scrollend", () => {
+    guard = false;
+  });
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
@@ -28,14 +37,11 @@ export const createScrollReader = (
       Math.abs(element.scrollTop - prior) > threshold
     ) {
       zooming = prior !== undefined;
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-      timer = setTimeout(() => {
-        zooming = false;
-        timer = undefined;
+      timeout && clearTimeout(timeout);
+      timeout = setTimeout(() => {
         scrolling = false;
+        timeout = undefined;
+        zooming = false;
         render(false);
       }, SCROLL_TIMEOUT);
     }
@@ -66,6 +72,7 @@ export const createScrollReader = (
     destroy: () => {
       destroyed = true;
     },
+    guard: () => guard,
     zooming: () => zooming,
   };
-};
+}

@@ -106,7 +106,7 @@ def handle_app_initializer(subscription: str, initializer: AppInitializer):
         update = True
         dataset_change = True
         handle_dataset_change(state, initializer)
-    else:
+    elif state.dataset is not None:
         update = handle_group_id(state, initializer.group_id)
         update = handle_group_slice(state, initializer.group_slice)
         update = handle_sample_id(state, initializer.sample_id)
@@ -190,8 +190,9 @@ def handle_group_slice(
     Returns:
         True/False indicating if a state update event should be dispatched
     """
+    collection = state.view if state.view is not None else state.dataset
     if state.group_slice != group_slice:
-        if group_slice is not None:
+        if group_slice is not None and collection.group_slices:
             state.group_slice = group_slice
             return True
 
@@ -221,7 +222,7 @@ def handle_group_id(
 def handle_sample_id(
     state: fos.StateDescription, sample_id: t.Optional[str] = None
 ):
-    """Handle a group id.
+    """Handle a sample id.
 
     Args:
         state: the state description
@@ -242,7 +243,7 @@ def handle_sample_id(
 def handle_saved_view(
     state: fos.StateDescription, slug: t.Optional[str] = None
 ):
-    """Handle a saved view slug request.
+    """Handle a saved view slug.
 
     Args:
         state: the state description

@@ -16,8 +16,6 @@ export interface ItemData<K, V> {
   data: V;
   id: symbol;
   key: K;
-  next: symbol;
-  previous: symbol;
 }
 
 export type Render = (
@@ -49,7 +47,7 @@ export interface ItemClickInterface<K, V> {
 
 export type ItemClick<K, V> = (
   callbackInterface: ItemClickInterface<K, V>
-) => boolean;
+) => void;
 
 export interface SpotlightConfig<K, V> {
   get: Get<K, V>;
@@ -58,7 +56,7 @@ export interface SpotlightConfig<K, V> {
   offset?: number;
   onItemClick?: ItemClick<K, V>;
   render: Render;
-  rowAspectRatioThreshold: number;
+  rowAspectRatioThreshold: (width: number) => number;
   spacing?: number;
   scrollbar?: boolean;
 }

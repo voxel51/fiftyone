@@ -37,13 +37,10 @@ const processSamplePageData = (
         ? zoomAspectRatio(edge.node.sample, schema, edge.node.aspectRatio)
         : edge.node.aspectRatio,
       id,
-      data: edge.node,
+      data: edge.node as fos.Sample,
     };
   });
 };
-
-export type Sample =
-  fos.ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"];
 
 const useSpotlightPager = (
   pageSelector: RecoilValueReadOnly<
@@ -56,7 +53,7 @@ const useSpotlightPager = (
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
   const store = useMemo(
-    () => new WeakMap<symbol, { sample: Sample; index: number }>(),
+    () => new WeakMap<symbol, { sample: fos.Sample; index: number }>(),
     []
   );
   const records = useRef(new Set<string>());
@@ -69,7 +66,7 @@ const useSpotlightPager = (
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
         );
-        return new Promise<Response<number, Sample>>((resolve) => {
+        return new Promise<Response<number, fos.Sample>>((resolve) => {
           subscription = fetchQuery<foq.paginateSamplesQuery>(
             environment,
             foq.paginateSamples,

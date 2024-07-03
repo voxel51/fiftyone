@@ -1,28 +1,25 @@
-import { useCallback, useRef } from "react";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useCallback } from "react";
+import { useRecoilCallback } from "recoil";
 import { currentModalSample } from "../recoil";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 
 export default () => {
-  const types = useRecoilValue(groupAtoms.groupMediaTypes);
-  const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
-  const groupSlice = useRecoilValue(groupAtoms.groupSlice);
-  const r = useRef(groupSlice);
-  r.current = groupSlice;
-  const setter = useRecoilTransaction_UNSTABLE(
-    ({ reset, set }) =>
+  const setter = useRecoilCallback(
+    ({ reset, set, snapshot }) =>
       (groupByFieldValue?: string) => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupAtoms.dynamicGroupCurrentElementIndex);
         groupByFieldValue !== undefined &&
           set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
 
-        let fallback = r.current;
+        let fallback = snapshot.getLoadable(groupAtoms.groupSlice).getValue();
+        const map = snapshot
+          .getLoadable(groupAtoms.groupMediaTypesMap)
+          .getValue();
+        const types = snapshot
+          .getLoadable(groupAtoms.groupMediaTypes)
+          .getValue();
         if (map[fallback] === "point_cloud") {
           fallback = types
             .filter(({ mediaType }) => mediaType !== "point_cloud")
@@ -31,7 +28,7 @@ export default () => {
         }
         set(groupAtoms.modalGroupSlice, fallback);
       },
-    [r, map, types]
+    []
   );
 
   const commit = useRecoilCallback(

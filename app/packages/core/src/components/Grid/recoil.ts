@@ -22,11 +22,6 @@ export const gridZoomRange = atom<[number, number]>({
   default: [0, 10],
 });
 
-export const rowAspectRatioThreshold = selector<number>({
-  key: "rowAspectRatioThreshold",
-  get: ({ get }) => 11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
-});
-
 export const gridCropCallback = selector({
   key: "gridCropCallback",
   get: ({ getCallback }) => {
