@@ -6,13 +6,10 @@ FiftyOne config.
 |
 """
 
-from importlib import metadata
 import logging
 import multiprocessing
 import os
-
-
-
+from importlib import metadata
 import pytz
 
 import eta

@@ -8,6 +8,7 @@ Installs FiftyOne Teams.
 """
 
 from importlib import metadata
+import os
 import re
 from setuptools import setup, find_packages
 
