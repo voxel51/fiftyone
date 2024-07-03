@@ -54,8 +54,8 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
-class MissingDatasetError(ValueError):
-    """Exception raised when a dataset is missing."""
+class DatasetNotFoundError(ValueError):
+    """Exception raised when a dataset is not found."""
     def __init__(self, name):
         self._dataset_name = name
         super().__init__(f"Dataset {name} not found")
@@ -130,7 +130,7 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name, create_if_missing=False):
+def load_dataset(name, create_if_necessary=False):
     """Loads the FiftyOne dataset with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
@@ -143,17 +143,21 @@ def load_dataset(name, create_if_missing=False):
 
     Args:
         name: the name of the dataset
-        create_if_missing (False): if no dataset exists, create empty one
+        create_if_necessary (False): if no dataset exists, create an empty one
+
+    Raises:
+        DatasetNotFoundError: if the dataset does not exist and
+            `create_if_necessary` is False
 
     Returns:
         a :class:`Dataset`
     """
     if dataset_exists(name):
         return Dataset(name, _create=False)
-    elif create_if_missing:
+    elif create_if_necessary:
         return Dataset(name)
     else:
-        raise MissingDatasetError(name)
+        raise DatasetNotFoundError(name)
 
 
 def get_default_dataset_name():
@@ -7604,7 +7608,7 @@ def _do_load_dataset(obj, name):
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name})
     if not res:
-        raise MissingDatasetError(name)
+        raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
 
     sample_collection_name = dataset_doc.sample_collection_name
