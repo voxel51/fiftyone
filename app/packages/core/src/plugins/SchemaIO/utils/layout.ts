@@ -34,3 +34,54 @@ export function getLayoutProps(props: ViewPropsType) {
     maxWidth: parseSize(view.maxWidth || view.min_width, width),
   };
 }
+
+export const overlayToSx = {
+  "top-left": {
+    position: "absolute",
+    top: 0,
+    left: 0,
+  },
+  "top-center": {
+    position: "absolute",
+    top: 0,
+    left: "50%",
+  },
+  "top-right": {
+    position: "absolute",
+    top: 0,
+    right: 0,
+  },
+  "bottom-left": {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+  },
+  "bottom-center": {
+    position: "absolute",
+    bottom: 0,
+    left: "50%",
+  },
+  "bottom-right": {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+  },
+  "center-left": {
+    position: "absolute",
+    top: "50%",
+    left: 0,
+    transform: "translateY(-50%)",
+  },
+  "center-center": {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+  },
+  "center-right": {
+    position: "absolute",
+    top: "50%",
+    right: 0,
+    transform: "translateY(-50%)",
+  },
+};
