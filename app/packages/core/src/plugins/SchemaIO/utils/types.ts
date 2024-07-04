@@ -11,14 +11,24 @@ export type ObjectSchemaType = BaseSchemaType & {
   properties: { [key: string]: SchemaType };
 };
 
-export type SchemaType = BaseSchemaType | ArraySchemaType | ObjectSchemaType;
+export type NumberSchemaType = BaseSchemaType & {
+  min?: number;
+  max?: number;
+  multipleOf?: number;
+};
 
-export type ViewPropsType = {
-  schema: SchemaType;
+export type SchemaType =
+  | BaseSchemaType
+  | ArraySchemaType
+  | ObjectSchemaType
+  | NumberSchemaType;
+
+export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
+  schema: Schema;
   path: string;
   errors: { [key: string]: string[] };
   customComponents?: CustomComponentsType;
-  onChange: (path: string, value: any) => void;
+  onChange: (path: string, value: any, schema?: Schema) => void;
   parentSchema?: SchemaType;
   relativePath: string;
   data?: any;
@@ -26,6 +36,7 @@ export type ViewPropsType = {
     height: number;
     width: number;
   };
+  autoFocused?: React.MutableRefObject<boolean>;
 };
 
 export type CustomComponentsType = {

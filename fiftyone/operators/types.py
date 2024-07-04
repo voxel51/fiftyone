@@ -374,7 +374,9 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
-
+            variant (None): the variant for the items of the menu. Can be ``"contained"``,
+                ``"outlined"``, ``"round"`` or ``"square"``
+            color (None): the color for the items of the menu.
         Returns:
             a :class:`Object`
         """
@@ -2106,7 +2108,7 @@ class VStackView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
 
 
 class ButtonGroupView(GridView):
@@ -2122,7 +2124,7 @@ class ButtonGroupView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
 
 
 class MenuView(GridView):
@@ -2137,7 +2139,7 @@ class MenuView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
 
 
 class ArrowNavView(View):
