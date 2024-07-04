@@ -1,15 +1,16 @@
-import { Box, ListItemText, MenuItem, Select, Typography } from "@mui/material";
+import { MenuItem, Select } from "@mui/material";
 import React from "react";
+import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import autoFocus from "../utils/auto-focus";
 import AlertView from "./AlertView";
-import FieldWrapper from "./FieldWrapper";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
-import { useKey } from "../hooks";
+import FieldWrapper from "./FieldWrapper";
+import { ViewPropsType } from "../utils/types";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
-export default function DropdownView(props) {
+export default function DropdownView(props: ViewPropsType) {
   const { onChange, schema, path, data } = props;
   const { view = {}, type } = schema;
   const {
@@ -18,6 +19,9 @@ export default function DropdownView(props) {
     placeholder = "",
     separator = ",",
     readOnly,
+    condensed,
+    label,
+    description,
   } = view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
@@ -52,7 +56,7 @@ export default function DropdownView(props) {
   const { MenuProps = {}, ...selectProps } = getComponentProps(props, "select");
 
   return (
-    <FieldWrapper {...props}>
+    <FieldWrapper {...props} hideHeader={condensed}>
       <Select
         key={key}
         disabled={readOnly}
@@ -61,8 +65,12 @@ export default function DropdownView(props) {
         size="small"
         fullWidth
         displayEmpty
+        title={condensed ? description : undefined}
         renderValue={(value) => {
           if (value?.length === 0) {
+            if (condensed) {
+              return placeholder || label;
+            }
             return placeholder;
           }
           if (multiple) {

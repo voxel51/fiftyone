@@ -2,7 +2,7 @@ import { MuiIconFont } from "@fiftyone/components";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
-import { Box, ButtonProps } from "@mui/material";
+import { Box, ButtonProps, Typography } from "@mui/material";
 import React from "react";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
@@ -46,7 +46,7 @@ export default function ButtonView(props: ViewPropsType) {
         title={description}
         {...getComponentProps(props, "button", getButtonProps(props))}
       >
-        {label}
+        <Typography>{label}</Typography>
       </Button>
     </Box>
   );
@@ -78,8 +78,17 @@ function getIconProps(props: ViewPropsType): ButtonProps {
 }
 
 function getCommonProps(props: ViewPropsType): ButtonProps {
+  const color = getColor(props);
   return {
-    sx: { color: getColor(props), fontSize: "1rem", fontWeight: "bold" },
+    sx: {
+      color,
+      fontSize: "1rem",
+      fontWeight: "bold",
+      borderColor: color,
+      "&:hover": {
+        borderColor: color,
+      },
+    },
   };
 }
 
@@ -89,7 +98,7 @@ function getColor(props: ViewPropsType) {
     if (color === "primary") return (theme) => theme.palette.text.primary;
     if (color === "secondary") return (theme) => theme.palette.text.secondary;
     if (color === "orange") return (theme) => theme.palette.primary.main;
-    return { color };
+    return color;
   }
   const variant = getVariant(props);
   return (theme) => {
