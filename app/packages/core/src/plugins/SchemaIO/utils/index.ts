@@ -83,6 +83,7 @@ const COMPOSITE_VIEWS = [
   "ObjectView",
   "OneOfView",
   "TupleView",
+  "GridView",
 ];
 
 export function isCompositeView(schema: SchemaType) {

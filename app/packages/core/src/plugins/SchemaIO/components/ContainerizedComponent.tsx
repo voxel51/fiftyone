@@ -1,20 +1,31 @@
-import { Paper, PaperProps } from "@mui/material";
+import { Box, Paper, PaperProps } from "@mui/material";
 import React, { PropsWithChildren } from "react";
+import { isCompositeView, overlayToSx } from "../utils";
 import { ViewPropsType } from "../utils/types";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
   const { schema, children } = props;
   const container = schema?.view?.container;
+  let containerizedChildren = children;
   if (container) {
     const Container = containersByName[container.name];
     if (Container) {
-      return <Container {...container}>{children}</Container>;
+      containerizedChildren = <Container {...container}>{children}</Container>;
     } else {
       console.warn(`Container ${container.name} can not be found`);
     }
   }
 
-  return children;
+  if (isCompositeView(schema)) {
+    const sxForOverlay = overlayToSx[schema?.view?.overlay] || {};
+    return (
+      <Box sx={{ position: "relative", ...sxForOverlay }}>
+        {containerizedChildren}
+      </Box>
+    );
+  }
+
+  return containerizedChildren;
 }
 
 function PaperContainer(props: PaperContainerProps) {
