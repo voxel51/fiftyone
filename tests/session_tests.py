@@ -6,10 +6,9 @@ Tests related to Session behavior.
 |
 """
 import os
-import sys
 import subprocess
+import sys
 
-import fiftyone as fo
 import fiftyone.core.session.session as fos
 
 

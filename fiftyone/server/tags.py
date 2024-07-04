@@ -10,10 +10,9 @@ import typing as t
 
 import fiftyone.core.collections as foc
 import fiftyone.core.view as fov
-from fiftyone.core.utils import run_sync_task
-
-from fiftyone.server.filters import SampleFilter
 import fiftyone.server.view as fosv
+from fiftyone.core.utils import run_sync_task
+from fiftyone.server.filters import SampleFilter
 
 
 async def get_tag_view(

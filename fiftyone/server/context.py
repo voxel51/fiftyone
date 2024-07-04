@@ -11,9 +11,7 @@ import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.asgi as gqla
 
-
 from fiftyone.core.odm import get_async_db_conn
-
 from fiftyone.server.data import Context
 from fiftyone.server.dataloader import dataloaders, get_dataloader
 

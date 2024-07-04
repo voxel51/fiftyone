@@ -5,25 +5,25 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from functools import partial
 import itertools
 import warnings
+from functools import partial
 
-from bson import ObjectId
 import cv2
+import eta.core.frameutils as etaf
+import eta.core.image as etai
+import eta.core.utils as etau
 import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
+from bson import ObjectId
 
-import eta.core.frameutils as etaf
-import eta.core.image as etai
-import eta.core.utils as etau
-
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+from fiftyone.core.odm import DynamicEmbeddedDocument
+
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")

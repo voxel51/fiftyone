@@ -5,8 +5,8 @@ FiftyOne OpenLABEL test utils
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import os
+from collections import defaultdict
 
 import eta.core.serial as etas
 

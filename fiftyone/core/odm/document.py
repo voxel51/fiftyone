@@ -6,19 +6,18 @@ Base classes for documents that back dataset contents.
 |
 """
 
-from copy import deepcopy
 import json
-
-from bson import json_util, ObjectId
-import mongoengine
-from pymongo import InsertOne, UpdateOne
+from copy import deepcopy
 
 import eta.core.serial as etas
+import mongoengine
+from bson import ObjectId, json_util
+from pymongo import InsertOne, UpdateOne
 
 import fiftyone.core.utils as fou
 
 from .database import ensure_connection
-from .utils import serialize_value, deserialize_value
+from .utils import deserialize_value, serialize_value
 
 
 class SerializableDocument(object):

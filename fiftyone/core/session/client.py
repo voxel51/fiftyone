@@ -5,22 +5,22 @@ Session server-sent events client.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from dataclasses import asdict, dataclass
 import logging
-from retrying import retry
-from threading import Thread, Event as ThreadEvent
 import time
 import typing as t
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from threading import Event as ThreadEvent
+from threading import Thread
+from uuid import uuid4
 
-from bson import json_util
 import requests
 import sseclient
-from uuid import uuid4
+from bson import json_util
+from retrying import retry
 
 import fiftyone.constants as foc
 import fiftyone.core.state as fos
-
 from fiftyone.core.session.events import (
     Event,
     EventType,

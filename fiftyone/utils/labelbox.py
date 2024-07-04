@@ -6,22 +6,21 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy, deepcopy
 import logging
 import os
-import requests
 import urllib.request
-from uuid import uuid4
 import warnings
 import webbrowser
-
-import numpy as np
-from PIL import Image
+from copy import copy, deepcopy
+from uuid import uuid4
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+import numpy as np
+import requests
+from PIL import Image
 
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -32,6 +31,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
+
 
 lb = fou.lazy_import(
     "labelbox", callback=lambda: fou.ensure_import("labelbox")

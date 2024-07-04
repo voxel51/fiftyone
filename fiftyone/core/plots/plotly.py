@@ -5,25 +5,24 @@ Plotly plots.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import itertools
 import logging
 import os
 import warnings
+from collections import defaultdict
 
+import eta.core.utils as etau
 import numpy as np
-from PIL import ImageColor
 import plotly.colors as pc
 import plotly.express as px
 import plotly.graph_objects as go
-
-import eta.core.utils as etau
+from PIL import ImageColor
 
 import fiftyone.core.context as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .base import Plot, InteractivePlot, ResponsivePlot
+from .base import InteractivePlot, Plot, ResponsivePlot
 from .utils import (
     best_fit_line,
     parse_lines_inputs,

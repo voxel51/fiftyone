@@ -6,24 +6,23 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import csv
-from datetime import datetime
-from itertools import groupby
 import logging
 import multiprocessing.dummy
 import os
 import random
 import shutil
 import warnings
-
-import numpy as np
-from skimage import measure
+from collections import defaultdict
+from datetime import datetime
+from itertools import groupby
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+import numpy as np
+from skimage import measure
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -32,6 +31,7 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.eta as foue
+
 
 mask_utils = fou.lazy_import(
     "pycocotools.mask", callback=lambda: fou.ensure_import("pycocotools")

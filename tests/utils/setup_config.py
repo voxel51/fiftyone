@@ -7,6 +7,7 @@ Sets up configuration for tests.
 """
 import os
 
+
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 
 from fiftyone import config

@@ -9,15 +9,13 @@ FiftyOne Server workspace tests.
 import unittest
 
 import strawberry as gql
+from decorators import drop_async_dataset
 from strawberry.schema.config import StrawberryConfig
+from utils.graphql import execute
 
 import fiftyone as fo
-
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.query import Dataset
-
-from decorators import drop_async_dataset
-from utils.graphql import execute
 
 
 @gql.type

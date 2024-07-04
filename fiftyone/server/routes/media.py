@@ -8,10 +8,10 @@ FiftyOne Server /media route
 import os
 import typing as t
 
-import anyio
 import aiofiles
-from aiofiles.threadpool.binary import AsyncBufferedReader
+import anyio
 from aiofiles.os import stat as aio_stat
+from aiofiles.threadpool.binary import AsyncBufferedReader
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import (

@@ -12,13 +12,13 @@ import itertools
 import numpy as np
 from PIL import Image
 
-from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model
-import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
-import fiftyone.zoo as foz
+import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
+from fiftyone.core.config import Config
+from fiftyone.core.models import Model
+
 
 ultralytics = fou.lazy_import("ultralytics")
 

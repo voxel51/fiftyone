@@ -14,6 +14,7 @@ from fiftyone.factory.repos.delegated_operation import (
     MongoDelegatedOperationRepo,
 )
 
+
 _db: Database = None
 
 

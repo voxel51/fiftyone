@@ -7,7 +7,6 @@ Data utilities.
 """
 import logging
 import multiprocessing.dummy
-import requests
 import os
 import pathlib
 import urllib
@@ -16,9 +15,8 @@ import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import requests
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 

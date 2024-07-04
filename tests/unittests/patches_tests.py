@@ -5,16 +5,15 @@ FiftyOne patches-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import unittest
 from copy import deepcopy
 
 from bson import ObjectId
-import unittest
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.patches as fop
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets
 
 
 class PatchesTests(unittest.TestCase):

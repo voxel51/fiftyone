@@ -5,10 +5,10 @@ CLIP text tokenizer from https://github.com/openai/CLIP.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from functools import lru_cache
 import gzip
 import html
 import os
+from functools import lru_cache
 
 import ftfy
 import regex as re

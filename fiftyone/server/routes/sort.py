@@ -9,11 +9,10 @@ FiftyOne Server /sort route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-from fiftyone.core.session.events import StateUpdate
-
-from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
 import fiftyone.server.view as fosv
+from fiftyone.core.session.events import StateUpdate
+from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 

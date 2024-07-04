@@ -5,27 +5,25 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict, OrderedDict
-from copy import deepcopy
-from datetime import date, datetime
 import inspect
 import logging
 import reprlib
 import uuid
+from collections import OrderedDict, defaultdict
+from copy import deepcopy
+from datetime import date, datetime
 
+import eta.core.utils as etau
 import numpy as np
 from mongoengine.base import get_document
 
-import eta.core.utils as etau
-
 import fiftyone.core.expressions as foe
+import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)

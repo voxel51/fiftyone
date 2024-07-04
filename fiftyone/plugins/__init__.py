@@ -7,26 +7,27 @@ FiftyOne plugins.
 """
 import types
 
+from .context import PluginContext
 from .core import (
-    enable_plugin,
-    disable_plugin,
+    create_plugin,
     delete_plugin,
-    list_plugins,
+    disable_plugin,
+    download_plugin,
+    enable_plugin,
+    ensure_plugin_compatibility,
+    ensure_plugin_requirements,
+    find_plugin,
+    get_plugin,
+    install_plugin_requirements,
     list_disabled_plugins,
     list_downloaded_plugins,
     list_enabled_plugins,
-    get_plugin,
-    find_plugin,
-    download_plugin,
-    create_plugin,
+    list_plugins,
     load_plugin_requirements,
-    install_plugin_requirements,
-    ensure_plugin_requirements,
-    ensure_plugin_compatibility,
 )
 from .definitions import PluginDefinition
-from .context import PluginContext
 from .secrets import PluginSecretsResolver
+
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

@@ -8,17 +8,17 @@ FiftyOne server-related unit tests.
 import math
 import unittest
 
+from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.server.view as fosv
 from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
-import fiftyone.server.view as fosv
-
-from decorators import drop_datasets
-from utils.groups import make_disjoint_groups_dataset
 
 
 class ServerViewTests(unittest.TestCase):

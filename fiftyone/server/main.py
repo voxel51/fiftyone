@@ -7,12 +7,13 @@ FiftyOne Server main
 """
 
 import argparse
+import asyncio
+import logging
 import os
 
-import asyncio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-import logging
+
 
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
@@ -21,9 +22,9 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.constants as foc
-
 from fiftyone.server.app import app
 from fiftyone.server.events import set_port
+
 
 DEBUG_LOGGING = fo.config.logging_level == "DEBUG"
 

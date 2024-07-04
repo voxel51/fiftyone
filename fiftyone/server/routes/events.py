@@ -8,17 +8,16 @@ FiftyOne Server /events route
 
 import typing as t
 
+from sse_starlette.sse import EventSourceResponse
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
-from sse_starlette.sse import EventSourceResponse
 
 from fiftyone.core.session.events import ListenPayload
-
+from fiftyone.server.decorators import route
 from fiftyone.server.events import (
     add_event_listener,
     dispatch_polling_event_listener,
 )
-from fiftyone.server.decorators import route
 
 
 class Events(HTTPEndpoint):

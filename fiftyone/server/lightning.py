@@ -5,19 +5,18 @@ FiftyOne Server lightning queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import asdict, dataclass
-from datetime import date, datetime
+import asyncio
 import math
 import typing as t
+from dataclasses import asdict, dataclass
+from datetime import date, datetime
 
-import asyncio
+import strawberry as gql
 from bson.regex import Regex
 from motor.motor_asyncio import AsyncIOMotorCollection
-import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
-
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
 from fiftyone.server.utils import meets_type

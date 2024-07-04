@@ -12,11 +12,10 @@ from starlette.requests import Request
 
 import fiftyone.core.fields as fof
 import fiftyone.core.stages as fos
-from fiftyone.core.utils import run_sync_task
-
-from fiftyone.server.decorators import route
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
+from fiftyone.core.utils import run_sync_task
+from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 

@@ -5,21 +5,22 @@ Utilities for documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime
 import inspect
 import json
 import numbers
-import six
 import sys
+from datetime import date, datetime
 
-from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
+import six
+from bson import SON, Binary, ObjectId, json_util
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+
 
 fol = fou.lazy_import("fiftyone.core.labels")
 food = fou.lazy_import("fiftyone.core.odm.document")
@@ -670,8 +671,8 @@ def load_dataset(id=None, name=None):
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    import fiftyone.core.odm as foo
     import fiftyone.core.dataset as fod
+    import fiftyone.core.odm as foo
 
     if name:
         return fod.load_dataset(name)

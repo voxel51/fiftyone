@@ -8,13 +8,14 @@ Video frames.
 import itertools
 
 from bson import ObjectId
-from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
+from pymongo import DeleteMany, DeleteOne, ReplaceOne, UpdateOne
 
-from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
-from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
+from fiftyone.core.document import Document, DocumentView
+from fiftyone.core.singletons import FrameSingleton
+
 
 fov = fou.lazy_import("fiftyone.core.view")
 

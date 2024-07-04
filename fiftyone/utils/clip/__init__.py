@@ -6,7 +6,8 @@
 """
 import types
 
-from .zoo import TorchCLIPModelConfig, TorchCLIPModel
+from .zoo import TorchCLIPModel, TorchCLIPModelConfig
+
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

@@ -8,15 +8,14 @@ FiftyOne 3D Camera unit tests.
 
 import unittest
 
-from fiftyone.core import threed
-
-from fiftyone.core.threed.utils import convert_keys_to_snake_case
-
 from dataclass_test_utils import (
     assert_choice_prop,
     assert_float_prop,
     assert_vec3_prop,
 )
+
+from fiftyone.core import threed
+from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 class TestCamera(unittest.TestCase):

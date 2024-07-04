@@ -5,14 +5,13 @@ Dataset runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy, deepcopy
 import datetime
 import logging
-
-from bson import json_util, DBRef
+from copy import deepcopy
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import DBRef, json_util
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
@@ -156,17 +155,17 @@ class BaseRunConfig(Config):
         Returns:
             a :class:`BaseRunConfig` subclass
         """
-        import fiftyone.core.annotation as foa
-        import fiftyone.core.brain as fob
-        import fiftyone.core.evaluation as foe
-        import fiftyone.utils.eval as foue
+        import fiftyone.brain.internal.core.hardness as fbh
+        import fiftyone.brain.internal.core.mistakenness as fbm
+        import fiftyone.brain.internal.core.uniqueness as fbu
 
         # pylint: disable=import-error,no-name-in-module
         import fiftyone.brain.similarity as fbs
         import fiftyone.brain.visualization as fbv
-        import fiftyone.brain.internal.core.hardness as fbh
-        import fiftyone.brain.internal.core.mistakenness as fbm
-        import fiftyone.brain.internal.core.uniqueness as fbu
+        import fiftyone.core.annotation as foa
+        import fiftyone.core.brain as fob
+        import fiftyone.core.evaluation as foe
+        import fiftyone.utils.eval as foue
 
         if type == "annotation":
             return foa.AnnotationMethodConfig
@@ -1021,14 +1020,13 @@ class BaseRunResults(etas.Serializable):
         Returns:
             a :class:`BaseRunResults` subclass
         """
+        # pylint: disable=import-error,no-name-in-module
+        import fiftyone.brain.similarity as fbs
+        import fiftyone.brain.visualization as fbv
         import fiftyone.core.annotation as foa
         import fiftyone.core.brain as fob
         import fiftyone.core.evaluation as foe
         import fiftyone.utils.eval as foue
-
-        # pylint: disable=import-error,no-name-in-module
-        import fiftyone.brain.similarity as fbs
-        import fiftyone.brain.visualization as fbv
 
         if type == "annotation":
             return foa.AnnotationResults

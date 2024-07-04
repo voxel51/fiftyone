@@ -9,18 +9,15 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
-from collections import defaultdict
-import numpy as np
 import os
 import unittest
 
 import eta.core.utils as etau
+from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
-
 from fiftyone.core.expressions import ViewField as F
 
 

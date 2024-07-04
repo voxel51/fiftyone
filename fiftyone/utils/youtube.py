@@ -5,17 +5,14 @@ Utilities for working with `YouTube <https://youtube.com>`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import importlib
-from importlib import metadata
 import itertools
 import logging
 import multiprocessing.dummy
 import os
 
-import numpy as np
-
 import eta.core.utils as etau
 import eta.core.video as etav
+import numpy as np
 
 import fiftyone.core.utils as fou
 

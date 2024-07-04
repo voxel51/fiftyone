@@ -6,27 +6,27 @@ Definition of the `fiftyone` command-line interface (CLI).
 |
 """
 import argparse
-import warnings
-from collections import defaultdict
-from datetime import datetime
 import json
 import os
 import subprocess
 import sys
-import time
 import textwrap
+import time
+import webbrowser
+from collections import defaultdict
+from datetime import datetime
 
 import argcomplete
-from bson import ObjectId
-import humanize
-import pytz
-from tabulate import tabulate
-import webbrowser
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import ObjectId
+from tabulate import tabulate
 
 import fiftyone as fo
+
+# pylint: disable=import-error,no-name-in-module
+import fiftyone.brain as fob
+import fiftyone.brain.config as fobc
 import fiftyone.constants as foc
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
@@ -44,10 +44,6 @@ import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 from fiftyone import ViewField as F
-
-# pylint: disable=import-error,no-name-in-module
-import fiftyone.brain as fob
-import fiftyone.brain.config as fobc
 
 
 _TABLE_FORMAT = "simple"

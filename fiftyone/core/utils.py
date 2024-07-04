@@ -6,13 +6,8 @@ Core utilities.
 |
 """
 import abc
+import asyncio
 import atexit
-from bson import json_util
-from base64 import b64encode, b64decode
-from collections import defaultdict
-from contextlib import contextmanager
-from copy import deepcopy
-from datetime import date, datetime
 import glob
 import hashlib
 import importlib
@@ -32,15 +27,17 @@ import subprocess
 import sys
 import timeit
 import types
-from xml.parsers.expat import ExpatError
 import zlib
-
-from bson import ObjectId
-from bson.errors import InvalidId
-from matplotlib import colors as mcolors
+from base64 import b64decode, b64encode
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from copy import deepcopy
+from datetime import date, datetime
+from xml.parsers.expat import ExpatError
 
-import asyncio
+from bson import json_util
+from matplotlib import colors as mcolors
 
 
 try:
@@ -61,12 +58,11 @@ try:
 except:
     import pprint as _pprint
 
+import eta
+import eta.core.utils as etau
 import numpy as np
 import pytz
 import xmltodict
-
-import eta
-import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.context as foc

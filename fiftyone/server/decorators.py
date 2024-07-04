@@ -6,19 +6,18 @@ FiftyOne Server decorators
 |
 """
 
-from json import JSONEncoder
+import logging
 import traceback
 import typing as t
-import logging
+from json import JSONEncoder
 
-from bson import json_util
 import numpy as np
+from bson import json_util
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from fiftyone.core.utils import run_sync_task
-
-from starlette.endpoints import HTTPEndpoint
-from starlette.responses import JSONResponse, Response
-from starlette.requests import Request
 
 
 class Encoder(JSONEncoder):

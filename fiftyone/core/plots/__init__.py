@@ -8,25 +8,26 @@ Plotting framework.
 import types
 
 from .base import (
-    plot_confusion_matrix,
-    plot_regressions,
-    plot_pr_curve,
-    plot_pr_curves,
-    plot_roc_curve,
-    lines,
-    scatterplot,
-    location_scatterplot,
+    InteractivePlot,
     Plot,
     ResponsivePlot,
-    InteractivePlot,
     ViewPlot,
+    lines,
+    location_scatterplot,
+    plot_confusion_matrix,
+    plot_pr_curve,
+    plot_pr_curves,
+    plot_regressions,
+    plot_roc_curve,
+    scatterplot,
 )
 from .manager import PlotManager
 from .views import (
-    ViewGrid,
     CategoricalHistogram,
     NumericalHistogram,
+    ViewGrid,
 )
+
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

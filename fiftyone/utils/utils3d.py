@@ -11,23 +11,23 @@ import logging
 import os
 import warnings
 
-import numpy as np
-import scipy.spatial as sp
-
 import eta.core.numutils as etan
 import eta.core.utils as etau
+import numpy as np
+import scipy.spatial as sp
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
-from fiftyone.core.threed import PerspectiveCamera, PointCloud, Scene
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
+from fiftyone.core.odm import DynamicEmbeddedDocument
+from fiftyone.core.sample import Sample
+from fiftyone.core.threed import PerspectiveCamera, PointCloud, Scene
+
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 

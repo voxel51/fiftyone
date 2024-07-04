@@ -7,10 +7,9 @@ Base classes for objects that are backed by database documents.
 """
 from copy import deepcopy
 
-from bson import ObjectId
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import ObjectId
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo

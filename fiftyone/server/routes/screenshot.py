@@ -12,9 +12,8 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
-from fiftyone.core.session.events import get_screenshot, DeactivateNotebookCell
+from fiftyone.core.session.events import DeactivateNotebookCell, get_screenshot
 from fiftyone.core.session.templates import SCREENSHOT_DATABRICKS
-
 from fiftyone.server.decorators import route
 from fiftyone.server.events import dispatch_event
 

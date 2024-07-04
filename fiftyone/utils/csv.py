@@ -10,8 +10,8 @@ import os
 
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 

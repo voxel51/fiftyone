@@ -17,9 +17,8 @@ import pandas as pd
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-
-from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
+from fiftyone.core.expressions import ViewField as F
 
 
 logger = logging.getLogger(__name__)

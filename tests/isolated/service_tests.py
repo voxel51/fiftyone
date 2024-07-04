@@ -5,15 +5,16 @@ Service tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from contextlib import contextmanager
 import os
 import sys
 import time
 import unittest
+from contextlib import contextmanager
 
 import psutil
 import requests
 import retrying
+
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 os.environ["FIFTYONE_DATABASE_ADMIN"] = "true"

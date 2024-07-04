@@ -17,13 +17,14 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import SampleFieldDocument
 from .utils import (
-    deserialize_value,
-    serialize_value,
     create_field,
     create_implied_field,
+    deserialize_value,
+    serialize_value,
     validate_field_name,
     validate_fields_match,
 )
+
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fog = fou.lazy_import("fiftyone.core.groups")

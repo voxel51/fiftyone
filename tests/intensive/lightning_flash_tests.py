@@ -9,18 +9,24 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import numpy as np
 import unittest
 from itertools import chain
 
-from flash.core.data.utils import download_data
-from flash.image.detection.output import FiftyOneDetectionLabelsOutput
-from flash.core.classification import FiftyOneLabelsOutput
-from flash.image.segmentation.output import FiftyOneSegmentationLabelsOutput
-from flash.image import ImageClassificationData, ImageClassifier, ImageEmbedder
-from flash.image import ObjectDetectionData, ObjectDetector
-from flash.image import SemanticSegmentation, SemanticSegmentationData
+import numpy as np
 from flash import Trainer
+from flash.core.classification import FiftyOneLabelsOutput
+from flash.core.data.utils import download_data
+from flash.image import (
+    ImageClassificationData,
+    ImageClassifier,
+    ImageEmbedder,
+    ObjectDetectionData,
+    ObjectDetector,
+    SemanticSegmentation,
+    SemanticSegmentationData,
+)
+from flash.image.detection.output import FiftyOneDetectionLabelsOutput
+from flash.image.segmentation.output import FiftyOneSegmentationLabelsOutput
 from flash.video import VideoClassificationData, VideoClassifier
 
 import fiftyone as fo

@@ -14,10 +14,11 @@ import shutil
 import tarfile
 import traceback
 import zipfile
+from urllib.request import urlopen
 
 from setuptools import setup
-from urllib.request import urlopen
 from wheel.bdist_wheel import bdist_wheel
+
 
 DARWIN = "Darwin"
 DARWIN_DOWNLOADS = {

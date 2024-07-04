@@ -8,18 +8,17 @@ Matplotlib plots.
 import itertools
 import logging
 
-import numpy as np
+import eta.core.utils as etau
 import matplotlib as mpl
-from matplotlib.widgets import Button, LassoSelector
-from matplotlib.path import Path
 import matplotlib.pyplot as plt
+import numpy as np
+import sklearn.metrics as skm
+import sklearn.metrics.pairwise as skp
+from matplotlib.path import Path
+from matplotlib.widgets import Button, LassoSelector
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
-import sklearn.metrics.pairwise as skp
-import sklearn.metrics as skm
-
-import eta.core.utils as etau
 
 import fiftyone.core.context as foc
 import fiftyone.core.utils as fou

@@ -5,13 +5,13 @@ Evaluation runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from fiftyone.core.odm import patch_evaluations
 from fiftyone.core.runs import (
     BaseRun,
-    BaseRunInfo,
     BaseRunConfig,
+    BaseRunInfo,
     BaseRunResults,
 )
-from fiftyone.core.odm import patch_evaluations
 
 
 class EvaluationInfo(BaseRunInfo):

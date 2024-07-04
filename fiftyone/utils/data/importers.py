@@ -11,14 +11,13 @@ import logging
 import os
 import random
 
-from bson import json_util
-from mongoengine.base import get_document
-
 import eta.core.datasets as etad
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+from bson import json_util
+from mongoengine.base import get_document
 
 import fiftyone.core.annotation as foa
 import fiftyone.core.brain as fob
@@ -31,17 +30,17 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
-from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
 import fiftyone.types as fot
+from fiftyone.core.sample import Sample
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
-    FiftyOneTemporalDetectionSampleParser,
     FiftyOneImageDetectionSampleParser,
     FiftyOneImageLabelsSampleParser,
+    FiftyOneTemporalDetectionSampleParser,
     FiftyOneVideoLabelsSampleParser,
 )
 

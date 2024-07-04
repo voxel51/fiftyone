@@ -5,11 +5,11 @@ FiftyOne utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import time
 import unittest
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -17,8 +17,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
-
-from decorators import drop_datasets
 
 
 class BatcherTests(unittest.TestCase):
@@ -455,6 +453,7 @@ class ConfigTests(unittest.TestCase):
 
 
 from bson import ObjectId
+
 from fiftyone.core.odm.utils import load_dataset
 
 

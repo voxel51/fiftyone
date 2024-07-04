@@ -5,22 +5,20 @@ Annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict, OrderedDict
-from copy import deepcopy
 import getpass
 import inspect
 import logging
 import os
-
-from bson import ObjectId
+from collections import OrderedDict, defaultdict
+from copy import deepcopy
 
 import eta.core.annotations as etaa
 import eta.core.utils as etau
+from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.core.annotation as foa
 import fiftyone.core.clips as foc
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
@@ -29,6 +27,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
+from fiftyone.core.expressions import ViewField as F
 
 
 logger = logging.getLogger(__name__)

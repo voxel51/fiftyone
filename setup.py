@@ -7,10 +7,11 @@ Installs FiftyOne.
 |
 """
 
-from importlib import metadata
 import os
 import re
-from setuptools import setup, find_packages
+from importlib import metadata
+
+from setuptools import find_packages, setup
 
 
 VERSION = "0.24.1"

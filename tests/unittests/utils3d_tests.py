@@ -11,13 +11,12 @@ import unittest
 
 import numpy as np
 import open3d as o3d
+from decorators import drop_datasets
 from PIL import Image
 
 import fiftyone as fo
 import fiftyone.core.threed as fo3d
 import fiftyone.utils.utils3d as fou3d
-
-from decorators import drop_datasets
 
 
 def get_abs_path(relative_path):

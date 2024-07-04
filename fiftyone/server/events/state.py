@@ -6,11 +6,10 @@ FiftyOne Server events state.
 |
 """
 
+import asyncio
+import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
-import typing as t
-
-import asyncio
 
 import fiftyone.core.state as fos
 

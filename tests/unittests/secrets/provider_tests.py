@@ -4,8 +4,8 @@ import pytest
 
 from fiftyone.internal.secrets import (
     EnvSecretProvider,
-    UnencryptedSecret,
     ISecret,
+    UnencryptedSecret,
 )
 
 

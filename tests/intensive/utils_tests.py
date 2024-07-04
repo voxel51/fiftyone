@@ -7,11 +7,10 @@ Utils tests.
 """
 import os
 
-import numpy as np
-import pytest
-
 import eta.core.utils as etau
 import eta.core.video as etav
+import numpy as np
+import pytest
 
 import fiftyone as fo
 import fiftyone.utils.image as foui

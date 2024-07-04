@@ -10,9 +10,8 @@ import logging
 import os
 import re
 
-from jinja2 import Environment, BaseLoader
-
 import eta.core.utils as etau
+from jinja2 import BaseLoader, Environment
 
 import fiftyone.zoo as foz
 

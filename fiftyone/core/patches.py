@@ -8,9 +8,8 @@ Patches views.
 from collections import defaultdict
 from copy import deepcopy
 
-from bson import ObjectId
-
 import eta.core.utils as etau
+from bson import ObjectId
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod

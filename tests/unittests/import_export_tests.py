@@ -13,11 +13,11 @@ import tempfile
 import unittest
 
 import cv2
-import numpy as np
-import pytest
-
 import eta.core.utils as etau
 import eta.core.video as etav
+import numpy as np
+import pytest
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
@@ -26,7 +26,6 @@ import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 
-from decorators import drop_datasets
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"

@@ -12,8 +12,10 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
 import torch
+
 
 open_clip = fou.lazy_import(
     "open_clip", callback=lambda: fou.ensure_package("open_clip_torch")

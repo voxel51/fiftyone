@@ -5,13 +5,13 @@ Annotation runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from fiftyone.core.odm import patch_annotation_runs
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,
     BaseRunInfo,
     BaseRunResults,
 )
-from fiftyone.core.odm import patch_annotation_runs
 
 
 class AnnotationInfo(BaseRunInfo):

@@ -12,7 +12,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.session.events as fose
-
 from fiftyone.server.decorators import route
 from fiftyone.server.events import dispatch_event
 

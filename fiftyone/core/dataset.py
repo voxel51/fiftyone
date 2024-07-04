@@ -6,9 +6,7 @@ FiftyOne datasets.
 |
 """
 
-from collections import defaultdict
 import contextlib
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -16,16 +14,17 @@ import numbers
 import os
 import random
 import string
+from collections import defaultdict
+from datetime import datetime
 
-from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
-import mongoengine.errors as moe
-from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.errors import CursorNotFound, BulkWriteError
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+import mongoengine.errors as moe
+from bson import DBRef, ObjectId, json_util
+from deprecated import deprecated
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
@@ -37,15 +36,15 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm.dataset import DatasetAppConfig
-import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
-from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.migrations as fomi
+from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.singletons import DatasetSingleton
+
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")

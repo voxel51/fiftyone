@@ -6,21 +6,21 @@ Session events.
 |
 """
 
+import asyncio
 import base64
-from dataclasses import asdict, dataclass
 import re
 import typing as t
-
-import asyncio
-from bson import json_util
-from dacite import from_dict
+from dataclasses import asdict, dataclass
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import json_util
+from dacite import from_dict
 
 import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
 from fiftyone.core.utils import lazy_import, run_sync_task
+
 
 fop = lazy_import("fiftyone.core.plots.plotly")
 

@@ -13,9 +13,9 @@ import random
 import unittest
 
 import fiftyone as fo
+import fiftyone.utils.video as fouv
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
-import fiftyone.utils.video as fouv
 
 
 def test_to_clips():

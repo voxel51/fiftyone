@@ -27,6 +27,7 @@ import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 
+
 fou.ensure_tf()
 from tensorflow.keras.datasets import cifar100  # pylint: disable=import-error
 

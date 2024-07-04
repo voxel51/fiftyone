@@ -5,12 +5,12 @@ FiftyOne env secrets provider
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 import re
+from typing import Dict, List, Optional
 
 from ..providers.iprovider import ISecretProvider
-from ..secret import UnencryptedSecret, ISecret
-import os
-from typing import Dict, List, Optional
+from ..secret import ISecret, UnencryptedSecret
 
 
 class EnvSecretProvider(ISecretProvider):

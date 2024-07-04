@@ -8,9 +8,9 @@ FiftyOne server state tests.
 
 import unittest
 
-from fiftyone.core.state import StateDescription
-
 from decorators import drop_datasets
+
+from fiftyone.core.state import StateDescription
 
 
 class ServerStateTests(unittest.TestCase):

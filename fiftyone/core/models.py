@@ -9,14 +9,13 @@ import contextlib
 import inspect
 import logging
 
-import numpy as np
-
 import eta.core.frameutils as etaf
 import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.web as etaw
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
@@ -25,6 +24,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
 
 tud = fou.lazy_import("torch.utils.data")
 

@@ -5,18 +5,17 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
-from datetime import date, datetime
 import numbers
 import re
+from copy import deepcopy
+from datetime import date, datetime
 
-from bson import ObjectId, SON
-from bson.binary import Binary
+import eta.core.utils as etau
 import mongoengine.fields
 import numpy as np
 import pytz
-
-import eta.core.utils as etau
+from bson import SON, ObjectId
+from bson.binary import Binary
 
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo

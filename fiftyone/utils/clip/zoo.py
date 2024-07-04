@@ -7,10 +7,10 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 """
 import logging
 import os
-from packaging.version import Version
 import warnings
 
 import eta.core.web as etaw
+from packaging.version import Version
 
 import fiftyone as fo
 import fiftyone.core.models as fom
@@ -18,11 +18,12 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
 import torch
 
-from .tokenizer import SimpleTokenizer
 from .model import build_model
+from .tokenizer import SimpleTokenizer
 
 
 logger = logging.getLogger(__name__)

@@ -12,9 +12,9 @@ import sys
 import unittest
 import warnings
 
-import numpy as np
-
 import eta.core.utils as etau
+import numpy as np
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.utils.eval.classification as fouc
@@ -22,10 +22,8 @@ import fiftyone.utils.eval.coco as coco
 import fiftyone.utils.eval.detection as foud
 import fiftyone.utils.eval.regression as four
 import fiftyone.utils.eval.segmentation as fous
-import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
-
-from decorators import drop_datasets
+import fiftyone.utils.labels as foul
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):

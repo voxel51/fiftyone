@@ -10,6 +10,7 @@ import os
 import typing as t
 from urllib.parse import urlparse
 
+
 try:
     import IPython.display
 except:

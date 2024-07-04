@@ -7,20 +7,18 @@ dataset.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import csv
-from glob import glob
 import logging
 import os
 import random
 import warnings
-
-import pandas as pd
+from collections import defaultdict
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+import pandas as pd
 
 import fiftyone as fo
 import fiftyone.core.fields as fof

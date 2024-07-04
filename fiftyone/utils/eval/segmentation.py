@@ -5,16 +5,15 @@ Segmentation evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
-import logging
 import inspect
+import logging
 import warnings
-
-import numpy as np
-import sklearn.metrics as skm
+from copy import deepcopy
 
 import eta.core.image as etai
 import eta.core.utils as etau
+import numpy as np
+import sklearn.metrics as skm
 
 import fiftyone as fo
 import fiftyone.core.evaluation as foe

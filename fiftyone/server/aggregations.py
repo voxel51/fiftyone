@@ -6,8 +6,8 @@ FiftyOne Server aggregations
 |
 """
 
-from datetime import date, datetime
 import typing as t
+from datetime import date, datetime
 
 import strawberry as gql
 
@@ -16,15 +16,14 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
-
+import fiftyone.server.view as fosv
+from fiftyone.core.utils import datetime_to_timestamp
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
-import fiftyone.server.view as fosv
 
 
 @gql.input

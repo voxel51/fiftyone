@@ -6,6 +6,7 @@ FiftyOne Server shared GraphQL input types.
 |
 """
 import typing as t
+
 import strawberry as gql
 
 

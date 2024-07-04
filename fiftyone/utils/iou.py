@@ -9,17 +9,17 @@ import contextlib
 import itertools
 import logging
 
-import numpy as np
-import scipy.spatial as sp
-
 import eta.core.numutils as etan
 import eta.core.utils as etau
+import numpy as np
+import scipy.spatial as sp
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .utils3d import compute_cuboid_iou
+
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")

@@ -9,14 +9,14 @@ import os
 
 from bson import ObjectId
 
-from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+from fiftyone.core.document import Document, DocumentView
 from fiftyone.core.singletons import SampleSingleton
 
 

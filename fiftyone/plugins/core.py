@@ -5,24 +5,23 @@ Core plugin methods.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import Counter
-from dataclasses import dataclass
 import json
 import logging
 import os
-from packaging.requirements import Requirement
 import re
 import shutil
-
-import yaml
+from collections import Counter
+from dataclasses import dataclass
 
 import eta.core.utils as etau
 import eta.core.web as etaw
+import yaml
+from packaging.requirements import Requirement
 
 import fiftyone as fo
 import fiftyone.constants as foc
-from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
+from fiftyone.core.config import locate_app_config
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
 

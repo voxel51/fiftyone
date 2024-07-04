@@ -8,12 +8,11 @@ Plotting utils.
 import itertools
 import warnings
 
+import eta.core.serial as etas
+import eta.core.utils as etau
 import numpy as np
 import sklearn.linear_model as skl
 import sklearn.metrics as skm
-
-import eta.core.serial as etas
-import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol

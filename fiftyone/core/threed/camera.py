@@ -9,7 +9,7 @@ Camera definition for 3D visualization.
 from dataclasses import dataclass
 from typing import Literal, Optional, Union
 
-from .transformation import Vector3, Vec3UnionType, normalize_to_vec3
+from .transformation import Vec3UnionType, Vector3, normalize_to_vec3
 from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
 

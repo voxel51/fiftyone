@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 
 import fiftyone as fo
-import fiftyone.zoo as foz
 import fiftyone.utils.torch as fout
+import fiftyone.zoo as foz
 
 
 def test_apply_model():

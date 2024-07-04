@@ -13,11 +13,11 @@ import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
+from fiftyone.core.sample import Sample
 
 
 logger = logging.getLogger(__name__)

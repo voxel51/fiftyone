@@ -5,29 +5,27 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import time
-from copy import deepcopy, copy
-from datetime import date, datetime, timedelta
 import gc
 import os
 import random
 import string
+import time
 import unittest
-
-from bson import ObjectId
-from mongoengine import ValidationError
-import numpy as np
-import pytz
+from copy import copy, deepcopy
+from datetime import date, datetime, timedelta
 
 import eta.core.utils as etau
+import numpy as np
+import pytz
+from bson import ObjectId
+from decorators import drop_datasets, skip_windows
+from mongoengine import ValidationError
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets, skip_windows
 
 
 class DatasetTests(unittest.TestCase):

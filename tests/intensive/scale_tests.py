@@ -15,8 +15,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.zoo as foz
 import fiftyone.utils.scale as fous
+import fiftyone.zoo as foz
 
 
 def test_scale_image():

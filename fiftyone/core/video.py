@@ -5,26 +5,26 @@ Video frame views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from copy import deepcopy
 import logging
 import os
-
-from bson import ObjectId
-from pymongo import UpdateOne
+from collections import defaultdict
+from copy import deepcopy
 
 import eta.core.utils as etau
+from bson import ObjectId
+from pymongo import UpdateOne
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
-import fiftyone.core.sample as fos
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
+import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
+
 
 fouv = fou.lazy_import("fiftyone.utils.video")
 

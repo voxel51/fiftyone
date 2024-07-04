@@ -5,8 +5,8 @@ FiftyOne Server dataloader
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
 import typing as t
+from dataclasses import dataclass
 
 import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader

@@ -5,32 +5,31 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import atexit
 import dataclasses
-from datetime import datetime
 import logging
-from multiprocessing.pool import ThreadPool
 import os
-
-import asyncio
-from bson import json_util, ObjectId
-from bson.codec_options import CodecOptions
-from mongoengine import connect
-import motor.motor_asyncio as mtr
-
-from packaging.version import Version
-import pymongo
-from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
-import pytz
+from datetime import datetime
+from multiprocessing.pool import ThreadPool
 
 import eta.core.utils as etau
+import motor.motor_asyncio as mtr
+import pymongo
+import pytz
+from bson import ObjectId, json_util
+from bson.codec_options import CodecOptions
+from mongoengine import connect
+from packaging.version import Version
+from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.migrations as fom
-from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
+from fiftyone.core.config import FiftyOneConfigError
+
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")

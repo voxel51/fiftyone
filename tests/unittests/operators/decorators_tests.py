@@ -9,8 +9,8 @@ import asyncio
 import os
 import shutil
 import tempfile
-import unittest
 import time
+import unittest
 from unittest.mock import patch
 
 from fiftyone.operators.decorators import coroutine_timeout, dir_state

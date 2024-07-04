@@ -9,16 +9,15 @@ import datetime
 import itertools
 import logging
 
+import eta.core.utils as etau
 from bson import ObjectId
 
-import eta.core.utils as etau
-
 import fiftyone.core.clips as foc
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
+from fiftyone.core.expressions import ViewField as F
 
-from .base import ResponsivePlot, ViewPlot, InteractivePlot
+from .base import InteractivePlot, ResponsivePlot, ViewPlot
 
 
 logger = logging.getLogger(__name__)

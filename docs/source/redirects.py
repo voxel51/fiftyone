@@ -10,10 +10,9 @@ Inspired by https://github.com/sphinx-contrib/redirects.
 """
 import os
 
+import eta.core.utils as etau
 from sphinx.builders import html as builders
 from sphinx.util import logging
-
-import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)

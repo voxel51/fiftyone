@@ -14,10 +14,10 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 
 from .importers import (
-    UnlabeledImageDatasetImporter,
     LabeledImageDatasetImporter,
-    UnlabeledVideoDatasetImporter,
     LabeledVideoDatasetImporter,
+    UnlabeledImageDatasetImporter,
+    UnlabeledVideoDatasetImporter,
 )
 
 

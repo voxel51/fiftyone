@@ -5,16 +5,15 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict, OrderedDict
 import contextlib
-from copy import copy, deepcopy
 import itertools
 import numbers
-
-from bson import ObjectId
-from pymongo.errors import CursorNotFound
+from collections import OrderedDict, defaultdict
+from copy import copy, deepcopy
 
 import eta.core.utils as etau
+from bson import ObjectId
+from pymongo.errors import CursorNotFound
 
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
@@ -23,6 +22,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+
 
 fost = fou.lazy_import("fiftyone.core.stages")
 

@@ -11,10 +11,11 @@ from datetime import datetime
 
 from fiftyone.operators.executor import (
     ExecutionContext,
+    ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
+
 
 logger = logging.getLogger(__name__)
 

@@ -6,10 +6,8 @@ Utilities for interfacing with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import warnings
-
-import numpy as np
+from collections import defaultdict
 
 import eta.core.data as etad
 import eta.core.events as etae
@@ -23,6 +21,7 @@ import eta.core.objects as etao
 import eta.core.polylines as etap
 import eta.core.utils as etau
 import eta.core.video as etav
+import numpy as np
 
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom

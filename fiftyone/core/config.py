@@ -9,13 +9,14 @@ FiftyOne config.
 import logging
 import os
 from importlib import metadata
-import pytz
 
 import eta
 import eta.core.config as etac
+import pytz
 
 import fiftyone.constants as foc
 import fiftyone.core.utils as fou
+
 
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
@@ -935,9 +936,7 @@ def _parse_env_value(value):
 
 def _get_installed_packages():
     try:
-        return set(
-            d.metadata["Name"] for d in metadata.distributions()
-        )
+        return set(d.metadata["Name"] for d in metadata.distributions())
     except:
         logger.debug("Failed to get installed packages")
         return set()

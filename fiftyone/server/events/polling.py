@@ -6,20 +6,19 @@ FiftyOne Server events polling.
 |
 """
 
+import typing as t
 from dataclasses import asdict
 from datetime import datetime
-import typing as t
 
 from starlette.requests import Request
 
 from fiftyone.core.session.events import (
     DeactivateNotebookCell,
-    dict_factory,
     EventType,
     ListenPayload,
     StateUpdate,
+    dict_factory,
 )
-
 from fiftyone.server.events.initialize import initialize_listener
 from fiftyone.server.events.state import Listener, get_listeners, get_requests
 

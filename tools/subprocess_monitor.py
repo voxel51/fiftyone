@@ -7,7 +7,11 @@ Usage:
     python subprocess_monitor.py PROCESS_ID
 """
 
-import os, psutil, sys
+import os
+import sys
+
+import psutil
+
 
 _format_cache = {}
 

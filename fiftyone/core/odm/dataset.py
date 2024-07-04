@@ -8,10 +8,10 @@ Documents that track datasets and their sample schemas in the database.
 
 import logging
 
+import eta.core.utils as etau
 from bson import DBRef, ObjectId
 
-import eta.core.utils as etau
-
+import fiftyone.core.utils as fou
 from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
@@ -28,7 +28,6 @@ from fiftyone.core.fields import (
     ReferenceField,
     StringField,
 )
-import fiftyone.core.utils as fou
 
 from .database import (
     patch_annotation_runs,
@@ -44,6 +43,7 @@ from .runs import RunDocument
 from .utils import create_field
 from .views import SavedViewDocument
 from .workspace import WorkspaceDocument
+
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")

@@ -8,6 +8,7 @@ execute. For use by service tests.
 """
 import os
 
+
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.service.ipc import IPCServer
 

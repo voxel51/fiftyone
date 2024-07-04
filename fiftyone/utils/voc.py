@@ -9,9 +9,8 @@ Utilities for working with datasets in
 import logging
 import os
 
-import jinja2
-
 import eta.core.utils as etau
+import jinja2
 
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol

@@ -6,30 +6,28 @@ FiftyOne Server mutations.
 |
 """
 
-from dataclasses import asdict
-import strawberry as gql
 import typing as t
+from dataclasses import asdict
 
 import eta.core.utils as etau
+import strawberry as gql
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.session.events as fose
-from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
-import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-
+from fiftyone.core.state import build_color_scheme
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
-from fiftyone.server.events import get_state, dispatch_event
+from fiftyone.server.events import dispatch_event, get_state
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.query import (
-    SidebarGroup,
     SavedView,
+    SidebarGroup,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.view import get_view
 
 

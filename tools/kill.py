@@ -5,6 +5,9 @@ Usage:
     python kill.py PROCESS_ID
 """
 
-import psutil, sys
+import sys
+
+import psutil
+
 
 psutil.Process(int(sys.argv[1])).kill()

@@ -8,25 +8,26 @@ Evaluation utilities.
 import types
 
 from .classification import (
-    evaluate_classifications,
     ClassificationEvaluationConfig,
     ClassificationResults,
+    evaluate_classifications,
 )
 from .detection import (
-    evaluate_detections,
     DetectionEvaluationConfig,
     DetectionResults,
+    evaluate_detections,
 )
 from .regression import (
-    evaluate_regressions,
     RegressionEvaluationConfig,
     RegressionResults,
+    evaluate_regressions,
 )
 from .segmentation import (
-    evaluate_segmentations,
     SegmentationEvaluationConfig,
     SegmentationResults,
+    evaluate_segmentations,
 )
+
 
 # This tells Sphinx to allow refs to imported objects in this module
 # https://stackoverflow.com/a/31594545/16823653

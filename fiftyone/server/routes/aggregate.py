@@ -11,10 +11,8 @@ from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.view as fov
-
-from fiftyone.server.decorators import route
-
 import fiftyone.server.view as fosv
+from fiftyone.server.decorators import route
 
 
 class Aggregate(HTTPEndpoint):

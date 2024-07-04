@@ -8,13 +8,12 @@ Utilities for working with datasets in
 """
 import csv
 import logging
-import struct
 import os
-
-import numpy as np
+import struct
 
 import eta.core.utils as etau
 import eta.core.web as etaw
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -23,6 +22,7 @@ import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_import("open3d"))
 

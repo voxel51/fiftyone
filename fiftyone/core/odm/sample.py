@@ -46,16 +46,16 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 import random
+from collections import OrderedDict
 
 import fiftyone.core.fields as fof
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 
 from .document import Document, SerializableDocument
-from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
+from .mixins import DatasetMixin, NoDatasetMixin, get_default_fields
 
 
 # Use our own Random object to avoid messing with the user's seed

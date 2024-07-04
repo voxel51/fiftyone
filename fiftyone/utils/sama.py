@@ -5,11 +5,11 @@ Sama utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import glob
-import random
 import json
 import logging
+import os
+import random
 import tempfile
 
 import eta.core.serial as etas
@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.utils.coco as fouc
+
 
 logger = logging.getLogger(__name__)
 

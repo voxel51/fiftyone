@@ -6,13 +6,13 @@ FiftyOne Server index related unit test
 |
 """
 import typing as t
-from dataclasses import asdict
 import unittest
-
-import fiftyone as fo
-from fiftyone.server.indexes import from_dict, Index, IndexFields
+from dataclasses import asdict
 
 from decorators import drop_datasets
+
+import fiftyone as fo
+from fiftyone.server.indexes import Index, IndexFields, from_dict
 
 
 class ServerIndexTests(unittest.TestCase):

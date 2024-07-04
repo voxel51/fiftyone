@@ -6,16 +6,17 @@ Session class for interacting with the FiftyOne App.
 |
 """
 
+import logging
+import os
+import time
+import typing as t
+import webbrowser
 from collections import defaultdict
 from functools import wraps
 from importlib import metadata
-import logging
-import os
-from packaging.requirements import Requirement
-import time
-import typing as t
 from uuid import uuid4
-import webbrowser
+
+from packaging.requirements import Requirement
 
 
 try:
@@ -26,19 +27,18 @@ except:
 import eta.core.serial as etas
 
 import fiftyone as fo
-import fiftyone.core.odm.dataset as food
-from fiftyone.core.odm.workspace import default_workspace_factory, Space
 import fiftyone.constants as focn
-import fiftyone.core.dataset as fod
-from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
+import fiftyone.core.odm.dataset as food
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
-from fiftyone.core.state import build_color_scheme, StateDescription
+import fiftyone.core.session.client as fosc
+import fiftyone.core.session.notebooks as fosn
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-
-import fiftyone.core.session.client as fosc
+from fiftyone.core.config import AppConfig
+from fiftyone.core.odm.workspace import Space, default_workspace_factory
 from fiftyone.core.session.events import (
     CaptureNotebookCell,
     CloseSession,
@@ -49,11 +49,11 @@ from fiftyone.core.session.events import (
     SelectSamples,
     SetColorScheme,
     SetDatasetColorScheme,
-    SetSpaces,
     SetGroupSlice,
+    SetSpaces,
     StateUpdate,
 )
-import fiftyone.core.session.notebooks as fosn
+from fiftyone.core.state import StateDescription, build_color_scheme
 
 
 logger = logging.getLogger(__name__)

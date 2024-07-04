@@ -16,8 +16,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
-import fiftyone.zoo as foz
 import fiftyone.utils.labelbox as foul
+import fiftyone.zoo as foz
 
 
 _anno_key = "anno_key"

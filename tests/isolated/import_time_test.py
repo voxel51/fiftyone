@@ -5,8 +5,8 @@ Test that fiftyone can be imported in a reasonable amount of time.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import warnings
 import time
+import warnings
 
 
 # TODO: decrease these once the DB service is started on-demand?

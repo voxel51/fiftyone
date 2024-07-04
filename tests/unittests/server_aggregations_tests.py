@@ -9,16 +9,14 @@ FiftyOne Server aggregation count tests.
 import unittest
 
 import strawberry as gql
+from decorators import drop_async_dataset
 from strawberry.schema.config import StrawberryConfig
+from utils.graphql import execute
 
 import fiftyone as fo
-
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.aggregate import AggregateQuery
 from fiftyone.server.aggregations import aggregate_resolver
-
-from decorators import drop_async_dataset
-from utils.graphql import execute
+from fiftyone.server.constants import SCALAR_OVERRIDES
 
 
 @gql.type

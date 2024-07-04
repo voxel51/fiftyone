@@ -5,8 +5,8 @@ FiftyOne v0.20.0 revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import json_util
 import gridfs
+from bson import json_util
 
 
 _OLD_SKLEARN_CONFIG_CLS = "fiftyone.brain.similarity.SimilarityConfig"

@@ -5,8 +5,6 @@ File storage utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from contextlib import contextmanager
-from datetime import datetime
 import enum
 import json
 import logging
@@ -15,15 +13,15 @@ import ntpath
 import os
 import posixpath
 import re
-import six
 import shutil
 import tempfile
-
-import jsonlines
-import yaml
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import jsonlines
+import six
+import yaml
 
 import fiftyone as fo
 import fiftyone.core.utils as fou

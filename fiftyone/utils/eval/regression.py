@@ -5,17 +5,16 @@ Regression evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import inspect
 import itertools
 import logging
 import numbers
+from copy import deepcopy
 
+import eta.core.utils as etau
 import numpy as np
 import sklearn.metrics as skm
 from tabulate import tabulate
-
-import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.evaluation as foe

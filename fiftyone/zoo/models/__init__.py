@@ -5,16 +5,16 @@ The FiftyOne Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from copy import deepcopy
 import logging
 import os
 import weakref
+from collections import defaultdict
+from copy import deepcopy
 
-from eta.core.config import ConfigError
 import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.utils as etau
+from eta.core.config import ConfigError
 
 import fiftyone as fo
 import fiftyone.core.models as fom

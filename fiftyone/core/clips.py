@@ -8,13 +8,11 @@ Clips views.
 from collections import defaultdict
 from copy import deepcopy
 
-from bson import ObjectId
-
 import eta.core.utils as etau
+from bson import ObjectId
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -23,6 +21,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
+from fiftyone.core.expressions import ViewField as F
 
 
 class ClipView(fos.SampleView):

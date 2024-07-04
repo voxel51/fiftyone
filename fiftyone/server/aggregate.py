@@ -5,19 +5,18 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime, timedelta
 import typing as t
+from datetime import date, datetime, timedelta
 
 import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
 from fiftyone.server.scalars import BSONArray
-from fiftyone.server.view import load_view, ExtendedViewForm
+from fiftyone.server.view import ExtendedViewForm, load_view
 
 
 _DEFAULT_NUM_HISTOGRAM_BINS = 25

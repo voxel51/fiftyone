@@ -5,24 +5,23 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import inspect
 import itertools
 import warnings
+from copy import deepcopy
 
+import eta.core.utils as etau
 import numpy as np
 import sklearn.metrics as skm
 
-import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.core.evaluation as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+from fiftyone.core.expressions import ViewField as F
 
 from .base import BaseEvaluationResults
 

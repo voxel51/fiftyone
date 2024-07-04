@@ -18,13 +18,13 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.operators.types as types
+import fiftyone.server.view as fosv
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
 from fiftyone.operators.registry import OperatorRegistry
-import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
-import fiftyone.server.view as fosv
 
 
 logger = logging.getLogger(__name__)
@@ -372,7 +372,7 @@ async def resolve_type(registry, operator_uri, request_params):
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
         )
-    except Exception as e:
+    except Exception:
         return ExecutionResult(error=traceback.format_exc())
 
 
@@ -417,7 +417,7 @@ async def resolve_execution_options(registry, operator_uri, request_params):
     await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_execution_options(ctx)
-    except Exception as e:
+    except Exception:
         return ExecutionResult(error=traceback.format_exc())
 
 

@@ -10,6 +10,7 @@ import pathlib
 import stat
 
 import eta.core.utils as etau
+import strawberry as gql
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.middleware import Middleware
@@ -23,7 +24,6 @@ from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
-import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.constants as foc

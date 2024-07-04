@@ -11,9 +11,8 @@ All of these tests are designed to be run manually via::
 """
 import os
 
-import pytest
-
 import eta.core.utils as etau
+import pytest
 
 import fiftyone as fo
 import fiftyone.zoo as foz

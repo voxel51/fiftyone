@@ -6,9 +6,10 @@ FiftyOne Server filter inputs
 |
 """
 
+import typing as t
+
 import strawberry as gql
 from strawberry.schema_directive import Location
-import typing as t
 
 
 @gql.schema_directive(locations=[Location.INPUT_OBJECT])

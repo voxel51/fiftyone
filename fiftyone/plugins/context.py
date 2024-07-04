@@ -13,7 +13,6 @@ import traceback
 
 import fiftyone as fo
 import fiftyone.plugins as fop
-
 from fiftyone.operators.decorators import plugins_cache
 from fiftyone.operators.operator import Operator
 

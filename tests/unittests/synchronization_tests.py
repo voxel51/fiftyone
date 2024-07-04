@@ -8,9 +8,9 @@ FiftyOne synchronization-related unit tests.
 import os
 import unittest
 
-import fiftyone as fo
-
 from decorators import drop_datasets
+
+import fiftyone as fo
 
 
 class SingleProcessSynchronizationTests(unittest.TestCase):

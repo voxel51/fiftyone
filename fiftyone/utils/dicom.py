@@ -9,12 +9,12 @@ import logging
 import os
 import warnings
 
-import numpy as np
-
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
 
 fou.ensure_package("pydicom")
 import pydicom

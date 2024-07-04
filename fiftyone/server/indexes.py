@@ -5,8 +5,8 @@ FiftyOne Server indexes.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
 import typing as t
+from enum import Enum
 
 import strawberry as gql
 

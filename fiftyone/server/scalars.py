@@ -6,11 +6,12 @@ FiftyOne Server GraphQL scalars
 |
 """
 
-from datetime import date, datetime
-from bson import json_util
 import json
-import strawberry as gql
 import typing as t
+from datetime import date, datetime
+
+import strawberry as gql
+from bson import json_util
 
 from fiftyone.core.json import stringify
 from fiftyone.core.utils import datetime_to_timestamp, timestamp_to_datetime

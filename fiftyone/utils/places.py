@@ -6,18 +6,19 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-import logging
-import shutil
 import json
+import logging
+import os
 import random
+import shutil
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone.utils.data as foud
 import fiftyone.core.labels as fol
+import fiftyone.utils.data as foud
+
 
 logger = logging.getLogger(__name__)
 

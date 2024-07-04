@@ -9,17 +9,16 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import random
 import os
+import random
 
+import eta.core.utils as etau
 import numpy as np
 import pytest
 
-import eta.core.utils as etau
-
 import fiftyone as fo
-import fiftyone.utils.image as foui
 import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
+import fiftyone.utils.image as foui
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 

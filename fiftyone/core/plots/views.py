@@ -8,12 +8,10 @@ Plotly-powered view plots.
 import itertools
 from operator import itemgetter
 
-import numpy as np
-
 import eta.core.utils as etau
-
-import plotly.subplots as ps
+import numpy as np
 import plotly.graph_objects as go
+import plotly.subplots as ps
 
 import fiftyone.core.aggregations as foa
 

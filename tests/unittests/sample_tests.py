@@ -9,16 +9,15 @@ import os
 import tempfile
 import unittest
 
-from bson import Binary, ObjectId
 import numpy as np
+from bson import Binary, ObjectId
+from decorators import drop_datasets
 from PIL import ExifTags, Image
 
 import fiftyone as fo
-from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-
-from decorators import drop_datasets
+from fiftyone import ViewField as F
 
 
 class SampleTests(unittest.TestCase):

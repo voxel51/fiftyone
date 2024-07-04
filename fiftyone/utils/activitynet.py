@@ -6,10 +6,10 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from itertools import chain
 import logging
 import os
 import random
+from itertools import chain
 
 import eta.core.serial as etas
 import eta.core.utils as etau

@@ -10,13 +10,13 @@ import asyncio
 import logging
 import traceback
 
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
+from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.executor import (
-    prepare_operator_executor,
-    do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
+    do_execute_operator,
+    prepare_operator_executor,
     resolve_type_with_context,
 )
 

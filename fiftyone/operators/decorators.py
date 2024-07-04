@@ -6,12 +6,12 @@ FiftyOne operator decorators.
 |
 """
 import asyncio
-
-from cachetools.keys import hashkey
+import os
+import signal
 from contextlib import contextmanager
 from functools import wraps
-import signal
-import os
+
+from cachetools.keys import hashkey
 
 import fiftyone as fo
 from fiftyone.plugins.core import _iter_plugin_metadata_files

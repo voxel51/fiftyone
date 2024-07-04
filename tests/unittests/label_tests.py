@@ -7,16 +7,15 @@ FiftyOne Label-related unit tests.
 """
 import unittest
 
-from bson import Binary, ObjectId
 import numpy as np
 import numpy.testing as nptest
+from bson import Binary, ObjectId
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.labels as focl
 import fiftyone.utils.labels as foul
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets
 
 
 class LabelTests(unittest.TestCase):

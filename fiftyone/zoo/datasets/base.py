@@ -25,8 +25,8 @@ import fiftyone.utils.kinetics as fouk
 import fiftyone.utils.kitti as foukt
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
-import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
+import fiftyone.utils.sama as fous
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 

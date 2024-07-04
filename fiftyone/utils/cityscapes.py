@@ -19,7 +19,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)

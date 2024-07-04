@@ -1,8 +1,10 @@
+import asyncio
+import json
+
+from bson import json_util
+
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-import json
-import asyncio
-from bson import json_util
 
 
 def serialize_view(view):

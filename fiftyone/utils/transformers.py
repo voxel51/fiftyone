@@ -8,15 +8,15 @@ Utilities for working with
 """
 import logging
 
+import eta.core.utils as etau
 import numpy as np
 
-import eta.core.utils as etau
-
-from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
+from fiftyone.core.config import Config
+from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
 from fiftyone.zoo.models import HasZooModel
+
 
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")

@@ -7,32 +7,32 @@ View stages.
 """
 
 import builtins
-from collections import defaultdict, OrderedDict
 import contextlib
-from copy import deepcopy
 import itertools
 import random
 import reprlib
 import uuid
 import warnings
-
-from bson import ObjectId
-import numpy as np
+from collections import OrderedDict, defaultdict
+from copy import deepcopy
 
 import eta.core.utils as etau
+import numpy as np
+from bson import ObjectId
 
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
-from fiftyone.core.expressions import VALUE
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
+from fiftyone.core.expressions import VALUE
+from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.fields import EmbeddedDocumentField, ListField
+from fiftyone.core.odm.document import MongoEngineBaseDocument
+
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")

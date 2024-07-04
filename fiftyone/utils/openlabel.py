@@ -6,11 +6,11 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from copy import deepcopy
 import enum
 import logging
 import os
+from collections import defaultdict
+from copy import deepcopy
 
 import eta.core.serial as etas
 import eta.core.utils as etau

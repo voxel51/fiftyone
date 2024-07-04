@@ -14,6 +14,7 @@ import numpy as np
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
+
 fou.ensure_import("flash>=0.7dev")
 import flash
 import flash.core.classification as fc

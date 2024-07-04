@@ -12,9 +12,8 @@ You must run these tests interactively as follows::
 import random
 import unittest
 
-import numpy as np
-
 import eta.core.utils as etau
+import numpy as np
 import pytest
 
 import fiftyone as fo

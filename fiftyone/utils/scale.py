@@ -6,19 +6,18 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from copy import deepcopy
 import logging
 import os
-from uuid import uuid4
 import warnings
-
-import numpy as np
+from collections import defaultdict
+from copy import deepcopy
+from uuid import uuid4
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+import numpy as np
 
 import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol

@@ -5,20 +5,19 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import unittest
 from copy import deepcopy
 from datetime import date, datetime
 
-from bson import ObjectId
 import numpy as np
-import unittest
+from bson import ObjectId
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.video as fov
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets
 
 
 class VideoTests(unittest.TestCase):

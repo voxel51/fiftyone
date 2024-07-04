@@ -6,29 +6,29 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 |
 """
 
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
 import inspect
 import logging
 import math
 import os
-from packaging.requirements import Requirement
 import re
-import requests
-
-import yaml
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 
 import eta.core.utils as etau
+import requests
+import yaml
+from packaging.requirements import Requirement
 
 import fiftyone as fo
 import fiftyone.constants as foc
-from fiftyone.core.config import Config
 import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
+from fiftyone.core.config import Config
+from fiftyone.core.sample import Sample
+
 
 hfh = fou.lazy_import(
     "huggingface_hub",

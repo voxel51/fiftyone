@@ -6,6 +6,8 @@ FiftyOne Server routes
 |
 """
 
+from fiftyone.operators.server import OperatorRoutes
+
 from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
@@ -14,12 +16,12 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .plugins import Plugins
-from .sort import Sort
 from .screenshot import Screenshot
+from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
-from fiftyone.operators.server import OperatorRoutes
+
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (

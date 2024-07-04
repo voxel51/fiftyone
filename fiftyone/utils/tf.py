@@ -12,17 +12,17 @@ import os
 import warnings
 
 import cv2
-import numpy as np
-from skimage.color import rgba2rgb
-
 import eta.core.image as etai
 import eta.core.utils as etau
+import numpy as np
+from skimage.color import rgba2rgb
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
 
 fou.ensure_tf(eager=True)
 import tensorflow as tf

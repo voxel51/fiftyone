@@ -7,6 +7,7 @@ Installs the ``fiftyone-graphql`` package.
 |
 """
 import os
+
 from setuptools import setup
 
 

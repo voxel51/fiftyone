@@ -10,11 +10,10 @@ import os
 import subprocess
 import sys
 
+import eta.core.utils as etau
 import psutil
 import requests
 from retrying import retry
-
-import eta.core.utils as etau
 
 import fiftyone.constants as foc
 import fiftyone.core.config as focn

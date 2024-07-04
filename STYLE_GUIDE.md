@@ -78,7 +78,6 @@ generic:
 
 -   Standard library imports (most generic)
 -   Third-party package dependencies
--   Voxel51-authored non-FiftyOne package dependencies
 -   FiftyOne modules (least generic)
 
 For core FiftyOne imports, we import modules as `fox`, where `x` is the first
@@ -86,7 +85,7 @@ letter of the module imported. If necessary, we use `foxy` to disambiguate
 between two modules that start with the same letter.
 
 Within each import group, imports should be sorted alphabetically by full
-package path, ignoring `from` and `import`.
+package path, with direct `import`s first and `from` imports after.
 
 We also allow direct importing of (a small number of) names into the local
 namespace at the developer's discretion.
@@ -111,12 +110,12 @@ import eta.core.image as etai
 import eta.core.video as etav
 
 import fiftyone as fo
-from fiftyone.core.document import Document
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.utils.image as foui
 import fiftyone.utils.image as fouv
+from fiftyone.core.document import Document
 ```
 
 ### Docstrings

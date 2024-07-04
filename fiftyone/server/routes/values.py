@@ -11,12 +11,10 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
-import fiftyone.core.media as fom
-
 import fiftyone.server.constants as foc
-from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 
 class Values(HTTPEndpoint):

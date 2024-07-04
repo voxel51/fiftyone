@@ -6,12 +6,11 @@ Package-wide constants.
 |
 """
 
-from datetime import datetime
 import os
+from datetime import datetime
+from importlib.metadata import metadata
 
 from packaging.version import Version
-
-from importlib.metadata import metadata
 
 
 CLIENT_TYPE = "fiftyone"

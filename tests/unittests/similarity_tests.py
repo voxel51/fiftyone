@@ -8,13 +8,12 @@ FiftyOne visual similarity-related unit tests.
 import unittest
 
 import numpy as np
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 from fiftyone.core.brain import BrainMethod
 from fiftyone.core.evaluation import EvaluationMethod
-
-from decorators import drop_datasets
 
 
 class SimilarityTests(unittest.TestCase):

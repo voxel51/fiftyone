@@ -5,8 +5,8 @@ FiftyOne operator messages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
 import json
+from enum import Enum
 
 
 class MessageType(Enum):

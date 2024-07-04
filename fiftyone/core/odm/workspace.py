@@ -6,8 +6,9 @@ App Space configuration.
 |
 """
 
-from mongoengine.errors import ValidationError
 import uuid
+
+from mongoengine.errors import ValidationError
 
 from fiftyone.core.fields import (
     BooleanField,
@@ -20,6 +21,7 @@ from fiftyone.core.fields import (
     ObjectIdField,
     StringField,
 )
+
 from .document import Document
 from .embedded_document import EmbeddedDocument
 

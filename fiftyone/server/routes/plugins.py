@@ -8,8 +8,8 @@ FiftyOne Server ``/plugins`` route.
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-from fiftyone.server.decorators import route
 from fiftyone.plugins import list_plugins
+from fiftyone.server.decorators import route
 
 
 class Plugins(HTTPEndpoint):

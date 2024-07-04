@@ -7,9 +7,8 @@ Plugin definitions.
 """
 import os
 
-import yaml
-
 import eta.core.serial as etas
+import yaml
 
 import fiftyone as fo
 

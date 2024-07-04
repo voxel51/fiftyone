@@ -13,9 +13,9 @@ import numpy as np
 import pytest
 
 import fiftyone as fo
-import fiftyone.zoo as foz
-import fiftyone.utils.labelstudio as fouls
 import fiftyone.core.labels as fol
+import fiftyone.utils.labelstudio as fouls
+import fiftyone.zoo as foz
 
 
 @pytest.fixture()
@@ -588,7 +588,7 @@ def test_annotate_multiple_fields(backend_config, setup):
     dataset.annotate(
         anno_key,
         label_schema=label_schema,
-        project_name=f"labelstudio_multi-field_tests",
+        project_name="labelstudio_multi-field_tests",
         backend="labelstudio",
         **backend_config,
     )

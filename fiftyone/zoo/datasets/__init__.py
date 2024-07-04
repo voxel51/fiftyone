@@ -8,9 +8,9 @@ download via FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 import logging
 import os
+from collections import OrderedDict
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -534,8 +534,8 @@ def _parse_splits(split, splits):
 
 def _get_zoo_datasets():
     from .base import AVAILABLE_DATASETS as BASE_DATASETS
-    from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
     from .tf import AVAILABLE_DATASETS as TF_DATASETS
+    from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
 
     zoo_datasets = OrderedDict()
     zoo_datasets["base"] = BASE_DATASETS

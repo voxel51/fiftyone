@@ -9,12 +9,12 @@ import logging
 import multiprocessing.dummy
 import os
 
-from bs4 import BeautifulSoup
 import yaml
+from bs4 import BeautifulSoup
 
 import fiftyone.core.utils as fou
-from fiftyone.utils.github import GitHubRepository
 from fiftyone.plugins.core import PLUGIN_METADATA_FILENAMES
+from fiftyone.utils.github import GitHubRepository
 
 
 logger = logging.getLogger(__name__)

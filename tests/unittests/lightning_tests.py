@@ -6,25 +6,23 @@ FiftyOne Server lightning tests.
 |
 """
 
-from dataclasses import asdict
-from datetime import date, datetime
 import typing as t
 import unittest
+from dataclasses import asdict
+from datetime import date, datetime
 
 import strawberry as gql
+from decorators import drop_async_dataset
 from strawberry.schema.config import StrawberryConfig
+from utils.graphql import execute
 
 import fiftyone as fo
-
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.lightning import (
-    lightning_resolver,
     LightningInput,
     LightningPathInput,
+    lightning_resolver,
 )
-
-from decorators import drop_async_dataset
-from utils.graphql import execute
 
 
 @gql.type

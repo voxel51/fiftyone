@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 import boto3
 import botocore
-
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou

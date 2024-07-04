@@ -7,18 +7,17 @@ FiftyOne Server events initialization.
 """
 
 import asyncio
-from dataclasses import dataclass
 import typing as t
+from dataclasses import dataclass
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.state as fos
+import fiftyone.core.utils as fou
 from fiftyone.core.session.events import (
     AppInitializer,
     ListenPayload,
     StateUpdate,
 )
-import fiftyone.core.utils as fou
-
 from fiftyone.server.events import dispatch_event
 from fiftyone.server.events.state import (
     Listener,

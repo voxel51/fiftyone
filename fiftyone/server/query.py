@@ -6,11 +6,11 @@ FiftyOne Server queries.
 |
 """
 
+import logging
+import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
-import logging
-import typing as t
 
 import eta.core.utils as etau
 import strawberry as gql
@@ -22,20 +22,20 @@ import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-from fiftyone.core.odm import SavedViewDocument
 import fiftyone.core.stages as fosg
-from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
-from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
-
 import fiftyone.server.aggregate as fosa
+from fiftyone.core.odm import SavedViewDocument
+from fiftyone.core.state import SampleField, serialize_fields
+from fiftyone.core.utils import run_sync_task
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
-from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
+from fiftyone.server.indexes import Index
+from fiftyone.server.indexes import from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
@@ -44,7 +44,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
@@ -548,7 +548,7 @@ class Query(fosa.AggregateQuery):
                 field_schema=serialize_fields(ds.get_field_schema(flat=True)),
                 frame_field_schema=[],
             )
-        except Exception as e:
+        except Exception:
             return SchemaResult(
                 field_schema=[],
                 frame_field_schema=[],

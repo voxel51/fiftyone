@@ -5,13 +5,13 @@ Session notebook handling.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
-import os
 import typing as t
+from dataclasses import dataclass
 
 from jinja2 import Template
 
 from fiftyone.core.session.client import Client
+
 
 try:
     import IPython.display

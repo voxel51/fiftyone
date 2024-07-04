@@ -8,9 +8,7 @@ FiftyOne Server /fiftyone route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-
 import fiftyone.constants as foc
-
 from fiftyone.server.decorators import route
 
 

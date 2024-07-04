@@ -5,8 +5,9 @@ FiftyOne operator registry.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .builtin import BUILTIN_OPERATORS
 import fiftyone.plugins.context as fopc
+
+from .builtin import BUILTIN_OPERATORS
 
 
 def get_operator(operator_uri, enabled=True):

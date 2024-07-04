@@ -7,9 +7,9 @@ FiftyOne Server events listening.
 """
 
 import asyncio
+import typing as t
 from dataclasses import asdict
 from datetime import datetime
-import typing as t
 
 from bson import json_util
 from sse_starlette import ServerSentEvent
@@ -23,7 +23,6 @@ from fiftyone.core.session.events import (
     StateUpdate,
     dict_factory,
 )
-
 from fiftyone.server.events.dispatch import dispatch_event
 from fiftyone.server.events.initialize import initialize_listener
 from fiftyone.server.events.state import (

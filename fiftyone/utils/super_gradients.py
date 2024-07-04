@@ -7,14 +7,16 @@ Utilities for working with
 |
 """
 import logging
+
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
-import torch
 import numpy as np
+
 
 super_gradients = fou.lazy_import(
     "super_gradients", callback=lambda: fou.ensure_package("super-gradients")

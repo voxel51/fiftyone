@@ -6,20 +6,20 @@ FiftyOne Server coloring
 |
 """
 
+import typing as t
 from dataclasses import asdict
 from enum import Enum
-import typing as t
 
-from bson import ObjectId
 import strawberry as gql
+from bson import ObjectId
 
 import fiftyone as fo
-import fiftyone.core.session.events as fose
 import fiftyone.core.odm as foo
+import fiftyone.core.session.events as fose
 import fiftyone.core.utils as fou
-
 from fiftyone.server.events import dispatch_event, get_state
 from fiftyone.server.utils import from_dict
+
 
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
 

@@ -9,7 +9,8 @@ FiftyOne Server utils.
 import typing as t
 
 import cachetools
-from dacite import Config, from_dict as _from_dict
+from dacite import Config
+from dacite import from_dict as _from_dict
 from dacite.core import T
 from dacite.data import Data
 

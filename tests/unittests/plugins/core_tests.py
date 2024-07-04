@@ -1,11 +1,13 @@
+import json
 import os
+from unittest import mock
+
+import pytest
+import yaml
 
 import fiftyone as fo
-import pytest
-import json
-import yaml
-from unittest import mock
 import fiftyone.plugins as fop
+
 
 _DEFAULT_TEST_PLUGINS = ["test-plugin1", "test-plugin2"]
 _DEFAULT_APP_CONFIG = {}

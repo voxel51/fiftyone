@@ -6,18 +6,17 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 |
 """
 
-from copy import deepcopy
-from datetime import date, datetime, timedelta
 import re
 import warnings
+from copy import deepcopy
+from datetime import date, datetime, timedelta
 
 import bson
+import eta.core.utils as etau
 import numpy as np
 
-import eta.core.utils as etau
-
-from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
+from fiftyone.core.odm.document import MongoEngineBaseDocument
 
 
 def to_mongo(expr, prefix=None):

@@ -5,14 +5,13 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import inspect
 import itertools
 import logging
-
-import numpy as np
+from copy import deepcopy
 
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.evaluation as foe

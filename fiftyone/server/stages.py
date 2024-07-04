@@ -6,10 +6,10 @@ FiftyOne Server stage definitions
 |
 """
 import typing as t
+
 import strawberry as gql
 
 from fiftyone.core.stages import _STAGES
-
 from fiftyone.server.utils import from_dict
 
 

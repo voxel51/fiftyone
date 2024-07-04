@@ -6,41 +6,40 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-from copy import copy, deepcopy
-from datetime import datetime
 import itertools
 import logging
 import math
 import multiprocessing.dummy
 import os
-from packaging.version import Version
 import time
 import warnings
 import webbrowser
-
-from bson import ObjectId
-import jinja2
-import numpy as np
-import requests
-import urllib3
+from collections import defaultdict
+from copy import copy, deepcopy
+from datetime import datetime
 
 import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
+import jinja2
+import numpy as np
+import requests
+import urllib3
+from bson import ObjectId
+from packaging.version import Version
 
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
-from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.video as fouv
+from fiftyone.core.sample import Sample
 
 
 logger = logging.getLogger(__name__)

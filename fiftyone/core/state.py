@@ -8,23 +8,22 @@ Defines the shared state between the FiftyOne App and backend.
 
 import logging
 import typing as t
-
 from dataclasses import asdict
-from mongoengine.base import BaseDict, BaseList
-import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import strawberry as gql
+from mongoengine.base import BaseDict, BaseList
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
-from fiftyone.core.config import AppConfig
 import fiftyone.core.dataset as fod
-from fiftyone.core.odm.dataset import ColorScheme
-from fiftyone.core.odm.workspace import Space
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.config import AppConfig
+from fiftyone.core.odm.dataset import ColorScheme
+from fiftyone.core.odm.workspace import Space
 from fiftyone.server.scalars import JSON
 
 
@@ -158,7 +157,7 @@ class StateDescription(etas.Serializable):
             if view_name:
                 try:
                     view = dataset.load_saved_view(view_name)
-                except Exception as e:
+                except Exception:
                     dataset.reload()
                     view = dataset.load_saved_view(view_name)
 

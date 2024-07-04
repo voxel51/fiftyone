@@ -8,8 +8,8 @@ FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
-import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
+import fiftyone.utils.imagenet as foui
 import fiftyone.zoo.datasets as fozd
 
 

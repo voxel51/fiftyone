@@ -7,12 +7,11 @@ Results are appended to `cifar10_benchmark.log`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
-import pathlib
-import random
 import os
+import random
 import subprocess
 import time
+from collections import OrderedDict
 
 import numpy as np
 

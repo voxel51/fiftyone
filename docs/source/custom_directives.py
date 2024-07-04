@@ -5,9 +5,9 @@ Sphinx custom directives.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 from docutils.statemachine import StringList
-from docutils import nodes
 
 
 class CustomCardItemDirective(Directive):

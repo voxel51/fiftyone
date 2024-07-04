@@ -10,10 +10,9 @@ import logging
 import os
 import warnings
 
+import eta.core.utils as etau
 import numpy as np
 import yaml
-
-import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos

@@ -8,12 +8,14 @@ FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 import contextlib
 import inspect
 import logging
+
 from packaging import version
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
+
 
 fou.ensure_torch()
 import torchvision

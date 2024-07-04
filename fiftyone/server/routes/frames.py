@@ -7,18 +7,17 @@ FiftyOne Server /frames route
 """
 
 from starlette.endpoints import HTTPEndpoint
-from starlette.responses import JSONResponse
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
-
-from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
+from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.utils import run_sync_task
+from fiftyone.server.decorators import route
 
 
 class Frames(HTTPEndpoint):

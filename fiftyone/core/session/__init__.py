@@ -7,7 +7,8 @@ Session definitions for interacting with the FiftyOne App.
 """
 import types
 
-from .session import close_app, launch_app, Session
+from .session import Session, close_app, launch_app
+
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

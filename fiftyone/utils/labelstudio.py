@@ -6,26 +6,26 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
-from datetime import datetime
-from collections import defaultdict
 import itertools
 import json
 import logging
 import os
-from packaging import version
 import random
 import string
 import webbrowser
+from collections import defaultdict
+from copy import deepcopy
+from datetime import datetime
 
-import os
-from bson import ObjectId
 import numpy as np
+from bson import ObjectId
+from packaging import version
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
+
 
 ls = fou.lazy_import(
     "label_studio_sdk",

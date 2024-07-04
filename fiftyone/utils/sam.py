@@ -6,17 +6,18 @@ Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import numpy as np
-
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
 import torch
+
 
 sam = fou.lazy_import("segment_anything")
 

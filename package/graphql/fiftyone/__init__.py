@@ -9,6 +9,7 @@ See https://voxel51.com/fiftyone/package/graphql for more information.
 """
 from pkgutil import extend_path
 
+
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
 # same environment and used simultaneously.

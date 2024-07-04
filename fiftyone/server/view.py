@@ -8,21 +8,21 @@ FiftyOne Server view.
 
 from typing import List, Optional, Tuple
 
-from bson import ObjectId
 import strawberry as gql
+from bson import ObjectId
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
-from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-
+from fiftyone.core.expressions import VALUE
+from fiftyone.core.expressions import ViewField as F
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
-from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.scalars import JSON, BSONArray
 
 
 _LABEL_TAGS = "_label_tags"

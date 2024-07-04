@@ -8,9 +8,8 @@ ActivityNet-style temporal detection evaluation.
 import logging
 from collections import defaultdict
 
-import numpy as np
-
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone.core.plots as fop
 import fiftyone.utils.iou as foui

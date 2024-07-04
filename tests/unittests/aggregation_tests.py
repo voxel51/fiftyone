@@ -5,18 +5,17 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime, timedelta
 import math
-
-from bson import ObjectId
-import numpy as np
 import unittest
+from datetime import date, datetime, timedelta
+
+import numpy as np
+from bson import ObjectId
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets
 
 
 class DatasetTests(unittest.TestCase):

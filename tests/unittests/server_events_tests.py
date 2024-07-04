@@ -8,14 +8,14 @@ FiftyOne Server events tests.
 
 import unittest
 
-import fiftyone as fo
-import fiftyone.core.state as fos
-import fiftyone.core.session.events as fose
-import fiftyone.server.events.initialize as fosi
-import fiftyone.server.events.dispatch as fosd
-import fiftyone.server.events.state as foss
-
 from decorators import drop_datasets
+
+import fiftyone as fo
+import fiftyone.core.session.events as fose
+import fiftyone.core.state as fos
+import fiftyone.server.events.dispatch as fosd
+import fiftyone.server.events.initialize as fosi
+import fiftyone.server.events.state as foss
 
 
 class ServerEventsTests(unittest.TestCase):

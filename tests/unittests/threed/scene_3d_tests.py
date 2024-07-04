@@ -12,14 +12,14 @@ import tempfile
 import unittest
 from unittest.mock import mock_open, patch
 
-from fiftyone.core import threed
-from fiftyone.core.threed.utils import convert_keys_to_snake_case
-
 from dataclass_test_utils import (
     assert_color_prop,
     assert_float_prop,
     assert_string_prop,
 )
+
+from fiftyone.core import threed
+from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 class TestScene(unittest.TestCase):

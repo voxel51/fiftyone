@@ -10,15 +10,13 @@ import random
 import string
 import unittest
 
-import numpy as np
-
 import eta.core.utils as etau
 import eta.core.video as etav
+import numpy as np
+from decorators import drop_datasets
 
 import fiftyone as fo
 import fiftyone.utils.image as foui
-
-from decorators import drop_datasets
 
 
 class MockImageModel(fo.EmbeddingsMixin, fo.Model):

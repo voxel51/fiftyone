@@ -6,11 +6,11 @@ FiftyOne JSON handling
 |
 """
 import dataclasses
-from datetime import date, datetime
 import math
+from datetime import date, datetime
 
-from bson import ObjectId
 import numpy as np
+from bson import ObjectId
 
 import fiftyone.core.utils as fou
 

@@ -8,9 +8,9 @@ Tests for the :mod:`fiftyone.utils.torch` module.
 import unittest
 
 import numpy as np
-from PIL import Image
 import torch
 import torchvision
+from PIL import Image
 
 import fiftyone as fo
 import fiftyone.utils.torch as fout

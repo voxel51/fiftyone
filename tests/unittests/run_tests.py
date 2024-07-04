@@ -7,9 +7,9 @@ FiftyOne run-related unit tests.
 """
 import unittest
 
-import fiftyone as fo
-
 from decorators import drop_datasets
+
+import fiftyone as fo
 
 
 class RunTests(unittest.TestCase):

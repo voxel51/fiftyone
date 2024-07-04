@@ -5,24 +5,22 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import math
+import unittest
 from copy import deepcopy
 from datetime import date, datetime, timedelta
-import math
 
-from bson import ObjectId
-import unittest
 import numpy as np
+from bson import ObjectId
+from decorators import drop_datasets, skip_windows
 
 import fiftyone as fo
-from fiftyone import ViewField as F, VALUE
-import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
-
+from fiftyone import VALUE
+from fiftyone import ViewField as F
 from fiftyone.core.labels import Classification, Classifications
-
-from decorators import drop_datasets, skip_windows
 
 
 class DatasetViewTests(unittest.TestCase):

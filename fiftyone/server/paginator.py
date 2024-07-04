@@ -5,18 +5,18 @@ FiftyOne Server paginator
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
-import motor.motor_asyncio as mtr
 import typing as t
 
+import motor.motor_asyncio as mtr
 import strawberry as gql
+from bson import ObjectId
 from strawberry.unset import UNSET
 
 import fiftyone.core.odm as foo
-
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
 from fiftyone.server.utils import from_dict
+
 
 C = t.TypeVar("C")
 

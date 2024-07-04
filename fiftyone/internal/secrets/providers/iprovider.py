@@ -7,8 +7,9 @@ FiftyOne secrets provider interface
 """
 
 import abc
-from ..secret import ISecret
 from typing import Dict, List, Optional
+
+from ..secret import ISecret
 
 
 class ISecretProvider(abc.ABC):

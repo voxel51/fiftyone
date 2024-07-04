@@ -8,12 +8,11 @@ Copyright 2017-2024, Voxel51, Inc.
 voxel51.com
 """
 import argparse
-from itertools import takewhile
 import os
-
-import flickrapi
+from itertools import takewhile
 
 import eta.core.storage as etas
+import flickrapi
 
 
 def query_flickr(

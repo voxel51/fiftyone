@@ -5,24 +5,23 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import itertools
 import logging
 import multiprocessing.dummy
 import os
-
-import requests
-from PIL import Image
+from collections import defaultdict
 
 import eta.core.utils as etau
 import eta.core.video as etav
+import requests
+from PIL import Image
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
+from fiftyone.core.odm import DynamicEmbeddedDocument
 
 
 logger = logging.getLogger(__name__)

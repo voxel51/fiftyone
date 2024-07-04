@@ -8,10 +8,10 @@ FiftyOne migrations runner.
 import bisect
 import logging
 import os
-from packaging.requirements import Requirement
-from packaging.version import Version as V
 
 import eta.core.utils as etau
+from packaging.requirements import Requirement
+from packaging.version import Version as V
 
 import fiftyone as fo
 import fiftyone.constants as foc

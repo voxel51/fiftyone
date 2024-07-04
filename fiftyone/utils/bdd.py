@@ -6,10 +6,10 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import logging
 import os
 import warnings
+from copy import deepcopy
 
 import eta.core.serial as etas
 import eta.core.utils as etau

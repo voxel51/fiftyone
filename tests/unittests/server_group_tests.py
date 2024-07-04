@@ -9,13 +9,12 @@ FiftyOne Server group tests.
 import unittest
 
 from bson import ObjectId
+from decorators import drop_datasets
 
 import fiftyone as fo
+import fiftyone.server.view as fosv
 from fiftyone import ViewExpression as F
 from fiftyone.server.aggregations import GroupElementFilter
-import fiftyone.server.view as fosv
-
-from decorators import drop_datasets
 
 
 class ServerGroupTests(unittest.TestCase):

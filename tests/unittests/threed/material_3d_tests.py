@@ -8,16 +8,15 @@ FiftyOne Material 3D unit tests.
 
 import unittest
 
-from fiftyone.core.threed import material_3d
-
-from fiftyone.core.threed.utils import convert_keys_to_snake_case
-
 from dataclass_test_utils import (
     assert_bool_prop,
     assert_choice_prop,
     assert_color_prop,
     assert_float_prop,
 )
+
+from fiftyone.core.threed import material_3d
+from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
 
 class TestMaterial3D(unittest.TestCase):

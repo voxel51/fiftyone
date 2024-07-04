@@ -5,13 +5,13 @@ Brain method runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from fiftyone.core.odm import patch_brain_runs
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,
     BaseRunInfo,
     BaseRunResults,
 )
-from fiftyone.core.odm import patch_brain_runs
 
 
 class BrainInfo(BaseRunInfo):

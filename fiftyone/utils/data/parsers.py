@@ -7,21 +7,19 @@ Sample parsers.
 """
 import os
 
-import numpy as np
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-from fiftyone.core.sample import Sample
-import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
 import fiftyone.utils.video as fouv
+from fiftyone.core.sample import Sample
 
 
 def add_images(dataset, samples, sample_parser, tags=None, progress=None):

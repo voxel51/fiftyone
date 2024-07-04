@@ -7,6 +7,7 @@ FiftyOne operator server.
 """
 
 import types
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -16,14 +17,14 @@ from fiftyone.server.decorators import route
 
 from .executor import (
     execute_or_delegate_operator,
-    resolve_type,
-    resolve_placement,
     resolve_execution_options,
+    resolve_placement,
+    resolve_type,
 )
 from .message import GeneratedMessage
+from .operator import Operator
 from .permissions import PermissionedOperatorRegistry
 from .utils import is_method_overridden
-from .operator import Operator
 
 
 class ListOperators(HTTPEndpoint):

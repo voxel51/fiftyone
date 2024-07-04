@@ -6,28 +6,27 @@ FiftyOne Server events dispatching.
 |
 """
 
+import typing as t
 from dataclasses import asdict
 from datetime import datetime
-import typing as t
 
 import fiftyone.core.context as focx
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import (
-    add_screenshot,
     CaptureNotebookCell,
     DeactivateNotebookCell,
-    ReactivateNotebookCell,
     EventType,
+    ReactivateNotebookCell,
     Refresh,
     SelectLabels,
     SelectSamples,
     SetColorScheme,
+    SetFieldVisibilityStage,
     SetGroupSlice,
     SetSpaces,
     StateUpdate,
-    SetFieldVisibilityStage,
+    add_screenshot,
 )
-
 from fiftyone.server.events.state import get_listeners, get_state, set_state
 
 

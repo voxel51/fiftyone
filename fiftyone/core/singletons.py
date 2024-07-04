@@ -5,8 +5,8 @@ FiftyOne singleton implementations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import weakref
+from collections import defaultdict
 
 
 class DatasetSingleton(type):

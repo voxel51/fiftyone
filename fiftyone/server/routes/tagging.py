@@ -14,9 +14,9 @@ from starlette.requests import Request
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
+import fiftyone.server.tags as fost
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
-import fiftyone.server.tags as fost
 
 
 class Tagging(HTTPEndpoint):

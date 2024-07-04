@@ -5,8 +5,8 @@ FiftyOne v0.15.1 admin revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import json
+import logging
 import os
 
 

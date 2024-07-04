@@ -5,19 +5,18 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import itertools
+import logging
 import multiprocessing
 import os
 import sys
 
 import cv2
-import numpy as np
-from PIL import Image
-
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
+import numpy as np
+from PIL import Image
 from torchvision.models.feature_extraction import create_feature_extractor
 
 import fiftyone.core.config as foc
@@ -27,11 +26,12 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 
+
 fou.ensure_torch()
 import torch
 import torchvision
-from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
+from torchvision.transforms import functional as F
 
 
 logger = logging.getLogger(__name__)

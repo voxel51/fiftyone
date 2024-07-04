@@ -6,27 +6,26 @@ FiftyOne group-related unit tests.
 |
 """
 
-from itertools import groupby
 import json
 import os
 import random
 import string
 import unittest
-
-from bson import ObjectId
+from itertools import groupby
 
 import eta.core.utils as etau
+from bson import ObjectId
+from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
 
 import fiftyone as fo
+import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
-import fiftyone.core.media as fom
-import fiftyone.core.metadata as fome
-from fiftyone import ViewExpression as E, ViewField as F
-
-from decorators import drop_datasets
-from utils.groups import make_disjoint_groups_dataset
+from fiftyone import ViewExpression as E
+from fiftyone import ViewField as F
 
 
 class GroupTests(unittest.TestCase):
