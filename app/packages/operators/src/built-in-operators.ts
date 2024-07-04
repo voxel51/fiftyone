@@ -1056,8 +1056,8 @@ class Notify extends Operator {
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("message", { label: "Message", required: true });
-    inputs.enum("type", ["info", "success", "warning", "error"], {
-      label: "Type",
+    inputs.enum("variant", ["info", "success", "warning", "error"], {
+      label: "Variant",
       default: "info",
     });
     return new types.Property(inputs);
@@ -1068,7 +1068,7 @@ class Notify extends Operator {
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.notify({
       msg: ctx.params.message,
-      type: ctx.params.type,
+      variant: ctx.params.variant,
     });
   }
 }
