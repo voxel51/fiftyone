@@ -31,7 +31,7 @@ if hexversion < 0x30900F0 and hexversion >= 0x30800F0 and PYTHON_38_NOTICE:
     )
     logger.warning("Please upgrade to Python 3.9 or later.")
     logger.warning(
-        "For additional details please see" " https://deprecation.voxel51.com"
+        "For additional details please see https://deprecation.voxel51.com"
     )
 
 #
