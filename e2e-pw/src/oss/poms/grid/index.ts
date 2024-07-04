@@ -99,6 +99,17 @@ class GridAsserter {
     expect(isChecked).toBe(true);
   }
 
+  async nthSampleHasTagValue(
+    n: number,
+    tagName: string,
+    expectedTagValue: string
+  ) {
+    const tagElement = this.gridPom
+      .getNthLooker(n)
+      .getByTestId(`tag-${tagName}`);
+    await expect(tagElement).toHaveText(expectedTagValue);
+  }
+
   async isSelectionCountEqualTo(n: number) {
     const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
       "action-manage-selected"
