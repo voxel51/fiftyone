@@ -12,6 +12,7 @@ import numpy as np
 
 import fiftyone.core.utils as fou
 
+
 fou.ensure_torch()
 import torch
 import torch.nn.functional as F

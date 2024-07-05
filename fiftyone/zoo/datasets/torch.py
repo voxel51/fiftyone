@@ -16,6 +16,7 @@ import fiftyone.utils.imagenet as foui
 import fiftyone.utils.voc as fouv
 import fiftyone.zoo.datasets as fozd
 
+
 _TORCH_IMPORT_ERROR = """
 
 You tried to download a dataset from the FiftyOne Dataset Zoo using the PyTorch

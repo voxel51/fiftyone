@@ -13,6 +13,7 @@ import os
 import re
 import sys
 
+
 sys.path.insert(0, os.path.abspath("."))
 
 from custom_directives import (
@@ -24,6 +25,7 @@ from custom_directives import (
 from redirects import generate_redirects
 
 import fiftyone.constants as foc
+
 
 with open("../../setup.py") as f:
     setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)

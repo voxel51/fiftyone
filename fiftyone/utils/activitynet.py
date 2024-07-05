@@ -19,6 +19,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.youtube as fouy
 
+
 logger = logging.getLogger(__name__)
 
 

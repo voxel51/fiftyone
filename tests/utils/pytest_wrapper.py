@@ -10,6 +10,7 @@ import sys
 import psutil
 import pytest
 
+
 try:
     code = pytest.main(sys.argv[1:])
 finally:

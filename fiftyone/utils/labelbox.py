@@ -32,6 +32,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
 
+
 lb = fou.lazy_import(
     "labelbox", callback=lambda: fou.ensure_import("labelbox")
 )

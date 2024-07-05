@@ -12,6 +12,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -21,6 +21,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
+
 logger = logging.getLogger(__name__)
 
 

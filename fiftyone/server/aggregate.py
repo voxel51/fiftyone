@@ -18,6 +18,7 @@ from fiftyone.server.data import T
 from fiftyone.server.scalars import BSONArray
 from fiftyone.server.view import ExtendedViewForm, load_view
 
+
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 

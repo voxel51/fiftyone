@@ -10,6 +10,7 @@ import sys
 
 import fiftyone as fo
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--remote", action="store_true")
 parser.add_argument("--slow", action="store_true")

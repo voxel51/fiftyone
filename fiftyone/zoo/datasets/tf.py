@@ -12,6 +12,7 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.imagenet as foui
 import fiftyone.zoo.datasets as fozd
 
+
 _TFDS_IMPORT_ERROR = """
 
 You tried to download a dataset from the FiftyOne Dataset Zoo using the

@@ -49,6 +49,7 @@ from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
+
 ID = gql.scalar(
     t.NewType("ID", str),
     serialize=lambda v: str(v),

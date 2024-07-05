@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from packaging.requirements import Requirement
 
+
 try:
     import IPython.display
 except:
@@ -53,6 +54,7 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 from fiftyone.core.state import StateDescription, build_color_scheme
+
 
 logger = logging.getLogger(__name__)
 

@@ -24,6 +24,7 @@ from fiftyone.core.expressions import ViewField as F
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import JSON, BSONArray
 
+
 _LABEL_TAGS = "_label_tags"
 
 

@@ -20,6 +20,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
+
 logger = logging.getLogger(__name__)
 
 

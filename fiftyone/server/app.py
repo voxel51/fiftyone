@@ -34,6 +34,7 @@ from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 
+
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 

@@ -18,6 +18,7 @@ import eta.core.web as etaw
 
 import fiftyone.utils.coco as fouc
 
+
 logger = logging.getLogger(__name__)
 
 

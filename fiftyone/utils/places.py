@@ -19,6 +19,7 @@ import eta.core.web as etaw
 import fiftyone.core.labels as fol
 import fiftyone.utils.data as foud
 
+
 logger = logging.getLogger(__name__)
 
 

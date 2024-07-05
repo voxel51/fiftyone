@@ -15,6 +15,7 @@ from jinja2 import BaseLoader, Environment
 
 import fiftyone.zoo as foz
 
+
 logger = logging.getLogger(__name__)
 
 

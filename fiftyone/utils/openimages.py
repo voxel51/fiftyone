@@ -28,6 +28,7 @@ import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 
+
 logger = logging.getLogger(__name__)
 
 

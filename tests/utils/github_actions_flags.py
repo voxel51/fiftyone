@@ -7,6 +7,7 @@ Sets up flags used by GitHub Actions to determine which tests to run.
 """
 import os
 
+
 flags = {"run_integration": False}
 ref = os.environ.get("GITHUB_REF", "")
 

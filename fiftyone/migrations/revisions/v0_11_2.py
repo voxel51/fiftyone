@@ -7,6 +7,7 @@ FiftyOne v0.11.2 revision.
 """
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 

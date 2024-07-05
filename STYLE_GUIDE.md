@@ -78,7 +78,6 @@ generic:
 
 -   Standard library imports (most generic)
 -   Third-party package dependencies
--   Voxel51-authored non-FiftyOne package dependencies
 -   FiftyOne modules (least generic)
 
 For core FiftyOne imports, we import modules as `fox`, where `x` is the first

@@ -26,6 +26,7 @@ from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
 from fiftyone.server.scalars import JSON
 
+
 logger = logging.getLogger(__name__)
 
 

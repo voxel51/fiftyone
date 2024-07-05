@@ -15,9 +15,11 @@ import numpy as np
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
+
 fou.ensure_package("pydicom")
 import pydicom
 from pydicom.fileset import FileInstance, FileSet
+
 
 logger = logging.getLogger(__name__)
 

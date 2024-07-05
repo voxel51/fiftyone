@@ -21,6 +21,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
+
 fol = fou.lazy_import("fiftyone.core.labels")
 food = fou.lazy_import("fiftyone.core.odm.document")
 fooe = fou.lazy_import("fiftyone.core.odm.embedded_document")

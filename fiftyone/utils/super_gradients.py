@@ -13,9 +13,11 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
 import numpy as np
 import torch
+
 
 super_gradients = fou.lazy_import(
     "super_gradients", callback=lambda: fou.ensure_package("super-gradients")

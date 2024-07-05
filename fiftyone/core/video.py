@@ -25,6 +25,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
+
 fouv = fou.lazy_import("fiftyone.utils.video")
 
 

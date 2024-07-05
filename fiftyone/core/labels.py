@@ -24,6 +24,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 from fiftyone.core.odm import DynamicEmbeddedDocument
 
+
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 foui = fou.lazy_import("fiftyone.utils.image")

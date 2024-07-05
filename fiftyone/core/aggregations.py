@@ -26,6 +26,7 @@ from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
 
+
 logger = logging.getLogger(__name__)
 
 

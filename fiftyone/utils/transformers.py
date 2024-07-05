@@ -17,6 +17,7 @@ from fiftyone.core.config import Config
 from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 
+
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")
 

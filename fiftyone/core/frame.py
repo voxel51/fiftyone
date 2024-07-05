@@ -16,6 +16,7 @@ import fiftyone.core.utils as fou
 from fiftyone.core.document import Document, DocumentView
 from fiftyone.core.singletons import FrameSingleton
 
+
 fov = fou.lazy_import("fiftyone.core.view")
 
 

@@ -18,6 +18,7 @@ from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -3,6 +3,7 @@ from io import open
 from pytorch_sphinx_theme import __version__
 from setuptools import setup
 
+
 setup(
     name="pytorch_sphinx_theme",
     version=__version__,

@@ -10,6 +10,7 @@ from fiftyone.internal.secrets import UnencryptedSecret
 from fiftyone.operators import Operator
 from fiftyone.operators.executor import ExecutionContext
 
+
 SECRET_KEY = "MY_SECRET_KEY"
 SECRET_KEY2 = "MY_SECRET_KEY2"
 SECRET_VALUE = "password123"

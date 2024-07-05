@@ -26,6 +26,7 @@ from fiftyone.operators.operations import Operations
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
+
 logger = logging.getLogger(__name__)
 
 

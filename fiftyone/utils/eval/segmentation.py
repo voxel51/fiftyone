@@ -24,6 +24,7 @@ import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
 
+
 logger = logging.getLogger(__name__)
 
 

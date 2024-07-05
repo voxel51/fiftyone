@@ -19,6 +19,7 @@ import eta.core.web as etaw
 import fiftyone.core.utils as fou
 import fiftyone.utils.youtube as fouy
 
+
 logger = logging.getLogger(__name__)
 
 

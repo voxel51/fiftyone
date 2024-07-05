@@ -7,6 +7,7 @@ import argparse
 
 import psutil
 
+
 parser = argparse.ArgumentParser(description="Search for processes by name")
 parser.add_argument(
     "-f",

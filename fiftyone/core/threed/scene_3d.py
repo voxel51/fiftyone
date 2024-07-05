@@ -21,6 +21,7 @@ from .shape_3d import Shape3D
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
 from .validators import BaseValidatedDataClass, validate_color, validate_list
 
+
 fo3d_path_attributes = [
     "pcd_path",
     "ply_path",

@@ -14,6 +14,7 @@ import numpy as np
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
+
 fou.ensure_import("flash>=0.7dev")
 import flash
 import flash.core.classification as fc
@@ -21,6 +22,7 @@ import flash.image as fi
 import flash.image.detection.output as fdo
 import flash.image.segmentation.output as fso
 import flash.video as fv
+
 
 _SUPPORTED_MODELS = (
     fi.ImageClassifier,

@@ -16,8 +16,10 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
+
 fou.ensure_torch()
 import torchvision
+
 
 logger = logging.getLogger(__name__)
 

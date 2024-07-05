@@ -20,6 +20,7 @@ import fiftyone.core.utils as fou
 from fiftyone.server.events import dispatch_event, get_state
 from fiftyone.server.utils import from_dict
 
+
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 

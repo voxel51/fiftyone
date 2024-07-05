@@ -10,6 +10,7 @@ import sys
 
 import pytest
 
+
 #
 # This is a list of modules that are used (typically by utilities) but which
 # are not distributed as part of the main FiftyOne package. If a user uses a

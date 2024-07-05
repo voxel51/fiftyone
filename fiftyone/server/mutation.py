@@ -31,6 +31,7 @@ from fiftyone.server.query import (
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.view import get_view
 
+
 _CONVERSION_STAGES = {
     fos.ToClips,
     fos.ToEvaluationPatches,

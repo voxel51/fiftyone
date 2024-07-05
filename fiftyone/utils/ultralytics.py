@@ -20,6 +20,7 @@ import fiftyone.zoo.models as fozm
 from fiftyone.core.config import Config
 from fiftyone.core.models import Model
 
+
 ultralytics = fou.lazy_import("ultralytics")
 
 

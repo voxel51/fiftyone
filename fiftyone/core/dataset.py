@@ -45,6 +45,7 @@ import fiftyone.migrations as fomi
 from fiftyone.core.odm.dataset import DatasetAppConfig, SampleFieldDocument
 from fiftyone.core.singletons import DatasetSingleton
 
+
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 

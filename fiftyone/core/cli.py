@@ -48,6 +48,7 @@ import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 from fiftyone import ViewField as F
 
+
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
 

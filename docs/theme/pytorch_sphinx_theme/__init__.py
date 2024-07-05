@@ -5,6 +5,7 @@ From https://github.com/shiftlab/pytorch_sphinx_theme.
 """
 from os import path
 
+
 __version__ = "0.0.24+voxel51"
 __version_full__ = __version__
 

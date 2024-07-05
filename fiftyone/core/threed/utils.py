@@ -6,6 +6,7 @@
 
 import re
 
+
 FO3D_VERSION_KEY = "__FO3D_VERSION"
 
 

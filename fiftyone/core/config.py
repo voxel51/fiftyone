@@ -17,6 +17,7 @@ import pytz
 import fiftyone.constants as foc
 import fiftyone.core.utils as fou
 
+
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 

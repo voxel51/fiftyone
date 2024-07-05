@@ -8,6 +8,7 @@ FiftyOne operators.
 
 from .types import Object, PromptView
 
+
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
 

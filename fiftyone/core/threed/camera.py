@@ -12,6 +12,7 @@ from typing import Literal, Optional, Union
 from .transformation import Vec3UnionType, Vector3, normalize_to_vec3
 from .validators import BaseValidatedDataClass, validate_choice, validate_float
 
+
 UP_DIRECTIONS = frozenset(["X", "Y", "Z"])
 UpDirection = Literal["X", "Y", "Z"]
 

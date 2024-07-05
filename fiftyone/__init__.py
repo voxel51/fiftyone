@@ -13,6 +13,7 @@ from os import getenv
 from pkgutil import extend_path as _extend_path
 from sys import hexversion
 
+
 logger = logging.getLogger(__name__)
 
 # Python 3.8 goes EoL in October, 2024
@@ -40,9 +41,11 @@ __path__ = _extend_path(__path__, __name__)
 
 import fiftyone.constants as _foc
 
+
 __version__ = _foc.VERSION
 
 import fiftyone.core.logging as _fol
 from fiftyone.__public__ import *
+
 
 _fol.init_logging()

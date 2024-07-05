@@ -7,6 +7,7 @@ Utilities for working with the `ImageNet dataset <http://www.image-net.org>`_.
 """
 import os
 
+
 _TRAIN_IMAGES_TAR = "ILSVRC2012_img_train.tar"
 _VAL_IMAGES_DIR = "ILSVRC2012_img_val.tar"
 _DEVKIT_TAR = "ILSVRC2012_devkit_t12.tar.gz"

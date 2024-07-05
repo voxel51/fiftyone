@@ -8,6 +8,7 @@ FiftyOne's public interface.
 
 import fiftyone.core.config as _foc
 
+
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 evaluation_config = _foc.load_evaluation_config()

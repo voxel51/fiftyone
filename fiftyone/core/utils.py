@@ -40,6 +40,7 @@ from bson import ObjectId, json_util
 from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 
+
 try:
     import pprintpp as _pprint
     from mongoengine.base.datastructures import BaseDict, BaseList
@@ -66,6 +67,7 @@ import xmltodict
 
 import fiftyone as fo
 import fiftyone.core.context as foc
+
 
 logger = logging.getLogger(__name__)
 

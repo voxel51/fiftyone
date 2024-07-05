@@ -23,6 +23,7 @@ import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
+
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_import("open3d"))
 
 

@@ -13,6 +13,7 @@ from jinja2 import Template
 
 from fiftyone.core.session.client import Client
 
+
 try:
     import IPython.display
 except:

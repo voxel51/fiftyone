@@ -17,6 +17,7 @@ from .transformation import (
     normalize_to_vec3,
 )
 
+
 COLOR_DEFAULT_WHITE = "#ffffff"
 
 
