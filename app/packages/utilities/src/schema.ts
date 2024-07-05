@@ -8,6 +8,7 @@ export interface Field {
   subfield: string | null;
   path: string;
   fields?: Schema;
+  pathWithDbField?: string | null;
 }
 
 export interface StrictField extends Omit<Field, "fields"> {
@@ -24,12 +25,19 @@ export function getFieldInfo(
 ): Field | undefined {
   const keys = fieldPath.split(".");
   let field: Field;
-  for (let index = 0; index < keys.length; index++) {
-    if (!schema) return undefined;
 
-    field = schema[keys[index]];
+  const dbFields = [];
+
+  for (let index = 0; index < keys.length; index++) {
+    if (!schema || !schema[keys[index]]) return undefined;
+
+    field = { ...schema[keys[index]] };
     schema = field?.fields;
+
+    dbFields.push(field?.dbField);
   }
+
+  field.pathWithDbField = dbFields.filter(Boolean).join(".");
 
   return field;
 }
