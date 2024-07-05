@@ -44,7 +44,6 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -15,7 +15,6 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-
 logger = logging.getLogger(__name__)
 
 

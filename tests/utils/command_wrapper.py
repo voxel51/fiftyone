@@ -10,7 +10,6 @@ import sys
 
 import psutil
 
-
 try:
     subprocess.check_call(sys.argv[1:])
 finally:

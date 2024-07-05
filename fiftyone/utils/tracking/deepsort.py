@@ -13,7 +13,6 @@ import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-
 dsrt = fou.lazy_import(
     "deep_sort_realtime.deepsort_tracker",
     callback=lambda: fou.ensure_package("deep-sort-realtime"),

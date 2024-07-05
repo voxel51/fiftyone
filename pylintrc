@@ -41,7 +41,7 @@ extension-pkg-whitelist=
 # Pylint and this flag can prevent that. It has one side effect, the resulting
 # AST will be different than the one from reality. This option is deprecated
 # and it will be removed in Pylint 2.0.
-# optimize-ast=no
+optimize-ast=no
 
 
 [MESSAGES CONTROL]
@@ -67,7 +67,7 @@ confidence=
 # --disable=W"
 #disable=import-star-module-level,old-octal-literal,oct-method,print-statement,unpacking-in-except,parameter-unpacking,backtick,old-raise-syntax,old-ne-operator,long-suffix,dict-view-method,dict-iter-method,metaclass-assignment,next-method-called,raising-string,indexing-exception,raw_input-builtin,long-builtin,file-builtin,execfile-builtin,coerce-builtin,cmp-builtin,buffer-builtin,basestring-builtin,apply-builtin,filter-builtin-not-iterating,using-cmp-argument,useless-suppression,range-builtin-not-iterating,suppressed-message,no-absolute-import,old-division,cmp-method,reload-builtin,zip-builtin-not-iterating,intern-builtin,unichr-builtin,reduce-builtin,standarderror-builtin,unicode-builtin,xrange-builtin,coerce-method,delslice-method,getslice-method,setslice-method,input-builtin,round-builtin,hex-method,nonzero-method,map-builtin-not-iterating
 
-disable=too-few-public-methods,too-many-instance-attributes,too-many-arguments,too-many-locals,too-many-lines,non-iterator-returned,too-many-statements,useless-object-inheritance,abstract-method,too-many-ancestors,too-many-branches,unnecessary-pass,too-many-public-methods
+disable=too-few-public-methods,too-many-instance-attributes,too-many-arguments,too-many-locals,too-many-lines,non-iterator-returned,too-many-statements,useless-object-inheritance,abstract-method,too-many-ancestors,too-many-branches,unnecessary-pass,too-many-public-methods,bad-continuation
 
 
 [REPORTS]
@@ -81,7 +81,7 @@ output-format=colorized
 # command line instead of printing them on stdout. Reports (if any) will be
 # written in a file name "pylint_global.[txt|html]". This option is deprecated
 # and it will be removed in Pylint 2.0.
-# files-output=no
+files-output=no
 
 # Tells whether to display a full report or only the messages
 reports=no
@@ -122,61 +122,61 @@ property-classes=abc.abstractproperty
 function-rgx=[a-z_]([a-z0-9_]{0,30})$
 
 # Naming hint for function names
-# function-name-hint=[a-z_]([a-z0-9_]{0,30})$
+function-name-hint=[a-z_]([a-z0-9_]{0,30})$
 
 # Regular expression matching correct variable names
 variable-rgx=[a-z_]([a-z0-9_]{0,30})$
 
 # Naming hint for variable names
-# variable-name-hint=[a-z_]([a-z0-9_]{0,30})$
+variable-name-hint=[a-z_]([a-z0-9_]{0,30})$
 
 # Regular expression matching correct constant names
 const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
 
 # Naming hint for constant names
-# const-name-hint=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+const-name-hint=(([A-Z_][A-Z0-9_]*)|(__.*__))$
 
 # Regular expression matching correct attribute names
 attr-rgx=[a-z_]([a-z0-9_]{0,30})$
 
 # Naming hint for attribute names
-# attr-name-hint=[a-z_]([a-z0-9_]{0,30})$
+attr-name-hint=[a-z_]([a-z0-9_]{0,30})$
 
 # Regular expression matching correct argument names
 argument-rgx=[a-z_]([a-z0-9_]{0,30})$
 
 # Naming hint for argument names
-# argument-name-hint=[a-z_]([a-z0-9_]{0,30})$
+argument-name-hint=[a-z_]([a-z0-9_]{0,30})$
 
 # Regular expression matching correct class attribute names
 class-attribute-rgx=([A-Za-z_]([A-Za-z0-9_]{0,30})|(__.*__))$
 
 # Naming hint for class attribute names
-# class-attribute-name-hint=([A-Za-z_]([A-Za-z0-9_]{0,30})|(__.*__))$
+class-attribute-name-hint=([A-Za-z_]([A-Za-z0-9_]{0,30})|(__.*__))$
 
 # Regular expression matching correct inline iteration names
 inlinevar-rgx=[A-Za-z_][A-Za-z0-9_]*$
 
 # Naming hint for inline iteration names
-# inlinevar-name-hint=[A-Za-z_][A-Za-z0-9_]*$
+inlinevar-name-hint=[A-Za-z_][A-Za-z0-9_]*$
 
 # Regular expression matching correct class names
 class-rgx=[A-Z_][a-zA-Z0-9]+$
 
 # Naming hint for class names
-# class-name-hint=[A-Z_][a-zA-Z0-9]+$
+class-name-hint=[A-Z_][a-zA-Z0-9]+$
 
 # Regular expression matching correct module names
 module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 
 # Naming hint for module names
-# module-name-hint=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
+module-name-hint=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 
 # Regular expression matching correct method names
 method-rgx=[a-z_]([a-z0-9_]{0,30})$
 
 # Naming hint for method names
-# method-name-hint=[a-z_]([a-z0-9_]{0,30})$
+method-name-hint=[a-z_]([a-z0-9_]{0,30})$
 
 # Regular expression which should only match function or class names that do
 # not require a docstring.
@@ -209,7 +209,7 @@ single-line-if-stmt=no
 # separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
 # `trailing-comma` allows a space between comma and closing bracket: (a, ).
 # `empty-line` allows space-only lines.
-# no-space-check=trailing-comma,dict-separator
+no-space-check=trailing-comma,dict-separator
 
 # Maximum number of lines in a module
 max-module-lines=1000
@@ -385,4 +385,4 @@ analyse-fallback-blocks=no
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=builtins.Exception
+overgeneral-exceptions=Exception

@@ -32,7 +32,6 @@ from .utils import (
     parse_scatter_inputs,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

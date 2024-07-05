@@ -26,7 +26,6 @@ from fiftyone.operators.operations import Operations
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -372,7 +371,7 @@ async def resolve_type(registry, operator_uri, request_params):
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
         )
-    except Exception:
+    except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
 
@@ -417,7 +416,7 @@ async def resolve_execution_options(registry, operator_uri, request_params):
     await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_execution_options(ctx)
-    except Exception:
+    except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
 

@@ -14,7 +14,6 @@ from bson import ObjectId
 
 import fiftyone.core.utils as fou
 
-
 _MASK_CLASSES = {"Detection", "Heatmap", "Segmentation"}
 
 

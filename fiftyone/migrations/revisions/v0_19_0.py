@@ -11,7 +11,6 @@ from datetime import datetime
 
 from bson import ObjectId
 
-
 logger = logging.getLogger(__name__)
 
 

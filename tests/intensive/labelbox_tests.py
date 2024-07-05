@@ -19,7 +19,6 @@ import fiftyone as fo
 import fiftyone.utils.labelbox as foul
 import fiftyone.zoo as foz
 
-
 _anno_key = "anno_key"
 
 

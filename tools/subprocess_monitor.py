@@ -12,7 +12,6 @@ import sys
 
 import psutil
 
-
 _format_cache = {}
 
 

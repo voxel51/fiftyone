@@ -19,7 +19,6 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-
 logger = logging.getLogger(__name__)
 
 

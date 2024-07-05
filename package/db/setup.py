@@ -19,7 +19,6 @@ from urllib.request import urlopen
 from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
-
 DARWIN = "Darwin"
 DARWIN_DOWNLOADS = {
     "arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.2.tgz",

@@ -20,7 +20,6 @@ from fiftyone.operators.executor import (
     resolve_type_with_context,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

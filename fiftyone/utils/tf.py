@@ -23,10 +23,8 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-
 fou.ensure_tf(eager=True)
 import tensorflow as tf
-
 
 logger = logging.getLogger(__name__)
 

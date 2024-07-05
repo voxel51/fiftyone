@@ -33,7 +33,6 @@ from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.fields import EmbeddedDocumentField, ListField
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 
-
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")

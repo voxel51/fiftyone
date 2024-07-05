@@ -25,7 +25,6 @@ import fiftyone.core.media as fom
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
-
 logger = logging.getLogger(__name__)
 
 _ADDITIONAL_MEDIA_FIELDS = {

@@ -25,7 +25,6 @@ from .utils import (
     validate_fields_match,
 )
 
-
 fod = fou.lazy_import("fiftyone.core.dataset")
 fog = fou.lazy_import("fiftyone.core.groups")
 

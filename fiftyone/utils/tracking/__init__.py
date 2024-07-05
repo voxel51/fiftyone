@@ -9,7 +9,6 @@ import types
 
 from .deepsort import *
 
-
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
     k

@@ -10,7 +10,6 @@ import eta.core.utils as etau
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-
 foc = fou.lazy_import("fiftyone.core.collections")
 fov = fou.lazy_import("fiftyone.core.video")
 

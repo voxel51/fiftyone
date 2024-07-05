@@ -18,7 +18,6 @@ import fiftyone.constants as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
-
 logger = logging.getLogger(__name__)
 
 

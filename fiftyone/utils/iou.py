@@ -20,7 +20,6 @@ import fiftyone.core.validation as fov
 
 from .utils3d import compute_cuboid_iou
 
-
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
 

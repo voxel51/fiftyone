@@ -15,7 +15,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-
 pyproj = fou.lazy_import("pyproj")
 rasterio = fou.lazy_import(
     "rasterio", callback=lambda: fou.ensure_package("rasterio")

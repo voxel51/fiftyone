@@ -15,7 +15,6 @@ import eta.core.logging as etal
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-
 logger = logging.getLogger(__name__)
 
 

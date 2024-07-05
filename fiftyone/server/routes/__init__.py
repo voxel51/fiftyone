@@ -22,7 +22,6 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
-
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     EmbeddingsRoutes

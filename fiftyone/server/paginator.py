@@ -17,7 +17,6 @@ from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
 from fiftyone.server.utils import from_dict
 
-
 C = t.TypeVar("C")
 
 

@@ -7,7 +7,7 @@ Dataset runs framework.
 """
 import datetime
 import logging
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -17,7 +17,6 @@ import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
-
 
 logger = logging.getLogger(__name__)
 

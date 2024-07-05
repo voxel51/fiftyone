@@ -15,7 +15,6 @@ import psutil
 import requests
 import retrying
 
-
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 os.environ["FIFTYONE_DATABASE_ADMIN"] = "true"
 os.environ["FIFTYONE_DO_NOT_TRACK"] = "true"
@@ -23,7 +22,6 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
-
 
 MONGOD_EXE_NAME = fos.DatabaseService.MONGOD_EXE_NAME
 

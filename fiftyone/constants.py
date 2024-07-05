@@ -12,7 +12,6 @@ from importlib.metadata import metadata
 
 from packaging.version import Version
 
-
 CLIENT_TYPE = "fiftyone"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -19,7 +19,6 @@ import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 from fiftyone.core.sample import Sample
 
-
 logger = logging.getLogger(__name__)
 
 

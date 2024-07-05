@@ -29,7 +29,6 @@ import fiftyone.types as fot
 from fiftyone.core.config import Config
 from fiftyone.core.sample import Sample
 
-
 hfh = fou.lazy_import(
     "huggingface_hub",
     callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),

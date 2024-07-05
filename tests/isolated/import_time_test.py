@@ -8,7 +8,6 @@ Test that fiftyone can be imported in a reasonable amount of time.
 import time
 import warnings
 
-
 # TODO: decrease these once the DB service is started on-demand?
 IMPORT_WARN_THRESHOLD = 3
 

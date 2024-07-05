@@ -22,11 +22,6 @@ repos:
         entry: pylint
         args: ["--errors-only"]
         exclude: ^(docs/theme/|app/)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.0
-    hooks:
-      - id: ruff
-        args: ["--select", "I"]
   - repo: local
     hooks:
       - id: ipynb-strip

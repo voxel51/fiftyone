@@ -57,7 +57,6 @@ import fiftyone.core.storage as fos
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, NoDatasetMixin, get_default_fields
 
-
 # Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
 

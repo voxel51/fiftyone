@@ -25,7 +25,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-
 tud = fou.lazy_import("torch.utils.data")
 
 foue = fou.lazy_import("fiftyone.utils.eta")

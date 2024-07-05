@@ -8,7 +8,6 @@ FiftyOne v0.20.0 revision.
 import gridfs
 from bson import json_util
 
-
 _OLD_SKLEARN_CONFIG_CLS = "fiftyone.brain.similarity.SimilarityConfig"
 _OLD_SKLEARN_RESULTS_CLS = "fiftyone.brain.similarity.SimilarityResults"
 

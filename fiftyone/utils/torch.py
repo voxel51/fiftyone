@@ -26,13 +26,11 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 
-
 fou.ensure_torch()
 import torch
 import torchvision
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as F
-
 
 logger = logging.getLogger(__name__)
 

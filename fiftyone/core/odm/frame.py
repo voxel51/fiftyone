@@ -7,6 +7,7 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 """
 from collections import OrderedDict
 
+from bson import ObjectId
 
 import fiftyone.core.fields as fof
 

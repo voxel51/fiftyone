@@ -18,13 +18,11 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
-
 fou.ensure_torch()
 import torch
 
 from .model import build_model
 from .tokenizer import SimpleTokenizer
-
 
 logger = logging.getLogger(__name__)
 

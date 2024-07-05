@@ -13,7 +13,6 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-
 VERSION = "0.24.1"
 
 

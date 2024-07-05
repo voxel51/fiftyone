@@ -49,7 +49,6 @@ from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
-
 ID = gql.scalar(
     t.NewType("ID", str),
     serialize=lambda v: str(v),
@@ -548,7 +547,7 @@ class Query(fosa.AggregateQuery):
                 field_schema=serialize_fields(ds.get_field_schema(flat=True)),
                 frame_field_schema=[],
             )
-        except Exception:
+        except Exception as e:
             return SchemaResult(
                 field_schema=[],
                 frame_field_schema=[],

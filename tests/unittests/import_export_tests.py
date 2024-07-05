@@ -26,7 +26,6 @@ import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 
-
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )

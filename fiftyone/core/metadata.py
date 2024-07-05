@@ -23,7 +23,6 @@ import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 from fiftyone.core.odm import DynamicEmbeddedDocument
 
-
 logger = logging.getLogger(__name__)
 
 

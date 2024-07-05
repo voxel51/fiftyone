@@ -14,10 +14,8 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
-
 fou.ensure_torch()
 import torch
-
 
 sam = fou.lazy_import("segment_anything")
 

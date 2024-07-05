@@ -21,7 +21,6 @@ import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
 from fiftyone.core.utils import lazy_import, run_sync_task
 
-
 fop = lazy_import("fiftyone.core.plots.plotly")
 
 

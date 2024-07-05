@@ -28,7 +28,6 @@ from fiftyone.core.session.events import (
     dict_factory,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

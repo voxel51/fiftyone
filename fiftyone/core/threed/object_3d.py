@@ -23,7 +23,6 @@ from .transformation import (
 )
 from .utils import FO3D_VERSION_KEY
 
-
 threed = fou.lazy_import("fiftyone.core.threed")
 
 

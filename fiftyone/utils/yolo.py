@@ -18,7 +18,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
-
 logger = logging.getLogger(__name__)
 
 

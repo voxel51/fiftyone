@@ -17,7 +17,6 @@ import fiftyone.types as fot
 from .exporters import build_dataset_exporter
 from .importers import build_dataset_importer
 
-
 logger = logging.getLogger(__name__)
 
 

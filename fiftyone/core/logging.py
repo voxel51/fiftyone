@@ -10,7 +10,6 @@ import sys
 
 import fiftyone as fo
 
-
 logger = logging.getLogger(__name__)
 handler = None
 

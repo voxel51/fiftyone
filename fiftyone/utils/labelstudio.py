@@ -26,7 +26,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
-
 ls = fou.lazy_import(
     "label_studio_sdk",
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),

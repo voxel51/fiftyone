@@ -7,7 +7,6 @@ Sample media utilities.
 """
 import eta.core.video as etav
 
-
 # Valid media types
 VIDEO = "video"
 IMAGE = "image"

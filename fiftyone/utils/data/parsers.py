@@ -15,6 +15,7 @@ import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui

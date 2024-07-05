@@ -36,9 +36,9 @@ from copy import deepcopy
 from datetime import date, datetime
 from xml.parsers.expat import ExpatError
 
-from bson import json_util
+from bson import ObjectId, json_util
+from bson.errors import InvalidId
 from matplotlib import colors as mcolors
-
 
 try:
     import pprintpp as _pprint
@@ -66,7 +66,6 @@ import xmltodict
 
 import fiftyone as fo
 import fiftyone.core.context as foc
-
 
 logger = logging.getLogger(__name__)
 

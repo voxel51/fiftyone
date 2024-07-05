@@ -30,7 +30,6 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 
-
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")

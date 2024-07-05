@@ -27,7 +27,6 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.image as foui
 
-
 logger = logging.getLogger(__name__)
 
 

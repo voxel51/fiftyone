@@ -17,7 +17,6 @@ from dacite.data import Data
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 
-
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
 _dacite_config = Config(check_types=False)
 

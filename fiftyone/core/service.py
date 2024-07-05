@@ -20,7 +20,6 @@ import fiftyone.core.config as focn
 import fiftyone.core.context as focx
 import fiftyone.service.util as fosu
 
-
 logger = logging.getLogger(__name__)
 
 

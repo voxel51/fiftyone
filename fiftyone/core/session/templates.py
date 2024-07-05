@@ -7,7 +7,6 @@ Notebook Session HTML templates
 """
 from jinja2 import Template
 
-
 SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 

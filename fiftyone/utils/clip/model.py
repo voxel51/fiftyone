@@ -12,7 +12,6 @@ import numpy as np
 
 import fiftyone.core.utils as fou
 
-
 fou.ensure_torch()
 import torch
 import torch.nn.functional as F
@@ -572,7 +571,7 @@ def build_model(state_dict: dict):
         set(
             k.split(".")[2]
             for k in state_dict
-            if k.startswith("transformer.resblocks")
+            if k.startswith(f"transformer.resblocks")
         )
     )
 

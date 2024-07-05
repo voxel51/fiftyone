@@ -42,9 +42,8 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.migrations as fomi
-from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.odm.dataset import DatasetAppConfig, SampleFieldDocument
 from fiftyone.core.singletons import DatasetSingleton
-
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")

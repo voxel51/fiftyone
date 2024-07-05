@@ -15,6 +15,7 @@ import posixpath
 import re
 import shutil
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime
 
 import eta.core.serial as etas
@@ -25,7 +26,6 @@ import yaml
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 

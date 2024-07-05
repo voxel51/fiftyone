@@ -24,7 +24,6 @@ import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-
 logger = logging.getLogger(__name__)
 
 

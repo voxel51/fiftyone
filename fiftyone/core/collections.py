@@ -9,6 +9,7 @@ Interface for sample collections.
 import fnmatch
 import itertools
 import logging
+import numbers
 import os
 import random
 import string
@@ -39,7 +40,6 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 from fiftyone.core.expressions import ViewField as F
-
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")

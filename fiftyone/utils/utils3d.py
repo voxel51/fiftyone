@@ -28,7 +28,6 @@ from fiftyone.core.odm import DynamicEmbeddedDocument
 from fiftyone.core.sample import Sample
 from fiftyone.core.threed import PerspectiveCamera, PointCloud, Scene
 
-
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
 

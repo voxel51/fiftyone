@@ -8,7 +8,6 @@ import yaml
 import fiftyone as fo
 import fiftyone.plugins as fop
 
-
 _DEFAULT_TEST_PLUGINS = ["test-plugin1", "test-plugin2"]
 _DEFAULT_APP_CONFIG = {}
 _REQUIRED_YML_KEYS = ["name", "label", "version"]

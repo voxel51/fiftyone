@@ -11,6 +11,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.media as fom
 import fiftyone.server.constants as foc
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route

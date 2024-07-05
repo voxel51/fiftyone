@@ -26,7 +26,6 @@ from fiftyone.service.util import (
     send_ipc_message,
 )
 
-
 current_process = psutil.Process()
 
 

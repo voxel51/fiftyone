@@ -19,7 +19,6 @@ from fiftyone.core.expressions import ViewField as F
 
 from .base import InteractivePlot, ResponsivePlot, ViewPlot
 
-
 logger = logging.getLogger(__name__)
 
 

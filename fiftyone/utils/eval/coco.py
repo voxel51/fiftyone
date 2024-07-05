@@ -20,7 +20,6 @@ from .detection import (
     DetectionResults,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

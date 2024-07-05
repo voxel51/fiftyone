@@ -12,8 +12,10 @@ from starlette.requests import Request
 import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.view as fov
 import fiftyone.server.tags as fost
 import fiftyone.server.utils as fosu
+import fiftyone.server.view as fosv
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter

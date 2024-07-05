@@ -5,6 +5,8 @@ FiftyOne quickstart.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fiftyone as fo
+import fiftyone.core.context as focx
 import fiftyone.core.session as fos
 import fiftyone.zoo.datasets as fozd
 

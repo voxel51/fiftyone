@@ -19,7 +19,6 @@ from eta.core.config import ConfigError
 import fiftyone as fo
 import fiftyone.core.models as fom
 
-
 logger = logging.getLogger(__name__)
 
 

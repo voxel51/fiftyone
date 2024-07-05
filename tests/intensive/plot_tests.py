@@ -19,7 +19,6 @@ import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 
-
 ###############################################################################
 # scatterplot()
 ###############################################################################

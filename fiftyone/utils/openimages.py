@@ -13,6 +13,7 @@ import os
 import random
 import warnings
 from collections import defaultdict
+from glob import glob
 
 import eta.core.image as etai
 import eta.core.serial as etas
@@ -26,7 +27,6 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
-
 
 logger = logging.getLogger(__name__)
 

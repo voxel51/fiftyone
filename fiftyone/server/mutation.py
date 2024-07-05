@@ -16,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.session.events as fose
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.core.state import build_color_scheme
 from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
@@ -29,7 +30,6 @@ from fiftyone.server.query import (
 )
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.view import get_view
-
 
 _CONVERSION_STAGES = {
     fos.ToClips,

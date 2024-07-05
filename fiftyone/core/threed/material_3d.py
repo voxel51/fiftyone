@@ -18,7 +18,6 @@ from .validators import (
     validate_float,
 )
 
-
 threed = fou.lazy_import("fiftyone.core.threed")
 
 COLOR_DEFAULT_GRAY = "#808080"

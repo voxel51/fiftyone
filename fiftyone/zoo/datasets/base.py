@@ -30,7 +30,6 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
-
 logger = logging.getLogger(__name__)
 
 

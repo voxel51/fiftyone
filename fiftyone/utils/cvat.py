@@ -41,7 +41,6 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.video as fouv
 from fiftyone.core.sample import Sample
 
-
 logger = logging.getLogger(__name__)
 
 

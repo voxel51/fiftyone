@@ -16,7 +16,6 @@ import fiftyone.core.utils as fou
 from fiftyone.plugins.core import PLUGIN_METADATA_FILENAMES
 from fiftyone.utils.github import GitHubRepository
 
-
 logger = logging.getLogger(__name__)
 
 

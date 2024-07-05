@@ -26,7 +26,6 @@ from fiftyone.core.odm.dataset import ColorScheme
 from fiftyone.core.odm.workspace import Space
 from fiftyone.server.scalars import JSON
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -157,7 +156,7 @@ class StateDescription(etas.Serializable):
             if view_name:
                 try:
                     view = dataset.load_saved_view(view_name)
-                except Exception:
+                except Exception as e:
                     dataset.reload()
                     view = dataset.load_saved_view(view_name)
 

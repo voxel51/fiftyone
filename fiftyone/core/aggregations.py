@@ -19,12 +19,12 @@ from mongoengine.base import get_document
 
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
-
 
 logger = logging.getLogger(__name__)
 

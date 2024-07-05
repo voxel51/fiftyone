@@ -9,7 +9,6 @@ import types
 
 from .session import Session, close_app, launch_app
 
-
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
     k

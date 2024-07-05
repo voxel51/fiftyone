@@ -26,7 +26,6 @@ import numpy as np
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 
-
 _IMAGE_MODELS = (
     etal.ImageModel,
     etal.ImageClassifier,

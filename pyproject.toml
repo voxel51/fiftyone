@@ -8,9 +8,3 @@ exclude = '''
   | \.git
 )/
 '''
-
-[tool.ruff]
-line-length = 79
-
-[tool.ruff.lint.isort]
-lines-after-imports = 2

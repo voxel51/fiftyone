@@ -29,7 +29,6 @@ import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
 from fiftyone.core.expressions import ViewField as F
 
-
 logger = logging.getLogger(__name__)
 
 

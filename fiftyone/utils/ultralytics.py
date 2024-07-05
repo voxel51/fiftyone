@@ -15,10 +15,10 @@ from PIL import Image
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
+import fiftyone.zoo as foz
 import fiftyone.zoo.models as fozm
 from fiftyone.core.config import Config
 from fiftyone.core.models import Model
-
 
 ultralytics = fou.lazy_import("ultralytics")
 
