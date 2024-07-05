@@ -6,6 +6,7 @@ A script that sets up and tears down a session. For use by session tests.
 |
 """
 import argparse
+import sys
 
 import fiftyone as fo
 

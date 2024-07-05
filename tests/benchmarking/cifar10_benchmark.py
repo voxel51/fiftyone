@@ -8,6 +8,7 @@ Results are appended to `cifar10_benchmark.log`.
 |
 """
 import os
+import pathlib
 import random
 import subprocess
 import time

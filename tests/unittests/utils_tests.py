@@ -5,6 +5,7 @@ FiftyOne utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 

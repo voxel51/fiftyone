@@ -11,8 +11,10 @@ You must run these tests interactively as follows::
 """
 import os
 import unittest
+from collections import defaultdict
 
 import eta.core.utils as etau
+import numpy as np
 from bson import ObjectId
 
 import fiftyone as fo

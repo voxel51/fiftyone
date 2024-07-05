@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 
+import fiftyone as fo
 import fiftyone.core.session.session as fos
 
 

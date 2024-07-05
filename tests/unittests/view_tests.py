@@ -15,6 +15,7 @@ from bson import ObjectId
 from decorators import drop_datasets, skip_windows
 
 import fiftyone as fo
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov

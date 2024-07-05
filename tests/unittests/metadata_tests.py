@@ -5,6 +5,7 @@ FiftyOne metadata unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import json
 import os
 import tempfile
 import unittest

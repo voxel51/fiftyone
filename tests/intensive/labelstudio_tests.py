@@ -588,7 +588,7 @@ def test_annotate_multiple_fields(backend_config, setup):
     dataset.annotate(
         anno_key,
         label_schema=label_schema,
-        project_name="labelstudio_multi-field_tests",
+        project_name=f"labelstudio_multi-field_tests",
         backend="labelstudio",
         **backend_config,
     )
