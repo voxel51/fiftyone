@@ -325,7 +325,6 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
-      unlisted: true,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -781,7 +780,11 @@ class ClearSelectedLabels extends Operator {
 
 class SetSpaces extends Operator {
   get config(): OperatorConfig {
-    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+    return new OperatorConfig({
+      name: "set_spaces",
+      label: "Set spaces",
+      unlisted: true,
+    });
   }
   useHooks() {
     const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
@@ -797,10 +800,6 @@ class SetSpaces extends Operator {
       throw new Error('Param "spaces" or "name" is required to set a space');
     }
   }
-}
-
-function usePanelStateForContext(ctx: ExecutionContext) {
-  return usePanelState(ctx.getCurrentPanelId());
 }
 
 class ClearPanelState extends Operator {
