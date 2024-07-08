@@ -243,9 +243,7 @@ class ModalAsserter {
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    const count = await action.first().textContent();
-
-    expect(count).toBe(String(n));
+    await expect(action.first()).toHaveText(String(n));
   }
 
   async verifyCarouselLength(expectedCount: number) {

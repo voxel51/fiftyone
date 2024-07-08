@@ -95,8 +95,7 @@ class GridAsserter {
 
   async isNthSampleSelected(n: number) {
     const checkbox = await this.gridPom.getNthCheckbox(n);
-    const isChecked = await checkbox.isChecked();
-    expect(isChecked).toBe(true);
+    await expect(checkbox).toBeChecked();
   }
 
   async nthSampleHasTagValue(
@@ -120,9 +119,7 @@ class GridAsserter {
       return;
     }
 
-    const count = await action.first().textContent();
-
-    expect(count).toBe(String(n));
+    await expect(action.first()).toHaveText(String(n));
   }
 
   async isEntryCountTextEqualTo(text: string) {

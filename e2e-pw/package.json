@@ -22,7 +22,7 @@
         "wait-on": "^7.2.0"
     },
     "scripts": {
-        "lint": "bash -c 'set +e; eslint; set -e; tsc --skipLibCheck --noImplicitAny --sourceMap false'",
+        "lint": "bash -c 'set +e; eslint ./src; set -e; tsc --skipLibCheck --noImplicitAny --sourceMap false'",
         "unittests": "vitest",
         "check-flaky": "./scripts/check-flaky.sh",
         "kill-port": "./scripts/kill-port.sh",
