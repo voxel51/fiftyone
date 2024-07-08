@@ -6,14 +6,14 @@ ARG TEAMS_IMAGE_NAME
 FROM ${TEAMS_IMAGE_NAME} as wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels torchvision==0.14.1 torch==1.13.1
+RUN pip wheel --wheel-dir=/tmp/wheels torchvision torch
 
 
 FROM ${TEAMS_IMAGE_NAME} as torchrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels torchvision==0.14.1 torch==1.13.1 \
+    --find-links=/wheelhouse/tmp/wheels torchvision torch \
     && mkdir -p "${HOME}/fiftyone/__models__"
 
 # You must download the `__models__` directory first:
