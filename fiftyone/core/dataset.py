@@ -152,12 +152,13 @@ def load_dataset(name, create_if_necessary=False):
     Returns:
         a :class:`Dataset`
     """
-    if dataset_exists(name):
-        return Dataset(name, _create=False)
-    elif create_if_necessary:
-        return Dataset(name)
-    else:
-        raise DatasetNotFoundError(name)
+    try:
+        return Dataset(name, _create=create_if_necessary)
+    except DatasetNotFoundError as ex:
+        if create_if_necessary:
+            return Dataset(name)
+        else:
+            raise ex
 
 
 def get_default_dataset_name():
