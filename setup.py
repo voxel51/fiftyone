@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "matplotlib",
     "mongoengine==0.24.2",
     "motor>=2.5",
-    "numpy",
+    "numpy<2",
     "packaging",
     "pandas",
     "Pillow>=6.2",
