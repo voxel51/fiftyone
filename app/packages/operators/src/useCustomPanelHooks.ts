@@ -82,13 +82,19 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   }, [panelStateLocal?.loaded]);
 
   const onLoad = useCallback(() => {
-    if (props.onLoad) {
-      executeOperator(props.onLoad, {
-        panel_id: panelId,
-        panel_state: panelState?.state,
-      });
+    if (props.onLoad && !isLoaded) {
+      executeOperator(
+        props.onLoad,
+        { panel_id: panelId, panel_state: panelState?.state },
+        {
+          callback(result) {
+            const { error: onLoadError } = result;
+            setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
+          },
+        }
+      );
     }
-  }, [props.onLoad, panelId, panelState?.state]);
+  }, [props.onLoad, panelId, panelState?.state, isLoaded, setPanelStateLocal]);
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
@@ -131,19 +137,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   );
 
   useEffect(() => {
-    if (props.onLoad && !isLoaded) {
-      executeOperator(
-        props.onLoad,
-        { panel_id: panelId },
-        {
-          callback(result) {
-            const { error: onLoadError } = result;
-            setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
-          },
-        }
-      );
-    }
-
+    onLoad();
     return () => {
       if (props.onUnLoad)
         executeOperator(props.onUnLoad, { panel_id: panelId });

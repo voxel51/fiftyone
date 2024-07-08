@@ -337,7 +337,19 @@ class Object(BaseType):
         return obj
 
     def dashboard(self, name, **kwargs):
-        """Defines a dashboard view as a :class:`View`."""
+        """Defines a dashboard view as a :class:`View`.
+
+        Args:
+            name: the name of the property
+            layout (None): the layout of the dashboard
+            on_layout_change (None): event handler for layout change
+            on_close_item (None): event handler for item close
+
+        Returns:
+            an :class:`Object`
+
+        See :class:`DashboardView` for more information.
+        """
         dashboard = DashboardView(**kwargs)
         obj = Object()
         self.define_property(name, obj, view=dashboard)
@@ -350,6 +362,8 @@ class Object(BaseType):
             name: the name of the property
             config (None): the chart config
             layout (None): the chart layout
+
+        See :class:`PlotlyView` for more information.
         """
         plot = PlotlyView(**kwargs)
         obj = Object()
@@ -2003,7 +2017,13 @@ class GridView(View):
 
 
 class DashboardView(View):
-    """Defines a Dashboard view."""
+    """Defines a Dashboard view.
+
+    Args:
+        layout (None): the layout of the dashboard.
+        on_layout_change (None): event triggered when the layout changes
+        on_close_item (None): event triggered when an item is closed
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
