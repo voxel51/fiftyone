@@ -336,6 +336,13 @@ class Object(BaseType):
         self.define_property(name, obj, view=grid)
         return obj
 
+    def dashboard(self, name, **kwargs):
+        """Defines a dashboard view as a :class:`View`."""
+        dashboard = DashboardView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=dashboard)
+        return obj
+
     def plot(self, name, **kwargs):
         """Defines an object property displayed as a plot.
 
@@ -1993,6 +2000,13 @@ class GridView(View):
             "align_x": self.align_x,
             "align_y": self.align_y,
         }
+
+
+class DashboardView(View):
+    """Defines a Dashboard view."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class DrawerView(View):

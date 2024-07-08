@@ -32,6 +32,7 @@
         "react-draggable": "^4.4.5",
         "react-error-boundary": "^3.1.4",
         "react-file-drop": "^3.1.6",
+        "react-grid-layout": "^1.4.4",
         "react-hotkeys": "^2.0.0",
         "react-input-autosize": "^3.0.0",
         "react-is": "^17.0.1",
