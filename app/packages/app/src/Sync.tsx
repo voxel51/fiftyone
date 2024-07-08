@@ -107,6 +107,7 @@ const dispatchSideEffect = ({
 
   session.selectedLabels = [];
   session.selectedSamples = new Set();
+  session.sessionSampleId = nextEntry.state.modalSelector;
 
   const currentDataset: string | undefined =
     // @ts-ignore

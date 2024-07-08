@@ -1,50 +1,71 @@
+import type { Lookers } from "@fiftyone/state";
+
 import { subscribe } from "@fiftyone/relay";
-import Spotlight, { PageChange } from "@fiftyone/spotlight";
+import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { Lookers } from "@fiftyone/state";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  atom,
   useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import { v4 as uuid } from "uuid";
 import useSpotlightPager from "../../useSpotlightPager";
-import { pixels, spotlightLooker } from "./Grid.module.css";
-import { gridCrop, gridPage, pageParameters } from "./recoil";
+import {
+  gridAt,
+  gridCrop,
+  gridPage,
+  gridSpacing,
+  pageParameters,
+} from "./recoil";
 import useRefreshers from "./useRefreshers";
+import useSelect from "./useSelect";
 import useThreshold from "./useThreshold";
 
-export const tileAtom = atom({
-  key: "tileAtom",
-  default: 3,
-});
+import { pixels, spotlightLooker } from "./Grid.module.css";
+import useSelectSample from "./useSelectSample";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-  const { page, store, records } = useSpotlightPager(pageParameters, gridCrop);
+  const { page, store } = useSpotlightPager(pageParameters, gridCrop);
   const lookerOptions = fos.useLookerOptions(false);
   const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
 
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
-  const getPage = useRecoilCallback(
+  const getAt = useRecoilCallback(
     ({ snapshot }) =>
-      () =>
-        snapshot.getLoadable(gridPage).getValue(),
+      () => {
+        return {
+          at: snapshot.getLoadable(gridAt).getValue(),
+          key: snapshot.getLoadable(gridPage).getValue(),
+        };
+      },
     []
   );
+  const [resizing, setResizing] = useState(false);
 
   const refreshers = useRefreshers();
-  const setPage = useSetRecoilState(gridPage);
+  const setAt = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      ({ page, at }: { page: number; at: symbol }) => {
+        set(gridPage, page);
+        set(gridAt, at.description);
+      },
+    []
+  );
   const setSample = fos.useExpandSample(store);
   const threshold = useThreshold();
-  const tile = useRecoilValue(tileAtom);
+  const spacing = useRecoilValue(gridSpacing);
+  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
 
   const spotlight = useMemo(() => {
     refreshers;
+    if (resizing) {
+      return undefined;
+    }
+
     return new Spotlight<number, fos.Sample>({
-      key: getPage(),
+      ...getAt(),
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
@@ -64,47 +85,86 @@ function Grid() {
 
         const init = (l) => {
           l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current(detail);
+            selectSample.current(store, detail);
           });
           lookerStore.set(id, l);
           l.attach(element, dimensions);
         };
 
         if (!soft) {
-          init(createLooker.current(result));
+          init(createLooker.current({ ...result, symbol: id }));
         }
       },
       scrollbar: true,
-      spacing: tile,
+      spacing,
     });
   }, [
     createLooker,
-    getPage,
+    getAt,
     lookerStore,
     page,
     refreshers,
+    resizing,
     setSample,
+    spacing,
     store,
     threshold,
-    tile,
   ]);
+  selectSample.current = useSelectSample();
+  useSelect(lookerOptions, lookerStore, spotlight);
 
   useEffect(() => {
+    if (resizing) {
+      return undefined;
+    }
+
     const element = document.getElementById(id);
-    const pagechange = (e: PageChange<number>) => setPage(e.page);
 
     spotlight.attach(element);
-    spotlight.addEventListener("pagechange", pagechange);
+    spotlight.addEventListener("rowchange", setAt);
     spotlight.addEventListener("load", () => element.classList.remove(pixels));
 
     return () => {
-      spotlight.removeEventListener("pagechange", pagechange);
+      spotlight.removeEventListener("rowchange", setAt);
+
       spotlight.destroy();
       element?.classList.add(pixels);
     };
-  }, [id, setPage, spotlight]);
+  }, [id, resizing, setAt, spotlight]);
 
   useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
+
+  useEffect(() => {
+    let width: number = undefined;
+    let timeout: ReturnType<typeof setTimeout> = undefined;
+    const el = () => document.getElementById(id).parentElement;
+    const observer = new ResizeObserver(() => {
+      if (width === undefined) {
+        width = el().getBoundingClientRect().width;
+        return;
+      }
+
+      const newWidth = el().getBoundingClientRect().width;
+      if (newWidth === width) {
+        return;
+      }
+
+      setResizing(true);
+      timeout && clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = undefined;
+        width = el().getBoundingClientRect().width;
+
+        setResizing(false);
+      }, 500);
+    });
+
+    observer.observe(el());
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [id]);
 
   return (
     <div

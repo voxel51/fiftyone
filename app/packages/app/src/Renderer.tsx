@@ -70,7 +70,7 @@ const Renderer = () => {
 
   const init = useCallback(
     (result: Entry<Queries>) => {
-      setModalState({}).then(() => apply(result));
+      setModalState().then(() => apply(result));
     },
     [apply, setModalState]
   );

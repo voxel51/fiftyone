@@ -14,7 +14,7 @@ export default class Row<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
-  readonly #width: () => number;
+  readonly #width: number;
 
   constructor({
     config,
@@ -28,8 +28,8 @@ export default class Row<K, V> {
     focus: Focus;
     from: number;
     items: ItemData<K, V>[];
-    next: (from: number) => Promise<symbol | undefined>;
-    width: () => number;
+    next: (from: number, soft?: boolean) => Promise<symbol | undefined>;
+    width: number;
   }) {
     this.#config = config;
     this.#container.classList.add(styles.spotlightRow);
@@ -110,7 +110,16 @@ export default class Row<K, V> {
   }
 
   get width() {
-    return this.#width();
+    return this.#width;
+  }
+
+  has(item: string) {
+    for (const i of this.#row) {
+      if (i.item.id.description === item) {
+        return true;
+      }
+    }
+    return false;
   }
 
   hide(): void {

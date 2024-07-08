@@ -29,7 +29,7 @@ export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
       async ({
         event,
         item,
-        next,
+        next: cursor,
       }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
@@ -79,12 +79,31 @@ export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
           return { id: id.description, groupId, groupByFieldValue };
         };
 
+        const next = async () => {
+          return {
+            hasNext: Boolean(await cursor(2, true)),
+            hasPrevious: true,
+            ...(await iter(cursor(1))),
+          };
+        };
+
+        const previous = async () => {
+          return {
+            hasNext: true,
+            hasPrevious: Boolean(await cursor(-2, true)),
+            ...(await iter(cursor(-1))),
+          };
+        };
+
+        const hasNext = Boolean(await cursor(1, true));
+        const hasPrevious = Boolean(await cursor(-1, true));
+
         setModalState({
-          next: () => iter(next(1)),
-          previous: () => iter(next(-1)),
+          next,
+          previous,
         })
           .then(() => iter(Promise.resolve(item.id)))
-          .then((data) => setExpandedSample(data));
+          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
       },
     [setExpandedSample, setModalState]
   );

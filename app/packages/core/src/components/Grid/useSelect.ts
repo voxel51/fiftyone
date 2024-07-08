@@ -1,4 +1,4 @@
-import Spotlight from "@fiftyone/spotlight";
+import type Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
@@ -6,7 +6,7 @@ import { useRecoilValue } from "recoil";
 export default function useSelect(
   options: ReturnType<typeof fos.useLookerOptions>,
   store: WeakMap<symbol, fos.Lookers>,
-  spotlight: Spotlight<number, fos.Sample>
+  spotlight?: Spotlight<number, fos.Sample>
 ) {
   const { init, deferred } = fos.useDeferrer();
 
@@ -25,5 +25,6 @@ export default function useSelect(
   useEffect(() => {
     return spotlight ? init() : undefined;
   }, [spotlight, init]);
+
   return;
 }

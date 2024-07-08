@@ -9,7 +9,7 @@ import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
-import { sessionAtom } from "../session";
+import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
 import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
@@ -98,10 +98,6 @@ type ModalSampleResponse = ResponseFrom<mainSampleQuery> & {
   sample: ModalSample;
 };
 
-type ModalSelector = {
-  id: string;
-};
-
 export const currentModalSample = sessionAtom({
   key: "sessionSampleId",
   default: null,
@@ -112,12 +108,12 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => Boolean(get(currentModalSample)),
 });
 
-export type ModalNavigation = () => Promise<ModalSelector>;
+export type ModalNavigation = {
+  next: () => Promise<ModalSelector>;
+  previous: () => Promise<ModalSelector>;
+};
 
-export const currentModalNavigation = atom<{
-  next?: ModalNavigation;
-  previous?: ModalNavigation;
-}>({
+export const currentModalNavigation = atom<ModalNavigation>({
   key: "currentModalNavigation",
   default: null,
 });

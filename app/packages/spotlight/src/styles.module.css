@@ -13,9 +13,8 @@
   --dark-color: var(--fo-palette-background-level2);
 }
 
-.spotlight.scrollbar::-webkit-scrollbar,
-.spotlight.scrollbar {
-  scrollbar-width: 14px !important;
+.spotlight.scrollbar::-webkit-scrollbar {
+  width: 14px;
 }
 
 .spotlight.scrollbar::-webkit-scrollbar-track {
@@ -31,6 +30,7 @@
 .spotlightSection {
   position: absolute;
   display: block;
+  padding-left: 14px;
   width: 100%;
 }
 

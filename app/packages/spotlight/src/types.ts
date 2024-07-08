@@ -42,7 +42,7 @@ export type Request<K, V> = (key: K) => Promise<{
 export interface ItemClickInterface<K, V> {
   event: MouseEvent;
   item: ItemData<K, V>;
-  next: (from: number) => Promise<symbol | undefined>;
+  next: (from: number, soft?: boolean) => Promise<symbol | undefined>;
 }
 
 export type ItemClick<K, V> = (
@@ -51,8 +51,8 @@ export type ItemClick<K, V> = (
 
 export interface SpotlightConfig<K, V> {
   get: Get<K, V>;
+  at: string;
   key: K;
-  margin?: number;
   offset?: number;
   onItemClick?: ItemClick<K, V>;
   render: Render;

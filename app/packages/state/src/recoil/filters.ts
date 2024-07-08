@@ -4,7 +4,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { atom, DefaultValue, selector, selectorFamily } from "recoil";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
 import { lightning, lightningPaths } from "./lightning";
 import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
@@ -30,10 +30,18 @@ export const filters = (() => {
         if (data.id !== previous?.id) {
           current = {};
         }
+
         return current;
       },
     },
     {
+      effects: [
+        ({ onSet }) => {
+          onSet((next) => {
+            current = next;
+          });
+        },
+      ],
       key: "filters",
     }
   );

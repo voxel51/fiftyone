@@ -28,69 +28,60 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
 export default () => {
   const environment = useRelayEnvironment();
   return useRecoilCallback(
-    (cbInterface) =>
-      async (navigation: {
-        next?: modalAtoms.ModalNavigation;
-        previous?: modalAtoms.ModalNavigation;
-      }) => {
-        const { snapshot, set } = cbInterface;
-        const data = [
-          [filterAtoms.modalFilters, filterAtoms.filters],
-          ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
-            return [
-              selectors.appConfigOption({ key, modal: false }),
-              selectors.appConfigOption({ key, modal: false }),
-            ];
-          }),
-          [
-            schemaAtoms.activeFields({ modal: true }),
-            schemaAtoms.activeFields({ modal: false }),
-          ],
-          [atoms.cropToContent(true), atoms.cropToContent(false)],
-          [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
-          [
-            sidebarAtoms.sidebarGroupsDefinition(true),
-            sidebarAtoms.sidebarGroupsDefinition(false),
-          ],
-          [sidebarAtoms.sidebarWidth(true), sidebarAtoms.sidebarWidth(false)],
-          [
-            sidebarAtoms.sidebarVisible(true),
-            sidebarAtoms.sidebarVisible(false),
-          ],
-          [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
+    (cbInterface) => async (navigation?: modalAtoms.ModalNavigation) => {
+      const { snapshot, set } = cbInterface;
+      const data = [
+        [filterAtoms.modalFilters, filterAtoms.filters],
+        ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
+          return [
+            selectors.appConfigOption({ key, modal: false }),
+            selectors.appConfigOption({ key, modal: false }),
+          ];
+        }),
+        [
+          schemaAtoms.activeFields({ modal: true }),
+          schemaAtoms.activeFields({ modal: false }),
+        ],
+        [atoms.cropToContent(true), atoms.cropToContent(false)],
+        [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
+        [
+          sidebarAtoms.sidebarGroupsDefinition(true),
+          sidebarAtoms.sidebarGroupsDefinition(false),
+        ],
+        [sidebarAtoms.sidebarWidth(true), sidebarAtoms.sidebarWidth(false)],
+        [sidebarAtoms.sidebarVisible(true), sidebarAtoms.sidebarVisible(false)],
+        [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
-          [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-          [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
-        ];
+        [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
+        [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
+      ];
 
-        const slice = await snapshot.getPromise(groupAtoms.groupSlice);
+      const slice = await snapshot.getPromise(groupAtoms.groupSlice);
 
-        let pinned3d = false;
-        let activeSlices = [];
-        if (slice) {
-          const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-          if (map[slice] === "point_cloud") {
-            pinned3d = true;
-            activeSlices = [slice];
-          }
+      let pinned3d = false;
+      let activeSlices = [];
+      if (slice) {
+        const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
+        if (map[slice] === "point_cloud") {
+          pinned3d = true;
+          activeSlices = [slice];
         }
+      }
 
-        set(groupAtoms.pinned3d, pinned3d);
-        set(groupAtoms.activePcdSlices, activeSlices);
+      set(groupAtoms.pinned3d, pinned3d);
+      set(groupAtoms.activePcdSlices, activeSlices);
 
-        const results = await Promise.all(
-          data.map(([_, get]) =>
-            snapshot.getPromise(get as RecoilState<unknown>)
-          )
-        );
+      const results = await Promise.all(
+        data.map(([_, get]) => snapshot.getPromise(get as RecoilState<unknown>))
+      );
 
-        for (const i in results) {
-          set(data[i][0], results[i]);
-        }
-        await setModalFilters(cbInterface);
+      for (const i in results) {
+        set(data[i][0], results[i]);
+      }
+      await setModalFilters(cbInterface);
 
-        navigation && set(modalAtoms.currentModalNavigation, () => navigation);
-      },
+      navigation && set(modalAtoms.currentModalNavigation, () => navigation);
+    },
     [environment]
   );
 };

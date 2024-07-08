@@ -68,8 +68,8 @@ export default <T extends AbstractLooker<BaseState>>(
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
-      ({ frameNumber, frameRate, sample, urls: rawUrls }): T => {
-        let constructor:
+      ({ frameNumber, frameRate, sample, urls: rawUrls, symbol }): T => {
+        let create:
           | typeof FrameLooker
           | typeof ImageLooker
           | typeof ImaVidLooker
@@ -88,23 +88,23 @@ export default <T extends AbstractLooker<BaseState>>(
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
         if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          constructor = ThreeDLooker;
+          create = ThreeDLooker;
         } else if (mimeType !== null) {
           const isVideo = mimeType.startsWith("video/");
 
           if (isVideo && (isFrame || isPatch)) {
-            constructor = FrameLooker;
+            create = FrameLooker;
           }
 
           if (isVideo) {
-            constructor = VideoLooker;
+            create = VideoLooker;
           }
 
           if (!isVideo && shouldRenderImaVidLooker) {
-            constructor = ImaVidLooker;
+            create = ImaVidLooker;
           }
         } else {
-          constructor = ImageLooker;
+          create = ImageLooker;
         }
 
         let config: ConstructorParameters<T>[1] = {
@@ -120,10 +120,10 @@ export default <T extends AbstractLooker<BaseState>>(
             },
           },
           sources: urls,
-          frameNumber: constructor === FrameLooker ? frameNumber : undefined,
+          frameNumber: create === FrameLooker ? frameNumber : undefined,
           frameRate,
           sampleId: sample._id,
-          support: isClip ? sample["support"] : undefined,
+          support: isClip ? sample.support : undefined,
           dataset,
           mediaField,
           thumbnail,
@@ -132,10 +132,10 @@ export default <T extends AbstractLooker<BaseState>>(
 
         let sampleMediaFilePath = urls[mediaField];
         if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
-          sampleMediaFilePath = urls["filepath"];
+          sampleMediaFilePath = urls.filepath;
         }
 
-        if (constructor === ThreeDLooker) {
+        if (create === ThreeDLooker) {
           config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");
 
           const orthographicProjectionField = Object.entries(sample)
@@ -163,7 +163,7 @@ export default <T extends AbstractLooker<BaseState>>(
           };
         }
 
-        if (constructor === ImaVidLooker) {
+        if (create === ImaVidLooker) {
           const { groupBy } = snapshot
             .getLoadable(dynamicGroupAtoms.dynamicGroupParameters)
             .valueMaybe();
@@ -229,11 +229,15 @@ export default <T extends AbstractLooker<BaseState>>(
           } as ImaVidConfig;
         }
 
-        const looker = new constructor(sample, config, {
-          ...options,
-          selected: selected.has(sample._id),
-          highlight: highlight && highlight(sample),
-        });
+        const looker = new create(
+          sample,
+          { ...config, symbol },
+          {
+            ...options,
+            selected: selected.has(sample._id),
+            highlight: highlight?.(sample),
+          }
+        );
 
         looker.addEventListener("error", (event) => {
           handleError(event.error);

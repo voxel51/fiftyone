@@ -1,15 +1,20 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
+import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import Color from "color";
 import { Suspense, useMemo } from "react";
-import { constSelector, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  constSelector,
+  useRecoilCallback,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { gridZoom, gridZoomRange } from "./Grid";
-import { tileAtom } from "./Grid/Grid";
+import { gridSpacing } from "./Grid/recoil";
 import GroupSliceSelector from "./GroupSliceSelector";
 import ResourceCount from "./ResourceCount";
 
@@ -27,7 +32,6 @@ export const SamplesHeader = styled.div`
       0%,
     ${({ theme }) => theme.background.mediaSpace} 100%
   );
-  margin-left: -1rem;
   gap: 8px;
 `;
 
@@ -56,13 +60,73 @@ const SliderContainer = styled.div`
   padding-right: 0.375rem;
 `;
 
-const ImageContainerHeader = () => {
-  const setGridZoom = useSetRecoilState(gridZoom);
-  const gridZoomRangeValue = useRecoilValue(gridZoomRange);
+const Spacing = () => {
   const theme = useTheme();
+  const resetSpacing = useResetRecoilState(gridSpacing);
+  return (
+    <SliderContainer>
+      <div style={{ flexGrow: 1 }} title={"Zoom"}>
+        <Slider
+          valueAtom={gridSpacing}
+          boundsAtom={constSelector([0, 64])}
+          color={theme.primary.plainColor}
+          showBounds={false}
+          persistValue={false}
+          showValue={false}
+          style={{ padding: 0, margin: 0 }}
+        />
+      </div>
+      <div
+        title={"Reset spacing"}
+        onClick={resetSpacing}
+        onKeyDown={() => null}
+        style={{ cursor: "pointer", display: "flex" }}
+      >
+        <Apps />
+      </div>
+    </SliderContainer>
+  );
+};
+
+const Zoom = () => {
+  const resetZoom = useRecoilCallback(
+    ({ set, snapshot }) =>
+      async () => {
+        const [start] = await snapshot.getPromise(gridZoomRange);
+        set(gridZoom, Math.max(start, 5));
+      },
+    []
+  );
+
+  const theme = useTheme();
+  return (
+    <SliderContainer>
+      <div style={{ flexGrow: 1 }} title={"Zoom"}>
+        <Slider
+          valueAtom={gridZoom}
+          boundsAtom={gridZoomRange}
+          color={theme.primary.plainColor}
+          showBounds={false}
+          persistValue={false}
+          showValue={false}
+          style={{ padding: 0, margin: 0 }}
+        />
+      </div>
+      <div
+        title={"Reset zoom"}
+        onClick={resetZoom}
+        onKeyDown={() => null}
+        style={{ cursor: "pointer", display: "flex" }}
+      >
+        <ImageAspectRatio />
+      </div>
+    </SliderContainer>
+  );
+};
+
+const ImageContainerHeader = () => {
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
-
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
     [isGroup, groupSlices]
@@ -86,32 +150,8 @@ const ImageContainerHeader = () => {
             <GroupSliceSelector />
           </RightDiv>
         )}
-        <SliderContainer>
-          <div style={{ flexGrow: 1 }} title={"Zoom"}>
-            <Slider
-              valueAtom={gridZoom}
-              boundsAtom={gridZoomRange}
-              color={theme.primary.plainColor}
-              showBounds={false}
-              persistValue={false}
-              showValue={false}
-              style={{ padding: 0, margin: 0 }}
-            />
-          </div>
-        </SliderContainer>
-        <SliderContainer>
-          <div style={{ flexGrow: 1 }} title={"Zoom"}>
-            <Slider
-              valueAtom={tileAtom}
-              boundsAtom={constSelector([0, 128])}
-              color={theme.primary.plainColor}
-              showBounds={false}
-              persistValue={false}
-              showValue={false}
-              style={{ padding: 0, margin: 0 }}
-            />
-          </div>
-        </SliderContainer>
+        <Spacing />
+        <Zoom />
       </RightContainer>
     </SamplesHeader>
   );

@@ -7,9 +7,13 @@ import type { Subscription } from "relay-runtime";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { fetchQuery, useRelayEnvironment } from "react-relay";
+import {
+  commitLocalUpdate,
+  fetchQuery,
+  useRelayEnvironment,
+} from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 
 export const PAGE_SIZE = 20;
@@ -100,7 +104,16 @@ const useSpotlightPager = (
     [environment, handleError, pager, store, zoom]
   );
 
-  return { page, store, records };
+  useEffect(() => {
+    const current = records.current;
+    return () => {
+      commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
+        for (const id of Array.from(current)) store.get(id).invalidateRecord();
+      });
+    };
+  }, [records, useRecoilValue(fos.refresher)]);
+
+  return { page, store };
 };
 
 export default useSpotlightPager;

@@ -25,6 +25,13 @@ export const SPACES_DEFAULT = {
   active_child: "default-samples-node",
 };
 
+export type ModalSelector = {
+  groupId?: string;
+  id: string;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
+};
+
 export interface Session {
   canEditCustomColors: { enabled: boolean; message?: string };
   canEditSavedViews: { enabled: boolean; message?: string };
@@ -38,7 +45,7 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
-  sessionSampleId?: { groupId?: string; id: string };
+  sessionSampleId?: ModalSelector;
   sessionGroupId?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
 }

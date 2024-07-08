@@ -9,8 +9,9 @@ import ContainerHeader from "../components/ImageContainerHeader";
 
 const Container = styled.div`
   position: relative;
-  padding: 0 0 0 1rem;
+  padding: 0;
   height: 100%;
+  overflow-y: hidden;
 `;
 
 registerComponent({

@@ -34,7 +34,7 @@ export class Section<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
   readonly #section = create(DIV);
-  readonly #width: () => number;
+  readonly #width: number;
 
   #direction: DIRECTION;
   #dirty: Set<Row<K, V>> = new Set();
@@ -54,7 +54,7 @@ export class Section<K, V> {
     config: SpotlightConfig<K, V>;
     direction: DIRECTION;
     edge: Edge<K, V>;
-    width: () => number;
+    width: number;
   }) {
     this.#config = config;
     this.#direction = direction;
@@ -94,6 +94,16 @@ export class Section<K, V> {
       : element.appendChild(this.#section);
   }
 
+  find(item: string): Row<K, V> | null {
+    for (const row of this.#rows) {
+      if (row.has(item)) {
+        return row;
+      }
+    }
+
+    return null;
+  }
+
   remove() {
     this.#section.remove();
     this.#rows = [];
@@ -101,7 +111,6 @@ export class Section<K, V> {
 
   render({
     config,
-    muted,
     target,
     threshold,
     top,
@@ -109,7 +118,6 @@ export class Section<K, V> {
     zooming,
   }: {
     config: SpotlightConfig<K, V>;
-    muted: boolean;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -127,10 +135,7 @@ export class Section<K, V> {
       this.#rows,
       this.#direction === DIRECTION.BACKWARD ? this.height - target : target,
       (row) => {
-        if (this.#direction === DIRECTION.BACKWARD) {
-          return row.from + row.height;
-        }
-        return row.from;
+        return row.from + row.height;
       }
     );
 
@@ -139,8 +144,8 @@ export class Section<K, V> {
 
     const minus =
       this.#direction === DIRECTION.FORWARD
-        ? (from) => from - top
-        : (from) => this.#height - from - top;
+        ? (from) => from - top + this.#config.offset
+        : (from) => this.#height - from - top + this.#config.offset;
 
     if (match) {
       index = match.index;
@@ -153,7 +158,7 @@ export class Section<K, V> {
 
         const current =
           this.#direction === DIRECTION.BACKWARD
-            ? this.height - row.from - row.height
+            ? this.height - row.from
             : row.from;
 
         if (!threshold(current)) {
@@ -167,7 +172,7 @@ export class Section<K, V> {
         const d = minus(row.from);
         row.show(
           this.#container,
-          (this.#dirty.has(row) && zooming) || muted,
+          this.#dirty.has(row) && zooming,
           this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           zooming,
           config
@@ -177,7 +182,7 @@ export class Section<K, V> {
         hide.delete(row);
         index++;
 
-        if (d < ZERO) {
+        if (d < -this.#config.offset) {
           continue;
         }
 
@@ -378,7 +383,7 @@ export class Section<K, V> {
     const data = items.map(({ aspectRatio }) => aspectRatio);
     const breakpoints = tile(
       data,
-      this.#config.rowAspectRatioThreshold(this.#width()),
+      this.#config.rowAspectRatioThreshold(this.#width),
       useRemainder
     );
 
@@ -427,30 +432,32 @@ export class Section<K, V> {
         rowItems.reverse();
       }
 
+      const next = async (from: number, soft?: boolean) => {
+        let answer = focus();
+        const iter =
+          from >= ZERO
+            ? (id) => this.#next(id, request, renderer, sibling)
+            : (id) => this.#previous(id, request, renderer, sibling);
+        let current = Math.abs(from);
+        while (current !== ZERO) {
+          const result = await iter(answer);
+          if (!result) {
+            answer = undefined;
+            break;
+          }
+          answer = result;
+          current--;
+        }
+
+        !soft && answer && focus(answer);
+        return answer;
+      };
+
       const row = new Row({
         config: this.#config,
         focus,
         from: from + offset,
-        next: async (from: number) => {
-          let answer = focus();
-          const iter =
-            from >= ZERO
-              ? (id) => this.#next(id, request, renderer, sibling)
-              : (id) => this.#previous(id, request, renderer, sibling);
-          let current = Math.abs(from);
-          while (current !== ZERO) {
-            const result = await iter(answer);
-            if (!result) {
-              answer = undefined;
-              break;
-            }
-            answer = result;
-            current--;
-          }
-
-          answer && focus(answer);
-          return answer;
-        },
+        next,
         items: rowItems,
         width: this.#width,
       });

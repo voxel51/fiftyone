@@ -8,9 +8,9 @@ export class Load<K> extends Event {
   }
 }
 
-export class PageChange<K> extends Event {
-  constructor(readonly page: K) {
-    super("pagechange");
+export class RowChange<K> extends Event {
+  constructor(readonly at: symbol, readonly page: K) {
+    super("rowchange");
   }
 }
 

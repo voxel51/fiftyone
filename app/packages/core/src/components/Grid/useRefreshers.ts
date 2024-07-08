@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
-import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useLayoutEffect, useMemo } from "react";
+import { useRecoilValue, useResetRecoilState } from "recoil";
+import { gridPage } from "./recoil";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -14,8 +15,11 @@ export default function useRefreshers() {
   const similarityParameters = useRecoilValue(fos.similarityParameters);
   const view = fos.filterView(useRecoilValue(fos.view));
 
-  return useMemo(() => {
+  const refreshMemo = useMemo(() => {
     cropToContent;
+  }, [cropToContent]);
+
+  const resetMemo = useMemo(() => {
     datasetName;
     extendedStages;
     extendedStagesUnsorted;
@@ -27,7 +31,6 @@ export default function useRefreshers() {
     view;
     return {};
   }, [
-    cropToContent,
     datasetName,
     extendedStages,
     extendedStagesUnsorted,
@@ -38,4 +41,15 @@ export default function useRefreshers() {
     similarityParameters,
     view,
   ]);
+
+  const resetPage = useResetRecoilState(gridPage);
+  useLayoutEffect(() => {
+    resetPage();
+  }, [resetPage]);
+
+  return useMemo(() => {
+    refreshMemo;
+    resetMemo;
+    return {};
+  }, [refreshMemo, resetMemo]);
 }

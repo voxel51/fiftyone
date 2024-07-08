@@ -10,11 +10,25 @@ export const defaultGridZoom = selector<number>({
 export const gridPage = atom({
   key: "gridPage",
   default: 0,
+  effects: [],
+});
+
+export const gridAt = atom({
+  key: "gridAt",
+  default: null,
+  effects: [],
+});
+
+export const gridSpacing = atom({
+  key: "gridSpacing",
+  default: 3,
+  effects: [fos.getBrowserStorageEffectForKey("gridSpacing")],
 });
 
 export const gridZoom = atom<number>({
   key: "gridZoom",
   default: defaultGridZoom,
+  effects: [fos.getBrowserStorageEffectForKey("gridZoom")],
 });
 
 export const gridZoomRange = atom<[number, number]>({

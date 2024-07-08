@@ -1,5 +1,5 @@
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
-import type { State } from "@fiftyone/state";
+import type { ModalSelector, State } from "@fiftyone/state";
 import { Key, pathToRegexp } from "path-to-regexp";
 import type { OperationType, VariablesOf } from "relay-runtime";
 
@@ -26,9 +26,8 @@ const compilePath = (path: string): CompilePathResult => {
 
 export type LocationState<T extends OperationType = OperationType> = {
   fieldVisibility?: State.FieldVisibilityStage;
-  groupId?: string;
   groupSlice: string;
-  sampleId?: string;
+  modalSelector?: ModalSelector;
   savedViewSlug?: string;
   view?: State.Stage[];
   workspace?: SpaceNodeJSON;

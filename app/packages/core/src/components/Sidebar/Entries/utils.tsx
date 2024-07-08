@@ -35,7 +35,7 @@ export const FilterInputDiv = styled.div`
   margin: 0 1rem 0.25rem 1rem;
 
   display: flex;
-  justify-content: "space-between";
+  justify-content: space-between;
 
   & > input {
     color: ${({ theme }) => theme.text.secondary};

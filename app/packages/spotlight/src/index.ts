@@ -8,7 +8,6 @@ import type { EventCallback } from "./events";
 import type { SpotlightConfig, Updater } from "./types";
 
 import {
-  DEFAULT_MARGIN,
   DEFAULT_OFFSET,
   DEFAULT_SPACING,
   DIRECTION,
@@ -19,13 +18,12 @@ import {
   ZERO,
   ZOOMING_COEFFICIENT,
 } from "./constants";
-import createResizeReader from "./createResizeReader";
 import createScrollReader from "./createScrollReader";
-import { Load, PageChange } from "./events";
+import { Load, RowChange } from "./events";
 import { Section } from "./section";
 import { create } from "./utilities";
 
-export { Load, PageChange } from "./events";
+export { Load, RowChange } from "./events";
 export type * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
@@ -38,14 +36,13 @@ export default class Spotlight<K, V> extends EventTarget {
   #forward: Section<K, V>;
   #page: K;
   #rect?: DOMRect;
-  #resizeReader?: ReturnType<typeof createResizeReader>;
+  #row: symbol;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
 
   constructor(config: SpotlightConfig<K, V>) {
     super();
     this.#config = {
-      margin: DEFAULT_MARGIN,
       offset: DEFAULT_OFFSET,
       spacing: DEFAULT_SPACING,
       ...config,
@@ -64,8 +61,8 @@ export default class Spotlight<K, V> extends EventTarget {
 
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   addEventListener(
-    type: "pagechange",
-    callback: EventCallback<PageChange<K>>
+    type: "rowchange",
+    callback: EventCallback<RowChange<K>>
   ): void;
   addEventListener(
     type: string,
@@ -76,8 +73,8 @@ export default class Spotlight<K, V> extends EventTarget {
 
   removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   removeEventListener(
-    type: "pagechange",
-    callback: EventCallback<PageChange<K>>
+    type: "rowchange",
+    callback: EventCallback<RowChange<K>>
   ): void;
   removeEventListener(
     type: string,
@@ -108,7 +105,6 @@ export default class Spotlight<K, V> extends EventTarget {
 
     this.#element.remove();
     this.#scrollReader?.destroy();
-    this.#resizeReader?.destroy();
   }
 
   next() {
@@ -150,11 +146,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #width() {
-    const width = this.#rect.width - this.#config.margin * TWO;
-    if (this.#config.scrollbar) {
-      return width - SCROLLBAR_WIDTH;
-    }
-    return width;
+    return this.#rect.width - SCROLLBAR_WIDTH * TWO;
   }
 
   async #next(render = true) {
@@ -268,7 +260,7 @@ export default class Spotlight<K, V> extends EventTarget {
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      width: () => this.#width,
+      width: this.#width,
     });
     this.#forward.attach(this.#element);
 
@@ -287,14 +279,13 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#render({
         zooming: false,
         offset: -this.#pivot,
+        at: this.#config.at,
       });
 
       requestAnimationFrame(() => {
         this.#scrollReader = createScrollReader(
           this.#element,
-          (zooming) => {
-            this.#render({ zooming });
-          },
+          (zooming) => this.#render({ zooming }),
           () => {
             return (
               (this.#width /
@@ -305,18 +296,6 @@ export default class Spotlight<K, V> extends EventTarget {
                   ))) *
               ZOOMING_COEFFICIENT
             );
-          }
-        );
-
-        this.#resizeReader = createResizeReader(
-          this.#element,
-          (resizing: boolean) => {
-            if (resizing) {
-              this.#rect = this.#element.getBoundingClientRect();
-
-              return;
-            }
-            this.#render({});
           }
         );
       });
@@ -335,7 +314,7 @@ export default class Spotlight<K, V> extends EventTarget {
           result.previous !== null
             ? { key: result.previous, remainder: [] }
             : { key: null, remainder: [] },
-        width: () => this.#width,
+        width: this.#width,
       });
       this.#backward.attach(this.#element);
     }
@@ -348,14 +327,13 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   #render({
+    at,
     go = true,
-    muted = false,
     offset = false,
-
     zooming,
   }: {
+    at?: string;
     go?: boolean;
-    muted?: boolean;
     offset?: number | false;
     zooming?: boolean;
   }) {
@@ -368,9 +346,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const backward = this.#backward.render({
       config: this.#config,
-      muted,
       target: top + this.#height + this.#padding,
-      threshold: (n) => n > top - this.#padding,
+      threshold: (n) => {
+        return n > top - this.#padding;
+      },
       top: top + this.#config.offset,
       updater: (id) => this.#updater(id),
       zooming,
@@ -378,7 +357,6 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const forward = this.#forward.render({
       config: this.#config,
-      muted,
       target: top - this.#padding - this.#backward.height,
       threshold: (n) => {
         return n < top + this.#height + this.#padding - this.#backward.height;
@@ -395,10 +373,10 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     if (offset === false && pageRow && !zooming) {
-      const page = this.#keys.get(pageRow.first);
-      if (page !== this.#page) {
-        this.#page = page;
-        this.dispatchEvent(new PageChange(page));
+      if (pageRow.first !== this.#row) {
+        this.#page = this.#keys.get(pageRow.first);
+        this.#row = pageRow.first;
+        this.dispatchEvent(new RowChange(this.#row, this.#page));
       }
     }
 
@@ -407,7 +385,20 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    if (offset !== false && top) {
+    if (at) {
+      let row = this.#backward.find(at);
+      if (row) {
+        this.#element.scrollTo(
+          ZERO,
+          this.#backward.height - row.from + row.height
+        );
+      } else {
+        row = this.#forward.find(at);
+        if (row) {
+          this.#element.scrollTo(ZERO, this.#backward.height + row.from);
+        }
+      }
+    } else if (offset !== false && top) {
       this.#element.scrollTo(ZERO, top);
     }
 

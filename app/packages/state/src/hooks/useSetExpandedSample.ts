@@ -1,3 +1,5 @@
+import type { ModalSelector } from "../session";
+
 import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
 import { currentModalSample } from "../recoil";
@@ -33,16 +35,16 @@ export default () => {
 
   const commit = useRecoilCallback(
     ({ set }) =>
-      async (data: { groupId?: string; id: string }) => {
-        set(currentModalSample, data);
+      async (selector: ModalSelector) => {
+        set(currentModalSample, selector);
       },
     []
   );
 
   return useCallback(
-    (data: { groupId?: string; id: string }) => {
-      setter(data.groupId);
-      commit(data);
+    (selector: ModalSelector) => {
+      setter(selector.groupId);
+      commit(selector);
     },
     [commit, setter]
   );

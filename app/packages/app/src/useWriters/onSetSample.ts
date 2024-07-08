@@ -1,6 +1,8 @@
-import { setSample, setSampleMutation } from "@fiftyone/relay";
-import { commitMutation } from "relay-runtime";
+import type { setSampleMutation } from "@fiftyone/relay";
 import type { RegisteredWriter } from "./registerWriter";
+
+import { setSample } from "@fiftyone/relay";
+import { commitMutation } from "relay-runtime";
 
 export const handleGroupId = (search: URLSearchParams, groupId: string) => {
   search.delete("sampleId");
@@ -14,12 +16,12 @@ export const handleSampleId = (search: URLSearchParams, sampleId: string) => {
 
 const onSetSample: RegisteredWriter<"sessionSampleId"> =
   ({ environment, router, subscription }) =>
-  (data) => {
-    const search = new URLSearchParams(router.history.location.search);
-    if (data?.groupId) {
-      handleGroupId(search, data.groupId);
-    } else if (data?.id) {
-      handleSampleId(search, data?.id);
+  (selector) => {
+    const search = new URLSearchParams(router.location.search);
+    if (selector?.groupId) {
+      handleGroupId(search, selector.groupId);
+    } else if (selector?.id) {
+      handleSampleId(search, selector?.id);
     } else {
       search.delete("sampleId");
       search.delete("groupId");
@@ -30,13 +32,15 @@ const onSetSample: RegisteredWriter<"sessionSampleId"> =
       string = `?${string}`;
     }
 
-    const pathname = router.history.location.pathname + string;
-    router.history.push(pathname, router.history.location.state);
+    router.push(router.location.pathname + string, {
+      ...router.location.state,
+      modalSelector: selector,
+    });
     commitMutation<setSampleMutation>(environment, {
       mutation: setSample,
       variables: {
-        groupId: data?.groupId,
-        sampleId: data?.id,
+        groupId: selector?.groupId,
+        sampleId: selector?.id,
         subscription,
       },
     });

@@ -1,22 +1,101 @@
-import { selectedSamples } from "@fiftyone/state/src/recoil";
+import type { Sample } from "@fiftyone/state";
+
+import {
+  selectedSampleObjects,
+  selectedSamples,
+  useSetSelected,
+} from "@fiftyone/state";
 import { useRecoilCallback } from "recoil";
 
-const useSelectSample = () => {
+export interface SelectThumbnailData {
+  shiftKey: boolean;
+  id: string;
+  sample: Sample;
+  symbol: symbol;
+}
+
+type Store = WeakMap<
+  symbol,
+  {
+    sample: Sample;
+    index: number;
+  }
+>;
+
+const argFact = (compareFn) => (array) =>
+  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
+
+const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
+
+const addRange = (index: number, items: string[], store: Store) => {
+  const reverse = Object.fromEntries(
+    Object.entries(store).map(([k, v]) => [v, k])
+  );
+
+  const min = argMin(items.map((id) => Math.abs(map[id] - index)));
+
+  const close = store.get(items[min]).index;
+
+  const [start, end] = index < close ? [index, close] : [close, index];
+
+  const added = new Array(end - start + 1)
+    .fill(0)
+    .map((_, i) => reverse[i + start]);
+
+  return new Set([...items, ...added]);
+};
+
+const removeRange = (index: number, selected: Set<string>, store: Store) => {
+  const reverse = Object.fromEntries(
+    Object.entries(map).map(([k, v]) => [v, k])
+  );
+
+  let before = index;
+  while (selected.has(reverse[before])) {
+    before--;
+  }
+  before += 1;
+
+  let after = index;
+  while (selected.has(reverse[after])) {
+    after++;
+  }
+  after -= 1;
+
+  const [start, end] =
+    index - before <= after - index
+      ? index - before === 0
+        ? [index, after]
+        : [before, index]
+      : after - index === 0
+      ? [before, index]
+      : [index, after];
+
+  return new Set(
+    Array.from(selected).filter((s) => map[s] < start || map[s] > end)
+  );
+};
+
+export default () => {
+  const setSelected = useSetSelected();
+
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sampleId: string) => {
+      async (
+        store: Store,
+        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
+      ) => {
         let selected = new Set(await snapshot.getPromise(selectedSamples));
         const selectedObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
-        const items = Array.from(selected);
-        const map = flashlight.itemIndexes;
-        const index = map[sampleId];
 
-        if (shiftKey && !selected.has(sampleId)) {
-          selected = addRange(index, items, map);
-        } else if (shiftKey) {
-          selected = removeRange(index, selected, map);
+        const items = Array.from(selected);
+        const index = store.get(symbol);
+        if (false && shiftKey && !selected.has(sampleId)) {
+          selected = addRange(index, items, store);
+        } else if (false && shiftKey) {
+          selected = removeRange(index, selected, store);
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)
@@ -32,15 +111,7 @@ const useSelectSample = () => {
         set(selectedSamples, selected);
         set(selectedSampleObjects, selectedObjects);
         setSelected(new Set(selected));
-
-        const selected = new Set(await snapshot.getPromise(selectedSamples));
-        selected.has(sampleId)
-          ? selected.delete(sampleId)
-          : selected.add(sampleId);
-        set(selectedSamples, selected);
       },
-    []
+    [setSelected]
   );
 };
-
-export default useSelectSample;

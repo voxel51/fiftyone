@@ -14,12 +14,11 @@ export const handleSampleId = (search: URLSearchParams, sampleId: string) => {
 
 const useSetSample: EventHandlerHook = ({ router }) => {
   const setModalState = useSetModalState();
-
   const setter = useSessionSetter();
 
   return useCallback(
     (payload) => {
-      setModalState({}).then(() => {
+      setModalState().then(() => {
         const search = new URLSearchParams(router.history.location.search);
         if (payload?.group_id) {
           handleGroupId(search, payload.group_id);
@@ -36,10 +35,14 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         }
 
         const pathname = router.history.location.pathname + string;
-        router.history.push(pathname, router.history.location.state);
+        router.push(pathname, {
+          groupId: payload.group_id || null,
+          sampleId: payload.sample_id || null,
+          ...router.location.state,
+        });
         setter("sessionSampleId", {
           groupId: payload.group_id || null,
-          id: payload.sample_id,
+          id: payload.sample_id || null,
         });
       });
     },
