@@ -75,7 +75,7 @@ export const dynamicGroupPageSelector = selectorFamily<
     after: string | null;
     count: number;
     dataset: string;
-    filter: { group: { slice?: string } };
+    filter: { group: { slice?: string; slices?: string[] } };
     view: State.Stage[];
   },
   { modal: boolean; value: string }
@@ -84,11 +84,17 @@ export const dynamicGroupPageSelector = selectorFamily<
   get:
     ({ modal, value }) =>
     ({ get }) => {
+      const slice = get(modal ? modalGroupSlice : groupSlice);
+
       const params = {
         dataset: get(datasetName),
         view: get(dynamicGroupViewQuery(value)),
-        filter: { group: { slice: get(modal ? modalGroupSlice : groupSlice) } },
+        filter: { group: { slice } },
       };
+
+      if (get(hasGroupSlices)) {
+        params.filter.group.slices = [slice];
+      }
 
       return (cursor: number, pageSize: number) => ({
         ...params,
