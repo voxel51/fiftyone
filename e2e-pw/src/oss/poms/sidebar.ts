@@ -88,9 +88,9 @@ export class SidebarPom {
   }
 
   async changeSliderStartValue(field: string, textA: string, textB: string) {
-    const sliderPointA = this.getSliderIndicator(field, textA);
-    const sliderPointB = this.getSliderIndicator(field, textB, true);
-    await sliderPointA.dragTo(sliderPointB, { timeout: 1000 });
+    const sliderStart = this.getSliderIndicator(field, textA);
+    const sliderMidPoint = this.getSliderIndicator(field, textB, true);
+    await sliderStart.dragTo(sliderMidPoint, { timeout: 1000 });
   }
 
   async getActiveMode() {
