@@ -86,11 +86,21 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
           order_id_1 = file1_name[-1]
           order_id_2 = file2_name[-1]
 
-          s1 = fo.Sample(filepath=file1, group=group.element("1"), scene_key=scene_id, order_key=order_id_1)
-          s2 = fo.Sample(filepath=file2, group=group.element("2"), scene_key=scene_id, order_key=order_id_2)
+          s1 = fo.Sample(
+              filepath=file1,
+              group=group.element("1"),
+              scene_key=scene_id,
+              order_key=order_id_1,
+          )
+          s2 = fo.Sample(
+              filepath=file2,
+              group=group.element("2"),
+              scene_key=scene_id,
+              order_key=order_id_2,
+          )
 
           samples.extend([s1, s2])
-      
+
       dataset.add_samples(samples)
       `;
   await fiftyoneLoader.executePythonCode(pythonCode);
