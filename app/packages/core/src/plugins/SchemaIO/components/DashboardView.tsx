@@ -5,6 +5,8 @@ import {
   useTheme,
   styled,
   IconButton,
+  Paper,
+  Grid,
 } from "@mui/material";
 import React, { useState, useEffect, useCallback } from "react";
 import { Button, HeaderView } from ".";
@@ -17,6 +19,49 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId } from "@fiftyone/spaces";
+
+const AddItemCTA = ({ onAdd }) => {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <Paper sx={{ padding: 2 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Add an Item to Your Dashboard
+        </Typography>
+        <Button variant="contained" onClick={onAdd}>
+          Add Item
+        </Button>
+      </Paper>
+    </Box>
+  );
+};
+const AddItemButton = ({ onAddItem }) => {
+  return (
+    <Grid container spacing={2} style={{ position: "fixed", bottom: 0 }}>
+      <Grid item xs={12}>
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          height="100px"
+          width="100%"
+        >
+          <Button variant="contained" size="large" onClick={onAddItem}>
+            Add New Item
+          </Button>
+        </Box>
+      </Grid>
+    </Grid>
+  );
+};
 
 export default function DashboardView(props: ViewPropsType) {
   const { schema, path, data, layout } = props;
@@ -40,6 +85,13 @@ export default function DashboardView(props: ViewPropsType) {
     },
     [panelId, props, schema.view.on_close_item, triggerPanelEvent]
   );
+  const onAddItem = useCallback(() => {
+    if (schema.view.on_add_item) {
+      triggerPanelEvent(panelId, {
+        operator: schema.view.on_add_item,
+      });
+    }
+  }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
   const handleLayoutChange = useCallback(
     (layout: any) => {
       if (schema.view.on_layout_change) {
@@ -97,9 +149,13 @@ export default function DashboardView(props: ViewPropsType) {
     cursor: "se-resize",
   }));
 
-  console.log("viewLayout", viewLayout);
-  console.log("propertiesAsArray", propertiesAsArray);
-
+  if (!propertiesAsArray.length) {
+    return <AddItemCTA onAdd={onAddItem} />;
+  }
+  const finalLayout = [
+    ...gridLayout,
+    { i: "add-item", x: 0, y: ROWS, w: COLS, h: 1, static: true },
+  ];
   return (
     <Box
       {...getComponentProps(props, "container")}
@@ -111,7 +167,7 @@ export default function DashboardView(props: ViewPropsType) {
       >
         <GridLayout
           onLayoutChange={handleLayoutChange}
-          layout={gridLayout}
+          layout={finalLayout}
           cols={COLS}
           rowHeight={GRID_HEIGHT / ROWS} // Dynamic row height
           width={GRID_WIDTH}
@@ -166,9 +222,9 @@ export default function DashboardView(props: ViewPropsType) {
               </Box>
             );
           })}
-          <Button>Add</Button>
         </GridLayout>
       </Box>
+      <AddItemButton key="add-item" onAddItem={onAddItem} />
     </Box>
   );
 }
