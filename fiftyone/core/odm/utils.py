@@ -9,7 +9,6 @@ from datetime import date, datetime
 import inspect
 import json
 import numbers
-import six
 import sys
 
 from bson import Binary, json_util, ObjectId, SON
@@ -110,7 +109,7 @@ def deserialize_value(value):
 
         return value
 
-    if isinstance(value, six.binary_type):
+    if isinstance(value, bytes):
         # Serialized array in non-extended format
         return fou.deserialize_numpy_array(value)
 
@@ -353,7 +352,7 @@ def get_implied_field_kwargs(value, dynamic=False):
     if isinstance(value, numbers.Number):
         return {"ftype": fof.FloatField}
 
-    if isinstance(value, six.string_types):
+    if isinstance(value, str):
         return {"ftype": fof.StringField}
 
     if isinstance(value, ObjectId):
@@ -570,7 +569,7 @@ def _get_field_type(value):
     if isinstance(value, numbers.Number):
         return fof.FloatField
 
-    if isinstance(value, six.string_types):
+    if isinstance(value, str):
         return fof.StringField
 
     if isinstance(value, ObjectId):

@@ -5,7 +5,7 @@ import { Color, CubeTexture, CubeTextureLoader, TextureLoader } from "three";
 import type { FoSceneBackground } from "../utils";
 
 interface Fo3dBackgroundProps {
-  background: FoSceneBackground;
+  background: Partial<FoSceneBackground>;
 }
 
 const CubeBackground = ({

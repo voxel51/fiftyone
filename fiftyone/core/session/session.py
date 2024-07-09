@@ -8,19 +8,15 @@ Session class for interacting with the FiftyOne App.
 
 from collections import defaultdict
 from functools import wraps
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
-
+from importlib import metadata
 import logging
 import os
 from packaging.requirements import Requirement
 import time
 import typing as t
-import webbrowser
 from uuid import uuid4
+import webbrowser
+
 
 try:
     import IPython.display

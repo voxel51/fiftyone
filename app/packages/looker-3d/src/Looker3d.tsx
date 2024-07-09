@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { ErrorBoundary } from "./ErrorBoundary";
+import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
@@ -167,7 +167,7 @@ export const Looker3d = () => {
   );
 
   return (
-    <ErrorBoundary>
+    <Fo3dErrorBoundary boundaryName="fo3d">
       <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
         {component}
         <ActionBar
@@ -179,6 +179,6 @@ export const Looker3d = () => {
           }}
         />
       </Container>
-    </ErrorBoundary>
+    </Fo3dErrorBoundary>
   );
 };

@@ -2,12 +2,14 @@ import type * as foq from "@fiftyone/relay";
 import type { SpotlightConfig } from "@fiftyone/spotlight";
 import type { ResponseFrom } from "../utils";
 
+import { getFieldInfo } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
+import { State } from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
-import { getSanitizedGroupByExpression } from "../recoil/utils";
+import * as schemaAtoms from "../recoil/schema";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
@@ -68,12 +70,15 @@ export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
 
           let groupByFieldValue: string;
           if (dynamicGroupParameters?.groupBy) {
-            groupByFieldValue = String(
-              get(
-                sample.sample,
-                getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-              )
+            const fieldSchema = await snapshot.getPromise(
+              schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
             );
+            const fieldInfo = getFieldInfo(
+              dynamicGroupParameters.groupBy,
+              fieldSchema
+            );
+            const groupByKeyDbField = fieldInfo.pathWithDbField;
+            groupByFieldValue = String(get(sample.sample, groupByKeyDbField));
           }
 
           return { id: id.description, groupId, groupByFieldValue };
