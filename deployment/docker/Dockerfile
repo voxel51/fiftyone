@@ -36,7 +36,7 @@ COPY ./*.whl .
 COPY ./yarnrc.yml ~/.yarnrc.yml
 
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl umap-learn
 
 ### Internal Plugins Image
 FROM builder as internal-wheelhouse
@@ -90,7 +90,10 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
     pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip --no-cache-dir install -q --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    && pip --no-cache-dir install -q --pre --no-index \
+    --find-links=/builder/tmp/wheels \
+    fiftyone-teams-app \
+    umap-learn \
     && mkdir -p /opt/plugins \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /opt
 
