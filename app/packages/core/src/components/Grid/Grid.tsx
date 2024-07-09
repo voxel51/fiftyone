@@ -22,7 +22,7 @@ import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
 import useThreshold from "./useThreshold";
 
-import { pixels, spotlightLooker } from "./Grid.module.css";
+import { spotlightLooker } from "./Grid.module.css";
 import useSelectSample from "./useSelectSample";
 
 function Grid() {
@@ -114,7 +114,7 @@ function Grid() {
   useSelect(lookerOptions, lookerStore, spotlight);
 
   useEffect(() => {
-    if (resizing) {
+    if (resizing || !spotlight) {
       return undefined;
     }
 
@@ -122,13 +122,10 @@ function Grid() {
 
     spotlight.attach(element);
     spotlight.addEventListener("rowchange", setAt);
-    spotlight.addEventListener("load", () => element.classList.remove(pixels));
 
     return () => {
       spotlight.removeEventListener("rowchange", setAt);
-
       spotlight.destroy();
-      element?.classList.add(pixels);
     };
   }, [id, resizing, setAt, spotlight]);
 
@@ -166,13 +163,7 @@ function Grid() {
     };
   }, [id]);
 
-  return (
-    <div
-      id={id}
-      className={`${spotlightLooker} + ${pixels}`}
-      data-cy="fo-grid"
-    />
-  );
+  return <div id={id} className={spotlightLooker} data-cy="fo-grid" />;
 }
 
 export default React.memo(Grid);

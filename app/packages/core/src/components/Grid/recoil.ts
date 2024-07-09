@@ -22,13 +22,13 @@ export const gridAt = atom({
 export const gridSpacing = atom({
   key: "gridSpacing",
   default: 3,
-  effects: [fos.getBrowserStorageEffectForKey("gridSpacing")],
+  effects: [],
 });
 
 export const gridZoom = atom<number>({
   key: "gridZoom",
   default: defaultGridZoom,
-  effects: [fos.getBrowserStorageEffectForKey("gridZoom")],
+  effects: [],
 });
 
 export const gridZoomRange = atom<[number, number]>({

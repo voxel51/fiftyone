@@ -13,6 +13,10 @@
   --dark-color: var(--fo-palette-background-level2);
 }
 
+.spotlightLoaded {
+  background: var(--fo-palette-background-level2);
+}
+
 .spotlight.scrollbar::-webkit-scrollbar {
   width: 14px;
 }

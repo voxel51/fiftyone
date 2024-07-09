@@ -158,6 +158,7 @@ export default class Spotlight<K, V> extends EventTarget {
           if (id) {
             this.#focused = id;
           }
+          this.#render({ at: this.#focused.description });
           return this.#focused;
         },
         items,
@@ -301,6 +302,7 @@ export default class Spotlight<K, V> extends EventTarget {
       });
 
       this.dispatchEvent(new Load(this.#config.key));
+      this.#element.classList.add(styles.spotlightLoaded);
     });
   }
 
