@@ -9,7 +9,7 @@ import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 
 export default function PlotlyView(props) {
-  const { data, schema } = props;
+  const { data, schema, path } = props;
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
@@ -17,6 +17,7 @@ export default function PlotlyView(props) {
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
+    console.log(props);
     // TODO: add more interesting/useful event data
     const data = EventDataMappers[event]?.(e) || {};
     const x_data_source = view.x_data_source;
@@ -71,6 +72,10 @@ export default function PlotlyView(props) {
           type: view.type,
         };
       }
+      params = {
+        ...params,
+        path,
+      };
       triggerPanelEvent(panelId, {
         operator: eventHandlerOperator,
         params,
