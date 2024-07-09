@@ -3,7 +3,13 @@ import type { Lookers } from "@fiftyone/state";
 import { subscribe } from "@fiftyone/relay";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
@@ -113,7 +119,7 @@ function Grid() {
   selectSample.current = useSelectSample();
   useSelect(lookerOptions, lookerStore, spotlight);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;
     }
