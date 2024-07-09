@@ -11,11 +11,12 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { useTrackEvent } from "@fiftyone/analytics";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
-import { merge } from "lodash";
-import { useSetRecoilState, useRecoilCallback } from "recoil";
+import { merge, set as setValue } from "lodash";
+import { useRecoilCallback, useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
@@ -30,7 +31,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 //
 // BUILT-IN OPERATORS
@@ -885,15 +885,27 @@ class PatchPanelData extends Operator {
 
 function useUpdatePanelStatePartial(local?: boolean) {
   const setPanelStateById = useSetPanelStateById(local);
-  return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
+  return (
+    ctx,
+    { targetPartial = "state", targetParam, patch, clear, deepMerge, set }
+  ) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
         const param = ctx.params[targetParam];
-        if (patch) {
+        if (set) {
+          // go through each "param" which is a path and set it in the state
+          for (let [path, value] of Object.entries(param)) {
+            updatedState = { ...currentCustomPanelState };
+            setValue(updatedState, path, value);
+          }
+        } else if (deepMerge) {
           updatedState = merge({}, currentCustomPanelState, param);
+        } else if (patch) {
+          // patch = shallow merge
+          updatedState = { ...currentCustomPanelState, ...param };
         } else if (clear) {
           updatedState = {};
         } else {

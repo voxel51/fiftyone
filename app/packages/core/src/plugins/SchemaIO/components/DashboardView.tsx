@@ -7,7 +7,7 @@ import {
   IconButton,
 } from "@mui/material";
 import React, { useState, useEffect, useCallback } from "react";
-import { HeaderView } from ".";
+import { Button, HeaderView } from ".";
 import { getComponentProps, getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
@@ -117,9 +117,13 @@ export default function DashboardView(props: ViewPropsType) {
           width={GRID_WIDTH}
           onDragStart={() => setIsDragging(true)}
           onDragStop={() => setIsDragging(false)}
+          resizeHandles={["ne"]}
           isDraggable={!isDragging}
           isResizable={!isDragging} // Allow resizing
-          draggableHandle=".drag-handle" // Specify the drag handle class
+          draggableHandle=".drag-handle"
+          resizeHandle={(axis, ref) => {
+            return <ResizeHandle {...{ axis, ref }} />;
+          }}
         >
           {propertiesAsArray.map((property) => {
             const { id } = property;
@@ -159,10 +163,10 @@ export default function DashboardView(props: ViewPropsType) {
                   parentSchema={schema}
                   relativePath={id}
                 />
-                <ResizeHandle className="react-resizable-handle" />
               </Box>
             );
           })}
+          <Button>Add</Button>
         </GridLayout>
       </Box>
     </Box>
