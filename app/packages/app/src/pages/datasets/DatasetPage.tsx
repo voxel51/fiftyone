@@ -1,4 +1,4 @@
-import { Dataset, Snackbar, Starter } from "@fiftyone/core";
+import { Dataset, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -110,8 +110,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   }, [isModalActive]);
 
   return (
-    <>
-      <Nav fragment={data} hasDataset={!isEmpty} />
+    <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
@@ -122,8 +121,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           </datasetQueryContext.Provider>
         )}
       </div>
-      <Snackbar />
-    </>
+    </Nav>
   );
 };
 
