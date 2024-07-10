@@ -1,3 +1,4 @@
+export { default as Arrow } from "./Arrow";
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as CenteredStack } from "./CenteredStack";

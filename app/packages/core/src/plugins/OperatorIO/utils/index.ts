@@ -34,6 +34,11 @@ const viewAliases = {
   RadioGroup: "RadioView",
   Success: "AlertView",
   Warning: "AlertView",
+  IconButtonView: "ButtonView",
+  HStackView: "GridView",
+  VStackView: "GridView",
+  ButtonGroupView: "GridView",
+  MenuView: "GridView",
 };
 const operatorTypeToJSONSchemaType = {
   Object: "object",

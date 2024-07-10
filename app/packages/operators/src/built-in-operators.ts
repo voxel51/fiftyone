@@ -325,7 +325,6 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
-      unlisted: true,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -781,7 +780,11 @@ class ClearSelectedLabels extends Operator {
 
 class SetSpaces extends Operator {
   get config(): OperatorConfig {
-    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+    return new OperatorConfig({
+      name: "set_spaces",
+      label: "Set spaces",
+      unlisted: true,
+    });
   }
   useHooks() {
     const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
@@ -797,10 +800,6 @@ class SetSpaces extends Operator {
       throw new Error('Param "spaces" or "name" is required to set a space');
     }
   }
-}
-
-function usePanelStateForContext(ctx: ExecutionContext) {
-  return usePanelState(ctx.getCurrentPanelId());
 }
 
 class ClearPanelState extends Operator {
@@ -1056,8 +1055,8 @@ class Notify extends Operator {
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("message", { label: "Message", required: true });
-    inputs.enum("type", ["info", "success", "warning", "error"], {
-      label: "Type",
+    inputs.enum("variant", ["info", "success", "warning", "error"], {
+      label: "Variant",
       default: "info",
     });
     return new types.Property(inputs);
@@ -1068,7 +1067,7 @@ class Notify extends Operator {
   async execute(ctx: ExecutionContext): Promise<void> {
     ctx.hooks.notify({
       msg: ctx.params.message,
-      type: ctx.params.type,
+      variant: ctx.params.variant,
     });
   }
 }
