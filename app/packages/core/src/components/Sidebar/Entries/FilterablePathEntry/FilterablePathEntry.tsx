@@ -1,8 +1,9 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { getFieldInfo } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import Color from "color";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
@@ -62,6 +63,25 @@ const FilterableEntry = ({
   const lightning = useRecoilValue(fos.isLightningPath(path));
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
+
+  const session = fos.useSessionRef();
+  const schema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+
+  useEffect(() => {
+    const fieldInfo = getFieldInfo(path, schema);
+
+    if (fieldInfo?.ftype !== "fiftyone.core.fields.EmbeddedDocumentField") {
+      return;
+    }
+
+    if (!active) {
+      session.hiddenFields?.add(path);
+    } else {
+      session.hiddenFields?.delete(path);
+    }
+  }, [session, schema, active, path]);
 
   const Entries =
     lightning && !modal

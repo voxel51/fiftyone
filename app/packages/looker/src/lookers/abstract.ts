@@ -496,6 +496,10 @@ export abstract class AbstractLooker<
     this.loadSample(sample);
   }
 
+  reloadSample() {
+    this.loadSample(this.sample);
+  }
+
   getSample(): Promise<Sample> {
     const sample = { ...this.sample };
 
@@ -694,6 +698,7 @@ export abstract class AbstractLooker<
     labelsWorker.postMessage({
       sample: sample as ProcessSample["sample"],
       method: "processSample",
+      activePaths: this.state.options.activePaths,
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
       colorscale: this.state.options.colorscale,

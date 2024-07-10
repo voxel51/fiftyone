@@ -202,8 +202,10 @@ const processLabels = async (
   colorscale: ProcessSample["colorscale"],
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
-  schema: Schema
+  schema: Schema,
+  activePaths: ProcessSample["activePaths"]
 ): Promise<ArrayBuffer[]> => {
+  console.log("active paths are ", activePaths);
   const buffers: ArrayBuffer[] = [];
   const promises = [];
 
@@ -296,6 +298,7 @@ interface ReaderMethod {
 export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
+  activePaths: string[];
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
@@ -317,6 +320,7 @@ const processSample = ({
   selectedLabelTags,
   labelTagColors,
   schema,
+  activePaths,
 }: ProcessSample) => {
   mapId(sample);
 
@@ -335,7 +339,8 @@ const processSample = ({
         colorscale,
         labelTagColors,
         selectedLabelTags,
-        schema
+        schema,
+        activePaths
       ),
     ];
   }
@@ -354,7 +359,8 @@ const processSample = ({
             colorscale,
             labelTagColors,
             selectedLabelTags,
-            schema
+            schema,
+            activePaths
           )
         )
         .flat(),
