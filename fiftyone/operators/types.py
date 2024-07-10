@@ -2027,6 +2027,15 @@ class DashboardView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.allow_addition = kwargs.get("allow_addition", True)
+        self.allow_deletion = kwargs.get("allow_deletion", True)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "allow_addition": self.allow_addition,
+            "allow_deletion": self.allow_deletion,
+        }
 
 
 class DrawerView(View):

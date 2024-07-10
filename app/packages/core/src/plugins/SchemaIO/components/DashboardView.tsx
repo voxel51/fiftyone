@@ -67,6 +67,8 @@ export default function DashboardView(props: ViewPropsType) {
   const { schema, path, data, layout } = props;
   const { properties } = schema as ObjectSchemaType;
   const propertiesAsArray = [];
+  const allow_addition = schema.view.allow_addition;
+  const allow_deletion = schema.view.allow_deletion;
 
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
@@ -150,6 +152,9 @@ export default function DashboardView(props: ViewPropsType) {
   }));
 
   if (!propertiesAsArray.length) {
+    if (!allow_addition) {
+      return null;
+    }
     return <AddItemCTA onAdd={onAddItem} />;
   }
   const finalLayout = [
@@ -199,17 +204,19 @@ export default function DashboardView(props: ViewPropsType) {
               >
                 <DragHandle className="drag-handle">
                   <Typography>{property.title || id}</Typography>
-                  <IconButton
-                    size="small"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseItem({ id, path: getPath(path, id) });
-                    }}
-                    sx={{ color: theme.palette.text.secondary }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
+                  {allow_deletion && (
+                    <IconButton
+                      size="small"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseItem({ id, path: getPath(path, id) });
+                      }}
+                      sx={{ color: theme.palette.text.secondary }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  )}
                 </DragHandle>
                 <DynamicIO
                   {...props}
@@ -224,7 +231,7 @@ export default function DashboardView(props: ViewPropsType) {
           })}
         </GridLayout>
       </Box>
-      <AddItemButton key="add-item" onAddItem={onAddItem} />
+      {allow_addition && <AddItemButton key="add-item" onAddItem={onAddItem} />}
     </Box>
   );
 }
