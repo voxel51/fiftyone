@@ -38,7 +38,7 @@ export const createBlankVideo = async (
     frameRate
   )} -c:v libvpx -b:v 1M -pix_fmt yuv420p ${outputPath}`;
 
-  const proc = spawnSync(ffmpegCommand, {
+  spawnSync(ffmpegCommand, {
     shell: true,
     timeout: Duration.Seconds(5),
   });

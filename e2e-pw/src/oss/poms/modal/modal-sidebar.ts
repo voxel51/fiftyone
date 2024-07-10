@@ -61,6 +61,19 @@ class SidebarAsserter {
     expect(text).toBe(value);
   }
 
+  async waitUntilSidebarEntryTextEquals(key: string, value: string) {
+    return this.modalSidebarPom.page.waitForFunction(
+      ({ key_, value_ }: { key_: string; value_: string }) => {
+        return (
+          document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
+            .textContent === value_
+        );
+      },
+      { key_: key, value_: value },
+      { timeout: 5000 }
+    );
+  }
+
   async verifySidebarEntryTexts(entries: { [key: string]: string }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
