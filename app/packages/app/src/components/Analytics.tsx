@@ -1,15 +1,14 @@
-import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
-import { AnalyticsConsent } from "@fiftyone/components";
 import { isElectron } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
 import gaConfig from "../ga";
-import { NavGA$key } from "./__generated__/NavGA.graphql";
+import AnalyticsConsent from "./AnalyticsConsent";
+import { NavGA$data, NavGA$key } from "./__generated__/NavGA.graphql";
 
-const useGA = (info) => {
+const useGA = (enabled: boolean, info: NavGA$data) => {
   useEffect(() => {
-    if (!info || info.doNotTrack) {
+    if (!enabled) {
       return;
     }
     const dev = info.dev;
@@ -28,7 +27,7 @@ const useGA = (info) => {
         checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-  }, [info]);
+  }, [enabled, info]);
 };
 
 export default function Analytics({ fragment }: { fragment: NavGA$key }) {
@@ -45,19 +44,7 @@ export default function Analytics({ fragment }: { fragment: NavGA$key }) {
     fragment
   );
 
-  const [_, setAnalyticsInfo] = useAnalyticsInfo();
-  useEffect(() => {
-    const buildType = info.dev ? "dev" : "prod";
-    const writeKey = DEFAULT_WRITE_KEYS[buildType];
-    setAnalyticsInfo({
-      userId: info.uid,
-      userGroup: "fiftyone-oss",
-      writeKey,
-      doNotTrack: info.doNotTrack,
-      debug: info.dev,
-    });
-  }, [info, setAnalyticsInfo]);
-  useGA(info);
+  useGA(false, info);
 
   return <AnalyticsConsent />;
 }

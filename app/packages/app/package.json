@@ -13,6 +13,7 @@
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
     },
     "dependencies": {
+        "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
         "@fiftyone/core": "*",
         "@fiftyone/relay": "*",

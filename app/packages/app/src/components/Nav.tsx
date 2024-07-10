@@ -1,5 +1,4 @@
 import {
-  AnalyticsConsent,
   DocsLink,
   GitHubLink,
   Header,
@@ -17,6 +16,7 @@ import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
+import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
@@ -117,7 +117,7 @@ const Nav: React.FC<
         </div>
       </Header>
       {children}
-      <AnalyticsConsent />
+      <Analytics fragment={data} />
     </>
   );
 };
