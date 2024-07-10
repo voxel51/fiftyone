@@ -1,12 +1,12 @@
 import { MenuItem, Select } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
 import { useKey } from "../hooks";
-import { getComponentProps } from "../utils";
+import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";
+import { ViewPropsType } from "../utils/types";
 import AlertView from "./AlertView";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 import FieldWrapper from "./FieldWrapper";
-import { ViewPropsType } from "../utils/types";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
@@ -19,11 +19,14 @@ export default function DropdownView(props: ViewPropsType) {
     placeholder = "",
     separator = ",",
     readOnly,
-    condensed,
+    compact,
     label,
     description,
+    color,
+    variant,
   } = view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [selected, setSelected] = useState(false);
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -53,10 +56,22 @@ export default function DropdownView(props: ViewPropsType) {
     labels[choice.value] = choice.label;
     return labels;
   }, {});
-  const { MenuProps = {}, ...selectProps } = getComponentProps(props, "select");
+  const { MenuProps = {}, ...selectProps } = getComponentProps(
+    props,
+    "select",
+    {
+      sx: {
+        ".MuiSelect-select": {
+          padding: "0.45rem 2rem 0.45rem 1rem",
+          opacity: selected ? 1 : 0.5,
+        },
+        ...getFieldSx({ color, variant }),
+      },
+    }
+  );
 
   return (
-    <FieldWrapper {...props} hideHeader={condensed}>
+    <FieldWrapper {...props} hideHeader={compact}>
       <Select
         key={key}
         disabled={readOnly}
@@ -65,10 +80,12 @@ export default function DropdownView(props: ViewPropsType) {
         size="small"
         fullWidth
         displayEmpty
-        title={condensed ? description : undefined}
+        title={compact ? description : undefined}
         renderValue={(value) => {
-          if (value?.length === 0) {
-            if (condensed) {
+          const unselected = value?.length === 0;
+          setSelected(!unselected);
+          if (unselected) {
+            if (compact) {
               return placeholder || label;
             }
             return placeholder;

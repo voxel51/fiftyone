@@ -1,6 +1,8 @@
+export type SchemaViewType = { [key: string]: any };
+
 export type BaseSchemaType = {
   type: string;
-  view: { [key: string]: any };
+  view: SchemaViewType;
 };
 
 export type ArraySchemaType = BaseSchemaType & {

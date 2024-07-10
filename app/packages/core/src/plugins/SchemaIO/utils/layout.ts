@@ -1,4 +1,4 @@
-import { ViewPropsType } from "./types";
+import { SchemaViewType, ViewPropsType } from "./types";
 
 const CSS_UNIT_PATTERN =
   /(\d+)(cm|mm|in|px|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax|%)$/;
@@ -32,6 +32,30 @@ export function getLayoutProps(props: ViewPropsType) {
     minWidth: parseSize(view.minWidth || view.min_width, width),
     maxHeight: parseSize(view.maxHeight || view.max_height, height),
     maxWidth: parseSize(view.maxWidth || view.min_width, width),
+  };
+}
+
+export function getPaddingSx(view: SchemaViewType = {}): PaddingSxType {
+  return {
+    p: view.pad,
+    px: view.pad_x || view.px || view.padX,
+    py: view.pad_y || view.py || view.padY,
+    pt: view.pad_t || view.pt || view.padT,
+    pr: view.pad_r || view.pr || view.padR,
+    pb: view.pad_b || view.pb || view.padB,
+    pl: view.pad_l || view.pl || view.padL,
+  };
+}
+
+export function getMarginSx(view: SchemaViewType = {}): PaddingSxType {
+  return {
+    m: view.margin,
+    mx: view.margin_x || view.mx || view.marginX,
+    my: view.margin_y || view.my || view.marginY,
+    mt: view.margin_t || view.mt || view.marginT,
+    mr: view.margin_r || view.mr || view.marginR,
+    mb: view.margin_b || view.mb || view.marginB,
+    ml: view.margin_l || view.ml || view.marginL,
   };
 }
 
@@ -84,4 +108,14 @@ export const overlayToSx = {
     right: 0,
     transform: "translateY(-50%)",
   },
+};
+
+type PaddingSxType = {
+  p?: number;
+  px?: number;
+  py?: number;
+  pt?: number;
+  pr?: number;
+  pb?: number;
+  pl?: number;
 };

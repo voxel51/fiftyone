@@ -4,9 +4,10 @@ import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
 import React from "react";
-import { getComponentProps } from "../utils";
+import { getComponentProps, getColorByCode } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import Button from "./Button";
+import TooltipProvider from "./TooltipProvider";
 
 export default function ButtonView(props: ViewPropsType) {
   const { schema, path } = props;
@@ -20,6 +21,7 @@ export default function ButtonView(props: ViewPropsType) {
     operator,
     params = {},
     prompt,
+    title,
   } = view;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
@@ -35,25 +37,31 @@ export default function ButtonView(props: ViewPropsType) {
 
   return (
     <Box {...getComponentProps(props, "container")}>
-      <Button
-        variant={variant}
-        href={href}
-        onClick={() => {
-          handleClick(panelId, { params: computedParams, operator, prompt });
-        }}
-        startIcon={icon_position === "left" ? Icon : undefined}
-        endIcon={icon_position === "right" ? Icon : undefined}
-        title={description}
-        {...getComponentProps(props, "button", getButtonProps(props))}
-      >
-        <Typography>{label}</Typography>
-      </Button>
+      <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
+        <Button
+          variant={variant}
+          href={href}
+          onClick={() => {
+            handleClick(panelId, {
+              params: computedParams,
+              operator,
+              prompt,
+            });
+          }}
+          startIcon={icon_position === "left" ? Icon : undefined}
+          endIcon={icon_position === "right" ? Icon : undefined}
+          title={description}
+          {...getComponentProps(props, "button", getButtonProps(props))}
+        >
+          <Typography>{label}</Typography>
+        </Button>
+      </TooltipProvider>
     </Box>
   );
 }
 
 function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, variant } = props.schema.view;
+  const { label, variant, color } = props.schema.view;
   const baseProps: ButtonProps = getCommonProps(props);
   if (isNullish(label)) {
     baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
@@ -66,10 +74,21 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   }
   if (variant === "square") {
     baseProps.sx.borderRadius = "3px 3px 0 0";
-    baseProps.sx.backgroundColor = (theme) => theme.palette.neutral.softBg;
+    baseProps.sx.backgroundColor = (theme) => theme.palette.background.field;
     baseProps.sx.borderBottom = "1px solid";
+    baseProps.sx.paddingBottom = "5px";
     baseProps.sx.borderColor = (theme) => theme.palette.primary.main;
   }
+  if (variant === "outlined") {
+    baseProps.sx.p = "5px";
+  }
+  if ((variant === "square" || variant === "outlined") && isNullish(color)) {
+    const borderColor =
+      "rgba(var(--fo-palette-common-onBackgroundChannel) / 0.23)";
+    baseProps.sx.borderColor = borderColor;
+    baseProps.sx.borderBottomColor = borderColor;
+  }
+
   return baseProps;
 }
 
@@ -95,10 +114,7 @@ function getCommonProps(props: ViewPropsType): ButtonProps {
 function getColor(props: ViewPropsType) {
   const color = props.schema.view.color;
   if (color) {
-    if (color === "primary") return (theme) => theme.palette.text.primary;
-    if (color === "secondary") return (theme) => theme.palette.text.secondary;
-    if (color === "orange") return (theme) => theme.palette.primary.main;
-    return color;
+    return getColorByCode(color);
   }
   const variant = getVariant(props);
   return (theme) => {
