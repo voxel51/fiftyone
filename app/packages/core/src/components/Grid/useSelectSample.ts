@@ -1,3 +1,4 @@
+import { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 
 import {
@@ -11,11 +12,11 @@ export interface SelectThumbnailData {
   shiftKey: boolean;
   id: string;
   sample: Sample;
-  symbol: symbol;
+  reference: ID;
 }
 
 type Store = WeakMap<
-  symbol,
+  ID,
   {
     sample: Sample;
     index: number;
@@ -83,7 +84,7 @@ export default () => {
     ({ set, snapshot }) =>
       async (
         store: Store,
-        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
+        { shiftKey, id: sampleId, sample, reference }: SelectThumbnailData
       ) => {
         let selected = new Set(await snapshot.getPromise(selectedSamples));
         const selectedObjects = new Map(
@@ -91,7 +92,7 @@ export default () => {
         );
 
         const items = Array.from(selected);
-        const index = store.get(symbol);
+        const index = store.get(reference);
         if (false && shiftKey && !selected.has(sampleId)) {
           selected = addRange(index, items, store);
         } else if (false && shiftKey) {

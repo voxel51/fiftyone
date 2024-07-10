@@ -7,19 +7,20 @@ export interface Edge<K, V> {
   remainder?: ItemData<K, V>[];
 }
 
-export type Focus = (id?: symbol) => symbol | undefined;
+export type Focus = (id?: ID) => ID | undefined;
 
 export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
 
+export type ID = { description: string };
 export interface ItemData<K, V> {
   aspectRatio: number;
   data: V;
-  id: symbol;
+  id: ID;
   key: K;
 }
 
 export type Render = (
-  id: symbol,
+  id: ID,
   element: HTMLDivElement,
   dimensions: [number, number],
   soft: boolean,
@@ -42,7 +43,7 @@ export type Request<K, V> = (key: K) => Promise<{
 export interface ItemClickInterface<K, V> {
   event: MouseEvent;
   item: ItemData<K, V>;
-  next: (from: number, soft?: boolean) => Promise<symbol | undefined>;
+  next: (from: number, soft?: boolean) => Promise<ID | undefined>;
 }
 
 export type ItemClick<K, V> = (
@@ -61,4 +62,4 @@ export interface SpotlightConfig<K, V> {
   scrollbar?: boolean;
 }
 
-export type Updater = (id: symbol) => void;
+export type Updater = (id: ID) => void;

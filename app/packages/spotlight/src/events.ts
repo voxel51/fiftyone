@@ -2,6 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { ID } from "./types";
+
 export class Load<K> extends Event {
   constructor(readonly page: K) {
     super("load");
@@ -9,7 +11,7 @@ export class Load<K> extends Event {
 }
 
 export class RowChange<K> extends Event {
-  constructor(readonly at: symbol, readonly page: K) {
+  constructor(readonly at: ID, readonly page: K) {
     super("rowchange");
   }
 }

@@ -1,4 +1,4 @@
-import type { Response } from "@fiftyone/spotlight";
+import type { ID, Response } from "@fiftyone/spotlight";
 import type { Schema } from "@fiftyone/utilities";
 import type { VariablesOf } from "react-relay";
 import type { RecoilValueReadOnly } from "recoil";
@@ -20,7 +20,7 @@ export const PAGE_SIZE = 20;
 
 const processSamplePageData = (
   page: number,
-  store: WeakMap<symbol, object>,
+  store: WeakMap<ID, object>,
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
   zoom: boolean,
@@ -31,7 +31,7 @@ const processSamplePageData = (
       throw new Error("unexpected sample type");
     }
 
-    const id = Symbol(edge.node.id);
+    const id = { description: edge.node.id };
     store.set(id, edge.node);
     records.add(edge.node.id);
 
@@ -57,7 +57,7 @@ const useSpotlightPager = (
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
   const store = useMemo(
-    () => new WeakMap<symbol, { sample: fos.Sample; index: number }>(),
+    () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
     []
   );
   const records = useRef(new Set<string>());

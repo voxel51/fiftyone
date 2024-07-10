@@ -1,7 +1,7 @@
 import type { Lookers } from "@fiftyone/state";
 
 import { subscribe } from "@fiftyone/relay";
-import Spotlight from "@fiftyone/spotlight";
+import Spotlight, { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -35,7 +35,7 @@ function Grid() {
   const id = useMemo(() => uuid(), []);
   const { page, store } = useSpotlightPager(pageParameters, gridCrop);
   const lookerOptions = fos.useLookerOptions(false);
-  const lookerStore = useMemo(() => new WeakMap<symbol, Lookers>(), []);
+  const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
 
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getAt = useRecoilCallback(
@@ -53,7 +53,7 @@ function Grid() {
   const refreshers = useRefreshers();
   const setAt = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      ({ page, at }: { page: number; at: symbol }) => {
+      ({ page, at }: { page: number; at: ID }) => {
         set(gridPage, page);
         set(gridAt, at.description);
       },

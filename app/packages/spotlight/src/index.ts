@@ -5,7 +5,7 @@
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
-import type { SpotlightConfig, Updater } from "./types";
+import type { ID, SpotlightConfig, Updater } from "./types";
 
 import {
   DEFAULT_OFFSET,
@@ -29,14 +29,14 @@ export type * from "./types";
 export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
-  readonly #keys = new WeakMap<symbol, K>();
+  readonly #keys = new WeakMap<ID, K>();
 
   #backward: Section<K, V>;
-  #focused?: symbol;
+  #focused?: ID;
   #forward: Section<K, V>;
   #page: K;
   #rect?: DOMRect;
-  #row: symbol;
+  #row: ID;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
 
@@ -157,7 +157,7 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
-        focus: (id?: symbol) => {
+        focus: (id?: ID) => {
           if (id) {
             this.#focused = id;
           }
@@ -203,7 +203,7 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
-        focus: (id?: symbol) => {
+        focus: (id?: ID) => {
           if (id) {
             this.#focused = id;
           }

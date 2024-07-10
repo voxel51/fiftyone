@@ -6,6 +6,7 @@ import styles from "./styles.module.css";
 
 import type {
   Edge,
+  ID,
   ItemData,
   Request,
   SpotlightConfig,
@@ -39,8 +40,8 @@ export class Section<K, V> {
   #direction: DIRECTION;
   #dirty: Set<Row<K, V>> = new Set();
   #end: Edge<K, V>;
-  #nextMap: WeakMap<symbol, symbol> = new WeakMap();
-  #previousMap: WeakMap<symbol, symbol> = new WeakMap();
+  #nextMap: WeakMap<ID, ID> = new WeakMap();
+  #previousMap: WeakMap<ID, ID> = new WeakMap();
   #shown: Set<Row<K, V>> = new Set();
   #start: Edge<K, V>;
   #rows: Row<K, V>[] = [];
@@ -211,7 +212,7 @@ export class Section<K, V> {
     };
   }
 
-  updateItems(updater: (id: symbol) => void) {
+  updateItems(updater: (id: ID) => void) {
     for (const row of this.#shown) row.updateItems(updater);
     for (const row of this.#rows) !this.#shown.has(row) && this.#dirty.add(row);
   }
@@ -311,7 +312,7 @@ export class Section<K, V> {
   }
 
   async #next(
-    id: symbol,
+    id: ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     sibling: () => Section<K, V>
@@ -331,7 +332,7 @@ export class Section<K, V> {
     return undefined;
   }
   async #previous(
-    id: symbol,
+    id: ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     sibling: () => Section<K, V>
@@ -375,7 +376,7 @@ export class Section<K, V> {
     items: ItemData<K, V>[],
     from: number,
     useRemainder: boolean,
-    focus: (id?: symbol) => symbol,
+    focus: (id?: ID) => ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     sibling: () => Section<K, V>
@@ -392,13 +393,13 @@ export class Section<K, V> {
     const rows: Row<K, V>[] = [];
 
     const chain = (
-      first: symbol,
-      next: WeakMap<symbol, symbol>,
-      previous: WeakMap<symbol, symbol>
+      first: ID,
+      next: WeakMap<ID, ID>,
+      previous: WeakMap<ID, ID>
     ) => {
       let last = first;
 
-      return (id: symbol) => {
+      return (id: ID) => {
         if (last) {
           previous.set(id, last);
           next.set(last, id);

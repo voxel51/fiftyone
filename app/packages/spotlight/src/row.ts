@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import type { Focus, ItemData, SpotlightConfig } from "./types";
+import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
 
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
@@ -28,7 +28,7 @@ export default class Row<K, V> {
     focus: Focus;
     from: number;
     items: ItemData<K, V>[];
-    next: (from: number, soft?: boolean) => Promise<symbol | undefined>;
+    next: (from: number, soft?: boolean) => Promise<ID | undefined>;
     width: number;
   }) {
     this.#config = config;
@@ -165,7 +165,7 @@ export default class Row<K, V> {
     this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
   }
 
-  updateItems(updater: (id: symbol) => void) {
+  updateItems(updater: (id: ID) => void) {
     for (const row of this.#row) updater(row.item.id);
   }
 
