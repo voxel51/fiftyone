@@ -64,7 +64,7 @@ function schemaWithInheritedVariant(
 ) {
   if (isNullish(get(schema, "view.variant"))) {
     set(schema, "view.variant", get(parentSchema, "view.variant"));
-    set(schema, "view.condensed", true);
+    set(schema, "view.compact", true);
   }
   if (isNullish(get(schema, "view.color"))) {
     set(schema, "view.color", get(parentSchema, "view.color"));

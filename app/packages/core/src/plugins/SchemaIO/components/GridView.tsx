@@ -1,7 +1,14 @@
 import { Box, BoxProps } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
-import { getComponentProps, getPath, getProps, spaceToHeight } from "../utils";
+import {
+  getComponentProps,
+  getMarginSx,
+  getPaddingSx,
+  getPath,
+  getProps,
+  spaceToHeight,
+} from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 
@@ -26,6 +33,8 @@ export default function GridView(props: ViewPropsType) {
       justifyContent: alignX || align_x || "start",
       alignItems: alignY || align_y || "start",
       gridAutoFlow: direction,
+      ...getPaddingSx(view),
+      ...getMarginSx(view),
     },
   };
 

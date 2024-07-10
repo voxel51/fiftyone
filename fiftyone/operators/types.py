@@ -380,7 +380,8 @@ class Object(BaseType):
         Returns:
             a :class:`Object`
         """
-        menu = MenuView(**kwargs)
+        menu_kwargs = {"pad": 1, "variant": "square", **kwargs}
+        menu = MenuView(**menu_kwargs)
         obj = Object()
         self.define_property(name, obj, view=menu)
         return obj
@@ -2167,31 +2168,46 @@ class ArrowNavView(View):
         }
 
 
-class PaperContainer(BaseType):
+class Container(BaseType):
+    """Represents a base container for a container types."""
+
+    def __init__(self, **kwargs):
+        self._kwargs = kwargs
+
+    def to_json(self):
+        return {**super().to_json(), **self._kwargs}
+
+
+class PaperContainer(Container):
     """Represents an elevated block for a view.
 
     Args:
         elevation (1): the elevation of the container. Can be a value between 0 and 24
+        rounded (True): whether to display the paper container with rounded corners
     """
 
-    def __init__(self, elevation=1):
+    def __init__(self, elevation=1, rounded=True, **kwargs):
+        super().__init__(**kwargs)
         self.elevation = elevation
+        self.rounded = rounded
 
     def to_json(self):
         return {
             **super().to_json(),
             "elevation": self.elevation,
+            "rounded": self.rounded,
         }
 
 
-class OutlinedContainer(BaseType):
+class OutlinedContainer(Container):
     """Represents an elevated block for a view.
 
     Args:
         rounded (True): whether to display the outlined container with rounded corners
     """
 
-    def __init__(self, rounded=True):
+    def __init__(self, rounded=True, **kwargs):
+        super().__init__(**kwargs)
         self.rounded = rounded
 
     def to_json(self):

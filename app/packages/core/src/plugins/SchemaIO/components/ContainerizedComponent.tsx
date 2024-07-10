@@ -1,6 +1,11 @@
 import { Box, Paper, PaperProps } from "@mui/material";
 import React, { PropsWithChildren } from "react";
-import { isCompositeView, overlayToSx } from "../utils";
+import {
+  getMarginSx,
+  getPaddingSx,
+  isCompositeView,
+  overlayToSx,
+} from "../utils";
 import { ViewPropsType } from "../utils/types";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
@@ -29,9 +34,16 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
 }
 
 function PaperContainer(props: PaperContainerProps) {
-  const { elevation = 1, children, ...paperProps } = props;
+  const { elevation = 1, children, rounded = true, ...paperProps } = props;
+  const roundedSx = rounded ? {} : { borderRadius: 0 };
+  const paddingSx = getPaddingSx(props);
+  const marginSx = getMarginSx(props);
   return (
-    <Paper sx={{ p: 1, m: 0.5 }} elevation={elevation} {...paperProps}>
+    <Paper
+      sx={{ p: 1, m: 0.5, ...roundedSx, ...paddingSx, ...marginSx }}
+      elevation={elevation}
+      {...paperProps}
+    >
       {children}
     </Paper>
   );
@@ -45,4 +57,6 @@ const containersByName = { PaperContainer, OutlinedContainer };
 
 type ContainerizedComponent = PropsWithChildren<ViewPropsType>;
 
-type PaperContainerProps = PropsWithChildren<PaperProps>;
+type PaperContainerProps = PropsWithChildren<
+  PaperProps & { rounded?: boolean }
+>;
