@@ -153,10 +153,10 @@ def load_dataset(name, create_if_necessary=False):
         a :class:`Dataset`
     """
     try:
-        return Dataset(name, _create=create_if_necessary)
+        return Dataset(name, _create=False)
     except DatasetNotFoundError as ex:
         if create_if_necessary:
-            return Dataset(name)
+            return Dataset(name, _create=True)
         else:
             raise ex
 

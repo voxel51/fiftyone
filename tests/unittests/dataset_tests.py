@@ -110,8 +110,14 @@ class DatasetTests(unittest.TestCase):
         assert new_dataset_name_2 not in names
 
         # validate that the correct exception is raised
-        with self.assertRaises(fo.core.dataset.DatasetNotFoundError):
+        with self.assertRaises(fo.DatasetNotFoundError):
             fo.load_dataset(new_dataset_name_2)
+
+        # loading an existing dataset should work
+        assert len(names) > 0
+        for condition in [False, True]:
+            dataset = fo.load_dataset(names[0], create_if_necessary=condition)
+            assert dataset.name == names[0]
 
     @drop_datasets
     def test_delete_dataset(self):
