@@ -459,9 +459,11 @@ from fiftyone.core.odm.utils import load_dataset
 
 
 class TestLoadDataset(unittest.TestCase):
+    @patch("fiftyone.core.dataset.dataset_exists")
     @patch("fiftyone.core.odm.get_db_conn")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_id(self, mock_dataset, mock_get_db_conn):
+    def test_load_dataset_by_id(self, mock_dataset, mock_get_db_conn,
+                                dataset_exists):
         # Setup
         identifier = ObjectId()
         mock_db = MagicMock()
@@ -470,6 +472,7 @@ class TestLoadDataset(unittest.TestCase):
             "_id": ObjectId(identifier),
             "name": "test_dataset",
         }
+        dataset_exists.return_value = True
 
         # Test
         result = load_dataset(id=identifier)
@@ -482,9 +485,11 @@ class TestLoadDataset(unittest.TestCase):
 
         self.assertEqual(result, mock_dataset.return_value)
 
+    @patch("fiftyone.core.dataset.dataset_exists")
     @patch("fiftyone.core.odm.get_db_conn")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_alt_id(self, mock_dataset, mock_get_db_conn):
+    def test_load_dataset_by_alt_id(self, mock_dataset, mock_get_db_conn,
+                                    dataset_exists):
         # Setup
         identifier = "alt_id"
         mock_db = MagicMock()
@@ -493,6 +498,7 @@ class TestLoadDataset(unittest.TestCase):
             "_id": "identifier",
             "name": "dataset_name",
         }
+        dataset_exists.return_value = True
 
         # Test
         result = load_dataset(id=identifier)
@@ -504,11 +510,13 @@ class TestLoadDataset(unittest.TestCase):
         )
         self.assertEqual(result, mock_dataset.return_value)
 
+    @patch("fiftyone.core.dataset.dataset_exists")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_name(self, mock_dataset):
+    def test_load_dataset_by_name(self, mock_dataset, dataset_exists):
         # Setup
         identifier = "test_dataset"
         mock_dataset.return_value = {"_id": ObjectId(), "name": identifier}
+        dataset_exists.return_value = True
 
         # Test
         result = load_dataset(name=identifier)

@@ -59,7 +59,7 @@ def get_dataset_revision(name):
     conn = foo.get_db_conn()
     dataset_doc = conn.datasets.find_one({"name": name}, {"version": 1})
     if dataset_doc is None:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise fo.DatasetNotFoundError(name)
 
     return dataset_doc.get("version", None)
 
