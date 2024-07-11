@@ -449,6 +449,8 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     from tqdm import tqdm
 
     num_total_chunks = num_chunks * (len(field_dirs) + 1)
+    if num_total_chunks > 1 and chunk_size is None:
+        chunk_size = len(os.listdir(os.path.join(tmp_dir, "data")))
 
     message = "Uploading media files"
     if num_total_chunks > 1:
