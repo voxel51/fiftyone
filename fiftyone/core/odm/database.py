@@ -114,6 +114,7 @@ def get_db_config():
         # this information is required in order to run migrations...
         #
         config.version = foc.VERSION
+        if db_config.type != foc.CLIENT_TYPE:
         save = True
 
     if config.type is None:
