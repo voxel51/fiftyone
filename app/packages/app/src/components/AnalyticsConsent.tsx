@@ -103,7 +103,7 @@ export default function AnalyticsConsent(info: NavGA$data) {
 // a component that pins the content to the bottom of the screen, floating
 function PinBottom({ children }: React.PropsWithChildren) {
   return (
-    <Box position="fixed" bottom={0} width="100%">
+    <Box position="fixed" bottom={0} width="100%" zIndex={51}>
       {children}
     </Box>
   );
