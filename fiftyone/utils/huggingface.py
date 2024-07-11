@@ -910,7 +910,12 @@ def _get_label_field_names_and_types(config):
 def _get_parquet_dataset_features(
     repo_id, split, subset, revision=None, **kwargs
 ):
-    api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
+    api_url = (
+        f"{DATASETS_SERVER_URL}/info?"
+        f"dataset={repo_id.replace('/', '%2F')}&"
+        f"config={subset}&"
+        f"split={split}"
+    )
     if revision is not None:
         api_url += f"&revision={revision}"
 
@@ -921,7 +926,12 @@ def _get_parquet_dataset_features(
 
 
 def _get_num_rows(repo_id, split, subset, revision=None, **kwargs):
-    api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
+    api_url = (
+        f"{DATASETS_SERVER_URL}/info?"
+        f"dataset={repo_id.replace('/', '%2F')}&"
+        f"config={subset}&"
+        f"split={split}]"
+    )
     if revision is not None:
         api_url += f"&revision={revision}"
 
@@ -1225,7 +1235,10 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
 
     if batch_size > DATASETS_MAX_BATCH_SIZE:
         logger.info(
-            f"Batch size {batch_size} is larger than the maximum batch size {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
+            (
+                f"Batch size {batch_size} is larger than the maximum batch size"
+                f" {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
+            )
         )
         batch_size = DATASETS_MAX_BATCH_SIZE
 
