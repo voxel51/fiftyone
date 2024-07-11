@@ -9,6 +9,7 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import inspect
+import itertools
 import logging
 import math
 import os
@@ -1331,9 +1332,20 @@ def _resolve_dataset_name(config, **kwargs):
     return name
 
 
-def _get_files_to_download(dataset):
-    filepaths = dataset.values("filepath")
+def _get_files_to_download(sample_collection):
+    if sample_collection.media_type == "group":
+        return list(
+            itertools.chain.from_iterable(
+                _get_files_to_download(
+                    sample_collection.select_group_slices(group)
+                )
+                for group in sample_collection.group_slices
+            )
+        )
+
+    filepaths = sample_collection.values("filepath")
     filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
+
     return filepaths
 
 
