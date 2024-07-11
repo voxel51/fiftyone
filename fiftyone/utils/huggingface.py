@@ -315,6 +315,8 @@ class HFHubDatasetConfig(Config):
         license: the license of the dataset
         description: the description of the dataset
         fiftyone: the fiftyone version requirement of the dataset
+        app_media_fields: the media fields visible in the App
+        grid_media_field: the media field to use in the grid view
     """
 
     def __init__(self, **kwargs):
@@ -334,6 +336,9 @@ class HFHubDatasetConfig(Config):
         self.license = kwargs.get("license", None)
         self.description = kwargs.get("description", None)
         self._get_fiftyone_version(kwargs)
+
+        self.app_media_fields = kwargs.get("app_media_fields", ["filepath"])
+        self.grid_media_field = kwargs.get("grid_media_field", "filepath")
 
     def _get_fiftyone_version(self, kwargs):
         if kwargs.get("fiftyone", None) is None:
@@ -456,10 +461,10 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     if num_total_chunks > 1:
         message += f" in {num_total_chunks} batches  of size {chunk_size}"
 
-    def _upload_media_dir(i):
+    def _upload_media_dir(i, chunk=True):
         path_in_repo = (
             os.path.join("data", f"data_{i}")
-            if chunk_size is not None
+            if chunk_size is not None and num_chunks > 1
             else "data"
         )
         media_dir = os.path.join(tmp_dir, path_in_repo)
@@ -479,7 +484,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     def _upload_field_dir(field_dir, i):
         path_in_repo = (
             os.path.join("fields", field_dir, f"{field_dir}_{i}")
-            if chunk_size is not None
+            if chunk_size is not None and num_chunks > 1
             else os.path.join("fields", field_dir)
         )
         field_media_dir = os.path.join(tmp_dir, path_in_repo)
@@ -537,6 +542,14 @@ def _populate_config_file(
 
     if license is not None:
         config_dict["license"] = license
+
+    app_media_fields = list(dataset.app_config.media_fields)
+    if app_media_fields != ["filepath"]:
+        config_dict["app_media_fields"] = app_media_fields
+
+    grid_media_field = dataset.app_config.grid_media_field
+    if grid_media_field is not None and grid_media_field != "filepath":
+        config_dict["grid_media_field"] = grid_media_field
 
     with open(config_filepath, "w") as f:
         yaml.dump(config_dict, f)
@@ -1334,6 +1347,16 @@ def _resolve_dataset_name(config, **kwargs):
     return name
 
 
+def _get_media_fields(sample_collection):
+    media_fields = [
+        field
+        for field in sample_collection.app_config.media_fields
+        if field != "filepath"
+    ]
+
+    return media_fields
+
+
 def _get_files_to_download(sample_collection):
     if sample_collection.media_type == "group":
         return list(
@@ -1348,6 +1371,15 @@ def _get_files_to_download(sample_collection):
     filepaths = sample_collection.values("filepath")
     filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
 
+    media_fields = _get_media_fields(sample_collection)
+
+    for media_field in media_fields:
+        media_field_values = sample_collection.values(media_field)
+        media_field_values = [
+            val for val in media_field_values if not os.path.exists(val)
+        ]
+        filepaths.extend(media_field_values)
+
     return filepaths
 
 
@@ -1359,6 +1391,17 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     max_samples = kwargs.get("max_samples", None)
     batch_size = kwargs.get("batch_size", None)
     splits = _parse_split_kwargs(**kwargs)
+
+    app_media_fields = (
+        config.app_media_fields
+        if hasattr(config, "app_media_fields")
+        else ["filepath"]
+    )
+    grid_media_field = (
+        config.grid_media_field
+        if hasattr(config, "grid_media_field")
+        else "filepath"
+    )
 
     batch_size = DEFAULT_BATCH_SIZE if batch_size is None else batch_size
 
@@ -1413,6 +1456,12 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
         _download_files_in_batches(
             filepaths, download_dir, batch_size, **init_download_kwargs
         )
+
+    if app_media_fields != ["filepath"]:
+        dataset.app_config.media_fields = app_media_fields
+    if grid_media_field != "filepath":
+        dataset.app_config.grid_media_field = grid_media_field
+    dataset.save()
     return dataset
 
 
