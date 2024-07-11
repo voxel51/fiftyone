@@ -24,16 +24,16 @@ const processSamplePageData = (
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
   zoom: boolean,
-  records: Set<string>
+  records: Map<string, number>
 ) => {
-  return data.samples.edges.map((edge) => {
+  return data.samples.edges.map((edge, i) => {
     if (edge.node.__typename === "%other") {
       throw new Error("unexpected sample type");
     }
 
     const id = { description: edge.node.id };
     store.set(id, edge.node);
-    records.add(edge.node.id);
+    records.set(edge.node.id, page * PAGE_SIZE + i);
 
     return {
       key: page,
@@ -60,7 +60,7 @@ const useSpotlightPager = (
     () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
     []
   );
-  const records = useRef(new Set<string>());
+  const records = useRef(new Map<string, number>());
 
   const page = useRecoilCallback(
     ({ snapshot }) => {
@@ -104,16 +104,18 @@ const useSpotlightPager = (
     [environment, handleError, pager, store, zoom]
   );
 
+  const refresher = useRecoilValue(fos.refresher);
   useEffect(() => {
     const current = records.current;
     return () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(current)) store.get(id).invalidateRecord();
+        for (const id of Array.from(current.keys()))
+          store.get(id).invalidateRecord();
       });
     };
-  }, [records, useRecoilValue(fos.refresher)]);
+  }, [records, refresher]);
 
-  return { page, store };
+  return { page, records, store };
 };
 
 export default useSpotlightPager;

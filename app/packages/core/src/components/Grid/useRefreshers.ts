@@ -1,6 +1,7 @@
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useLayoutEffect, useMemo } from "react";
-import { useRecoilValue, useResetRecoilState } from "recoil";
+import { useEffect, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { gridPage } from "./recoil";
 
 export default function useRefreshers() {
@@ -12,12 +13,14 @@ export default function useRefreshers() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const spaces = useRecoilValue(fos.sessionSpaces);
   const similarityParameters = useRecoilValue(fos.similarityParameters);
   const view = fos.filterView(useRecoilValue(fos.view));
 
   const refreshMemo = useMemo(() => {
     cropToContent;
-  }, [cropToContent]);
+    spaces;
+  }, [cropToContent, spaces]);
 
   const resetMemo = useMemo(() => {
     datasetName;
@@ -42,10 +45,7 @@ export default function useRefreshers() {
     view,
   ]);
 
-  const resetPage = useResetRecoilState(gridPage);
-  useLayoutEffect(() => {
-    resetPage();
-  }, [resetPage]);
+  useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
 
   return useMemo(() => {
     refreshMemo;

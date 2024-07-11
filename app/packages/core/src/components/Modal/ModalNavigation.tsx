@@ -104,7 +104,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     [navigateNext, navigatePrevious]
   );
 
-  fos.useEventHandler(document, "keydown", keyboardHandler);
+  fos.useEventHandler(document, "keyup", keyboardHandler);
 
   return (
     <>

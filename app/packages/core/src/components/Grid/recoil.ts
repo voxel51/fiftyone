@@ -19,6 +19,12 @@ export const gridAt = atom({
   effects: [],
 });
 
+export const gridOffset = atom({
+  key: "gridOffset",
+  default: 0,
+  effects: [],
+});
+
 export const gridSpacing = atom({
   key: "gridSpacing",
   default: 3,

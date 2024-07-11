@@ -52,6 +52,7 @@ export class Section<K, V> {
     edge,
     width,
   }: {
+    at?: string;
     config: SpotlightConfig<K, V>;
     direction: DIRECTION;
     edge: Edge<K, V>;
@@ -70,7 +71,7 @@ export class Section<K, V> {
   }
 
   get finished() {
-    return Boolean(this.#end && this.#end.key === null);
+    return this.#end?.key === null;
   }
 
   get height() {
@@ -145,8 +146,9 @@ export class Section<K, V> {
 
     const minus =
       this.#direction === DIRECTION.FORWARD
-        ? (from) => from - top + this.#config.offset
-        : (from) => this.#height - from - top + this.#config.offset;
+        ? (row) => row.from - top + this.#config.offset
+        : (row) =>
+            this.#height - row.from - top + this.#config.offset - row.height;
 
     if (match) {
       index = match.index;
@@ -165,12 +167,12 @@ export class Section<K, V> {
         if (!threshold(current)) {
           break;
         }
+
         if (this.#dirty.has(row) && !zooming && updater) {
           row.updateItems(updater);
           this.#dirty.delete(row);
         }
 
-        const d = minus(row.from);
         row.show(
           this.#container,
           this.#dirty.has(row) && zooming,
@@ -183,11 +185,8 @@ export class Section<K, V> {
         hide.delete(row);
         index++;
 
-        if (d < -this.#config.offset) {
-          continue;
-        }
-
-        if (delta === undefined || d < delta) {
+        const d = minus(row);
+        if (d >= 0 && (delta === undefined || d < delta)) {
           pageRow = row;
           delta = d;
         }
@@ -205,10 +204,9 @@ export class Section<K, V> {
     for (const row of hide) row.hide();
 
     this.#container.style.height = `${this.height}px`;
-
     return {
       more: requestMore && this.ready,
-      match: { row: pageRow, delta },
+      match: pageRow ? { row: pageRow, delta } : undefined,
     };
   }
 
@@ -240,8 +238,8 @@ export class Section<K, V> {
     renderer: Renderer<K, V>,
     sibling: () => Section<K, V>
   ) {
-    if (!this.#end || this.#end.key === null) {
-      return Boolean(this.#end.key === null);
+    if (this.#end?.key === null && !this.#end.remainder?.length) {
+      return Boolean(this.#end?.key === null);
     }
     const end = this.#end;
     this.#end = undefined;
@@ -252,11 +250,12 @@ export class Section<K, V> {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items],
         this.#height,
-        Boolean(data.next),
+        !data.next,
         data.focus,
         request,
         renderer,
-        sibling
+        sibling,
+        data.next === null
       );
 
       if (!this.#start) {
@@ -379,9 +378,11 @@ export class Section<K, V> {
     focus: (id?: ID) => ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>
+    sibling: () => Section<K, V>,
+    finished: boolean
   ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
+
     const breakpoints = tile(
       data,
       this.#config.rowAspectRatioThreshold(this.#width),
@@ -456,6 +457,10 @@ export class Section<K, V> {
 
       const row = new Row({
         config: this.#config,
+        dangle:
+          this.#direction === DIRECTION.FORWARD &&
+          finished &&
+          index === breakpoints.length - 1,
         focus,
         from: from + offset,
         next,

@@ -5,7 +5,7 @@
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
-import type { ID, SpotlightConfig, Updater } from "./types";
+import type { At, ID, Response, SpotlightConfig, Updater } from "./types";
 
 import {
   DEFAULT_OFFSET,
@@ -34,9 +34,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #backward: Section<K, V>;
   #focused?: ID;
   #forward: Section<K, V>;
-  #page: K;
   #rect?: DOMRect;
-  #row: ID;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
 
@@ -49,10 +47,7 @@ export default class Spotlight<K, V> extends EventTarget {
     };
 
     this.#element.classList.add(styles.spotlight);
-
     this.#config.scrollbar && this.#element.classList.add(styles.scrollbar);
-
-    this.#page = config.key;
   }
 
   get attached() {
@@ -94,7 +89,8 @@ export default class Spotlight<K, V> extends EventTarget {
         : elementOrElementId;
 
     element.appendChild(this.#element);
-    this.#rect = this.#element.parentElement.getBoundingClientRect();
+
+    this.#rect = this.#element.getBoundingClientRect();
     this.#fill();
   }
 
@@ -161,7 +157,10 @@ export default class Spotlight<K, V> extends EventTarget {
           if (id) {
             this.#focused = id;
           }
-          this.#render({ at: this.#focused.description });
+
+          this.#render({
+            at: { description: this.#focused.description, offset: 0 },
+          });
           return this.#focused;
         },
         items,
@@ -207,6 +206,10 @@ export default class Spotlight<K, V> extends EventTarget {
           if (id) {
             this.#focused = id;
           }
+
+          this.#render({
+            at: { description: this.#focused.description, offset: 0 },
+          });
           return this.#focused;
         },
         items: [...items].reverse(),
@@ -261,6 +264,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
   async #fill() {
     this.#forward = new Section({
+      at: this.#config.at.description,
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
@@ -289,7 +293,8 @@ export default class Spotlight<K, V> extends EventTarget {
       requestAnimationFrame(() => {
         this.#scrollReader = createScrollReader(
           this.#element,
-          (zooming) => this.#render({ zooming }),
+          (zooming, dispatchOffset) =>
+            this.#render({ dispatchOffset, zooming }),
           () => {
             return (
               (this.#width /
@@ -309,16 +314,29 @@ export default class Spotlight<K, V> extends EventTarget {
     });
   }
 
-  async #get(key: K) {
+  async #get(key: K): Promise<Response<K, V>> {
+    if (key === null) {
+      return { items: [], next: null, previous: null };
+    }
     const result = await this.#config.get(key);
+
     if (!this.#backward) {
+      let remainder = [];
+      const hasAt = result.items
+        .map((item) => item.id.description)
+        .indexOf(this.#config.at.description);
+      if (hasAt >= 0) {
+        remainder = result.items.slice(0, hasAt).reverse();
+        result.items = result.items.slice(hasAt);
+      }
+
       this.#backward = new Section({
         config: this.#config,
         direction: DIRECTION.BACKWARD,
         edge:
           result.previous !== null
-            ? { key: result.previous, remainder: [] }
-            : { key: null, remainder: [] },
+            ? { key: result.previous, remainder }
+            : { key: null, remainder },
         width: this.#width,
       });
       this.#backward.attach(this.#element);
@@ -333,11 +351,13 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #render({
     at,
+    dispatchOffset = false,
     go = true,
     offset = false,
     zooming,
   }: {
-    at?: string;
+    at?: At;
+    dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
     zooming?: boolean;
@@ -347,7 +367,13 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    const top = this.#element.scrollTop - (offset === false ? ZERO : offset);
+    let top = this.#element.scrollTop - (offset === false ? ZERO : offset);
+    if (at) {
+      const row = this.#forward.find(at.description);
+      if (row) {
+        top = this.#backward.height + row.from - at.offset;
+      }
+    }
 
     const backward = this.#backward.render({
       config: this.#config,
@@ -371,18 +397,19 @@ export default class Spotlight<K, V> extends EventTarget {
       zooming,
     });
 
-    let pageRow = forward.match?.row;
+    if (dispatchOffset || at) {
+      let item = forward.match?.row.first;
+      let delta = forward.match?.delta;
 
-    if (!pageRow || backward.match.delta < forward.match.delta) {
-      pageRow = backward.match.row;
-    }
-
-    if (offset === false && pageRow && !zooming) {
-      if (pageRow.first !== this.#row) {
-        this.#page = this.#keys.get(pageRow.first);
-        this.#row = pageRow.first;
-        this.dispatchEvent(new RowChange(this.#row, this.#page));
+      if (!item || (backward.match && backward.match.delta < delta)) {
+        item = backward.match?.row.first;
+        delta = backward.match?.delta;
       }
+
+      item &&
+        this.dispatchEvent(
+          new RowChange(item, this.#keys.get(item), Math.abs(delta))
+        );
     }
 
     if (!go && offset !== false) {
@@ -391,17 +418,12 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     if (at) {
-      let row = this.#backward.find(at);
+      const row = this.#forward.find(at.description);
       if (row) {
         this.#element.scrollTo(
           ZERO,
-          this.#backward.height - row.from + row.height
+          this.#backward.height + row.from - at.offset
         );
-      } else {
-        row = this.#forward.find(at);
-        if (row) {
-          this.#element.scrollTo(ZERO, this.#backward.height + row.from);
-        }
       }
     } else if (offset !== false && top) {
       this.#element.scrollTo(ZERO, top);

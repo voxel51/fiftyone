@@ -22,8 +22,8 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         const search = new URLSearchParams(router.history.location.search);
         if (payload?.group_id) {
           handleGroupId(search, payload.group_id);
-        } else if (payload?.id) {
-          handleSampleId(search, payload?.id);
+        } else if (payload?.sample_id) {
+          handleSampleId(search, payload?.sample_id);
         } else {
           search.delete("sampleId");
           search.delete("groupId");

@@ -6,36 +6,33 @@ import {
   selectedSamples,
   useSetSelected,
 } from "@fiftyone/state";
+import { MutableRefObject } from "react";
 import { useRecoilCallback } from "recoil";
 
 export interface SelectThumbnailData {
   shiftKey: boolean;
   id: string;
   sample: Sample;
-  reference: ID;
+  symbol: ID;
 }
 
-type Store = WeakMap<
-  ID,
-  {
-    sample: Sample;
-    index: number;
-  }
->;
+type Records = MutableRefObject<Map<string, number>>;
 
 const argFact = (compareFn) => (array) =>
   array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
 
 const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 
-const addRange = (index: number, items: string[], store: Store) => {
+const addRange = (index: number, items: string[], records: Records) => {
   const reverse = Object.fromEntries(
-    Object.entries(store).map(([k, v]) => [v, k])
+    Array.from(records.current.entries()).map(([k, v]) => [v, k])
   );
 
-  const min = argMin(items.map((id) => Math.abs(map[id] - index)));
+  const min = argMin(
+    items.map((id) => Math.abs(records.current.get(id) - index))
+  );
 
-  const close = store.get(items[min]).index;
+  const close = records.current.get(items[min]);
 
   const [start, end] = index < close ? [index, close] : [close, index];
 
@@ -46,9 +43,13 @@ const addRange = (index: number, items: string[], store: Store) => {
   return new Set([...items, ...added]);
 };
 
-const removeRange = (index: number, selected: Set<string>, store: Store) => {
+const removeRange = (
+  index: number,
+  selected: Set<string>,
+  records: Records
+) => {
   const reverse = Object.fromEntries(
-    Object.entries(map).map(([k, v]) => [v, k])
+    Array.from(records.current.entries()).map(([k, v]) => [v, k])
   );
 
   let before = index;
@@ -73,7 +74,9 @@ const removeRange = (index: number, selected: Set<string>, store: Store) => {
       : [index, after];
 
   return new Set(
-    Array.from(selected).filter((s) => map[s] < start || map[s] > end)
+    Array.from(selected).filter(
+      (s) => records.current.get(s) < start || records.current.get(s) > end
+    )
   );
 };
 
@@ -83,8 +86,8 @@ export default () => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (
-        store: Store,
-        { shiftKey, id: sampleId, sample, reference }: SelectThumbnailData
+        records: Records,
+        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
       ) => {
         let selected = new Set(await snapshot.getPromise(selectedSamples));
         const selectedObjects = new Map(
@@ -92,11 +95,11 @@ export default () => {
         );
 
         const items = Array.from(selected);
-        const index = store.get(reference);
-        if (false && shiftKey && !selected.has(sampleId)) {
-          selected = addRange(index, items, store);
-        } else if (false && shiftKey) {
-          selected = removeRange(index, selected, store);
+        const index = records.current.get(symbol.description);
+        if (shiftKey && !selected.has(sampleId)) {
+          selected = addRange(index, items, records);
+        } else if (shiftKey) {
+          selected = removeRange(index, selected, records);
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)

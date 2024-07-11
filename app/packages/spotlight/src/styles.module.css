@@ -17,18 +17,14 @@
   background: var(--fo-palette-background-level2);
 }
 
-.spotlight.scrollbar::-webkit-scrollbar {
-  width: 14px;
-}
-
 .spotlight.scrollbar::-webkit-scrollbar-track {
+  width: 14px;
   box-shadow: inset 0 0 14px 14px var(--dark-color);
-  border: solid 4px transparent;
 }
 
 .spotlight.scrollbar::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px var(--light-color);
-  border: solid 3px transparent;
+  border-radius: 0;
 }
 
 .spotlightSection {

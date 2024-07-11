@@ -6,7 +6,7 @@ import { SCROLL_TIMEOUT } from "./constants";
 
 export default function createScrollReader(
   element: HTMLElement,
-  render: (zooming: boolean) => void,
+  render: (zooming: boolean, dispatchOffset?: boolean) => void,
   getScrollSpeedThreshold: () => number
 ) {
   let destroyed = false;
@@ -22,6 +22,7 @@ export default function createScrollReader(
 
   element.addEventListener("scrollend", () => {
     guard = false;
+    requestAnimationFrame(() => render(zooming, true));
   });
 
   const updateScrollStatus = () => {

@@ -3,7 +3,7 @@
  */
 import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
 
-import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
+import { BOTTOM, DIV, ONE, TOP, TWO, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
 import { create, pixels } from "./utilities";
 
@@ -12,12 +12,14 @@ export default class Row<K, V> {
   #hidden: boolean;
 
   readonly #config: SpotlightConfig<K, V>;
+  readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
   readonly #width: number;
 
   constructor({
     config,
+    dangle,
     from,
     focus,
     items,
@@ -25,6 +27,7 @@ export default class Row<K, V> {
     width,
   }: {
     config: SpotlightConfig<K, V>;
+    dangle: boolean;
     focus: Focus;
     from: number;
     items: ItemData<K, V>[];
@@ -32,6 +35,7 @@ export default class Row<K, V> {
     width: number;
   }) {
     this.#config = config;
+    this.#dangle = dangle;
     this.#container.classList.add(styles.spotlightRow);
     this.#from = from;
     this.#width = width;
@@ -66,6 +70,7 @@ export default class Row<K, V> {
     });
 
     const height = this.height;
+
     let left = ZERO;
 
     for (const {
@@ -82,7 +87,7 @@ export default class Row<K, V> {
     }
 
     this.#container.style.height = pixels(height);
-    this.#container.style.width = pixels(this.width);
+    this.#container.style.width = pixels(this.#width);
   }
 
   get attached() {
@@ -107,10 +112,6 @@ export default class Row<K, V> {
 
   get last() {
     return this.#row[this.#row.length - 1].item.id;
-  }
-
-  get width() {
-    return this.#width;
   }
 
   has(item: string) {
@@ -170,12 +171,19 @@ export default class Row<K, V> {
   }
 
   get #cleanAspectRatio() {
-    return this.#row
+    const result = this.#row
       .map(({ item }) => item.aspectRatio)
       .reduce((ar, next) => ar + next, ZERO);
+    const target = this.#config.rowAspectRatioThreshold(this.#width);
+
+    if (this.#dangle && result < target / TWO) {
+      return target;
+    }
+
+    return result;
   }
 
   get #cleanWidth() {
-    return this.width - (this.#row.length - ONE) * this.#config.spacing;
+    return this.#width - (this.#row.length - ONE) * this.#config.spacing;
   }
 }

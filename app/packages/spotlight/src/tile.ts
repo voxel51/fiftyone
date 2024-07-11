@@ -8,7 +8,7 @@ import { ONE, THREE, ZERO } from "./constants";
 export default (
   items: number[],
   threshold: number,
-  remainder: boolean
+  useRemainder: boolean
 ): number[] => {
   if (threshold < ONE) {
     throw new TilingException(
@@ -20,10 +20,31 @@ export default (
     return [];
   }
 
+  const aspectRatios = new Set(items);
+  if (aspectRatios.size === ONE) {
+    let ar = items[0];
+    let count = 0;
+    do {
+      count++;
+      ar += items[0];
+    } while (ar < threshold);
+
+    const result = [];
+    let size = count;
+    while (size < items.length) {
+      result.push(size);
+      size += count;
+    }
+
+    if (useRemainder && !result.includes(items.length)) {
+      result.push(items.length);
+    }
+
+    return result;
+  }
+
   const findCursor = () => {
     const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
-
-    if (!remainder) return keys[ZERO];
 
     let cursor: number;
     let score = Number.POSITIVE_INFINITY;
@@ -127,8 +148,7 @@ export default (
   }
 
   result.reverse();
-
-  if (!remainder && !result.includes(items.length)) {
+  if (useRemainder && !result.includes(items.length)) {
     result.push(items.length);
   }
 

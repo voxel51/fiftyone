@@ -1,11 +1,11 @@
 {
-    "extends": "../../tsconfig.json",
     "compilerOptions": {
         "composite": true,
-        "lib": ["ESNext"],
-        "module": "ESNext",
+        "esModuleInterop": true,
+        "lib": ["ES2023"],
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
         "target": "ES2022"
     },
-    "include": ["./src/**/*"]
+    "include": ["./src/**/*"],
+    "extends": "../../tsconfig.json"
 }
