@@ -129,7 +129,7 @@ def push_to_hub(
         dataset_type = fot.FiftyOneDataset
 
     if dataset_type == fot.FiftyOneDataset and chunk_size is None:
-        if dataset.count() > 10000:
+        if _count_samples(dataset) > 10000:
             logger.info(
                 "Dataset has more than 10,000 samples. Chunking by default to avoid "
                 "exceeding the maximum number of files in a directory on Hugging"
@@ -611,7 +611,7 @@ def _create_dataset_card(
         "task_ids": [],
         "pretty_name": dataset.name,
         "license": license,
-        "size_categories": [_get_size_category(dataset.count())],
+        "size_categories": [_get_size_category(_count_samples(dataset))],
         "tags": tags,
     }
 
@@ -649,6 +649,15 @@ def _parse_subset_kwargs(**kwargs):
     if isinstance(subsets, str):
         subsets = [subsets]
     return subsets
+
+
+def _count_samples(sample_collection):
+    if sample_collection.media_type == "group":
+        return sum(
+            _count_samples(sample_collection.select_group_slices(s))
+            for s in sample_collection.group_slices
+        )
+    return sample_collection.count()
 
 
 @contextmanager
