@@ -3,6 +3,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 import queue
 import threading
@@ -30,6 +31,7 @@ class Socket:
         url_path: str,
         headers: Union[list, dict],
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        disable_websocket_info_logs: bool = True,
     ):
         self._timeout = timeout
         self._sent = []
@@ -38,6 +40,10 @@ class Socket:
         self._queue = queue.Queue()
         self._err = None
 
+        # Disable chatty websocket logger if told to
+        if disable_websocket_info_logs:
+            logger = logging.getLogger("websocket")
+            logger.level = logging.WARNING
         self._ws = websocket.WebSocketApp(
             os.path.join(base_url.replace("http", "ws"), url_path),
             header=headers,

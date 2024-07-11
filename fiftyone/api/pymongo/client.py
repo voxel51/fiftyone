@@ -21,11 +21,18 @@ class MongoClient(proxy.PymongoRestProxy):
         # Initialize Teams API client
         api_url = kwargs.pop("__teams_api_uri")
         api_key = kwargs.pop("__teams_api_key")
+        disable_websocket_info_logs = kwargs.pop(
+            "__teams_disable_websocket_info_logs", True
+        )
 
         if not api_url and not api_key:
             raise ValueError("MongoClient requires an API URL and an API key.")
 
-        self.__proxy_api_client = api_client.Client(api_url, api_key)
+        self.__proxy_api_client = api_client.Client(
+            api_url,
+            api_key,
+            disable_websocket_info_logs=disable_websocket_info_logs,
+        )
 
         super().__init__(*args, **kwargs)
 

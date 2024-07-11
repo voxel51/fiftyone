@@ -207,6 +207,7 @@ def establish_db_conn(config):
         _connection_kwargs = {
             "__teams_api_uri": config.api_uri,
             "__teams_api_key": config.api_key,
+            "__teams_disable_websocket_info_logs": config.disable_websocket_info_logs,
         }
 
         global _async_mongo_client_cls

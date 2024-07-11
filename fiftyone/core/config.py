@@ -230,6 +230,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.disable_websocket_info_logs = self.parse_bool(
+            d,
+            "disable_websocket_info_logs",
+            env_var="FIFTYONE_DISABLE_WEBSOCKET_INFO_LOGS",
+            default=True,
+        )
         self.do_not_track = self.parse_bool(
             d,
             "do_not_track",
@@ -261,7 +267,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "signed_url_expiration",
             env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
-            default=24
+            default=24,
         )
 
         self._init()
@@ -1107,9 +1113,7 @@ def _parse_env_value(value):
 
 def _get_installed_packages():
     try:
-        return set(
-            d.metadata["Name"] for d in metadata.distributions()
-        )
+        return set(d.metadata["Name"] for d in metadata.distributions())
     except:
         logger.debug("Failed to get installed packages")
         return set()

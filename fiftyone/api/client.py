@@ -41,10 +41,12 @@ class Client:
         base_url: str,
         key: str,
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        disable_websocket_info_logs: bool = True,
     ):
         self.__base_url = base_url
         self.__key = key
         self._timeout = timeout
+        self.__disable_websocket_info_logs = disable_websocket_info_logs
 
         self._session = requests.Session()
         try:
@@ -147,6 +149,7 @@ class Client:
             url_path,
             self._extra_headers,
             self._timeout,
+            self.__disable_websocket_info_logs,
         )
 
     def close(self) -> None:
