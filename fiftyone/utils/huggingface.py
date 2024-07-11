@@ -1380,6 +1380,36 @@ def _get_files_to_download(sample_collection):
         ]
         filepaths.extend(media_field_values)
 
+    try:
+        heatmap_fields = list(
+            sample_collection.get_field_schema(
+                embedded_doc_type=fo.Heatmap
+            ).keys()
+        )
+        for heatmap_field in heatmap_fields:
+            map_path_name = f"{heatmap_field}.map_path"
+            map_paths = sample_collection.exists(map_path_name).values(
+                map_path_name
+            )
+            map_paths = [val for val in map_paths if not os.path.exists(val)]
+            filepaths.extend(map_paths)
+
+        mask_fields = list(
+            sample_collection.get_field_schema(
+                embedded_doc_type=fo.Segmentation
+            ).keys()
+        )
+
+        for mask_field in mask_fields:
+            mask_path_name = f"{mask_field}.mask_path"
+            mask_paths = sample_collection.exists(mask_path_name).values(
+                mask_path_name
+            )
+            mask_paths = [val for val in mask_paths if not os.path.exists(val)]
+            filepaths.extend(mask_paths)
+    except:
+        pass
+
     return filepaths
 
 
