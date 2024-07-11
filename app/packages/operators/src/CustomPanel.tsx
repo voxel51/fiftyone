@@ -7,6 +7,7 @@ import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { Property } from "./types";
 
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
+import { useEffect } from "react";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel } = props;
@@ -48,16 +49,31 @@ export function CustomPanel(props: CustomPanelProps) {
   const schema = Property.fromJSON(panelSchema);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
-      <OperatorIO
-        schema={schema}
-        onChange={handlePanelStateChange}
-        data={data}
-        layout={{ height, width }}
-        onPathChange={handlePanelStatePathChange}
-      />
+    <Box
+      sx={{ height: "100%", width: "100%", position: "relative" }}
+      ref={dimensions.widthRef}
+    >
+      <DimensionRefresher dimensions={dimensions}>
+        <OperatorIO
+          schema={schema}
+          onChange={handlePanelStateChange}
+          data={data}
+          layout={{ height, width }}
+          onPathChange={handlePanelStatePathChange}
+        />
+      </DimensionRefresher>
     </Box>
   );
+}
+
+function DimensionRefresher(props) {
+  const { dimensions, children } = props;
+
+  useEffect(() => {
+    dimensions?.refresh();
+  }, []);
+
+  return children;
 }
 
 export function defineCustomPanel({

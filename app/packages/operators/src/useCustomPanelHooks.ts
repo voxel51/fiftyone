@@ -30,6 +30,7 @@ export interface CustomPanelProps {
       height?: number;
       width?: number;
     };
+    widthRef: React.MutableRefObject<HTMLDivElement | null>;
   } | null;
   panelName?: string;
   panelLabel?: string;
