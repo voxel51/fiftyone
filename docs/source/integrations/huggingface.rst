@@ -1011,9 +1011,9 @@ and the desired `repo_name`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
-    fouh.push_to_hub(dataset, "my-quickstart-dataset")
+    push_to_hub(dataset, "my-quickstart-dataset")
 
 When you run this code, a few things happen:
 
@@ -1043,13 +1043,13 @@ and then passing that in to
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
     # Create view with high confidence predictions
     view = dataset.filter_labels("predictions", F("confidence") > 0.95)
 
     # Push view to the Hub as a new dataset
-    fouh.push_to_hub(view, "my-quickstart-high-conf")
+    push_to_hub(view, "my-quickstart-high-conf")
 
 When you do so, note that the view is exported as a new dataset, and other 
 details from the original dataset are not included.
@@ -1066,7 +1066,7 @@ either a relative or absolute path to the preview file on your local machine:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
     dataset = foz.load_zoo_dataset("quickstart")
 
@@ -1074,7 +1074,7 @@ either a relative or absolute path to the preview file on your local machine:
 
     # Screenshot and save the preview image to a file...
 
-    fouh.push_to_hub(
+    push_to_hub(
         dataset,
         "my-quickstart-with-preview",
         preview_path="/path/to/preview.jpg"
@@ -1103,10 +1103,10 @@ argument to :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
     # Limit to 100 images per directory
-    fouh.push_to_hub(dataset, "my-large-dataset", chunk_size=100)
+    push_to_hub(dataset, "my-large-dataset", chunk_size=100)
 
 .. note::
 
@@ -1139,9 +1139,9 @@ For example, to push a dataset to the Hub as private, you can do the following:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    fromfiftyone.utils.huggingface import push_to_hub
 
-    fouh.push_to_hub(dataset, "my-private-dataset", private=True)
+    push_to_hub(dataset, "my-private-dataset", private=True)
 
 You can also specify the `tags`, `license`, and `description` of the dataset,
 all of which will propagate to the `fiftyone.yml` config file and the Hugging
@@ -1153,11 +1153,11 @@ an MIT license and a description, you can do the following:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
     dataset = foz.load_zoo_dataset("quickstart-video")
 
-    fouh.push_to_hub(
+    push_to_hub(
         dataset,
         "my-action-recognition-dataset",
         tags=["video", "action-recognition"],
@@ -1198,13 +1198,13 @@ Creative Commons Attribution 4.0 license, you can do the following:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
     import fiftyone.types as fot
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset_type = fot.dataset_types.COCODetectionDataset
 
-    fouh.push_to_hub(
+    push_to_hub(
         dataset,
         "quickstart-coco",
         dataset_type=dataset_type,
@@ -1230,11 +1230,11 @@ release. For example, to specify that the dataset requires `fiftyone>=0.23.0`:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import push_to_hub
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    fouh.push_to_hub(
+    push_to_hub(
         dataset,
         "quickstart-min-version",
         min_fiftyone_version="0.23.0",
@@ -1264,9 +1264,9 @@ pushed to the Hub earlier, you can do the following:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub("<username-or-org>/my-private-dataset")
+    dataset = load_from_hub("<username-or-org>/my-private-dataset")
 
 .. note::
 
@@ -1294,9 +1294,12 @@ For example, to load the `quickstart` dataset that we pushed to the Hub earlier,
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub("my-quickstart-dataset")
+    dataset = load_from_hub("<username>/my-quickstart-dataset")
+
+
+Where `<username>` is your Hugging Face username or organization name.
 
 .. _huggingface-hub-load-dataset-from-local-config:
 
@@ -1327,9 +1330,9 @@ the path to the local yaml config file:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "mnist",
         config_file="/path/to/mnist.yml",
     )
@@ -1355,9 +1358,9 @@ and `classification_fields` arguments directly:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "mnist",
         format="ParquetFilesDataset",
         classification_fields="label",
@@ -1560,9 +1563,9 @@ format as `"parquet"`, and specify the `classification_fields` as `"label"`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "mnist",
         format="parquet",
         classification_fields="label",
@@ -1598,9 +1601,9 @@ to load the CIFAR-100 dataset, you can specify the `classification_fields` as
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "cifar100",
         format="parquet",
         classification_fields=["coarse_label", "fine_label"],
@@ -1615,9 +1618,9 @@ you can specify the `classification_fields` as `["artist", "genre", "style"]`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "huggan/wikiart",
         format="parquet",
         classification_fields=["artist", "genre", "style"],
@@ -1633,9 +1636,9 @@ dataset. For example, to load the `cropped_digits` subset of the
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "svhn",
         format="parquet",
         classification_fields="label",
@@ -1655,9 +1658,9 @@ standard column name for detection features in Hugging Face datasets:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "detection-datasets/coco",
         format="parquet",
         detection_fields="objects",
@@ -1685,9 +1688,9 @@ specify the `detection_fields` as `"digits"`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "svhn",
         format="parquet",
         detection_fields="digits",
@@ -1715,9 +1718,9 @@ need to do is specify the `mask_fields` as `"annotation"`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "scene_parse150",
         format="parquet",
         subsets="instance_segmentation",
@@ -1733,9 +1736,9 @@ as `ADE 20K Tiny <https://huggingface.co/datasets/nateraw/ade20k-tiny>`_:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "nateraw/ade20k-tiny",
         format="parquet",
         mask_fields="label",
@@ -1755,11 +1758,11 @@ dataset:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
     # Note: you need access to the dataset to load it!
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "segments/sidewalk-semantic",
         format="parquet",
         filepath="pixel_values",
@@ -1792,9 +1795,9 @@ can load the dataset as follows:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "poloclub/diffusiondb",
         format="parquet",
         max_samples=1000,
@@ -1825,9 +1828,9 @@ need to specify the `filepath` as `"url"`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "kakaobrain/coyo-700m",
         format="parquet",
         filepath="url",
@@ -1842,9 +1845,9 @@ For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "red_caps",
         format="parquet",
         filepath="image_url",
@@ -1860,9 +1863,9 @@ Expert AGI), we use `"image_1"` as the `filepath`:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "MMMU/MMMU",
         format="parquet",
         filepath="image_1",
@@ -1891,9 +1894,9 @@ revision of DiffusionDB before NSFW scores were added, you can specify this via:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "poloclub/diffusiondb",
         format="parquet",
         subset="2m_random_1k", ## just one of the subsets
@@ -1927,9 +1930,9 @@ Now, you can load the dataset using the local yaml config file:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "osunlp/MagicBrush",
         config_file="/path/to/magicbrush.yml",
         max_samples=1000,
@@ -1948,9 +1951,9 @@ workers, you can do the following:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "svhn",
         format="parquet",
         detection_fields="digits",
@@ -1974,9 +1977,9 @@ You can do so following this recipe:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.utils.huggingface as fouh
+    from fiftyone.utils.huggingface import load_from_hub
 
-    dataset = fouh.load_from_hub(
+    dataset = load_from_hub(
         "my-private-dataset-repo-id",
         token="<my-secret-token>",
         ...

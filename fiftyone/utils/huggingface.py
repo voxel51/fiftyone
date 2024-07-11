@@ -363,11 +363,11 @@ pip install -U fiftyone
 
 ```python
 import fiftyone as fo
-import fiftyone.utils.huggingface as fouh
+from fiftyone.utils.huggingface import load_from_hub
 
 # Load the dataset
 # Note: other available arguments include 'max_samples', etc
-dataset = fouh.load_from_hub("{repo_id}")
+dataset = load_from_hub("{repo_id}")
 
 # Launch the App
 session = fo.launch_app(dataset)
