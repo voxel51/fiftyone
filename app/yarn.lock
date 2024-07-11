@@ -2463,7 +2463,6 @@ __metadata:
     "@fiftyone/state": "*"
     "@vitest/ui": ^0.34.6
     plotly.js: ^2.32.0
-    react-plotly.js: ^2.6.0
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
     vite: ^5.2.12
@@ -2482,6 +2481,7 @@ __metadata:
   dependencies:
     "@testing-library/react": latest
     "@testing-library/react-hooks": latest
+    "@types/react-plotly.js": ^2.6.3
     "@typescript-eslint/eslint-plugin": ^5.44.0
     "@typescript-eslint/parser": ^5.44.0
     "@vitest/coverage-v8": ^0.34.6
@@ -2498,6 +2498,7 @@ __metadata:
     patch-package: ^6.4.7
     prettier: ^2.8.0
     react-player: ^2.16.0
+    react-plotly.js: ^2.6.0
     relay-compiler: ^14.1.0
     relay-runtime: ^14.1.0
     typedoc: ^0.23.21
@@ -6498,6 +6499,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/plotly.js@npm:*":
+  version: 2.33.0
+  resolution: "@types/plotly.js@npm:2.33.0"
+  checksum: b885df791f493ad165433b9888e33ecccc2b44a57ff96e2d1446349c26082d58f7ed1472a7c6f10ecffeb9c69dbbf29d1a593b6fee4e44b5cf5039fe7eeeb560
+  languageName: node
+  linkType: hard
+
 "@types/postcss-modules-local-by-default@npm:^4.0.2":
   version: 4.0.2
   resolution: "@types/postcss-modules-local-by-default@npm:4.0.2"
@@ -6560,6 +6568,16 @@ __metadata:
     "@types/react": "*"
     "@types/viewport-mercator-project": "*"
   checksum: cd785b306211ae8d7bf1ab391f6efcfa6ccb481fa6727c4d10a7f0bfc99ba36bbc7adba2bdefc31d4d88a82b174851f346a9e92a4633c7839b1732222638bba6
+  languageName: node
+  linkType: hard
+
+"@types/react-plotly.js@npm:^2.6.3":
+  version: 2.6.3
+  resolution: "@types/react-plotly.js@npm:2.6.3"
+  dependencies:
+    "@types/plotly.js": "*"
+    "@types/react": "*"
+  checksum: 5f85a52addb7d7cccf7271e6683870018b27289faa81c1e8287f4156c2aeff4e594caa4dca1de7ad435743a8283af47b7829b2c4919457528a1bd941b67df307
   languageName: node
   linkType: hard
 

@@ -3,7 +3,7 @@ import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";
-import React from "react";
+import React, { useMemo } from "react";
 import Plot from "react-plotly.js";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
@@ -17,7 +17,6 @@ export default function PlotlyView(props) {
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
-    console.log(props);
     // TODO: add more interesting/useful event data
     const data = EventDataMappers[event]?.(e) || {};
     const x_data_source = view.x_data_source;
@@ -84,57 +83,68 @@ export default function PlotlyView(props) {
   };
   const eventHandlers = createPlotlyHandlers(handleEvent);
 
-  const dataDefaults = {};
-  const layoutDefaults = {
-    font: {
-      family: "var(--fo-fontFamily-body)",
-      size: 14,
-      color: theme.text.secondary,
-    },
-    showlegend: false,
-    xaxis: {
-      showgrid: true,
-      zeroline: true,
-      visible: true,
-      zerolinecolor: theme.text.tertiary,
-      color: theme.text.secondary,
-      gridcolor: theme.primary.softBorder,
-    },
-    yaxis: {
-      showgrid: true,
-      zeroline: true,
-      visible: true,
-      zerolinecolor: theme.text.tertiary,
-      color: theme.text.secondary,
-      gridcolor: theme.primary.softBorder,
-    },
-    autosize: true,
-    margin: {
-      t: 0,
-      l: 0,
-      b: 0,
-      r: 0,
-      pad: 0,
-    },
-    paper_bgcolor: theme.background.mediaSpace,
-    plot_bgcolor: theme.background.mediaSpace,
-    legend: {
-      x: 1,
-      y: 1,
-      bgcolor: theme.background.mediaSpace,
-      font: { color: theme.text.secondary },
-    },
-  };
-  const configDefaults = {
-    displaylogo: false,
-    scrollZoom: true,
-    responsive: true,
-    displayModeBar: true,
-  };
+  const dataDefaults = useMemo(() => {
+    return {};
+  }, []);
+  const layoutDefaults = useMemo(() => {
+    return {
+      font: {
+        family: "var(--fo-fontFamily-body)",
+        size: 14,
+        color: theme.text.secondary,
+      },
+      showlegend: false,
+      xaxis: {
+        showgrid: true,
+        zeroline: true,
+        visible: true,
+        zerolinecolor: theme.text.tertiary,
+        color: theme.text.secondary,
+        gridcolor: theme.primary.softBorder,
+      },
+      yaxis: {
+        showgrid: true,
+        zeroline: true,
+        visible: true,
+        zerolinecolor: theme.text.tertiary,
+        color: theme.text.secondary,
+        gridcolor: theme.primary.softBorder,
+      },
+      autosize: true,
+      margin: {
+        t: 0,
+        l: 0,
+        b: 0,
+        r: 0,
+        pad: 0,
+      },
+      paper_bgcolor: theme.background.mediaSpace,
+      plot_bgcolor: theme.background.mediaSpace,
+      legend: {
+        x: 1,
+        y: 1,
+        bgcolor: theme.background.mediaSpace,
+        font: { color: theme.text.secondary },
+      },
+    };
+  }, [theme]);
+  const configDefaults = useMemo(() => {
+    return {
+      displaylogo: false,
+      scrollZoom: true,
+    };
+  }, []);
 
-  const mergedLayout = merge({}, layoutDefaults, layout);
-  const mergedConfig = merge({}, configDefaults, config);
-  const mergedData = mergeData(data, dataDefaults);
+  const mergedLayout = useMemo(() => {
+    return merge({}, layoutDefaults, layout);
+  }, [layoutDefaults, layout]);
+
+  const mergedConfig = useMemo(() => {
+    return merge({}, configDefaults, config);
+  }, [configDefaults, config]);
+  const mergedData = useMemo(() => {
+    return mergeData(data, dataDefaults);
+  }, [data, dataDefaults]);
 
   return (
     <Box
