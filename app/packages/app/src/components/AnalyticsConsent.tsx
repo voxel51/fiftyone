@@ -79,9 +79,8 @@ export default function AnalyticsConsent(info: NavGA$data) {
             Help us improve FiftyOne
           </Typography>
           <Typography marginBottom={1}>
-            We use our own and third party cookies to understand how you use
-            FiftyOne and to improve the product. You can help us by enabling
-            analytics.
+            We use cookies to understand how FiftyOne is used and to improve the
+            product. You can help us by enabling analytics.
           </Typography>
           <Grid container gap={2} justifyContent="end" direction="row">
             <Grid item alignContent="center">
