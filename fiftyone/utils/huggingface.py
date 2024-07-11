@@ -459,7 +459,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
 
     message = "Uploading media files"
     if num_total_chunks > 1:
-        message += f" in {num_total_chunks} batches  of size {chunk_size}"
+        message += f" in {num_total_chunks} batches of size {chunk_size}"
 
     def _upload_media_dir(i, chunk=True):
         path_in_repo = (
