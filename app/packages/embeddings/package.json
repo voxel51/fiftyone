@@ -17,7 +17,6 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
         "plotly.js": "^2.32.0",
-        "react-plotly.js": "^2.6.0",
         "use-resize-observer": "^9.0.2"
     },
     "devDependencies": {
