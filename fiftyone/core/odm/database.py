@@ -213,7 +213,7 @@ def establish_db_conn(config):
     connect(config.database_name, **_connection_kwargs)
 
     db_config = get_db_config()
-    if foc.CLIENT_TYPE != db_config.type:
+    if db_config.type != foc.CLIENT_TYPE:
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
             % (db_config.type, foc.CLIENT_TYPE)
