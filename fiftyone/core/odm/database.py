@@ -136,9 +136,6 @@ def get_db_config():
 
 
 def _handle_multiple_config_docs(conn, config_docs):
-    # Use the newest one
-    keep_doc = max(config_docs, key=lambda d: d["_id"])
-
     if fo.config.database_admin:
         logger.warning(
             "Unexpectedly found %d documents in the 'config' collection; "
@@ -152,7 +149,12 @@ def _handle_multiple_config_docs(conn, config_docs):
             [{"$sort": {"_id": -1}}, {"$limit": 1}, {"$out": "config"}]
         )
 
-    return keep_doc
+        config_doc = next(iter(conn.config.find()))
+    else:
+        # Use the newest one
+        config_doc = max(config_docs, key=lambda d: d["_id"])
+
+    return config_doc
 
 
 def establish_db_conn(config):
