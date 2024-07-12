@@ -115,6 +115,7 @@ def migrate_database_if_necessary(
 
     if config is None:
         config = foo.get_db_config()
+
     head = config.version
 
     default_destination = destination is None

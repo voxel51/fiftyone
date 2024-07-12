@@ -5,16 +5,20 @@ FiftyOne utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from datetime import datetime
 import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+from bson import ObjectId
 import numpy as np
 
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.utils import load_dataset
 import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
 
@@ -444,18 +448,26 @@ class ConfigTests(unittest.TestCase):
         orig_config = foo.get_db_config()
 
         # Add some duplicate documents
-        db.config.insert_one({"version": "0.14.4", "type": "fiftyone"})
-        db.config.insert_one({"version": "0.1.4", "type": "fiftyone"})
+        db.config.insert_one(
+            {
+                "_id": ObjectId.from_datetime(datetime(2022, 1, 1)),
+                "version": "0.14.4",
+                "type": "fiftyone",
+            }
+        )
+        db.config.insert_one(
+            {
+                "_id": ObjectId.from_datetime(datetime(2023, 1, 1)),
+                "version": "0.1.4",
+                "type": "fiftyone",
+            }
+        )
 
         # Ensure that duplicate documents are automatically cleaned up
         config = foo.get_db_config()
 
         self.assertEqual(len(list(db.config.aggregate([]))), 1)
         self.assertEqual(config, orig_config)
-
-
-from bson import ObjectId
-from fiftyone.core.odm.utils import load_dataset
 
 
 class TestLoadDataset(unittest.TestCase):
