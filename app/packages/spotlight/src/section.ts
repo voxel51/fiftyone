@@ -16,8 +16,12 @@ import type {
 import { closest } from "./closest";
 import {
   BOTTOM,
+  DATA_CY,
+  DATA_CY_SECTION,
   DIRECTION,
   DIV,
+  FIRST,
+  LAST,
   ONE,
   SECTION_ROW_LIMIT,
   TOP,
@@ -68,6 +72,7 @@ export class Section<K, V> {
     this.#section.classList.add(styles.spotlightSection);
     this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
+    this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
   }
 
   get finished() {
@@ -369,6 +374,7 @@ export class Section<K, V> {
 
     this.#section.classList.remove(old);
     this.#section.classList.add(this.#direction);
+    this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
   }
 
   #tile(
@@ -422,7 +428,7 @@ export class Section<K, V> {
     const first = !this.#rows.length
       ? undefined
       : this.#rows[this.#rows.length - 1][
-          this.#direction === DIRECTION.BACKWARD ? "first" : "last"
+          this.#direction === DIRECTION.BACKWARD ? FIRST : LAST
         ];
 
     const link = chain(first, forward, backward);

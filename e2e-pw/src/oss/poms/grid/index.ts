@@ -22,8 +22,12 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
-  get firstFlashlightSection() {
-    return this.locator.getByTestId("flashlight-section").first();
+  getBackwardSection() {
+    return this.locator.getByTestId("spotlight-section-backward");
+  }
+
+  getForwardSection() {
+    return this.locator.getByTestId("spotlight-section-forward");
   }
 
   getNthLooker(n: number) {
@@ -43,7 +47,7 @@ export class GridPom {
   }
 
   async openNthSample(n: number) {
-    await this.getNthLooker(n).click({ position: { x: 10, y: 50 } });
+    await this.getNthLooker(n).click({ position: { x: 10, y: 80 } });
   }
 
   async openFirstSample() {
@@ -57,9 +61,6 @@ export class GridPom {
   async selectSlice(slice: string) {
     await this.sliceSelector.selectSlice(slice);
   }
-  async getNthFlashlightSection(n: number) {
-    return this.page.getByTestId("flashlight-section").nth(n);
-  }
 
   /**
    * @deprecated Use `getWaitForGridRefreshPromise` instead.
@@ -72,13 +73,9 @@ export class GridPom {
 
   async getWaitForGridRefreshPromise() {
     const refreshStartPromise =
-      this.eventUtils.getEventReceivedPromiseForPredicate(
-        "flashlight-show-loading-pixels"
-      );
+      this.eventUtils.getEventReceivedPromiseForPredicate("grid-unmount");
     const refreshEndPromise =
-      this.eventUtils.getEventReceivedPromiseForPredicate(
-        "flashlight-hide-loading-pixels"
-      );
+      this.eventUtils.getEventReceivedPromiseForPredicate("grid-mount");
     return Promise.all([refreshStartPromise, refreshEndPromise]);
   }
 }

@@ -3,27 +3,30 @@ import { useMemo } from "react";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
-export default function useAt(refreshers: object) {
-  const getPage = useRecoilCallback(
-    ({ snapshot }) =>
-      () => {
-        return snapshot.getLoadable(gridPage).getValue();
+export default function useAt(pageReset: object) {
+  const getPage = useRecoilTransaction_UNSTABLE(
+    ({ get }) =>
+      (ref: { current: number }) => {
+        ref.current = get(gridPage);
       },
     []
   );
+
   const getKey = useMemo(() => {
-    refreshers;
-    let page = 0;
+    pageReset;
+    const ref = { current: 0 };
 
     return () => {
-      if (page === 0) {
-        page = null;
+      if (ref.current === 0) {
+        ref.current = null;
         return "reset";
       }
 
-      return getPage();
+      getPage(ref);
+
+      return ref.current;
     };
-  }, [getPage, refreshers]);
+  }, [getPage, pageReset]);
 
   const get = useRecoilCallback(
     ({ snapshot }) =>

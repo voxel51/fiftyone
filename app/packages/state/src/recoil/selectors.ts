@@ -449,6 +449,7 @@ export const extendedStagesUnsorted = selector({
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );
+
     if (extendedSelectionOverrideStage) {
       return extendedSelectionOverrideStage;
     }

@@ -161,7 +161,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     }
 
     await page.waitForSelector(
-      `[data-cy=${withGrid ? "flashlight-section" : "panel-container"}]`,
+      `[data-cy=${withGrid ? "spotlight-forward-section" : "panel-container"}]`,
       {
         state: "visible",
       }

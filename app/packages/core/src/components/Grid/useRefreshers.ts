@@ -7,49 +7,41 @@ import { gridPage } from "./recoil";
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const extendedStagesUnsorted = useRecoilValue(fos.extendedStagesUnsorted);
-  const extendedStages = useRecoilValue(fos.extendedStages);
+  const extendedStages = fos.stringifyObj(useRecoilValue(fos.extendedStages));
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
   const spaces = useRecoilValue(fos.sessionSpaces);
-  const similarityParameters = useRecoilValue(fos.similarityParameters);
   const view = fos.filterView(useRecoilValue(fos.view));
 
-  const refreshMemo = useMemo(() => {
+  const layoutReset = useMemo(() => {
     cropToContent;
+    refresher;
     spaces;
-  }, [cropToContent, spaces]);
+  }, [cropToContent, refresher, spaces]);
 
-  const resetMemo = useMemo(() => {
+  const pageReset = useMemo(() => {
     datasetName;
     extendedStages;
-    extendedStagesUnsorted;
     filters;
     groupSlice;
-    refresher;
     shouldRenderImaVidLooker;
-    similarityParameters;
     view;
     return {};
   }, [
     datasetName,
     extendedStages,
-    extendedStagesUnsorted,
     filters,
     groupSlice,
-    refresher,
     shouldRenderImaVidLooker,
-    similarityParameters,
     view,
   ]);
 
   useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
 
-  return useMemo(() => {
-    refreshMemo;
-    resetMemo;
-    return {};
-  }, [refreshMemo, resetMemo]);
+  return {
+    layoutReset,
+    pageReset,
+  };
 }

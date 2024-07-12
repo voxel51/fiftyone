@@ -69,7 +69,7 @@ test.describe("fo3d", () => {
   test("scene is rendered correctly", async ({ modal, grid }) => {
     const mask = getScreenshotMasks(modal);
 
-    await expect(grid.firstFlashlightSection).toHaveScreenshot(
+    await expect(grid.getForwardSection()).toHaveScreenshot(
       "orthographic-projection-grid-cuboids.png",
       {
         mask,

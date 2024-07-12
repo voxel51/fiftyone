@@ -30,6 +30,7 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
+  readonly #tmp = new Set<string>();
 
   #backward: Section<K, V>;
   #focused?: ID;
@@ -319,6 +320,9 @@ export default class Spotlight<K, V> extends EventTarget {
       return { items: [], next: null, previous: null };
     }
     const result = await this.#config.get(key);
+    for (const { id } of result.items) {
+      this.#keys.set(id, key);
+    }
 
     if (!this.#backward) {
       let remainder = [];
@@ -340,10 +344,6 @@ export default class Spotlight<K, V> extends EventTarget {
         width: this.#width,
       });
       this.#backward.attach(this.#element);
-    }
-
-    for (const { id } of result.items) {
-      this.#keys.set(id, key);
     }
 
     return result;
@@ -406,7 +406,7 @@ export default class Spotlight<K, V> extends EventTarget {
         delta = backward.match?.delta;
       }
 
-      item &&
+      this.#keys.has(item) &&
         this.dispatchEvent(
           new RowChange(item, this.#keys.get(item), Math.abs(delta))
         );

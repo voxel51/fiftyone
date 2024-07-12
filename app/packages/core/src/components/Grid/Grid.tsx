@@ -29,8 +29,8 @@ function Grid() {
 
   const spacing = useRecoilValue(gridSpacing);
 
-  const refreshers = useRefreshers();
-  const { get, set } = useAt(refreshers);
+  const { pageReset, layoutReset } = useRefreshers();
+  const { get, set } = useAt(pageReset);
   const threshold = useThreshold();
 
   const { page, records, store } = useSpotlightPager(pageParameters, gridCrop);
@@ -40,7 +40,8 @@ function Grid() {
   const setSample = fos.useExpandSample(store);
 
   const spotlight = useMemo(() => {
-    refreshers;
+    pageReset;
+    layoutReset;
     if (resizing) {
       return undefined;
     }
@@ -82,17 +83,18 @@ function Grid() {
   }, [
     createLooker,
     get,
+    layoutReset,
     lookerStore,
     page,
+    pageReset,
     records,
-    refreshers,
     resizing,
     setSample,
     spacing,
     store,
     threshold,
   ]);
-  selectSample.current = useSelectSample(records);
+  selectSample.current = useSelectSample();
   useSelect(lookerOptions, lookerStore, spotlight);
 
   useLayoutEffect(() => {
@@ -101,13 +103,19 @@ function Grid() {
     }
 
     const element = document.getElementById(id);
+    const mount = () => {
+      document.dispatchEvent(new CustomEvent("grid-mount"));
+    };
 
     spotlight.attach(element);
+    spotlight.addEventListener("load", mount);
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
+      document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
   }, [id, resizing, set, spotlight]);
 

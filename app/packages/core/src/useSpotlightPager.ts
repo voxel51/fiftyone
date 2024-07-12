@@ -75,7 +75,10 @@ const useSpotlightPager = (
             environment,
             foq.paginateSamples,
             variables,
-            { networkCacheConfig: {}, fetchPolicy: "store-or-network" }
+            {
+              networkCacheConfig: { metadata: {} },
+              fetchPolicy: "store-or-network",
+            }
           ).subscribe({
             next: (data) => {
               const items = processSamplePageData(
@@ -109,8 +112,9 @@ const useSpotlightPager = (
     const current = records.current;
     return () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(current.keys()))
+        for (const id of Array.from(current.keys())) {
           store.get(id).invalidateRecord();
+        }
       });
     };
   }, [records, refresher]);
