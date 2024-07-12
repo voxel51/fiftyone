@@ -44,6 +44,8 @@ def convert_ultralytics_model(model):
             return _convert_yolo_obb_model(model)
         else:
             return _convert_yolo_detection_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.ClassificationModel):
+        return _convert_yolo_classification_model(model)
     else:
         raise ValueError(
             "Unsupported model type; cannot convert %s to a FiftyOne model"
@@ -555,6 +557,31 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
         images = [Image.fromarray(arg) for arg in args]
         predictions = self.model(images, verbose=False)
         return self._format_predictions(predictions)
+
+
+class FiftyOneYOLOClassificationModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
+class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
+    """FiftyOne wrapper around an Ultralytics YOLO classification model.
+
+    Args:
+        config: a :class:`FiftyOneYOLOClassificationModelConfig`
+    """
+
+    def _format_predictions(self, predictions):
+        logits = predictions.cpu().numpy().probs.data
+        confidence = logits.max()
+        label = self.model.names[logits.argmax()]
+        return fol.Classification(
+            label=label, logits=logits, confidence=confidence
+        )
+
+
+def _convert_yolo_classification_model(model):
+    config = FiftyOneYOLOClassificationModelConfig({"model": model})
+    return FiftyOneYOLOClassificationModel(config)
 
 
 def _convert_yolo_detection_model(model):
