@@ -1,24 +1,26 @@
+import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelId } from "@fiftyone/spaces";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
   BoxProps,
-  Typography,
-  useTheme,
-  styled,
+  Grid,
   IconButton,
   Paper,
-  Grid,
+  styled,
+  Typography,
+  useTheme,
 } from "@mui/material";
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, HeaderView } from ".";
-import { getComponentProps, getPath, getProps } from "../utils";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import DynamicIO from "./DynamicIO";
+import { MuuriComponent } from "muuri-react";
+import React, { useCallback, useState } from "react";
 import GridLayout from "react-grid-layout";
-import CloseIcon from "@mui/icons-material/Close";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
-import { usePanelId } from "@fiftyone/spaces";
+import { Button } from "../";
+import { getComponentProps, getPath, getProps } from "../../utils";
+import { ObjectSchemaType, ViewPropsType } from "../../utils/types";
+import DynamicIO from "../DynamicIO";
+import Tile from "./Tile";
 
 const AddItemCTA = ({ onAdd }) => {
   return (
@@ -63,7 +65,95 @@ const AddItemButton = ({ onAddItem }) => {
   );
 };
 
+function DashboardViewTwo(props: ViewPropsType) {
+  {
+    const { schema, path, data, layout } = props;
+    const { properties } = schema as ObjectSchemaType;
+    const propertiesAsArray = [];
+    const allow_addition = schema.view.allow_addition;
+    const allow_deletion = schema.view.allow_deletion;
+
+    for (const property in properties) {
+      propertiesAsArray.push({ id: property, ...properties[property] });
+    }
+    const panelId = usePanelId();
+    const triggerPanelEvent = usePanelEvent();
+
+    const onCloseItem = useCallback(
+      ({ id, path }) => {
+        if (schema.view.on_close_item) {
+          triggerPanelEvent(panelId, {
+            operator: schema.view.on_close_item,
+            params: { id, path },
+          });
+        }
+      },
+      [panelId, props, schema.view.on_close_item, triggerPanelEvent]
+    );
+    const onAddItem = useCallback(() => {
+      if (schema.view.on_add_item) {
+        triggerPanelEvent(panelId, {
+          operator: schema.view.on_add_item,
+        });
+      }
+    }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
+    const handleLayoutChange = useCallback(
+      (layout: any) => {
+        if (schema.view.on_layout_change) {
+          triggerPanelEvent(panelId, {
+            operator: schema.view.on_layout_change,
+            params: { layout },
+          });
+        }
+      },
+      [panelId, props, schema.view.on_layout_change, triggerPanelEvent]
+    );
+    const [isDragging, setIsDragging] = useState(false);
+    const theme = useTheme();
+
+    console.log(">>>", { propertiesAsArray });
+
+    return (
+      <MuuriComponent
+        dragEnabled
+        dragHandle=".tile-heading"
+        onSort={() => {
+          console.log(">>> onSort");
+        }}
+        onDragEnd={(...args) => {
+          console.log(">>> onDragEnd", args);
+        }}
+      >
+        {propertiesAsArray.map((property) => {
+          const { id } = property;
+          const itemPath = getPath(path, id);
+          return (
+            <Tile
+              id={itemPath}
+              key={itemPath}
+              title={property.title || id}
+              onClose={() => {
+                onCloseItem({ id, path: itemPath });
+              }}
+            >
+              <DynamicIO
+                {...props}
+                schema={property}
+                path={itemPath}
+                data={data?.[id]}
+                parentSchema={schema}
+                relativePath={id}
+              />
+            </Tile>
+          );
+        })}
+      </MuuriComponent>
+    );
+  }
+}
+
 export default function DashboardView(props: ViewPropsType) {
+  return <DashboardViewTwo {...props} />;
   const { schema, path, data, layout } = props;
   const { properties } = schema as ObjectSchemaType;
   const propertiesAsArray = [];

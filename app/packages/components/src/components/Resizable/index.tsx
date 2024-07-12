@@ -10,7 +10,7 @@ import { useTheme } from "../ThemeProvider";
  * Currently, only supports resizing left and right
  */
 export default function Resizable(props: ResizableProps) {
-  const { direction, onResizeStop, onResizeReset, style } = props;
+  const { direction, onResizeStop, onResizeReset, style, enable = {} } = props;
   const resizeRight = direction === "right";
   const resizeLeft = direction === "left";
   const theme = useTheme();
@@ -27,6 +27,7 @@ export default function Resizable(props: ResizableProps) {
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
+        ...enable,
       }}
       onResizeStop={(e, direction, ref, delta) => {
         if (onResizeStop) onResizeStop(e, direction, ref, delta);

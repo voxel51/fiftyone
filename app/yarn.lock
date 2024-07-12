@@ -1758,6 +1758,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.9.2":
+  version: 7.24.8
+  resolution: "@babel/runtime@npm:7.24.8"
+  dependencies:
+    regenerator-runtime: ^0.14.0
+  checksum: 6b1e4230580f67a807ad054720812bbefbb024cc2adc1159d050acbb764c4c81c7ac5f7a042c48f578987c5edc2453c71039268df059058e9501fa6023d764b0
+  languageName: node
+  linkType: hard
+
 "@babel/template@npm:^7.24.7, @babel/template@npm:^7.3.3":
   version: 7.24.7
   resolution: "@babel/template@npm:7.24.7"
@@ -2413,6 +2422,8 @@ __metadata:
     history: ^5.3.0
     lodash: ^4.17.21
     lru-cache: ^6.0.0
+    muuri: ^0.9.5
+    muuri-react: ^3.1.7
     numeral: ^2.0.6
     path-to-regexp: ^6.2.0
     prettier: 2.2.1
@@ -14960,6 +14971,26 @@ __metadata:
   version: 1.0.0
   resolution: "murmurhash-js@npm:1.0.0"
   checksum: 083cea92a11bc9eb25be1446fc92eded3f49731bc1ad34fa8023afd68c234d1dd59458d70eb20e667b1383bedeeb8dfb1a16c89913b6ffe3584fd22fb598739d
+  languageName: node
+  linkType: hard
+
+"muuri-react@npm:^3.1.7":
+  version: 3.1.7
+  resolution: "muuri-react@npm:3.1.7"
+  dependencies:
+    "@babel/runtime": ^7.9.2
+    prop-types: ^15.7.2
+  peerDependencies:
+    muuri: ^0.8.0
+    react: ^17.0.2
+  checksum: 0751664ab83ca451b652a30e59ca24c1707e423122218ecbb966f4460cf5c9bf569b9ecdcc07a2453814a319aae31522549da656699f8bf8592ae73509598dc4
+  languageName: node
+  linkType: hard
+
+"muuri@npm:^0.9.5":
+  version: 0.9.5
+  resolution: "muuri@npm:0.9.5"
+  checksum: 7b17b6d51adf1261ba66a894113a92fc0be65c0c4ffdaa99974f6f73c2ad6f30ae09971bae41249f88a92559670a2e97adb953f3b8dc9ba32bc054f3f81b77ba
   languageName: node
   linkType: hard
 
