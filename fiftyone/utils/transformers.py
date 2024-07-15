@@ -452,7 +452,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
         self.config = config
         self.model = self._load_model(config)
         self.device = self.device = (
-            "gpu" if next(config.model.parameters()).is_cuda else "cpu"
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.image_processor = self._load_image_processor()
 
@@ -499,7 +499,7 @@ class FiftyOneZeroShotTransformer(
         self.classes = config.classes
         self.model = self._load_model(config)
         self.device = self.device = (
-            "gpu" if next(config.model.parameters()).is_cuda else "cpu"
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.processor = self._load_processor()
         self._text_prompts = None
@@ -749,7 +749,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.classes = config.classes
         self.processor = self._load_processor(config)
         self.device = self.device = (
-            "gpu" if next(config.model.parameters()).is_cuda else "cpu"
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.model = self._load_model(config)
         self._text_prompts = None
