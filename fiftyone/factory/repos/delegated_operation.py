@@ -22,6 +22,7 @@ from fiftyone.operators.executor import (
     ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionContextUser,
 )
 
 logger = logging.getLogger(__name__)
@@ -179,8 +180,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         context = None
         if isinstance(op.context, dict):
+            user = ExecutionContextUser(id=op.context.get("user"))
             context = ExecutionContext(
-                request_params=op.context.get("request_params", {})
+                request_params=op.context.get("request_params", {}), user=user
             )
         elif isinstance(op.context, ExecutionContext):
             context = op.context

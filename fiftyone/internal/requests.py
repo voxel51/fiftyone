@@ -71,6 +71,6 @@ def _handle_result(result, query, variables=None):
         for error in result["errors"]:
             print(error)
         raise Exception(
-            f"Query failed with errors.\n query={query}\nvairables={variables}"
+            f"Query failed with errors.\n query={query}\nvariables={variables}"
         )
     return result

@@ -27,6 +27,7 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionContextUser,
 )
 from fiftyone.operators.operator import Operator, OperatorConfig
 
@@ -748,7 +749,7 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
                             "dataset_name": dataset_name,
                             "dataset_id:": str(dataset_id),
                         },
-                        user=f"{user}_{i}",
+                        user=ExecutionContextUser(id=f"{user}_{i}"),
                     ),
                 )
                 time.sleep(

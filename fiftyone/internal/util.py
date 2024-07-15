@@ -8,10 +8,9 @@ FiftyOne internal utilities.
 
 import os
 
-from fiftyone.internal.constants import (
-    API_URL_ENV_VAR,
-    ENCRYPTION_KEY_ENV_VAR,
-)
+import fiftyone.core.config as foc
+
+from fiftyone.internal.constants import API_URL_ENV_VAR, ENCRYPTION_KEY_ENV_VAR
 
 
 def is_internal_service():
@@ -80,3 +79,8 @@ def get_session_cookie_name():
         else "next-auth.session-token"
     )
     return COOKIE_NAME
+
+
+def has_api_key():
+    config = foc.load_config()
+    return config.api_key is not None

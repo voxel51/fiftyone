@@ -380,6 +380,7 @@ class DelegatedOperationService(object):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
+        user = context.user
 
         if not context.request_params.get("dataset_id", None):
             # Pass the dataset_id so that the execution context can load the
@@ -392,6 +393,7 @@ class DelegatedOperationService(object):
             request_params=context.request_params,
             delegated_operation_id=doc.id,
             set_progress=self.set_progress,
+            user=user.id if user else None,
         )
 
         if isinstance(prepared, ExecutionResult):

@@ -13,6 +13,8 @@ import logging
 import os
 import traceback
 
+from typing import Optional
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
@@ -25,6 +27,7 @@ from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
+from fiftyone.operators.utils import resolve_operation_user
 
 
 logger = logging.getLogger(__name__)
@@ -201,25 +204,28 @@ def _parse_ctx(ctx=None, **kwargs):
     return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
-# request token and user are teams-only
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
-    operator_uri, request_params, request_token=None, user=None, exhaust=False
+    operator_uri,
+    request_params,
+    exhaust=False,
+    request_token=None,  # teams-only
 ):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
-        request_token (None): the authentication token from the request
-        user (None): the user executing the operator
         exhaust (False): whether to immediately exhaust generator operators
+        request_token (None): the authentication token from the request
 
     Returns:
         an :class:`ExecutionResult`
     """
     prepared = await prepare_operator_executor(
-        operator_uri, request_params, request_token=request_token, user=user
+        operator_uri,
+        request_params,
+        request_token=request_token,  # teams-only
     )
 
     if isinstance(prepared, ExecutionResult):
@@ -304,8 +310,8 @@ async def prepare_operator_executor(
     request_params,
     set_progress=None,
     delegated_operation_id=None,
-    request_token=None,
-    user=None,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -313,6 +319,13 @@ async def prepare_operator_executor(
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params=request_params,
         executor=executor,
@@ -320,7 +333,7 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
-        user=user,
+        user=execution_context_user,  # teams-only
     )
 
     await ctx.resolve_secret_values(
@@ -358,7 +371,11 @@ async def do_execute_operator(operator, ctx, exhaust=False):
 
 
 async def resolve_type(
-    registry, operator_uri, request_params, request_token=None
+    registry,
+    operator_uri,
+    request_params,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
 ):
     """Resolves the inputs property type of the operator with the given name.
 
@@ -375,10 +392,18 @@ async def resolve_type(
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,  # teams-only
     )
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
@@ -410,7 +435,7 @@ async def resolve_type_with_context(request_params, target: str = None):
 
 
 async def resolve_execution_options(
-    registry, operator_uri, request_params, request_token=None
+    registry, operator_uri, request_params, request_token=None, user=None
 ):
     """Resolves the execution options of the operator with the given name.
 
@@ -428,10 +453,18 @@ async def resolve_execution_options(
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
@@ -450,7 +483,9 @@ async def resolve_execution_options(
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_placement(operator, request_params):
+async def resolve_placement(
+    operator, request_params, request_token=None, user=None
+):
     """Resolves the placement of the operator with the given name.
 
     Args:
@@ -460,15 +495,71 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator.uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
         return ExecutionResult(error=str(e))
+
+
+class ExecutionContextUser(object):
+    """Represents the user executing the operator.
+
+    Args:
+        name (None): the user name
+        id (None): the user ID
+        email (None): the user email
+        role (None): the user role
+        dataset_permission (None): the dataset permission
+    """
+
+    def __init__(
+        self,
+        email=None,
+        id=None,
+        name=None,
+        role=None,
+        dataset_permission=None,
+    ):
+        self.email = email
+        self.id = id
+        self.name = name
+        self.role = role
+        self.dataset_permission = dataset_permission
+
+    @classmethod
+    def from_dict(self, user):
+        return ExecutionContextUser(
+            email=user.get("email", None),
+            id=user.get("id", None),
+            name=user.get("name", None),
+            role=user.get("role", None),
+            dataset_permission=user.get("dataset_permission", None),
+        )
+
+    def to_dict(self):
+        return {
+            "email": self.email,
+            "id": self.id,
+            "name": self.name,
+            "role": self.role,
+            "dataset_permission": self.dataset_permission,
+        }
+
+    def serialize(self):
+        return self.to_dict()
 
 
 class ExecutionContext(object):
@@ -495,7 +586,7 @@ class ExecutionContext(object):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
-        user=None,
+        user: ExecutionContextUser = None,
         operator_uri=None,
         required_secrets=None,
     ):
@@ -675,6 +766,11 @@ class ExecutionContext(object):
         """
         return self._ops
 
+    @property
+    def user_id(self) -> Optional[str]:
+        """The ID of the user executing the operation."""
+        return self.user.id if self.user else None
+
     def secret(self, key):
         """Retrieves the secret with the given key.
 
@@ -770,7 +866,7 @@ class ExecutionContext(object):
         return {
             "request_params": self.request_params,
             "params": self.params,
-            "user": self.user,
+            "user": self.user_id,
         }
 
     def to_dict(self):
