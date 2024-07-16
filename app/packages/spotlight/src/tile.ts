@@ -45,6 +45,9 @@ export default (
 
   const findCursor = () => {
     const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
+    if (useRemainder) {
+      return keys[ZERO];
+    }
 
     let cursor: number;
     let score = Number.POSITIVE_INFINITY;

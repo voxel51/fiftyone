@@ -255,7 +255,7 @@ export class Section<K, V> {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items],
         this.#height,
-        !data.next,
+        data.next === null,
         data.focus,
         request,
         renderer,

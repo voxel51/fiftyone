@@ -3,7 +3,7 @@
  */
 import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
 
-import { BOTTOM, DIV, ONE, TOP, TWO, UNSET, ZERO } from "./constants";
+import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import styles from "./styles.module.css";
 import { create, pixels } from "./utilities";
 
@@ -171,19 +171,47 @@ export default class Row<K, V> {
   }
 
   get #cleanAspectRatio() {
-    const result = this.#row
+    let result = this.#row
       .map(({ item }) => item.aspectRatio)
       .reduce((ar, next) => ar + next, ZERO);
     const target = this.#config.rowAspectRatioThreshold(this.#width);
 
-    if (this.#dangle && result < target / TWO) {
-      return target;
+    if (!this.#dangle) {
+      return result;
+    }
+
+    const ars = new Set(this.#row.map(({ item }) => item.aspectRatio));
+    if (ars.size !== ONE) {
+      return result;
+    }
+
+    const ar = this.#row[ZERO].item.aspectRatio;
+    result = ar;
+    while (result < target) {
+      result += ar;
     }
 
     return result;
   }
 
   get #cleanWidth() {
-    return this.#width - (this.#row.length - ONE) * this.#config.spacing;
+    if (!this.#dangle) {
+      return this.#width - (this.#row.length - ONE) * this.#config.spacing;
+    }
+    const ars = new Set(this.#row.map(({ item }) => item.aspectRatio));
+    if (ars.size !== ONE) {
+      return this.#width - (this.#row.length - ONE) * this.#config.spacing;
+    }
+
+    const ar = this.#row[ZERO].item.aspectRatio;
+    let result = ar;
+    const target = this.#config.rowAspectRatioThreshold(this.#width);
+    let count = ZERO;
+    while (result < target) {
+      result += ar;
+      count++;
+    }
+
+    return this.#width - count * this.#config.spacing;
   }
 }

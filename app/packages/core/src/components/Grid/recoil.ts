@@ -28,13 +28,17 @@ export const gridOffset = atom({
 export const gridSpacing = atom({
   key: "gridSpacing",
   default: 3,
-  effects: [],
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridSpacing", { valueClass: "number" }),
+  ],
 });
 
 export const gridZoom = atom<number>({
   key: "gridZoom",
   default: defaultGridZoom,
-  effects: [],
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
+  ],
 });
 
 export const gridZoomRange = atom<[number, number]>({
