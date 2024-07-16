@@ -43,7 +43,10 @@ export const defaultZoom = selector({
 const useFlashlightPager = (
   store: fos.LookerStore<fos.Lookers>,
   pageSelector: RecoilValueReadOnly<
-    (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
+    (
+      page: number,
+      pageSize: number
+    ) => Promise<VariablesOf<foq.paginateSamplesQuery>>
   >,
   zoomSelector?: RecoilValueReadOnly<() => Promise<boolean>>
 ) => {
@@ -58,7 +61,7 @@ const useFlashlightPager = (
 
   const pager = useMemo(() => {
     return async (pageNumber: number) => {
-      const variables = page(pageNumber, PAGE_SIZE);
+      const variables = await page(pageNumber, PAGE_SIZE);
       const zoomValue = await zoom();
       return new Promise<Response<number>>((resolve) => {
         const subscription = fetchQuery<foq.paginateSamplesQuery>(

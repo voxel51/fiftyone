@@ -30,7 +30,6 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
-  readonly #tmp = new Set<string>();
 
   #backward: Section<K, V>;
   #focused?: ID;
@@ -91,8 +90,13 @@ export default class Spotlight<K, V> extends EventTarget {
 
     element.appendChild(this.#element);
 
-    this.#rect = this.#element.getBoundingClientRect();
-    this.#fill();
+    const observer = new ResizeObserver(() => {
+      this.#rect = this.#element.getBoundingClientRect();
+      requestAnimationFrame(() =>
+        this.#forward ? this.#render({}) : this.#fill()
+      );
+    });
+    observer.observe(this.#element);
   }
 
   destroy(): void {
@@ -424,6 +428,14 @@ export default class Spotlight<K, V> extends EventTarget {
           ZERO,
           this.#backward.height + row.from - at.offset
         );
+      } else {
+        const row = this.#backward.find(at.description);
+        if (row) {
+          this.#element.scrollTo(
+            ZERO,
+            this.#backward.height - row.from - row.height
+          );
+        }
       }
     } else if (offset !== false && top) {
       this.#element.scrollTo(ZERO, top);

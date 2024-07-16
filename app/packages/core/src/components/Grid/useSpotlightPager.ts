@@ -1,20 +1,19 @@
-import type { ID, Response } from "@fiftyone/spotlight";
-import type { Schema } from "@fiftyone/utilities";
-import type { VariablesOf } from "react-relay";
-import type { RecoilValueReadOnly } from "recoil";
-import type { Subscription } from "relay-runtime";
-
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
+import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import type { Schema } from "@fiftyone/utilities";
 import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
+import type { VariablesOf } from "react-relay";
 import {
   commitLocalUpdate,
   fetchQuery,
   useRelayEnvironment,
 } from "react-relay";
+import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import type { Subscription } from "relay-runtime";
 
 export const PAGE_SIZE = 20;
 
@@ -46,12 +45,15 @@ const processSamplePageData = (
   });
 };
 
-const useSpotlightPager = (
+const useSpotlightPager = ({
+  pageSelector,
+  zoomSelector,
+}: {
   pageSelector: RecoilValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
-  >,
-  zoomSelector: RecoilValueReadOnly<boolean>
-) => {
+  >;
+  zoomSelector: RecoilValueReadOnly<boolean>;
+}) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
@@ -113,8 +115,9 @@ const useSpotlightPager = (
     return () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
         for (const id of Array.from(current.keys())) {
-          store.get(id).invalidateRecord();
+          store.get(id)?.invalidateRecord();
         }
+        current.clear();
       });
     };
   }, [records, refresher]);

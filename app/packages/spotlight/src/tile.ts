@@ -23,15 +23,15 @@ export default (
   const aspectRatios = new Set(items);
   if (aspectRatios.size === ONE) {
     let ar = items[0];
-    let count = 0;
-    do {
+    let count = 1;
+    while (ar < threshold) {
       count++;
       ar += items[0];
-    } while (ar < threshold);
+    }
 
     const result = [];
     let size = count;
-    while (size < items.length) {
+    while (size <= items.length) {
       result.push(size);
       size += count;
     }

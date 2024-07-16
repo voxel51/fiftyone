@@ -14,10 +14,10 @@ export default function useAt(pageReset: object) {
 
   const getKey = useMemo(() => {
     pageReset;
-    const ref = { current: 0 };
+    const ref = { current: -1 };
 
     return () => {
-      if (ref.current === 0) {
+      if (ref.current === -1) {
         ref.current = null;
         return "reset";
       }
@@ -32,6 +32,7 @@ export default function useAt(pageReset: object) {
     ({ snapshot }) =>
       () => {
         const key = getKey();
+
         return {
           at:
             key !== "reset"

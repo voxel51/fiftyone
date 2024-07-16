@@ -41,6 +41,7 @@ export default () => {
   );
 
   return useCallback(() => {
+    close();
     setModal(null);
   }, [close, setModal]);
 };

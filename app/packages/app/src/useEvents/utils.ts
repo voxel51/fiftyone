@@ -48,9 +48,11 @@ export const processState = (
 
   return {
     fieldVisibility: state.field_visibility_stage,
-    groupId: state.group_id,
     groupSlice: state.group_slice,
-    sampleId: state.sample_id,
+    modalSelector: {
+      groupId: state.group_id,
+      id: state.sample_id,
+    },
     view: state.view || [],
     workspace: state.spaces,
   };

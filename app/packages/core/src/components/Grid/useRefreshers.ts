@@ -38,10 +38,16 @@ export default function useRefreshers() {
     view,
   ]);
 
+  const reset = useMemo(() => {
+    pageReset;
+    layoutReset;
+    return {};
+  }, [layoutReset, pageReset]);
+
   useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
 
   return {
-    layoutReset,
     pageReset,
+    reset,
   };
 }

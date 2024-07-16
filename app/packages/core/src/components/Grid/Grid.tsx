@@ -13,12 +13,12 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import useSpotlightPager from "../../useSpotlightPager";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
 import useSelectSample from "./useSelectSample";
+import useSpotlightPager from "./useSpotlightPager";
 import useThreshold from "./useThreshold";
 
 function Grid() {
@@ -29,19 +29,21 @@ function Grid() {
 
   const spacing = useRecoilValue(gridSpacing);
 
-  const { pageReset, layoutReset } = useRefreshers();
+  const { pageReset, reset } = useRefreshers();
   const { get, set } = useAt(pageReset);
   const threshold = useThreshold();
 
-  const { page, records, store } = useSpotlightPager(pageParameters, gridCrop);
+  const { page, records, store } = useSpotlightPager({
+    pageSelector: pageParameters,
+    zoomSelector: gridCrop,
+  });
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const setSample = fos.useExpandSample(store);
 
   const spotlight = useMemo(() => {
-    pageReset;
-    layoutReset;
+    reset;
     if (resizing) {
       return undefined;
     }
@@ -83,11 +85,10 @@ function Grid() {
   }, [
     createLooker,
     get,
-    layoutReset,
     lookerStore,
     page,
-    pageReset,
     records,
+    reset,
     resizing,
     setSample,
     spacing,

@@ -181,7 +181,7 @@ def handle_dataset_change(
 def handle_group_slice(
     state: fos.StateDescription, group_slice: t.Optional[str] = None
 ):
-    """Handle a group id.
+    """Handle a group slice.
 
     Args:
         state: the state description

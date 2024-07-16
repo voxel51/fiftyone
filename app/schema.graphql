@@ -264,8 +264,6 @@ type DatasetStrConnection {
 type DatasetStrEdge {
   cursor: String!
   node: Dataset!
-  next: String
-  previous: String
 }
 
 type DatasetStrPageInfo {
@@ -692,8 +690,6 @@ type SampleItemStrConnection {
 type SampleItemStrEdge {
   cursor: String!
   node: SampleItem!
-  next: String
-  previous: String
 }
 
 type SampleItemStrPageInfo {

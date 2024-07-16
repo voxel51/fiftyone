@@ -1,15 +1,11 @@
 import type * as foq from "@fiftyone/relay";
-import type { SpotlightConfig } from "@fiftyone/spotlight";
+import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
 import type { ResponseFrom } from "../utils";
 
-import { getFieldInfo } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
-import { State } from "../recoil";
 import * as atoms from "../recoil/atoms";
-import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
-import * as schemaAtoms from "../recoil/schema";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
@@ -23,7 +19,7 @@ export type Sample = Exclude<
   null
 >;
 
-export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
+export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
   return useRecoilCallback(
@@ -51,11 +47,8 @@ export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
           groupAtoms.hasGroupSlices
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
-        const dynamicGroupParameters = await snapshot.getPromise(
-          dynamicGroupAtoms.dynamicGroupParameters
-        );
 
-        const iter = async (request: Promise<symbol | undefined>) => {
+        const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
           const sample = store.get(id);
 
@@ -68,20 +61,7 @@ export default (store: WeakMap<symbol, { index: number; sample: Sample }>) => {
             groupId = get(sample.sample, groupField)._id as string;
           }
 
-          let groupByFieldValue: string;
-          if (dynamicGroupParameters?.groupBy) {
-            const fieldSchema = await snapshot.getPromise(
-              schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
-            );
-            const fieldInfo = getFieldInfo(
-              dynamicGroupParameters.groupBy,
-              fieldSchema
-            );
-            const groupByKeyDbField = fieldInfo.pathWithDbField;
-            groupByFieldValue = String(get(sample.sample, groupByKeyDbField));
-          }
-
-          return { id: id.description, groupId, groupByFieldValue };
+          return { id: id.description, groupId };
         };
 
         const next = async () => {

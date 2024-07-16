@@ -6,6 +6,7 @@ import {
   LIST_FIELD,
   getFieldInfo,
 } from "@fiftyone/utilities";
+import { get as _get } from "lodash";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import {
   currentSlice,
@@ -13,7 +14,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
-import { modalLooker } from "./modal";
+import { modalLooker, modalSample } from "./modal";
 import { dynamicGroupsViewMode } from "./options";
 import { fieldPaths, fieldSchema } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -225,9 +226,20 @@ export const dynamicGroupViewQuery = selectorFamily<
     },
 });
 
-export const groupByFieldValue = atom<string | null>({
+export const groupByFieldValue = selector<string | null>({
   key: "groupByFieldValue",
-  default: null,
+  get: ({ get }) => {
+    const params = get(dynamicGroupParameters);
+
+    if (!params?.groupBy) {
+      return null;
+    }
+    const schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+    const fieldInfo = getFieldInfo(params.groupBy, schema);
+    const groupByKeyDbField = fieldInfo.pathWithDbField;
+
+    return String(_get(get(modalSample).sample, groupByKeyDbField));
+  },
 });
 
 export const imaVidLookerState = atomFamily<any, string>({

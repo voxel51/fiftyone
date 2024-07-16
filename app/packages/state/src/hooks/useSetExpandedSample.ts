@@ -9,12 +9,9 @@ import * as groupAtoms from "../recoil/groups";
 export default () => {
   const setter = useRecoilCallback(
     ({ reset, set, snapshot }) =>
-      (groupByFieldValue?: string) => {
+      () => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupAtoms.dynamicGroupCurrentElementIndex);
-        groupByFieldValue !== undefined &&
-          set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
-
         let fallback = snapshot.getLoadable(groupAtoms.groupSlice).getValue();
         const map = snapshot
           .getLoadable(groupAtoms.groupMediaTypesMap)
@@ -43,7 +40,7 @@ export default () => {
 
   return useCallback(
     (selector: ModalSelector) => {
-      setter(selector.groupId);
+      setter();
       commit(selector);
     },
     [commit, setter]

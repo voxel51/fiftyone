@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce60b91160ba626a5cc5909a065f5938>>
+ * @generated SignedSource<<9a3eda8bc1d80f655857b7c413ed35fc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -102,16 +102,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "3a442c609b51b6b5f8097e9734536089",
+    "cacheID": "07a21e2136b50962f10b209b090d54fb",
     "id": null,
     "metadata": {},
     "name": "setSampleMutation",
     "operationKind": "mutation",
-    "text": "mutation setSampleMutation(\n  $subscription: String!\n  $session: String\n  $groupId: String\n  $sampleId: String\n) {\n  setSample(subscription: $subscription, session: $session, sampleId: $sampleId, groupId: $groupId)\n}\n"
+    "text": "mutation setSampleMutation(\n  $subscription: String!\n  $session: String\n  $groupId: String\n  $sampleId: String\n) {\n  setSample(subscription: $subscription, session: $session, groupId: $groupId, sampleId: $sampleId)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4e5b824fe13d31d1d70e71ee1d4d667b";
+(node as any).hash = "4a353e4ff46091a87de9da830257306b";
 
 export default node;

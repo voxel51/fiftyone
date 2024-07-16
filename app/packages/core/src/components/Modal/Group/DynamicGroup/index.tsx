@@ -1,14 +1,11 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
-import { useDynamicGroupSamples } from "./useDynamicGroupSamples";
 
 export const DynamicGroup = () => {
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
-
-  const { queryRef } = useDynamicGroupSamples();
 
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
@@ -39,13 +36,5 @@ export const DynamicGroup = () => {
     }
   }, [dynamicGroupsViewMode, isOrderedDynamicGroup]);
 
-  return (
-    <>
-      {hasGroupSlices ? (
-        <NestedGroup queryRef={queryRef} />
-      ) : (
-        <NonNestedDynamicGroup queryRef={queryRef} />
-      )}
-    </>
-  );
+  return hasGroupSlices ? <NestedGroup /> : <NonNestedDynamicGroup />;
 };

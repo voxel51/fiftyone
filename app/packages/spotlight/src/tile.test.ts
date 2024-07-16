@@ -20,8 +20,8 @@ test("handles one square", () => {
   expect(tile([1], 1, true)).toStrictEqual([1]);
   expect(tile([1], 1, false)).toStrictEqual([1]);
 
-  expect(tile([1], 1.1, true)).toStrictEqual([]);
-  expect(tile([1], 1.1, false)).toStrictEqual([1]);
+  expect(tile([1], 1.1, false)).toStrictEqual([]);
+  expect(tile([1], 1.1, true)).toStrictEqual([1]);
 });
 
 test("handles two squares", () => {

@@ -4,8 +4,8 @@ import { useDrag } from "@use-gesture/react";
 import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { PAGE_SIZE } from "../../useSpotlightPager";
 import { gridPage, showGridPixels } from "./recoil";
+import { PAGE_SIZE } from "./useSpotlightPager";
 
 const Drag = styled(animated.div)`
   width: 100%;

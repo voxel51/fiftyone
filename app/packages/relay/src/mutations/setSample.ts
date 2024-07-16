@@ -12,8 +12,8 @@ export default r(graphql`
     setSample(
       subscription: $subscription
       session: $session
-      sampleId: $sampleId
       groupId: $groupId
+      sampleId: $sampleId
     )
   }
 `);

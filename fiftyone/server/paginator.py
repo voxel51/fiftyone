@@ -35,9 +35,6 @@ class Edge(t.Generic[T, C]):
     cursor: C
     node: T
 
-    next: t.Optional[C] = None
-    previous: t.Optional[C] = None
-
 
 @gql.type
 class Connection(t.Generic[T, C]):
