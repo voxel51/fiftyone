@@ -654,7 +654,6 @@ class ExecutionContext(object):
         params=None,
         on_success=None,
         on_error=None,
-        on_cancel=None,
     ):
         """Prompts the user to execute the operator with the given URI.
 
@@ -663,7 +662,6 @@ class ExecutionContext(object):
             params (None): a dictionary of parameters for the operator
             on_success (None): a callback to invoke if the user successfully executes the operator
             on_error (None): a callback to invoke if the execution fails
-            on_cancel (None): a callback to invoke if the user cancels the operation
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing

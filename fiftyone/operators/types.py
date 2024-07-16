@@ -1858,13 +1858,13 @@ class PromptView(View):
         import fiftyone.operators.types as types
 
         # in resolve_input
-        prompt = types.Prompt(
+        prompt = types.PromptView(
             label="This is the title",
             submit_button_label="Click me",
             cancel_button_label="Abort"
         )
         inputs = types.Object()
-        inputs.str("message", label="Message")
+        inputs.md("Hello world!")
         return types.Property(inputs, view=prompt)
 
     Args:
@@ -2022,7 +2022,8 @@ class DashboardView(View):
     Args:
         layout (None): the layout of the dashboard.
         on_layout_change (None): event triggered when the layout changes
-        on_close_item (None): event triggered when an item is closed
+        on_add_item (None): event triggered when an item is added
+        on_remove_item (None): event triggered when an item is closed
     """
 
     def __init__(self, **kwargs):

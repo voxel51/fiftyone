@@ -78,14 +78,14 @@ export default function DashboardView(props: ViewPropsType) {
 
   const onCloseItem = useCallback(
     ({ id, path }) => {
-      if (schema.view.on_close_item) {
+      if (schema.view.on_remove_item) {
         triggerPanelEvent(panelId, {
-          operator: schema.view.on_close_item,
+          operator: schema.view.on_remove_item,
           params: { id, path },
         });
       }
     },
-    [panelId, props, schema.view.on_close_item, triggerPanelEvent]
+    [panelId, props, schema.view.on_remove_item, triggerPanelEvent]
   );
   const onAddItem = useCallback(() => {
     if (schema.view.on_add_item) {

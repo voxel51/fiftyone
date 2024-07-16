@@ -847,6 +847,7 @@ class SetPanelState extends Operator {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
+    debugger;
     ctx.hooks.updatePanelState(ctx, { targetPartial: "state" });
   }
 }
