@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useMemo, useState } from "react";
@@ -19,14 +19,15 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const isReadOnly = useRecoilValue(readOnly);
-  const isFieldVisibilityApplied = useRecoilValue(isFieldVisibilityActive);
+  const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
+  const disabled = canModifySidebarGroup.enabled !== true;
+  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
   const disableDrag =
     !entryKey ||
     entryKey.split(",")[1]?.includes("tags") ||
     entryKey.split(",")[1]?.includes("_label_tags") ||
-    isReadOnly ||
+    disabled ||
     isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
 
@@ -47,9 +48,15 @@ const Draggable: React.FC<
     ?.replace("]", "");
 
   const isDraggable = useMemo(
-    () => !disableDrag && trigger && !isReadOnly,
-    [disableDrag, trigger, isReadOnly]
+    () => !disableDrag && trigger && !disabled,
+    [disableDrag, trigger, disabled]
   );
+
+  const title = disabled
+    ? canModifySidebarGroup.message || "Can not reorder in read-only mode"
+    : trigger
+    ? "Drag to reorder"
+    : undefined;
 
   return (
     <>
@@ -67,10 +74,8 @@ const Draggable: React.FC<
               }
             : undefined
         }
-        onMouseEnter={
-          isReadOnly ? undefined : () => trigger && setHovering(true)
-        }
-        onMouseLeave={isReadOnly ? undefined : () => setHovering(false)}
+        onMouseEnter={disabled ? undefined : () => trigger && setHovering(true)}
+        onMouseLeave={disabled ? undefined : () => setHovering(false)}
         style={{
           backgroundColor: color,
           position: "absolute",
@@ -85,15 +90,9 @@ const Draggable: React.FC<
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
-          ...(isReadOnly ? { cursor: "not-allowed" } : {}),
+          ...(disabled ? { cursor: "not-allowed" } : {}),
         }}
-        title={
-          isReadOnly
-            ? "Can not reorder in read-only mode"
-            : trigger
-            ? "Drag to reorder"
-            : undefined
-        }
+        title={title}
       >
         {active && <DragIndicator style={{ color: theme.background.level1 }} />}
       </animated.div>

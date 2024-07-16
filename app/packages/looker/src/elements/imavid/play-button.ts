@@ -119,7 +119,7 @@ export class PlayButtonElement extends BaseElement<
       this.isBuffering !== buffering ||
       !loaded
     ) {
-      this.element.innerHTML = "";
+      this.element.textContent = "";
       if (!loaded) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading";

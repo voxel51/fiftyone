@@ -154,7 +154,7 @@ const imputeOverlayFromPath = async (
 
   let overlayData;
 
-  if (overlayImageUrl.endsWith(".jpg")) {
+  if (overlayImageUrl.endsWith(".jpg") || overlayImageUrl.endsWith(".jpeg")) {
     overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
   } else {
     overlayData = decodePng(overlayImageBuffer);

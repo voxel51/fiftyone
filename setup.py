@@ -6,11 +6,8 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
 
+from importlib import metadata
 import os
 import re
 from setuptools import setup, find_packages
@@ -44,8 +41,7 @@ INSTALL_REQUIRES = [
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",
-    "importlib-metadata; python_version<'3.8'",
-    "Jinja2==3.0.3",
+    "Jinja2>=3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
@@ -138,12 +134,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(
         exclude=["app", "eta", "package", "requirements", "tests", "tools"]
-    )
-    + ["fiftyone.recipes", "fiftyone.tutorials"],
-    package_dir={
-        "fiftyone.recipes": "docs/source/recipes",
-        "fiftyone.tutorials": "docs/source/tutorials",
-    },
+    ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
     ),
@@ -162,13 +153,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )

@@ -4,15 +4,20 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
+  getFieldInfo,
 } from "@fiftyone/utilities";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import { currentSlice, hasGroupSlices } from "./groups";
+import {
+  currentSlice,
+  groupSlice,
+  hasGroupSlices,
+  modalGroupSlice,
+} from "./groups";
 import { modalLooker } from "./modal";
 import { dynamicGroupsViewMode } from "./options";
-import { fieldPaths } from "./schema";
+import { fieldPaths, fieldSchema } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
-import { getSanitizedGroupByExpression } from "./utils";
 import {
   GROUP_BY_VIEW_STAGE,
   LIMIT_VIEW_STAGE,
@@ -70,25 +75,31 @@ export const dynamicGroupPageSelector = selectorFamily<
     after: string | null;
     count: number;
     dataset: string;
-    filter: Record<string, never>;
+    filter: { group: { slice?: string; slices?: string[] } };
     view: State.Stage[];
   },
-  string
+  { modal: boolean; value: string }
 >({
   key: "paginateDynamicGroupVariables",
   get:
-    (value) =>
+    ({ modal, value }) =>
     ({ get }) => {
+      const slice = get(modal ? modalGroupSlice : groupSlice);
+
       const params = {
         dataset: get(datasetName),
         view: get(dynamicGroupViewQuery(value)),
+        filter: { group: { slice } },
       };
+
+      if (get(hasGroupSlices)) {
+        params.filter.group.slices = [slice];
+      }
 
       return (cursor: number, pageSize: number) => ({
         ...params,
         after: cursor ? String(cursor) : null,
         count: pageSize,
-        filter: {},
       });
     },
 });
@@ -131,9 +142,8 @@ export const dynamicGroupViewQuery = selectorFamily<
 
       const { groupBy, orderBy } = params;
 
-      // todo: fix sample_id issue
-      // todo: sanitize expressions
-      const groupBySanitized = getSanitizedGroupByExpression(groupBy);
+      const schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+      const groupByFieldKeyInfo = getFieldInfo(groupBy, schema);
 
       let groupByValue;
 
@@ -156,7 +166,7 @@ export const dynamicGroupViewQuery = selectorFamily<
                 $expr: {
                   $let: {
                     vars: {
-                      expr: `$${groupBySanitized}`,
+                      expr: `$${groupByFieldKeyInfo.pathWithDbField}`,
                     },
                     in: {
                       $in: [

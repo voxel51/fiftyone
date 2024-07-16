@@ -23,12 +23,12 @@ jobs:
           submodules: true
 
       - name: Setup node 18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.10.0
+        uses: supercharge/mongodb-github-action@1.11.0
         with:
           mongodb-version: latest
 
@@ -42,7 +42,7 @@ jobs:
 
       - name: Cache Node Modules
         id: app-node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             app/node_modules
@@ -60,7 +60,6 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install .
-          pip install fiftyone-db-ubuntu2204
 
       - name: Configure
         id: test_config
@@ -69,11 +68,11 @@ jobs:
           python tests/utils/github_actions_flags.py
 
       - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v2
+        uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             e2e-pw/node_modules
@@ -91,7 +90,7 @@ jobs:
         working-directory: e2e-pw
 
       - name: Cache playwright browser
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: playwright-browser-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
@@ -113,7 +112,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: e2e-pw/playwright-report/

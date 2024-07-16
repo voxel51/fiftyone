@@ -6,13 +6,20 @@ import { ValidationContext, ValidationError } from "./validation";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 import { QueueItemStatus } from "./constants";
 
+type RawInvocationRequest = {
+  operator_uri?: string;
+  operator_name?: string;
+  params: object;
+  options: object;
+};
+
 class InvocationRequest {
   constructor(
     public operatorURI: string,
     public params: unknown = {},
     public options?: OperatorExecutorOptions
   ) {}
-  static fromJSON(json: any) {
+  static fromJSON(json: RawInvocationRequest): InvocationRequest {
     return new InvocationRequest(
       json.operator_uri || json.operator_name,
       json.params,
@@ -43,13 +50,13 @@ export class Executor {
       queue.add(request);
     }
   }
-  static fromJSON(json: any) {
+  static fromJSON(json: { requests: RawInvocationRequest[]; logs: string[] }) {
     return new Executor(
       json.requests.map((r: any) => InvocationRequest.fromJSON(r)),
       json.logs
     );
   }
-  trigger(operatorURI: string, params: any = {}) {
+  trigger(operatorURI: string, params: object = {}) {
     operatorURI = resolveOperatorURI(operatorURI);
     this.requests.push(new InvocationRequest(operatorURI, params));
   }
@@ -58,19 +65,32 @@ export class Executor {
   }
 }
 
+export type RawContext = {
+  datasetName: string;
+  extended: boolean;
+  view: string;
+  filters: object;
+  selectedSamples: Set<string>;
+  selectedLabels: any[];
+  currentSample: string;
+  viewName: string;
+  delegationTarget: string;
+  requestDelegation: boolean;
+  state: CallbackInterface;
+};
 export class ExecutionContext {
   public state: CallbackInterface;
   constructor(
-    public params: any = {},
-    public _currentContext: any,
-    public hooks: any = {},
+    public params: object = {},
+    public _currentContext: RawContext,
+    public hooks: object = {},
     public executor: Executor = null
   ) {
     this.state = _currentContext.state;
   }
   public delegationTarget: string = null;
-  public requestDelegation: boolean = false;
-  trigger(operatorURI: string, params: any = {}) {
+  public requestDelegation = false;
+  trigger(operatorURI: string, params: object = {}) {
     if (!this.executor) {
       throw new Error(
         "Cannot trigger operator from outside of an execution context"
@@ -94,9 +114,9 @@ function isObjWithContent(obj: any) {
 export class OperatorResult {
   constructor(
     public operator: Operator,
-    public result: any = {},
+    public result: object = {},
     public executor: Executor = null,
-    public error: any,
+    public error: string,
     public delegated: boolean = false
   ) {}
   hasOutputContent() {
@@ -127,6 +147,8 @@ export type OperatorConfigOptions = {
   darkIcon?: string;
   lightIcon?: string;
   resolveExecutionOptionsOnChange?: boolean;
+  skipInput?: boolean;
+  skipOutput?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -143,6 +165,9 @@ export class OperatorConfig {
   public darkIcon = null;
   public lightIcon = null;
   public resolveExecutionOptionsOnChange = false;
+  public skipInput: boolean;
+  public skipOutput: boolean;
+
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -160,6 +185,8 @@ export class OperatorConfig {
     this.lightIcon = options.lightIcon;
     this.resolveExecutionOptionsOnChange =
       options.resolveExecutionOptionsOnChange || false;
+    this.skipInput = options.skipInput || false;
+    this.skipOutput = options.skipOutput || false;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -177,6 +204,8 @@ export class OperatorConfig {
       darkIcon: json.dark_icon,
       lightIcon: json.light_icon,
       resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
+      skipInput: json.skip_input,
+      skipOutput: json.skip_output,
     });
   }
 }
@@ -228,35 +257,43 @@ export class Operator {
     }
     return false;
   }
-  useHooks(ctx: ExecutionContext) {
+  useHooks(): object {
     // This can be overridden to use hooks in the execute function
     return {};
   }
   async resolveInput(ctx: ExecutionContext) {
+    if (this.config.skipInput) return null;
+
     if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "inputs");
     }
     return null;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
+    if (this.config.skipOutput) return null;
+
     if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "outputs", result);
     }
     return null;
   }
-  async resolvePlacement(
-    ctx: ExecutionContext
-  ): Promise<void | types.Placement> {}
-  async execute(ctx: ExecutionContext) {
+  async resolvePlacement(): Promise<void | types.Placement> {
+    return null;
+  }
+  async execute() {
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
-  public isRemote: boolean = false;
-  static fromRemoteJSON(json: any) {
+  public isRemote = false;
+  static fromRemoteJSON(json: object) {
     const operator = this.fromJSON(json);
     operator.isRemote = true;
     return operator;
   }
-  static fromJSON(json: any) {
+  static fromJSON(json: {
+    plugin_name: string;
+    _builtin: boolean;
+    config: object;
+  }) {
     const config = OperatorConfig.fromJSON(json.config);
     const operator = new Operator(json.plugin_name, json._builtin, config);
     return operator;

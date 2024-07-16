@@ -13,6 +13,7 @@ import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
+  getFieldInfo,
   getMimeType,
   isNullish,
 } from "@fiftyone/utilities";
@@ -31,7 +32,7 @@ import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
-import { getSampleSrc, getSanitizedGroupByExpression } from "../recoil/utils";
+import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
 
@@ -176,9 +177,10 @@ export default <T extends AbstractLooker<BaseState>>(
           const { groupBy } = snapshot
             .getLoadable(dynamicGroupAtoms.dynamicGroupParameters)
             .valueMaybe();
+          const groupByKeyFieldInfo = getFieldInfo(groupBy, fieldSchema);
           const groupByFieldValue = get(
             sample,
-            getSanitizedGroupByExpression(groupBy)
+            groupByKeyFieldInfo.pathWithDbField
           );
           const groupByFieldValueTransformed =
             groupByFieldValue !== null ? String(groupByFieldValue) : null;
@@ -188,9 +190,10 @@ export default <T extends AbstractLooker<BaseState>>(
           );
           const page = snapshot
             .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector(
-                groupByFieldValueTransformed
-              )
+              dynamicGroupAtoms.dynamicGroupPageSelector({
+                value: groupByFieldValueTransformed,
+                modal: isModal,
+              })
             )
             .valueMaybe();
 
@@ -257,6 +260,7 @@ export default <T extends AbstractLooker<BaseState>>(
       highlight,
       isClip,
       isFrame,
+      isModal,
       shouldRenderImaVidLooker,
       isPatch,
       mediaField,
