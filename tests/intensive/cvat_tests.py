@@ -1671,10 +1671,13 @@ class CVATTests(unittest.TestCase):
             ]
             self.assertEqual(clip_id, view.first().id)
 
-            clip_id = list(list(results.frame_id_map.values())[0].values())[0][
-                "sample_id"
-            ]
-            self.assertEqual(clip_id, view.first().id)
+            sample_id = results.id_map["_clips"][clip_id]
+            self.assertEqual(sample_id, view.first().sample_id)
+
+            frame_id = list(list(results.frame_id_map.values())[0].values())[
+                0
+            ]["frame_id"]
+            self.assertEqual(frame_id, view.values("frames.id")[0][0])
 
         dataset.reload()
         view.load_annotations(anno_key, cleanup=True)
