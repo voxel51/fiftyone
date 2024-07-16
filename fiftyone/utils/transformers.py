@@ -451,7 +451,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
-        self.device = self.device = (
+        self.device = (
             "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.image_processor = self._load_image_processor()
@@ -498,7 +498,7 @@ class FiftyOneZeroShotTransformer(
         self.config = config
         self.classes = config.classes
         self.model = self._load_model(config)
-        self.device = self.device = (
+        self.device = (
             "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.processor = self._load_processor()
@@ -600,7 +600,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         )
 
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         logits_per_image = (
             outputs.logits_per_image.detach().cpu()
@@ -748,7 +748,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.config = config
         self.classes = config.classes
         self.processor = self._load_processor(config)
-        self.device = self.device = (
+        self.device = (
             "cuda" if next(config.model.parameters()).is_cuda else "cpu"
         )
         self.model = self._load_model(config)
