@@ -171,47 +171,51 @@ export default class Row<K, V> {
   }
 
   get #cleanAspectRatio() {
-    let result = this.#row
+    if (this.#dangle) {
+      const ar = this.#singleAspectRatio;
+      if (ar !== null) {
+        return this.#dangleSingleAspectRatioCount * ar;
+      }
+
+      return this.#config.rowAspectRatioThreshold(this.#width);
+    }
+
+    return this.#row
       .map(({ item }) => item.aspectRatio)
       .reduce((ar, next) => ar + next, ZERO);
-    const target = this.#config.rowAspectRatioThreshold(this.#width);
-
-    if (!this.#dangle) {
-      return result;
-    }
-
-    const ars = new Set(this.#row.map(({ item }) => item.aspectRatio));
-    if (ars.size !== ONE) {
-      return result;
-    }
-
-    const ar = this.#row[ZERO].item.aspectRatio;
-    result = ar;
-    while (result < target) {
-      result += ar;
-    }
-
-    return result;
   }
 
   get #cleanWidth() {
     if (!this.#dangle) {
       return this.#width - (this.#row.length - ONE) * this.#config.spacing;
     }
-    const ars = new Set(this.#row.map(({ item }) => item.aspectRatio));
-    if (ars.size !== ONE) {
-      return this.#width - (this.#row.length - ONE) * this.#config.spacing;
+
+    if (this.#singleAspectRatio === null) {
+      return this.#config.rowAspectRatioThreshold(this.#width);
     }
 
+    return (
+      this.#width -
+      (this.#dangleSingleAspectRatioCount - ONE) * this.#config.spacing
+    );
+  }
+
+  get #dangleSingleAspectRatioCount() {
     const ar = this.#row[ZERO].item.aspectRatio;
-    let result = ar;
     const target = this.#config.rowAspectRatioThreshold(this.#width);
-    let count = ZERO;
+
+    let count = ONE;
+    let result = ar;
     while (result < target) {
-      result += ar;
       count++;
+      result += ar;
     }
 
-    return this.#width - count * this.#config.spacing;
+    return count;
+  }
+
+  get #singleAspectRatio() {
+    const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
+    return set.size === ONE ? this.#row[0].item.aspectRatio : null;
   }
 }
