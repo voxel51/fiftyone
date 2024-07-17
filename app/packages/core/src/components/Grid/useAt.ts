@@ -1,9 +1,9 @@
-import { ID } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
-export default function useAt(pageReset: object) {
+export default function useAt(pageReset: string) {
   const getPage = useRecoilTransaction_UNSTABLE(
     ({ get }) =>
       (ref: { current: number }) => {

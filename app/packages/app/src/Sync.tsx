@@ -4,6 +4,8 @@ import {
   Writer,
   setDataset,
   setDatasetMutation,
+  setSample,
+  setSampleMutation,
   setSpaces,
   setSpacesMutation,
   setView,
@@ -66,16 +68,16 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
           }}
           setters={setters}
           subscribe={(fn) => {
-            return router.subscribe((entry, action) => {
+            return router.subscribe(({ state, ...entry }, action) => {
               dispatchSideEffect({
                 action,
                 currentEntry: router.get(),
                 environment,
-                nextEntry: entry,
+                nextEntry: { state, ...entry },
                 subscription,
                 session: sessionRef.current,
               });
-              fn(entry);
+              fn({ ...entry, event: state.event });
             });
           }}
         >
@@ -107,7 +109,7 @@ const dispatchSideEffect = ({
 
   session.selectedLabels = [];
   session.selectedSamples = new Set();
-  session.sessionSampleId = nextEntry.state.modalSelector;
+  session.modalSelector = nextEntry.state.modalSelector;
 
   const currentDataset: string | undefined =
     // @ts-ignore
@@ -127,6 +129,21 @@ const dispatchSideEffect = ({
     return;
   }
 
+  if (
+    currentEntry.state.event === "modal" ||
+    nextEntry.state.event === "modal"
+  ) {
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: nextEntry.state.modalSelector?.groupId,
+        sampleId: nextEntry.state.modalSelector?.id,
+        subscription,
+      },
+    });
+    return;
+  }
+
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
   if (currentDataset !== nextDataset) {
@@ -136,6 +153,7 @@ const dispatchSideEffect = ({
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+    session.modalSelector = nextEntry.state.modalSelector;
     session.sessionSpaces = nextEntry.state?.workspace ?? fos.SPACES_DEFAULT;
   }
 

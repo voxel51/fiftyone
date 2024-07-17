@@ -2,7 +2,7 @@ import type { ModalSelector } from "../session";
 
 import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
-import { currentModalSample } from "../recoil";
+import { modalSelector } from "../recoil";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 
@@ -33,7 +33,7 @@ export default () => {
   const commit = useRecoilCallback(
     ({ set }) =>
       async (selector: ModalSelector) => {
-        set(currentModalSample, selector);
+        set(modalSelector, selector);
       },
     []
   );

@@ -1,9 +1,9 @@
-import { currentModalSample } from "@fiftyone/state";
+import { modalSelector } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 
 export default () => {
-  const setModal = useSetRecoilState(currentModalSample);
+  const setModal = useSetRecoilState(modalSelector);
 
   return useCallback(
     (id: string) => {

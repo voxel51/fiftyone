@@ -49,8 +49,8 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   }
 
   const setModal = fos.useSetExpandedSample();
-  const modal = useRecoilValue(fos.currentModalSample);
-  const navigation = useRecoilValue(fos.currentModalNavigation);
+  const modal = useRecoilValue(fos.modalSelector);
+  const navigation = useRecoilValue(fos.modalNavigation);
 
   const navigateNext = useCallback(async () => {
     onNavigate();
@@ -79,7 +79,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         }
 
         if (e.key === "x") {
-          const current = await snapshot.getPromise(fos.currentModalSample);
+          const current = await snapshot.getPromise(fos.modalSelector);
           set(fos.selectedSamples, (selected) => {
             const newSelected = new Set([...Array.from(selected)]);
             if (current) {

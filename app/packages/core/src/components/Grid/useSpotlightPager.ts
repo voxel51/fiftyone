@@ -111,6 +111,7 @@ const useSpotlightPager = ({
 
   const refresher = useRecoilValue(fos.refresher);
   useEffect(() => {
+    refresher;
     const current = records.current;
     return () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
@@ -120,7 +121,7 @@ const useSpotlightPager = ({
         current.clear();
       });
     };
-  }, [records, refresher]);
+  }, [refresher]);
 
   return { page, records, store };
 };

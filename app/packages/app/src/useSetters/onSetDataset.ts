@@ -47,6 +47,9 @@ const onSetDataset: RegisteredSetter =
         currentSearch: router.history.location.search,
         nextDataset: datasetName || null,
         extra: {
+          groupId: null,
+          sampleId: null,
+          slice: null,
           workspace: null,
         },
       }),

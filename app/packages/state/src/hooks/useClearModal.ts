@@ -20,7 +20,7 @@ import * as fos from "../recoil";
  */
 
 export default () => {
-  const setModal = useSetRecoilState(fos.currentModalSample);
+  const setModal = useSetRecoilState(fos.modalSelector);
   const close = useRecoilCallback(
     ({ reset, set, snapshot }) =>
       async () => {

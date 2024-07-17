@@ -104,15 +104,13 @@ export const DynamicGroupsFlashlightWrapper = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.sampleId);
+              selectSample.current(detail.id);
             }
           );
 
           store.lookers.set(sampleId, looker);
 
           looker.attach(element, dimensions);
-        } else {
-          throw new Error("WUT");
         }
       },
     });

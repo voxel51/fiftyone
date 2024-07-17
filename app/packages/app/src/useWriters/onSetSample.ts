@@ -22,11 +22,12 @@ export const handleSampleId = (search: URLSearchParams, sampleId?: string) => {
     search.delete("groupId");
     search.set("sampleId", sampleId);
   } else {
+    search.delete("groupId");
     search.delete("sampleId");
   }
 };
 
-const onSetSample: RegisteredWriter<"sessionSampleId"> =
+const onSetSample: RegisteredWriter<"modalSelector"> =
   ({ environment, router, subscription }) =>
   (selector) => {
     const search = new URLSearchParams(router.location.search);
@@ -41,6 +42,7 @@ const onSetSample: RegisteredWriter<"sessionSampleId"> =
 
     router.push(router.location.pathname + string, {
       ...router.location.state,
+      event: "modal",
       modalSelector: selector,
     });
     commitMutation<setSampleMutation>(environment, {

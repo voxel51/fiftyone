@@ -45,7 +45,7 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
-  sessionSampleId?: ModalSelector;
+  modalSelector?: ModalSelector;
   sessionGroupId?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
 }

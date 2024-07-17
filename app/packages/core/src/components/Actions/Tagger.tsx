@@ -323,9 +323,9 @@ const useTagCallback = (
     () => setSamples(new Set()),
     () => setAggs((cur) => cur + 1),
     ...[
+      useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
-      useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),
     ],
   ];
 

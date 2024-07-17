@@ -32,12 +32,7 @@ import {
   isNestedDynamicGroup,
   shouldRenderImaVidLooker,
 } from "./dynamicGroups";
-import {
-  ModalSample,
-  currentModalSample,
-  modalLooker,
-  modalSample,
-} from "./modal";
+import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
@@ -387,7 +382,7 @@ export const groupField = selector<string>({
 
 export const groupId = selector<string>({
   key: "groupId",
-  get: ({ get }) => get(currentModalSample).groupId || null,
+  get: ({ get }) => get(modalSelector).groupId || null,
 });
 
 export const refreshGroupQuery = atom<number>({

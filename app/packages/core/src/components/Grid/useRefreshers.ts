@@ -1,6 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
+import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { gridPage } from "./recoil";
 
@@ -19,6 +20,7 @@ export default function useRefreshers() {
     cropToContent;
     refresher;
     spaces;
+    return uuid();
   }, [cropToContent, refresher, spaces]);
 
   const pageReset = useMemo(() => {
@@ -28,7 +30,7 @@ export default function useRefreshers() {
     groupSlice;
     shouldRenderImaVidLooker;
     view;
-    return {};
+    return uuid();
   }, [
     datasetName,
     extendedStages,
@@ -39,12 +41,18 @@ export default function useRefreshers() {
   ]);
 
   const reset = useMemo(() => {
-    pageReset;
     layoutReset;
-    return {};
+    pageReset;
+    return uuid();
   }, [layoutReset, pageReset]);
 
-  useEffect(() => subscribe((_, { reset }) => reset(gridPage)), []);
+  useEffect(
+    () =>
+      subscribe(({ event }, { reset }) => {
+        event !== "modal" && reset(gridPage);
+      }),
+    []
+  );
 
   return {
     pageReset,

@@ -34,10 +34,7 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
-    session.sessionSampleId =
-      state.sample_id || state.group_id
-        ? { id: state.sample_id, groupId: state.group_id }
-        : undefined;
+    session.modalSelector = modalSelector;
 
     unsubscribe();
   });
@@ -46,13 +43,18 @@ export const processState = (
     return { view: [], fieldVisibility: undefined };
   }
 
+  const modalSelector =
+    state.group_id || state.sample_id
+      ? {
+          groupId: state.group_id as string,
+          id: state.sample_id as string,
+        }
+      : undefined;
+
   return {
     fieldVisibility: state.field_visibility_stage,
     groupSlice: state.group_slice,
-    modalSelector: {
-      groupId: state.group_id,
-      id: state.sample_id,
-    },
+    modalSelector,
     view: state.view || [],
     workspace: state.spaces,
   };

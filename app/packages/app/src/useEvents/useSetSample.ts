@@ -35,20 +35,20 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         }
 
         const pathname = router.history.location.pathname + string;
+
+        const selector =
+          payload.group_id || payload.sample_id
+            ? {
+                groupId: payload.group_id as string,
+                id: payload.sample_id as string,
+              }
+            : undefined;
         router.push(pathname, {
-          groupId: payload.group_id || null,
-          sampleId: payload.sample_id || null,
+          event: "modal",
+          modalSelector: selector,
           ...router.location.state,
         });
-        setter(
-          "sessionSampleId",
-          payload.sample_id || payload.group_id
-            ? {
-                groupId: payload.group_id || null,
-                id: payload.sample_id || null,
-              }
-            : undefined
-        );
+        setter("modalSelector", selector);
       });
     },
     [router, setModalState, setter]

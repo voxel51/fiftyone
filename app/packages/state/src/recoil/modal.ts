@@ -98,14 +98,14 @@ type ModalSampleResponse = ResponseFrom<mainSampleQuery> & {
   sample: ModalSample;
 };
 
-export const currentModalSample = sessionAtom({
-  key: "sessionSampleId",
+export const modalSelector = sessionAtom({
+  key: "modalSelector",
   default: null,
 });
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
-  get: ({ get }) => Boolean(get(currentModalSample)),
+  get: ({ get }) => Boolean(get(modalSelector)),
 });
 
 export type ModalNavigation = {
@@ -113,15 +113,15 @@ export type ModalNavigation = {
   previous: () => Promise<ModalSelector>;
 };
 
-export const currentModalNavigation = atom<ModalNavigation>({
-  key: "currentModalNavigation",
+export const modalNavigation = atom<ModalNavigation>({
+  key: "modalNavigation",
   default: null,
 });
 
 export const modalSampleId = selector<string>({
   key: "modalSampleId",
   get: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (!current) {
       throw new Error("modal sample is not defined");
@@ -134,7 +134,7 @@ export const modalSampleId = selector<string>({
 export const nullableModalSampleId = selector<string>({
   key: "nullableModalSampleId",
   get: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (!current) {
       return null;
@@ -167,7 +167,7 @@ export const modalSample = graphQLSelector<
     return mapSampleResponse(data.sample) as ModalSample;
   },
   variables: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (current === null) return null;
 

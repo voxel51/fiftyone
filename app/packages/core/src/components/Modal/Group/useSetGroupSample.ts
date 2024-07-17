@@ -6,7 +6,7 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (_, id: string, __) => {
-        const current = await snapshot.getPromise(fos.currentModalSample);
+        const current = await snapshot.getPromise(fos.modalSelector);
 
         if (current === null) {
           throw new Error("modal sample not defined");

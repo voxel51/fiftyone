@@ -80,7 +80,7 @@ export default () => {
       }
       await setModalFilters(cbInterface);
 
-      navigation && set(modalAtoms.currentModalNavigation, () => navigation);
+      navigation && set(modalAtoms.modalNavigation, () => navigation);
     },
     [environment]
   );

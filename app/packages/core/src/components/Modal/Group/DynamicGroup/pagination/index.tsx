@@ -1,7 +1,7 @@
 import { Loading, LoadingDots } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { currentModalSample } from "@fiftyone/state";
+import { modalSelector } from "@fiftyone/state";
 import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import { get as getValue } from "lodash";
@@ -56,14 +56,14 @@ export const GroupElementsLinkBar = React.memo(() => {
   const setSample = useRecoilCallback(
     ({ set, snapshot }) =>
       async (sample: fos.ModalSample) => {
-        const current = await snapshot.getPromise(fos.currentModalSample);
+        const current = await snapshot.getPromise(fos.modalSelector);
         const currentGroup = await snapshot.getPromise(fos.groupByFieldValue);
         const nextGroup = String(
           getValue(sample.sample, dynamicGroupParameters.groupBy)
         );
 
         if (current && current.id !== sample.id) {
-          set(currentModalSample, (current) => {
+          set(modalSelector, (current) => {
             return {
               ...current,
               id: sample.id,

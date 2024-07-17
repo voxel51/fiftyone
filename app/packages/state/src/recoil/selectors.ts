@@ -15,7 +15,7 @@ import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
-import { currentModalSample, isModalActive, modalSample } from "./modal";
+import { isModalActive, modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -491,7 +491,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(currentModalSample);
+      const modal = get(modalSelector);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

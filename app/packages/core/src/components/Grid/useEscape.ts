@@ -14,7 +14,7 @@ const useEscape = () => {
             return;
           }
 
-          const modal = await snapshot.getPromise(fos.currentModalSample);
+          const modal = await snapshot.getPromise(fos.modalSelector);
           modal === null && reset(fos.selectedSamples);
         },
       []
