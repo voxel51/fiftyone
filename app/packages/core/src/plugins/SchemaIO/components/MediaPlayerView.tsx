@@ -6,9 +6,10 @@ import { getComponentProps } from "../utils";
 
 export default function MediaPlayerView(props) {
   const { schema, data } = props;
-  const { default: defaultValue, playerProps = {} } = schema;
-  const actualData = data ?? defaultValue;
-  const mediaUrl = actualData?.url;
+  const { default: defaultValue } = schema;
+  const value = data ?? defaultValue;
+  const mediaUrl = typeof value === "string" ? value : value?.url;
+  const { view = {} } = schema;
 
   const handleEvent =
     (event) =>
@@ -32,7 +33,7 @@ export default function MediaPlayerView(props) {
       <HeaderView {...props} nested />
       <ReactPlayer
         url={mediaUrl}
-        {...playerProps}
+        {...view}
         {...eventHandlers}
         {...getComponentProps(props, "react-player")}
       />
