@@ -2399,6 +2399,7 @@ __metadata:
     "@types/react": ^18.0.9
     "@types/react-color": ^3.0.6
     "@types/react-dom": ^18.0.3
+    "@types/react-grid-layout": ^1.3.5
     "@types/react-relay": ^14.1.0
     "@types/react-router": ^5.1.18
     "@types/relay-compiler": ^8.0.2
@@ -6540,6 +6541,15 @@ __metadata:
   dependencies:
     "@types/react": "*"
   checksum: a0cd9b1b815a6abd2a367a9eabdd8df8dd8f13f95897b2f9e1359ea3ac6619f957c1432ece004af7d95e2a7caddbba19faa045f831f32d6263483fc5404a7596
+  languageName: node
+  linkType: hard
+
+"@types/react-grid-layout@npm:^1.3.5":
+  version: 1.3.5
+  resolution: "@types/react-grid-layout@npm:1.3.5"
+  dependencies:
+    "@types/react": "*"
+  checksum: 59e92cac78712bf527e8c9147f70c121a9a7f6faaf1ee5c979c38a9e9445148f5003d6a37a769b6695fdca65e71567033858fc0e1371937c79dcb35f4b36ae5e
   languageName: node
   linkType: hard
 

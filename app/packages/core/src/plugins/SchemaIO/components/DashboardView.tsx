@@ -1,24 +1,25 @@
+import { useTheme } from "@fiftyone/components";
+import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelId } from "@fiftyone/spaces";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
   BoxProps,
-  Typography,
-  useTheme,
-  styled,
+  Grid,
   IconButton,
   Paper,
-  Grid,
+  styled,
+  Typography,
 } from "@mui/material";
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, HeaderView } from ".";
+import React, { forwardRef, useCallback, useState } from "react";
+import GridLayout from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+import { Button } from ".";
 import { getComponentProps, getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
-import GridLayout from "react-grid-layout";
-import CloseIcon from "@mui/icons-material/Close";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
-import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
-import { usePanelId } from "@fiftyone/spaces";
+import { c } from "vite/dist/node/types.d-aGj9QkWt";
 
 const AddItemCTA = ({ onAdd }) => {
   return (
@@ -140,17 +141,6 @@ export default function DashboardView(props: ViewPropsType) {
     alignItems: "center",
   }));
 
-  const ResizeHandle = styled("span")(({ theme }) => ({
-    position: "absolute",
-    width: 20,
-    height: 20,
-    bottom: 0,
-    right: 0,
-    backgroundColor: theme.palette.secondary.main,
-    borderRadius: "50%",
-    cursor: "se-resize",
-  }));
-
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
       return null;
@@ -178,12 +168,12 @@ export default function DashboardView(props: ViewPropsType) {
           width={GRID_WIDTH}
           onDragStart={() => setIsDragging(true)}
           onDragStop={() => setIsDragging(false)}
-          resizeHandles={["ne"]}
+          resizeHandles={["e", "w", "n", "s"]}
           isDraggable={!isDragging}
           isResizable={!isDragging} // Allow resizing
           draggableHandle=".drag-handle"
           resizeHandle={(axis, ref) => {
-            return <ResizeHandle {...{ axis, ref }} />;
+            return <DashboardItemResizeHandle axis={axis} ref={ref} />;
           }}
         >
           {propertiesAsArray.map((property) => {
@@ -212,20 +202,22 @@ export default function DashboardView(props: ViewPropsType) {
                         e.stopPropagation();
                         onCloseItem({ id, path: getPath(path, id) });
                       }}
-                      sx={{ color: theme.palette.text.secondary }}
+                      sx={{ color: theme.text.secondary }}
                     >
                       <CloseIcon />
                     </IconButton>
                   )}
                 </DragHandle>
-                <DynamicIO
-                  {...props}
-                  schema={property}
-                  path={itemPath}
-                  data={data?.[id]}
-                  parentSchema={schema}
-                  relativePath={id}
-                />
+                <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
+                  <DynamicIO
+                    {...props}
+                    schema={property}
+                    path={itemPath}
+                    data={data?.[id]}
+                    parentSchema={schema}
+                    relativePath={id}
+                  />
+                </Box>
               </Box>
             );
           })}
@@ -235,3 +227,59 @@ export default function DashboardView(props: ViewPropsType) {
     </Box>
   );
 }
+
+const DashboardItemResizeHandle = forwardRef((props, ref) => {
+  const theme = useTheme();
+  const { axis } = props;
+
+  const axisSx = AXIS_SX[axis] || {};
+
+  return (
+    <Typography
+      ref={ref}
+      sx={{
+        ...axisSx,
+        position: "absolute",
+        borderColor: theme.neutral.plainColor,
+        opacity: 0,
+        transition: "opacity 0.25s",
+        "&:hover": {
+          opacity: 1,
+        },
+      }}
+      aria-label={`Resize ${axis}`}
+      {...props}
+    />
+  );
+});
+
+const AXIS_SX = {
+  e: {
+    height: "100%",
+    right: 0,
+    top: 0,
+    borderRight: "2px solid",
+    cursor: "e-resize",
+  },
+  w: {
+    height: "100%",
+    left: 0,
+    top: 0,
+    borderLeft: "2px solid",
+    cursor: "w-resize",
+  },
+  s: {
+    width: "100%",
+    bottom: 0,
+    left: 0,
+    borderBottom: "2px solid",
+    cursor: "s-resize",
+  },
+  n: {
+    width: "100%",
+    top: 0,
+    left: 0,
+    borderTop: "2px solid",
+    cursor: "n-resize",
+  },
+};
