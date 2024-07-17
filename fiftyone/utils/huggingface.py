@@ -669,10 +669,10 @@ def _parse_subset_kwargs(**kwargs):
 
 def _count_samples(sample_collection):
     if sample_collection.media_type == "group":
-        return sum(
-            _count_samples(sample_collection.select_group_slices(s))
-            for s in sample_collection.group_slices
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
         )
+
     return sample_collection.count()
 
 
