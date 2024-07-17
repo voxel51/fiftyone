@@ -164,7 +164,7 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
     "fiftyone.operators.registry.OperatorRegistry.get_operator",
     return_value=MockOperator(),
 )
-class DelegatedOperationServiceTests(unittest.TestCase):
+class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
     _should_fail = False
 
     def setUp(self):
@@ -1140,7 +1140,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
     )
-    @pytest.mark.asyncio
     async def test_set_completed_in_async_context(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
     ):
