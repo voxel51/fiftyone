@@ -445,6 +445,54 @@ class Object(BaseType):
         )
         return self.view(name, view, **kwargs)
 
+    def map(self, name, key_type, value_type, **kwargs):
+        """Defines a map property on the object.
+
+        Args:
+            name: the name of the property
+            key_type: the type of the keys in the map
+            value_type: the type of the values in the map
+
+
+        Returns:
+            a :class:`Map`
+        """
+        map_view = MapView(**kwargs)
+        map_type = Map(key_type=key_type, value_type=value_type)
+        self.define_property(name, map_type, view=map_view, **kwargs)
+        return map_type
+
+    def oneof(self, name, types, **kwargs):
+        """Defines a one-of property on the object.
+
+        Args:
+            name: the name of the property
+            types: list of types that are instances of :class:`BaseType`
+
+
+        Returns:
+            a :class:`OneOf`
+        """
+
+        one_of = OneOf(types)
+        self.define_property(name, one_of, **kwargs)
+        return one_of
+
+    def tuple(self, name, *items, **kwargs):
+        """Defines a tuple property on the object.
+
+        Args:
+            name: the name of the property
+            *items: the types of the items in the tuple
+
+        Returns:
+            a :class:`Tuple`
+        """
+        tuple_view = TupleView(**kwargs)
+        tuple_type = Tuple(*items)
+        self.define_property(name, tuple_type, view=tuple_view, **kwargs)
+        return tuple_type
+
     def clone(self):
         """Clones the definition of the object.
 
