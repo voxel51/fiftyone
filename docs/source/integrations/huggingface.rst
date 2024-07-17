@@ -1139,7 +1139,7 @@ For example, to push a dataset to the Hub as private, you can do the following:
 .. code-block:: python
     :linenos:
 
-    fromfiftyone.utils.huggingface import push_to_hub
+    from fiftyone.utils.huggingface import push_to_hub
 
     push_to_hub(dataset, "my-private-dataset", private=True)
 
