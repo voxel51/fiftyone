@@ -1,11 +1,11 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
-import { get, set, isEqual } from "lodash";
-import React, { useEffect } from "react";
+import { get, isEqual, set } from "lodash";
+import React, { useEffect, useMemo } from "react";
 import { isPathUserChanged } from "../hooks";
 import { getComponent, getErrorsForView, isCompositeView } from "../utils";
+import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
-import { ViewPropsType } from "../utils/types";
 
 export default function DynamicIO(props: ViewPropsType) {
   const { data, schema, onChange, path } = props;
@@ -22,14 +22,33 @@ export default function DynamicIO(props: ViewPropsType) {
       !isPathUserChanged(path) &&
       !isNullish(defaultValue)
     ) {
-      onChange(path, defaultValue);
+      onChange(path, defaultValue, computedSchema);
     }
   }, [defaultValue]);
+
+  const onChangeWithSchema = useMemo(() => {
+    return (
+      path: string,
+      value: unknown,
+      schema?: SchemaType,
+      ancestors: AncestorsType = {}
+    ) => {
+      const isComposite = isCompositeView(computedSchema);
+      const subSchema = !isComposite ? computedSchema : undefined;
+      const currentPath = props.path;
+      const computedAncestors = { ...ancestors };
+      if (isComposite) {
+        computedAncestors[currentPath] = computedSchema;
+      }
+      onChange(path, value, schema ?? subSchema, computedAncestors);
+    };
+  }, [onChange, computedSchema, props.path]);
 
   return (
     <ContainerizedComponent {...props} schema={computedSchema}>
       <Component
         {...props}
+        onChange={onChangeWithSchema}
         schema={computedSchema}
         validationErrors={getErrorsForView(props)}
       />

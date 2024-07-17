@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { debounce, isEqual, merge } from "lodash";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { merge, isEqual } from "lodash";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
-import { executeOperator } from "./operators";
 import * as fos from "@fiftyone/state";
-import usePanelEvent from "./usePanelEvent";
+import { PANEL_STATE_CHANGE_DEBOUNCE } from "./constants";
+import { executeOperator } from "./operators";
 import {
   panelsStateUpdatesCountAtom,
   useGlobalExecutionContext,
 } from "./state";
+import usePanelEvent from "./usePanelEvent";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -171,6 +172,17 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     setPanelStateLocal,
   ]);
 
+  const handlePanelStateChangeOpDebounced = useMemo(() => {
+    return debounce(
+      (state, onChange, panelId) => {
+        if (onChange && state)
+          executeOperator(onChange, { panel_id: panelId, panel_state: state });
+      },
+      PANEL_STATE_CHANGE_DEBOUNCE,
+      { leading: true }
+    );
+  }, []);
+
   useEffect(() => {
     if (props.onViewChange)
       executeOperator(props.onViewChange, {
@@ -180,12 +192,17 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   }, [view]);
 
   useEffect(() => {
-    if (props.onChange && panelState?.state)
-      executeOperator(props.onChange, {
-        panel_id: props.panelId,
-        panel_state: panelState.state,
-      });
-  }, [panelState?.state]);
+    handlePanelStateChangeOpDebounced(
+      panelState?.state,
+      props.onChange,
+      panelId
+    );
+  }, [
+    panelState?.state,
+    props.onChange,
+    panelId,
+    handlePanelStateChangeOpDebounced,
+  ]);
 
   const triggerPanelPropertyChange = usePanelEvent();
 
@@ -195,18 +212,21 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     });
   };
 
-  const handlePanelStatePathChange = (path, value, schema) => {
-    if (schema?.onChange) {
-      // This timeout allows the change to be applied before executing the operator
-      // it might make sense to do this for all operator executions
-      setTimeout(() => {
-        triggerPanelPropertyChange(panelId, {
-          operator: schema.onChange,
-          params: { path, value },
-        });
-      }, 0);
-    }
-  };
+  const handlePanelStatePathChange = useCallback(
+    (path, value, schema) => {
+      if (schema?.onChange) {
+        // This timeout allows the change to be applied before executing the operator
+        // it might make sense to do this for all operator executions
+        setTimeout(() => {
+          triggerPanelPropertyChange(panelId, {
+            operator: schema.onChange,
+            params: { path, value },
+          });
+        }, 0);
+      }
+    },
+    [triggerPanelPropertyChange, panelId]
+  );
 
   return {
     loaded: isLoaded,

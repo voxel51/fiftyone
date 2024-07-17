@@ -28,7 +28,12 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   path: string;
   errors: { [key: string]: string[] };
   customComponents?: CustomComponentsType;
-  onChange: (path: string, value: any, schema?: Schema) => void;
+  onChange: (
+    path: string,
+    value: any,
+    schema?: Schema,
+    ancestors?: AncestorsType
+  ) => void;
   parentSchema?: SchemaType;
   relativePath: string;
   data?: any;
@@ -41,4 +46,8 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
 
 export type CustomComponentsType = {
   [name: string]: React.ComponentType;
+};
+
+export type AncestorsType = {
+  [path: string]: SchemaType;
 };
