@@ -30,7 +30,7 @@ export default function TextFieldView(props: ViewPropsType<NumberSchemaType>) {
         type={type}
         onChange={(e) => {
           const value = e.target.value;
-          onChange(path, type === "number" ? parseFloat(value) : value, schema);
+          onChange(path, type === "number" ? parseFloat(value) : value);
           setUserChanged();
         }}
         inputProps={{
