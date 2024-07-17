@@ -1298,8 +1298,7 @@ For example, to load the `quickstart` dataset that we pushed to the Hub earlier,
 
     dataset = load_from_hub("<username>/my-quickstart-dataset")
 
-
-Where `<username>` is your Hugging Face username or organization name.
+where `<username>` is your Hugging Face username or organization name.
 
 .. _huggingface-hub-load-dataset-from-local-config:
 
