@@ -111,6 +111,8 @@ export const DynamicGroupsFlashlightWrapper = () => {
           store.lookers.set(sampleId, looker);
 
           looker.attach(element, dimensions);
+        } else {
+          throw new Error("WUT");
         }
       },
     });

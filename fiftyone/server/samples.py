@@ -108,7 +108,7 @@ async def paginate_samples(
         after = "-1"
 
     if int(after) > -1:
-        view = view.skip(int(after))
+        view = view.skip(int(after) + 1)
 
     pipeline = view._pipeline(
         attach_frames=has_frames,

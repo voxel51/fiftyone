@@ -91,7 +91,7 @@ export const pageParameters = selector({
     return (page: number, pageSize: number) => {
       return {
         ...params,
-        after: page ? String(page * pageSize) : null,
+        after: page ? String(page * pageSize - 1) : null,
         first: pageSize,
       };
     };

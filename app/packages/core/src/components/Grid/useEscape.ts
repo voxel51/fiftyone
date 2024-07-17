@@ -1,5 +1,5 @@
 import { useEventHandler } from "@fiftyone/state";
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilCallback } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -7,12 +7,15 @@ const useEscape = () => {
   useEventHandler(
     document,
     "keydown",
-    useRecoilTransaction_UNSTABLE(
-      ({ get, reset }) =>
-        (event: KeyboardEvent) => {
-          event.key === "Escape" &&
-            get(fos.modalSampleIndex) === null &&
-            reset(fos.selectedSamples);
+    useRecoilCallback(
+      ({ reset, snapshot }) =>
+        async (event: KeyboardEvent) => {
+          if (event.key !== "Escape") {
+            return;
+          }
+
+          const modal = await snapshot.getPromise(fos.currentModalSample);
+          modal === null && reset(fos.selectedSamples);
         },
       []
     )

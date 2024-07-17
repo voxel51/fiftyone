@@ -52,6 +52,7 @@ export default class SectionElement implements Section {
         { aspectRatio, extraMargins },
         items.map((itemData) => {
           const itemElement = document.createElement("div");
+          itemElement.setAttribute("WFT", itemData.id);
 
           if (onItemClick) {
             itemElement.addEventListener("click", (event) => {

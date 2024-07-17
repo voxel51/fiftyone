@@ -171,27 +171,25 @@ export default class Row<K, V> {
   }
 
   get #cleanAspectRatio() {
+    const result = this.#row
+      .map(({ item }) => item.aspectRatio)
+      .reduce((ar, next) => ar + next, ZERO);
     if (this.#dangle) {
       const ar = this.#singleAspectRatio;
       if (ar !== null) {
         return this.#dangleSingleAspectRatioCount * ar;
       }
 
-      return this.#config.rowAspectRatioThreshold(this.#width);
+      const target = this.#config.rowAspectRatioThreshold(this.#width);
+      return result > target ? result : target;
     }
 
-    return this.#row
-      .map(({ item }) => item.aspectRatio)
-      .reduce((ar, next) => ar + next, ZERO);
+    return result;
   }
 
   get #cleanWidth() {
-    if (!this.#dangle) {
+    if (!this.#dangle || this.#singleAspectRatio === null) {
       return this.#width - (this.#row.length - ONE) * this.#config.spacing;
-    }
-
-    if (this.#singleAspectRatio === null) {
-      return this.#config.rowAspectRatioThreshold(this.#width);
     }
 
     return (

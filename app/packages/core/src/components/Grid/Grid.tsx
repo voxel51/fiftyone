@@ -15,6 +15,7 @@ import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
+import useEscape from "./useEscape";
 import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
 import useSelectSample from "./useSelectSample";
@@ -151,6 +152,8 @@ function Grid() {
       observer.disconnect();
     };
   }, [id]);
+
+  useEscape();
 
   return <div id={id} className={styles.spotlightLooker} data-cy="fo-grid" />;
 }

@@ -104,10 +104,10 @@ export default class Spotlight<K, V> extends EventTarget {
       throw new Error("spotlight is not attached");
     }
 
-    this.#backward.remove();
-    this.#forward.remove();
-    this.#element.classList.remove(styles.spotlightLoaded);
-    this.#element.remove();
+    this.#backward?.remove();
+    this.#forward?.remove();
+    this.#element?.classList.remove(styles.spotlightLoaded);
+    this.#element?.remove();
     this.#scrollReader?.destroy();
   }
 

@@ -40,10 +40,15 @@ const useSetSample: EventHandlerHook = ({ router }) => {
           sampleId: payload.sample_id || null,
           ...router.location.state,
         });
-        setter("sessionSampleId", {
-          groupId: payload.group_id || null,
-          id: payload.sample_id || null,
-        });
+        setter(
+          "sessionSampleId",
+          payload.sample_id || payload.group_id
+            ? {
+                groupId: payload.group_id || null,
+                id: payload.sample_id || null,
+              }
+            : undefined
+        );
       });
     },
     [router, setModalState, setter]
