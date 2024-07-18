@@ -232,10 +232,10 @@ git clone --depth 1 https://github.com/voxel51/fiftyone.git
 cd fiftyone
 
 # Mac or Linux
-bash install.bash -d
+bash install.bash
 
 # Windows
-.\install.bat -d
+.\install.bat
 ```
 
 ### Docker installs
