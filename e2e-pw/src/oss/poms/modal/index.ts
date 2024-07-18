@@ -2,6 +2,7 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
+import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
@@ -17,6 +18,7 @@ export class ModalPom {
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
+  readonly url: UrlPom;
 
   constructor(
     private readonly page: Page,
@@ -33,6 +35,7 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
+    this.url = new UrlPom(page, eventUtils);
   }
 
   get groupLooker() {
@@ -80,9 +83,11 @@ export class ModalPom {
     allowErrorInfo = false
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
-    await this.locator
-      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-      .click();
+    await this.url.pageChange(() =>
+      this.locator
+        .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
+        .click()
+    );
 
     // wait for sample id to change
     await this.page.waitForFunction((currentSampleId) => {
@@ -103,7 +108,10 @@ export class ModalPom {
 
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
-    await looker.click({ position: { x: 10, y: 60 } });
+
+    await this.url.pageChange(() =>
+      looker.click({ position: { x: 10, y: 60 } })
+    );
 
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -160,7 +168,10 @@ export class ModalPom {
     const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
-    await looker.click({ position: { x: 10, y: 60 } });
+
+    await this.url.pageChange(() =>
+      looker.click({ position: { x: 10, y: 60 } })
+    );
 
     // wait for slice to change
     await this.page.waitForFunction(
@@ -177,8 +188,9 @@ export class ModalPom {
 
   async close() {
     // close by clicking outside of modal
-    await this.page.click("body", { position: { x: 0, y: 0 } });
-    await this.locator.waitFor({ state: "detached" });
+    await this.url.pageChange(() =>
+      this.page.click("body", { position: { x: 0, y: 0 } })
+    );
   }
 
   async navigateNextSample(allowErrorInfo = false) {
@@ -234,6 +246,14 @@ export class ModalPom {
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
+
+  async isClosed() {
+    await expect(this.modalPom.modalContainer).toBeHidden();
+  }
+
+  async isOpen() {
+    await expect(this.modalPom.modalContainer).toBeVisible();
+  }
 
   async verifyModalOpenedSuccessfully() {
     await this.modalPom.waitForSampleLoadDomAttribute();

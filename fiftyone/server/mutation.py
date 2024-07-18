@@ -108,7 +108,7 @@ class Mutation(SetColorScheme):
         self,
         subscription: str,
         session: t.Optional[str],
-        slice: str,
+        slice: t.Optional[str],
     ) -> bool:
         await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
         return True

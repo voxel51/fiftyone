@@ -507,11 +507,7 @@ type Mutation {
     name: String
     viewName: String
   ): Boolean!
-  setGroupSlice(
-    subscription: String!
-    session: String
-    slice: String!
-  ): Boolean!
+  setGroupSlice(subscription: String!, session: String, slice: String): Boolean!
   setSample(
     subscription: String!
     session: String

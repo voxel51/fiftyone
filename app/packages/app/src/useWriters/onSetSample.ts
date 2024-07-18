@@ -2,6 +2,7 @@ import type { setSampleMutation } from "@fiftyone/relay";
 import type { RegisteredWriter } from "./registerWriter";
 
 import { setSample } from "@fiftyone/relay";
+import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 
 export const handleGroup = (search: URLSearchParams, group?: string) => {
@@ -45,14 +46,15 @@ const onSetSample: RegisteredWriter<"modalSelector"> =
       event: "modal",
       modalSelector: selector,
     });
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: selector?.groupId,
-        sampleId: selector?.id,
-        subscription,
-      },
-    });
+    !env().VITE_NO_STATE &&
+      commitMutation<setSampleMutation>(environment, {
+        mutation: setSample,
+        variables: {
+          groupId: selector?.groupId,
+          sampleId: selector?.id,
+          subscription,
+        },
+      });
   };
 
 export default onSetSample;

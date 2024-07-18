@@ -2,11 +2,15 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
+import { GridTaggerPom } from "../action-row/tagger/grid-tagger";
+import { UrlPom } from "../url";
 
 export class GridPom {
+  readonly assert: GridAsserter;
   readonly actionsRow: GridActionsRowPom;
   readonly sliceSelector: GridSliceSelectorPom;
-  readonly assert: GridAsserter;
+  readonly tagger: GridTaggerPom;
+  readonly url: UrlPom;
 
   readonly locator: Locator;
 
@@ -14,10 +18,11 @@ export class GridPom {
     public readonly page: Page,
     private readonly eventUtils: EventUtils
   ) {
+    this.assert = new GridAsserter(this);
+    this.url = new UrlPom(page, eventUtils);
     this.actionsRow = new GridActionsRowPom(page, eventUtils);
     this.sliceSelector = new GridSliceSelectorPom(page);
-
-    this.assert = new GridAsserter(this);
+    this.tagger = new GridTaggerPom(page);
 
     this.locator = page.getByTestId("fo-grid");
   }
@@ -47,7 +52,9 @@ export class GridPom {
   }
 
   async openNthSample(n: number) {
-    await this.getNthLooker(n).click({ position: { x: 10, y: 80 } });
+    await this.url.pageChange(() =>
+      this.getNthLooker(n).click({ position: { x: 10, y: 80 } })
+    );
   }
 
   async openFirstSample() {
@@ -56,6 +63,20 @@ export class GridPom {
 
   async getEntryCountText() {
     return this.page.getByTestId("entry-counts").textContent();
+  }
+
+  async scrollBottom() {
+    return this.getForwardSection()
+      .locator("div")
+      .last()
+      .scrollIntoViewIfNeeded();
+  }
+
+  async scrollTop() {
+    return this.getBackwardSection()
+      .locator("div")
+      .first()
+      .scrollIntoViewIfNeeded();
   }
 
   async selectSlice(slice: string) {
@@ -77,6 +98,12 @@ export class GridPom {
     const refreshEndPromise =
       this.eventUtils.getEventReceivedPromiseForPredicate("grid-mount");
     return Promise.all([refreshStartPromise, refreshEndPromise]);
+  }
+
+  async run(run: () => Promise<unknown>) {
+    const promise = this.getWaitForGridRefreshPromise();
+    await run();
+    await promise;
   }
 }
 

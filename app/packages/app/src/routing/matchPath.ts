@@ -27,7 +27,7 @@ const compilePath = (path: string): CompilePathResult => {
 export type LocationState<T extends OperationType = OperationType> = {
   event?: "modal";
   fieldVisibility?: State.FieldVisibilityStage;
-  groupSlice: string;
+  groupSlice?: string;
   modalSelector?: ModalSelector;
   savedViewSlug?: string;
   view?: State.Stage[];

@@ -68,7 +68,7 @@ async def dispatch_event(
         state.field_visibility_stage = event.stage
 
     if isinstance(event, SetGroupSlice):
-        state.group_slice = event.slice
+        state.group_slice = event.slice or state.dataset.default_group_slice
 
     if isinstance(event, (StateUpdate, Refresh)):
         set_state(event.state)

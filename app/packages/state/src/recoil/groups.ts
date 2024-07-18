@@ -140,27 +140,33 @@ export const sessionGroupSlice = sessionAtom({
 export const groupSlice = selector<string>({
   key: "groupSlice",
   get: ({ get }) => {
-    return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
+    return get(isGroup) && get(hasGroupSlices)
+      ? get(sessionGroupSlice) || get(defaultGroupSlice)
+      : null;
   },
   set: ({ get, reset, set }, slice) => {
-    const defaultSlice = get(defaultGroupSlice);
-    if (get(similarityParameters)) {
-      // avoid this pattern
-      const unsubscribe = foq.subscribeBefore(() => {
-        const session = getSessionRef();
-        session.sessionGroupSlice =
-          slice instanceof DefaultValue ? defaultSlice : slice;
-        session.selectedSamples = new Set();
-        session.selectedLabels = [];
-
-        unsubscribe();
-      });
-      reset(similarityParameters);
-    } else {
-      set(sessionGroupSlice, slice);
+    if (!get(similarityParameters)) {
+      set(
+        sessionGroupSlice,
+        get(defaultGroupSlice) === slice ? new DefaultValue() : slice
+      );
       set(selectedLabels, []);
       set(selectedSamples, new Set());
+
+      return;
     }
+
+    // avoid this pattern
+    const unsubscribe = foq.subscribeBefore(() => {
+      const session = getSessionRef();
+      session.sessionGroupSlice =
+        slice instanceof DefaultValue ? undefined : slice;
+      session.selectedSamples = new Set();
+      session.selectedLabels = [];
+
+      unsubscribe();
+    });
+    reset(similarityParameters);
   },
 });
 

@@ -4,6 +4,8 @@ import {
   Writer,
   setDataset,
   setDatasetMutation,
+  setGroupSlice,
+  setGroupSliceMutation,
   setSample,
   setSampleMutation,
   setSpaces,
@@ -146,37 +148,58 @@ const dispatchSideEffect = ({
 
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
+
+  session.modalSelector = nextEntry.state?.modalSelector;
+  const updateSlice =
+    currentEntry.state.groupSlice !== nextEntry.state.groupSlice;
+  if (updateSlice) {
+    session.sessionGroupSlice = nextEntry.state.groupSlice || undefined;
+  }
+
+  let update = !fos.viewsAreEqual(
+    currentEntry.state.view,
+    nextEntry.state.view
+  );
   if (currentDataset !== nextDataset) {
+    update = true;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
       data.config
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
-    session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
-    session.modalSelector = nextEntry.state.modalSelector;
     session.sessionSpaces = nextEntry.state?.workspace ?? fos.SPACES_DEFAULT;
   }
 
-  commitMutation<setViewMutation>(environment, {
-    mutation: setView,
-    variables: {
-      view: nextEntry.state.view,
-      savedViewSlug: nextEntry.state.savedViewSlug,
-      form: {},
-      datasetName: nextDataset,
-      subscription,
-    },
-    onCompleted: () => {
-      nextEntry.state?.workspace &&
-        commitMutation<setSpacesMutation>(environment, {
-          mutation: setSpaces,
-          variables: {
-            spaces: nextEntry.state?.workspace,
-            subscription,
-          },
-        });
-    },
-  });
+  update &&
+    commitMutation<setViewMutation>(environment, {
+      mutation: setView,
+      variables: {
+        view: nextEntry.state.view,
+        savedViewSlug: nextEntry.state.savedViewSlug,
+        form: {},
+        datasetName: nextDataset,
+        subscription,
+      },
+      onCompleted: () => {
+        nextEntry.state?.workspace &&
+          commitMutation<setSpacesMutation>(environment, {
+            mutation: setSpaces,
+            variables: {
+              spaces: nextEntry.state?.workspace,
+              subscription,
+            },
+          });
+
+        updateSlice &&
+          commitMutation<setGroupSliceMutation>(environment, {
+            mutation: setGroupSlice,
+            variables: {
+              slice: session.sessionGroupSlice,
+              subscription,
+            },
+          });
+      },
+    });
 };
 
 export default Sync;

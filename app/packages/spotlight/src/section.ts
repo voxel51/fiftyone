@@ -68,11 +68,11 @@ export class Section<K, V> {
     this.#width = width;
 
     this.#container.classList.add(styles.spotlightContainer);
+    this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
 
     this.#section.classList.add(styles.spotlightSection);
-    this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
-    this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
+    this.#section.append(...[create(DIV), this.#container, create(DIV)]);
   }
 
   get finished() {

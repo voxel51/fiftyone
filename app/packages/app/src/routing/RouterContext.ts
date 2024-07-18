@@ -57,6 +57,7 @@ export interface RoutingContext<T extends OperationType> {
   location: FiftyOneLocation;
   load: (hard?: boolean) => Promise<Entry<T>>;
   push(to: string, state: LocationState): void;
+  replace(to: string, state: LocationState): void;
   subscribe: Subscribe<T>;
 }
 
@@ -151,6 +152,10 @@ export const createRouter = <T extends OperationType>(
 
     push(to: string, state: LocationState) {
       history.push(to, state);
+    },
+
+    replace(to: string, state: LocationState) {
+      history.replace(to, state);
     },
 
     subscribe(cb, onPending) {

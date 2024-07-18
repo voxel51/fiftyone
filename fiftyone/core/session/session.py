@@ -1004,8 +1004,7 @@ class Session(object):
 
         if self.group_id:
             elements.append(("Group:", self.group_id))
-
-        if self.sample_id:
+        elif self.sample_id:
             elements.append(("Sample:", self.sample_id))
 
         if type_ is None:
