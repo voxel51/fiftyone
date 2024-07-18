@@ -155,8 +155,7 @@ sudo dnf install libcurl openssl
 
 We strongly recommend that you install FiftyOne in a
 [virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace. The install script is only supported in
-POSIX-based systems (e.g. Mac and Linux).
+to maintain a clean workspace.
 
 First, clone the repository:
 
@@ -168,7 +167,11 @@ cd fiftyone
 Then run the install script:
 
 ```shell
+# Mac or Linux
 bash install.bash
+
+# Windows
+.\install.bat
 ```
 
 **NOTE:** If you run into issues importing FiftyOne, you may need to add the
@@ -204,7 +207,11 @@ you should perform a developer installation using the `-d` flag of the install
 script:
 
 ```shell
+# Mac or Linux
 bash install.bash -d
+
+# Windows
+.\install.bat -d
 ```
 
 Although not required, developers typically prefer to configure their FiftyOne
@@ -223,7 +230,12 @@ cell and then **restarting the runtime**:
 
 git clone --depth 1 https://github.com/voxel51/fiftyone.git
 cd fiftyone
-bash install.bash
+
+# Mac or Linux
+bash install.bash -d
+
+# Windows
+.\install.bat -d
 ```
 
 ### Docker installs
