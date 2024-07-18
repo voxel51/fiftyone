@@ -16,6 +16,7 @@ from fiftyone.management.organization import *
 from fiftyone.management.plugin import *
 from fiftyone.management.snapshot import *
 from fiftyone.management.users import *
+from fiftyone.management.user_groups import *
 
 globals().update(DatasetPermission.__members__)
 globals().update(UserRole.__members__)

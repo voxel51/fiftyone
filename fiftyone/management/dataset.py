@@ -5,12 +5,13 @@ Dataset management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import datetime
 import enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
 from fiftyone.management import connection
 from fiftyone.management import users
+from fiftyone.management.user_groups import UserGroup, resolve_user_group_id
+from fiftyone.management.exceptions import FiftyOneManagementError
 
 
 class DatasetPermission(enum.Enum):
@@ -37,7 +38,7 @@ def _validate_dataset_permission(
             return DatasetPermission[candidate_dataset_permission].value
         except KeyError:
             ...
-    raise ValueError(
+    raise FiftyOneManagementError(
         f"Invalid dataset permission {candidate_dataset_permission}"
     )
 
@@ -72,6 +73,7 @@ _GET_PERMISSIONS_FOR_DATASET_QUERY = """
                 activePermission
                 user {name, email, id}
             }
+            userGroups(first: 10000) {name, id, description, permission}
         }
     }
 """
@@ -86,6 +88,16 @@ _GET_PERMISSIONS_FOR_DATASET_USER_QUERY = """
     }
 """
 
+
+_GET_PERMISSIONS_FOR_DATASET_USER_GROUP_QUERY = """
+    query ($dataset: String!, $groupId: String!){
+        dataset(identifier: $dataset) {
+            userGroup(identifier: $groupId) { id, name, permission }
+        }
+    }
+"""
+
+
 _GET_PERMISSIONS_FOR_USER_QUERY = """
     query ($userId: String!, $after: String){
         datasetsConnection(first: 25, after: $after, 
@@ -97,7 +109,7 @@ _GET_PERMISSIONS_FOR_USER_QUERY = """
             edges {
                 node {
                     name
-                    user(id: $userId) {
+                    users.User.(id: $userId) {
                         activePermission
                     }
                 }
@@ -105,6 +117,28 @@ _GET_PERMISSIONS_FOR_USER_QUERY = """
         }
     }
 """
+
+
+_GET_PERMISSIONS_FOR_USER_GROUP_QUERY = """
+    query ($groupId: String!, $after: String){
+        datasetsConnection(first: 25, after: $after, 
+            order: {field: name}) {
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    name
+                    userGroup(identifier: $groupId) {
+                        permission
+                    }
+                }
+            }
+        }
+    }
+"""
+
 
 _SET_DATASET_DEFAULT_PERM_QUERY = """
     mutation($identifier: String!, $permission: DatasetPermission!) {
@@ -125,6 +159,31 @@ _SET_DATASET_USER_PERM_QUERY = """
             datasetIdentifier: $identifier
             userId: $userId
             permission: $permission
+        ) { id }
+    }
+"""
+
+
+_SET_DATASET_USER_GROUP_PERM_QUERY = """
+    mutation(
+        $datasetId: String!,
+        $groupId: String!,
+        $permission: DatasetPermission!)
+    {
+        setDatasetUserGroupPermission(
+            datasetIdentifier: $datasetId,
+            permission: $permission,
+            userGroupIdentifier: $groupId, 
+        ) { id }
+    }
+"""
+
+
+_DELETE_DATASET_USER_GROUP_PERM_QUERY = """
+    mutation($datasetId: String!, $groupId: String!) {
+      removeDatasetUserGroupPermission(
+            datasetIdentifier: $datasetId,
+            userGroupIdentifier: $groupId
         ) { id }
     }
 """
@@ -157,7 +216,7 @@ def delete_dataset_user_permission(
         user: a user ID, email string, or
             :class:`~fiftyone.management.users.User` instance.
     """
-    user_id = users._resolve_user_id(user)
+    user_id = users.resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
@@ -203,7 +262,12 @@ def get_dataset_creator(dataset_name: str) -> Optional[users.User]:
     return users.User(**user) if user is not None else None
 
 
-def get_permissions(*, dataset_name: str = None, user: str = None):
+def get_permissions(
+    *,
+    dataset_name: str = None,
+    user: Union[str, users.User] = None,
+    user_group: Union[str, UserGroup] = None,
+):
     """Gets the specified dataset or user permissions.
 
     This method is a convenience wrapper around the methods below based on
@@ -211,7 +275,10 @@ def get_permissions(*, dataset_name: str = None, user: str = None):
 
     -   ``dataset_name``: :func:`get_permissions_for_dataset`
     -   ``user``: :func:`get_permissions_for_user`
+    -   ``user_group``: :func:`get_permissions_for_dataset_user_group`
     -   ``dataset_name`` and ``user``: :func:`get_permissions_for_dataset_user`
+    -   ``dataset_name`` and ``user_group``:
+            :func:`get_permissions_for_dataset_user_group`
 
     .. note::
 
@@ -242,25 +309,43 @@ def get_permissions(*, dataset_name: str = None, user: str = None):
             fom.get_permissions_for_dataset_user(dataset_name, user)
         )
 
+        # Get permissions for user group-dataset
+        assert (
+            fom.get_permissions(dataset_name=dataset_name,
+                user_group="some-id") ==
+            fom.get_permissions_for_dataset_user_group(dataset_name, "some-id")
+        )
+
     Args:
         dataset_name (None): a dataset name
         user (None): a user ID, email string, or
             :class:`~fiftyone.management.users.User` instance
+        user_group (None): a user group ID or name string, or a
+            :class:`~fiftyone.management.user_groups.UserGroup` instance
 
     Returns:
         the requested user/dataset permissions
     """
-    if dataset_name is None and user is None:
-        raise ValueError("Must specify one or both of dataset or user")
-    elif dataset_name is None:
-        return get_permissions_for_user(user)
-    elif user is None:
-        return get_permissions_for_dataset(dataset_name)
-    else:
+    if not (dataset_name or user or user_group):
+        raise FiftyOneManagementError(
+            "Must specify at least one argument: "
+            "dataset_name, or user or user_group."
+        )
+    elif dataset_name and user:
         return get_permissions_for_dataset_user(dataset_name, user)
+    elif dataset_name and user_group:
+        return get_permissions_for_dataset_user_group(dataset_name, user_group)
+    elif user:
+        return get_permissions_for_user(user)
+    elif user_group:
+        return get_permissions_for_user_group(user_group)
+    elif dataset_name:
+        return get_permissions_for_dataset(dataset_name)
 
 
-def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
+def get_permissions_for_dataset(
+    dataset_name: str, include_groups=True
+) -> Dict:
     """Gets the list of users that have access to the given dataset.
 
     .. note::
@@ -286,7 +371,8 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
         dataset_name: the dataset name
 
     Returns:
-        a list of user info dicts
+        If include_groups is True, return a dictionary contains a list of user
+            info and group info. Otherwise, return a list of user info.
     """
     client = connection.APIClientConnection().client
     result = client.post_graphql_request(
@@ -297,7 +383,7 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
     if result["dataset"] is None:
         raise ValueError(f"Dataset not found: {dataset_name}")
 
-    return [
+    users = [
         {
             "name": user["user"].get("name"),
             "email": user["user"].get("email"),
@@ -306,6 +392,14 @@ def get_permissions_for_dataset(dataset_name: str) -> List[Dict]:
         }
         for user in result["dataset"]["users"]
     ]
+    if include_groups:
+        data = {
+            "groups": result["dataset"]["userGroups"],
+            "users": users,
+        }
+        return data
+    else:
+        return users
 
 
 def get_permissions_for_dataset_user(
@@ -335,7 +429,7 @@ def get_permissions_for_dataset_user(
     Returns:
         :class:`~fiftyone.management.dataset.DatasetPermission`
     """
-    user_id = users._resolve_user_id(user)
+    user_id = users.resolve_user_id(user)
     client = connection.APIClientConnection().client
     result = client.post_graphql_request(
         query=_GET_PERMISSIONS_FOR_DATASET_USER_QUERY,
@@ -349,6 +443,49 @@ def get_permissions_for_dataset_user(
         return DatasetPermission.NO_ACCESS
     else:
         return DatasetPermission[dataset_user["activePermission"]]
+
+
+def get_permissions_for_dataset_user_group(
+    dataset_name: str, user_group: Union[str, UserGroup]
+) -> DatasetPermission:
+    """Gets the access permission (if any) that a given user group has to a given
+    dataset.
+
+    .. note::
+
+        Only admins can retrieve this information.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        user_group = "interns"
+
+        fom.get_permissions_for_dataset_user_group(dataset_name, user_group)
+
+    Args:
+        dataset_name: the dataset name
+        user_group: a user group ID or name string or
+            :class:`~fiftyone.management.user_groups.UserGroup`
+
+    Returns:
+        :class:`~fiftyone.management.dataset.DatasetPermission`
+    """
+    user_group_id = resolve_user_group_id(user_group)
+    client = connection.APIClientConnection().client
+    result = client.post_graphql_request(
+        query=_GET_PERMISSIONS_FOR_DATASET_USER_GROUP_QUERY,
+        variables={"groupId": user_group_id, "dataset": dataset_name},
+    )
+    if result["dataset"] is None:
+        raise FiftyOneManagementError(f"Dataset not found: {dataset_name}")
+
+    dataset_user_group = result["dataset"]["userGroup"]
+    if dataset_user_group is None:
+        return DatasetPermission.NO_ACCESS
+    else:
+        return DatasetPermission[dataset_user_group["permission"]]
 
 
 def get_permissions_for_user(user: str):
@@ -374,13 +511,13 @@ def get_permissions_for_user(user: str):
         ]
 
     Args:
-        user: a user ID, email string, or :class:`~fiftyone.management.users.User`
+        user: a user ID, email string, or :class:`~fiftyone.management.User`
             instance
 
     Returns:
         a list of permission dicts
     """
-    user_id = users._resolve_user_id(user)
+    user_id = users.resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     dataset_permissions = client.post_graphql_connectioned_request(
@@ -395,6 +532,53 @@ def get_permissions_for_user(user: str):
         }
         for ds_perm in dataset_permissions
         if ds_perm["user"] is not None
+    ]
+
+
+def get_permissions_for_user_group(user_group: Union[str, UserGroup]):
+    """Gets a list of datasets a given user group has access to.
+
+    .. note::
+
+        Only admins can retrieve this information.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        user_group = "some-group-id"
+
+        fom.get_permissions_for_user_group(user_group)
+
+    Example output::
+
+        [
+            {'name': 'datasetA', 'permission': 'EDIT'},
+            {'name': 'datasetB', 'permission': 'VIEW'},
+        ]
+
+    Args:
+        user_group: a user group ID or name or
+         :class:`~fiftyone.management.user_groups.UserGroup`
+
+    Returns:
+        a list of permission dicts
+    """
+    user_group_id = resolve_user_group_id(user_group)
+    client = connection.APIClientConnection().client
+    dataset_permissions = client.post_graphql_connectioned_request(
+        query=_GET_PERMISSIONS_FOR_USER_GROUP_QUERY,
+        variables={"groupId": user_group_id},
+        connection_property="datasetsConnection",
+    )
+
+    return [
+        {
+            "name": ds_perm["name"],
+            "permission": ds_perm["userGroup"]["permission"],
+        }
+        for ds_perm in dataset_permissions
+        if ds_perm["userGroup"] is not None
     ]
 
 
@@ -476,7 +660,7 @@ def set_dataset_user_permission(
     """
     perm_str = _validate_dataset_permission(permission)
     try:
-        user_id = users._resolve_user_id(user, pass_unknown_email=invite)
+        user_id = users.resolve_user_id(user, pass_unknown_email=invite)
     except ValueError as e:
         raise ValueError(
             "Unknown user. Pass invite=True to invite a "
@@ -490,5 +674,82 @@ def set_dataset_user_permission(
             "identifier": dataset_name,
             "userId": user_id,
             "permission": perm_str,
+        },
+    )
+
+
+def set_dataset_user_group_permission(
+    dataset_name: str,
+    user_group: Union[str, UserGroup],
+    permission: Union[str, DatasetPermission],
+) -> None:
+    """Grants the given user group specific access to the given dataset at the
+    specified permission level.
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        group_id = "some-group-id"
+
+        fom.set_dataset_user_permission(dataset_name, group_id, fom.VIEW)
+
+    Args:
+        dataset_name: the dataset name
+        user_group: a user group ID or name string or a
+            :class:`~fiftyone.management.user_groups.UserGroup` instance
+        permission: the :class:`~fiftyone.management.dataset.DatasetPermission`
+    """
+    perm_str = _validate_dataset_permission(permission)
+    client = connection.APIClientConnection().client
+    user_group_id = resolve_user_group_id(user_group)
+
+    client.post_graphql_request(
+        query=_SET_DATASET_USER_GROUP_PERM_QUERY,
+        variables={
+            "datasetId": dataset_name,
+            "groupId": user_group_id,
+            "permission": perm_str,
+        },
+    )
+
+
+def remove_dataset_user_group_permission(
+    dataset_name: str,
+    user_group: Union[str, UserGroup],
+) -> None:
+    """Remove the user group's explicit access to the given dataset
+
+    .. note::
+
+        The caller must have ``Can Manage`` permissions on the dataset.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        dataset_name = "special-dataset"
+        group_id = "some-group-id"
+
+        fom.remove_dataset_user_group_permission(dataset_name, group_id)
+
+    Args:
+        dataset_name: the dataset name
+        user_group: a user group id or name string or a
+            :class:`~fiftyone.management.user_groups.UserGroup` instance
+    """
+    client = connection.APIClientConnection().client
+    user_group_id = resolve_user_group_id(user_group)
+
+    client.post_graphql_request(
+        query=_DELETE_DATASET_USER_GROUP_PERM_QUERY,
+        variables={
+            "datasetId": dataset_name,
+            "groupId": user_group_id,
         },
     )

@@ -110,9 +110,9 @@ class ManagementSdkTests(unittest.TestCase):
         cls.patcher.start()
 
         fom.connection.APIClientConnection.return_value.client = cls.client
-        cls._original_resolve_user = fom.users._resolve_user_id
-        fom.users._resolve_user_id = mock.Mock()
-        cls.resolve_user = fom.users._resolve_user_id
+        cls._original_resolve_user = fom.users.resolve_user_id
+        fom.users.resolve_user_id = mock.Mock()
+        cls.resolve_user = fom.users.resolve_user_id
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -433,7 +433,15 @@ class ManagementSdkTests(unittest.TestCase):
                 "activePermission": "EDIT",
             },
         ]
-        expected = [
+        groups = [
+            {
+                "name": "Admins",
+                "id": "some-id",
+                "description": "Admins group",
+                "permission": "MANAGE",
+            },
+        ]
+        expected_users = [
             {
                 "name": "A. User",
                 "email": "a@company.com",
@@ -448,10 +456,13 @@ class ManagementSdkTests(unittest.TestCase):
             },
         ]
         self.client.post_graphql_request.return_value = {
-            "dataset": {"users": users}
+            "dataset": {"users": users, "userGroups": groups},
         }
 
-        results = fom.get_permissions_for_dataset(self.DATASET_NAME)
+        # get permissions for dataset without including group info
+        results = fom.get_permissions_for_dataset(
+            self.DATASET_NAME, include_groups=False
+        )
 
         self.client.post_graphql_request.assert_called_with(
             query=fom.dataset._GET_PERMISSIONS_FOR_DATASET_QUERY,
@@ -459,6 +470,14 @@ class ManagementSdkTests(unittest.TestCase):
                 "dataset": self.DATASET_NAME,
             },
         )
+        assert results == expected_users
+
+        # get permissions for dataset including group info
+        results = fom.get_permissions_for_dataset(self.DATASET_NAME)
+        expected = {
+            "groups": groups,
+            "users": expected_users,
+        }
         assert results == expected
 
     def test_get_permissions_for_dataset_user(self):
@@ -489,7 +508,9 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_get_permissions_wrapper(self):
-        self.assertRaises(ValueError, fom.get_permissions)
+        self.assertRaises(
+            fom.exceptions.FiftyOneManagementError, fom.get_permissions
+        )
         with mock.patch(
             "fiftyone.management.dataset.get_permissions_for_dataset"
         ) as the_mock:
@@ -507,6 +528,22 @@ class ManagementSdkTests(unittest.TestCase):
             assert (
                 fom.get_permissions(
                     dataset_name=self.DATASET_NAME, user=self.USER
+                )
+                == the_mock.return_value
+            )
+        with mock.patch(
+            "fiftyone.management.dataset.get_permissions_for_user_group"
+        ) as the_mock:
+            assert (
+                fom.get_permissions(user_group="group-name")
+                == the_mock.return_value
+            )
+        with mock.patch(
+            "fiftyone.management.dataset.get_permissions_for_dataset_user_group"
+        ) as the_mock:
+            assert (
+                fom.get_permissions(
+                    dataset_name=self.DATASET_NAME, user_group="group-name"
                 )
                 == the_mock.return_value
             )
@@ -531,6 +568,79 @@ class ManagementSdkTests(unittest.TestCase):
             {"name": "quickstart", "permission": "EDIT"},
             {"name": "quickstart2", "permission": "VIEW"},
         ]
+
+    @mock.patch("fiftyone.management.dataset.resolve_user_group_id")
+    def test_get_permissions_for_user_groups(self, resolve_user_group_id):
+        datasets = [
+            {"name": "quickstart", "userGroup": {"permission": "EDIT"}},
+            {"name": "quickstart2", "userGroup": {"permission": "MANAGE"}},
+            {"name": "quickstart3", "userGroup": None},
+        ]
+        self.client.post_graphql_connectioned_request.return_value = datasets
+        resolve_user_group_id.return_value = "group-id"
+
+        results = fom.get_permissions_for_user_group("group-name")
+
+        resolve_user_group_id.assert_called_with("group-name")
+        self.client.post_graphql_connectioned_request.assert_called_with(
+            query=fom.dataset._GET_PERMISSIONS_FOR_USER_GROUP_QUERY,
+            variables={"groupId": resolve_user_group_id.return_value},
+            connection_property="datasetsConnection",
+        )
+        assert results == [
+            {"name": "quickstart", "permission": "EDIT"},
+            {"name": "quickstart2", "permission": "MANAGE"},
+        ]
+
+    @mock.patch("fiftyone.management.dataset.resolve_user_group_id")
+    def test_get_permissions_for_dataset_user_group(
+        self, resolve_user_group_id
+    ):
+        resolve_user_group_id.return_value = "group-id"
+
+        # if the dataset is not found expect an error
+        self.client.post_graphql_request.return_value = {"dataset": None}
+
+        with pytest.raises(fom.exceptions.FiftyOneManagementError):
+            fom.get_permissions_for_dataset_user_group(
+                "non-existent-dataset",
+                "group-name",
+            )
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.dataset._GET_PERMISSIONS_FOR_DATASET_USER_GROUP_QUERY,
+            variables={
+                "dataset": "non-existent-dataset",
+                "groupId": resolve_user_group_id.return_value,
+            },
+        )
+
+        # if the dataset is found, return the permission
+        for permission in ["MANAGE", "EDIT", "VIEW", "TAG"]:
+            self.client.post_graphql_request.return_value = {
+                "dataset": {
+                    "userGroup": {
+                        "permission": permission,
+                        "name": self.DATASET_NAME,
+                        "id": "group-id",
+                    }
+                }
+            }
+
+            result = fom.get_permissions_for_dataset_user_group(
+                self.DATASET_NAME, "group-name"
+            )
+            assert result == fom.DatasetPermission[permission]
+
+        # if the dataset is found but the group has no permission, return NO_ACCESS
+        self.client.post_graphql_request.return_value = {
+            "dataset": {"userGroup": None}
+        }
+
+        result = fom.get_permissions_for_dataset_user_group(
+            self.DATASET_NAME, "group-name"
+        )
+        assert result == fom.DatasetPermission.NO_ACCESS
 
     def test_set_dataset_default_permission(self):
         for perm in (self.PERMISSION, self.PERMISSION_STR):
@@ -573,6 +683,44 @@ class ManagementSdkTests(unittest.TestCase):
             self.USER,
             "invalid",
         )
+
+    @mock.patch("fiftyone.management.dataset.resolve_user_group_id")
+    def test_set_dataset_user_group_permission(self, resolve_user_group_id):
+        for perm in ["MANAGE", "EDIT", "VIEW", "TAG"]:
+            resolve_user_group_id.return_value = "group-id"
+            fom.set_dataset_user_group_permission(
+                self.DATASET_NAME, "group-name", perm
+            )
+            self.client.post_graphql_request.assert_called_with(
+                query=fom.dataset._SET_DATASET_USER_GROUP_PERM_QUERY,
+                variables={
+                    "datasetId": self.DATASET_NAME,
+                    "groupId": "group-id",
+                    "permission": perm,
+                },
+            )
+            resolve_user_group_id.assert_called_with("group-name")
+
+        # raise exception for invalid permission
+        with pytest.raises(fom.exceptions.FiftyOneManagementError):
+            fom.set_dataset_user_group_permission(
+                self.DATASET_NAME, "group-name", "invalid-permission"
+            )
+
+    @mock.patch("fiftyone.management.dataset.resolve_user_group_id")
+    def test_remove_dataset_user_group_permission(self, resolve_user_group_id):
+        resolve_user_group_id.return_value = "group-id"
+        fom.remove_dataset_user_group_permission(
+            self.DATASET_NAME, "group-name"
+        )
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.dataset._DELETE_DATASET_USER_GROUP_PERM_QUERY,
+            variables={
+                "datasetId": self.DATASET_NAME,
+                "groupId": "group-id",
+            },
+        )
+        resolve_user_group_id.assert_called_with("group-name")
 
     def test_delete_dataset_user_permission(self):
         fom.delete_dataset_user_permission(self.DATASET_NAME, self.USER)
@@ -1251,7 +1399,7 @@ class ManagementSdkTests(unittest.TestCase):
         assert result == fom.users.User(**expected)
 
     @mock.patch("fiftyone.management.users.get_user")
-    def test__resolve_user_id(self, get_user_mock):
+    def test_resolve_user_id(self, get_user_mock):
         user = fom.users.User(
             id="1234567890",
             name="user",
@@ -1297,7 +1445,7 @@ class ManagementSdkTests(unittest.TestCase):
             self.assertRaises(ValueError, resolve_user_id, bad_instance)
 
     @mock.patch("fiftyone.management.users.get_user")
-    def test__resolve_user_id_email(self, get_user_mock):
+    def test_resolve_user_id_email(self, get_user_mock):
         resolve_user_id = ManagementSdkTests._original_resolve_user
 
         # Have to parametrize ourselves since unittest doesnt support it
