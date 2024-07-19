@@ -77,8 +77,13 @@ Collaborator
 Collaborators only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <teams-default-access>` does not apply to
-Collaborators), and they may only be granted **Can view** or **Can edit**
-access to datasets.
+Collaborators), and they may only be granted **Can view**,  **Can tag** 
+or **Can edit** access to datasets.
+
+.. note::
+    
+   For customers with App-only seats, Collaborators cannot be granted 
+   **Can edit** permissions.
 
 Collaborators cannot create new datasets, clone existing datasets, or view
 other users of the deployment. Collaborators may export datasets to which
@@ -173,7 +178,7 @@ All datasets have a default access level, which defines a minimum permission
 level that all Members have on the dataset.
 
 A dataset's default access level can be set to **No access**, **Can view**,
-**Can edit**, or **Can manage** as shown below:
+**Can tag**, **Can edit**, or **Can manage** as shown below:
 
 .. image:: /images/teams/dataset_default_access.png
    :alt: default-access
@@ -206,18 +211,19 @@ the top right. A list of users with access to the dataset is shown. Click
 
 The following permissions are available to each user role:
 
--  Groups may be granted **Can view**, **Can edit**, or **Can manage**
-   permissions
--  Members may be granted **Can view**, **Can edit**, or **Can manage**
-   permissions
--  Collaborators may be granted **Can view** or **Can edit** permissions
+-  Groups may be granted **Can view**, **Can tag**, **Can edit**, 
+   or **Can manage** permissions
+-  Members may be granted **Can view**, **Can tag**, **Can edit**, 
+   or **Can manage** permissions
+-  Collaborators may be granted **Can view**, **Can tag**, 
+   or **Can edit** permissions
 -  Guests may be granted **Can view** permissions
 
 .. note::
 
    Authorized users can use the "Grant access" workflow to give **Can view**
-   or **Can edit** access to a dataset to an email address that is not yet a
-   user of a FiftyOne Teams deployment.
+   , **Can tag**, or **Can edit** access to a dataset to an email address that 
+   is not yet user of a FiftyOne Teams deployment.
 
    When the invitation is accepted, the user will become a Guest or
    Collaborator (depending on whether **Can view** or **Can edit** access was
@@ -249,6 +255,17 @@ example by adding or removing samples, tags, annotation runs, brain runs, etc.
    Members (but not Guests or Collaborators) with **Can view** access to a
    dataset may clone the dataset.
 
+.. _teams-can-tag:
+
+Can tag
+--------
+
+A user with **Can tag** permissions on a dataset can find the dataset from
+their dataset listing page.
+
+Users with **Can tag** permissions cannot modify the dataset in any way, except
+for tagging.
+
 .. _teams-can-edit:
 
 Can edit
@@ -271,8 +288,8 @@ Can manage
 ----------
 
 A user with **Can manage** permissions on a dataset has all permissions from
-**Can view** and **Can edit** and, in addition, can delete the dataset and
-configure the permissions on the dataset of other users.
+**Can view**, **Can tag**  and **Can edit** and, in addition, can delete the 
+dataset and configure the permissions on the dataset of other users.
 
 Remember that all admins can implicitly access and manage all datasets created
 on your team's deployment.
