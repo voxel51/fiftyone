@@ -10,15 +10,15 @@ export class GridTaggerPom {
     return selector.click();
   }
 
-  async getTagInputTextPlaceholder(mode: TaggerMode) {
-    const value = this.page.getByTestId(`${mode}-tag-input`);
+  async getTagInputTextPlaceholder() {
+    const value = this.page.getByTestId(`tag-input`);
     const placeHolderText = await value.getAttribute("placeholder");
     return placeHolderText;
   }
 
-  async addNewTag(mode: TaggerMode, tag: string) {
-    const input = this.page.getByTestId(`${mode}-tag-input`);
-    await input.type(tag);
+  async addNewTag(tag: string) {
+    const input = this.page.getByTestId(`tag-input`);
+    await input.fill(tag);
     await this.page.keyboard.press("Enter");
     const applyButton = this.page.getByTestId(`button-Apply`);
     await applyButton.click();

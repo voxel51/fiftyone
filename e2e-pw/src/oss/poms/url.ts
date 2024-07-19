@@ -24,7 +24,6 @@ export class UrlPom {
   }
 
   get searchParams() {
-    console.log(this.url.searchParams);
     return this.url.searchParams;
   }
 
@@ -36,11 +35,12 @@ export class UrlPom {
     return this.searchParams.get("view");
   }
 
-  async pageChange(wrap: () => Promise<unknown>) {
+  async pageChange<T>(wrap: () => Promise<T>): Promise<T> {
     const pageChange =
       this.eventUtils.getEventReceivedPromiseForPredicate("page-change");
-    await wrap();
+    const result = await wrap();
     await pageChange;
+    return result;
   }
 
   async back() {

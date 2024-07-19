@@ -100,10 +100,11 @@ export class GridPom {
     return Promise.all([refreshStartPromise, refreshEndPromise]);
   }
 
-  async run(run: () => Promise<unknown>) {
+  async run<T>(wrap: () => Promise<T>): Promise<T> {
     const promise = this.getWaitForGridRefreshPromise();
-    await run();
+    const result = await wrap();
     await promise;
+    return result;
   }
 }
 

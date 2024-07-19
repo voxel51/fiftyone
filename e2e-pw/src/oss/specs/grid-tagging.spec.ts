@@ -57,10 +57,35 @@ test("tmp screenshot", async ({
   await grid.run(async () => {
     await grid.actionsRow.toggleTagSamplesOrLabels();
     await grid.tagger.setActiveTaggerMode("sample");
-    await grid.tagger.addNewTag("sample", "grid-test");
+    await grid.tagger.addNewTag("grid-test");
   });
 
   await expect(await grid.locator).toHaveScreenshot("grid-tagged.png", {
     animations: "allow",
   });
+
+  return;
+  // doesn't work
+  await grid.url.pageChange(() =>
+    grid.locator
+      .getByTestId("looker")
+      .filter({ hasText: "/tmp/37.png" })
+      .click({ position: { x: 10, y: 60 } })
+  );
+
+  await modal.waitForSampleLoadDomAttribute(true);
+
+  await modal.tagger.open();
+
+  await modal.tagger.switchTagMode("sample");
+  await grid.run(() => modal.tagger.load(() => modal.tagger.addTag("one")));
+
+  await modal.close();
+
+  await expect(await grid.locator).toHaveScreenshot(
+    "grid-tagged-after-modal.png",
+    {
+      animations: "allow",
+    }
+  );
 });
