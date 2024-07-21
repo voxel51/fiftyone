@@ -171,17 +171,17 @@ following sources:
 
 .. _teams-default-access:
 
-Default access
---------------
+Implicit access
+----------------
 
-All datasets have a default access level, which defines a minimum permission
-level that all Members have on the dataset.
+All datasets have an implicit access level, also known as the default access, 
+which defines a minimum permission level that all Members have on the dataset.
 
 A dataset's default access level can be set to **No access**, **Can view**,
 **Can tag**, **Can edit**, or **Can manage** as shown below:
 
 .. image:: /images/teams/dataset_default_access.png
-   :alt: default-access
+   :alt: implicit-access
    :align: center
 
 .. note::
