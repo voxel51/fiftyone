@@ -64,7 +64,7 @@ Member
 
 Members can create new datasets and can be granted any desired level of
 permission on existing datasets. Members may also have a
-:ref:`default access level <teams-default-access>` to datasets that use this
+:ref:`implicit access level <teams-default-access>` to datasets that use this
 feature.
 
 Members do not have the ability to see or manage an organization's users.
@@ -76,7 +76,7 @@ Collaborator
 
 Collaborators only have access to datasets to which they have been specifically
 granted access (a dataset's
-:ref:`default access level <teams-default-access>` does not apply to
+:ref:`implicit access level <teams-default-access>` does not apply to
 Collaborators), and they may only be granted **Can view**,  **Can tag** 
 or **Can edit** access to datasets.
 
@@ -96,7 +96,7 @@ Guest
 
 Guests only have access to datasets to which they have been specifically
 granted access (a dataset's
-:ref:`default access level <teams-default-access>` does not apply to Guests),
+:ref:`implicit access level <teams-default-access>` does not apply to Guests),
 and they may only be granted **Can view** access to datasets.
 
 Guests cannot create new datasets, clone existing datasets, export datasets, or
@@ -155,7 +155,7 @@ following sources:
 
 -  Admins implicitly have full access to all datasets
 -  Members have the dataset's
-   :ref:`default access level <teams-default-access>`
+   :ref:`implicit access level <teams-default-access>`
 -  Users may be granted :ref:`specific access <teams-specific-access>` to the
    dataset
 -  Users may be members of one or more groups, each of which may have
@@ -172,12 +172,13 @@ following sources:
 .. _teams-default-access:
 
 Implicit access
-----------------
+---------------
 
-All datasets have an implicit access level, also known as the default access, 
-which defines a minimum permission level that all Members have on the dataset.
+All datasets have a implicit access level, previously known as the default 
+access level, which defines a minimum permission level for members with implicit
+ data access roles. 
 
-A dataset's default access level can be set to **No access**, **Can view**,
+A dataset's implicit access level can be set to **No access**, **Can view**,
 **Can tag**, **Can edit**, or **Can manage** as shown below:
 
 .. image:: /images/teams/dataset_default_access.png
@@ -186,7 +187,7 @@ A dataset's default access level can be set to **No access**, **Can view**,
 
 .. note::
 
-   Default access level only applies to Members. Guests and Collaborators must
+   Implicit access level only applies to Members. Guests and Collaborators must
    be granted :ref:`specific access <teams-specific-access>` to datasets.
 
 .. _teams-specific-access:
