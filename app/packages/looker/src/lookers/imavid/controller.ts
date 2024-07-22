@@ -1,7 +1,7 @@
 import * as foq from "@fiftyone/relay";
+import { BufferManager } from "@fiftyone/utilities";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
-import { BufferManager } from "./buffer-manager";
 import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
 import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 import { ImaVidStore } from "./store";

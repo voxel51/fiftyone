@@ -1,3 +1,4 @@
+import { BufferManager } from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
 import { ImaVidElement } from "../../elements/imavid";
@@ -9,7 +10,6 @@ import {
 } from "../../state";
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
-import { BufferManager } from "./buffer-manager";
 import { DEFAULT_PLAYBACK_RATE } from "./constants";
 
 /**

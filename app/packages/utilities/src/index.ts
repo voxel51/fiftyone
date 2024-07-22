@@ -4,6 +4,7 @@ import mime from "mime";
 import { isElectron } from "./electron";
 import { Field } from "./schema";
 
+export * from "./buffer-manager";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
