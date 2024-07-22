@@ -2288,7 +2288,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/analytics@workspace:packages/analytics":
+"@fiftyone/analytics@*, @fiftyone/analytics@workspace:packages/analytics":
   version: 0.0.0-use.local
   resolution: "@fiftyone/analytics@workspace:packages/analytics"
   dependencies:
@@ -2300,6 +2300,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/app@workspace:packages/app"
   dependencies:
+    "@fiftyone/analytics": "*"
     "@fiftyone/components": "*"
     "@fiftyone/core": "*"
     "@fiftyone/relay": "*"
