@@ -175,8 +175,8 @@ Implicit access
 ---------------
 
 All datasets have a implicit access level, previously known as the default 
-access level, which defines a minimum permission level for members with implicit
- data access roles. 
+access level, which defines a minimum permission level for members with 
+implicit data access roles. 
 
 A dataset's implicit access level can be set to **No access**, **Can view**,
 **Can tag**, **Can edit**, or **Can manage** as shown below:
@@ -227,9 +227,9 @@ The following permissions are available to each user role:
    is not yet user of a FiftyOne Teams deployment.
 
    When the invitation is accepted, the user will become a Guest or
-   Collaborator (depending on whether **Can view** or **Can edit** access was
-   granted, respectively), and an Admin can upgrade this user to another role
-   if desired via the Team Settings page.
+   Collaborator (depending on whether the **Can view** or higher than 
+   **Can view** access was granted, respectively), and an Admin can upgrade 
+   this user to another role if desired via the Team Settings page.
 
 .. _teams-no-access:
 
