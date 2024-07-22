@@ -23,6 +23,8 @@ class DatasetFrameDocument(DatasetMixin, Document):
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
+    created_at = fof.DateTimeField(read_only=True)
+    last_modified_at = fof.DateTimeField(read_only=True)
 
     _sample_id = fof.ObjectIdField(required=True)
     _dataset_id = fof.ObjectIdField()
@@ -39,15 +41,18 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
-        # If we're loading a serialized dict with a sample ID, it will come in
-        # as `sample_id` here
-        sample_id = kwargs.pop("sample_id", None)
+        kwargs["created_at"] = None
+        kwargs["last_modified_at"] = None
+        kwargs["_sample_id"] = kwargs.pop("sample_id", None)
+        kwargs["_dataset_id"] = None
 
         self._data = OrderedDict(
             [
                 ("id", None),
                 ("frame_number", None),
-                ("_sample_id", sample_id),
+                ("created_at", None),
+                ("last_modified_at", None),
+                ("_sample_id", None),
                 ("_dataset_id", None),
             ]
         )

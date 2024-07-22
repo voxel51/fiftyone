@@ -7,6 +7,7 @@ Base classes for documents that back dataset contents.
 """
 
 from copy import deepcopy
+from datetime import datetime
 import json
 
 from bson import json_util, ObjectId
@@ -324,17 +325,17 @@ class MongoEngineBaseDocument(SerializableDocument):
 
         return getattr(self, field_name)
 
-    def _get_field(self, field_name):
+    def _get_field(self, field_name, allow_missing=False):
         # pylint: disable=no-member
         chunks = field_name.split(".", 1)
         if len(chunks) > 1:
             field = self._fields.get(chunks[0], None)
-            if field is not None:
+            if hasattr(field, "get_field"):
                 field = field.get_field(chunks[1])
         else:
             field = self._fields.get(field_name, None)
 
-        if field is None:
+        if field is None and not allow_missing:
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
@@ -343,6 +344,11 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def set_field(self, field_name, value, create=True):
         chunks = field_name.split(".", 1)
+
+        field = self._get_field(chunks[0], allow_missing=True)
+        if getattr(field, "read_only", False):
+            raise ValueError("Cannot edit read-only field '%s'" % field.path)
+
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
             return doc.set_field(chunks[1], value, create=create)
@@ -356,6 +362,11 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def clear_field(self, field_name):
         chunks = field_name.split(".", 1)
+
+        field = self._get_field(chunks[0], allow_missing=True)
+        if getattr(field, "read_only", False):
+            raise ValueError("Cannot edit read-only field '%s'" % field.path)
+
         if len(chunks) > 1:
             value = self.get_field(chunks[0])
             if value is not None:
@@ -615,7 +626,6 @@ class Document(BaseDocument, mongoengine.Document):
         self,
         upsert=False,
         validate=True,
-        clean=True,
         safe=False,
         **kwargs,
     ):
@@ -628,8 +638,6 @@ class Document(BaseDocument, mongoengine.Document):
             upsert (False): whether to insert the document if it has an ``id``
                 populated but no document with that ID exists in the database
             validate (True): whether to validate the document
-            clean (True): whether to call the document's ``clean()`` method.
-                Only applicable when ``validate`` is True
             safe (False): whether to ``reload()`` the document before raising
                 any errors
 
@@ -641,7 +649,6 @@ class Document(BaseDocument, mongoengine.Document):
                 deferred=False,
                 upsert=upsert,
                 validate=validate,
-                clean=clean,
                 **kwargs,
             )
         except:
@@ -658,6 +665,7 @@ class Document(BaseDocument, mongoengine.Document):
         upsert=False,
         validate=True,
         clean=True,
+        enforce_read_only=True,
         **kwargs,
     ):
         # pylint: disable=no-member
@@ -668,63 +676,112 @@ class Document(BaseDocument, mongoengine.Document):
 
         ensure_connection()
 
-        if validate:
-            self.validate(clean=clean)
-
         id_field = self._meta["id_field"]
-
-        created = self._created
-        if not created:
-            created = "_id" not in self.to_mongo(fields=[id_field])
-
-        doc = self.to_mongo()
-        _id = doc.get("_id", None)
+        _id = self.to_mongo(fields=[id_field]).get("_id", None)
+        created = self._created or _id is None
 
         ops = None
 
         if created:
-            # Save new document
+            # Insert new document
+            if validate:
+                self._validate(clean=clean)
+
+            doc = self.to_mongo()
+
             if _id is None:
                 _id = ObjectId()
                 doc["_id"] = _id
 
-            if deferred:
-                ops = [InsertOne(doc)]
-            else:
-                self._get_collection().insert_one(doc)
+            self[id_field] = self._fields[id_field].to_python(_id)
+            self._created = False
+
+            ops = self._insert(doc, deferred=deferred)
         else:
             # Update existing document
             updates = {}
-            sets, unsets = self._delta()
 
-            if sets:
-                updates["$set"] = sets
+            try:
+                # OPTIMIZATION: we monkey patch `to_mongo()` and
+                # `_get_changed_fields()` here so that mongoengine's
+                # implementations of `_delta()` and `_clear_changed_fields()`,
+                # which call these methods, will not serialize unnecessary
+                # fields and recompute changed fields unecessarily
+                self._get_changed_fields_orig = self._get_changed_fields
+                self._to_mongo_orig = self.to_mongo
 
-            if unsets:
-                updates["$unset"] = unsets
+                changed_fields = self._get_changed_fields()
+                roots, paths = self._parse_changed_fields(changed_fields)
 
-            if updates:
-                ops, updated_existing = self._update(
-                    _id, updates, deferred=deferred, upsert=upsert, **kwargs
-                )
-
-                if not deferred and not upsert and not updated_existing:
-                    raise ValueError(
-                        "Failed to update %s with ID '%s'"
-                        % (self._doc_name().lower(), str(_id))
+                if validate and changed_fields:
+                    self._validate_updates(
+                        roots,
+                        paths,
+                        clean=clean,
+                        enforce_read_only=enforce_read_only,
                     )
 
-        # Make sure we store the PK on this document now that it's saved
-        if created or id_field not in self._meta.get("shard_key", []):
-            self[id_field] = self._fields[id_field].to_python(_id)
+                # OPTIMIZATION: apply monkey patch
+                doc = self.to_mongo(fields=roots)
+                self._get_changed_fields = lambda: changed_fields
+                self.to_mongo = lambda: doc
 
-        self._clear_changed_fields()
-        self._created = False
+                sets, unsets = self._delta()
+
+                if sets:
+                    updates["$set"] = sets
+
+                if unsets:
+                    updates["$unset"] = unsets
+
+                if updates:
+                    ops, updated_existing = self._update(
+                        _id,
+                        updates,
+                        deferred=deferred,
+                        upsert=upsert,
+                        **kwargs,
+                    )
+
+                    if not deferred and not upsert and not updated_existing:
+                        raise ValueError(
+                            "Failed to update %s with ID '%s'"
+                            % (self._doc_name().lower(), str(_id))
+                        )
+
+                self._clear_changed_fields()
+            finally:
+                # OPTIMIZATION: revert monkey patch
+                self._get_changed_fields = self._get_changed_fields_orig
+                self.to_mongo = self._to_mongo_orig
 
         return ops
 
-    def _update(self, _id, updates, deferred=False, upsert=False, **kwargs):
-        """Updates an existing document."""
+    def _insert(self, doc, deferred=False):
+        if deferred:
+            ops = [InsertOne(doc)]
+        else:
+            self._get_collection().insert_one(doc)
+            ops = None
+
+        return ops
+
+    def _update(
+        self,
+        _id,
+        updates,
+        deferred=False,
+        upsert=False,
+        virtual=False,
+        **kwargs,
+    ):
+        if self.has_field("last_modified_at") and not virtual:
+            now = datetime.utcnow()
+            self.last_modified_at = now
+            if "$set" not in updates:
+                updates["$set"] = {}
+            updates["$set"]["last_modified_at"] = now
+
         if deferred:
             ops = self._deferred_updates(_id, updates, upsert)
             updated_existing = None
@@ -733,6 +790,10 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = self._do_updates(_id, updates, upsert)
 
         return ops, updated_existing
+
+    def _update_last_loaded_at(self):
+        self.last_loaded_at = datetime.utcnow()
+        self.save(virtual=True)
 
     def _do_updates(self, _id, updates, upsert):
         updated_existing = True
@@ -751,6 +812,97 @@ class Document(BaseDocument, mongoengine.Document):
     def _deferred_updates(self, _id, updates, upsert):
         op = UpdateOne({"_id": _id}, updates, upsert=upsert)
         return [op]
+
+    def _parse_changed_fields(self, db_paths):
+        roots = set()
+        paths = set()
+
+        for db_path in db_paths:
+            self._parse_db_path(db_path, roots, paths)
+
+        return roots, paths
+
+    def _parse_db_path(self, db_path, roots, paths):
+        chunks = db_path.split(".")
+
+        # pylint: disable=no-member
+        root = chunks[0]
+        root = self._reverse_db_field_map.get(root, root)
+
+        roots.add(root)
+        paths.add(root)
+
+        path = root
+        for chunk in chunks[1:]:
+            if chunk.isdigit():
+                continue
+            elif chunk == "_id":
+                chunk = "id"
+
+            path += "." + chunk
+            paths.add(path)
+
+    def _validate_updates(
+        self, roots, paths, clean=True, enforce_read_only=True
+    ):
+        if enforce_read_only:
+            for path in paths:
+                field = self._get_field(path, allow_missing=True)
+                if getattr(field, "read_only", False):
+                    raise ValueError("Cannot edit read-only field '%s'" % path)
+
+        self._validate(fields=roots, clean=clean)
+
+    def _validate(self, fields=None, clean=True):
+        errors = {}
+
+        if clean:
+            try:
+                self.clean()
+            except mongoengine.ValidationError as error:
+                errors["__all__"] = error
+
+        if fields is None:
+            fields = self._fields_ordered
+
+        for name in fields:
+            # pylint: disable=no-member
+            field = self._fields.get(name)
+            if field is None:
+                field = self._dynamic_fields.get(name)
+
+            value = self._data.get(name)
+
+            if value is not None:
+                try:
+                    if isinstance(
+                        field,
+                        (
+                            mongoengine.EmbeddedDocumentField,
+                            mongoengine.GenericEmbeddedDocumentField,
+                        ),
+                    ):
+                        field._validate(value, clean=clean)
+                    else:
+                        field._validate(value)
+                except mongoengine.ValidationError as error:
+                    errors[field.name] = error.errors or error
+                except (ValueError, AttributeError, AssertionError) as error:
+                    errors[field.name] = error
+            elif field.required and not getattr(field, "_auto_gen", False):
+                errors[field.name] = mongoengine.ValidationError(
+                    "Field is required", field_name=field.name
+                )
+
+        if errors:
+            # pylint: disable=no-member
+            pk = "None"
+            if hasattr(self, "pk"):
+                pk = self.pk
+            elif self._instance and hasattr(self._instance, "pk"):
+                pk = self._instance.pk
+            message = f"ValidationError ({self._class_name}:{pk}) "
+            raise mongoengine.ValidationError(message, errors=errors)
 
 
 def _merge_lists(dst, src, overwrite=False):

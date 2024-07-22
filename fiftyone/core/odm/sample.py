@@ -85,6 +85,8 @@ class DatasetSampleDocument(DatasetMixin, Document):
     filepath = fof.StringField(required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
+    created_at = fof.DateTimeField(read_only=True)
+    last_modified_at = fof.DateTimeField(read_only=True)
 
     _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
@@ -115,6 +117,8 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
+        kwargs["created_at"] = None
+        kwargs["last_modified_at"] = None
         kwargs["_rand"] = _generate_rand(filepath=filepath)
         kwargs["_media_type"] = fomm.get_media_type(filepath)
         kwargs["_dataset_id"] = None
