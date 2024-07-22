@@ -4,7 +4,7 @@
 |
 """
 import functools
-import os
+import posixpath
 from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
 
@@ -251,7 +251,7 @@ class Client:
         **request_kwargs,
     ):
         timeout = timeout or self._timeout
-        url = os.path.join(self.__base_url, url_path)
+        url = posixpath.join(self.__base_url, url_path)
 
         # Use data generator factory to get a data generator.
         #   Need this so that we get a fresh generator if we retry via backoff.

@@ -4,7 +4,7 @@
 |
 """
 import logging
-import os
+import posixpath
 import queue
 import threading
 from typing import Optional, Union
@@ -45,7 +45,7 @@ class Socket:
             logger = logging.getLogger("websocket")
             logger.level = logging.WARNING
         self._ws = websocket.WebSocketApp(
-            os.path.join(base_url.replace("http", "ws"), url_path),
+            posixpath.join(base_url.replace("http", "ws"), url_path),
             header=headers,
             on_open=self.__on_open,
             on_message=self.__on_message,
