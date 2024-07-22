@@ -1,6 +1,6 @@
 import { ModalSample } from "@fiftyone/state";
+import { BufferManager } from "@fiftyone/utilities";
 import LRUCache from "lru-cache";
-import { BufferManager } from "./buffer-manager";
 import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
 import { SampleId } from "./types";
 

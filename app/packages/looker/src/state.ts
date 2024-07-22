@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { BufferManager } from "@fiftyone/utilities";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
