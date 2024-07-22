@@ -48,7 +48,7 @@ class DynamicEmbeddedDocument(
         super().__init__(*args, **kwargs)
         self.validate()
 
-    def _get_field(self, field_name):
+    def _get_field(self, field_name, allow_missing=False):
         # pylint: disable=no-member
         chunks = field_name.split(".", 1)
         if len(chunks) > 1:
@@ -63,7 +63,7 @@ class DynamicEmbeddedDocument(
             if field is None:
                 field = self._dynamic_fields.get(field_name, None)
 
-        if field is None:
+        if field is None and not allow_missing:
             raise AttributeError(
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )

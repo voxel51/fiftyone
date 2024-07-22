@@ -2510,14 +2510,16 @@ store their paths in a `thumbnail_path` field:
     Persistent:  False
     Tags:        []
     Sample fields:
-        id:             fiftyone.core.fields.ObjectIdField
-        filepath:       fiftyone.core.fields.StringField
-        tags:           fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        ground_truth:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        uniqueness:     fiftyone.core.fields.FloatField
-        predictions:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        thumbnail_path: fiftyone.core.fields.StringField
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:       fiftyone.core.fields.FloatField
+        predictions:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        thumbnail_path:   fiftyone.core.fields.StringField
 
 We can expose the thumbnail images to the App by modifying the
 :ref:`dataset's App config <dataset-app-config>`:

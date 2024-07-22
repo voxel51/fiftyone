@@ -480,6 +480,62 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
+    def test_last_modified_at(self):
+        dataset = fo.Dataset()
+
+        # datetimes like `created_at` are generated with microsecond precision
+        # but only saved to mongo with millisecond precision, so reload to
+        # trim off the microseconds
+        dataset.reload()
+
+        self.assertIsNotNone(dataset.created_at)
+        self.assertIsNotNone(dataset.last_modified_at)
+        self.assertIsNotNone(dataset.last_loaded_at)
+
+        # dataset.save()
+
+        created_at1 = dataset.created_at
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset.info["foo"] = "bar"
+        dataset.save()
+
+        created_at2 = dataset.created_at
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(created_at2, created_at1)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        # dataset.add_sample_field()
+
+        created_at1 = dataset.created_at
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset.add_sample_field("foo", fo.StringField)
+
+        created_at2 = dataset.created_at
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(created_at2, created_at1)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        # dataset.reload()
+
+        created_at1 = dataset.created_at
+        last_modified_at1 = dataset.last_modified_at
+        last_loaded_at1 = dataset.last_loaded_at
+
+        dataset.reload()
+
+        created_at2 = dataset.created_at
+        last_modified_at2 = dataset.last_modified_at
+        last_loaded_at2 = dataset.last_loaded_at
+
+        self.assertTrue(last_loaded_at2 > last_loaded_at1)
+        self.assertEqual(created_at2, created_at1)
+        self.assertEqual(last_modified_at2, last_modified_at1)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = fo.Dataset()
 
@@ -492,8 +548,8 @@ class DatasetTests(unittest.TestCase):
 
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
 
-        default_indexes = {"id", "filepath"}
         self.assertSetEqual(set(info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -604,11 +660,20 @@ class DatasetTests(unittest.TestCase):
             [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
         )
 
+        last_modified_at1 = dataset.values("last_modified_at")
+
         for idx, sample in enumerate(dataset):
             sample["int"] = idx + 1
             sample.save()
 
+        last_modified_at2 = dataset.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
 
         for idx, sample in enumerate(dataset.iter_samples(progress=True)):
             sample["int"] = idx + 2
@@ -619,14 +684,28 @@ class DatasetTests(unittest.TestCase):
         for idx, sample in enumerate(dataset.iter_samples(autosave=True)):
             sample["int"] = idx + 3
 
+        last_modified_at3 = dataset.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertTrue(
+            all(
+                m2 < m3 for m2, m3 in zip(last_modified_at2, last_modified_at3)
+            )
+        )
 
         with dataset.save_context() as context:
             for idx, sample in enumerate(dataset):
                 sample["int"] = idx + 4
                 context.save(sample)
 
+        last_modified_at4 = dataset.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertTrue(
+            all(
+                m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
+            )
+        )
 
     @drop_datasets
     def test_date_fields(self):
@@ -1011,6 +1090,8 @@ class DatasetTests(unittest.TestCase):
                 "filepath",
                 "tags",
                 "metadata",
+                "created_at",
+                "last_modified_at",
                 "foo",
                 "bar",
                 "spam",
@@ -1041,7 +1122,16 @@ class DatasetTests(unittest.TestCase):
         schema = view.get_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_field_schema(ftype=fo.StringField)
@@ -1127,7 +1217,16 @@ class DatasetTests(unittest.TestCase):
         schema = dataset.get_frame_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
         )
 
         schema = dataset.get_frame_field_schema(ftype=fo.StringField)
@@ -1154,7 +1253,15 @@ class DatasetTests(unittest.TestCase):
 
         schema = view.get_frame_field_schema()
         self.assertSetEqual(
-            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+            set(schema.keys()),
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_frame_field_schema(ftype=fo.StringField)
@@ -1304,12 +1411,20 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(s1)
 
+        created_at1 = dataset.values("created_at")[0]
+        last_modified_at1 = dataset.values("last_modified_at")[0]
+
         dataset.merge_sample(s2)
         dataset.merge_sample(s3)
+
+        created_at2 = dataset.values("created_at")[0]
+        last_modified_at2 = dataset.values("last_modified_at")[0]
 
         self.assertListEqual(s1["tags"], ["a", "b"])
         self.assertEqual(s1["foo"], "bar")
         self.assertEqual(s1["spam"], "eggs")
+        self.assertEqual(created_at1, created_at2)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
 
         # List merging variations
 
@@ -1372,58 +1487,137 @@ class DatasetTests(unittest.TestCase):
         common1 = fo.Sample(filepath=common_filepath, field=1)
         common2 = fo.Sample(filepath=common_filepath, field=2)
 
-        dataset1.add_sample(fo.Sample(filepath=filepath1, field=1))
-        dataset1.add_sample(common1)
+        sample1 = fo.Sample(filepath=filepath1, field=1)
+        dataset1.add_samples([sample1, common1])
 
-        dataset2.add_sample(fo.Sample(filepath=filepath2, field=2))
-        dataset2.add_sample(common2)
+        sample2 = fo.Sample(filepath=filepath2, field=2)
+        dataset2.add_samples([sample2, common2])
 
         # Standard merge
 
         dataset12 = dataset1.clone()
+        created_at1 = dataset12.values("created_at")
+        last_modified_at1 = dataset12.values("last_modified_at")
         dataset12.merge_samples(dataset2)
+        created_at2 = dataset12.values("created_at")
+        last_modified_at2 = dataset12.values("last_modified_at")
+
         self.assertEqual(len(dataset12), 3)
+        self.assertListEqual(
+            [c1 == c2 for c1, c2 in zip(created_at1, created_at2[:2])],
+            [True, True],
+        )
+        self.assertListEqual(
+            [
+                m1 == m2
+                for m1, m2 in zip(last_modified_at1, last_modified_at2[:2])
+            ],
+            [True, False],
+        )
+        self.assertTrue(sample2.created_at < created_at2[2])
+        self.assertTrue(sample2.last_modified_at < last_modified_at2[2])
+
         common12_view = dataset12.match(F("filepath") == common_filepath)
+
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
+
         self.assertEqual(common12.field, common2.field)
 
         # Merge specific fields, no new samples
 
         dataset1c = dataset1.clone()
+        created_at1 = dataset1c.values("created_at")
+        last_modified_at1 = dataset1c.values("last_modified_at")
         dataset1c.merge_samples(dataset2, fields=["field"], insert_new=False)
+        created_at2 = dataset1c.values("created_at")
+        last_modified_at2 = dataset1c.values("last_modified_at")
+
         self.assertEqual(len(dataset1c), 2)
+        self.assertListEqual(
+            [c1 == c2 for c1, c2 in zip(created_at1, created_at2[:2])],
+            [True, True],
+        )
+        self.assertListEqual(
+            [
+                m1 == m2
+                for m1, m2 in zip(last_modified_at1, last_modified_at2[:2])
+            ],
+            [True, False],
+        )
+
         common12_view = dataset1c.match(F("filepath") == common_filepath)
+
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
+
         self.assertEqual(common12.field, common2.field)
 
         # Merge a view with excluded fields
 
         dataset21 = dataset1.clone()
+        created_at1 = dataset21.values("created_at")
+        last_modified_at1 = dataset21.values("last_modified_at")
         dataset21.merge_samples(dataset2.exclude_fields("field"))
+        created_at2 = dataset21.values("created_at")
+        last_modified_at2 = dataset21.values("last_modified_at")
+
         self.assertEqual(len(dataset21), 3)
+        self.assertListEqual(
+            [c1 == c2 for c1, c2 in zip(created_at1, created_at2[:2])],
+            [True, True],
+        )
+        self.assertListEqual(
+            [
+                m1 == m2
+                for m1, m2 in zip(last_modified_at1, last_modified_at2[:2])
+            ],
+            [True, False],
+        )
+        self.assertTrue(sample2.created_at < created_at2[2])
+        self.assertTrue(sample2.last_modified_at < last_modified_at2[2])
 
         common21_view = dataset21.match(F("filepath") == common_filepath)
+
         self.assertEqual(len(common21_view), 1)
 
         common21 = common21_view.first()
+
         self.assertEqual(common21.field, common1.field)
 
         # Merge with custom key
 
         dataset22 = dataset1.clone()
+        created_at1 = dataset22.values("created_at")
+        last_modified_at1 = dataset22.values("last_modified_at")
         key_fcn = lambda sample: os.path.basename(sample.filepath)
         dataset22.merge_samples(dataset2, key_fcn=key_fcn)
+        created_at2 = dataset22.values("created_at")
+        last_modified_at2 = dataset22.values("last_modified_at")
 
         self.assertEqual(len(dataset22), 3)
+        self.assertListEqual(
+            [c1 == c2 for c1, c2 in zip(created_at1, created_at2[:2])],
+            [True, True],
+        )
+        self.assertListEqual(
+            [
+                m1 == m2
+                for m1, m2 in zip(last_modified_at1, last_modified_at2[:2])
+            ],
+            [True, False],
+        )
+        self.assertTrue(sample2.created_at < created_at2[2])
+        self.assertTrue(sample2.last_modified_at < last_modified_at2[2])
 
         common22_view = dataset22.match(F("filepath") == common_filepath)
+
         self.assertEqual(len(common22_view), 1)
 
         common22 = common22_view.first()
+
         self.assertEqual(common22.field, common2.field)
 
     @drop_datasets
@@ -1456,7 +1650,11 @@ class DatasetTests(unittest.TestCase):
         sample2.field = None
         sample2.save()
 
+        created_at1 = dataset1.values("created_at")
+        last_modified_at1 = dataset1.values("last_modified_at")
         dataset1.merge_samples(dataset2.select_fields("field"))
+        created_at2 = dataset1.values("created_at")
+        last_modified_at2 = dataset1.values("last_modified_at")
 
         self.assertEqual(sample11.field, 2)
         self.assertEqual(sample12.field, 1)
@@ -1464,9 +1662,16 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNotNone(sample12.gt)
         with self.assertRaises(AttributeError):
             sample11.new_field
-
         with self.assertRaises(AttributeError):
             sample12.new_gt
+        self.assertTrue(
+            all(c1 == c2 for c1, c2 in zip(created_at1, created_at2))
+        )
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
 
         dataset1.merge_samples(dataset2)
 
@@ -1605,12 +1810,16 @@ class DatasetTests(unittest.TestCase):
             d1 = dataset1.clone()
             d1.merge_samples(dataset2, skip_existing=True, key_fcn=key_fcn)
 
-            fields1 = set(dataset1.get_field_schema().keys())
-            fields2 = set(d1.get_field_schema().keys())
+            dt_fields = {"created_at", "last_modified_at"}
+            fields1 = set(dataset1.get_field_schema().keys()) - dt_fields
+            fields2 = set(d1.get_field_schema().keys()) - dt_fields
             new_fields = fields2 - fields1
 
             self.assertEqual(len(d1), 6)
             for s1, s2 in zip(dataset1, d1):
+                for field in dt_fields:
+                    self.assertTrue(s1[field] < s2[field])
+
                 for field in fields1:
                     self.assertEqual(s1[field], s2[field])
 
@@ -1921,20 +2130,36 @@ class DatasetTests(unittest.TestCase):
 
         # Merge dataset
         dataset = dataset1.clone()
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset2)
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
 
         self.assertEqual(len(dataset), 2)
         self.assertTrue("spam" in dataset.get_field_schema())
         self.assertIsNone(dataset.first()["spam"])
         self.assertEqual(dataset.last()["spam"], "eggs")
+        self.assertEqual(created_at1[0], created_at2[0])
+        self.assertEqual(last_modified_at1[0], last_modified_at2[0])
+        self.assertTrue(created_at2[1] > sample2.created_at)
+        self.assertTrue(last_modified_at2[1] > sample2.last_modified_at)
 
         # Merge view
         dataset = dataset1.clone()
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset2.exclude_fields("spam"))
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
 
         self.assertEqual(len(dataset), 2)
         self.assertTrue("spam" not in dataset.get_field_schema())
         self.assertIsNone(dataset.last()["foo"])
+        self.assertEqual(created_at1[0], created_at2[0])
+        self.assertEqual(last_modified_at1[0], last_modified_at2[0])
+        self.assertTrue(created_at2[1] > sample2.created_at)
+        self.assertTrue(last_modified_at2[1] > sample2.last_modified_at)
 
     @drop_datasets
     def test_add_collection_new_ids(self):
@@ -1944,21 +2169,37 @@ class DatasetTests(unittest.TestCase):
 
         # Merge dataset
         dataset = dataset1.clone()
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset, new_ids=True)
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
 
         self.assertEqual(len(dataset), 2)
         self.assertEqual(len(set(dataset.values("id"))), 2)
         self.assertEqual(dataset.first()["foo"], "bar")
         self.assertEqual(dataset.last()["foo"], "bar")
+        self.assertEqual(created_at1[0], created_at2[0])
+        self.assertEqual(last_modified_at1[0], last_modified_at2[0])
+        self.assertTrue(created_at2[1] > sample1.created_at)
+        self.assertTrue(last_modified_at2[1] > sample1.last_modified_at)
 
         # Merge view
         dataset = dataset1.clone()
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
 
         self.assertEqual(len(dataset), 2)
         self.assertEqual(len(set(dataset.values("id"))), 2)
         self.assertEqual(dataset.first()["foo"], "bar")
         self.assertIsNone(dataset.last()["foo"])
+        self.assertEqual(created_at1[0], created_at2[0])
+        self.assertEqual(last_modified_at1[0], last_modified_at2[0])
+        self.assertTrue(created_at2[1] > sample1.created_at)
+        self.assertTrue(last_modified_at2[1] > sample1.last_modified_at)
 
     @drop_datasets
     def test_expand_schema(self):
@@ -2167,6 +2408,341 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNone(sample["int1"])
         self.assertIsNone(sample["list_int1"])
 
+    @drop_datasets
+    def test_read_only_fields(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Default fields
+
+        field = dataset.get_field("created_at")
+        self.assertTrue(field.read_only)
+
+        field = dataset.get_field("last_modified_at")
+        self.assertTrue(field.read_only)
+
+        with self.assertRaises(ValueError):
+            sample.created_at = datetime.utcnow()
+
+        with self.assertRaises(ValueError):
+            sample.last_modified_at = datetime.utcnow()
+
+        # Custom fields
+
+        sample["ground_truth"] = fo.Classification()
+        sample.save()
+
+        field = dataset.get_field("ground_truth")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            sample["ground_truth"] = fo.Classification(label="cat")
+
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("ground_truth.foo", fo.StringField)
+
+        sample.ground_truth.label = "cat"
+        with self.assertRaises(ValueError):
+            sample.save()
+
+        sample.reload()
+
+        field.read_only = False
+        field.save()
+
+        sample.ground_truth.label = "cat"
+        sample.save()
+
+        # Embedded fields
+
+        field = dataset.get_field("ground_truth.label")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            sample["ground_truth.label"] = "dog"
+
+        sample.ground_truth.label = "dog"
+        with self.assertRaises(ValueError):
+            sample.save()
+
+        sample.reload()
+
+        field.read_only = False
+        field.save()
+
+        sample.ground_truth.label = "dog"
+        sample.save()
+
+        # Embedded list fields
+
+        sample["predictions"] = fo.Detections(
+            detections=[
+                fo.Detection(label="dog", confidence=0.9),
+                fo.Detection(label="dog", confidence=0.1),
+            ]
+        )
+        sample.save()
+
+        field = dataset.get_field("predictions.detections.label")
+        field.read_only = True
+        field.save()
+
+        view = dataset.filter_labels("predictions", F("confidence") > 0.5)
+        sample_view = view.first()
+
+        sample_view.predictions.detections[0].label = "cat"
+        with self.assertRaises(ValueError):
+            sample_view.save()
+
+        field.read_only = False
+        field.save()
+
+        sample_view = view.first()
+        sample_view.predictions.detections[0].label = "cat"
+        sample_view.save()
+
+        # Changing behavior of default fields
+
+        field = dataset.get_field("created_at")
+        field.read_only = False
+        with self.assertRaises(ValueError):
+            field.save()
+
+        field = dataset.get_field("last_modified_at")
+        field.read_only = False
+        with self.assertRaises(ValueError):
+            field.save()
+
+        field = dataset.get_field("filepath")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            sample.filepath = "no.jpg"
+
+        sample.reload()
+
+        field.read_only = False
+        field.save()
+
+        sample.filepath = "yes.jpg"
+        sample.save()
+
+        # Add/delete samples when there are read-only fields
+
+        field = dataset.get_field("filepath")
+        field.read_only = True
+        field.save()
+
+        field = dataset.get_field("ground_truth.label")
+        field.read_only = True
+        field.save()
+
+        field = dataset.get_field("predictions.detections.label")
+        field.read_only = True
+        field.save()
+
+        sample = fo.Sample(
+            filepath="image2.jpg",
+            ground_truth=fo.Classification(label="cat"),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", confidence=0.9),
+                    fo.Detection(label="dog", confidence=0.1),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        self.assertEqual(len(dataset), 2)
+
+        dataset.delete_samples(sample)
+
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_read_only_frame_fields(self):
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Default fields
+
+        field = dataset.get_field("frames.created_at")
+        self.assertTrue(field.read_only)
+
+        field = dataset.get_field("frames.last_modified_at")
+        self.assertTrue(field.read_only)
+
+        with self.assertRaises(ValueError):
+            frame.created_at = datetime.utcnow()
+
+        with self.assertRaises(ValueError):
+            frame.last_modified_at = datetime.utcnow()
+
+        # Custom fields
+
+        frame["ground_truth"] = fo.Classification()
+        sample.save()
+
+        field = dataset.get_field("frames.ground_truth")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            frame["ground_truth"] = fo.Classification(label="cat")
+
+        with self.assertRaises(ValueError):
+            dataset.add_frame_field("ground_truth.foo", fo.StringField)
+
+        frame.ground_truth.label = "cat"
+        with self.assertRaises(ValueError):
+            sample.save()
+        with self.assertRaises(ValueError):
+            frame.save()
+
+        sample.reload()
+
+        field.read_only = False
+        field.save()
+
+        frame.ground_truth.label = "cat"
+        frame.save()
+
+        # Embedded fields
+
+        frame["ground_truth"] = fo.Classification()
+        frame.save()
+
+        field = dataset.get_field("frames.ground_truth.label")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            frame["ground_truth.label"] = "cat"
+
+        frame.ground_truth.label = "cat"
+        with self.assertRaises(ValueError):
+            sample.save()
+        with self.assertRaises(ValueError):
+            frame.save()
+
+        frame.reload()
+
+        field.read_only = False
+        field.save()
+
+        frame.ground_truth.label = "cat"
+        frame.save()
+
+        # Embedded list fields
+
+        frame["predictions"] = fo.Detections(
+            detections=[
+                fo.Detection(label="dog", confidence=0.9),
+                fo.Detection(label="dog", confidence=0.1),
+            ]
+        )
+        frame.save()
+
+        field = dataset.get_field("frames.predictions.detections.label")
+        field.read_only = True
+        field.save()
+
+        view = dataset.filter_labels(
+            "frames.predictions", F("confidence") > 0.5
+        )
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        frame_view.predictions.detections[0].label = "cat"
+        with self.assertRaises(ValueError):
+            sample_view.save()
+        with self.assertRaises(ValueError):
+            frame_view.save()
+
+        field.read_only = False
+        field.save()
+
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+        frame_view.predictions.detections[0].label = "cat"
+        sample_view.save()
+
+        # Changing behavior of default fields
+
+        field = dataset.get_field("frames.created_at")
+        field.read_only = False
+        with self.assertRaises(ValueError):
+            field.save()
+
+        field = dataset.get_field("frames.last_modified_at")
+        field.read_only = False
+        with self.assertRaises(ValueError):
+            field.save()
+
+        field = dataset.get_field("frames.frame_number")
+        field.read_only = True
+        field.save()
+
+        with self.assertRaises(ValueError):
+            frame.frame_number = 51
+
+        frame.reload()
+
+        field.read_only = False
+        field.save()
+
+        frame.frame_number = 51
+        frame.save()
+
+        # Add/delete frames when there are read-only fields
+
+        field = dataset.get_field("frames.frame_number")
+        field.read_only = True
+        field.save()
+
+        field = dataset.get_field("frames.ground_truth.label")
+        field.read_only = True
+        field.save()
+
+        field = dataset.get_field("frames.predictions.detections.label")
+        field.read_only = True
+        field.save()
+
+        frame2 = fo.Frame(
+            ground_truth=fo.Classification(label="cat"),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog", confidence=0.9),
+                    fo.Detection(label="dog", confidence=0.1),
+                ]
+            ),
+        )
+
+        sample.frames[2] = frame2
+        sample.frames[3] = frame2.copy()
+        sample.save()
+
+        self.assertEqual(dataset.count("frames"), 3)
+
+        dataset.delete_frames(frame2)
+
+        self.assertEqual(dataset.count("frames"), 2)
+
+        del sample.frames[3]
+        sample.save()
+
+        self.assertEqual(dataset.count("frames"), 1)
+
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_rename_fields(self):
@@ -2282,8 +2858,12 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(sample)
 
+        lma1a = sample.last_modified_at
+        lma1b = dataset.values("last_modified_at")[0]
         dataset.clone_sample_field("field", "field_copy")
         schema = dataset.get_field_schema()
+        lma2a = sample.last_modified_at
+        lma2b = dataset.values("last_modified_at")[0]
         self.assertIn("field", schema)
         self.assertIn("field_copy", schema)
         self.assertIsNotNone(sample.field)
@@ -2292,22 +2872,42 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(sample.field_copy, 1)
         self.assertListEqual(dataset.values("field"), [1])
         self.assertListEqual(dataset.values("field_copy"), [1])
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = sample.last_modified_at
+        lma1b = dataset.values("last_modified_at")[0]
         dataset.clear_sample_field("field")
         schema = dataset.get_field_schema()
+        lma2a = sample.last_modified_at
+        lma2b = dataset.values("last_modified_at")[0]
         self.assertIn("field", schema)
         self.assertIsNone(sample.field)
         self.assertIsNotNone(sample.field_copy)
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = sample.last_modified_at
+        lma1b = dataset.values("last_modified_at")[0]
         dataset.delete_sample_field("field")
+        lma2a = sample.last_modified_at
+        lma2b = dataset.values("last_modified_at")[0]
         self.assertIsNotNone(sample.field_copy)
         with self.assertRaises(AttributeError):
             sample.field
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = sample.last_modified_at
+        lma1b = dataset.values("last_modified_at")[0]
         dataset.rename_sample_field("field_copy", "field")
+        lma2a = sample.last_modified_at
+        lma2b = dataset.values("last_modified_at")[0]
         self.assertIsNotNone(sample.field)
         with self.assertRaises(AttributeError):
             sample.field_copy
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
@@ -2549,8 +3149,12 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(sample)
 
+        lma1a = frame.last_modified_at
+        lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
         dataset.clone_frame_field("field", "field_copy")
         schema = dataset.get_frame_field_schema()
+        lma2a = frame.last_modified_at
+        lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]
         self.assertIn("field", schema)
         self.assertIn("field_copy", schema)
         self.assertEqual(frame.field, 1)
@@ -2559,22 +3163,44 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(
             dataset.values("frames.field_copy", unwind=True), [1]
         )
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = frame.last_modified_at
+        lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
         dataset.clear_frame_field("field")
         schema = dataset.get_frame_field_schema()
+        lma2a = frame.last_modified_at
+        lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]
         self.assertIn("field", schema)
         self.assertIsNone(frame.field)
         self.assertIsNotNone(frame.field_copy)
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = frame.last_modified_at
+        lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
         dataset.delete_frame_field("field")
+        lma2a = frame.last_modified_at
+        lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]
         self.assertIsNotNone(frame.field_copy)
         with self.assertRaises(AttributeError):
             frame.field
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
+        lma1a = frame.last_modified_at
+        lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
         dataset.rename_frame_field("field_copy", "field")
+        lma2a = frame.last_modified_at
+        lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]
         self.assertIsNotNone(frame.field)
         with self.assertRaises(AttributeError):
             frame.field_copy
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
+        self.assertTrue(lma1a < lma2a)
+        self.assertTrue(lma1b < lma2b)
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
@@ -2928,6 +3554,7 @@ class DatasetExtrasTests(unittest.TestCase):
 
         last_loaded_at1 = dataset._doc.saved_views[0].last_loaded_at
         last_modified_at1 = dataset._doc.saved_views[0].last_modified_at
+        created_at1 = dataset._doc.saved_views[0].created_at
 
         self.assertEqual(view.name, view_name)
         self.assertTrue(view.is_saved)
@@ -2937,6 +3564,7 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertIsNone(last_loaded_at1)
         self.assertIsNotNone(last_modified_at1)
+        self.assertIsNotNone(created_at1)
 
         still_saved_view = deepcopy(view)
         self.assertEqual(still_saved_view.name, view_name)
@@ -2959,8 +3587,11 @@ class DatasetExtrasTests(unittest.TestCase):
         info["name"] = new_view_name
 
         dataset.update_saved_view_info(view_name, info)
+
+        created_at2 = dataset._doc.saved_views[0].created_at
         last_modified_at2 = dataset._doc.saved_views[0].last_modified_at
 
+        self.assertEqual(created_at2, created_at1)
         self.assertTrue(last_modified_at2 > last_modified_at1)
         self.assertFalse(dataset.has_saved_view(view_name))
         self.assertTrue(dataset.has_saved_view(new_view_name))
@@ -2983,6 +3614,14 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertEqual(len(view2), 1)
         self.assertTrue("image2" in view2.first().filepath)
+
+        created_at3 = dataset2._doc.saved_views[0].created_at
+        last_modified_at3 = dataset2._doc.saved_views[0].last_modified_at
+        last_loaded_at3 = dataset2._doc.saved_views[0].last_loaded_at
+
+        self.assertTrue(created_at3 > created_at2)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+        self.assertTrue(last_loaded_at3 > last_loaded_at2)
 
         dataset.delete_saved_view(view_name)
 
@@ -3130,7 +3769,7 @@ class DatasetExtrasTests(unittest.TestCase):
 
         last_loaded_at1 = dataset._doc.workspaces[0].last_loaded_at
         last_modified_at1 = dataset._doc.workspaces[0].last_modified_at
-        created_at = dataset._doc.workspaces[0].created_at
+        created_at1 = dataset._doc.workspaces[0].created_at
 
         self.assertEqual(spaces.name, workspace_name)
         self.assertTrue(dataset.has_workspaces)
@@ -3141,7 +3780,7 @@ class DatasetExtrasTests(unittest.TestCase):
         self.assertAlmostEqual(
             last_modified_at1, now, delta=timedelta(milliseconds=100)
         )
-        self.assertEqual(last_modified_at1, created_at)
+        self.assertEqual(last_modified_at1, created_at1)
 
         still_spaces = deepcopy(spaces)
         self.assertEqual(still_spaces.name, workspace_name)
@@ -3173,7 +3812,11 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset.update_workspace_info(workspace_name, new_info)
         last_modified_at2 = dataset._doc.workspaces[0].last_modified_at
+        created_at2 = dataset._doc.workspaces[0].created_at
 
+        self.assertAlmostEqual(
+            created_at2, created_at1, delta=timedelta(milliseconds=1)
+        )
         self.assertTrue(last_modified_at2 > last_modified_at1)
         self.assertFalse(dataset.has_workspace(workspace_name))
         self.assertTrue(dataset.has_workspace(new_workspace_name))
@@ -3201,6 +3844,14 @@ class DatasetExtrasTests(unittest.TestCase):
         spaces2 = dataset2.load_workspace(workspace_name)
 
         self.assertEqual(spaces, spaces2)
+
+        last_loaded_at3 = dataset2._doc.workspaces[0].last_loaded_at
+        last_modified_at3 = dataset2._doc.workspaces[0].last_modified_at
+        created_at3 = dataset2._doc.workspaces[0].created_at
+
+        self.assertTrue(last_loaded_at3 > last_loaded_at2)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+        self.assertTrue(created_at3 > created_at2)
 
         dataset.delete_workspace(workspace_name)
 
@@ -3759,6 +4410,9 @@ class DatasetIdTests(unittest.TestCase):
             set(dataset.list_indexes()),
             set(dataset2.list_indexes()),
         )
+        self.assertTrue(dataset2.created_at > dataset.created_at)
+        self.assertTrue(dataset2.last_modified_at > dataset.last_modified_at)
+        self.assertTrue(dataset2.last_loaded_at > dataset.last_loaded_at)
 
         sample = fo.Sample(filepath="image.jpg", foo="bar")
 
@@ -3768,32 +4422,41 @@ class DatasetIdTests(unittest.TestCase):
         # Custom indexes
 
         dataset3 = dataset.clone()
+        sample3 = dataset3.first()
 
         self.assertIn("foo", dataset3.list_indexes())
         self.assertSetEqual(
             set(dataset.list_indexes()),
             set(dataset3.list_indexes()),
         )
+        self.assertTrue(sample3.created_at > sample.created_at)
+        self.assertTrue(sample3.last_modified_at > sample.last_modified_at)
 
         # Simple view
 
         dataset4 = dataset.limit(1).clone()
+        sample4 = dataset4.first()
 
         self.assertIn("foo", dataset4.list_indexes())
         self.assertSetEqual(
             set(dataset.list_indexes()),
             set(dataset4.list_indexes()),
         )
+        self.assertTrue(sample4.created_at > sample.created_at)
+        self.assertTrue(sample4.last_modified_at > sample.last_modified_at)
 
         # Exclusion view
 
         dataset5 = dataset.select_fields().clone()
+        sample5 = dataset5.first()
 
         self.assertNotIn("foo", dataset5.list_indexes())
         self.assertSetEqual(
             set(default_indexes),
             set(dataset5.list_indexes()),
         )
+        self.assertTrue(sample5.created_at > sample.created_at)
+        self.assertTrue(sample5.last_modified_at > sample.last_modified_at)
 
     @drop_datasets
     def test_clone_video(self):
@@ -3809,9 +4472,13 @@ class DatasetIdTests(unittest.TestCase):
             set(dataset.list_indexes()),
             set(dataset2.list_indexes()),
         )
+        self.assertTrue(dataset2.created_at > dataset.created_at)
+        self.assertTrue(dataset2.last_modified_at > dataset.last_modified_at)
+        self.assertTrue(dataset2.last_loaded_at > dataset.last_loaded_at)
 
         sample = fo.Sample(filepath="video.mp4", foo="bar")
-        sample.frames[1] = fo.Frame(spam="eggs")
+        frame = fo.Frame(spam="eggs")
+        sample.frames[1] = frame
 
         dataset.add_sample(sample)
         dataset.create_index("foo")
@@ -3820,6 +4487,8 @@ class DatasetIdTests(unittest.TestCase):
         # Custom indexes
 
         dataset3 = dataset.clone()
+        sample3 = dataset3.first()
+        frame3 = sample3.frames[1]
 
         self.assertIn("foo", dataset3.list_indexes())
         self.assertIn("frames.spam", dataset3.list_indexes())
@@ -3827,10 +4496,14 @@ class DatasetIdTests(unittest.TestCase):
             set(dataset.list_indexes()),
             set(dataset3.list_indexes()),
         )
+        self.assertTrue(frame3.created_at > frame.created_at)
+        self.assertTrue(frame3.last_modified_at > frame.last_modified_at)
 
         # Simple view
 
         dataset4 = dataset.limit(1).clone()
+        sample4 = dataset4.first()
+        frame4 = sample4.frames[1]
 
         self.assertIn("foo", dataset4.list_indexes())
         self.assertIn("frames.spam", dataset4.list_indexes())
@@ -3838,10 +4511,14 @@ class DatasetIdTests(unittest.TestCase):
             set(dataset.list_indexes()),
             set(dataset4.list_indexes()),
         )
+        self.assertTrue(frame4.created_at > frame.created_at)
+        self.assertTrue(frame4.last_modified_at > frame.last_modified_at)
 
         # Exclusion view
 
         dataset5 = dataset.select_fields().clone()
+        sample5 = dataset5.first()
+        frame5 = sample5.frames[1]
 
         self.assertNotIn("foo", dataset5.list_indexes())
         self.assertNotIn("frames.spam", dataset5.list_indexes())
@@ -3849,6 +4526,8 @@ class DatasetIdTests(unittest.TestCase):
             set(default_indexes),
             set(dataset5.list_indexes()),
         )
+        self.assertTrue(frame5.created_at > frame.created_at)
+        self.assertTrue(frame5.last_modified_at > frame.last_modified_at)
 
     @drop_datasets
     def test_clone_group(self):
@@ -4157,12 +4836,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth")
         num_ids = len(ids)
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(ids=ids)
 
         num_labels_after = self.dataset.count("ground_truth")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_ids)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_classification_tags(self):
         self._setUp_classification()
@@ -4176,12 +4861,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth")
         num_tagged = self.dataset.count_label_tags()["test"]
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(tags="test")
 
         num_labels_after = self.dataset.count("ground_truth")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_tagged)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_classification_view(self):
         self._setUp_classification()
@@ -4195,12 +4886,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth")
         num_view = view.count("ground_truth")
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(view=view)
 
         num_labels_after = self.dataset.count("ground_truth")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_view)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_classification_labels(self):
         self._setUp_classification()
@@ -4220,12 +4917,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth")
         num_selected = len(labels)
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(labels=labels)
 
         num_labels_after = self.dataset.count("ground_truth")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_detections_ids(self):
         self._setUp_detections()
@@ -4237,12 +4940,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth.detections")
         num_ids = len(ids)
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(ids=ids)
 
         num_labels_after = self.dataset.count("ground_truth.detections")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_ids)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_detections_tags(self):
         self._setUp_detections()
@@ -4256,12 +4965,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth.detections")
         num_tagged = self.dataset.count_label_tags()["test"]
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(tags="test")
 
         num_labels_after = self.dataset.count("ground_truth.detections")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_tagged)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_detections_view(self):
         self._setUp_detections()
@@ -4275,12 +4990,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth.detections")
         num_view = view.count("ground_truth.detections")
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(view=view)
 
         num_labels_after = self.dataset.count("ground_truth.detections")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_view)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_detections_labels(self):
         self._setUp_detections()
@@ -4300,12 +5021,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("ground_truth.detections")
         num_selected = len(labels)
+        lma1 = self.dataset.values("last_modified_at")
 
         self.dataset.delete_labels(labels=labels)
 
         num_labels_after = self.dataset.count("ground_truth.detections")
+        lma2 = self.dataset.values("last_modified_at")
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
 
     def test_delete_video_classification_ids(self):
         self._setUp_video_classification()
@@ -4317,12 +5044,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth")
         num_ids = len(ids)
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(ids=ids)
 
         num_labels_after = self.dataset.count("frames.ground_truth")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_ids)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_classification_tags(self):
         self._setUp_video_classification()
@@ -4336,12 +5069,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth")
         num_tagged = self.dataset.count_label_tags()["test"]
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(tags="test")
 
         num_labels_after = self.dataset.count("frames.ground_truth")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_tagged)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_classification_view(self):
         self._setUp_video_classification()
@@ -4355,12 +5094,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth")
         num_view = view.count("frames.ground_truth")
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(view=view)
 
         num_labels_after = self.dataset.count("frames.ground_truth")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_view)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_classification_labels(self):
         self._setUp_video_classification()
@@ -4382,12 +5127,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth")
         num_selected = len(labels)
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(labels=labels)
 
         num_labels_after = self.dataset.count("frames.ground_truth")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_detections_ids(self):
         self._setUp_video_detections()
@@ -4399,12 +5150,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth.detections")
         num_ids = len(ids)
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(ids=ids)
 
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_ids)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_detections_tags(self):
         self._setUp_video_detections()
@@ -4418,12 +5175,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth.detections")
         num_tagged = self.dataset.count_label_tags()["test"]
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(tags="test")
 
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_tagged)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_detections_view(self):
         self._setUp_video_detections()
@@ -4437,12 +5200,18 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth.detections")
         num_view = view.count("frames.ground_truth.detections")
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(view=view)
 
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_view)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
 
     def test_delete_video_detections_labels(self):
         self._setUp_video_detections()
@@ -4474,12 +5243,74 @@ class DatasetDeletionTests(unittest.TestCase):
 
         num_labels = self.dataset.count("frames.ground_truth.detections")
         num_selected = len(labels)
+        lma1 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.dataset.delete_labels(labels=labels)
 
         num_labels_after = self.dataset.count("frames.ground_truth.detections")
+        lma2 = self.dataset.values("frames.last_modified_at", unwind=True)
 
         self.assertEqual(num_labels_after, num_labels - num_selected)
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, False, False, False, True],
+        )
+
+    def test_sync_last_modified_at(self):
+        sample1 = fo.Sample(filepath="video1.mp4", foo="bar")
+        sample1.frames[1] = fo.Frame(foo="bar")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[2] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        last_modified_at1a = dataset.last_modified_at
+        last_modified_at1b = dataset.bounds("last_modified_at")[1]
+        last_modified_at1c = dataset.bounds("frames.last_modified_at")[1]
+
+        dataset.set_field("foo", "baz").save("foo")
+
+        last_modified_at2a = dataset.last_modified_at
+        last_modified_at2b = dataset.bounds("last_modified_at")[1]
+        last_modified_at2c = dataset.bounds("frames.last_modified_at")[1]
+
+        self.assertEqual(last_modified_at1a, last_modified_at2a)
+        self.assertTrue(last_modified_at1b < last_modified_at2b)
+        self.assertEqual(last_modified_at1c, last_modified_at2c)
+
+        dataset.sync_last_modified_at()
+
+        last_modified_at3a = dataset.last_modified_at
+        last_modified_at3b = dataset.bounds("last_modified_at")[1]
+        last_modified_at3c = dataset.bounds("frames.last_modified_at")[1]
+
+        self.assertTrue(last_modified_at2a < last_modified_at3a)
+        self.assertEqual(last_modified_at2b, last_modified_at3b)
+        self.assertEqual(last_modified_at2c, last_modified_at3c)
+
+        dataset.set_field("frames.foo", "baz").save("frames.foo")
+
+        last_modified_at4a = dataset.last_modified_at
+        last_modified_at4b = dataset.bounds("last_modified_at")[1]
+        last_modified_at4c = dataset.bounds("frames.last_modified_at")[1]
+
+        self.assertEqual(last_modified_at3a, last_modified_at4a)
+        self.assertEqual(last_modified_at3b, last_modified_at4b)
+        self.assertTrue(last_modified_at3c < last_modified_at4c)
+
+        dataset.sync_last_modified_at()
+
+        last_modified_at5a = dataset.last_modified_at
+        last_modified_at5b = dataset.bounds("last_modified_at")[1]
+        last_modified_at5c = dataset.bounds("frames.last_modified_at")[1]
+
+        self.assertTrue(last_modified_at4a < last_modified_at5a)
+        self.assertTrue(last_modified_at4b < last_modified_at5b)
+        self.assertEqual(last_modified_at4c, last_modified_at5c)
 
 
 class DynamicFieldTests(unittest.TestCase):
@@ -4638,6 +5469,43 @@ class DynamicFieldTests(unittest.TestCase):
 
         schema = dataset.get_frame_field_schema(flat=True)
         self.assertIn("ground_truth.detections.foo", schema)
+
+    @drop_datasets
+    def test_set_new_fields(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.png",
+            ground_truth=fo.Classification(label="cat"),
+        )
+
+        dataset.add_sample(sample)
+
+        sample["foo"] = "bar"
+        sample["ground_truth.foo"] = "bar"
+        sample.save()
+
+        view = dataset.select_fields("ground_truth")
+        sample_view = view.first()
+
+        sample_view["spam"] = "eggs"
+        sample_view["ground_truth.spam"] = "eggs"
+        sample_view.save()
+
+        schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("foo", schema)
+        self.assertIn("spam", schema)
+
+        # Dynamic nested fields are not automatically added to schema
+        self.assertNotIn("ground_truth.foo", schema)
+        self.assertNotIn("ground_truth.spam", schema)
+
+        self.assertEqual(sample.foo, "bar")
+        self.assertEqual(sample.spam, "eggs")
+
+        self.assertEqual(sample.ground_truth.foo, "bar")
+        self.assertEqual(sample.ground_truth.spam, "eggs")
 
     @drop_datasets
     def test_dynamic_fields_sample(self):

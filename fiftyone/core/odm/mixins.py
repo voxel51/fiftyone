@@ -6,6 +6,7 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
+from datetime import datetime
 import itertools
 
 from bson import ObjectId
@@ -114,6 +115,14 @@ class DatasetMixin(object):
         # pylint: disable=no-member
         return tuple(cls._fields[f].db_field or f for f in field_names)
 
+    def get_field(self, field_name):
+        try:
+            return super().get_field(field_name)
+        except AttributeError:
+            raise AttributeError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
     def set_field(
         self,
         field_name,
@@ -121,8 +130,17 @@ class DatasetMixin(object):
         create=True,
         validate=True,
         dynamic=False,
+        _enforce_read_only=True,
     ):
-        validate_field_name(field_name)
+        field = self._get_field(field_name, allow_missing=True)
+        if getattr(field, "read_only", False) and _enforce_read_only:
+            raise ValueError("Cannot edit read-only field '%s'" % field.path)
+
+        chunks = field_name.split(".", 1)
+
+        if len(chunks) > 1:
+            doc = self.get_field(chunks[0])
+            return doc.set_field(chunks[1], value, create=create)
 
         if not self.has_field(field_name):
             if create:
@@ -139,7 +157,7 @@ class DatasetMixin(object):
                 )
         elif value is not None:
             if validate:
-                self._fields[field_name].validate(value)
+                field.validate(value)
 
             if dynamic:
                 self.add_implied_field(
@@ -157,7 +175,11 @@ class DatasetMixin(object):
 
     @classmethod
     def get_field_schema(
-        cls, ftype=None, embedded_doc_type=None, include_private=False
+        cls,
+        ftype=None,
+        embedded_doc_type=None,
+        read_only=None,
+        include_private=False,
     ):
         """Returns a schema dictionary describing the fields of this document.
 
@@ -172,14 +194,18 @@ class DatasetMixin(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
         """
-        fof.validate_type_constraints(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+        fof.validate_constraints(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
         )
 
         schema = OrderedDict()
@@ -188,8 +214,11 @@ class DatasetMixin(object):
             # pylint: disable=no-member
             field = cls._fields[field_name]
 
-            if fof.matches_type_constraints(
-                field, ftype=ftype, embedded_doc_type=embedded_doc_type
+            if fof.matches_constraints(
+                field,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                read_only=read_only,
             ):
                 schema[field_name] = field
 
@@ -202,6 +231,7 @@ class DatasetMixin(object):
         expand_schema=True,
         recursive=True,
         validate=True,
+        overwrite=False,
     ):
         """Merges the field schema into this document.
 
@@ -214,8 +244,10 @@ class DatasetMixin(object):
                 consistent types (False)
             recursive (True): whether to recursively merge embedded document
                 fields
-            validate (True): whether to validate the field against an existing
-                field at the same path
+            validate (True): whether to validate fields against existing fields
+                at the same path
+            overwrite (False): whether to overwrite the editable metadata of
+                existing fields
 
         Returns:
             True/False whether any new fields were added
@@ -227,18 +259,26 @@ class DatasetMixin(object):
         """
         dataset = cls._dataset
         dataset_doc = dataset._doc
+        media_type = dataset.media_type
+        is_frame_field = cls._is_frames_doc
 
         new_schema = {}
+        new_metadata = {}
 
         for path, field in schema.items():
-            new_fields = cls._merge_field(
+            _new_schema, _new_metadata = cls._merge_field(
                 path,
                 field,
                 validate=validate,
                 recursive=recursive,
+                overwrite=overwrite,
             )
-            if new_fields:
-                new_schema.update(new_fields)
+
+            if _new_schema:
+                new_schema.update(_new_schema)
+
+            if _new_metadata:
+                new_metadata.update(_new_metadata)
 
         if new_schema and not expand_schema:
             raise ValueError(
@@ -246,12 +286,30 @@ class DatasetMixin(object):
                 % (cls._doc_name(), list(new_schema.keys()))
             )
 
-        if not new_schema:
+        if not new_schema and not new_metadata:
             return False
 
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         cls._reload_fields()
+
+        for path in new_schema.keys():
+            _, _, _, root_doc = cls._parse_path(path)
+            if root_doc is not None and root_doc.read_only:
+                root = path.rsplit(".", 1)[0]
+                raise ValueError("Cannot edit read-only field '%s'" % root)
+
+            validate_field_name(
+                path,
+                media_type=media_type,
+                is_frame_field=is_frame_field,
+            )
+
+        # Silently skip updating metadata of any read-only fields
+        for path in list(new_metadata.keys()):
+            field = cls._get_field(path, allow_missing=True)
+            if field is not None and field.read_only:
+                del new_metadata[path]
 
         for path, field in new_schema.items():
             # Special syntax for declaring the subfield of a ListField
@@ -260,6 +318,9 @@ class DatasetMixin(object):
                 field = fof.ListField(field=field)
 
             cls._add_field_schema(path, field)
+
+        for path, d in new_metadata.items():
+            cls._update_field_metadata(path, d)
 
         dataset_doc.save()
 
@@ -275,6 +336,7 @@ class DatasetMixin(object):
         fields=None,
         description=None,
         info=None,
+        read_only=False,
         expand_schema=True,
         recursive=True,
         validate=True,
@@ -300,6 +362,7 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
             info (None): an optional info dict
+            read_only (False): whether the field should be read-only
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
@@ -324,6 +387,7 @@ class DatasetMixin(object):
             fields=fields,
             description=description,
             info=info,
+            read_only=read_only,
             **kwargs,
         )
 
@@ -387,6 +451,7 @@ class DatasetMixin(object):
         fields=None,
         description=None,
         info=None,
+        read_only=False,
         **kwargs,
     ):
         field_name = path.rsplit(".", 1)[-1]
@@ -398,6 +463,7 @@ class DatasetMixin(object):
             fields=fields,
             description=description,
             info=info,
+            read_only=read_only,
             **kwargs,
         )
 
@@ -438,6 +504,12 @@ class DatasetMixin(object):
             if is_default:
                 raise ValueError(
                     "Cannot rename default %s field '%s'"
+                    % (cls._doc_name().lower(), path)
+                )
+
+            if field is not None and field.read_only:
+                raise ValueError(
+                    "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
                 )
 
@@ -599,6 +671,12 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
+            if field is not None and field.read_only:
+                raise ValueError(
+                    "Cannot rename read-only %s field '%s'"
+                    % (cls._doc_name().lower(), path)
+                )
+
             if is_dataset and is_root_field:
                 simple_paths.append(path)
             else:
@@ -659,6 +737,12 @@ class DatasetMixin(object):
                     error_level,
                 )
                 continue
+
+            if field is not None and field.read_only:
+                raise ValueError(
+                    "Cannot delete read-only %s field '%s'"
+                    % (cls._doc_name().lower(), path)
+                )
 
             if (
                 media_type == fom.GROUP
@@ -761,6 +845,16 @@ class DatasetMixin(object):
                 )
                 continue
 
+            if field is not None and field.read_only:
+                fou.handle_error(
+                    ValueError(
+                        "Cannot remove read-only %s field '%s'"
+                        % (cls._doc_name().lower(), path)
+                    ),
+                    error_level,
+                )
+                continue
+
             del_paths.append(path)
 
         if not del_paths:
@@ -787,9 +881,12 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         rename_expr = dict(zip(_paths, _new_paths))
+        now = datetime.utcnow()
 
         coll = get_db_conn()[cls.__name__]
-        coll.update_many({}, {"$rename": rename_expr})
+        coll.update_many(
+            {}, {"$rename": rename_expr, "$set": {"last_modified_at": now}}
+        )
 
     @classmethod
     def _rename_fields_collection(cls, sample_collection, paths, new_paths):
@@ -840,6 +937,7 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
+        set_expr["last_modified_at"] = datetime.utcnow()
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$set": set_expr}])
@@ -890,8 +988,11 @@ class DatasetMixin(object):
 
         _paths = cls._handle_db_fields(paths)
 
+        set_expr = {p: None for p in _paths}
+        set_expr["last_modified_at"] = datetime.utcnow()
+
         coll = get_db_conn()[cls.__name__]
-        coll.update_many({}, {"$set": {p: None for p in _paths}})
+        coll.update_many({}, {"$set": set_expr})
 
     @classmethod
     def _clear_fields_collection(cls, sample_collection, paths):
@@ -923,9 +1024,12 @@ class DatasetMixin(object):
             return
 
         _paths = cls._handle_db_fields(paths)
+        now = datetime.utcnow()
 
         coll = get_db_conn()[cls.__name__]
-        coll.update_many({}, [{"$unset": _paths}])
+        coll.update_many(
+            {}, [{"$unset": _paths}, {"$set": {"last_modified_at": now}}]
+        )
 
     @classmethod
     def _handle_db_field(cls, path, new_path=None):
@@ -958,7 +1062,14 @@ class DatasetMixin(object):
         return tuple(cls._handle_db_field(p) for p in paths)
 
     @classmethod
-    def _merge_field(cls, path, field, validate=True, recursive=True):
+    def _merge_field(
+        cls,
+        path,
+        field,
+        validate=True,
+        recursive=True,
+        overwrite=False,
+    ):
         chunks = path.split(".")
         field_name = chunks[-1]
 
@@ -1001,9 +1112,6 @@ class DatasetMixin(object):
         if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
             field_name = field_name[1:]
 
-        if field_name == "id":
-            return
-
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]
 
@@ -1019,7 +1127,11 @@ class DatasetMixin(object):
 
                 if isinstance(existing_field, fof.EmbeddedDocumentField):
                     return existing_field._merge_fields(
-                        path, field, validate=validate, recursive=recursive
+                        path,
+                        field,
+                        validate=validate,
+                        recursive=recursive,
+                        overwrite=overwrite,
                     )
 
                 # Special syntax for declaring the subfield of a ListField
@@ -1029,7 +1141,7 @@ class DatasetMixin(object):
                     and existing_field is None
                     and path.endswith("[]")
                 ):
-                    return {path: field}
+                    return {path: field}, None
 
             #
             # In principle, merging an untyped list field into a typed list
@@ -1042,12 +1154,20 @@ class DatasetMixin(object):
             #   doc.set_field("tags", [], validate=True)
             #
             if is_list_field and field is None:
-                return
+                return None, None
 
             if validate:
                 validate_fields_match(path, field, existing_field)
 
-            return
+            if overwrite:
+                # Overwrite existing field parameters
+                new_metadata = {path: fof.get_field_metadata(field)}
+                return None, new_metadata
+
+            return None, None
+
+        if field_name == "id":
+            return None, None
 
         dataset = cls._dataset
         media_type = dataset.media_type
@@ -1074,7 +1194,7 @@ class DatasetMixin(object):
                     "have one group field" % field_name
                 )
 
-        return {path: field}
+        return {path: field}, None
 
     @classmethod
     def _add_field_schema(cls, path, field):
@@ -1139,6 +1259,16 @@ class DatasetMixin(object):
 
         for name in updates.keys():
             cls._dataset.drop_index(name)
+
+    @classmethod
+    def _update_field_metadata(cls, path, d):
+        field_name, doc, _, _ = cls._parse_path(path)
+        field_doc = cls._get_field_doc(path)
+        field = doc._fields[field_name]
+
+        for key, value in d.items():
+            setattr(field_doc, key, value)
+            setattr(field, key, value)
 
     @classmethod
     def _reload_fields(cls):
@@ -1321,16 +1451,31 @@ class DatasetMixin(object):
 
         delattr(cls, field_name)
 
+    def _insert(self, doc, deferred=False):
+        now = datetime.utcnow()
+        self.created_at = now
+        self.last_modified_at = now
+        doc["created_at"] = now
+        doc["last_modified_at"] = now
+        return super()._insert(doc, deferred=deferred)
+
     def _update(
         self,
         _id,
         updates,
         deferred=False,
         upsert=False,
+        virtual=False,
         filtered_fields=None,
         **kwargs,
     ):
-        """Updates an existing document."""
+        if not virtual:
+            now = datetime.utcnow()
+            self.last_modified_at = now
+            if "$set" not in updates:
+                updates["$set"] = {}
+            updates["$set"]["last_modified_at"] = now
+
         extra_updates = self._extract_extra_updates(updates, filtered_fields)
 
         if deferred:
