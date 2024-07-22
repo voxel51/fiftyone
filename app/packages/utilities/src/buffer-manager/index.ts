@@ -1,7 +1,8 @@
-import { BufferRange, Buffers } from "../../../state";
+export type BufferRange = [number, number];
+export type Buffers = Readonly<BufferRange>[];
 
 /**
- * Manages buffer ranges for ImaVid.
+ * Manages buffer ranges.
  * Ranges are assumed to be inclusive, i.e. [start, end]
  */
 export class BufferManager {
