@@ -1,16 +1,13 @@
 import { isElectron } from "@fiftyone/utilities";
-import React, { useEffect } from "react";
+import React, { useCallback } from "react";
 import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
 import gaConfig from "../ga";
 import AnalyticsConsent from "./AnalyticsConsent";
-import { NavGA$data, NavGA$key } from "./__generated__/NavGA.graphql";
+import type { NavGA$data, NavGA$key } from "./__generated__/NavGA.graphql";
 
-const useGA = (enabled: boolean, info: NavGA$data) => {
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
+const useCallGA = (info: NavGA$data) => {
+  return useCallback(() => {
     const dev = info.dev;
     const buildType = dev ? "dev" : "prod";
     ReactGA.initialize(gaConfig.app_ids[buildType], {
@@ -27,7 +24,7 @@ const useGA = (enabled: boolean, info: NavGA$data) => {
         checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-  }, [enabled, info]);
+  }, [info]);
 };
 
 export default function Analytics({ fragment }: { fragment: NavGA$key }) {
@@ -43,8 +40,7 @@ export default function Analytics({ fragment }: { fragment: NavGA$key }) {
     `,
     fragment
   );
+  const callGA = useCallGA(info);
 
-  useGA(false, info);
-
-  return <AnalyticsConsent />;
+  return <AnalyticsConsent callGa={callGA} info={info} />;
 }

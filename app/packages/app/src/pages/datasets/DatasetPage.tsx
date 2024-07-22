@@ -1,4 +1,4 @@
-import { Dataset, Starter } from "@fiftyone/core";
+import { Dataset, Snackbar, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -121,6 +121,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           </datasetQueryContext.Provider>
         )}
       </div>
+      <Snackbar />
     </Nav>
   );
 };

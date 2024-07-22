@@ -2,7 +2,7 @@ import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
 import { Button } from "@fiftyone/components";
 import { Box, Grid, Link, Typography } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
-import { NavGA$data } from "./__generated__/NavGA.graphql";
+import type { NavGA$data } from "./__generated__/NavGA.graphql";
 
 const FIFTYONE_DO_NOT_TRACK_LS = "fiftyone-do-not-track";
 
@@ -40,7 +40,13 @@ function useAnalyticsConsent(disabled?: boolean) {
   };
 }
 
-export default function AnalyticsConsent(info: NavGA$data) {
+export default function AnalyticsConsent({
+  callGA,
+  info,
+}: {
+  callGA: () => void;
+  info: NavGA$data;
+}) {
   const [_, setAnalyticsInfo] = useAnalyticsInfo();
 
   const { doNotTrack, handleDisable, handleEnable, ready, show } =
@@ -59,7 +65,8 @@ export default function AnalyticsConsent(info: NavGA$data) {
       doNotTrack: doNotTrack,
       debug: info.dev,
     });
-  }, [doNotTrack, info, ready, setAnalyticsInfo]);
+    !doNotTrack && callGA();
+  }, [callGA, doNotTrack, info, ready, setAnalyticsInfo]);
 
   if (!show) {
     return null;
