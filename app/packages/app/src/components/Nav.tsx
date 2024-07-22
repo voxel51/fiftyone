@@ -70,8 +70,8 @@ const Nav: React.FC<
   const data = useFragment(
     graphql`
       fragment NavFragment on Query {
+        ...Analytics
         ...NavDatasets
-        ...NavGA
       }
     `,
     fragment

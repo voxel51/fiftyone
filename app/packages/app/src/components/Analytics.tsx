@@ -30,7 +30,7 @@ const useCallGA = (info: NavGA$data) => {
 export default function Analytics({ fragment }: { fragment: NavGA$key }) {
   const info = useFragment(
     graphql`
-      fragment NavGA on Query {
+      fragment Analytics on Query {
         context
         dev
         doNotTrack
@@ -42,5 +42,5 @@ export default function Analytics({ fragment }: { fragment: NavGA$key }) {
   );
   const callGA = useCallGA(info);
 
-  return <AnalyticsConsent callGa={callGA} info={info} />;
+  return <AnalyticsConsent callGA={callGA} info={info} />;
 }
