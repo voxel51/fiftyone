@@ -48,19 +48,18 @@ export const Line = ({
   }, [tooltip, label]);
 
   const geometry = React.useMemo(() => {
-    return new LineGeometry().setPositions(
-      new Float32Array(geo.attributes.position.array)
-    );
+    return new LineGeometry().fromLine(new THREE.Line(geo));
   }, [geo]);
   const material = React.useMemo(() => {
     return new LineMaterial({
       color: color,
       linewidth: lineWidth,
+      opacity: opacity,
     });
-  }, [color, lineWidth]);
+  }, [color, lineWidth, opacity]);
 
   return (
-    <mesh onClick={onClick}>
+    <mesh onClick={onClick} rotation={rotation} {...tooltipProps}>
       <line2 geometry={geometry} material={material} />
     </mesh>
   );
