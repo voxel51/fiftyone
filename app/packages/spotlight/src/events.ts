@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { ID } from "./types";
+import type { ID } from "./types";
 
 export class Load<K> extends Event {
   constructor(readonly page: K) {

@@ -6,10 +6,12 @@ import { modalSelector } from "../recoil";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 
+const THREE_D = new Set(["point_cloud", "three_d"]);
+
 export default () => {
   const setter = useRecoilCallback(
     ({ reset, set, snapshot }) =>
-      () => {
+      async () => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
         reset(dynamicGroupAtoms.dynamicGroupCurrentElementIndex);
         let fallback = snapshot.getLoadable(groupAtoms.groupSlice).getValue();
@@ -19,12 +21,14 @@ export default () => {
         const types = snapshot
           .getLoadable(groupAtoms.groupMediaTypes)
           .getValue();
-        if (map[fallback] === "point_cloud") {
+
+        if (THREE_D.has(map[fallback])) {
           fallback = types
-            .filter(({ mediaType }) => mediaType !== "point_cloud")
+            .filter(({ mediaType }) => !THREE_D.has(mediaType))
             .map(({ name }) => name)
             .sort()[0];
         }
+
         set(groupAtoms.modalGroupSlice, fallback);
       },
     []
@@ -39,9 +43,9 @@ export default () => {
   );
 
   return useCallback(
-    (selector: ModalSelector) => {
-      setter();
-      commit(selector);
+    async (selector?: ModalSelector) => {
+      await setter();
+      selector && commit(selector);
     },
     [commit, setter]
   );

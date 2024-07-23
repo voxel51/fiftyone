@@ -9,7 +9,7 @@
         "url": "https://github.com/voxel51/fiftyone"
     },
     "scripts": {
-        "check": "biome check --apply ./src README.md tsconfig.json vite.config.ts",
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
         "test": "vitest run"
     },
     "main": "./src/index.ts",
@@ -22,8 +22,7 @@
         "@fiftyone/components": "*"
     },
     "devDependencies": {
-        "@biomejs/biome": "1.7.1",
-        "ts-node": "^10.9.2",
+        "@biomejs/biome": "^1.7.1",
         "typescript": "^5.4.5",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "^5.2.8",
