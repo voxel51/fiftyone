@@ -1,7 +1,27 @@
 import React, { useMemo, useState } from "react";
 import * as THREE from "three";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import { OverlayProps } from "./shared";
 import { useCursor } from "@react-three/drei";
+import { useRecoilState } from "recoil";
+import { cuboidLabelLineWidthAtom } from "../state";
+import { extend, ReactThreeFiber } from "@react-three/fiber";
+
+extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      lineSegments2: ReactThreeFiber.Node<LineSegments2, typeof LineSegments2>;
+      lineSegmentsGeometry: ReactThreeFiber.Node<
+        LineSegmentsGeometry,
+        typeof LineSegmentsGeometry
+      >;
+    }
+  }
+}
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
@@ -22,6 +42,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
+  const [lineWidth] = useRecoilState(cuboidLabelLineWidthAtom);
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
     [dimensions]
@@ -49,11 +70,25 @@ export const Cuboid = ({
   );
 
   const [isCuboidHovered, setIsCuboidHovered] = useState(false);
-
   useCursor(isCuboidHovered);
 
-  if (!location || !dimensions) return null;
+  const geometry = useMemo(() => {
+    return new LineSegmentsGeometry().fromLineSegments(
+      new THREE.LineSegments(new THREE.EdgesGeometry(geo))
+    );
+  }, [geo]);
+  const material = useMemo(
+    () =>
+      new LineMaterial({
+        opacity: opacity,
+        transparent: false,
+        color: selected ? "orange" : color,
+        linewidth: lineWidth,
+      }),
+    [selected, lineWidth]
+  );
 
+  if (!location || !dimensions) return null;
   return (
     <group
       onPointerOver={() => setIsCuboidHovered(true)}
@@ -62,14 +97,7 @@ export const Cuboid = ({
       }}
     >
       <mesh position={loc} rotation={actualRotation}>
-        <lineSegments>
-          <edgesGeometry args={[geo]} attach="geometry" />
-          <lineBasicMaterial
-            attach="material"
-            linewidth={8}
-            color={selected ? "orange" : color}
-          />
-        </lineSegments>
+        <lineSegments2 geometry={geometry} material={material} />
       </mesh>
       <mesh
         onClick={onClick}

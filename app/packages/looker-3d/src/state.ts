@@ -130,10 +130,10 @@ export const activeNodeAtom = atom<FoSceneNode>({
 
 export const cuboidLabelLineWidthAtom = atom<number>({
   key: "fo3d-cuboidLabelLineWidth",
-  default: 8,
+  default: 3,
 });
 
 export const polylineLabelLineWidthAtom = atom<number>({
   key: "fo3d-polylineLabelLineWidth",
-  default: 8,
+  default: 3,
 });
