@@ -1,7 +1,4 @@
 {
-    "files": {
-        "ignore": ["./src/**/*.graphql.ts"]
-    },
     "formatter": {
         "indentStyle": "space",
         "indentWidth": 2,
@@ -10,7 +7,6 @@
     "javascript": {
         "formatter": {
             "trailingCommas": "es5"
-        },
-        "jsxRuntime": "reactClassic"
+        }
     }
 }

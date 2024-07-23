@@ -11,7 +11,11 @@ export class Load<K> extends Event {
 }
 
 export class RowChange<K> extends Event {
-  constructor(readonly at: ID, readonly page: K, readonly offset: number) {
+  constructor(
+    readonly at: ID,
+    readonly page: K,
+    readonly offset: number
+  ) {
     super("rowchange");
   }
 }

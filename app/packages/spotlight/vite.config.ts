@@ -1,6 +1,6 @@
 import type { UserConfig } from "vite";
 
-export default <UserConfig>{
+export default {
   esbuild: {},
   build: {
     lib: {
@@ -11,4 +11,4 @@ export default <UserConfig>{
     minify: false,
   },
   test: {},
-};
+} as UserConfig;

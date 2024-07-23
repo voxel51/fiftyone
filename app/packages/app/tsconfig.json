@@ -1,19 +1,19 @@
 {
-    "compilerOptions": {
-        "target": "ES2022",
-        "noImplicitAny": false,
-        "sourceMap": true,
-        "outDir": "dist",
-        "jsx": "preserve",
-        "types": ["vite/client"]
-    },
-    "include": ["index.ts"],
-    "references": [
-        { "path": "../components" },
-        { "path": "../flashlight" },
-        { "path": "../looker" },
-        { "path": "../map" },
-        { "path": "../state" },
-        { "path": "../utilities" }
-    ]
+  "compilerOptions": {
+    "target": "ES2022",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "outDir": "dist",
+    "jsx": "preserve",
+    "types": ["vite/client"]
+  },
+  "include": ["index.ts"],
+  "references": [
+    { "path": "../components" },
+    { "path": "../flashlight" },
+    { "path": "../looker" },
+    { "path": "../map" },
+    { "path": "../state" },
+    { "path": "../utilities" }
+  ]
 }

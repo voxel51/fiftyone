@@ -45,10 +45,3 @@ repos:
         language: system
         types: [text]
         files: "^app\\/packages\\/(app|spotlight)\\/.*\\.(css|html|json|md|ts)$"
-  - repo: local
-    hooks:
-      - id: frontend-tests
-        name: yarn test
-        entry: cd app && yarn test
-        language: system
-        types: [text]
