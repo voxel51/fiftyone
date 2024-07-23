@@ -44,7 +44,7 @@ repos:
         entry: npx biome check --apply --files-ignore-unknown=true --no-errors-on-unmatched
         language: system
         types: [text]
-        files: "^app\\/packages\\/spotlight\\/.*\\.(css|html|json|md|ts)$"
+        files: "^app\\/packages\\/(app|spotlight)\\/.*\\.(css|html|json|md|ts)$"
   - repo: local
     hooks:
       - id: frontend-tests

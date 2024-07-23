@@ -8,10 +8,9 @@ const DatasetLink: React.FC<{ value: string; className?: string }> = ({
   value,
 }) => {
   return (
-    // biome-ignore lint/a11y/useValidAnchor: fixme
-    <a className={className} title={value}>
+    <span className={className} title={value}>
       {value}
-    </a>
+    </span>
   );
 };
 
