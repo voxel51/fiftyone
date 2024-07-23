@@ -20,6 +20,16 @@ import { PolyLineProps, Polyline } from "./polyline";
 import { folder, useControls } from "leva";
 import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
 import { PANEL_ORDER_LABELS } from "../constants";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { ReactThreeFiber } from "@react-three/fiber";
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      lineMaterial: ReactThreeFiber.Node<LineMaterial, typeof LineMaterial>;
+    }
+  }
+}
 
 export interface ThreeDLabelsProps {
   sampleMap: Record<string, any>;
@@ -51,7 +61,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     cuboidLineWidget: {
       value: cuboidLineWidth,
       min: 0,
-      max: 16,
+      max: 20,
       step: 1,
       label: `Cuboid Line Width`,
       onChange: (value: number) => {
@@ -61,7 +71,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     polylineLineWidget: {
       value: polylineWidth,
       min: 0,
-      max: 16,
+      max: 20,
       step: 1,
       label: `Polyline Line Width`,
       onChange: (value: number) => {
