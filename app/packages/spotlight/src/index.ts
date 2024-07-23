@@ -24,7 +24,7 @@ import { Section } from "./section";
 import { create } from "./utilities";
 
 export { Load, RowChange } from "./events";
-export type * from "./types";
+export * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
   readonly #config: SpotlightConfig<K, V>;
