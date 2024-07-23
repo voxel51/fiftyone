@@ -7,6 +7,7 @@ import {
   isModalActive,
   theme,
   themeConfig,
+  useSetExpandedSample,
   useSetModalState,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
@@ -58,6 +59,7 @@ const Renderer = () => {
   const router = useRouterContext();
   const [ready, setReady] = useState(false);
   const setModalState = useSetModalState();
+  const setExpansion = useSetExpandedSample();
 
   const apply = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
@@ -69,10 +71,12 @@ const Renderer = () => {
   );
 
   const init = useCallback(
-    (result: Entry<Queries>) => {
-      setModalState().then(() => apply(result));
+    async (result: Entry<Queries>) => {
+      await setModalState();
+      await setExpansion();
+      apply(result);
     },
-    [apply, setModalState]
+    [apply, setExpansion, setModalState]
   );
 
   useEffect(() => {

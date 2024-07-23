@@ -1,16 +1,16 @@
-import { Setter } from "@fiftyone/relay";
+import type { Setter } from "@fiftyone/relay";
 import {
-  Session,
+  type Session,
   snackbarErrors,
   stateSubscription,
   useSessionSetter,
 } from "@fiftyone/state";
-import { MutableRefObject, useMemo } from "react";
-import { Environment } from "react-relay";
+import { type MutableRefObject, useMemo } from "react";
+import type { Environment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { pendingEntry } from "../Renderer";
-import { Queries } from "../makeRoutes";
-import { RoutingContext } from "../routing";
+import type { Queries } from "../makeRoutes";
+import type { RoutingContext } from "../routing";
 import { REGISTERED_SETTERS } from "./registerSetter";
 
 const useSetters = (
@@ -44,7 +44,7 @@ const useSetters = (
     });
 
     return setters;
-  }, [environment, handleError, router, sessionRef, subscription]);
+  }, [environment, handleError, router, sessionRef, setter, subscription]);
 };
 
 export default useSetters;

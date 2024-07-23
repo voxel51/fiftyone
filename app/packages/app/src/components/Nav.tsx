@@ -21,9 +21,9 @@ import { graphql } from "relay-runtime";
 import gaConfig from "../ga";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
-import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
-import { NavFragment$key } from "./__generated__/NavFragment.graphql";
-import { NavGA$key } from "./__generated__/NavGA.graphql";
+import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
+import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
+import type { NavGA$key } from "./__generated__/NavGA.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -98,7 +98,7 @@ export const useGA = (fragment: NavGA$key) => {
         checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-  }, []);
+  }, [info]);
 };
 
 const Nav: React.FC<{
@@ -127,11 +127,11 @@ const Nav: React.FC<{
       navChildren={<DatasetSelector useSearch={useSearch} />}
     >
       {hasDataset && (
-        <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+        <Suspense fallback={<div style={{ flex: 1 }} />}>
           <ViewBar />
         </Suspense>
       )}
-      {!hasDataset && <div style={{ flex: 1 }}></div>}
+      {!hasDataset && <div style={{ flex: 1 }} />}
       <div className={iconContainer}>
         <Teams />
         <IconButton

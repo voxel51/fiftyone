@@ -1,7 +1,7 @@
 import { rollbackViewBar } from "@fiftyone/core";
-import { setView, setViewMutation } from "@fiftyone/relay";
+import { setView, type setViewMutation } from "@fiftyone/relay";
 import {
-  State,
+  type State,
   datasetName,
   stateSubscription,
   viewStateForm_INTERNAL,
@@ -10,12 +10,13 @@ import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
   ({ environment, handleError, router, sessionRef }) =>
-  ({ get, set }, view: State.Stage[]) => {
+  ({ get, set }, value: State.Stage[]) => {
     set(pendingEntry, true);
+    let view = value;
     if (view instanceof DefaultValue) {
       view = [];
     }

@@ -4,7 +4,7 @@ import {
   savedLookerOptions,
   similaritySorting,
 } from "@fiftyone/state";
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetSimilarityParameters: RegisteredSetter =
   ({ router, sessionRef }) =>

@@ -3,10 +3,10 @@ import { RelayEnvironmentKey } from "@fiftyone/state";
 import React from "react";
 import { RelayEnvironmentProvider } from "react-relay";
 import { RecoilRelayEnvironment } from "recoil-relay";
-import { IEnvironment } from "relay-runtime";
+import type { IEnvironment } from "relay-runtime";
 import Sync from "./Sync";
-import { Queries } from "./makeRoutes";
-import { Renderer, RouterContext, RoutingContext } from "./routing";
+import type { Queries } from "./makeRoutes";
+import { Renderer, RouterContext, type RoutingContext } from "./routing";
 
 const Network: React.FC<{
   environment: IEnvironment;

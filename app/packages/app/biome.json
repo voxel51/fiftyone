@@ -1,0 +1,8 @@
+{
+    "files": {
+        "ignore": ["./src/**/*.graphql.ts"]
+    },
+    "javascript": {
+        "jsxRuntime": "reactClassic"
+    }
+}

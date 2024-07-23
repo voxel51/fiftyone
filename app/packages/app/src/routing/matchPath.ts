@@ -1,19 +1,21 @@
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import type { ModalSelector, State } from "@fiftyone/state";
-import { Key, pathToRegexp } from "path-to-regexp";
+import { type Key, pathToRegexp } from "path-to-regexp";
 import type { OperationType, VariablesOf } from "relay-runtime";
 
-interface StringKey extends Key {
-  name: string;
+interface StringKey<T extends OperationType> extends Key {
+  name: Exclude<keyof LocationState<T>, symbol | number>;
 }
 
-interface CompilePathResult {
+interface CompilePathResult<T extends OperationType> {
   regexp: RegExp;
-  keys: StringKey[];
+  keys: StringKey<T>[];
 }
 
-const compilePath = (path: string): CompilePathResult => {
-  const keys: StringKey[] = [];
+const compilePath = <T extends OperationType>(
+  path: string
+): CompilePathResult<T> => {
+  const keys: StringKey<T>[] = [];
   const regexp = pathToRegexp(path, keys, {
     end: true,
     strict: false,
@@ -61,32 +63,34 @@ export const matchPath = <T extends OperationType>(
 
   const proxy = decodeURIComponent(params.get("proxy") || "");
 
+  let pathResult = pathname;
   if (proxy) {
-    pathname = `/${pathname.slice(proxy.length)}`.replace("//", "/");
+    pathResult = `/${pathname.slice(proxy.length)}`.replace("//", "/");
   }
 
   const { regexp, keys } = compilePath(path);
-  const match = regexp.exec(pathname);
+  const match = regexp.exec(pathResult);
 
   if (!match) return null;
   const [url, ...values] = match;
 
-  let all = keys.reduce((acc, key, i) => {
-    return { ...acc, [key.name]: decodeURIComponent(values[i]) };
-  }, state);
+  const all = new Map(Object.entries(state));
 
-  Object.entries(searchParams).forEach(([param, variable]) => {
+  for (const i in keys) {
+    all.set(keys[i].name, decodeURIComponent(values[i]));
+  }
+
+  for (const [param, variable] of Object.entries(searchParams)) {
     if (params.has(param)) {
-      all = {
-        ...all,
-        [variable]: decodeURIComponent(params.get(param) || ""),
-      };
+      all.set(variable, decodeURIComponent(params.get(param) || ""));
     }
-  });
+  }
+
+  const result: LocationState<T> = Object.fromEntries(all.entries());
 
   return {
     path,
     url: path === "/" && url === "" ? "/" : url,
-    variables: transform ? transform(state, all) : all,
+    variables: transform ? transform(state, result) : result,
   };
 };

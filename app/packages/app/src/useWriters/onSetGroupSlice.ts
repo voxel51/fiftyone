@@ -1,4 +1,4 @@
-import { setGroupSlice, setGroupSliceMutation } from "@fiftyone/relay";
+import { setGroupSlice, type setGroupSliceMutation } from "@fiftyone/relay";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 

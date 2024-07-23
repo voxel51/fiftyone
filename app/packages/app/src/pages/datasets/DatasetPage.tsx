@@ -11,9 +11,9 @@ import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
-import { Route } from "../../routing";
+import type { Route } from "../../routing";
 import style from "../index.module.css";
-import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(

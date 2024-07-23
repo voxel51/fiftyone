@@ -3,30 +3,38 @@ import { usePlugins } from "@fiftyone/plugins";
 import {
   Writer,
   setDataset,
-  setDatasetMutation,
+  type setDatasetMutation,
   setGroupSlice,
-  setGroupSliceMutation,
+  type setGroupSliceMutation,
   setSample,
-  setSampleMutation,
+  type setSampleMutation,
   setSpaces,
-  setSpacesMutation,
+  type setSpacesMutation,
   setView,
-  setViewMutation,
+  type setViewMutation,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { SESSION_DEFAULT, Session, stateSubscription } from "@fiftyone/state";
-import { Action } from "history";
+import {
+  SESSION_DEFAULT,
+  type Session,
+  stateSubscription,
+} from "@fiftyone/state";
+import type { Action } from "history";
 import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { Environment, OperationType, commitMutation } from "relay-runtime";
-import Setup from "./components/Setup";
-import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import {
+  type Environment,
+  type OperationType,
+  commitMutation,
+} from "relay-runtime";
+import Setup from "./components/Setup";
+import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import type {
   DatasetPageQuery,
   DatasetPageQuery$data,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { Entry, useRouterContext } from "./routing";
+import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";

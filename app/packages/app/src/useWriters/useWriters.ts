@@ -1,9 +1,9 @@
-import { Session, useSession } from "@fiftyone/state";
+import { type Session, useSession } from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
-import { MutableRefObject } from "react";
-import { Environment } from "react-relay";
-import { Queries } from "../makeRoutes";
-import { RoutingContext } from "../routing";
+import type { MutableRefObject } from "react";
+import type { Environment } from "react-relay";
+import type { Queries } from "../makeRoutes";
+import type { RoutingContext } from "../routing";
 import { REGISTERED_WRITERS } from "./registerWriter";
 
 const useWriters = (
