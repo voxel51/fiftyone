@@ -8,9 +8,11 @@
         "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
         "dev": "vite",
         "build": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python",
+        "build:win32": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python:win32",
         "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build",
         "build-desktop": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build --mode desktop",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
+        "copy-to-python:win32": "robocopy './dist' '../../../fiftyone/server/static' /MIR",
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
     },
     "dependencies": {

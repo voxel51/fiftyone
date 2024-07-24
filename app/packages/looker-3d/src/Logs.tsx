@@ -13,7 +13,7 @@ const LogContainer = styled.div`
   margin-left: 0.25em;
   display: flex;
   align-content: center;
-  overflow: scroll;
+  overflow: hidden;
   align-items: center;
 `;
 

@@ -234,7 +234,15 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          fontSize: "1rem",
+        },
+      },
+    },
   },
+
   fontFamily: {
     body: "Palanquin, sans-serif",
   },
