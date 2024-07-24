@@ -19,7 +19,7 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
-from fiftyone.core.readonly import mutates_data
+from fiftyone.internal.dataset_permissions import requires_can_edit
 import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.odm as foo
@@ -203,7 +203,7 @@ class FramesView(fov.DatasetView):
             tags, frame_field, ids=ids, label_ids=label_ids
         )
 
-    @mutates_data
+    @requires_can_edit
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
@@ -218,14 +218,14 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
         self._sync_source_field_schema(field_name)
 
-    @mutates_data
+    @requires_can_edit
     def set_label_values(self, field_name, *args, **kwargs):
         super().set_label_values(field_name, *args, **kwargs)
 
         frame_field = self._source_collection._FRAMES_PREFIX + field_name
         self._source_collection.set_label_values(frame_field, *args, **kwargs)
 
-    @mutates_data
+    @requires_can_edit
     def save(self, fields=None):
         """Saves the frames in this view to the underlying dataset.
 
@@ -251,7 +251,7 @@ class FramesView(fov.DatasetView):
 
         self._sync_source(fields=fields)
 
-    @mutates_data
+    @requires_can_edit
     def keep(self):
         """Deletes all frames that are **not** in this view from the underlying
         dataset.
@@ -269,7 +269,7 @@ class FramesView(fov.DatasetView):
 
         super().keep()
 
-    @mutates_data
+    @requires_can_edit
     def keep_fields(self):
         """Deletes any sample fields that have been excluded in this view from
         the frames of the underlying dataset.

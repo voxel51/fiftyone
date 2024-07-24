@@ -14,8 +14,9 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 from fiftyone.core.singletons import DocumentSingleton
+
+from fiftyone.internal.dataset_permissions import requires_can_edit
 
 
 class _Document(object):
@@ -97,6 +98,11 @@ class _Document(object):
         return getattr(self._dataset, "_readonly", False)
 
     @property
+    def _permission(self):
+        """Permission concern to be enforced for this document"""
+        return getattr(self._dataset, "_permission", None)
+
+    @property
     def in_dataset(self):
         """Whether the document has been added to a dataset."""
         return self.dataset is not None
@@ -175,7 +181,7 @@ class _Document(object):
 
         return value
 
-    @mutates_data
+    @requires_can_edit
     def set_field(
         self,
         field_name,
@@ -206,7 +212,7 @@ class _Document(object):
             dynamic=dynamic,
         )
 
-    @mutates_data
+    @requires_can_edit
     def update_fields(
         self,
         fields_dict,
@@ -238,7 +244,7 @@ class _Document(object):
                 dynamic=dynamic,
             )
 
-    @mutates_data
+    @requires_can_edit
     def clear_field(self, field_name):
         """Clears the value of a field of the document.
 
@@ -275,7 +281,7 @@ class _Document(object):
                     if isinstance(_value, fol.Label):
                         yield name + "." + _name, _value
 
-    @mutates_data
+    @requires_can_edit
     def merge(
         self,
         document,
@@ -445,7 +451,7 @@ class _Document(object):
         """
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
-    @mutates_data
+    @requires_can_edit
     def save(self):
         """Saves the document to the database."""
         self._save()
@@ -762,7 +768,7 @@ class DocumentView(_Document):
 
         return super().get_field(field_name)
 
-    @mutates_data
+    @requires_can_edit
     def set_field(
         self,
         field_name,
@@ -798,7 +804,7 @@ class DocumentView(_Document):
             if self._excluded_fields is not None:
                 self._excluded_fields.discard(field_name)
 
-    @mutates_data
+    @requires_can_edit
     def clear_field(self, field_name):
         # Ensures field exists
         _ = self.get_field(field_name)
@@ -844,7 +850,7 @@ class DocumentView(_Document):
             **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
-    @mutates_data
+    @requires_can_edit
     def save(self):
         """Saves the document view to the database."""
         self._save()

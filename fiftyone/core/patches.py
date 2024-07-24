@@ -18,10 +18,11 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
+
+from fiftyone.internal.dataset_permissions import requires_can_edit
 
 
 _PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
@@ -225,7 +226,7 @@ class _PatchesView(fov.DatasetView):
 
         return zip(*id_map.items())
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -242,7 +243,7 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_field(field, ids=ids)
         self._sync_source_field_schema(field_name)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -258,7 +259,7 @@ class _PatchesView(fov.DatasetView):
                 _field_name, *args, **kwargs
             )
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
 
@@ -290,7 +291,7 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source_root(fields)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep(self):
         """Deletes all patches that are **not** in this view from the
         underlying dataset.
@@ -308,7 +309,7 @@ class _PatchesView(fov.DatasetView):
 
         super().keep()
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep_fields(self):
         """Deletes all patch field(s) that have been excluded from this view
         from the underlying dataset.

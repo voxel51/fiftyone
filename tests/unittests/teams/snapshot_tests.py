@@ -13,10 +13,9 @@ import bson
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-
-from decorators import drop_datasets
-from fiftyone.core.readonly import ReadOnlyObjectException
 import fiftyone.core.runs as focr
+
+from fiftyone.internal.dataset_permissions import ReadOnlyObjectException
 
 
 class DatasetSnapshotTests(unittest.TestCase):
@@ -32,8 +31,8 @@ class DatasetSnapshotTests(unittest.TestCase):
         # </snapshotMagic>
         return _internal_snapshot_name
 
-    @drop_datasets
     def test_dataset_snapshots(self):
+        fo.delete_non_persistent_datasets()
         dataset_name = self.test_dataset_snapshots.__name__
         snapshot_name = "my-snapshot"
         fo.Dataset(dataset_name)
@@ -133,8 +132,8 @@ class DatasetSnapshotTests(unittest.TestCase):
                 unittest.mock.Mock(),
             )
 
-    @drop_datasets
     def test_snapshot_is_readonly(self):
+        fo.delete_non_persistent_datasets()
         dataset_name = self.test_dataset_snapshots.__name__
         snapshot_name = "my-snapshot"
         head_dataset = fo.Dataset(dataset_name)
@@ -513,8 +512,8 @@ class DatasetSnapshotTests(unittest.TestCase):
         ]
         self._assert_funcs_readonly(trajs_mutators, trajs)
 
-    @drop_datasets
     def test_snapshot_patches_is_readonly(self):
+        fo.delete_non_persistent_datasets()
         dataset_name = self.test_dataset_snapshots.__name__
         snapshot_name = "my-snapshot"
         head_dataset = fo.Dataset(dataset_name)

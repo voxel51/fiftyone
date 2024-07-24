@@ -12,6 +12,7 @@ import requests
 from aiohttp.http_exceptions import InvalidHeader
 
 from fiftyone.internal.util import has_encryption_key
+from fiftyone.internal import context_vars as fo_context_vars
 
 
 async def make_request(url, access_token, query, variables=None):
@@ -49,7 +50,13 @@ def _prepare_headers(access_token):
         "Content-Type": "application/json",
     }
     if access_token:
+        # Explicit access token passed
         headers["Authorization"] = access_token
+    elif fo_context_vars.running_user_request_token.get():
+        # Access token is in contextvars.Context
+        headers[
+            "Authorization"
+        ] = fo_context_vars.running_user_request_token.get()
     else:
         # If no access token is provided, we can try to authenticate with
         # an api key, but the client must be configured as an internal

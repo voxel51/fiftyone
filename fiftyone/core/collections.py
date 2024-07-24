@@ -38,11 +38,15 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+
+from fiftyone.internal.dataset_permissions import (
+    requires_can_edit,
+    requires_can_tag,
+)
 
 fo = fou.lazy_import("fiftyone")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -356,7 +360,7 @@ class SaveContext(object):
             By default, ``fo.config.default_batcher`` is used
     """
 
-    @mutates_data(data_obj_param="sample_collection")
+    @requires_can_edit(data_obj_param="sample_collection")
     def __init__(
         self,
         sample_collection,
@@ -520,6 +524,11 @@ class SampleCollection(object):
     def _readonly(self):
         """Whether this collection is read-only."""
         return self._dataset._readonly
+
+    @property
+    def _permission(self):
+        """Permission concern to be enforced for this collection"""
+        return self._dataset._permission
 
     @property
     def _is_generated(self):
@@ -1333,7 +1342,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    @mutates_data
+    @requires_can_edit
     def save_context(self, batch_size=None, batching_strategy=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
@@ -1982,7 +1991,7 @@ class SampleCollection(object):
                 "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
 
-    @mutates_data
+    @requires_can_tag
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
@@ -2018,7 +2027,7 @@ class SampleCollection(object):
             else:
                 raise e
 
-    @mutates_data
+    @requires_can_tag
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
@@ -2056,7 +2065,7 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
-    @mutates_data
+    @requires_can_tag
     def tag_labels(self, tags, label_fields=None):
         """Adds the tag(s) to all labels in the specified label field(s) of
         this collection, if necessary.
@@ -2113,7 +2122,7 @@ class SampleCollection(object):
             else:
                 raise e
 
-    @mutates_data
+    @requires_can_tag
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
@@ -2325,7 +2334,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
-    @mutates_data
+    @requires_can_edit
     def split_labels(self, in_field, out_field, filter=None):
         """Splits the labels from the given input field into the given output
         field of the collection.
@@ -2354,7 +2363,7 @@ class SampleCollection(object):
 
         move_view.merge_labels(in_field, out_field)
 
-    @mutates_data
+    @requires_can_edit
     def merge_labels(self, in_field, out_field):
         """Merges the labels from the given input field into the given output
         field of the collection.
@@ -2394,7 +2403,7 @@ class SampleCollection(object):
         else:
             dataset.delete_labels(ids=del_ids, fields=in_field)
 
-    @mutates_data
+    @requires_can_edit
     def set_values(
         self,
         field_name,
@@ -2707,7 +2716,7 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset.save()
 
-    @mutates_data
+    @requires_can_edit
     def set_label_values(
         self,
         field_name,
@@ -3599,7 +3608,7 @@ class SampleCollection(object):
 
                 sample_paths.extend(asset_paths)
 
-    @mutates_data
+    @requires_can_edit
     def apply_model(
         self,
         model,
@@ -3675,7 +3684,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data(condition_param="embeddings_field")
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_embeddings(
         self,
         model,
@@ -3754,7 +3763,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data(condition_param="embeddings_field")
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_patch_embeddings(
         self,
         model,
@@ -3856,7 +3865,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_regressions(
         self,
         pred_field,
@@ -3924,7 +3933,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_classifications(
         self,
         pred_field,
@@ -4003,7 +4012,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_detections(
         self,
         pred_field,
@@ -4137,7 +4146,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_segmentations(
         self,
         pred_field,
@@ -4259,7 +4268,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
 
@@ -4317,7 +4326,7 @@ class SampleCollection(object):
             self, eval_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_evaluation(self, eval_key):
         """Deletes the evaluation results associated with the given evaluation
         key from this collection.
@@ -4327,7 +4336,7 @@ class SampleCollection(object):
         """
         foev.EvaluationMethod.delete_run(self, eval_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
@@ -4370,7 +4379,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
 
@@ -4430,7 +4439,7 @@ class SampleCollection(object):
             self, brain_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_brain_run(self, brain_key):
         """Deletes the brain method run with the given key from this
         collection.
@@ -4440,7 +4449,7 @@ class SampleCollection(object):
         """
         fob.BrainMethod.delete_run(self, brain_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
@@ -7331,7 +7340,7 @@ class SampleCollection(object):
             )
         )
 
-    @mutates_data(condition_param="dist_field")
+    @requires_can_edit(condition_param="dist_field")
     @view_stage
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
@@ -7736,7 +7745,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
-    @mutates_data(condition_param="sample_frames")
+    @requires_can_edit(condition_param="sample_frames")
     @view_stage
     def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
@@ -9367,7 +9376,7 @@ class SampleCollection(object):
             if tmp_dir is not None:
                 etau.delete_dir(tmp_dir)
 
-    @mutates_data
+    @requires_can_edit
     def annotate(
         self,
         anno_key,
@@ -9557,7 +9566,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
 
@@ -9623,7 +9632,7 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def load_annotations(
         self,
         anno_key,
@@ -9679,7 +9688,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
 
@@ -9696,7 +9705,7 @@ class SampleCollection(object):
         """
         foan.AnnotationMethod.delete_run(self, anno_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
 
@@ -9759,6 +9768,8 @@ class SampleCollection(object):
         return index_info
 
     # Indexes don't count as mutation because they only exist in-memory
+    #   But non-editors shouldn't be allowed to create.
+    @requires_can_edit(enforce_readonly=False)
     def create_index(self, field_or_spec, unique=False, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
@@ -9885,7 +9896,9 @@ class SampleCollection(object):
 
         return name
 
-    # Indexes don't count as mutation because they only exist in-memory
+    # Indexes don't count as mutation because they only exist in-memory.
+    #   But non-editors shouldn't be allowed to drop.
+    @requires_can_edit(enforce_readonly=False)
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name.
 
