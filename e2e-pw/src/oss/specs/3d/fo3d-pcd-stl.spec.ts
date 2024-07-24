@@ -83,5 +83,7 @@ test.describe("fo3d", () => {
       mask,
       animations: "allow",
     });
+
+    await modal.assert.verifyLevaFolders(["stl", "pcd"]);
   });
 });
