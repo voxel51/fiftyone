@@ -6,18 +6,9 @@ import { polylineLabelLineWidthAtom } from "../state";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
-import { extend, ReactThreeFiber } from "@react-three/fiber";
+import { extend } from "@react-three/fiber";
 
 extend({ Line2, LineMaterial, LineGeometry });
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      line2: ReactThreeFiber.Node<Line2, typeof Line2>;
-      lineGeometry: ReactThreeFiber.Node<LineGeometry, typeof LineGeometry>;
-    }
-  }
-}
 
 interface LineProps extends OverlayProps {
   points: THREE.Vector3Tuple[];
@@ -50,6 +41,7 @@ export const Line = ({
   const geometry = React.useMemo(() => {
     return new LineGeometry().fromLine(new THREE.Line(geo));
   }, [geo]);
+
   const material = React.useMemo(() => {
     return new LineMaterial({
       color: color,

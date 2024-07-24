@@ -7,21 +7,9 @@ import { OverlayProps } from "./shared";
 import { useCursor } from "@react-three/drei";
 import { useRecoilState } from "recoil";
 import { cuboidLabelLineWidthAtom } from "../state";
-import { extend, ReactThreeFiber } from "@react-three/fiber";
+import { extend } from "@react-three/fiber";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      lineSegments2: ReactThreeFiber.Node<LineSegments2, typeof LineSegments2>;
-      lineSegmentsGeometry: ReactThreeFiber.Node<
-        LineSegmentsGeometry,
-        typeof LineSegmentsGeometry
-      >;
-    }
-  }
-}
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
@@ -77,6 +65,7 @@ export const Cuboid = ({
       new THREE.LineSegments(new THREE.EdgesGeometry(geo))
     );
   }, [geo]);
+
   const material = useMemo(
     () =>
       new LineMaterial({
@@ -89,6 +78,7 @@ export const Cuboid = ({
   );
 
   if (!location || !dimensions) return null;
+
   return (
     <group
       onPointerOver={() => setIsCuboidHovered(true)}
