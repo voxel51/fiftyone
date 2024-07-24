@@ -10,6 +10,7 @@ import logging
 import multiprocessing
 import os
 from importlib import metadata
+
 import pytz
 
 import eta
@@ -262,6 +263,12 @@ class FiftyOneConfig(EnvConfig):
             "max_process_pool_workers",
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
+        )
+        self.signed_url_cache_size = self.parse_int(
+            d,
+            "signed_url_cache_size",
+            env_var="FIFTYONE_SIGNED_URL_CACHE_SIZE",
+            default=1000,
         )
         self.signed_url_expiration = self.parse_int(
             d,
