@@ -199,7 +199,7 @@ class PanelRefData(PanelRefBase):
     Class representing the data of a panel.
     """
 
-    def set(self, key, value):
+    def set(self, key, value, _exec_op=True):
         """
         Sets the data of the panel.
 
@@ -210,7 +210,8 @@ class PanelRefData(PanelRefBase):
         super().set(key, value)
         args = {}
         pydash.set_(args, key, value)
-        self._ctx.ops.patch_panel_data(args)
+        if _exec_op:
+            self._ctx.ops.patch_panel_data(args)
 
     def get(self, key, default=None):
         raise WriteOnlyError("Panel data is write-only")
@@ -278,10 +279,21 @@ class PanelRef:
         Sets the data of the panel.
 
         Args:
-            key (str): The data key.
+            path (str): The dot delimited path to set.
             value (any): The data value.
         """
         self._data.set(key, value)
+
+    def batch_set_data(self, data):
+        """
+        Sets multiple data values by path.
+
+        Args:
+            data (dict): A dictionary of key-value pairs. Where the key is the path and the value is the data value.
+        """
+        for key, value in data.items():
+            self._data.set(key, value, _exec_op=False)
+        self._ctx.ops.patch_panel_data(data)
 
     def set_title(self, title):
         """
