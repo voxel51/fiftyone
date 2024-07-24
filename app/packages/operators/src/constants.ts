@@ -7,9 +7,11 @@ export enum OPERATOR_PROMPT_AREAS {
   DRAWER_LEFT = "operator_prompt_area_drawer_left",
   DRAWER_RIGHT = "operator_prompt_area_drawer_right",
 }
+export const PANEL_LOAD_TIMEOUT = 5000;
 export enum QueueItemStatus {
   Pending,
   Executing,
   Completed,
   Failed,
 }
+export const PANEL_STATE_CHANGE_DEBOUNCE = 500;

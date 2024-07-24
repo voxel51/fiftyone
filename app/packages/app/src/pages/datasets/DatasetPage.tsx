@@ -104,8 +104,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const isEmpty = count === 0;
 
   return (
-    <>
-      <Nav fragment={data} hasDataset={!isEmpty} />
+    <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
@@ -117,7 +116,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
         )}
       </div>
       <Snackbar />
-    </>
+    </Nav>
   );
 };
 

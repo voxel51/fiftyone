@@ -1,7 +1,10 @@
 import {
   Layout,
   SpaceNode,
+  usePanelState,
+  usePanelTitle,
   usePanels,
+  useSetPanelStateById,
   useSpaceNodes,
   useSpaces,
 } from "@fiftyone/spaces";
@@ -11,18 +14,23 @@ import * as types from "./types";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
-import { useSetRecoilState } from "recoil";
+import { merge } from "lodash";
+import { useSetRecoilState, useRecoilCallback } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
+import registerPanel from "./Panel/register";
 import {
   ExecutionContext,
   Operator,
   OperatorConfig,
+  OperatorResult,
   _registerBuiltInOperator,
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
+import usePanelEvent from "./usePanelEvent";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 //
 // BUILT-IN OPERATORS
@@ -130,6 +138,10 @@ class OpenPanel extends Operator {
       default: true,
     });
     inputs.enum("layout", ["horizontal", "vertical"]);
+    inputs.bool("force", {
+      label: "Force (skips panel exists check)",
+      default: false,
+    });
     return new types.Property(inputs);
   }
   useHooks() {
@@ -152,15 +164,18 @@ class OpenPanel extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext) {
     const { spaces, openedPanels, availablePanels } = hooks;
-    const { name, isActive, layout } = params;
+    const { name, isActive, layout, force, forceDuplicate } = params;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       return console.error("No panel container found");
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
     const panel = availablePanels.find((panel) => name === panel.name);
-    if (!panel) return console.warn(`Panel with name ${name} does not exist`);
-    const allowDuplicate = panel?.panelOptions?.allowDuplicates;
+    if (!panel && !force)
+      return console.warn(`Panel with name ${name} does not exist`);
+    const allowDuplicate = force
+      ? Boolean(forceDuplicate)
+      : panel?.panelOptions?.allowDuplicates;
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
       return;
@@ -310,7 +325,6 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
-      unlisted: true,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -766,7 +780,11 @@ class ClearSelectedLabels extends Operator {
 
 class SetSpaces extends Operator {
   get config(): OperatorConfig {
-    return new OperatorConfig({ name: "set_spaces", label: "Set spaces" });
+    return new OperatorConfig({
+      name: "set_spaces",
+      label: "Set spaces",
+      unlisted: true,
+    });
   }
   useHooks() {
     const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
@@ -781,6 +799,401 @@ class SetSpaces extends Operator {
     } else {
       throw new Error('Param "spaces" or "name" is required to set a space');
     }
+  }
+}
+
+class ClearPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_panel_state",
+      label: "Clear panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", clear: true });
+  }
+}
+
+class ClearPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "clear_panel_data",
+      label: "Clear panel data",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", clear: true });
+  }
+}
+
+class SetPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_state",
+      label: "Set panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state" });
+  }
+}
+
+class SetPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_data",
+      label: "Set panel data",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data" });
+  }
+}
+
+class PatchPanelData extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "patch_panel_data",
+      label: "Patch panel data",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", patch: true });
+  }
+}
+
+function useUpdatePanelStatePartial(local?: boolean) {
+  const setPanelStateById = useSetPanelStateById(local);
+  return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
+    targetParam = targetParam || targetPartial;
+    setTimeout(() => {
+      setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
+        const currentCustomPanelState = current?.[targetPartial] || {};
+        let updatedState;
+        const param = ctx.params[targetParam];
+        if (patch) {
+          updatedState = merge({}, currentCustomPanelState, param);
+        } else if (clear) {
+          updatedState = {};
+        } else {
+          updatedState = param;
+        }
+
+        return { ...current, [targetPartial]: updatedState };
+      });
+    }, 1);
+  };
+}
+
+class PatchPanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "patch_panel_state",
+      label: "Patch panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", patch: true });
+  }
+}
+
+function createFunctionFromSource(src) {
+  return eval(src.trim());
+}
+
+class ReducePanelState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reduce_panel_state",
+      label: "Reduce panel state",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const setPanelStateById = useSetPanelStateById();
+    return { setPanelStateById };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const actualReducer = createFunctionFromSource(ctx.params.reducer);
+    ctx.hooks.setPanelStateById(ctx.getCurrentPanelId(), (current) => {
+      return {
+        ...current,
+        state: actualReducer(current.state || {}),
+      };
+    });
+  }
+}
+
+class ShowPanelOutput extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_panel_output",
+      label: "Show panel output",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { updatePanelState: useUpdatePanelStatePartial(true) };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.updatePanelState(ctx, {
+      targetPartial: "schema",
+      targetParam: "output",
+    });
+  }
+}
+
+class RegisterPanel extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "register_panel",
+      label: "Register panel",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("panel_name", { label: "Panel name", required: true });
+    inputs.str("panel_label", { label: "Panel label", required: true });
+    inputs.str("icon", { label: "Icon" });
+    inputs.str("dark_icon", { label: "Icon for dark mode" });
+    inputs.str("light_icon", { label: "Icon for light mode" });
+    inputs.str("on_load", { label: "On load operator" });
+    inputs.str("on_change", { label: "On change operator" });
+    inputs.str("on_unload", { label: "On unload operator" });
+    inputs.bool("allow_duplicates", {
+      label: "Allow duplicates",
+      default: false,
+    });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    registerPanel(ctx);
+  }
+}
+
+class PromptUserForOperation extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "prompt_user_for_operation",
+      label: "Prompt user for operation",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("operator_uri", { label: "Operator URI", required: true });
+    inputs.obj("params", { label: "Params" });
+    inputs.str("on_success", { label: "On success" });
+    inputs.str("on_error", { label: "On error" });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    const panelId = ctx.getCurrentPanelId();
+    const [panelState] = usePanelState(panelId);
+    const triggerEvent = usePanelEvent();
+    return { triggerEvent };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { params, operator_uri, on_success, on_error } = ctx.params;
+    const { triggerEvent } = ctx.hooks;
+    const panelId = ctx.getCurrentPanelId();
+
+    triggerEvent(panelId, {
+      operator: operator_uri,
+      params,
+      prompt: true,
+      callback: (result: OperatorResult) => {
+        if (result.error) {
+          triggerEvent(panelId, {
+            operator: on_error,
+            params: { error: result.error },
+          });
+        } else {
+          triggerEvent(panelId, {
+            operator: on_success,
+            params: { result: result.result },
+          });
+        }
+      },
+    });
+  }
+}
+
+class Notify extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "notify",
+      label: "Notify",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("message", { label: "Message", required: true });
+    inputs.enum("variant", ["info", "success", "warning", "error"], {
+      label: "Variant",
+      default: "info",
+    });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return { notify: fos.useNotification() };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.notify({
+      msg: ctx.params.message,
+      variant: ctx.params.variant,
+    });
+  }
+}
+
+class SetExtendedSelection extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_extended_selection",
+      label: "Set extended selection",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      setExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      resetExtendedSelection: fos.useResetExtendedSelection(),
+    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("selection", new types.String(), {
+      label: "Selection",
+      required: false,
+    });
+    inputs.str("scope", { label: "Scope", required: false });
+    inputs.bool("clear", { label: "Clear", default: false });
+    inputs.bool("reset", { label: "Reset", default: false });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    if (ctx.params.reset) {
+      ctx.hooks.resetExtendedSelection();
+    } else if (ctx.params.clear) {
+      ctx.hooks.clearExtendedSelection();
+    } else {
+      ctx.hooks.setExtendedSelection({
+        selection: ctx.params.selection,
+        scope: ctx.params.scope,
+      });
+    }
+  }
+}
+
+export class SetActiveFields extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_active_fields",
+      label: "Set active fields",
+      unlisted: true,
+    });
+  }
+  useHooks(): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    return {
+      setActiveFields: useRecoilCallback(
+        ({ snapshot, set }) =>
+          async (fields) => {
+            const modal = !!(await snapshot.getPromise(fos.modal));
+            set(fos.activeFields({ modal }), fields);
+          }
+      ),
+    };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.list("fields", new types.String(), {
+      label: "Fields",
+      required: true,
+    });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.setActiveFields(ctx.params.fields);
+  }
+}
+
+export class TrackEvent extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "track_event",
+      label: "Track event",
+      unlisted: true,
+    });
+  }
+  useHooks(ctx: ExecutionContext): {
+    setActiveFields: (fields: string[]) => void;
+  } {
+    const trackEvent = useTrackEvent();
+    return {
+      trackEvent,
+    };
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("event", { label: "Event", required: true });
+    inputs.obj("properties", { label: "Properties" });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
+  }
+}
+
+export class SetPanelTitle extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_panel_title",
+      label: "Set panel title",
+      unlisted: true,
+    });
+  }
+  useHooks() {
+    const [_, setTitle] = usePanelTitle();
+    return { setTitle };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("id", { label: "Panel ID", required: true });
+    inputs.str("title", { label: "Title", required: true });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { title, id } = ctx.params;
+    ctx.hooks.setTitle(title, id);
   }
 }
 
@@ -814,6 +1227,21 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetSelectedLabels);
     _registerBuiltInOperator(ClearSelectedLabels);
     _registerBuiltInOperator(SetSpaces);
+    _registerBuiltInOperator(SetPanelState);
+    _registerBuiltInOperator(ClearPanelState);
+    _registerBuiltInOperator(PatchPanelState);
+    _registerBuiltInOperator(RegisterPanel);
+    _registerBuiltInOperator(ShowPanelOutput);
+    _registerBuiltInOperator(ReducePanelState);
+    _registerBuiltInOperator(SetPanelData);
+    _registerBuiltInOperator(ClearPanelData);
+    _registerBuiltInOperator(PatchPanelData);
+    _registerBuiltInOperator(PromptUserForOperation);
+    _registerBuiltInOperator(Notify);
+    _registerBuiltInOperator(SetExtendedSelection);
+    _registerBuiltInOperator(SetActiveFields);
+    _registerBuiltInOperator(TrackEvent);
+    _registerBuiltInOperator(SetPanelTitle);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

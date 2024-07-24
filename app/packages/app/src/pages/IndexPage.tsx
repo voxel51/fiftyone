@@ -27,15 +27,14 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   const totalDatasets = queryRef.allDatasets;
 
   return (
-    <>
-      <Nav fragment={queryRef} hasDataset={false} />
+    <Nav fragment={queryRef} hasDataset={false}>
       <div className={style.page} data-cy={"index-page"}>
         <Starter
           mode={totalDatasets === 0 ? "ADD_DATASET" : "SELECT_DATASET"}
         />
       </div>
       <Snackbar />
-    </>
+    </Nav>
   );
 };
 

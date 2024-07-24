@@ -7,6 +7,8 @@ import ColorModal from "./ColorModal/ColorModal";
 import { activeColorEntry } from "./ColorModal/state";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
+import EventTracker from "./EventTracker";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const Container = styled.div`
   height: 100%;
@@ -30,8 +32,10 @@ const ModalWrapper = () => {
 
 function Dataset() {
   const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
+    trackEvent("open_dataset");
     return subscribe((_, { reset }) => {
       reset(activeColorEntry);
     });
@@ -45,6 +49,7 @@ function Dataset() {
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>
+        <EventTracker />
       </Container>
     </>
   );

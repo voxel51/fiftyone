@@ -42,6 +42,7 @@ import {
   tagStatistics,
   tagStats,
 } from "./utils";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
@@ -117,7 +118,11 @@ const Section = ({
       )
     );
 
+  const trackEvent = useTrackEvent();
   const submitWrapper = (changes) => {
+    trackEvent(`tag_${labels ? "label" : "sample"}`, {
+      count,
+    });
     submit({
       changes: Object.fromEntries(
         Object.entries(changes).map(([k, v]) => [k, v === CheckState.ADD])

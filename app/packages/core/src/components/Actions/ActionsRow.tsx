@@ -49,6 +49,7 @@ import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
 import { ActionDiv } from "./utils";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -296,11 +297,13 @@ const Options = ({ modal }) => {
 };
 
 const Colors = () => {
+  const trackEvent = useTrackEvent();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [activeField, setActiveField] = useRecoilState(activeColorEntry);
 
   const onOpen = () => {
+    trackEvent("open_color_settings");
     setOpen(!open);
     setActiveField(ACTIVE_FIELD.GLOBAL);
   };

@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "noImplicitAny": false,
     "sourceMap": true,
     "outDir": "dist",
@@ -9,6 +11,7 @@
   },
   "include": ["index.ts"],
   "references": [
+    { "path": "../analytics" },
     { "path": "../components" },
     { "path": "../flashlight" },
     { "path": "../looker" },

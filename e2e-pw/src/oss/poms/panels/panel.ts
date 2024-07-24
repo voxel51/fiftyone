@@ -1,6 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 
-export type PanelName = "Samples" | "Histograms" | "Embeddings" | "OperatorIO";
+export type PanelName =
+  | "Samples"
+  | "Histograms"
+  | "Embeddings"
+  | "OperatorIO"
+  | string;
 export class PanelPom {
   readonly page: Page;
   readonly locator: Locator;
@@ -27,12 +32,16 @@ export class PanelPom {
     return this.locator.getByTitle("Close");
   }
 
-  getPanelOption(panelName: PanelName) {
-    return this.locator.getByTestId(`new-panel-option-${panelName}`);
+  getPanelOption(name: PanelName) {
+    return this.locator.getByTestId(`new-panel-option-${name}`);
   }
 
   getTab(name: PanelName) {
     return this.locator.getByTestId(`panel-tab-${name.toLocaleLowerCase()}`);
+  }
+
+  getContent(name: PanelName) {
+    return this.page.getByTestId(`panel-content-${name}`);
   }
 
   async open(panelName: PanelName) {

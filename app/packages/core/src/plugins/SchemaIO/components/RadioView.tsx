@@ -87,7 +87,7 @@ export type RadioGroupProps = {
   label?: string;
   description?: string;
   choices: Array<Choice>;
-  onChange: (path: string, value: string) => void;
+  onChange: (path: string, value: string, schema: any) => void;
   schema: any; // todo
   path: string;
   data: unknown;

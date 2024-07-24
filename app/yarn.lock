@@ -2809,11 +2809,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/analytics@*, @fiftyone/analytics@workspace:packages/analytics":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/analytics@workspace:packages/analytics"
+  dependencies:
+    "@segment/analytics-next": ^1.70.0
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@fiftyone/app@workspace:packages/app"
   dependencies:
     "@biomejs/biome": ^1.8.3
+    "@fiftyone/analytics": "*"
     "@fiftyone/components": "*"
     "@fiftyone/core": "*"
     "@fiftyone/relay": "*"
@@ -2876,6 +2885,7 @@ __metadata:
     "@types/react-syntax-highlighter": ^15.5.6
     classnames: ^2.3.1
     framer-motion: ^6.2.7
+    material-icons: ^1.13.12
     path-to-regexp: ^6.2.0
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
@@ -2978,8 +2988,7 @@ __metadata:
     "@fiftyone/plugins": "*"
     "@fiftyone/state": "*"
     "@vitest/ui": ^0.34.6
-    plotly.js: ^2.30.1
-    react-plotly.js: ^2.6.0
+    plotly.js: ^2.32.0
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
     vite: ^5.2.12
@@ -2998,6 +3007,7 @@ __metadata:
   dependencies:
     "@testing-library/react": latest
     "@testing-library/react-hooks": latest
+    "@types/react-plotly.js": ^2.6.3
     "@typescript-eslint/eslint-plugin": ^5.44.0
     "@typescript-eslint/parser": ^5.44.0
     "@vitest/coverage-v8": ^0.34.6
@@ -3013,6 +3023,8 @@ __metadata:
     jsdom: ^20.0.2
     patch-package: ^6.4.7
     prettier: ^2.8.0
+    react-player: ^2.16.0
+    react-plotly.js: ^2.6.0
     relay-compiler: ^14.1.0
     relay-runtime: ^14.1.0
     typedoc: ^0.23.21
@@ -3628,6 +3640,22 @@ __metadata:
   version: 3.4.0
   resolution: "@juggle/resize-observer@npm:3.4.0"
   checksum: 2505028c05cc2e17639fcad06218b1c4b60f932a4ebb4b41ab546ef8c157031ae377e3f560903801f6d01706dbefd4943b6c4704bf19ed86dfa1c62f1473a570
+  languageName: node
+  linkType: hard
+
+"@lukeed/csprng@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@lukeed/csprng@npm:1.1.0"
+  checksum: 926f5f7fc629470ca9a8af355bfcd0271d34535f7be3890f69902432bddc3262029bb5dbe9025542cf6c9883d878692eef2815fc2f3ba5b92e9da1f9eba2e51b
+  languageName: node
+  linkType: hard
+
+"@lukeed/uuid@npm:^2.0.0":
+  version: 2.0.1
+  resolution: "@lukeed/uuid@npm:2.0.1"
+  dependencies:
+    "@lukeed/csprng": ^1.1.0
+  checksum: f5e71e4da852dbff49b93cad27d5a2f61c2241e307bbe89b3b54b889ecb7927f2487246467f90ebb6cbdb7e0ac2a213e2e58b1182cb7990cef6e049aa7c39e7b
   languageName: node
   linkType: hard
 
@@ -4306,14 +4334,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@plotly/d3@npm:3.8.1":
-  version: 3.8.1
-  resolution: "@plotly/d3@npm:3.8.1"
-  checksum: 917e686b7cb02fd8fb16d29b477fb2736352e2fe79a6d37281da2c9cc607e5a62298cb43d41adc175209a29d6b375dbdcb02c5bee3a404ec8e343519c25268de
+"@plotly/d3@npm:3.8.2":
+  version: 3.8.2
+  resolution: "@plotly/d3@npm:3.8.2"
+  checksum: 6896f04b656a01211057853f0ceef8e834032bea8bbbe2511132d0f9ba428bc98ae5bb1041a7758e3a6cda7beb803621ce506eaf8c11b36a8278182977a4570f
   languageName: node
   linkType: hard
 
-"@plotly/mapbox-gl@npm:v1.13.4":
+"@plotly/mapbox-gl@npm:1.13.4":
   version: 1.13.4
   resolution: "@plotly/mapbox-gl@npm:1.13.4"
   dependencies:
@@ -5266,6 +5294,82 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@segment/analytics-core@npm:1.6.0":
+  version: 1.6.0
+  resolution: "@segment/analytics-core@npm:1.6.0"
+  dependencies:
+    "@lukeed/uuid": ^2.0.0
+    "@segment/analytics-generic-utils": 1.2.0
+    dset: ^3.1.2
+    tslib: ^2.4.1
+  checksum: 45f5c2688dfef558fe2fc9fe6fe13628de1ca25e7a9e408265f4255e84bdac41be7a4f65814903223402cbdebdeec6d7c321841ec0ed7464911d7f914991a8ea
+  languageName: node
+  linkType: hard
+
+"@segment/analytics-generic-utils@npm:1.2.0":
+  version: 1.2.0
+  resolution: "@segment/analytics-generic-utils@npm:1.2.0"
+  dependencies:
+    tslib: ^2.4.1
+  checksum: f36aa093722e4f51dddd4dfa37164bd082175bb0c0960096f9b03073c482e96a17012bc99782259a9d3787e52a48f03ab3447902c6c635654a8ce544892073e5
+  languageName: node
+  linkType: hard
+
+"@segment/analytics-next@npm:^1.70.0":
+  version: 1.72.1
+  resolution: "@segment/analytics-next@npm:1.72.1"
+  dependencies:
+    "@lukeed/uuid": ^2.0.0
+    "@segment/analytics-core": 1.6.0
+    "@segment/analytics-generic-utils": 1.2.0
+    "@segment/analytics.js-video-plugins": ^0.2.1
+    "@segment/facade": ^3.4.9
+    dset: ^3.1.2
+    js-cookie: 3.0.1
+    node-fetch: ^2.6.7
+    tslib: ^2.4.1
+    unfetch: ^4.1.0
+  checksum: e6b451232c62c950e67123ac8cc4b8107923f5f265bfc60ca21b3d10213283ca58ecf7bd7ef6b5d03e69c4f11310621c34e573e22eb11827f382936a29c0594b
+  languageName: node
+  linkType: hard
+
+"@segment/analytics.js-video-plugins@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "@segment/analytics.js-video-plugins@npm:0.2.1"
+  dependencies:
+    unfetch: ^3.1.1
+  checksum: 284b42bb05569366ac4a7c51c90d64bcea64315b2dd330ff8b58c63fa11949443b3d2f7e92d2e3c118495e9018352249183f7d3fb05e4b904148302536d385ba
+  languageName: node
+  linkType: hard
+
+"@segment/facade@npm:^3.4.9":
+  version: 3.4.10
+  resolution: "@segment/facade@npm:3.4.10"
+  dependencies:
+    "@segment/isodate-traverse": ^1.1.1
+    inherits: ^2.0.4
+    new-date: ^1.0.3
+    obj-case: 0.2.1
+  checksum: 5d10861f586ecebe3a71b25c9f37b3c922298188965047efcfd5b7e6f7147dc6967c3760726c43db99f33ef285191498e0726fc8d2556d5bdd82312a5f647ef2
+  languageName: node
+  linkType: hard
+
+"@segment/isodate-traverse@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@segment/isodate-traverse@npm:1.1.1"
+  dependencies:
+    "@segment/isodate": ^1.0.3
+  checksum: 06f783623c74a7a2310bdcca50355a1f7b9cbb7a1d77f0c7408def29bd0a355dbc2ff31516d025b7cd6baebfdca7d771fb62899f446366f86cd6d34cae9a7000
+  languageName: node
+  linkType: hard
+
+"@segment/isodate@npm:1.0.3, @segment/isodate@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "@segment/isodate@npm:1.0.3"
+  checksum: 31faf12e83fa6ab5ba7dfd5600dfaf8d224a00ab24f3a2d3d9ba7f4ecdc1683a55c00fc9246585361aa5cb67c6d7846e1d5497cc3bcca58c105902b79c91c34a
+  languageName: node
+  linkType: hard
+
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"
@@ -5881,6 +5985,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/plotly.js@npm:*":
+  version: 2.33.1
+  resolution: "@types/plotly.js@npm:2.33.1"
+  checksum: d333ac9eeaad6c3582b5c5255c2d501c7a23d5ba9f54837ded874cb6b4c9a4a9d98ec0357b0a5270d2e4b7664bd01eb5f6216e894145ad8ea8ce775a4c136cb0
+  languageName: node
+  linkType: hard
+
 "@types/postcss-modules-local-by-default@npm:^4.0.2":
   version: 4.0.2
   resolution: "@types/postcss-modules-local-by-default@npm:4.0.2"
@@ -5943,6 +6054,16 @@ __metadata:
     "@types/react": "*"
     "@types/viewport-mercator-project": "*"
   checksum: cd785b306211ae8d7bf1ab391f6efcfa6ccb481fa6727c4d10a7f0bfc99ba36bbc7adba2bdefc31d4d88a82b174851f346a9e92a4633c7839b1732222638bba6
+  languageName: node
+  linkType: hard
+
+"@types/react-plotly.js@npm:^2.6.3":
+  version: 2.6.3
+  resolution: "@types/react-plotly.js@npm:2.6.3"
+  dependencies:
+    "@types/plotly.js": "*"
+    "@types/react": "*"
+  checksum: 5f85a52addb7d7cccf7271e6683870018b27289faa81c1e8287f4156c2aeff4e594caa4dca1de7ad435743a8283af47b7829b2c4919457528a1bd941b67df307
   languageName: node
   linkType: hard
 
@@ -8911,7 +9032,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deepmerge@npm:^4.2.2":
+"deepmerge@npm:^4.0.0, deepmerge@npm:^4.2.2":
   version: 4.3.1
   resolution: "deepmerge@npm:4.3.1"
   checksum: 2024c6a980a1b7128084170c4cf56b0fd58a63f2da1660dcfe977415f27b17dbe5888668b59d0b063753f3220719d5e400b7f113609489c90160bb9a5518d052
@@ -9146,6 +9267,13 @@ __metadata:
     abs-svg-path: ~0.1.1
     normalize-svg-path: ~0.1.0
   checksum: d1f6b7979193d3989bccc330ee9bf96219df7a1c5925066b4b14a98177c9def1ef5cdaf50b453c13fc7f73c3d06ebd850c3b662143982f33c6061d127f599015
+  languageName: node
+  linkType: hard
+
+"dset@npm:^3.1.2":
+  version: 3.1.3
+  resolution: "dset@npm:3.1.3"
+  checksum: 5db964a36c60c51aa3f7088bfe1dc5c0eedd9a6ef3b216935bb70ef4a7b8fc40fd2f9bb16b9a4692c9c9772cea60cfefb108d2d09fbd53c85ea8f6cd54502d6a
   languageName: node
   linkType: hard
 
@@ -10806,9 +10934,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"gl-text@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "gl-text@npm:1.3.1"
+"gl-text@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "gl-text@npm:1.4.0"
   dependencies:
     bit-twiddle: ^1.0.2
     color-normalize: ^1.5.0
@@ -10827,7 +10955,7 @@ __metadata:
     regl: ^2.0.0
     to-px: ^1.0.1
     typedarray-pool: ^1.1.0
-  checksum: fb78872ba09eee6bfc5a2b96074a037428b739cc91d6bb6db933bfe5a75e2fc52244fa7d779f9b25c42231b0765ba24eaf75dd7f63122f4a981fed448bc556be
+  checksum: d728b89481dca5e7edc5993dcf0f3894eac362c704d489583da096d08d18a844fe9195fd094e97a9bc545f8ef0dac8037d8c8f7d46e7cf6faebcdf3f746d442f
   languageName: node
   linkType: hard
 
@@ -11603,7 +11731,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"inherits@npm:2, inherits@npm:^2.0.1, inherits@npm:^2.0.3, inherits@npm:~2.0.1, inherits@npm:~2.0.3":
+"inherits@npm:2, inherits@npm:^2.0.1, inherits@npm:^2.0.3, inherits@npm:^2.0.4, inherits@npm:~2.0.1, inherits@npm:~2.0.3":
   version: 2.0.4
   resolution: "inherits@npm:2.0.4"
   checksum: 4a48a733847879d6cf6691860a6b1e3f0f4754176e4d71494c41f3475553768b10f84b5ce1d40fbd0e34e6bfbb864ee35858ad4dd2cf31e02fc4a154b724d7f1
@@ -12803,6 +12931,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"js-cookie@npm:3.0.1":
+  version: 3.0.1
+  resolution: "js-cookie@npm:3.0.1"
+  checksum: bb48de67e2a6bd1ae3dfd6b2d5a167c33dd0c5a37e909206161eb0358c98f17cb55acd55827a58e9eea3630d89444e7479f7938ef4420dda443218b8c434a4c3
+  languageName: node
+  linkType: hard
+
 "js-cookie@npm:^2.2.1":
   version: 2.2.1
   resolution: "js-cookie@npm:2.2.1"
@@ -13268,6 +13403,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"load-script@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "load-script@npm:1.0.0"
+  checksum: 8458e3f07b4a86f8d9d66e47a987811491a5d013af23ba7b371c6d3c9dc899885b072ccf65abf7874c10cb197d4975eacd8a7a125bfb38dbbcb267539f5dc1e9
+  languageName: node
+  linkType: hard
+
 "local-pkg@npm:^0.5.0":
   version: 0.5.0
   resolution: "local-pkg@npm:0.5.0"
@@ -13593,6 +13735,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"material-icons@npm:^1.13.12":
+  version: 1.13.12
+  resolution: "material-icons@npm:1.13.12"
+  checksum: 46f0e03c4c22e8334c633915dd87c3023f0c6345c1d9376170aa8bb8c54e944a5fc40ec128888965b563e2472a8fae83a2f5b75d3f957ede8b5d8476650e4109
+  languageName: node
+  linkType: hard
+
 "math-log2@npm:^1.0.1":
   version: 1.0.1
   resolution: "math-log2@npm:1.0.1"
@@ -13768,6 +13917,13 @@ __metadata:
   version: 2.0.14
   resolution: "mdn-data@npm:2.0.14"
   checksum: 9d0128ed425a89f4cba8f787dca27ad9408b5cb1b220af2d938e2a0629d17d879a34d2cb19318bdb26c3f14c77dd5dfbae67211f5caaf07b61b1f2c5c8c7dc16
+  languageName: node
+  linkType: hard
+
+"memoize-one@npm:^5.1.1":
+  version: 5.2.1
+  resolution: "memoize-one@npm:5.2.1"
+  checksum: a3cba7b824ebcf24cdfcd234aa7f86f3ad6394b8d9be4c96ff756dafb8b51c7f71320785fbc2304f1af48a0467cbbd2a409efc9333025700ed523f254cb52e3d
   languageName: node
   linkType: hard
 
@@ -14565,6 +14721,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"new-date@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "new-date@npm:1.0.3"
+  dependencies:
+    "@segment/isodate": 1.0.3
+  checksum: 5bc778542276f5d947b77654f10ad796c7502b184bd7f9b87749064a3f69a5cb5631acfceb234b433b3408cfe151de34ee484d5751d1fd87a74d6ec1e7e1ac9c
+  languageName: node
+  linkType: hard
+
 "next-tick@npm:^1.1.0":
   version: 1.1.0
   resolution: "next-tick@npm:1.1.0"
@@ -14588,7 +14753,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^2.6.12":
+"node-fetch@npm:^2.6.12, node-fetch@npm:^2.6.7":
   version: 2.7.0
   resolution: "node-fetch@npm:2.7.0"
   dependencies:
@@ -14766,6 +14931,13 @@ __metadata:
   version: 2.2.7
   resolution: "nwsapi@npm:2.2.7"
   checksum: cab25f7983acec7e23490fec3ef7be608041b460504229770e3bfcf9977c41d6fe58f518994d3bd9aa3a101f501089a3d4a63536f4ff8ae4b8c4ca23bdbfda4e
+  languageName: node
+  linkType: hard
+
+"obj-case@npm:0.2.1":
+  version: 0.2.1
+  resolution: "obj-case@npm:0.2.1"
+  checksum: 2726b29d054027c52c6ac1a18531c3f995fcc313047847c7f7357889a56cf07bd88bef459bd4645c139fa56f9432c282806e0f1c7ab444d6cbdb662e39073e36
   languageName: node
   linkType: hard
 
@@ -15324,14 +15496,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"plotly.js@npm:^2.30.1":
-  version: 2.30.1
-  resolution: "plotly.js@npm:2.30.1"
+"plotly.js@npm:^2.32.0":
+  version: 2.34.0
+  resolution: "plotly.js@npm:2.34.0"
   dependencies:
-    "@plotly/d3": 3.8.1
+    "@plotly/d3": 3.8.2
     "@plotly/d3-sankey": 0.7.2
     "@plotly/d3-sankey-circular": 0.33.1
-    "@plotly/mapbox-gl": v1.13.4
+    "@plotly/mapbox-gl": 1.13.4
     "@turf/area": ^6.4.0
     "@turf/bbox": ^6.4.0
     "@turf/centroid": ^6.0.2
@@ -15352,7 +15524,7 @@ __metadata:
     d3-time-format: ^2.2.3
     fast-isnumeric: ^1.1.4
     gl-mat4: ^1.2.0
-    gl-text: ^1.3.1
+    gl-text: ^1.4.0
     has-hover: ^1.0.1
     has-passive-events: ^1.0.0
     is-mobile: ^4.0.0
@@ -15377,7 +15549,7 @@ __metadata:
     topojson-client: ^3.1.0
     webgl-context: ^2.2.0
     world-calendars: ^1.0.3
-  checksum: c0672c6feaad8482dba50bcd519a571c47a4ba84a0762c7d492b46c46268a270c49e02481a7b6a7eae87e90b96eb181d4403b5e6572a22051d92e965891477b7
+  checksum: 4a2403d71d7a2eb702a1f1a023af1598acc2d5bf285c464df5cb8ccd4520573fcf1007954edd1bf90e1590dcff5757f853ace5c0e2dd4dfcb6a84f2870fa32ab
   languageName: node
   linkType: hard
 
@@ -15915,6 +16087,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-fast-compare@npm:^3.0.1":
+  version: 3.2.2
+  resolution: "react-fast-compare@npm:3.2.2"
+  checksum: 2071415b4f76a3e6b55c84611c4d24dcb12ffc85811a2840b5a3f1ff2d1a99be1020d9437ee7c6e024c9f4cbb84ceb35e48cf84f28fcb00265ad2dfdd3947704
+  languageName: node
+  linkType: hard
+
 "react-file-drop@npm:^3.1.6":
   version: 3.1.6
   resolution: "react-file-drop@npm:3.1.6"
@@ -16029,6 +16208,21 @@ __metadata:
     "@types/react": ">=16"
     react: ">=16"
   checksum: 0f3e570975134a3382c3fe5189e04e742ae154941463bdfaab2293319da1f1585cb9b75b6f07d99f514c4d728d69cc1af3c96ab37df90003b3bcc210dd0001ba
+  languageName: node
+  linkType: hard
+
+"react-player@npm:^2.16.0":
+  version: 2.16.0
+  resolution: "react-player@npm:2.16.0"
+  dependencies:
+    deepmerge: ^4.0.0
+    load-script: ^1.0.0
+    memoize-one: ^5.1.1
+    prop-types: ^15.7.2
+    react-fast-compare: ^3.0.1
+  peerDependencies:
+    react: ">=16.6.0"
+  checksum: 9cc78a6099fdf06bbb2e1db75aa57461fb152eb6207a00e6e026dde0675b6f4ad02a45cab7b6c18a9f19e001bf9695a5be0cbe7606eca57a0af501ced717fbe9
   languageName: node
   linkType: hard
 
@@ -18537,6 +18731,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:^2.4.1":
+  version: 2.6.3
+  resolution: "tslib@npm:2.6.3"
+  checksum: 74fce0e100f1ebd95b8995fbbd0e6c91bdd8f4c35c00d4da62e285a3363aaa534de40a80db30ecfd388ed7c313c42d930ee0eaf108e8114214b180eec3dbe6f5
+  languageName: node
+  linkType: hard
+
 "tsutils@npm:^3.21.0":
   version: 3.21.0
   resolution: "tsutils@npm:3.21.0"
@@ -18879,6 +19080,20 @@ __metadata:
   version: 5.26.5
   resolution: "undici-types@npm:5.26.5"
   checksum: 3192ef6f3fd5df652f2dc1cd782b49d6ff14dc98e5dced492aa8a8c65425227da5da6aafe22523c67f035a272c599bb89cfe803c1db6311e44bed3042fc25487
+  languageName: node
+  linkType: hard
+
+"unfetch@npm:^3.1.1":
+  version: 3.1.2
+  resolution: "unfetch@npm:3.1.2"
+  checksum: 5529f0021c51ffa52b5eb36b7b7824f5cbb2167c4a7a09365d071af7534a87a7968a93f1d71f8cdb1aab930af5692af10f53521100999021a05bfb738ff859ab
+  languageName: node
+  linkType: hard
+
+"unfetch@npm:^4.1.0":
+  version: 4.2.0
+  resolution: "unfetch@npm:4.2.0"
+  checksum: 6a4b2557e1d921eaa80c4425ce27a404945ec26491ed06e62598f333996a91a44c7908cb26dc7c2746d735762b13276cf4aa41829b4c8f438dde63add3045d7a
   languageName: node
   linkType: hard
 

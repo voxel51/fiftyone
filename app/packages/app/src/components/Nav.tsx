@@ -9,21 +9,18 @@ import {
 import { ViewBar } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
-import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
-import React, { Suspense, useEffect, useMemo } from "react";
-import ReactGA from "react-ga4";
+import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
-import gaConfig from "../ga";
+import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
-import type { NavGA$key } from "./__generated__/NavGA.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -64,95 +61,64 @@ const getUseSearch = (fragment: NavDatasets$key) => {
   };
 };
 
-export const useGA = (fragment: NavGA$key) => {
-  const info = useFragment(
-    graphql`
-      fragment NavGA on Query {
-        context
-        dev
-        doNotTrack
-        uid
-        version
-      }
-    `,
-    fragment
-  );
-
-  useEffect(() => {
-    if (info.doNotTrack) {
-      return;
-    }
-    const dev = info.dev;
-    const buildType = dev ? "dev" : "prod";
-    ReactGA.initialize(gaConfig.app_ids[buildType], {
-      testMode: false,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-        clientId: info.uid,
-        page_location: "omitted",
-        page_path: "omitted",
-        kind: isElectron() ? "Desktop" : "Web",
-        version: info.version,
-        context: info.context,
-        checkProtocolTask: null, // disable check, allow file:// URLs
-      },
-    });
-  }, [info]);
-};
-
-const Nav: React.FC<{
-  fragment: NavFragment$key;
-  hasDataset: boolean;
-}> = ({ fragment, hasDataset }) => {
+const Nav: React.FC<
+  React.PropsWithChildren<{
+    fragment: NavFragment$key;
+    hasDataset: boolean;
+  }>
+> = ({ children, fragment, hasDataset }) => {
   const data = useFragment(
     graphql`
       fragment NavFragment on Query {
+        ...Analytics
         ...NavDatasets
-        ...NavGA
       }
     `,
     fragment
   );
-  useGA(data);
+
   const useSearch = getUseSearch(data);
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();
-  const [_, setTheme] = useRecoilState(fos.theme);
+  const setTheme = useSetRecoilState(fos.theme);
 
   return (
-    <Header
-      title={"FiftyOne"}
-      onRefresh={refresh}
-      navChildren={<DatasetSelector useSearch={useSearch} />}
-    >
-      {hasDataset && (
-        <Suspense fallback={<div style={{ flex: 1 }} />}>
-          <ViewBar />
-        </Suspense>
-      )}
-      {!hasDataset && <div style={{ flex: 1 }} />}
-      <div className={iconContainer}>
-        <Teams />
-        <IconButton
-          title={mode === "dark" ? "Light mode" : "Dark mode"}
-          onClick={() => {
-            const nextMode = mode === "dark" ? "light" : "dark";
-            setMode(nextMode);
-            setTheme(nextMode);
-          }}
-          sx={{
-            color: (theme) => theme.palette.text.secondary,
-            pr: 0,
-          }}
-        >
-          {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
-        </IconButton>
-        <SlackLink />
-        <GitHubLink />
-        <DocsLink />
-      </div>
-    </Header>
+    <>
+      <Header
+        title={"FiftyOne"}
+        onRefresh={refresh}
+        navChildren={<DatasetSelector useSearch={useSearch} />}
+      >
+        {hasDataset && (
+          <Suspense fallback={<div style={{ flex: 1 }} />}>
+            <ViewBar />
+          </Suspense>
+        )}
+        {!hasDataset && <div style={{ flex: 1 }} />}
+        <div className={iconContainer}>
+          <Teams />
+          <IconButton
+            title={mode === "dark" ? "Light mode" : "Dark mode"}
+            onClick={() => {
+              const nextMode = mode === "dark" ? "light" : "dark";
+              setMode(nextMode);
+              setTheme(nextMode);
+            }}
+            sx={{
+              color: (theme) => theme.palette.text.secondary,
+              pr: 0,
+            }}
+          >
+            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+          </IconButton>
+          <SlackLink />
+          <GitHubLink />
+          <DocsLink />
+        </div>
+      </Header>
+      {children}
+      <Analytics fragment={data} />
+    </>
   );
 };
 

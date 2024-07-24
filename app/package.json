@@ -24,6 +24,7 @@
     "devDependencies": {
         "@testing-library/react": "latest",
         "@testing-library/react-hooks": "latest",
+        "@types/react-plotly.js": "^2.6.3",
         "@typescript-eslint/eslint-plugin": "^5.44.0",
         "@typescript-eslint/parser": "^5.44.0",
         "@vitest/coverage-v8": "^0.34.6",
@@ -53,6 +54,8 @@
     ],
     "packageManager": "yarn@3.2.1",
     "dependencies": {
-        "jpeg-js": "^0.4.4"
+        "jpeg-js": "^0.4.4",
+        "react-player": "^2.16.0",
+        "react-plotly.js": "^2.6.0"
     }
 }
