@@ -3051,6 +3051,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker-3d@workspace:packages/looker-3d"
   dependencies:
+    "@biomejs/biome": ^1.8.3
     "@emotion/react": ^11.11.3
     "@emotion/styled": ^11.11.0
     "@react-three/drei": ^9.107.2

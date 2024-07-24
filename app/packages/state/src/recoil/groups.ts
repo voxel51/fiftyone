@@ -39,6 +39,11 @@ import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
+const POINT_CLOUD = "point_cloud";
+const THREE_D = "three_d";
+
+const IS_THREE_D = new Set([POINT_CLOUD, THREE_D]);
+
 export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   key: "groupMediaIsCarouselVisibleSetting",
   default: true,
@@ -75,7 +80,7 @@ export const groupMediaIs3dVisible = selector<boolean>({
   key: "groupMedia3dVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const has3d = set.has("point_cloud") || set.has("three_d");
+    const has3d = set.has(POINT_CLOUD) || set.has(THREE_D);
     const isImaVidInNestedGroup =
       get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
     return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
@@ -97,8 +102,9 @@ export const groupMediaIsMainVisible = selector<boolean>({
   key: "groupMediaIsMainVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+    return (
+      get(groupMediaIsMainVisibleSetting) && (!get(has3dSlice) || set.size > 1)
+    );
   },
 });
 
@@ -119,7 +125,7 @@ export const pinned3DSample = selector({
       return get(fo3dSample);
     }
 
-    return get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)];
+    return get(all3dSlicesToSampleMap)[get(pinned3DSampleSlice)];
   },
 });
 
@@ -239,8 +245,8 @@ export const has3dSlice = selector<boolean>({
   key: "has3dSlice",
   get: ({ get }) => {
     return (
-      get(groupMediaTypesSet).has("three_d") ||
-      get(groupMediaTypesSet).has("point_cloud")
+      get(groupMediaTypesSet).has(POINT_CLOUD) ||
+      get(groupMediaTypesSet).has(THREE_D)
     );
   },
 });
@@ -249,21 +255,20 @@ export const hasFo3dSlice = selector<boolean>({
   key: "hasFo3dSlice",
   get: ({ get }) => {
     return (
-      get(groupMediaTypesSet).has("three_d") ||
-      get(groupMediaTypesSet).has("3d")
+      get(groupMediaTypesSet).has(THREE_D) || get(groupMediaTypesSet).has("3d")
     );
   },
 });
 
-export const activePcdSlices = atom<string[]>({
-  key: "activePcdSlices",
+export const active3dSlices = atom<string[]>({
+  key: "active3dSlices",
   default: [],
 });
 
-export const activePcdSlicesToSampleMap = selector({
-  key: "activePcdSlicesToSampleMap",
+export const active3dSlicesToSampleMap = selector({
+  key: "active3dSlicesToSampleMap",
   get: ({ get }) => {
-    const active = get(activePcdSlices);
+    const active = get(active3dSlices);
 
     if (!active?.length) {
       return {
@@ -272,18 +277,18 @@ export const activePcdSlicesToSampleMap = selector({
     }
 
     return Object.fromEntries(
-      Object.entries(get(allPcdSlicesToSampleMap)).filter(([slice]) =>
+      Object.entries(get(all3dSlicesToSampleMap)).filter(([slice]) =>
         active.includes(slice)
       )
     );
   },
 });
 
-export const allPcdSlicesToSampleMap = selector({
-  key: "allPcdSlicesToSampleMap",
+export const all3dSlicesToSampleMap = selector({
+  key: "all3dSlicesToSampleMap",
   get: ({ get }) => {
     return Object.fromEntries<ModalSample>(
-      get(pcdSamples).map<[string, ModalSample]>((sample) => [
+      get(threedSamples).map<[string, ModalSample]>((sample) => [
         getPath(sample.sample, `${get(groupField)}.name`) as unknown as string,
         sample as ModalSample,
       ])
@@ -291,31 +296,27 @@ export const allPcdSlicesToSampleMap = selector({
   },
 });
 
-export const allPcdSlices = selector<string[]>({
-  key: "allPcdSlices",
+export const all3dSlices = selector<string[]>({
+  key: "all3dSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(({ mediaType }) =>
-        ["point-cloud", "point_cloud"].includes(mediaType)
-      )
+      .filter(({ mediaType }) => IS_THREE_D.has(mediaType))
       .map(({ name }) => name);
   },
 });
 
-export const hasMultiplePcdSlices = selector<boolean>({
-  key: "hasMultiplePcdSlices",
+export const hasMultiple3dSlices = selector<boolean>({
+  key: "hasMultiple3dSlices",
   get: ({ get }) => {
-    return get(allPcdSlices).length > 1;
+    return get(all3dSlices).length > 1;
   },
 });
 
-export const allNonPcdSlices = selector<string[]>({
-  key: "allNonPcdSlices",
+export const allNon3dSlices = selector<string[]>({
+  key: "allNon3dSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(
-        ({ mediaType }) => !["point-cloud", "point_cloud"].includes(mediaType)
-      )
+      .filter(({ mediaType }) => !IS_THREE_D.has(mediaType))
       .map(({ name }) => name);
   },
 });
@@ -346,7 +347,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
       const slice = get(modal ? modalGroupSlice : groupSlice);
 
       if (!slice || (modal && get(pinned3d))) {
-        return get(activePcdSlices);
+        return get(active3dSlices);
       }
 
       return [slice].filter((s) => s);
@@ -358,7 +359,7 @@ export const activeSliceDescriptorLabel = selector<string>({
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
     const activeFo3dSlice = get(fo3dSlice);
-    const activePcdSlicesValue = get(activePcdSlices);
+    const active3dSlicesValue = get(active3dSlices);
 
     if (!get(pinned3d)) {
       return currentSliceValue;
@@ -368,15 +369,15 @@ export const activeSliceDescriptorLabel = selector<string>({
       return activeFo3dSlice;
     }
 
-    const numActivePcdSlices = activePcdSlicesValue?.length;
+    const numActive3dSlices = active3dSlicesValue?.length;
 
-    switch (numActivePcdSlices) {
+    switch (numActive3dSlices) {
       case 1:
-        return activePcdSlicesValue[0];
+        return active3dSlicesValue[0];
       case 2:
-        return `${activePcdSlicesValue.join(" and ")}`;
+        return `${active3dSlicesValue.join(" and ")}`;
       default:
-        return `${numActivePcdSlices} point-clouds`;
+        return `${numActive3dSlices} slices`;
     }
   },
 });
@@ -430,10 +431,10 @@ export const groupSamples = graphQLSelectorFamily<
   },
 });
 
-export const nonPcdSamples = selector({
-  key: "nonPcdSamples",
+export const non3dSamples = selector({
+  key: "non3dSamples",
   get: ({ get }) =>
-    get(groupSamples({ slices: get(allNonPcdSlices), count: 1 })),
+    get(groupSamples({ slices: get(allNon3dSlices), count: 1 })),
 });
 
 export const fo3dSlice = selector({
@@ -478,12 +479,12 @@ export const fo3dSample = selector({
   },
 });
 
-export const pcdSamples = selector({
-  key: "pcdSamples",
+export const threedSamples = selector({
+  key: "threedSamples",
   get: ({ get }) =>
     get(
       groupSamples({
-        slices: get(allPcdSlices),
+        slices: get(all3dSlices),
         count: null,
         // do not omit dict data, provide the unfiltered samples to Looker3d
         paginationData: false,
@@ -499,9 +500,9 @@ export const activeModalSample = selector({
         return get(fo3dSample).sample;
       }
 
-      const slices = get(activePcdSlices);
+      const slices = get(active3dSlices);
       const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
-      return get(activePcdSlicesToSampleMap)[key]?.sample;
+      return get(active3dSlicesToSampleMap)[key]?.sample;
     }
 
     return get(modalSample).sample;

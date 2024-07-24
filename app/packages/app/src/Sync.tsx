@@ -147,7 +147,7 @@ const dispatchSideEffect = ({
       mutation: setSample,
       variables: {
         groupId: nextEntry.state.modalSelector?.groupId,
-        sampleId: nextEntry.state.modalSelector?.id,
+        id: nextEntry.state.modalSelector?.id,
         subscription,
       },
     });

@@ -6,7 +6,7 @@ import {
   groupSlice,
   modalGroupSlice,
   modalSample,
-  nonPcdSamples,
+  non3dSamples,
   pinned3d,
 } from "@fiftyone/state";
 import { get } from "lodash";
@@ -26,8 +26,8 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
         let slice = await snapshot.getPromise(groupSlice);
 
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
-        if (!slice || mediaTypes[slice] === "point_cloud") {
-          const samples = await snapshot.getPromise(nonPcdSamples);
+        if (!slice || ["point_cloud", "three_d"].includes(mediaTypes[slice])) {
+          const samples = await snapshot.getPromise(non3dSamples);
           if (!samples.length) {
             slice = null;
           } else {

@@ -1,7 +1,7 @@
+import { useCursor } from "@react-three/drei";
 import React, { useMemo, useState } from "react";
 import * as THREE from "three";
-import { OverlayProps } from "./shared";
-import { useCursor } from "@react-three/drei";
+import type { OverlayProps } from "./shared";
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;

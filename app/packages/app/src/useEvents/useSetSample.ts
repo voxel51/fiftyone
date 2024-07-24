@@ -3,13 +3,13 @@ import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
 
 export const handleGroupId = (search: URLSearchParams, groupId: string) => {
-  search.delete("sampleId");
+  search.delete("id");
   search.set("groupId", groupId);
 };
 
-export const handleSampleId = (search: URLSearchParams, sampleId: string) => {
+export const handleSampleId = (search: URLSearchParams, id: string) => {
   search.delete("groupId");
-  search.set("sampleId", sampleId);
+  search.set("id", id);
 };
 
 const useSetSample: EventHandlerHook = ({ router }) => {
@@ -25,7 +25,7 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         } else if (payload?.sample_id) {
           handleSampleId(search, payload?.sample_id);
         } else {
-          search.delete("sampleId");
+          search.delete("id");
           search.delete("groupId");
         }
 

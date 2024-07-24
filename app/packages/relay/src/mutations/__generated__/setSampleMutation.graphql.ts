@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a3eda8bc1d80f655857b7c413ed35fc>>
+ * @generated SignedSource<<dc58fb5c73cdd04bcc7f4030e281e2ae>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type setSampleMutation$variables = {
   groupId?: string | null;
-  sampleId?: string | null;
+  id?: string | null;
   session?: string | null;
   subscription: string;
 };
@@ -32,7 +32,7 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "sampleId"
+  "name": "id"
 },
 v2 = {
   "defaultValue": null,
@@ -55,8 +55,8 @@ v4 = [
       },
       {
         "kind": "Variable",
-        "name": "sampleId",
-        "variableName": "sampleId"
+        "name": "id",
+        "variableName": "id"
       },
       {
         "kind": "Variable",
@@ -102,16 +102,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "07a21e2136b50962f10b209b090d54fb",
+    "cacheID": "afa49913ba9c5d963bfc59671f856e56",
     "id": null,
     "metadata": {},
     "name": "setSampleMutation",
     "operationKind": "mutation",
-    "text": "mutation setSampleMutation(\n  $subscription: String!\n  $session: String\n  $groupId: String\n  $sampleId: String\n) {\n  setSample(subscription: $subscription, session: $session, groupId: $groupId, sampleId: $sampleId)\n}\n"
+    "text": "mutation setSampleMutation(\n  $subscription: String!\n  $session: String\n  $groupId: String\n  $id: String\n) {\n  setSample(subscription: $subscription, session: $session, groupId: $groupId, id: $id)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4a353e4ff46091a87de9da830257306b";
+(node as any).hash = "2b5302738bd9cc6eae0fcbbf5bf703e7";
 
 export default node;

@@ -288,12 +288,12 @@ export const lookerPanels = atom({
   },
 });
 
-export const onlyPcd = selector<boolean>({
-  key: "onlyPcd",
+export const only3d = selector<boolean>({
+  key: "only3d",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return set.size === 1 && hasPcd;
+    const has3d = set.has("point_cloud") || set.has("three_d");
+    return set.size === 1 && has3d;
   },
 });
 

@@ -9,14 +9,14 @@ import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import {
-  Looker3dPluginSettings,
+  type Looker3dPluginSettings,
   defaultPluginSettings,
 } from "../Looker3dPlugin";
 import { usePathFilter } from "../hooks";
 import { toEulerFromDegreesArray } from "../utils";
-import { Cuboid, CuboidProps } from "./cuboid";
-import { OverlayLabel, load3dOverlays } from "./loader";
-import { PolyLineProps, Polyline } from "./polyline";
+import { Cuboid, type CuboidProps } from "./cuboid";
+import { type OverlayLabel, load3dOverlays } from "./loader";
+import { type PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
   sampleMap: Record<string, any>;

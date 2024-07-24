@@ -1,6 +1,6 @@
 import React from "react";
 import * as THREE from "three";
-import { OverlayProps } from "./shared";
+import type { OverlayProps } from "./shared";
 
 interface LineProps extends OverlayProps {
   points: THREE.Vector3Tuple[];

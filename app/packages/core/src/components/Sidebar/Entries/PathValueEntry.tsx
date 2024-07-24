@@ -357,8 +357,8 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
-  const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
+  const loadable = useRecoilValueLoadable(fos.active3dSlicesToSampleMap);
+  const slices = Array.from(useRecoilValue(fos.active3dSlices) || []).sort();
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -453,8 +453,8 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
-  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
-  const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
+  const active3dSlices = useRecoilValue(fos.active3dSlices);
+  const slices = Boolean(pinned3DSample) && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
   return isScalar ? (

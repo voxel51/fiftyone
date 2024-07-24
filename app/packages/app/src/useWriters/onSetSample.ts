@@ -11,20 +11,20 @@ export const handleGroup = (search: URLSearchParams, group?: string) => {
 
 export const handleGroupId = (search: URLSearchParams, groupId?: string) => {
   if (groupId) {
-    search.delete("sampleId");
+    search.delete("id");
     search.set("groupId", groupId);
   } else {
-    search.delete("sampleId");
+    search.delete("id");
   }
 };
 
-export const handleSampleId = (search: URLSearchParams, sampleId?: string) => {
-  if (sampleId) {
+export const handleSampleId = (search: URLSearchParams, id?: string) => {
+  if (id) {
     search.delete("groupId");
-    search.set("sampleId", sampleId);
+    search.set("id", id);
   } else {
     search.delete("groupId");
-    search.delete("sampleId");
+    search.delete("id");
   }
 };
 
@@ -51,7 +51,7 @@ const onSetSample: RegisteredWriter<"modalSelector"> =
         mutation: setSample,
         variables: {
           groupId: selector?.groupId,
-          sampleId: selector?.id,
+          id: selector?.id,
           subscription,
         },
       });

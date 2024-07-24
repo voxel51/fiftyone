@@ -92,14 +92,9 @@ export const isVideoDataset = selector({
   get: ({ get }) => get(atoms.mediaType) === "video",
 });
 
-export const isPointcloudDataset = selector({
-  key: "isPointcloudDataset",
-  get: ({ get }) => get(atoms.mediaType) === "point_cloud",
-});
-
 export const is3DDataset = selector({
   key: "is3DDataset",
-  get: ({ get }) => get(atoms.mediaType) === "three_d",
+  get: ({ get }) => ["point_cloud", "three_d"].includes(get(atoms.mediaType)),
 });
 
 export const timeZone = selector<string>({

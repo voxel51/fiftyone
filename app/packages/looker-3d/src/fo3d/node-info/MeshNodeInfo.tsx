@@ -1,4 +1,4 @@
-import { FoSceneNode } from "../../hooks";
+import type { FoSceneNode } from "../../hooks";
 import { NodeInfoContainer } from "./node-info-containers";
 
 interface MeshNodeInfoProps {

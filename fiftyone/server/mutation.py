@@ -119,11 +119,11 @@ class Mutation(SetColorScheme):
         subscription: str,
         session: t.Optional[str],
         group_id: t.Optional[str],
-        sample_id: t.Optional[str],
+        id: t.Optional[str],
     ) -> bool:
         await dispatch_event(
             subscription,
-            fose.SetSample(group_id=group_id, sample_id=sample_id),
+            fose.SetSample(group_id=group_id, sample_id=id),
         )
         return True
 

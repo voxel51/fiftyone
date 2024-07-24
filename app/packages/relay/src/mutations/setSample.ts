@@ -7,13 +7,13 @@ export default r(graphql`
     $subscription: String!
     $session: String
     $groupId: String
-    $sampleId: String
+    $id: String
   ) {
     setSample(
       subscription: $subscription
       session: $session
       groupId: $groupId
-      sampleId: $sampleId
+      id: $id
     )
   }
 `);

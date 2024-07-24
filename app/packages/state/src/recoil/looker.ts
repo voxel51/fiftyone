@@ -87,7 +87,7 @@ export const lookerOptions = selectorFamily<
         showTooltip,
         activePaths,
         ...video,
-        isPointcloudDataset: get(selectors.isPointcloudDataset),
+        isPointcloudDataset: get(selectors.is3DDataset),
         coloring: get(colorAtoms.coloring),
         customizeColorSetting: get(atoms.colorScheme).fields ?? [],
         labelTagColors: get(atoms.colorScheme).labelTags ?? {},

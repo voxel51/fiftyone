@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { CylinderGeometry, Mesh, Quaternion, Vector3 } from "three";
-import { CylinderGeometryAsset } from "../../hooks";
+import { CylinderGeometry, Mesh, type Quaternion, type Vector3 } from "three";
+import type { CylinderGeometryAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 
 export const Cylinder = ({

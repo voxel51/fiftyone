@@ -69,7 +69,7 @@ export default () => {
       }
 
       set(groupAtoms.pinned3d, pinned3d);
-      set(groupAtoms.activePcdSlices, activeSlices);
+      set(groupAtoms.active3dSlices, activeSlices);
 
       const results = await Promise.all(
         data.map(([_, get]) => snapshot.getPromise(get as RecoilState<unknown>))

@@ -512,7 +512,7 @@ type Mutation {
     subscription: String!
     session: String
     groupId: String
-    sampleId: String
+    id: String
   ): Boolean!
   setSidebarGroups(
     subscription: String!
