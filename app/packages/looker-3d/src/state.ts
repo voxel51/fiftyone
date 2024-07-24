@@ -131,9 +131,11 @@ export const activeNodeAtom = atom<FoSceneNode>({
 export const cuboidLabelLineWidthAtom = atom<number>({
   key: "fo3d-cuboidLabelLineWidth",
   default: 3,
+  effects: [getBrowserStorageEffectForKey("fo3d-cuboidLabelLineWidth")],
 });
 
 export const polylineLabelLineWidthAtom = atom<number>({
   key: "fo3d-polylineLabelLineWidth",
   default: 3,
+  effects: [getBrowserStorageEffectForKey("fo3d-polylineLabelLineWidth")],
 });
