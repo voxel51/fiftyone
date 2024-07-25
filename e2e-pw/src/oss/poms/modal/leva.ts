@@ -33,10 +33,6 @@ export class ModalLevaPom {
       .nth(1)
       .locator("div")
       .nth(0);
-    const sliderWidth = await slider.evaluate(
-      (el) => el.getBoundingClientRect().width
-    );
-    console.log(sliderWidth);
     return await slider.click({ position: { x: 0, y: 0 } });
   }
 
@@ -53,7 +49,6 @@ export class ModalLevaPom {
     const sliderWidth = await slider.evaluate(
       (el) => el.getBoundingClientRect().width
     );
-    console.log(sliderWidth);
     return await slider.click({ position: { x: sliderWidth * 0.99, y: 0 } });
   }
 }

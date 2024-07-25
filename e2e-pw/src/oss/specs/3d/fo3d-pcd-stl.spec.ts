@@ -89,12 +89,13 @@ test.describe("fo3d", () => {
 
     await grid.openFirstSample();
     await modal.modalContainer.hover();
+    await modal.leva.getFolder("Visibility").hover();
     await expect(modal.modalContainer).toHaveScreenshot("scene.png", {
       mask,
       animations: "allow",
     });
 
-    await modal.leva.getFolder("Labels").click();
+    await modal.leva.toggleFolder("Labels");
     await modal.leva.assert.verifyDefaultFolders();
     await modal.leva.assert.verifyAssetFolders(["pcd", "stl"]);
 
