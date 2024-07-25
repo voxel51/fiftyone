@@ -87,6 +87,39 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(dataset.slug, slug)
 
     @drop_datasets
+    def test_load_dataset(self):
+        new_dataset_name = "new-dataset-name"
+
+        # validate that the dataset does not exist
+        names = fo.list_datasets()
+        assert new_dataset_name not in names
+
+        # create the dataset by attempting to load it
+        dataset = fo.load_dataset(new_dataset_name, create_if_necessary=True)
+        assert dataset.name == new_dataset_name
+
+        dataset2 = fo.load_dataset(new_dataset_name)
+        self.assertIs(dataset, dataset2)
+
+        # validate that the new dataset is in the list of datasets
+        names = fo.list_datasets()
+        assert new_dataset_name in names
+
+        # validate that the dataset does not exist
+        new_dataset_name_2 = "new-dataset-name-2"
+        assert new_dataset_name_2 not in names
+
+        # validate that the correct exception is raised
+        with self.assertRaises(fo.DatasetNotFoundError):
+            fo.load_dataset(new_dataset_name_2)
+
+        # loading an existing dataset should work
+        assert len(names) > 0
+        for condition in [False, True]:
+            dataset = fo.load_dataset(names[0], create_if_necessary=condition)
+            assert dataset.name == names[0]
+
+    @drop_datasets
     def test_delete_dataset(self):
         IGNORED_DATASET_NAMES = fo.list_datasets()
 

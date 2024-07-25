@@ -168,7 +168,19 @@ export default function OperatorBrowser() {
             )}
             <ErrorView
               schema={{
-                view: { detailed: true, popout: true, left: true },
+                view: {
+                  detailed: true,
+                  popout: true,
+                  componentsProps: {
+                    container: {
+                      popoutStyles: {
+                        maxWidth: "45vw",
+                        right: 0,
+                        left: "unset",
+                      },
+                    },
+                  },
+                },
               }}
               data={initializationErrors}
             />

@@ -5,15 +5,13 @@ Package-wide constants.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import os
 
 from packaging.version import Version
 
-try:
-    from importlib.metadata import metadata  # Python 3.8
-except ImportError:
-    from importlib_metadata import metadata  # Python < 3.8
+from importlib.metadata import metadata
 
 
 CLIENT_TYPE = "fiftyone"
@@ -53,8 +51,8 @@ VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
-URL = _META["home-page"]
-LICENSE = _META["license"]
+URL = _META.get("home-page", "https://github.com/voxel51/fiftyone")
+LICENSE = _META.get("license", "Apache")
 VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
