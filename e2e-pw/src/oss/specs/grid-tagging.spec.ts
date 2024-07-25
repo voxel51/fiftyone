@@ -39,13 +39,7 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   `);
 });
 
-test("tmp screenshot", async ({
-  fiftyoneLoader,
-  grid,
-  modal,
-  page,
-  sidebar,
-}) => {
+test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await sidebar.clickFieldCheckbox("filepath");
   await sidebar.clickFieldCheckbox("tags");
@@ -63,29 +57,4 @@ test("tmp screenshot", async ({
   await expect(await grid.locator).toHaveScreenshot("grid-tagged.png", {
     animations: "allow",
   });
-
-  return;
-  // doesn't work
-  await grid.url.pageChange(() =>
-    grid.locator
-      .getByTestId("looker")
-      .filter({ hasText: "/tmp/37.png" })
-      .click({ position: { x: 10, y: 60 } })
-  );
-
-  await modal.waitForSampleLoadDomAttribute(true);
-
-  await modal.tagger.open();
-
-  await modal.tagger.switchTagMode("sample");
-  await grid.run(() => modal.tagger.load(() => modal.tagger.addTag("one")));
-
-  await modal.close();
-
-  await expect(await grid.locator).toHaveScreenshot(
-    "grid-tagged-after-modal.png",
-    {
-      animations: "allow",
-    }
-  );
 });
