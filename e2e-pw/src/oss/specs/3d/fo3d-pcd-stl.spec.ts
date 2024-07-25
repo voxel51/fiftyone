@@ -55,6 +55,16 @@ test.describe("fo3d", () => {
       scene.write("${scenePath}")
 
       sample = fo.Sample(filepath="${scenePath}")
+      points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+      polyline = fo.Polyline(label="polylines", points3d=points3d)
+      sample["polylines"] = fo.Polylines(polylines=[polyline])
+
+      location = [-0.4503350257873535, -21.61918580532074, 5.709099769592285]
+      rotation = [0.0, 0.0, 0.0]
+      dimensions = [50, 50.00003170967102, 50]
+      boundingBox = fo.Detection(label="cuboid", location=location, rotation=rotation, dimensions=dimensions)
+      sample["bounding_box"] = fo.Detections(detections=[boundingBox])
+
       dataset.add_sample(sample)
 
       fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho/${datasetName}") 
@@ -84,6 +94,28 @@ test.describe("fo3d", () => {
       animations: "allow",
     });
 
-    await modal.assert.verifyLevaFolders(["stl", "pcd"]);
+    await modal.leva.getFolder("Labels").click();
+    await modal.leva.assert.verifyDefaultFolders();
+    await modal.leva.assert.verifyAssetFolders(["pcd", "stl"]);
+
+    await modal.leva.minSlider("Polyline Line Width");
+    await modal.leva.minSlider("Cuboid Line Width");
+    await expect(modal.modalContainer).toHaveScreenshot(
+      "min-line-width-scene.png",
+      {
+        mask,
+        animations: "allow",
+      }
+    );
+
+    await modal.leva.maxSlider("Polyline Line Width");
+    await modal.leva.maxSlider("Cuboid Line Width");
+    await expect(modal.modalContainer).toHaveScreenshot(
+      "max-line-width-scene.png",
+      {
+        mask,
+        animations: "allow",
+      }
+    );
   });
 });

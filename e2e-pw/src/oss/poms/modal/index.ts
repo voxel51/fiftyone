@@ -260,9 +260,4 @@ class ModalAsserter {
     const navigation = this.modalPom.getSampleNavigation(direction);
     await expect(navigation).toBeVisible();
   }
-
-  async verifyLevaFolders(assetNames: string[]) {
-    await this.modalPom.leva.assert.verifyDefaultFolders();
-    await this.modalPom.leva.assert.verifyAssetFolders(assetNames);
-  }
 }
