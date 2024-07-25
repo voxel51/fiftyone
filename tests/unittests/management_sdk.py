@@ -261,8 +261,47 @@ class ManagementSdkTests(unittest.TestCase):
                 "creds": json.dumps(formatted_creds),
                 "description": description,
                 "prefixes": prefixes,
+                "overwrite": True,
             },
         )
+
+        # Test with overwrite=False
+        #####
+        fom.add_cloud_credentials(
+            provider,
+            cred_type,
+            credentials,
+            description=description,
+            prefixes=prefixes,
+            overwrite=False,
+        )
+        #####
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.cloud_credentials._SET_CLOUD_CREDENTIALS_QUERY,
+            variables={
+                "provider": provider,
+                "creds": json.dumps(formatted_creds),
+                "description": description,
+                "prefixes": prefixes,
+                "overwrite": False,
+            },
+        )
+
+        # Test with Exception
+        self.client.post_graphql_request.side_effect = (
+            fom.exceptions.FiftyOneManagementError("Some error")
+        )
+
+        with self.assertRaises(fom.exceptions.FiftyOneManagementError):
+            fom.add_cloud_credentials(
+                provider,
+                cred_type,
+                credentials,
+                description=description,
+                prefixes=prefixes,
+                overwrite=False,
+            )
 
     def test__prepare_credentials(self):
         # unknown

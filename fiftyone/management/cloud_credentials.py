@@ -10,8 +10,10 @@ import datetime
 import json
 from typing import Dict, List, Literal, Optional, Union
 
+from fiftyone.api import errors
 from fiftyone.management import connection
 from fiftyone.management import util as fom_util
+from fiftyone.management import exceptions as fom_exc
 
 
 @dataclasses.dataclass
@@ -47,12 +49,14 @@ _SET_CLOUD_CREDENTIALS_QUERY = """
             $provider: CloudProvider!,
             $creds: String!,
             $description: String,
-            $prefixes: [String!]) {
+            $prefixes: [String!],
+            $overwrite: Boolean) {
         setCloudCredentials (
             provider: $provider,
             credentials: $creds,
             prefixes: $prefixes,
-            description: $description
+            description: $description,
+            overwrite: $overwrite
         ) {provider}
     }
 """
@@ -90,6 +94,7 @@ def add_cloud_credentials(
     credentials: Union[str, Dict],
     description: Optional[str] = None,
     prefixes: Optional[List[str]] = None,
+    overwrite: Optional[bool] = True,
 ) -> None:
     """Adds cloud credentials to the system.
 
@@ -134,7 +139,7 @@ def add_cloud_credentials(
         formatted_credentials = fom.AwsCredentialsFactory.from_access_keys(
             access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
             secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-            default_region="us-west-2
+            default_region="us-west-2"
         )
 
         fom.add_cloud_credentials(
@@ -164,6 +169,8 @@ def add_cloud_credentials(
         prefixes (``None``): The list of bucket names the credentials apply to,
             if applicable. Defaults to ``None`` meaning the default credentials
             for the provider.
+        overwrite (``True``): Whether to overwrite existing credentials for the
+            same provider/prefixes combination.
 
     Raises:
         ValueError: if invalid provider is supplied
@@ -174,16 +181,24 @@ def add_cloud_credentials(
     credentials_dict = _prepare_credentials(credential_type, credentials)
     credentials_str = json.dumps(credentials_dict)
 
-    client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_SET_CLOUD_CREDENTIALS_QUERY,
-        variables={
-            "provider": provider,
-            "creds": credentials_str,
-            "description": description,
-            "prefixes": prefixes,
-        },
-    )
+    try:
+        client = connection.APIClientConnection().client
+        client.post_graphql_request(
+            query=_SET_CLOUD_CREDENTIALS_QUERY,
+            variables={
+                "provider": provider,
+                "creds": credentials_str,
+                "description": description,
+                "prefixes": prefixes,
+                "overwrite": overwrite,
+            },
+        )
+    except errors.FiftyOneTeamsAPIError:
+        raise fom_exc.FiftyOneManagementError(
+            f"Error adding cloud credentials for provider {provider} and "
+            f"prefixes {prefixes}; try again with `overwrite=True` or change "
+            f"a different set of prefixes."
+        )
 
 
 def delete_cloud_credentials(
