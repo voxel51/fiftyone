@@ -5,7 +5,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import { OverlayProps } from "./shared";
 import { useCursor } from "@react-three/drei";
-import { useRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { cuboidLabelLineWidthAtom } from "../state";
 import { extend } from "@react-three/fiber";
 
@@ -30,7 +30,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
-  const [lineWidth] = useRecoilState(cuboidLabelLineWidthAtom);
+  const lineWidth = useRecoilValue(cuboidLabelLineWidthAtom);
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
     [dimensions]
@@ -60,11 +60,14 @@ export const Cuboid = ({
   const [isCuboidHovered, setIsCuboidHovered] = useState(false);
   useCursor(isCuboidHovered);
 
-  const geometry = useMemo(() => {
-    return new LineSegmentsGeometry().fromLineSegments(
-      new THREE.LineSegments(new THREE.EdgesGeometry(geo))
-    );
-  }, [geo]);
+  const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
+  const geometry = useMemo(
+    () =>
+      new LineSegmentsGeometry().fromLineSegments(
+        new THREE.LineSegments(edgesGeo)
+      ),
+    [edgesGeo]
+  );
 
   const material = useMemo(
     () =>
@@ -74,7 +77,7 @@ export const Cuboid = ({
         color: selected ? "orange" : color,
         linewidth: lineWidth,
       }),
-    [selected, lineWidth]
+    [selected, lineWidth, color, opacity]
   );
 
   if (!location || !dimensions) return null;
