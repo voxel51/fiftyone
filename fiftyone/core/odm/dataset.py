@@ -149,7 +149,7 @@ class SampleFieldDocument(EmbeddedDocument):
             return None
 
         return [
-            cls.from_field(value)
+            cls.from_field(value) if value is not None else None
             for value in field.get_field_schema().values()
         ]
 
