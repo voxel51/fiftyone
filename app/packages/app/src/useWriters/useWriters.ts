@@ -13,10 +13,7 @@ const useWriters = (
   sessionRef: MutableRefObject<Session>
 ) => {
   useSession((key, value) => {
-    if (
-      env().VITE_NO_STATE &&
-      !["fieldVisibilityStage", "modalSelector"].includes(key)
-    ) {
+    if (env().VITE_NO_STATE && "fieldVisibilityStage" === key) {
       return;
     }
 

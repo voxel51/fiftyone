@@ -46,15 +46,17 @@ const onSetSample: RegisteredWriter<"modalSelector"> =
       event: "modal",
       modalSelector: selector,
     });
-    !env().VITE_NO_STATE &&
-      commitMutation<setSampleMutation>(environment, {
-        mutation: setSample,
-        variables: {
-          groupId: selector?.groupId,
-          id: selector?.id,
-          subscription,
-        },
-      });
+
+    if (env().VITE_NO_STATE) return;
+
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: selector?.groupId,
+        id: selector?.id,
+        subscription,
+      },
+    });
   };
 
 export default onSetSample;

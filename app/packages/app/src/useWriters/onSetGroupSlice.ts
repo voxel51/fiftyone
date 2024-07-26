@@ -1,4 +1,5 @@
 import { setGroupSlice, type setGroupSliceMutation } from "@fiftyone/relay";
+import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 
@@ -14,6 +15,7 @@ const onSetGroupSlice: RegisteredWriter<"sessionGroupSlice"> =
 
     router.push(pathname, { ...router.location.state, groupSlice: slice });
 
+    if (env().VITE_NO_STATE) return;
     commitMutation<setGroupSliceMutation>(environment, {
       mutation: setGroupSlice,
       variables: {
