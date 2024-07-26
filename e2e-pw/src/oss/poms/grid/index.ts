@@ -80,7 +80,7 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
-    await this.sliceSelector.selectSlice(slice);
+    await this.url.pageChange(() => this.sliceSelector.selectSlice(slice));
   }
 
   /**

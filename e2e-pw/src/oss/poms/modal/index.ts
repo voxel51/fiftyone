@@ -83,6 +83,7 @@ export class ModalPom {
     allowErrorInfo = false
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
+
     await this.url.pageChange(() =>
       this.locator
         .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
@@ -109,9 +110,7 @@ export class ModalPom {
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
 
-    await this.url.pageChange(() =>
-      looker.click({ position: { x: 10, y: 60 } })
-    );
+    await looker.click({ position: { x: 10, y: 60 } });
 
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -169,9 +168,7 @@ export class ModalPom {
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
 
-    await this.url.pageChange(() =>
-      looker.click({ position: { x: 10, y: 60 } })
-    );
+    await looker.click({ position: { x: 10, y: 60 } });
 
     // wait for slice to change
     await this.page.waitForFunction(
