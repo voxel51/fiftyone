@@ -13,15 +13,13 @@ export default function useRefreshers() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
-  const spaces = useRecoilValue(fos.sessionSpaces);
   const view = fos.filterView(useRecoilValue(fos.view));
 
   const layoutReset = useMemo(() => {
     cropToContent;
     refresher;
-    spaces;
     return uuid();
-  }, [cropToContent, refresher, spaces]);
+  }, [cropToContent, refresher]);
 
   const pageReset = useMemo(() => {
     datasetName;
