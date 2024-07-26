@@ -1,6 +1,14 @@
 import React from "react";
 import * as THREE from "three";
 import { OverlayProps } from "./shared";
+import { useRecoilValue } from "recoil";
+import { polylineLabelLineWidthAtom } from "../state";
+import { Line2 } from "three/examples/jsm/lines/Line2";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
+import { extend } from "@react-three/fiber";
+
+extend({ Line2, LineMaterial, LineGeometry });
 
 interface LineProps extends OverlayProps {
   points: THREE.Vector3Tuple[];
@@ -15,6 +23,7 @@ export const Line = ({
   tooltip,
   label,
 }: LineProps) => {
+  const lineWidth = useRecoilValue(polylineLabelLineWidthAtom);
   const geo = React.useMemo(() => {
     const g = new THREE.BufferGeometry().setFromPoints(
       points.map((p) => new THREE.Vector3(...p))
@@ -29,10 +38,21 @@ export const Line = ({
     return tooltip.getMeshProps(label);
   }, [tooltip, label]);
 
+  const geometry = React.useMemo(() => {
+    return new LineGeometry().fromLine(new THREE.Line(geo));
+  }, [geo]);
+
+  const material = React.useMemo(() => {
+    return new LineMaterial({
+      color: color,
+      linewidth: lineWidth,
+      opacity: opacity,
+    });
+  }, [color, lineWidth, opacity]);
+
   return (
-    <line onClick={onClick} {...tooltipProps} opacity={opacity}>
-      <primitive object={geo} attach="geometry" rotation={rotation} />
-      <lineBasicMaterial attach="material" color={color} />
-    </line>
+    <mesh onClick={onClick} rotation={rotation} {...tooltipProps}>
+      <line2 geometry={geometry} material={material} />
+    </mesh>
   );
 };
