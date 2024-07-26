@@ -8,6 +8,7 @@ Base classes for documents that back dataset contents.
 
 from copy import deepcopy
 import json
+import logging
 
 from bson import json_util, ObjectId
 import mongoengine
@@ -20,6 +21,8 @@ import fiftyone.core.utils as fou
 from .database import ensure_connection
 from .utils import serialize_value, deserialize_value
 
+
+logger = logging.getLogger(__name__)
 
 class SerializableDocument(object):
     """Mixin for documents that can be serialized in BSON or JSON format."""
@@ -439,7 +442,12 @@ class MongoEngineBaseDocument(SerializableDocument):
                 d[k] = cls._simple_filter(v)
         elif isinstance(d, list):
             # Pymongo cannot create a document with a list that contains None
-            d = [v for v in d if v is not None]
+            r = [cls._simple_filter(v) for v in d if v is not None]
+            if len(r) != len(d):
+                msg = (f"Detected {len(d)-len(r)} None values in list,"
+                       f" ignoring them.")
+                logger.warning(msg)
+            d = r
         return d
 
     @classmethod
