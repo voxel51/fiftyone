@@ -51,7 +51,7 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   await grid.run(async () => {
     await grid.actionsRow.toggleTagSamplesOrLabels();
     await grid.tagger.setActiveTaggerMode("sample");
-    await grid.tagger.addNewTag("grid-test");
+    await grid.tagger.addNewTag("sample", "grid-test");
   });
 
   await expect(await grid.locator).toHaveScreenshot("grid-tagged.png", {

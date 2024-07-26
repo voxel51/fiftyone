@@ -136,9 +136,9 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
 
   // tag current frame and ensure sidebar updates
   const currentSampleTagCount = await modal.sidebar.getSampleTagCount();
-  await modal.tagger.open();
+  await modal.tagger.toggleOpen();
   await modal.tagger.switchTagMode("sample");
-  await modal.tagger.addTag("tag-1-3");
+  await modal.tagger.addSampleTag("tag-1-3");
   await modal.sidebar.assert.verifySampleTagCount(currentSampleTagCount + 1);
 
   // skip a couple of frames and see that sample tag count is zero
@@ -155,9 +155,9 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
 
   // tag label and see that sidebar updates
   const currentLabelTagCount = await modal.sidebar.getLabelTagCount();
-  await modal.tagger.open();
+  await modal.tagger.toggleOpen();
   await modal.tagger.switchTagMode("label");
-  await modal.tagger.addTag("box-1-5");
+  await modal.tagger.addLabelTag("box-1-5");
   await modal.sidebar.assert.verifyLabelTagCount(currentLabelTagCount + 1);
 
   // skip a couple of frames and see that label tag count is zero

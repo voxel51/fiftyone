@@ -32,7 +32,7 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.sidebar = new ModalSidebarPom(page);
-    this.tagger = new ModalTaggerPom(eventUtils, this);
+    this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
     this.url = new UrlPom(page, eventUtils);
