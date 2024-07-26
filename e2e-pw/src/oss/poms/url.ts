@@ -19,8 +19,8 @@ export class UrlPom {
     return this.searchParams.get("groupId");
   }
 
-  get sampleId() {
-    return this.searchParams.get("sampleId");
+  get id() {
+    return this.searchParams.get("id");
   }
 
   get searchParams() {
@@ -60,14 +60,14 @@ class UrlAsserter {
   }
 
   verifyGroupId(groupId: string | null) {
-    expect(this.urlPom.sampleId).toEqual(groupId);
+    expect(this.urlPom.id).toEqual(groupId);
   }
 
-  verifySampleId(sampleId: string) {
-    expect(this.urlPom.sampleId).toEqual(sampleId);
+  verifySampleId(id: string) {
+    expect(this.urlPom.id).toEqual(id);
   }
 
   verifyView(viewName: string) {
-    expect(this.urlPom.sampleId).toEqual(viewName);
+    expect(this.urlPom.id).toEqual(viewName);
   }
 }
