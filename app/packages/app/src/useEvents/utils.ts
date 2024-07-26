@@ -25,6 +25,7 @@ export const processState = (
 
     if (env().VITE_NO_STATE) {
       session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+      unsubscribe();
       return;
     }
 
