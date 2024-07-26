@@ -87,15 +87,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
         fields = None
         if self.fields is not None:
-            count = 0
-            fields = []
-            for field_doc in list(self.fields):
-                if field_doc is not None:
-                    fields.append(field_doc.to_field())
-                else:
-                    count += 1
-            if count > 0:
-                logger.warning(f"Encountering {count} null fields, ignoring.")
+            fields = [field_doc.to_field() for field_doc in list(self.fields)]
 
         return create_field(
             self.name,
@@ -149,7 +141,7 @@ class SampleFieldDocument(EmbeddedDocument):
             return None
 
         return [
-            cls.from_field(value) if value is not None else None
+            cls.from_field(value)
             for value in field.get_field_schema().values()
         ]
 

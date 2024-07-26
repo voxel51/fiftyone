@@ -433,6 +433,16 @@ class MongoEngineBaseDocument(SerializableDocument):
         return json.loads(json_util.dumps(d))
 
     @classmethod
+    def _simple_filter(cls, d):
+        if isinstance(d, dict):
+            for k, v in d.items():
+                d[k] = cls._simple_filter(v)
+        elif isinstance(d, list):
+            # Pymongo cannot create a document with a list that contains None
+            d = [v for v in d if v is not None]
+        return d
+
+    @classmethod
     def from_dict(cls, d, extended=False):
         if not extended:
             try:
@@ -440,6 +450,7 @@ class MongoEngineBaseDocument(SerializableDocument):
                 # extended form
 
                 # pylint: disable=no-member
+                d = cls._simple_filter(d)
                 return cls._from_son(d)
             except Exception:
                 pass
@@ -447,7 +458,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         # Construct any necessary extended JSON components like ObjectIds
         # @todo can we optimize this?
         d = json_util.loads(json_util.dumps(d))
-
+        d = cls._simple_filter(d)
         # pylint: disable=no-member
         return cls._from_son(d)
 
