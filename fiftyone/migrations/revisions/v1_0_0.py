@@ -31,6 +31,7 @@ def up(db, dataset_name):
 
     db.datasets.replace_one(match_d, dataset_dict)
 
+    # Populate `Sample.created_at` values
     if add_samples_created_at:
         sample_collection_name = dataset_dict.get(
             "sample_collection_name", None
@@ -38,6 +39,7 @@ def up(db, dataset_name):
         if sample_collection_name:
             _add_created_at(db, dataset_name, sample_collection_name)
 
+    # Populate `Frame.created_at` values
     if add_frames_created_at:
         frame_collection_name = dataset_dict.get("frame_collection_name", None)
         if frame_collection_name:
