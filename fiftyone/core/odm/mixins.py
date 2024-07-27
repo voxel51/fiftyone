@@ -7,7 +7,6 @@ Mixins and helpers for dataset backing documents.
 """
 from collections import OrderedDict
 from datetime import datetime
-import itertools
 
 from bson import ObjectId
 from pymongo import UpdateOne

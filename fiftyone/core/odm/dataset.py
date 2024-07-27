@@ -6,7 +6,6 @@ Documents that track datasets and their sample schemas in the database.
 |
 """
 
-from datetime import datetime
 import logging
 
 from bson import DBRef, ObjectId
