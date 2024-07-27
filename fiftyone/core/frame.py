@@ -760,7 +760,8 @@ class Frames(object):
                 d = self._make_dict(
                     frame, created_at=now, last_modified_at=now
                 )
-                new_dicts[frame_number] = d
+                if isinstance(frame, Frame):
+                    new_dicts[frame_number] = d
 
                 op = ReplaceOne(
                     {
