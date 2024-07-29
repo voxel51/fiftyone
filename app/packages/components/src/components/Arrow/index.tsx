@@ -1,4 +1,4 @@
-import { styled } from "styled-components";
+import styled from "styled-components";
 
 const Arrow = styled.span<{ isRight?: boolean }>`
   cursor: pointer;
