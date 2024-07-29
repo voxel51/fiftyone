@@ -38,6 +38,7 @@ from .core.collections import DownloadContext, SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
+    DatasetNotFoundError,
     list_datasets,
     dataset_exists,
     load_dataset,

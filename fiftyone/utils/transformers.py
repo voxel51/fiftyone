@@ -375,7 +375,7 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
     def _embed(self, args):
         inputs = self.image_processor(args, return_tensors="pt")
         with torch.no_grad():
-            outputs = self.model.base_model(**inputs)
+            outputs = self.model.base_model(**inputs.to(self.device))
 
         return outputs.last_hidden_state[:, -1, :].cpu().numpy()
 
@@ -396,7 +396,9 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
     def _embed(self, args):
         inputs = self.processor(images=args, return_tensors="pt")
         with torch.no_grad():
-            image_features = self.model.base_model.get_image_features(**inputs)
+            image_features = self.model.base_model.get_image_features(
+                **inputs.to(self.device)
+            )
 
         return image_features.cpu().numpy()
 
@@ -433,7 +435,9 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
     def _embed_prompts(self, prompts):
         inputs = self.processor(text=prompts, return_tensors="pt")
         with torch.no_grad():
-            text_features = self.model.base_model.get_text_features(**inputs)
+            text_features = self.model.base_model.get_text_features(
+                **inputs.to(self.device)
+            )
         return text_features
 
 
@@ -447,6 +451,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
+        self.device = (
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
+        )
         self.image_processor = self._load_image_processor()
 
     @property
@@ -491,6 +498,9 @@ class FiftyOneZeroShotTransformer(
         self.config = config
         self.classes = config.classes
         self.model = self._load_model(config)
+        self.device = (
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
+        )
         self.processor = self._load_processor()
         self._text_prompts = None
 
@@ -590,7 +600,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         )
 
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         logits_per_image = (
             outputs.logits_per_image.detach().cpu()
@@ -632,7 +642,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         with torch.no_grad():
             for text_prompt in text_prompts:
                 inputs = self.processor(arg, text_prompt, return_tensors="pt")
-                outputs = self.model(**inputs)
+                outputs = self.model(**inputs.to(self.device))
                 logits.append(outputs.logits[0, :].item())
 
         logits = np.array(logits)
@@ -691,7 +701,7 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
 
     def _predict(self, inputs):
         with torch.no_grad():
-            results = self.model(**inputs)
+            results = self.model(**inputs.to(self.device))
         return to_classification(results, self.model.config.id2label)
 
     def predict(self, arg):
@@ -738,6 +748,9 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.config = config
         self.classes = config.classes
         self.processor = self._load_processor(config)
+        self.device = (
+            "cuda" if next(config.model.parameters()).is_cuda else "cpu"
+        )
         self.model = self._load_model(config)
         self._text_prompts = None
 
@@ -769,7 +782,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         results = self.processor.image_processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
@@ -816,7 +829,7 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         results = self.image_processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
@@ -874,7 +887,7 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         results = self.image_processor.post_process_semantic_segmentation(
             outputs, target_sizes=target_sizes
@@ -923,7 +936,7 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**inputs)
+            outputs = self.model(**inputs.to(self.device))
 
         predicted_depth = outputs.predicted_depth
         prediction = torch.nn.functional.interpolate(
