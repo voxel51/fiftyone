@@ -140,6 +140,8 @@ export default function DashboardView(props: ViewPropsType) {
     justifyContent: "space-between",
     alignItems: "center",
   }));
+  const [showGrid, setShowGrid] = useState(false);
+  const toggleGrid = useCallback(() => setShowGrid(!showGrid), [showGrid]);
 
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
@@ -151,15 +153,11 @@ export default function DashboardView(props: ViewPropsType) {
     ...gridLayout,
     { i: "add-item", x: 0, y: ROWS, w: COLS, h: 1, static: true },
   ];
+
   return (
-    <Box
-      {...getComponentProps(props, "container")}
-      sx={{ position: "relative", marginLeft: -0.5 }}
-    >
-      <Box
-        {...getProps(props, "grid", baseGridProps)}
-        sx={{ position: "relative" }}
-      >
+    <Box>
+      {!showGrid && <Button onClick={toggleGrid}>Toggle Grid</Button>}
+      {showGrid && (
         <GridLayout
           onLayoutChange={handleLayoutChange}
           layout={finalLayout}
@@ -183,6 +181,7 @@ export default function DashboardView(props: ViewPropsType) {
               sx: { padding: 0.25, position: "relative" },
               key: id,
             };
+
             return (
               <Box
                 key={id}
@@ -222,7 +221,7 @@ export default function DashboardView(props: ViewPropsType) {
             );
           })}
         </GridLayout>
-      </Box>
+      )}
       {allow_addition && <AddItemButton key="add-item" onAddItem={onAddItem} />}
     </Box>
   );

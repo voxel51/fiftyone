@@ -129,7 +129,9 @@ export default function PlotlyView(props) {
 
   const mergedLayout = merge({}, layoutDefaults, layout);
   const mergedConfig = merge({}, configDefaults, config);
-  const mergedData = mergeData(data, dataDefaults);
+  const mergedData = mergeData(data || schema?.view?.data, dataDefaults);
+
+  console.log(mergedData);
 
   return (
     <Box
