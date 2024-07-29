@@ -48,7 +48,6 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
-  sessionGroupId?: string;
 }
 
 export const SESSION_DEFAULT: Session = {
@@ -71,12 +70,12 @@ export const SESSION_DEFAULT: Session = {
     defaultMaskTargetsColors: [],
   },
   fieldVisibilityStage: undefined,
-  filters: {},
   modalFilters: {},
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
   sessionSpaces: SPACES_DEFAULT,
+  sessionGroupSlice: undefined,
 };
 
 type SetterKeys = keyof Omit<
