@@ -41,6 +41,7 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
 export const PANEL_ORDER_VISIBILITY = -1;
 export const PANEL_ORDER_ANIMATIONS = 1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
+export const PANEL_ORDER_LABELS = 998;
 export const PANEL_ORDER_LIGHTS = 999;
 export const PANEL_ORDER_SETTINGS = 1000;
 

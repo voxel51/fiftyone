@@ -4,6 +4,7 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
+import { ModalLevaPom } from "./leva";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
 
@@ -13,12 +14,13 @@ export class ModalPom {
   readonly modalContainer: Locator;
 
   readonly assert: ModalAsserter;
+  readonly group: ModalGroupActionsPom;
+  readonly leva: ModalLevaPom;
+  readonly locator: Locator;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
-  readonly locator: Locator;
-  readonly group: ModalGroupActionsPom;
-  readonly video: ModalVideoControlsPom;
   readonly url: UrlPom;
+  readonly video: ModalVideoControlsPom;
 
   constructor(
     private readonly page: Page,
@@ -31,11 +33,12 @@ export class ModalPom {
     this.looker = this.locator.getByTestId("looker").last();
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
-    this.sidebar = new ModalSidebarPom(page);
-    this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
-    this.video = new ModalVideoControlsPom(page, this);
+    this.leva = new ModalLevaPom(page, this);
+    this.tagger = new ModalTaggerPom(page, this);
+    this.sidebar = new ModalSidebarPom(page);
     this.url = new UrlPom(page, eventUtils);
+    this.video = new ModalVideoControlsPom(page, this);
   }
 
   get groupLooker() {
