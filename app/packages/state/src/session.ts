@@ -27,7 +27,7 @@ export const SPACES_DEFAULT = {
 
 export type ModalSelector = {
   groupId?: string;
-  id: string;
+  id?: string;
   hasNext?: boolean;
   hasPrevious?: boolean;
 };
@@ -40,14 +40,15 @@ export interface Session {
   canModifySidebarGroup: { enabled: boolean; message?: string };
   canTagSamplesOrLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
+  fieldVisibilityStage?: State.FieldVisibilityStage;
+  modalFilters: State.Filters;
+  modalSelector?: ModalSelector;
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
-  modalSelector?: ModalSelector;
   sessionGroupId?: string;
-  fieldVisibilityStage?: State.FieldVisibilityStage;
 }
 
 export const SESSION_DEFAULT: Session = {
@@ -69,11 +70,13 @@ export const SESSION_DEFAULT: Session = {
     defaultColorscale: { name: "viridis", list: null },
     defaultMaskTargetsColors: [],
   },
-  sessionSpaces: SPACES_DEFAULT,
   fieldVisibilityStage: undefined,
+  filters: {},
+  modalFilters: {},
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
+  sessionSpaces: SPACES_DEFAULT,
 };
 
 type SetterKeys = keyof Omit<

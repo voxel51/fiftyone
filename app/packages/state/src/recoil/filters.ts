@@ -4,7 +4,8 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import { DefaultValue, selector, selectorFamily } from "recoil";
+import { sessionAtom } from "../session";
 import { lightning, lightningPaths } from "./lightning";
 import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
@@ -14,7 +15,7 @@ import {
 } from "./sidebarExpanded";
 import { State } from "./types";
 
-export const modalFilters = atom<State.Filters>({
+export const modalFilters = sessionAtom({
   key: "modalFilters",
   default: {},
 });
@@ -33,6 +34,7 @@ export const filters = (() => {
 
         return current;
       },
+      selectorEffect: true,
     },
     {
       effects: [
