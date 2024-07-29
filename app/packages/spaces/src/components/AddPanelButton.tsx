@@ -1,7 +1,8 @@
 import { IconButton, Popout, scrollable } from "@fiftyone/components";
-import { useOutsideClick } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { useMemo, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
 import AddPanelItem from "./AddPanelItem";
@@ -10,7 +11,16 @@ import { panelsCompareFn } from "../utils/sort";
 
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
-  const panels = usePanels();
+  const isModalActive = useRecoilValue(fos.isModalActive);
+  const panels = usePanels((panel) => {
+    if (isModalActive) {
+      return panel.surfaces === "modal" || panel.surfaces === "grid modal";
+    }
+
+    if (panel.surfaces === "modal") return false;
+
+    return true;
+  });
   const spaceNodes = useSpaceNodes(spaceId);
   const nodeTypes = useMemo(() => {
     return spaceNodes.map((node) => {
@@ -18,7 +28,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
     });
   }, [spaceNodes]);
   const popoutRef = useRef();
-  useOutsideClick(popoutRef, () => {
+  fos.useOutsideClick(popoutRef, () => {
     setOpen(false);
   });
 

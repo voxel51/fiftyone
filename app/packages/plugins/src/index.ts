@@ -292,6 +292,10 @@ export interface PluginComponentRegistration<T extends {} = {}> {
    */
   activator: PluginActivator;
   panelOptions?: PanelOptions;
+  /** Surfaces where plugin is made available.
+   * If this is not provided, the plugin will be available in grid only.
+   */
+  surfaces?: "grid" | "modal" | "grid modal";
 }
 
 const DEFAULT_ACTIVATOR = () => true;
