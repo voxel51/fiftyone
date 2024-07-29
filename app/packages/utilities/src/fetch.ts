@@ -114,8 +114,8 @@ export const setFetchFunction = (
           retryDelay: 0,
           retryOn: (attempt, error, response) => {
             if (
-              error !== null ||
-              (retryCodes.includes(response.status) && attempt < retries)
+              (error !== null || retryCodes.includes(response.status)) &&
+              attempt < retries
             ) {
               return true;
             }
@@ -248,6 +248,8 @@ const polling =
   hasWindow &&
   typeof new URLSearchParams(window.location.search).get("polling") ===
     "string";
+const MAX_REOPEN_ATTEMPTS = 10;
+let eventSourceFetchErrorCount = 0;
 
 export const getEventSource = (
   path: string,
@@ -275,6 +277,7 @@ export const getEventSource = (
       async onopen(response) {
         if (response.ok) {
           events.onopen && events.onopen();
+          eventSourceFetchErrorCount = 0;
           return;
         }
 
@@ -300,7 +303,11 @@ export const getEventSource = (
           ["Failed to fetch", "network error"].includes(err.message)
         ) {
           events.onclose && events.onclose();
-          return;
+          if (eventSourceFetchErrorCount <= MAX_REOPEN_ATTEMPTS) {
+            eventSourceFetchErrorCount++;
+            return;
+          }
+          throw err; // close event source
         }
 
         events.onerror && events.onerror(err);

@@ -5,6 +5,7 @@ import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
+import { ModalLevaPom } from "./leva";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -17,6 +18,7 @@ export class ModalPom {
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
+  readonly leva: ModalLevaPom;
 
   constructor(
     private readonly page: Page,
@@ -33,6 +35,7 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
+    this.leva = new ModalLevaPom(page, this);
   }
 
   get groupLooker() {

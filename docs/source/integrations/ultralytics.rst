@@ -47,6 +47,30 @@ the following sample dataset:
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
+.. _ultralytics-image-classification:
+
+Image classification
+--------------------
+
+You can directly pass Ultralytics `YOLO` classification models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
+
+
+.. code-block:: python
+    :linenos:
+
+    # YOLOv8
+    model = YOLO("yolov8n-cls.pt")
+    # model = YOLO("yolov8s-cls.pt")
+    # model = YOLO("yolov8m-cls.pt")
+    # model = YOLO("yolov8l-cls.pt")
+    # model = YOLO("yolov8x-cls.pt")
+
+    dataset.apply_model(model, label_field="classif")
+
+    session = fo.launch_app(dataset)
+
+
 .. _ultralytics-object-detection:
 
 Object detection
