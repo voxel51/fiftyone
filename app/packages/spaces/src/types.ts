@@ -34,9 +34,9 @@ export type SplitPanelButtonProps = {
 };
 
 export type SpaceNodeJSON = {
-  activeChild?: SpaceNode["activeChild"];
-  children: Array<SpaceNodeJSON>;
   id: SpaceNode["id"];
+  activeChild?: SpaceNode["activeChild"];
+  children?: Array<SpaceNodeJSON>;
   layout?: SpaceNode["layout"];
   type?: SpaceNode["type"];
   pinned?: SpaceNode["pinned"];
@@ -58,6 +58,7 @@ export type PanelTabProps = {
 export type SpaceProps = {
   node: SpaceNode;
   id: string;
+  hideWorkspaces?: boolean;
 };
 
 export type PanelStateParameter = {

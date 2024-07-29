@@ -15,11 +15,11 @@ import {
 import AddPanelButton from "./AddPanelButton";
 import Panel from "./Panel";
 import PanelTab from "./PanelTab";
-import Workspaces from "./Workspaces";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
+import Workspaces from "./Workspaces";
 
-export default function Space({ node, id }: SpaceProps) {
+export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
   const { spaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
@@ -50,7 +50,7 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && <Workspaces />}
+        {node.isRoot() && !hideWorkspaces && <Workspaces />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -80,7 +80,7 @@ export default function Space({ node, id }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && <Workspaces />}
+        {node.isRoot() && !hideWorkspaces && <Workspaces />}
         <PanelTabs data-type="panel-container" data-cy="panel-container">
           <ReactSortable
             group="panel-tabs"
