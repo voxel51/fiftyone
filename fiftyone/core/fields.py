@@ -7,6 +7,7 @@ Dataset sample fields.
 """
 from copy import deepcopy
 from datetime import date, datetime
+import logging
 import numbers
 import re
 
@@ -1501,6 +1502,27 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def to_python(self, value):
+        """
+        Convert from MongoDB representation to Python objects. For more info
+        on the base method, see mongoengine.base.ComplexBaseField.
+
+        Args:
+            value: a list of dictionaries
+
+        Returns:
+            a list of :class:`fiftyone.core.odm.BaseEmbeddedDocument` instances
+        """
+        # Filter out None values since each item in the list is expected to be
+        # a dictionary object to convert to an embedded document
+        filtered_value = [v for v in value if v is not None]
+        if len(filtered_value) != len(value):
+            msg = (f"{len(value) - len(filtered_value)} None value found in"
+                   f" list field {self.name}, ignoring them.")
+            logging.warning(msg)
+
+        return super().to_python(filtered_value)
 
 
 class ReferenceField(mongoengine.fields.ReferenceField, Field):
