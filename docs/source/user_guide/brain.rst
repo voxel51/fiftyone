@@ -67,7 +67,7 @@ workflow:
   have annotated and fed back into the system as training samples, for example.
 
 * :ref:`Representativeness <brain-image-representativeness>`:
-  When working with large datasets it can be hard to determine what samples 
+  When working with large datasets, it can be hard to determine what samples 
   within it are outliers and which are more typical. The FiftyOne Brain offers
   a *representativeness measure* which can be used to find the most common
   types of images in your dataset. This is especially helpful to find easy
@@ -1709,17 +1709,17 @@ demonstrated empirical value in many model training exercises.
 .. _brain-image-representativeness:
 
 Image representativeness
-_______________
+________________________
 
 During the early stages of the ML workflow it can be useful to find
-prototypical samples in your data which accurately describe all the different
-aspects of your data. FiftyOne Brain provides a representativeness method which
+prototypical samples in your data that accurately describe all the different
+aspects of your data. FiftyOne Brain provides a representativeness method, which
 finds samples that are very similar to large clusters of your data. Highly
 representative samples are great for finding modes or easy examples in your
 dataset.
 
-The representativeness of a |Dataset| can be computed directly without needing
-the predictions of a pre-trained model via the
+The representativeness of a |Dataset| can be computed directly without the need
+for the predictions of a pre-trained model via the
 :meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`
 method:
 
@@ -1738,7 +1738,7 @@ method:
 formats, ranging from a simple directory of images to complicated dataset
 structures like `COCO <https://cocodataset.org/#home>`_.
 
-**Output**: A scalar-valued `representativeness` field is populated on each 
+**Output**: A scalar-valued `representativeness` field is populated for each 
 sample that ranks the representativeness of that sample (higher value means
 more representative). The representativeness values for a dataset are 
 normalized to `[0, 1]`, with the most representative samples in the collection
@@ -1751,7 +1751,7 @@ You can customize the name of this field by passing the optional
 
 **What to expect**: Representativeness uses a clustering algorithm to find
 similar looking groups of samples. The representativeness is then computed
-based on each samples proximity to the computed cluster centers, farther
+based on each sample's proximity to the computed cluster centers, farther
 samples being less representative and closer samples being more representative.
 
 .. image:: /images/brain/brain-representativeness.png
