@@ -180,7 +180,7 @@ provided below for each cloud platform.
 Browser Caching
 -----------------
 
-If your datasets include cloud-backed media, we recommend configuring your data
+If your datasets include cloud-backed media, we strongly recommend configuring your data
 sources to allow for built in browser caching. This will cache signed URL responses
 so you don't need to reload assets from your cloud storage between sessions.
 Details are provided below for each cloud platform.
