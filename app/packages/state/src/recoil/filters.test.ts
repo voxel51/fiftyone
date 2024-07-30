@@ -15,8 +15,8 @@ describe("filter resolves correctly", () => {
   );
 
   setMockAtoms({
-    filters: { test: "grid filters" },
-    modalFilters: { test: "modal filters" },
+    _filters__setter: { test: "grid filters" },
+    __modalFilters_selector: { test: "modal filters" },
   });
 
   it("resolves filter correctly in grid view", () => {
@@ -34,16 +34,16 @@ describe("hasFilter resolves correctly", () => {
   );
   it("hasFilter resolves correctly when there is filter", () => {
     setMockAtoms({
-      filters: { test: "grid filters" },
-      modalFilters: { test: "modal filters" },
+      _filters__setter: { test: "grid filters" },
+      __modalFilters_selector: { test: "modal filters" },
     });
     expect(test()).toBe(true);
   });
 
   it("hasFilter resolves correctly when there is hidden label ids, modal is open", () => {
     setMockAtoms({
-      modalFilters: { test: "modal filters" },
       hiddenLabelIds: ["1", "2"],
+      __modalFilters_selector: { test: "modal filters" },
     });
     const test2 = <TestSelectorFamily<typeof filters.hasFilters>>(
       (<unknown>filters.hasFilters(true))
