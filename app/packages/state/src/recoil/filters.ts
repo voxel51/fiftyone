@@ -36,7 +36,6 @@ export const filters = (() => {
 
         return current;
       },
-      selectorEffect: true,
     },
     {
       effects: [
