@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, selector, selectorFamily } from "recoil";
-import { sessionAtom } from "../session";
+import { getSessionRef, sessionAtom } from "../session";
 import { lightning, lightningPaths } from "./lightning";
 import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
@@ -21,14 +21,16 @@ export const modalFilters = sessionAtom({
 });
 
 export const filters = (() => {
-  let current: State.Filters = {};
+  let current: State.Filters;
   return graphQLSyncFragmentAtom<datasetFragment$key, State.Filters>(
     {
       fragments: [datasetFragment],
       keys: ["dataset"],
       default: {},
       read: (data, previous) => {
-        if (data.id !== previous?.id) {
+        if (current === undefined) {
+          current = getSessionRef().filters;
+        } else if (data.id !== previous?.id) {
           current = {};
         }
 

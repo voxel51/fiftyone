@@ -41,6 +41,7 @@ export interface Session {
   canTagSamplesOrLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
   fieldVisibilityStage?: State.FieldVisibilityStage;
+  filters: State.Filters;
   modalFilters: State.Filters;
   modalSelector?: ModalSelector;
   readOnly: boolean;
@@ -70,6 +71,7 @@ export const SESSION_DEFAULT: Session = {
     defaultMaskTargetsColors: [],
   },
   fieldVisibilityStage: undefined,
+  filters: {},
   modalFilters: {},
   readOnly: false,
   selectedSamples: new Set(),
