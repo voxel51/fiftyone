@@ -273,6 +273,8 @@ here is an example configuration:
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on S3 objects <https://docs.aws.amazon.com/whitepapers/latest/build-static-websites-aws/controlling-how-long-amazon-s3-content-is-cached-by-amazon-cloudfront.html#specify-cache-control-headers>`_.
+By default S3 does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
 
 .. _teams-google-cloud:
 
@@ -341,6 +343,7 @@ here is an example configuration:
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
+By default GCP sets the max-age=0 seconds meaning no caching will occur.
 
 .. _teams-azure:
 
@@ -455,6 +458,8 @@ alias:
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on Azure blobs <https://learn.microsoft.com/en-us/azure/cdn/cdn-manage-expiration-of-blob-content#setting-cache-control-headers-by-using-azure-powershell>`_.
+By default Azure does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
 
 .. _teams-minio:
 
@@ -529,6 +534,8 @@ alias:
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on MinIO content using the metadata field of the put_object API <https://min.io/docs/minio/linux/developers/python/API.html>`_.
+By default Minio does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
 
 .. _teams-extra-kwargs:
 
