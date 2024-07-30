@@ -66,7 +66,7 @@ workflow:
   predictions on unlabeled samples to determine which are the most valuable to
   have annotated and fed back into the system as training samples, for example.
 
-* :ref:`Representativeness <brain-image-representativenesss>`:
+* :ref:`Representativeness <brain-image-representativeness>`:
   When working with large datasets it can be hard to determine what samples 
   within it are outliers and which are more typical. The FiftyOne Brain offers
   a *representativeness measure* which can be used to find the most common
@@ -1706,7 +1706,6 @@ demonstrated empirical value in many model training exercises.
    :alt: hardness
    :align: center
 
-##
 .. _brain-image-representativeness:
 
 Image representativeness
@@ -1719,8 +1718,8 @@ finds samples that are very similar to large clusters of your data. Highly
 representative samples are great for finding modes or easy examples in your
 dataset.
 
-The representativeness of a |Dataset| can be computed directly without need the
-predictions of a pre-trained model via the
+The representativeness of a |Dataset| can be computed directly without needing
+the predictions of a pre-trained model via the
 :meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`
 method:
 
@@ -1756,9 +1755,9 @@ based on each samples proximity to the computed cluster centers, farther
 samples being less representative and closer samples being more representative.
 
 .. image:: /images/brain/brain-representativeness.png
-   :alt: hardness
+   :alt: representativeness
    :align: center
-##
+
 .. _brain-managing-runs:
 
 Managing brain runs
