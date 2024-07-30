@@ -1502,6 +1502,13 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self.document_type),
         )
 
+    def validate(self, value):
+        for v in value:
+            if v is None:
+                raise ValueError("Embedded document list fields should not"
+                                 " contain None values.")
+        super().validate(value)
+
 
 class ReferenceField(mongoengine.fields.ReferenceField, Field):
     """A reference field.
