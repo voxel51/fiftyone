@@ -153,7 +153,7 @@ export const getFo3dRoot = (fo3dUrl: string) => {
   }
 
   // remove filename and the last slash to get the root
-  const root = filepath.replace(/\/[^\/]*\.fo3d$/, "/");
+  const root = filepath.replace(/(\/[^/]*\.fo3d$|\\[^\\]*\.fo3d$)/, "/");
 
   return root;
 };

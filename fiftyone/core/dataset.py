@@ -37,7 +37,6 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import SampleFieldDocument
 from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -58,6 +57,14 @@ foud = fou.lazy_import("fiftyone.utils.data")
 
 
 logger = logging.getLogger(__name__)
+
+
+class DatasetNotFoundError(ValueError):
+    """Exception raised when a dataset is not found."""
+
+    def __init__(self, name):
+        self._dataset_name = name
+        super().__init__(f"Dataset {name} not found")
 
 
 def list_datasets(glob_patt=None, tags=None, info=False):
@@ -158,7 +165,7 @@ def _load_snapshot_dataset(materialized_name, head_name, snapshot_name):
         ) from None
 
 
-def load_dataset(name, snapshot=None):
+def load_dataset(name, snapshot=None, create_if_necessary=False):
     """Loads the FiftyOne dataset or snapshot with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
@@ -172,6 +179,11 @@ def load_dataset(name, snapshot=None):
     Args:
         name: the name of the dataset
         snapshot(None): an optional snapshot name
+        create_if_necessary (False): if no dataset exists, create an empty one
+
+    Raises:
+        DatasetNotFoundError: if the dataset does not exist and
+            `create_if_necessary` is False
 
     Returns:
         a :class:`Dataset`
@@ -199,8 +211,14 @@ def load_dataset(name, snapshot=None):
             ) from None
         head_name = dataset_doc["name"]
         return _load_snapshot_dataset(name, head_name, snapshot)
-
-    return Dataset(name, _create=False)
+    else:
+        try:
+            return Dataset(name, _create=False)
+        except DatasetNotFoundError as ex:
+            if create_if_necessary:
+                return Dataset(name, _create=True)
+            else:
+                raise ex
 
 
 def get_default_dataset_name():
@@ -7783,7 +7801,7 @@ def _do_load_dataset(obj, name):
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name})
     if not res:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
 
     sample_collection_name = dataset_doc.sample_collection_name

@@ -9,6 +9,7 @@ Utilities for working with `Hugging Face <https://huggingface.co>`_.
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import inspect
+import itertools
 import logging
 import math
 import os
@@ -129,7 +130,7 @@ def push_to_hub(
         dataset_type = fot.FiftyOneDataset
 
     if dataset_type == fot.FiftyOneDataset and chunk_size is None:
-        if dataset.count() > 10000:
+        if _count_samples(dataset) > 10000:
             logger.info(
                 "Dataset has more than 10,000 samples. Chunking by default to avoid "
                 "exceeding the maximum number of files in a directory on Hugging"
@@ -314,6 +315,8 @@ class HFHubDatasetConfig(Config):
         license: the license of the dataset
         description: the description of the dataset
         fiftyone: the fiftyone version requirement of the dataset
+        app_media_fields: the media fields visible in the App
+        grid_media_field: the media field to use in the grid view
     """
 
     def __init__(self, **kwargs):
@@ -333,6 +336,9 @@ class HFHubDatasetConfig(Config):
         self.license = kwargs.get("license", None)
         self.description = kwargs.get("description", None)
         self._get_fiftyone_version(kwargs)
+
+        self.app_media_fields = kwargs.get("app_media_fields", ["filepath"])
+        self.grid_media_field = kwargs.get("grid_media_field", "filepath")
 
     def _get_fiftyone_version(self, kwargs):
         if kwargs.get("fiftyone", None) is None:
@@ -363,11 +369,11 @@ pip install -U fiftyone
 
 ```python
 import fiftyone as fo
-import fiftyone.utils.huggingface as fouh
+from fiftyone.utils.huggingface import load_from_hub
 
 # Load the dataset
 # Note: other available arguments include 'max_samples', etc
-dataset = fouh.load_from_hub("{repo_id}")
+dataset = load_from_hub("{repo_id}")
 
 # Launch the App
 session = fo.launch_app(dataset)
@@ -448,15 +454,17 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     from tqdm import tqdm
 
     num_total_chunks = num_chunks * (len(field_dirs) + 1)
+    if num_total_chunks > 1 and chunk_size is None:
+        chunk_size = len(os.listdir(os.path.join(tmp_dir, "data")))
 
     message = "Uploading media files"
     if num_total_chunks > 1:
-        message += f" in {num_total_chunks} batches  of size {chunk_size}"
+        message += f" in {num_total_chunks} batches of size {chunk_size}"
 
-    def _upload_media_dir(i):
+    def _upload_media_dir(i, chunk=True):
         path_in_repo = (
             os.path.join("data", f"data_{i}")
-            if chunk_size is not None
+            if chunk_size is not None and num_chunks > 1
             else "data"
         )
         media_dir = os.path.join(tmp_dir, path_in_repo)
@@ -476,7 +484,7 @@ def _upload_data_to_repo(api, repo_id, tmp_dir, dataset_type):
     def _upload_field_dir(field_dir, i):
         path_in_repo = (
             os.path.join("fields", field_dir, f"{field_dir}_{i}")
-            if chunk_size is not None
+            if chunk_size is not None and num_chunks > 1
             else os.path.join("fields", field_dir)
         )
         field_media_dir = os.path.join(tmp_dir, path_in_repo)
@@ -534,6 +542,14 @@ def _populate_config_file(
 
     if license is not None:
         config_dict["license"] = license
+
+    app_media_fields = list(dataset.app_config.media_fields)
+    if app_media_fields != ["filepath"]:
+        config_dict["app_media_fields"] = app_media_fields
+
+    grid_media_field = dataset.app_config.grid_media_field
+    if grid_media_field is not None and grid_media_field != "filepath":
+        config_dict["grid_media_field"] = grid_media_field
 
     with open(config_filepath, "w") as f:
         yaml.dump(config_dict, f)
@@ -611,7 +627,7 @@ def _create_dataset_card(
         "task_ids": [],
         "pretty_name": dataset.name,
         "license": license,
-        "size_categories": [_get_size_category(dataset.count())],
+        "size_categories": [_get_size_category(_count_samples(dataset))],
         "tags": tags,
     }
 
@@ -649,6 +665,15 @@ def _parse_subset_kwargs(**kwargs):
     if isinstance(subsets, str):
         subsets = [subsets]
     return subsets
+
+
+def _count_samples(sample_collection):
+    if sample_collection.media_type == "group":
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+
+    return sample_collection.count()
 
 
 @contextmanager
@@ -901,7 +926,12 @@ def _get_label_field_names_and_types(config):
 def _get_parquet_dataset_features(
     repo_id, split, subset, revision=None, **kwargs
 ):
-    api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
+    api_url = (
+        f"{DATASETS_SERVER_URL}/info?"
+        f"dataset={repo_id.replace('/', '%2F')}&"
+        f"config={subset}&"
+        f"split={split}"
+    )
     if revision is not None:
         api_url += f"&revision={revision}"
 
@@ -912,7 +942,12 @@ def _get_parquet_dataset_features(
 
 
 def _get_num_rows(repo_id, split, subset, revision=None, **kwargs):
-    api_url = f"{DATASETS_SERVER_URL}/info?dataset={repo_id.replace('/', '%2F')}&config={subset}&split={split}]"
+    api_url = (
+        f"{DATASETS_SERVER_URL}/info?"
+        f"dataset={repo_id.replace('/', '%2F')}&"
+        f"config={subset}&"
+        f"split={split}]"
+    )
     if revision is not None:
         api_url += f"&revision={revision}"
 
@@ -1216,7 +1251,10 @@ def _add_parquet_subset_to_dataset(dataset, config, split, subset, **kwargs):
 
     if batch_size > DATASETS_MAX_BATCH_SIZE:
         logger.info(
-            f"Batch size {batch_size} is larger than the maximum batch size {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
+            (
+                f"Batch size {batch_size} is larger than the maximum batch size"
+                f" {DATASETS_MAX_BATCH_SIZE}. Using {DATASETS_MAX_BATCH_SIZE} instead"
+            )
         )
         batch_size = DATASETS_MAX_BATCH_SIZE
 
@@ -1309,9 +1347,69 @@ def _resolve_dataset_name(config, **kwargs):
     return name
 
 
-def _get_files_to_download(dataset):
-    filepaths = dataset.values("filepath")
+def _get_media_fields(sample_collection):
+    media_fields = [
+        field
+        for field in sample_collection.app_config.media_fields
+        if field != "filepath"
+    ]
+
+    return media_fields
+
+
+def _get_files_to_download(sample_collection):
+    if sample_collection.media_type == "group":
+        return list(
+            itertools.chain.from_iterable(
+                _get_files_to_download(
+                    sample_collection.select_group_slices(group)
+                )
+                for group in sample_collection.group_slices
+            )
+        )
+
+    filepaths = sample_collection.values("filepath")
     filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
+
+    media_fields = _get_media_fields(sample_collection)
+
+    for media_field in media_fields:
+        media_field_values = sample_collection.values(media_field)
+        media_field_values = [
+            val for val in media_field_values if not os.path.exists(val)
+        ]
+        filepaths.extend(media_field_values)
+
+    try:
+        heatmap_fields = list(
+            sample_collection.get_field_schema(
+                embedded_doc_type=fo.Heatmap
+            ).keys()
+        )
+        for heatmap_field in heatmap_fields:
+            map_path_name = f"{heatmap_field}.map_path"
+            map_paths = sample_collection.exists(map_path_name).values(
+                map_path_name
+            )
+            map_paths = [val for val in map_paths if not os.path.exists(val)]
+            filepaths.extend(map_paths)
+
+        mask_fields = list(
+            sample_collection.get_field_schema(
+                embedded_doc_type=fo.Segmentation
+            ).keys()
+        )
+
+        for mask_field in mask_fields:
+            mask_path_name = f"{mask_field}.mask_path"
+            mask_paths = sample_collection.exists(mask_path_name).values(
+                mask_path_name
+            )
+            mask_paths = [val for val in mask_paths if not os.path.exists(val)]
+            filepaths.extend(mask_paths)
+    except:
+        pass
+
     return filepaths
 
 
@@ -1323,6 +1421,17 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
     max_samples = kwargs.get("max_samples", None)
     batch_size = kwargs.get("batch_size", None)
     splits = _parse_split_kwargs(**kwargs)
+
+    app_media_fields = (
+        config.app_media_fields
+        if hasattr(config, "app_media_fields")
+        else ["filepath"]
+    )
+    grid_media_field = (
+        config.grid_media_field
+        if hasattr(config, "grid_media_field")
+        else "filepath"
+    )
 
     batch_size = DEFAULT_BATCH_SIZE if batch_size is None else batch_size
 
@@ -1377,6 +1486,12 @@ def _load_fiftyone_dataset_from_config(config, **kwargs):
         _download_files_in_batches(
             filepaths, download_dir, batch_size, **init_download_kwargs
         )
+
+    if app_media_fields != ["filepath"]:
+        dataset.app_config.media_fields = app_media_fields
+    if grid_media_field != "filepath":
+        dataset.app_config.grid_media_field = grid_media_field
+    dataset.save()
     return dataset
 
 
