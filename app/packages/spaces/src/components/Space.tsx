@@ -19,7 +19,7 @@ import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
 import Workspaces from "./Workspaces";
 
-export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
+export default function Space({ node, id, type }: SpaceProps) {
   const { spaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
@@ -50,7 +50,7 @@ export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && !hideWorkspaces && <Workspaces />}
+        {node.isRoot() && <Workspaces type={type} />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -67,7 +67,7 @@ export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
             const preferredSize = toPercentage(node.sizes?.[i]);
             return (
               <Allotment.Pane key={space.id} preferredSize={preferredSize}>
-                <Space node={space} id={id} />
+                <Space node={space} id={id} type={type} />
               </Allotment.Pane>
             );
           })}
@@ -80,7 +80,7 @@ export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && !hideWorkspaces && <Workspaces />}
+        {node.isRoot() && <Workspaces type={type} />}
         <PanelTabs data-type="panel-container" data-cy="panel-container">
           <ReactSortable
             group="panel-tabs"
@@ -131,12 +131,12 @@ export default function Space({ node, id, hideWorkspaces }: SpaceProps) {
             </div>
           </ReactSortable>
         </PanelTabs>
-        {node.hasActiveChild() ? (
+        {node.hasActiveChild() && activeChild ? (
           <Panel node={activeChild as SpaceNode} spaceId={id} />
         ) : null}
       </PanelContainer>
     );
-  } else if (node.isPanel()) {
+  } else if (node.isPanel() && node) {
     return <Panel node={node} spaceId={id} />;
   } else if (node.isEmpty()) {
     return (

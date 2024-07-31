@@ -1,7 +1,8 @@
 import { IconButton, Popout, scrollable } from "@fiftyone/components";
+import { PluginComponentRegistration } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
@@ -12,15 +13,19 @@ import { panelsCompareFn } from "../utils/sort";
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
   const isModalActive = useRecoilValue(fos.isModalActive);
-  const panels = usePanels((panel) => {
-    if (isModalActive) {
-      return panel.surfaces === "modal" || panel.surfaces === "grid modal";
-    }
+  const panelsPredicate = useCallback(
+    (panel: PluginComponentRegistration) => {
+      if (isModalActive) {
+        return panel.surfaces === "modal" || panel.surfaces === "grid modal";
+      }
 
-    if (panel.surfaces === "modal") return false;
+      if (panel.surfaces === "modal") return false;
 
-    return true;
-  });
+      return true;
+    },
+    [isModalActive]
+  );
+  const panels = usePanels(panelsPredicate);
   const spaceNodes = useSpaceNodes(spaceId);
   const nodeTypes = useMemo(() => {
     return spaceNodes.map((node) => {
