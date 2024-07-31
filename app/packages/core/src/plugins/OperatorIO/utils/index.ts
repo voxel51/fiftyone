@@ -34,6 +34,11 @@ const viewAliases = {
   RadioGroup: "RadioView",
   Success: "AlertView",
   Warning: "AlertView",
+  IconButtonView: "ButtonView",
+  HStackView: "GridView",
+  VStackView: "GridView",
+  ButtonGroupView: "GridView",
+  MenuView: "GridView",
 };
 const operatorTypeToJSONSchemaType = {
   Object: "object",
@@ -104,6 +109,7 @@ function getSchema(property, options = {}) {
     type,
     view: { readOnly, ...getViewSchema(property) },
     default: defaultValue,
+    onChange: property.onChange,
     required,
   };
   const component = getComponent(property, options);

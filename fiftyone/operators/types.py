@@ -7,6 +7,7 @@ FiftyOne operator types.
 """
 
 import enum
+from textwrap import dedent
 
 
 class BaseType(object):
@@ -246,6 +247,65 @@ class Object(BaseType):
         """
         return self.define_property(name, Void(), view=view, **kwargs)
 
+    def btn(
+        self,
+        name,
+        label,
+        icon=None,
+        variant=None,
+        on_click=None,
+        prompt=False,
+        params=None,
+        space=None,
+        href=None,
+        icon_position="left",
+        **kwargs,
+    ):
+        """Defines a button or icon button to display to the user as a :class:`Button`.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            inputs = types.Object()
+            inputs.btn(
+                "greet",
+                label="Say Hi!",
+                icon="waving_hand",
+                variant="round",
+                on_click="print_stdout",
+                params={"msg": "Hi!"},
+            )
+
+        Args:
+            name: the name of the property
+            label: the label of the button
+            icon (None): the name of the icon to display
+            icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
+                ``"round"`` or ``"square"``
+            on_click (None): the name of the operator to execute when the button is clicked
+            prompt (False): whether to prompt the user before executing the operator
+            params (None): the parameters to pass to the operator
+            space (None): An int specifying how much vertical/horizontal space to allocate out
+                of ``12`` depending on the orientation of the parent container
+            href (None): the URL to navigate to when the button is clicked
+        """
+        btn = Button(
+            href=href,
+            icon=icon,
+            icon_position=icon_position,
+            label=label,
+            operator=on_click,
+            params=params,
+            prompt=prompt,
+            space=space,
+            variant=variant,
+            **kwargs,
+        )
+
+        return self.view(name, btn)
+
     def message(self, name, label, **kwargs):
         """Defines a message to display to the user as a :class:`Notice`.
 
@@ -261,8 +321,184 @@ class Object(BaseType):
         view = kwargs.get("view", Notice(label=label))
         return self.view(name, view, **kwargs)
 
+    def grid(self, name, **kwargs):
+        """Defines a grid view as a :class:`View`."""
+        grid = GridView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=grid)
+        return obj
+
+    def plot(self, name, **kwargs):
+        """Defines an object property displayed as a plot.
+
+        Args:
+            name: the name of the property
+            config (None): the chart config
+            layout (None): the chart layout
+        """
+        plot = PlotlyView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=plot)
+        return obj
+
+    def h_stack(self, name, **kwargs):
+        """Defines a horizontal stack object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        stack = HStackView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=stack)
+        return obj
+
+    def v_stack(self, name, **kwargs):
+        """Defines a vertical stack object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        stack = VStackView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=stack)
+        return obj
+
+    def menu(self, name, **kwargs):
+        """Defines a menu object.
+
+        Args:
+            name: the name of the property
+            variant (None): the variant for the items of the menu. Can be ``"contained"``,
+                ``"outlined"``, ``"round"`` or ``"square"``
+            color (None): the color for the items of the menu.
+        Returns:
+            a :class:`Object`
+        """
+        menu_kwargs = {"pad": 1, "variant": "square", **kwargs}
+        menu = MenuView(**menu_kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=menu)
+        return obj
+
+    def btn_group(self, name, **kwargs):
+        """Defines a button group object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        btn_group = ButtonGroupView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=btn_group)
+        return obj
+
+    def md(self, markdown, name="markdown", **kwargs):
+        """Defines a markdown object.
+
+        Args:
+            markdown: the markdown to display
+            name: the name of the property
+        """
+        return self.str(
+            name, default=dedent(markdown), view=MarkdownView(**kwargs)
+        )
+
+    def media_player(self, name, url, **kwargs):
+        """Defines a media player object.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Object`
+        """
+        media_player = MediaPlayerView(**kwargs)
+        obj = Object()
+        self.define_property(
+            name, obj, view=media_player, default={"url": url}
+        )
+        return obj
+
+    def arrow_nav(
+        self, name, forward=None, backward=None, position=None, **kwargs
+    ):
+        """Defines a floating navigation arrows as a :class:`ArrowNavView`.
+
+        Args:
+            forward (True): Whether to display the forward arrow
+            backward (True): Whether to display the backward arrow
+            position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+                ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+
+        Returns:
+            a :class:`Property`
+        """
+        view = ArrowNavView(
+            forward=forward, backward=backward, position=position, **kwargs
+        )
+        return self.view(name, view, **kwargs)
+
+    def map(self, name, key_type, value_type, **kwargs):
+        """Defines a map property on the object.
+
+        Args:
+            name: the name of the property
+            key_type: the type of the keys in the map
+            value_type: the type of the values in the map
+
+
+        Returns:
+            a :class:`Map`
+        """
+        map_view = MapView(**kwargs)
+        map_type = Map(key_type=key_type, value_type=value_type)
+        self.define_property(name, map_type, view=map_view, **kwargs)
+        return map_type
+
+    def oneof(self, name, types, **kwargs):
+        """Defines a one-of property on the object.
+
+        Args:
+            name: the name of the property
+            types: list of types that are instances of :class:`BaseType`
+
+
+        Returns:
+            a :class:`OneOf`
+        """
+
+        one_of = OneOf(types)
+        self.define_property(name, one_of, **kwargs)
+        return one_of
+
+    def tuple(self, name, *items, **kwargs):
+        """Defines a tuple property on the object.
+
+        Args:
+            name: the name of the property
+            *items: the types of the items in the tuple
+
+        Returns:
+            a :class:`Tuple`
+        """
+        tuple_view = TupleView(**kwargs)
+        tuple_type = Tuple(*items)
+        self.define_property(name, tuple_type, view=tuple_view, **kwargs)
+        return tuple_type
+
     def clone(self):
         """Clones the definition of the object.
+
+        Args:
+            name: the name of the property
 
         Returns:
             an :class:`Object`
@@ -367,17 +603,21 @@ class Property(BaseType):
         self.choices = kwargs.get("choices", None)
         self.error_message = kwargs.get("error_message", "")
         self.view = kwargs.get("view", None)
+        self.on_change = kwargs.get("on_change", None)
 
     def to_json(self):
-        return {
-            "type": self.type.to_json(),
-            "default": self.default,
-            "required": self.required,
-            "choices": self.choices,
-            "invalid": self.invalid,
-            "error_message": self.error_message,
-            "view": self.view.to_json() if self.view else None,
-        }
+        return _convert_callables_to_operator_uris(
+            {
+                "type": self.type.to_json(),
+                "default": self.default,
+                "required": self.required,
+                "choices": self.choices,
+                "invalid": self.invalid,
+                "error_message": self.error_message,
+                "on_change": self.on_change,
+                "view": self.view.to_json() if self.view else None,
+            }
+        )
 
 
 class String(BaseType):
@@ -624,6 +864,14 @@ class UploadedFile(Object):
         )
 
 
+def _convert_callables_to_operator_uris(d):
+    updated = {**d}
+    for key, value in updated.items():
+        if callable(value):
+            updated[key] = f"{value.__self__.uri}#{value.__name__}"
+    return updated
+
+
 class View(object):
     """Represents a view of a :class:`Property`.
 
@@ -633,16 +881,17 @@ class View(object):
         label (None): a label for the view
         description (None): a description for the view
         caption (None): a caption for the view
-        space (12): An int specifying how much vertical space to allocate out
-            of ``12``
+        space (12): An int specifying how much vertical/horizontal space to allocate out
+            of ``12`` depending on the orientation of the parent container
         placeholder (None): string to display placeholder text
         read_only (False): whether the view is read-only
         component (None): specifying custom component to use as the view
         componentsProps (None): dict for providing props to components rendered
             by a view
+        container (None): the container (instance of :class:`BaseType`) of the view
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, container=None, **kwargs):
         self.label = kwargs.get("label", None)
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
@@ -651,10 +900,15 @@ class View(object):
         self.read_only = kwargs.get("read_only", None)
         self.component = kwargs.get("component", None)
         self.componentsProps = kwargs.get("componentsProps", None)
+        self.container = container
         self._kwargs = kwargs
 
     def clone(self):
-        return self.__class__(**self._kwargs)
+        return self.__class__(container=self.container, **self._kwargs)
+
+    def kwargs_to_json(self):
+        view_kwargs = {**self._kwargs}
+        return _convert_callables_to_operator_uris(view_kwargs)
 
     def to_json(self):
         return {
@@ -667,7 +921,10 @@ class View(object):
             "read_only": self.read_only,
             "component": self.component,
             "componentsProps": self.componentsProps,
-            **self._kwargs,
+            "container": (
+                self.container.to_json() if self.container else None
+            ),
+            **self.kwargs_to_json(),
         }
 
 
@@ -926,7 +1183,7 @@ class Button(View):
         button = types.Button(
             label="Click me",
             operator="print_stdout",
-            params={"message": "Hello World"},
+            params={"msg": "Hello World"},
         )
 
         inputs = types.Object()
@@ -939,21 +1196,27 @@ class Button(View):
         operator (None): the name of the operator to execute when the button is
             clicked
         params (None): the parameters to pass to the operator
+        href (None): the URL to navigate to when the button is clicked
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.href = kwargs.get("href", None)
         self.operator = kwargs.get("operator", None)
+        self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
+        self.href = kwargs.get("href", None)
 
     def to_json(self):
-        return {
-            **super().to_json(),
-            "href": self.href,
-            "operator": self.operator,
-            "params": self.params,
-        }
+        return _convert_callables_to_operator_uris(
+            {
+                **super().to_json(),
+                "href": self.href,
+                "operator": self.operator,
+                "params": self.params,
+                "prompt": self.prompt,
+            }
+        )
 
 
 class OneOfView(View):
@@ -1593,6 +1856,13 @@ class MarkdownView(View):
         super().__init__(**kwargs)
 
 
+class MediaPlayerView(View):
+    """Renders a media player for audio and video files."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class FileExplorerView(View):
     """Displays a file explorer for interacting with files.
 
@@ -1757,6 +2027,49 @@ class ViewTargetProperty(Property):
         return self._options
 
 
+class GridView(View):
+    """Displays properties of an object as a grid of components in horizontal
+    or vertical orientation.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+
+    Args:
+        orientation ("horizontal"): the orientation of the stack. Can be either
+            ``"horizontal"`` or ``"vertical"``
+        gap (1): the gap between the components
+        align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
+            or ``"right"``
+        align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
+            or ``"bottom"``
+        variant (None): the variant of the grid. Can be either ``"paper"`` or ``"outline"``
+        elevation (None): the elevation of the grid. Only applicable when ``variant="paper"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = kwargs.get("orientation", "horizontal")
+        self.gap = kwargs.get("gap", 1)
+        self.align_x = kwargs.get("align_x", "left")
+        self.align_y = kwargs.get("align_y", "top")
+        variant = kwargs.get("variant", None)
+        elevation = kwargs.get("elevation", None)
+        if variant == "paper":
+            self.container = PaperContainer(elevation=elevation)
+        elif variant == "outline":
+            self.container = OutlinedContainer()
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "orientation": self.orientation,
+            "gap": self.gap,
+            "align_x": self.align_x,
+            "align_y": self.align_y,
+        }
+
+
 class DrawerView(View):
     """Renders an operator prompt as a left or right side drawer.
 
@@ -1783,3 +2096,170 @@ class DrawerView(View):
         if placement not in ["left", "right"]:
             raise ValueError('placement must be either "left" or "right".')
         super().__init__(**kwargs)
+
+
+class IconButtonView(Button):
+    """Represents a button in a :class:`View`.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        iconButtonView = types.IconButtonView(
+            icon="waving_hand",
+            operator="print_stdout",
+            params={"msg": "Hi!"},
+        )
+
+        inputs = types.Object()
+        inputs.view("icon_btn", iconButtonView)
+
+    Args:
+        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+        variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
+            ``"outlined"``, or ``"contained"``.
+        label (None): a label for the button
+        description (None): a description for the button
+        caption (None): a caption for the button
+        operator (None): the name of the operator to execute when the button is
+            clicked
+        params (None): the parameters to pass to the operator
+        href (None): the URL to navigate to when the button is clicked
+    """
+
+    def __init__(self, **kwargs):
+        if "icon" not in kwargs or not isinstance(kwargs["icon"], str):
+            raise ValueError("The 'icon' parameter of type str is required.")
+        super().__init__(**kwargs)
+
+
+class HStackView(GridView):
+    """Displays properties of an object as a horizontal stack of components.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+    """
+
+    def __init__(self, orientation="horizontal", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
+
+
+class VStackView(GridView):
+    """Displays properties of an object as a vertical stack of components.
+
+    .. note::
+
+        Must be used with :class:`Object` properties.
+    """
+
+    def __init__(self, orientation="vertical", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
+class ButtonGroupView(GridView):
+    """Displays a group of buttons in a horizontal stack.
+
+    .. note::
+
+        Must be used with :class:`Button` properties.
+    """
+
+    def __init__(self, orientation="horizontal", **kwargs):
+        kwargs["align_y"] = kwargs.get("align_y", "center")
+        super().__init__(orientation=orientation, **kwargs)
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
+class MenuView(GridView):
+    """Displays a menu of options in a vertical stack.
+
+    .. note::
+
+        Must be used with :class:`Button` properties.
+    """
+
+    def __init__(self, orientation="horizontal", **kwargs):
+        super().__init__(orientation=orientation, **kwargs)
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
+class ArrowNavView(View):
+    """Displays a floating navigation arrows.
+
+    Args:
+        forward (True): Whether to display the forward arrow
+        backward (True): Whether to display the backward arrow
+        position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+            ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.forward = kwargs.get("forward", True)
+        self.backward = kwargs.get("backward", True)
+        self.position = kwargs.get("position", "center")
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "forward": self.forward,
+            "backward": self.backward,
+            "position": self.position,
+        }
+
+
+class Container(BaseType):
+    """Represents a base container for a container types."""
+
+    def __init__(self, **kwargs):
+        self._kwargs = kwargs
+
+    def to_json(self):
+        return {**super().to_json(), **self._kwargs}
+
+
+class PaperContainer(Container):
+    """Represents an elevated block for a view.
+
+    Args:
+        elevation (1): the elevation of the container. Can be a value between 0 and 24
+        rounded (True): whether to display the paper container with rounded corners
+    """
+
+    def __init__(self, elevation=1, rounded=True, **kwargs):
+        super().__init__(**kwargs)
+        self.elevation = elevation
+        self.rounded = rounded
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "elevation": self.elevation,
+            "rounded": self.rounded,
+        }
+
+
+class OutlinedContainer(Container):
+    """Represents an elevated block for a view.
+
+    Args:
+        rounded (True): whether to display the outlined container with rounded corners
+    """
+
+    def __init__(self, rounded=True, **kwargs):
+        super().__init__(**kwargs)
+        self.rounded = rounded
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "rounded": self.rounded,
+        }
