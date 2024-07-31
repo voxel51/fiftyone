@@ -40,7 +40,7 @@
         "prettier": "^2.8.0",
         "relay-compiler": "^14.1.0",
         "relay-runtime": "^14.1.0",
-        "typedoc": "^0.23.21",
+        "typedoc": "^0.26.5",
         "typescript": "^5.4.5",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^5.2.12",
