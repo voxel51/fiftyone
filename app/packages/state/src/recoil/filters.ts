@@ -25,6 +25,7 @@ export const filters = (() => {
     {
       fragments: [datasetFragment],
       keys: ["dataset"],
+      default: {},
       read: (data, previous) => {
         if (current === undefined) {
           current = getSessionRef().filters;
