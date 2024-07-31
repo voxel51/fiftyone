@@ -58,7 +58,7 @@ export type PanelTabProps = {
 export type SpaceProps = {
   node: SpaceNode;
   id: string;
-  hideWorkspaces?: boolean;
+  type: "grid" | "modal";
 };
 
 export type PanelStateParameter = {
