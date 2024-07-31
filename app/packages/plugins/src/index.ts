@@ -222,12 +222,18 @@ export function getAbsolutePluginPath(name: string, path: string): string {
  * @returns A list of active plugins
  */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  return usePlugin(type).filter((p) => {
-    if (typeof p.activator === "function") {
-      return p.activator(ctx);
-    }
-    return false;
-  });
+  return useMemo(
+    () =>
+      usingRegistry()
+        .getByType(type)
+        .filter((p) => {
+          if (typeof p.activator === "function") {
+            return p.activator(ctx);
+          }
+          return false;
+        }),
+    [type, ctx]
+  );
 }
 
 /**
@@ -259,6 +265,7 @@ type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
   allowDuplicates?: boolean;
+  pinned?: boolean;
   TabIndicator?: React.ComponentType;
   priority?: number;
 };
@@ -292,6 +299,10 @@ export interface PluginComponentRegistration<T extends {} = {}> {
    */
   activator: PluginActivator;
   panelOptions?: PanelOptions;
+  /**
+   * Markdown help text for the plugin
+   */
+  helpMarkdown?: string;
   /** Surfaces where plugin is made available.
    * If this is not provided, the plugin will be available in grid only.
    */
