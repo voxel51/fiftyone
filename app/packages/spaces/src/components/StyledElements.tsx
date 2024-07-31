@@ -53,3 +53,10 @@ export const TabIndicatorContainer = styled.div`
   max-height: 24px;
   margin-left: 4px;
 `;
+
+export const HelpTabIconContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  padding-top: 4px;
+`;

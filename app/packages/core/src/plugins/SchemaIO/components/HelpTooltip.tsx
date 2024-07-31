@@ -1,16 +1,35 @@
-import React from "react";
+import { Help } from "@mui/icons-material";
 import {
   Tooltip as MUITooltip,
   TooltipProps as MUITooltipProps,
   Typography,
 } from "@mui/material";
-import { Help } from "@mui/icons-material";
+import React from "react";
+import Markdown from "./Markdown";
 
-export default function Tooltip(props: TooltipProps) {
-  const { title, ...otherProps } = props;
+const MarkdownHelpTooltipTitle = ({
+  titleMarkdown,
+}: {
+  titleMarkdown: string;
+}) => {
+  return <Markdown>{titleMarkdown}</Markdown>;
+};
+interface HelpTooltipProps extends TooltipProps {
+  isTitleMarkdown?: boolean;
+  iconSx?: React.CSSProperties;
+}
+
+export default function HelpTooltip(props: HelpTooltipProps) {
+  const { title, iconSx, isTitleMarkdown, ...otherProps } = props;
   return (
     <MUITooltip
-      title={<Typography variant="body2">{title}</Typography>}
+      title={
+        isTitleMarkdown ? (
+          <MarkdownHelpTooltipTitle titleMarkdown={title as string} />
+        ) : (
+          <Typography variant="body2">{title}</Typography>
+        )
+      }
       {...otherProps}
       sx={{
         fontSize: 14,
@@ -18,7 +37,7 @@ export default function Tooltip(props: TooltipProps) {
         ...(otherProps?.sx || {}),
       }}
     >
-      <Help />
+      <Help sx={iconSx ?? {}} />
     </MUITooltip>
   );
 }

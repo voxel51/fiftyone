@@ -1,4 +1,5 @@
 import { IconButton } from "@fiftyone/components";
+import { HelpTooltip } from "@fiftyone/core/src/plugins/SchemaIO/components";
 import { useTimeout } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
 import { CircularProgress, Skeleton, Typography } from "@mui/material";
@@ -13,7 +14,11 @@ import {
 } from "../hooks";
 import { PanelTabProps } from "../types";
 import PanelIcon from "./PanelIcon";
-import { StyledTab, TabIndicatorContainer } from "./StyledElements";
+import {
+  HelpTabIconContainer,
+  StyledTab,
+  TabIndicatorContainer,
+} from "./StyledElements";
 
 export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
@@ -55,6 +60,15 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         <TabIndicatorContainer>
           <TabIndicator />
         </TabIndicatorContainer>
+      )}
+      {panel.helpMarkdown && (
+        <HelpTabIconContainer>
+          <HelpTooltip
+            title={panel.helpMarkdown}
+            isTitleMarkdown
+            iconSx={{ fontSize: 14 }}
+          />
+        </HelpTabIconContainer>
       )}
       {!node.pinned && (
         <IconButton
