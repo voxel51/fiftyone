@@ -7,7 +7,7 @@ import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
 import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
@@ -17,6 +17,9 @@ import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, CuboidProps } from "./cuboid";
 import { OverlayLabel, load3dOverlays } from "./loader";
 import { PolyLineProps, Polyline } from "./polyline";
+import { folder, useControls } from "leva";
+import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
+import { PANEL_ORDER_LABELS } from "../constants";
 
 export interface ThreeDLabelsProps {
   sampleMap: Record<string, any>;
@@ -34,9 +37,48 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
+  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
+    cuboidLabelLineWidthAtom
+  );
+  const [polylineWidth, setPolylineWidth] = useRecoilState(
+    polylineLabelLineWidthAtom
+  );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = colorScheme.opacity;
+
+  const constLabelLevaControls = {
+    cuboidLineWidget: {
+      value: cuboidLineWidth,
+      min: 0,
+      max: 20,
+      step: 1,
+      label: `Cuboid Line Width`,
+      onChange: (value: number) => {
+        setCuboidLineWidth(value);
+      },
+    },
+    polylineLineWidget: {
+      value: polylineWidth,
+      min: 0,
+      max: 20,
+      step: 1,
+      label: `Polyline Line Width`,
+      onChange: (value: number) => {
+        setPolylineWidth(value);
+      },
+    },
+  };
+
+  const [labelConfig] = useControls(
+    () => ({
+      Labels: folder(constLabelLevaControls, {
+        order: PANEL_ORDER_LABELS,
+        collapsed: true,
+      }),
+    }),
+    [setCuboidLineWidth, setPolylineWidth]
+  );
 
   const handleSelect = useCallback(
     (label: OverlayLabel) => {
