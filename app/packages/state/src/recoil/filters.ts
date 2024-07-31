@@ -17,7 +17,6 @@ import { State } from "./types";
 
 export const modalFilters = sessionAtom({
   key: "modalFilters",
-  default: {},
 });
 
 export const filters = (() => {
@@ -26,11 +25,10 @@ export const filters = (() => {
     {
       fragments: [datasetFragment],
       keys: ["dataset"],
-      default: {},
       read: (data, previous) => {
         if (current === undefined) {
           current = getSessionRef().filters;
-        } else if (data.id !== previous?.id) {
+        } else if (previous && data.id !== previous?.id) {
           current = {};
         }
 

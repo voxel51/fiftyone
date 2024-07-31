@@ -31,7 +31,6 @@ export default () => {
     (cbInterface) => async (navigation?: modalAtoms.ModalNavigation) => {
       const { snapshot, set } = cbInterface;
       const data = [
-        [filterAtoms.modalFilters, filterAtoms.filters],
         ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
           return [
             selectors.appConfigOption({ key, modal: false }),
@@ -78,8 +77,7 @@ export default () => {
       for (const i in results) {
         set(data[i][0], results[i]);
       }
-      await setModalFilters(cbInterface);
-
+      navigation && (await setModalFilters(cbInterface));
       navigation && set(modalAtoms.modalNavigation, () => navigation);
     },
     [environment]
