@@ -109,7 +109,7 @@ _GET_PERMISSIONS_FOR_USER_QUERY = """
             edges {
                 node {
                     name
-                    users.User.(id: $userId) {
+                    user(id: $userId) {
                         activePermission
                     }
                 }
