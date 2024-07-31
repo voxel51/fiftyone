@@ -53,7 +53,12 @@ import {
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
+import {
+  datasetName,
+  isVideoDataset,
+  stateSubscription,
+  getDisableFrameFiltering,
+} from "./selectors";
 import { State } from "./types";
 import {
   fieldsMatcher,
@@ -625,8 +630,8 @@ export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
+    const disableFrameFiltering = Boolean(get(getDisableFrameFiltering));
     const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
-
     sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
@@ -651,28 +656,37 @@ export const disabledPaths = selector<Set<string>>({
 
     const frameFields = get(atoms.frameFields);
 
-    fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
-      (path) => paths.add(path)
-    );
-
-    frameFields.filter(groupFilter).forEach((parent) => {
+    if (disableFrameFiltering) {
+      frameFields.forEach((frame) => {
+        paths.add(`frames.${frame.path}`);
+      });
+    } else {
       fieldsMatcher(
-        parent.fields || [],
-        (field) => {
-          if (parent.ftype === LIST_FIELD) {
-            return true;
-          }
-
-          if (field.ftype === LIST_FIELD) {
-            return true;
-          }
-
-          return !LABELS.includes(field.embeddedDocType);
-        },
+        frameFields,
+        primitivesMatcher,
         undefined,
-        `frames.${parent.name}.`
+        "frames."
       ).forEach((path) => paths.add(path));
-    });
+
+      frameFields.filter(groupFilter).forEach((parent) => {
+        fieldsMatcher(
+          parent.fields || [],
+          (field) => {
+            if (parent.ftype === LIST_FIELD) {
+              return true;
+            }
+
+            if (field.ftype === LIST_FIELD) {
+              return true;
+            }
+
+            return !LABELS.includes(field.embeddedDocType);
+          },
+          undefined,
+          `frames.${parent.name}.`
+        ).forEach((path) => paths.add(path));
+      });
+    }
 
     return new Set(paths);
   },
