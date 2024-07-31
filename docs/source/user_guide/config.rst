@@ -674,6 +674,8 @@ The FiftyOne App can be configured in the ways described below:
 || `colorscale`              || `FIFTYONE_APP_COLORSCALE`              || `"viridis"`  || The colorscale to use when rendering heatmaps in the App. See                             |
 ||                           ||                                        ||              || :ref:`this section <heatmaps>` for more details.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+|| `disable_frame_filtering` || `FIFTYONE_APP_DISABLE_FRAME_FILTERING` || `False`      || Disables the frame filtering option in the filter sidebar.                                |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 || `grid_zoom`               || `FIFTYONE_APP_GRID_ZOOM`               || `5`          || The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
 ||                           ||                                        ||              || fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -715,8 +717,6 @@ The FiftyOne App can be configured in the ways described below:
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 || `plugins`                 || N/A                                    || `{}`         || A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for        |
 ||                           ||                                        ||              || details.                                                                                  |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-|| `disable_frame_filtering` || `FIFTYONE_APP_DISABLE_FRAME_FILTERING` || `False`      || Disables the frame filtering option in the filter sidebar                                 |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 
 Viewing your App config
