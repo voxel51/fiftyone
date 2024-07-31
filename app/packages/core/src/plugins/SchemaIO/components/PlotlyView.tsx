@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
-import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";

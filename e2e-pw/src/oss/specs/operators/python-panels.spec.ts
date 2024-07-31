@@ -44,10 +44,10 @@ test("Python Panels: Counter", async ({ panel }) => {
   await panel.open(panelName);
   const content = panel.getContent(panelName);
   await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 0");
-  await content.locator("button:text('Increment')").click();
+  await content.getByRole("button", { name: "Increment" }).click();
   await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 1");
-  await content.locator("button:text('Increment')").click();
+  await content.getByRole("button", { name: "Increment" }).click();
   await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 2");
-  await content.locator("button:text('Decrement')").click();
+  await content.getByRole("button", { name: "Decrement" }).click();
   await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 1");
 });
