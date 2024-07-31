@@ -15,7 +15,7 @@ describe("filter resolves correctly", () => {
   );
 
   setMockAtoms({
-    _filters__setter: { test: "grid filters" },
+    filters: { test: "grid filters" },
     __modalFilters_selector: { test: "modal filters" },
   });
 
@@ -34,7 +34,7 @@ describe("hasFilter resolves correctly", () => {
   );
   it("hasFilter resolves correctly when there is filter", () => {
     setMockAtoms({
-      _filters__setter: { test: "grid filters" },
+      filters: { test: "grid filters" },
       __modalFilters_selector: { test: "modal filters" },
     });
     expect(test()).toBe(true);
