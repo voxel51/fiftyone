@@ -40,7 +40,6 @@ class StateDescription(etas.Serializable):
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         field_visibility_stage (None): a field visibility stage
-        group (None): a dynamic group value
         group_id (None): a :attr:`fiftyone.core.groups.Group.id`
         group_slice (None): a :attr:`fiftyone.core.groups.Group.name`
         sample_id (None): a :attr:`fiftyone.core.sample.Sample.id`
@@ -58,7 +57,6 @@ class StateDescription(etas.Serializable):
         config=None,
         dataset=None,
         field_visibility_stage=None,
-        group=None,
         group_id=None,
         group_slice=None,
         sample_id=None,
@@ -77,7 +75,6 @@ class StateDescription(etas.Serializable):
         self.color_scheme = color_scheme or build_color_scheme()
         self.field_visibility_stage = field_visibility_stage
 
-        self.group = group
         self.group_id = group_id
         if group_slice is None and view is not None:
             group_slice = view.group_slice
@@ -209,7 +206,6 @@ class StateDescription(etas.Serializable):
             config=config,
             dataset=dataset,
             field_visibility_stage=d.get("field_visibility_stage", None),
-            group=d.get("group", None),
             group_id=d.get("group_id", None),
             group_slice=d.get("group_slice", None),
             sample_id=d.get("sample_id", None),

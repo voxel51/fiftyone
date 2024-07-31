@@ -114,7 +114,7 @@ export default class Spotlight<K, V> extends EventTarget {
   next() {
     if (this.#forward.finished) return undefined;
     return async () => {
-      this.#next();
+      await this.#next();
     };
   }
 
@@ -269,7 +269,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
   async #fill() {
     this.#forward = new Section({
-      at: this.#config.at.description,
+      at: this.#config.at?.description,
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
@@ -332,7 +332,7 @@ export default class Spotlight<K, V> extends EventTarget {
       let remainder = [];
       const hasAt = result.items
         .map((item) => item.id.description)
-        .indexOf(this.#config.at.description);
+        .indexOf(this.#config.at?.description);
       if (hasAt >= 0) {
         remainder = result.items.slice(0, hasAt).reverse();
         result.items = result.items.slice(hasAt);

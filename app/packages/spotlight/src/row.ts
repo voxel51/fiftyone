@@ -46,6 +46,10 @@ export default class Row<K, V> {
 
       if (config.onItemClick) {
         element.addEventListener("click", (event) => {
+          if (event.metaKey || event.shiftKey) {
+            return;
+          }
+
           event.preventDefault();
           focus(item.id);
           config.onItemClick({
@@ -55,6 +59,9 @@ export default class Row<K, V> {
           });
         });
         element.addEventListener("contextmenu", (event) => {
+          if (event.metaKey || event.shiftKey) {
+            return;
+          }
           event.preventDefault();
           focus(item.id);
           config.onItemClick({

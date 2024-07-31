@@ -10,13 +10,11 @@ export const defaultGridZoom = selector<number>({
 export const gridPage = atom({
   key: "gridPage",
   default: 0,
-  effects: [],
 });
 
-export const gridAt = atom({
+export const gridAt = atom<string | null>({
   key: "gridAt",
   default: null,
-  effects: [],
 });
 
 export const gridOffset = atom({

@@ -159,40 +159,39 @@ def launch_app(
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
         group_id (None): an optional expanded
             :class:`fiftyone.core.groups.Group` id
-        sample_id (None): an optional expanded
-            :class:`fiftyone.core.sample.Sample` id
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
-            instance defining a space configuration to load
-
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
 
     Returns:
         a :class:`Session`
@@ -313,39 +312,39 @@ class Session(object):
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
-        group_id (None): an optional expanded
-            :class:`fiftyone.core.groups.Group` id
-        sample_id (None): an optional expanded
-            :class:`fiftyone.core.sample.Sample` id
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
-            instance defining a space configuration to load
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        group_id (None): an optional expanded
+            :class:`fiftyone.core.groups.Group` id
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
     """
 
     def __init__(

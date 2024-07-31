@@ -65,7 +65,7 @@ const Spacing = () => {
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Zoom"}>
+      <div style={{ flexGrow: 1 }} title={"Spacing"}>
         <Slider
           valueAtom={gridSpacing}
           boundsAtom={constSelector([0, 64])}

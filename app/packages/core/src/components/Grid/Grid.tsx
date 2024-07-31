@@ -2,7 +2,7 @@ import styles from "./Grid.module.css";
 
 import type { Lookers } from "@fiftyone/state";
 
-import Spotlight, { ID } from "@fiftyone/spotlight";
+import Spotlight, { type ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -70,14 +70,14 @@ function Grid() {
 
         const init = (l) => {
           l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current(records, detail);
+            selectSample.current?.(records, detail);
           });
           lookerStore.set(id, l);
           l.attach(element, dimensions);
         };
 
         if (!soft) {
-          init(createLooker.current({ ...result, symbol: id }));
+          init(createLooker.current?.({ ...result, symbol: id }));
         }
       },
       scrollbar: true,
@@ -109,7 +109,7 @@ function Grid() {
       document.dispatchEvent(new CustomEvent("grid-mount"));
     };
 
-    spotlight.attach(element);
+    element && spotlight.attach(element);
     spotlight.addEventListener("load", mount);
     spotlight.addEventListener("rowchange", set);
 
@@ -122,16 +122,17 @@ function Grid() {
   }, [id, resizing, set, spotlight]);
 
   useEffect(() => {
-    let width: number = undefined;
-    let timeout: ReturnType<typeof setTimeout> = undefined;
-    const el = () => document.getElementById(id).parentElement;
+    let width: number;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const el = () => document.getElementById(id)?.parentElement;
     const observer = new ResizeObserver(() => {
-      if (width === undefined) {
-        width = el().getBoundingClientRect().width;
+      const element = el();
+      if (element && width === undefined) {
+        width = element.getBoundingClientRect().width;
         return;
       }
 
-      const newWidth = el().getBoundingClientRect().width;
+      const newWidth = el()?.getBoundingClientRect().width;
       if (newWidth === width) {
         return;
       }
@@ -140,13 +141,16 @@ function Grid() {
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
         timeout = undefined;
-        width = el().getBoundingClientRect().width;
+        if (element) {
+          width = element?.getBoundingClientRect().width;
+        }
 
         setResizing(false);
       }, 500);
     });
 
-    observer.observe(el());
+    const element = el();
+    element && observer.observe(element);
 
     return () => {
       observer.disconnect();

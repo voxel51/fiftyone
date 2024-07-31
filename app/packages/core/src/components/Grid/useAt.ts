@@ -6,7 +6,7 @@ import { gridAt, gridOffset, gridPage } from "./recoil";
 export default function useAt(pageReset: string) {
   const getPage = useRecoilTransaction_UNSTABLE(
     ({ get }) =>
-      (ref: { current: number }) => {
+      (ref: { current: number | null }) => {
         ref.current = get(gridPage);
       },
     []
@@ -14,7 +14,7 @@ export default function useAt(pageReset: string) {
 
   const getKey = useMemo(() => {
     pageReset;
-    const ref = { current: -1 };
+    const ref: { current: number | null } = { current: -1 };
 
     return () => {
       if (ref.current === -1) {
@@ -33,15 +33,17 @@ export default function useAt(pageReset: string) {
       () => {
         const key = getKey();
 
+        const description = snapshot.getLoadable(gridAt).getValue();
+        if (!description || key === "reset" || key === null) {
+          return { key: 0 };
+        }
+
         return {
-          at:
-            key !== "reset"
-              ? {
-                  description: snapshot.getLoadable(gridAt).getValue(),
-                  offset: snapshot.getLoadable(gridOffset).getValue(),
-                }
-              : { description: undefined, offset: undefined },
-          key: key === "reset" ? 0 : key,
+          at: {
+            description,
+            offset: snapshot.getLoadable(gridOffset).getValue(),
+          },
+          key,
         };
       },
     [getKey]
