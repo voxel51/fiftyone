@@ -1,5 +1,5 @@
 import { MuiIconFont } from "@fiftyone/components";
-import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
+import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
