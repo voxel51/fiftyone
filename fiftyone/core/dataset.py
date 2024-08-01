@@ -1145,7 +1145,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if include_indexes:
             stats["nindexes"] = cs["nindexes"]
             stats["totalIndexSize"] = cs["totalIndexSize"]
-            stats["indexSizes"] = cs["indexSizes"]
+            stats["indexSizes"] = {
+                k: etau.to_human_bytes_str(v)
+                for k, v in cs["indexSizes"].items()
+            }
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
