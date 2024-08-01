@@ -12,7 +12,7 @@ export class UrlPom {
   }
 
   get groupSlice() {
-    return this.searchParams.get("groupSlice");
+    return this.searchParams.get("slice");
   }
 
   get groupId() {
