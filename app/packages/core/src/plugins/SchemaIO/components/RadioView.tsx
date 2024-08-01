@@ -31,7 +31,7 @@ export default function RadioView(props: RadioGroupProps) {
         key={key}
         defaultValue={data}
         onChange={(e, value) => {
-          onChange(path, value, schema);
+          onChange(path, value);
           setUserChanged();
         }}
         sx={{ alignItems: "flex-start" }}

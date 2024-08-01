@@ -13,4 +13,10 @@ describe("getFo3dRoot", () => {
     const expectedRoot = "s3://bucket/path/to/file/";
     expect(getFo3dRoot(url)).toBe(expectedRoot);
   });
+
+  it("should extract the root of a valid fo3d file with backslashes", () => {
+    const url = "c:\\Users\\johndoe\\fiftyone\\store\\assets\\file.fo3d";
+    const expectedRoot = "c:\\Users\\johndoe\\fiftyone\\store\\assets/";
+    expect(getFo3dRoot(url)).toBe(expectedRoot);
+  });
 });

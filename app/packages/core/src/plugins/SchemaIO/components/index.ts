@@ -48,4 +48,4 @@ export { default as UnsupportedView } from "./UnsupportedView";
 export { default as LazyFieldView } from "./LazyFieldView";
 export { default as GridView } from "./GridView";
 export { default as DashboardView } from "./DashboardView";
-export { default as IconButtonView } from "./IconButtonView";
+export { default as ArrowNavView } from "./ArrowNavView";

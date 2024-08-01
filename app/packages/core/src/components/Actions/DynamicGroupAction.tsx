@@ -1,4 +1,7 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  AdaptiveMenuItemComponentPropsType,
+  PillButton,
+} from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
@@ -10,7 +13,11 @@ import { ActionDiv } from "./utils";
 
 const DYNAMIC_GROUP_PILL_BUTTON_ID = "dynamic-group-pill-button";
 
-export const DynamicGroupAction = () => {
+export const DynamicGroupAction = ({
+  adaptiveMenuItemProps,
+}: {
+  adaptiveMenuItemProps: AdaptiveMenuItemComponentPropsType;
+}) => {
   const [open, setOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -41,7 +48,7 @@ export const DynamicGroupAction = () => {
   }, []);
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}

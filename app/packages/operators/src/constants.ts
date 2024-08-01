@@ -14,3 +14,4 @@ export enum QueueItemStatus {
   Completed,
   Failed,
 }
+export const PANEL_STATE_CHANGE_DEBOUNCE = 500;

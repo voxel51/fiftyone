@@ -1,12 +1,7 @@
-import {
-  usePanelId,
-  usePanelState,
-  usePanelStateByIdCallback,
-} from "@fiftyone/spaces";
+import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
-import { useRecoilCallback } from "recoil";
 
 type HandlerOptions = {
   params: any;

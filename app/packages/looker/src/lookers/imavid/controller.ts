@@ -119,7 +119,7 @@ export class ImaVidFramesController {
       );
 
       // subtract by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
-      return this.fetchMore(range[0] - 2, range[1] - range[0] || 1).finally(
+      return this.fetchMore(range[0] - 2, range[1] - range[0] || 2).finally(
         () => {
           this.fetchBufferManager.removeMetadataFromBufferRange(index);
         }

@@ -125,7 +125,7 @@ export const getMediaPathForFo3dSample = (
 
 export const getFo3dRoot = (fo3dPath: string) => {
   // remove filename and the last slash to get the root
-  const root = fo3dPath.replace(/\/[^/]*\.fo3d$/, "/");
+  const root = fo3dPath.replace(/(\/[^/]*\.fo3d$|\\[^\\]*\.fo3d$)/, "/");
 
   return root;
 };

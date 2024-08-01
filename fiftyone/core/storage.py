@@ -15,7 +15,6 @@ import ntpath
 import os
 import posixpath
 import re
-import six
 import shutil
 import tempfile
 
@@ -1010,8 +1009,8 @@ def _delete_file(filepath):
 
 
 def _to_bytes(val, encoding="utf-8"):
-    b = val.encode(encoding) if isinstance(val, six.text_type) else val
-    if not isinstance(b, six.binary_type):
+    b = val.encode(encoding) if isinstance(val, str) else val
+    if not isinstance(b, bytes):
         raise TypeError("Failed to convert %s to bytes" % type(b))
 
     return b

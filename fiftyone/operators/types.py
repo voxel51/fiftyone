@@ -258,6 +258,7 @@ class Object(BaseType):
         params=None,
         space=None,
         href=None,
+        icon_position="left",
         **kwargs,
     ):
         """Defines a button or icon button to display to the user as a :class:`Button`.
@@ -279,10 +280,10 @@ class Object(BaseType):
         Args:
             name: the name of the property
             label: the label of the button
-            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
-                ``"text"``. Additionally, when ``"icon"`` is provided, the variant can also be
-                ``"round"`` or ``"square"``
             icon (None): the name of the icon to display
+            icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
+                ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
@@ -291,27 +292,18 @@ class Object(BaseType):
             href (None): the URL to navigate to when the button is clicked
         """
         btn = Button(
+            href=href,
+            icon=icon,
+            icon_position=icon_position,
             label=label,
             operator=on_click,
-            prompt=prompt,
             params=params,
+            prompt=prompt,
             space=space,
             variant=variant,
-            href=href,
             **kwargs,
         )
-        if icon:
-            btn = IconButtonView(
-                label=label,
-                operator=on_click,
-                prompt=prompt,
-                params=params,
-                icon=icon,
-                variant=variant,
-                space=space,
-                href=href,
-                **kwargs,
-            )
+
         return self.view(name, btn)
 
     def message(self, name, label, **kwargs):
@@ -403,11 +395,14 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
-
+            variant (None): the variant for the items of the menu. Can be ``"contained"``,
+                ``"outlined"``, ``"round"`` or ``"square"``
+            color (None): the color for the items of the menu.
         Returns:
             a :class:`Object`
         """
-        menu = MenuView(**kwargs)
+        menu_kwargs = {"pad": 1, "variant": "square", **kwargs}
+        menu = MenuView(**menu_kwargs)
         obj = Object()
         self.define_property(name, obj, view=menu)
         return obj
@@ -452,6 +447,73 @@ class Object(BaseType):
             name, obj, view=media_player, default={"url": url}
         )
         return obj
+
+    def arrow_nav(
+        self, name, forward=None, backward=None, position=None, **kwargs
+    ):
+        """Defines a floating navigation arrows as a :class:`ArrowNavView`.
+
+        Args:
+            forward (True): Whether to display the forward arrow
+            backward (True): Whether to display the backward arrow
+            position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+                ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+
+        Returns:
+            a :class:`Property`
+        """
+        view = ArrowNavView(
+            forward=forward, backward=backward, position=position, **kwargs
+        )
+        return self.view(name, view, **kwargs)
+
+    def map(self, name, key_type, value_type, **kwargs):
+        """Defines a map property on the object.
+
+        Args:
+            name: the name of the property
+            key_type: the type of the keys in the map
+            value_type: the type of the values in the map
+
+
+        Returns:
+            a :class:`Map`
+        """
+        map_view = MapView(**kwargs)
+        map_type = Map(key_type=key_type, value_type=value_type)
+        self.define_property(name, map_type, view=map_view, **kwargs)
+        return map_type
+
+    def oneof(self, name, types, **kwargs):
+        """Defines a one-of property on the object.
+
+        Args:
+            name: the name of the property
+            types: list of types that are instances of :class:`BaseType`
+
+
+        Returns:
+            a :class:`OneOf`
+        """
+
+        one_of = OneOf(types)
+        self.define_property(name, one_of, **kwargs)
+        return one_of
+
+    def tuple(self, name, *items, **kwargs):
+        """Defines a tuple property on the object.
+
+        Args:
+            name: the name of the property
+            *items: the types of the items in the tuple
+
+        Returns:
+            a :class:`Tuple`
+        """
+        tuple_view = TupleView(**kwargs)
+        tuple_type = Tuple(*items)
+        self.define_property(name, tuple_type, view=tuple_view, **kwargs)
+        return tuple_type
 
     def clone(self):
         """Clones the definition of the object.
@@ -847,9 +909,10 @@ class View(object):
         component (None): specifying custom component to use as the view
         componentsProps (None): dict for providing props to components rendered
             by a view
+        container (None): the container (instance of :class:`BaseType`) of the view
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, container=None, **kwargs):
         self.label = kwargs.get("label", None)
         self.description = kwargs.get("description", None)
         self.caption = kwargs.get("caption", None)
@@ -858,10 +921,11 @@ class View(object):
         self.read_only = kwargs.get("read_only", None)
         self.component = kwargs.get("component", None)
         self.componentsProps = kwargs.get("componentsProps", None)
+        self.container = container
         self._kwargs = kwargs
 
     def clone(self):
-        return self.__class__(**self._kwargs)
+        return self.__class__(container=self.container, **self._kwargs)
 
     def kwargs_to_json(self):
         view_kwargs = {**self._kwargs}
@@ -878,6 +942,9 @@ class View(object):
             "read_only": self.read_only,
             "component": self.component,
             "componentsProps": self.componentsProps,
+            "container": (
+                self.container.to_json() if self.container else None
+            ),
             **self.kwargs_to_json(),
         }
 
@@ -1997,6 +2064,8 @@ class GridView(View):
             or ``"right"``
         align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
             or ``"bottom"``
+        variant (None): the variant of the grid. Can be either ``"paper"`` or ``"outline"``
+        elevation (None): the elevation of the grid. Only applicable when ``variant="paper"``
     """
 
     def __init__(self, **kwargs):
@@ -2005,6 +2074,12 @@ class GridView(View):
         self.gap = kwargs.get("gap", 1)
         self.align_x = kwargs.get("align_x", "left")
         self.align_y = kwargs.get("align_y", "top")
+        variant = kwargs.get("variant", None)
+        elevation = kwargs.get("elevation", None)
+        if variant == "paper":
+            self.container = PaperContainer(elevation=elevation)
+        elif variant == "outline":
+            self.container = OutlinedContainer()
 
     def to_json(self):
         return {
@@ -2126,7 +2201,7 @@ class VStackView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
 
 
 class ButtonGroupView(GridView):
@@ -2142,7 +2217,7 @@ class ButtonGroupView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
 
 
 class MenuView(GridView):
@@ -2157,4 +2232,78 @@ class MenuView(GridView):
         super().__init__(orientation=orientation, **kwargs)
 
     def to_json(self):
-        return {**super().to_json(), "name": "GridView"}
+        return {**super().to_json()}
+
+
+class ArrowNavView(View):
+    """Displays a floating navigation arrows.
+
+    Args:
+        forward (True): Whether to display the forward arrow
+        backward (True): Whether to display the backward arrow
+        position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
+            ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.forward = kwargs.get("forward", True)
+        self.backward = kwargs.get("backward", True)
+        self.position = kwargs.get("position", "center")
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "forward": self.forward,
+            "backward": self.backward,
+            "position": self.position,
+        }
+
+
+class Container(BaseType):
+    """Represents a base container for a container types."""
+
+    def __init__(self, **kwargs):
+        self._kwargs = kwargs
+
+    def to_json(self):
+        return {**super().to_json(), **self._kwargs}
+
+
+class PaperContainer(Container):
+    """Represents an elevated block for a view.
+
+    Args:
+        elevation (1): the elevation of the container. Can be a value between 0 and 24
+        rounded (True): whether to display the paper container with rounded corners
+    """
+
+    def __init__(self, elevation=1, rounded=True, **kwargs):
+        super().__init__(**kwargs)
+        self.elevation = elevation
+        self.rounded = rounded
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "elevation": self.elevation,
+            "rounded": self.rounded,
+        }
+
+
+class OutlinedContainer(Container):
+    """Represents an elevated block for a view.
+
+    Args:
+        rounded (True): whether to display the outlined container with rounded corners
+    """
+
+    def __init__(self, rounded=True, **kwargs):
+        super().__init__(**kwargs)
+        self.rounded = rounded
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "rounded": self.rounded,
+        }

@@ -1,15 +1,16 @@
-import { Box, ListItemText, MenuItem, Select, Typography } from "@mui/material";
-import React from "react";
-import { getComponentProps } from "../utils";
-import autoFocus from "../utils/auto-focus";
-import AlertView from "./AlertView";
-import FieldWrapper from "./FieldWrapper";
-import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
+import { MenuItem, Select } from "@mui/material";
+import React, { useState } from "react";
 import { useKey } from "../hooks";
+import { getComponentProps, getFieldSx } from "../utils";
+import autoFocus from "../utils/auto-focus";
+import { ViewPropsType } from "../utils/types";
+import AlertView from "./AlertView";
+import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
+import FieldWrapper from "./FieldWrapper";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
-export default function DropdownView(props) {
+export default function DropdownView(props: ViewPropsType) {
   const { onChange, schema, path, data } = props;
   const { view = {}, type } = schema;
   const {
@@ -18,8 +19,14 @@ export default function DropdownView(props) {
     placeholder = "",
     separator = ",",
     readOnly,
+    compact,
+    label,
+    description,
+    color,
+    variant,
   } = view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [selected, setSelected] = useState(false);
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -49,10 +56,22 @@ export default function DropdownView(props) {
     labels[choice.value] = choice.label;
     return labels;
   }, {});
-  const { MenuProps = {}, ...selectProps } = getComponentProps(props, "select");
+  const { MenuProps = {}, ...selectProps } = getComponentProps(
+    props,
+    "select",
+    {
+      sx: {
+        ".MuiSelect-select": {
+          padding: "0.45rem 2rem 0.45rem 1rem",
+          opacity: selected ? 1 : 0.5,
+        },
+        ...getFieldSx({ color, variant }),
+      },
+    }
+  );
 
   return (
-    <FieldWrapper {...props}>
+    <FieldWrapper {...props} hideHeader={compact}>
       <Select
         key={key}
         disabled={readOnly}
@@ -61,8 +80,14 @@ export default function DropdownView(props) {
         size="small"
         fullWidth
         displayEmpty
+        title={compact ? description : undefined}
         renderValue={(value) => {
-          if (value?.length === 0) {
+          const unselected = value?.length === 0;
+          setSelected(!unselected);
+          if (unselected) {
+            if (compact) {
+              return placeholder || label;
+            }
             return placeholder;
           }
           if (multiple) {
@@ -76,7 +101,7 @@ export default function DropdownView(props) {
             Array.isArray(value) && type !== "array"
               ? value.join(separator)
               : value;
-          onChange(path, computedValue, schema);
+          onChange(path, computedValue);
           setUserChanged();
         }}
         multiple={multiple}

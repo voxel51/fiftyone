@@ -1,7 +1,14 @@
 import { Box, BoxProps } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
-import { getComponentProps, getPath, getProps, spaceToHeight } from "../utils";
+import {
+  getComponentProps,
+  getMarginSx,
+  getPaddingSx,
+  getPath,
+  getProps,
+  spaceToHeight,
+} from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 
@@ -9,7 +16,7 @@ export default function GridView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { properties, view = {} } = schema as ObjectSchemaType;
   const { alignX, alignY, align_x, align_y, gap = 1, orientation } = view;
-  const direction = orientation === "vertical" ? "row" : "column";
+  const direction = orientation === "horizontal" ? "row" : "column";
 
   const propertiesAsArray = [];
 
@@ -18,14 +25,22 @@ export default function GridView(props: ViewPropsType) {
   }
 
   const layoutHeight = props?.layout?.height;
+  const parsedGap = parseGap(gap);
+  const adjustedLayoutWidth = getAdjustedLayoutWidth(
+    props?.layout?.width,
+    parsedGap
+  );
 
   const baseGridProps: BoxProps = {
     sx: {
-      display: "grid",
-      gap,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: parsedGap,
       justifyContent: alignX || align_x || "start",
       alignItems: alignY || align_y || "start",
-      gridAutoFlow: direction,
+      flexDirection: direction,
+      ...getPaddingSx(view),
+      ...getMarginSx(view),
     },
   };
 
@@ -45,6 +60,7 @@ export default function GridView(props: ViewPropsType) {
                 orientation === "vertical"
                   ? spaceToHeight(space, layoutHeight)
                   : undefined,
+              overflow: "hidden",
             },
             key: id,
           };
@@ -52,7 +68,11 @@ export default function GridView(props: ViewPropsType) {
             <Box
               key={id}
               {...getProps(
-                { ...props, schema: property },
+                {
+                  ...props,
+                  schema: property,
+                  layout: { width: adjustedLayoutWidth, height: layoutHeight },
+                },
                 "item",
                 baseItemProps
               )}
@@ -71,4 +91,26 @@ export default function GridView(props: ViewPropsType) {
       </Box>
     </Box>
   );
+}
+
+function parseGap(gap: number | string) {
+  if (typeof gap === "string") {
+    const gapStr = gap.trim().replace("px", "");
+    if (isNaN(gapStr)) {
+      console.warn("Ignored invalid gap value " + gap);
+      return 0;
+    }
+    const gapInt = parseInt(gapStr);
+    return gap.includes("px") ? gapInt / 8 : gapInt;
+  } else if (typeof gap === "number") {
+    return gap;
+  }
+  return 0;
+}
+
+function getAdjustedLayoutWidth(layoutWidth?: number, gap?: number) {
+  if (typeof gap === "number" && typeof layoutWidth === "number") {
+    return layoutWidth - gap * 8;
+  }
+  return layoutWidth;
 }

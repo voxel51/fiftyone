@@ -88,6 +88,9 @@ class Panel(Operator):
 
         ctx.ops.register_panel(**panel_config)
 
+    def on_load(self, ctx):
+        pass
+
     def execute(self, ctx):
         panel_id = ctx.params.get("panel_id", None)
         method_name = ctx.params.get("__method__", None)

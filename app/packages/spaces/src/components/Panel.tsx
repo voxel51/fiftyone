@@ -1,4 +1,4 @@
-import { CenteredStack } from "@fiftyone/components";
+import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
@@ -35,7 +35,12 @@ function Panel(props: PanelProps) {
   const { component: Component } = panel;
 
   return (
-    <StyledPanel id={node.id} ref={dimensions.ref} data-cy={panelContentTestId}>
+    <StyledPanel
+      id={node.id}
+      data-cy={panelContentTestId}
+      className={scrollable}
+      ref={dimensions.ref}
+    >
       <PanelContext.Provider value={{ node }}>
         <Component panelNode={node} dimensions={dimensions} />
       </PanelContext.Provider>
