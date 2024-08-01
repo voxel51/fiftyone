@@ -9028,12 +9028,15 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self):
+    def get_index_information(self, include_size=False):
         """Returns a dictionary of information about the indexes on this
         collection.
 
         See :meth:`pymongo:pymongo.collection.Collection.index_information` for
         details on the structure of this dictionary.
+
+        include_size(False): whether to include the size of each index in the
+            collection
 
         Returns:
             a dict mapping index names to info dicts
@@ -9043,6 +9046,14 @@ class SampleCollection(object):
         # Sample-level indexes
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
+
+        if include_size:
+            dataset_stats = self._dataset.stats(include_indexes=True)
+            for index_name in dataset_stats["indexSizes"]:
+                sample_info[index_name]["size"] = dataset_stats["indexSizes"][
+                    index_name
+                ]
+
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
                 field = info["key"][0][0]
