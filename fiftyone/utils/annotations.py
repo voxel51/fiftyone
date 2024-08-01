@@ -218,6 +218,12 @@ def annotate(
             % (anno_backend.config.name, samples.media_type)
         )
 
+    if samples._is_clips and not anno_backend.supports_clip_views:
+        raise ValueError(
+            "Backend '%s' does not support annotating clip views"
+            % anno_backend.config.name
+        )
+
     label_schema, samples = _build_label_schema(
         samples,
         anno_backend,
@@ -2026,6 +2032,11 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement supported_attr_types"
         )
+
+    @property
+    def supports_clip_views(self):
+        """Whether this backend supports annotating clip views."""
+        return False
 
     @property
     def supports_keyframes(self):

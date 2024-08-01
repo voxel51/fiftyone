@@ -3254,6 +3254,10 @@ class CVATBackend(foua.AnnotationBackend):
         ]
 
     @property
+    def supports_clip_views(self):
+        return True
+
+    @property
     def supports_keyframes(self):
         return True
 
