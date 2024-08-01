@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { Box3, Group } from "three";
+import { Box3, type Group } from "three";
 
 const BOUNDING_BOX_POLLING_INTERVAL = 50;
 
@@ -30,7 +30,7 @@ export const useFo3dBounds = (
       }
 
       const box = new Box3().setFromObject(objectRef.current);
-      if (Math.abs(box.max?.x) === Infinity) {
+      if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
         setTimeout(getBoundingBox, BOUNDING_BOX_POLLING_INTERVAL);
       } else {
         setSceneBoundingBox(box);

@@ -29,7 +29,7 @@ const AddFo3dErrorLogs = ({
       : message;
 
     setLogs((logs) => [...logs, { message: fullMessage, status: "error" }]);
-  }, [error, boundaryName]);
+  }, [boundaryName, error, setLogs]);
 
   return null;
 };

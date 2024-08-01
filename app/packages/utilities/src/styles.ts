@@ -1,6 +1,6 @@
 export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
-  width: 16px;
+  width: 14px;
 }
 
 scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
@@ -18,9 +18,8 @@ scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
 
 ::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px transparent;
-  border: solid 4px transparent;
-  border-radius: 16px;
-  transition: box-shadow linear 0.5s;
+  border: solid 3px transparent;
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-corner {

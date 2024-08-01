@@ -45,11 +45,11 @@ const Code = styled.pre`
 
 const port = (() => {
   if (isElectron()) {
-    return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+    return Number.parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
   }
 
   if (typeof window !== "undefined" && window.location.port !== undefined) {
-    return parseInt(window.location.port);
+    return Number.parseInt(window.location.port);
   }
 
   return "";

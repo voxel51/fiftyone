@@ -30,9 +30,9 @@ export const ActionBar = ({
     () => isFo3dSlice || mediaType === "three_d",
     [isFo3dSlice, mediaType]
   );
-  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiplePcdSlices);
+  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiple3dSlices);
 
-  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
   const sample = useRecoilValue(fos.fo3dSample);
 
   const sampleForJsonView = useMemo(() => {

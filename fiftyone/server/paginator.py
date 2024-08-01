@@ -5,6 +5,7 @@ FiftyOne Server paginator
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from bson import ObjectId
 import motor.motor_asyncio as mtr
 import typing as t
@@ -31,8 +32,8 @@ class PageInfo(t.Generic[C]):
 
 @gql.type
 class Edge(t.Generic[T, C]):
-    node: T
     cursor: C
+    node: T
 
 
 @gql.type

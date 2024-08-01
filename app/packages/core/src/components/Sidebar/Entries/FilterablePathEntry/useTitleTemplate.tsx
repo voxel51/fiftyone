@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -74,7 +74,7 @@ const Hidden = ({ path }: { path: string }) => {
 const useUnlocked = () => {
   const lightning = useRecoilValue(fos.lightning);
   const unlocked = useRecoilValueLoadable(fos.lightningUnlocked);
-  return !lightning || (unlocked.state == "hasValue" && unlocked.contents);
+  return !lightning || (unlocked.state === "hasValue" && unlocked.contents);
 };
 
 const useTitleTemplate = ({

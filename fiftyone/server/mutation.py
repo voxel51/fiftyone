@@ -108,9 +108,23 @@ class Mutation(SetColorScheme):
         self,
         subscription: str,
         session: t.Optional[str],
-        slice: str,
+        slice: t.Optional[str],
     ) -> bool:
         await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
+        return True
+
+    @gql.mutation
+    async def set_sample(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        group_id: t.Optional[str],
+        id: t.Optional[str],
+    ) -> bool:
+        await dispatch_event(
+            subscription,
+            fose.SetSample(group_id=group_id, sample_id=id),
+        )
         return True
 
     @gql.mutation

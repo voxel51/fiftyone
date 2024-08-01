@@ -32,7 +32,7 @@ export const mapSampleResponse = <
   data: T
 ): T => {
   // This value may be a string that needs to be deserialized
-  // Only occurs after calling useUpdateSample for pcd sample
+  // Only occurs after calling useUpdateSample for 3D sample
   // - https://github.com/voxel51/fiftyone/pull/2622
   // - https://github.com/facebook/relay/issues/91
   if (data.sample && typeof data.sample === "string") {

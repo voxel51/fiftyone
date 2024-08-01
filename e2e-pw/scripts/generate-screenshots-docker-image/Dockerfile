@@ -2,7 +2,8 @@ FROM mcr.microsoft.com/playwright:v1.43.1-jammy
 
 # Install python 3.10
 RUN apt-get update \
-    && apt-get install -y python3.10 python3-pip python3.10-venv \
+    && apt-get install -y libhdf5-dev pkg-config \
+        python3.10 python3-pip python3.10-venv \
     && ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /e2e
@@ -13,8 +14,7 @@ RUN python -m venv /e2e/venv \
     && . /e2e/venv/bin/activate \
     && cd /e2e/fiftyone \
     && pip install --upgrade pip \
-    && pip install -r requirements/prod.txt \
-    && pip install open3d>=0.16.0 \
+    && pip install -r requirements/e2e.txt \
     && pip install -e .
 
 ENV IS_UTILITY_DOCKER=true

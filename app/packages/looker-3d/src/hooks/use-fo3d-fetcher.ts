@@ -2,7 +2,7 @@
 
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { FiftyoneSceneRawJson } from "../utils";
+import type { FiftyoneSceneRawJson } from "../utils";
 
 export default () => {
   const fetcher = useCallback(async (url: string, _filepath: string) => {

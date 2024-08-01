@@ -4,9 +4,12 @@ import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
 import gaConfig from "../ga";
 import AnalyticsConsent from "./AnalyticsConsent";
-import type { NavGA$data, NavGA$key } from "./__generated__/NavGA.graphql";
+import type {
+  Analytics$data,
+  Analytics$key,
+} from "./__generated__/Analytics.graphql";
 
-const useCallGA = (info: NavGA$data) => {
+const useCallGA = (info: Analytics$data) => {
   return useCallback(() => {
     const dev = info.dev;
     const buildType = dev ? "dev" : "prod";
@@ -27,7 +30,7 @@ const useCallGA = (info: NavGA$data) => {
   }, [info]);
 };
 
-export default function Analytics({ fragment }: { fragment: NavGA$key }) {
+export default function Analytics({ fragment }: { fragment: Analytics$key }) {
   const info = useFragment(
     graphql`
       fragment Analytics on Query {

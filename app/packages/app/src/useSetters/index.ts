@@ -8,8 +8,8 @@ import onSetViewName from "./onSetViewName";
 import registerSetter from "./registerSetter";
 
 registerSetter("colorScheme", onSetColorScheme);
-registerSetter("fieldVisibilityStage", onSetFieldVisibilityStage);
 registerSetter("datasetName", onSetDataset);
+registerSetter("fieldVisibilityStage", onSetFieldVisibilityStage);
 registerSetter("refresh", onRefresh);
 registerSetter("similarityParameters", onSetSimilarityParameters);
 registerSetter("view", onSetView);

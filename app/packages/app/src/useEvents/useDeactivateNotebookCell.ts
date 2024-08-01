@@ -1,6 +1,6 @@
 import { useScreenshot } from "@fiftyone/state";
 import { useCallback } from "react";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
 const useDeactivateNotebookCell: EventHandlerHook = (ctx) => {
   const screenshot = useScreenshot(

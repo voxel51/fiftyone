@@ -1,9 +1,15 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BufferGeometry, Mesh, Points, Quaternion, Vector3 } from "three";
-import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import {
+  type BufferGeometry,
+  Mesh,
+  Points,
+  type Quaternion,
+  type Vector3,
+} from "three";
+import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
+import type {
   FoMeshBasicMaterialProps,
   FoMeshMaterial,
   FoPointcloudMaterialProps,

@@ -3,7 +3,7 @@ import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import { get } from "lodash";
-import React, {
+import {
   useCallback,
   useEffect,
   useId,
@@ -22,25 +22,27 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
 
 const pageParams = selector({
   key: "paginateDynamicGroupVariables",
-  get: ({ get }) => {
+  get: ({ get, getCallback }) => {
     const dataset = get(fos.datasetName);
     if (!dataset) {
       throw new Error("no dataset");
     }
 
-    const params = {
-      dataset,
-      view: get(fos.dynamicGroupViewQuery(null)),
-    };
-
-    return (page: number, pageSize: number) => {
-      return {
-        ...params,
-        filter: {},
-        after: page ? String(page * pageSize - 1) : null,
-        count: pageSize,
-      };
-    };
+    return getCallback(
+      ({ snapshot }) =>
+        async (page: number, pageSize: number) => {
+          const params = {
+            dataset,
+            view: await snapshot.getPromise(fos.dynamicGroupViewQuery(null)),
+          };
+          return {
+            ...params,
+            filter: {},
+            after: page ? String(page * pageSize - 1) : null,
+            count: pageSize,
+          };
+        }
+    );
   },
 });
 
@@ -102,7 +104,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.sampleId);
+              selectSample.current(detail.id);
             }
           );
 

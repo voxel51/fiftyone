@@ -155,13 +155,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
     if (savedView) {
       const search = await page.evaluate(() => window.location.search);
 
-      if (search !== `?view=${savedView}`) {
-        throw new Error("wrong view");
+      const params = new URLSearchParams(search);
+      if (params.get("view") !== savedView) {
+        throw new Error(`wrong view: '${params.get("view")}'`);
       }
     }
 
     await page.waitForSelector(
-      `[data-cy=${withGrid ? "flashlight-section" : "panel-container"}]`,
+      `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
       {
         state: "visible",
       }

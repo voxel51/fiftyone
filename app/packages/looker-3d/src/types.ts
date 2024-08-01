@@ -1,4 +1,4 @@
-import {
+import type {
   ACTION_SET_PCDS,
   ACTION_SET_POINT_SIZE,
   ACTION_SHADE_BY,

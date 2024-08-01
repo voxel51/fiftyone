@@ -1,12 +1,12 @@
-import React from "react";
-import * as THREE from "three";
-import { OverlayProps } from "./shared";
-import { useRecoilValue } from "recoil";
-import { polylineLabelLineWidthAtom } from "../state";
-import { Line2 } from "three/examples/jsm/lines/Line2";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { extend } from "@react-three/fiber";
+import React from "react";
+import { useRecoilValue } from "recoil";
+import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { polylineLabelLineWidthAtom } from "../state";
+import type { OverlayProps } from "./shared";
 
 extend({ Line2, LineMaterial, LineGeometry });
 

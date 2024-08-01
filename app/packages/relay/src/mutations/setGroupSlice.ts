@@ -6,7 +6,7 @@ export default r(graphql`
   mutation setGroupSliceMutation(
     $subscription: String!
     $session: String
-    $slice: String!
+    $slice: String
   ) {
     setGroupSlice(subscription: $subscription, session: $session, slice: $slice)
   }

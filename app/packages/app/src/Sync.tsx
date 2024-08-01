@@ -1,31 +1,42 @@
 import { Loading } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
-  setDataset,
-  setDatasetMutation,
-  setSpaces,
-  setSpacesMutation,
-  setView,
-  setViewMutation,
-  subscribe,
   Writer,
+  setDataset,
+  type setDatasetMutation,
+  setGroupSlice,
+  type setGroupSliceMutation,
+  setSample,
+  type setSampleMutation,
+  setSpaces,
+  type setSpacesMutation,
+  setView,
+  type setViewMutation,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Session, SESSION_DEFAULT, stateSubscription } from "@fiftyone/state";
-import { Action } from "history";
-import React, { useEffect, useRef } from "react";
+import {
+  SESSION_DEFAULT,
+  type Session,
+  stateSubscription,
+} from "@fiftyone/state";
+import type { Action } from "history";
+import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { commitMutation, Environment, OperationType } from "relay-runtime";
-import Setup from "./components/Setup";
-import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import {
+  type Environment,
+  type OperationType,
+  commitMutation,
+} from "relay-runtime";
+import Setup from "./components/Setup";
+import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import type {
   DatasetPageQuery,
   DatasetPageQuery$data,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { Entry, useRouterContext } from "./routing";
-import { AppReadyState } from "./useEvents/registerEvent";
+import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
+import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
@@ -48,13 +59,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   useWriters(subscription, environment, router, sessionRef);
 
   const readyState = useEventSource(router, sessionRef);
-  useEffect(
-    () =>
-      subscribe((_, { reset }) => {
-        reset(fos.currentModalSample);
-      }),
-    []
-  );
 
   return (
     <SessionContext.Provider value={sessionRef.current}>
@@ -74,16 +78,16 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
           }}
           setters={setters}
           subscribe={(fn) => {
-            return router.subscribe((entry, action) => {
+            return router.subscribe(({ state, ...entry }, action) => {
               dispatchSideEffect({
                 action,
                 currentEntry: router.get(),
                 environment,
-                nextEntry: entry,
+                nextEntry: { state, ...entry },
                 subscription,
                 session: sessionRef.current,
               });
-              fn(entry);
+              fn({ ...entry, event: state.event });
             });
           }}
         >
@@ -115,6 +119,7 @@ const dispatchSideEffect = ({
 
   session.selectedLabels = [];
   session.selectedSamples = new Set();
+  session.modalSelector = nextEntry.state.modalSelector;
 
   const currentDataset: string | undefined =
     // @ts-ignore
@@ -134,38 +139,75 @@ const dispatchSideEffect = ({
     return;
   }
 
+  if (
+    currentEntry.state.event === "modal" ||
+    nextEntry.state.event === "modal"
+  ) {
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: nextEntry.state.modalSelector?.groupId,
+        id: nextEntry.state.modalSelector?.id,
+        subscription,
+      },
+    });
+    return;
+  }
+
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
+
+  session.modalSelector = nextEntry.state?.modalSelector;
+  const updateSlice =
+    currentEntry.state.groupSlice !== nextEntry.state.groupSlice;
+  if (updateSlice) {
+    session.sessionGroupSlice = nextEntry.state.groupSlice || undefined;
+  }
+
+  let update = !fos.viewsAreEqual(
+    currentEntry.state.view,
+    nextEntry.state.view
+  );
   if (currentDataset !== nextDataset) {
+    update = true;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
       data.config
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
-    session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
     session.sessionSpaces = nextEntry.state?.workspace ?? fos.SPACES_DEFAULT;
   }
 
-  commitMutation<setViewMutation>(environment, {
-    mutation: setView,
-    variables: {
-      view: nextEntry.state.view,
-      savedViewSlug: nextEntry.state.savedViewSlug,
-      form: {},
-      datasetName: nextDataset,
-      subscription,
-    },
-    onCompleted: () => {
-      nextEntry.state?.workspace &&
-        commitMutation<setSpacesMutation>(environment, {
-          mutation: setSpaces,
-          variables: {
-            spaces: nextEntry.state?.workspace,
-            subscription,
-          },
-        });
-    },
-  });
+  update &&
+    commitMutation<setViewMutation>(environment, {
+      mutation: setView,
+      variables: {
+        view: nextEntry.state.view,
+        savedViewSlug: nextEntry.state.savedViewSlug,
+        form: {},
+        datasetName: nextDataset,
+        subscription,
+      },
+      onCompleted: () => {
+        nextEntry.state?.workspace &&
+          commitMutation<setSpacesMutation>(environment, {
+            mutation: setSpaces,
+            variables: {
+              spaces: nextEntry.state?.workspace,
+              subscription,
+            },
+          });
+
+        updateSlice &&
+          commitMutation<setGroupSliceMutation>(environment, {
+            mutation: setGroupSlice,
+            variables: {
+              slice: session.sessionGroupSlice,
+              subscription,
+            },
+          });
+      },
+    });
 };
 
 export default Sync;

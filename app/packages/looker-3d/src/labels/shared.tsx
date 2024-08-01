@@ -1,6 +1,6 @@
-import { useTooltip } from "@fiftyone/state";
-import { Vector3Tuple } from "three";
-import { OverlayLabel } from "./loader";
+import type { useTooltip } from "@fiftyone/state";
+import type { Vector3Tuple } from "three";
+import type { OverlayLabel } from "./loader";
 
 export interface OverlayProps {
   rotation: Vector3Tuple;

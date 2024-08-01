@@ -1,8 +1,8 @@
 import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
-import { LocationState } from "../routing";
+import type { LocationState } from "../routing";
 import { resolveURL } from "../utils";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
 const useSetSpaces: EventHandlerHook = ({ router }) => {
   const setter = useSessionSetter();

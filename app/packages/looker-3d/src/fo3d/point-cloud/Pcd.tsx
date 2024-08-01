@@ -1,9 +1,9 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Quaternion, Vector3 } from "three";
+import type { Quaternion, Vector3 } from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
-import { PcdAsset } from "../../hooks";
+import type { PcdAsset } from "../../hooks";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
