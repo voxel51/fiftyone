@@ -1,4 +1,4 @@
-import { IconButton, Popout } from "@fiftyone/components";
+import { IconButton, Popout, scrollable } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { useMemo, useRef, useState } from "react";
@@ -46,7 +46,16 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
         <Add sx={{ fontSize: 16 }} />
       </IconButton>
       {open && (
-        <Popout style={{ top: "80%", left: "16%", padding: 0 }}>
+        <Popout
+          style={{
+            top: "80%",
+            left: "16%",
+            padding: 0,
+            maxHeight: "calc(90vh - 120px)",
+            overflow: "auto",
+          }}
+          popoutProps={{ className: scrollable }}
+        >
           {availablePanels.map((panel) => (
             <AddPanelItem
               key={panel.name}

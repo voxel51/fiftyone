@@ -9,11 +9,20 @@ export {
   abortOperationsByExpression,
   abortOperationsByURI,
 } from "./operators";
-export { useOperatorExecutor, useOperatorPlacements } from "./state";
+export {
+  useOperatorExecutor,
+  useOperatorPlacements,
+  useGlobalExecutionContext,
+  useOperatorBrowser,
+} from "./state";
 export { useOperators } from "./loader";
-export { default as OperatorPlacements } from "./OperatorPlacements";
+export {
+  default as OperatorPlacements,
+  OperatorPlacementWithErrorBoundary,
+} from "./OperatorPlacements";
 export * as types from "./types";
 export { default as OperatorCore } from "./OperatorCore";
 export { default as OperatorIO } from "./OperatorIO";
 export { default as OperatorPromptArea } from "./OperatorPrompt/OperatorPromptArea";
 export { OPERATOR_PROMPT_AREAS } from "./constants";
+export { default as usePanelEvent } from "./usePanelEvent";

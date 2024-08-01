@@ -461,9 +461,7 @@ class LoadWorkspace(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="load_workspace",
-            label="Load Workspace",
-            unlisted=True,
+            name="load_workspace", label="Load Workspace"
         )
 
     def resolve_input(self, ctx):
@@ -481,9 +479,7 @@ class SaveWorkspace(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="save_workspace",
-            label="Save Workspace",
-            unlisted=True,
+            name="save_workspace", label="Save Workspace"
         )
 
     def resolve_input(self, ctx):
@@ -523,9 +519,7 @@ class DeleteWorkspace(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="delete_workspace",
-            label="Delete Workspace",
-            unlisted=True,
+            name="delete_workspace", label="Delete Workspace"
         )
 
     def resolve_input(self, ctx):

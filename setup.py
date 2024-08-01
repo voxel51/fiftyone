@@ -57,6 +57,7 @@ INSTALL_REQUIRES = [
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
+    "pydash==8.0.1",
     # teams specific
     "aiohttp",
     "azure-identity",

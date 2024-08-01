@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "moduleResolution": "Node",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "noEmit": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": false,
+        "plugins": [],
+        "types": ["vite/client"],
+        "jsx": "react-jsx"
+    },
+    "include": ["./src"],
+    "references": [
+        { "path": "../components" },
+        { "path": "../looker" },
+        { "path": "../flashlight" },
+        { "path": "../utilities" }
+    ]
+}

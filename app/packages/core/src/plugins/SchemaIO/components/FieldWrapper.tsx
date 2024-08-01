@@ -3,14 +3,17 @@ import React from "react";
 import ErrorView from "./ErrorView";
 import HeaderView from "./HeaderView";
 import { getComponentProps, getErrorsForView } from "../utils";
+import { ViewPropsType } from "../utils/types";
 
-export default function FieldWrapper(props) {
-  const { schema, children, errors, path } = props;
+export default function FieldWrapper(props: FieldWrapperProps) {
+  const { schema, children, hideHeader } = props;
   const { view = {} } = schema;
 
   return (
     <Box {...getComponentProps(props, "container")}>
-      <HeaderView {...props} sx={{ pb: 1 }} omitCaption omitErrors nested />
+      {!hideHeader && (
+        <HeaderView {...props} sx={{ pb: 1 }} omitCaption omitErrors nested />
+      )}
       {children}
       {view.caption && (
         <Typography
@@ -26,3 +29,8 @@ export default function FieldWrapper(props) {
     </Box>
   );
 }
+
+type FieldWrapperProps = ViewPropsType & {
+  children: React.ReactNode;
+  hideHeader?: boolean;
+};
