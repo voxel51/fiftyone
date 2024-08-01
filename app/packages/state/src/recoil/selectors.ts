@@ -15,7 +15,7 @@ import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
-import { currentModalSample, isModalActive, modalSample } from "./modal";
+import { isModalActive, modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -92,14 +92,9 @@ export const isVideoDataset = selector({
   get: ({ get }) => get(atoms.mediaType) === "video",
 });
 
-export const isPointcloudDataset = selector({
-  key: "isPointcloudDataset",
-  get: ({ get }) => get(atoms.mediaType) === "point_cloud",
-});
-
 export const is3DDataset = selector({
   key: "is3DDataset",
-  get: ({ get }) => get(atoms.mediaType) === "three_d",
+  get: ({ get }) => ["point_cloud", "three_d"].includes(get(atoms.mediaType)),
 });
 
 export const timeZone = selector<string>({
@@ -449,6 +444,7 @@ export const extendedStagesUnsorted = selector({
     const extendedSelectionOverrideStage = get(
       atoms.extendedSelectionOverrideStage
     );
+
     if (extendedSelectionOverrideStage) {
       return extendedSelectionOverrideStage;
     }
@@ -490,7 +486,7 @@ export const selectedPatchIds = selectorFamily({
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(currentModalSample);
+      const modal = get(modalSelector);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

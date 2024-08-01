@@ -13,7 +13,7 @@ const Text = styled.div`
   font-size: 1rem;
 `;
 
-const Filter = ({ modal }: { modal: boolean }) => {
+const Filter = () => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode
@@ -35,22 +35,22 @@ const Filter = ({ modal }: { modal: boolean }) => {
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
 
   return (
-    <FilterInputDiv modal={modal}>
+    <FilterInputDiv>
       <Box alignItems={"center"} display="flex">
-        {isFilterMode && !modal && (
-          <Box display="flex" onClick={() => !modal && setIsFilterMode(false)}>
+        {isFilterMode && (
+          <Box display="flex" onClick={() => setIsFilterMode(false)}>
             <Tooltip
-              text={!modal ? "Toggle to visibility mode" : null}
+              text={"Toggle to visibility mode"}
               placement="bottom-start"
             >
               <FilterAltIcon
                 sx={{
                   color: theme.text.tertiary,
                   "&:hover": {
-                    color: !modal ? theme.text.primary : theme.text.tertiary,
+                    color: theme.text.primary,
                   },
                   margin: "auto 0.25rem",
-                  cursor: !modal ? "pointer" : "default",
+                  cursor: "pointer",
                 }}
               />
             </Tooltip>
@@ -62,7 +62,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
             </Tooltip>
           </Box>
         )}
-        {!isFilterMode && !modal && (
+        {!isFilterMode && (
           <Box display="flex" onClick={() => setIsFilterMode(true)}>
             <Tooltip text="Toggle to filter mode" placement="bottom-start">
               <VisibilityIcon
@@ -82,69 +82,68 @@ const Filter = ({ modal }: { modal: boolean }) => {
           </Box>
         )}
       </Box>
-      {!modal && (
-        <Box display="flex" alignItems="center">
-          {isFieldVisibilityActive && (
-            <Tooltip text="Clear field selection" placement="bottom-center">
-              <Box
-                data-cy="field-visibility-btn-clear"
-                sx={{
-                  minWidth: "50px",
-                  maxWidth: "100px",
-                  background: theme.background.level1,
-                  borderRadius: "25px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onClick={() => {
-                  resetSelectedFieldStages();
-                  resetExcludedPaths();
-                  setSearchResults([]);
-                }}
-              >
-                {affectedPathCount > 0 && (
-                  <Typography
-                    fontSize={"0.75rem"}
-                    sx={{ color: theme.text.tertiary }}
-                    style={{ marginRight: "0.25rem" }}
-                  >
-                    {affectedPathCount}
-                  </Typography>
-                )}
-                <VisibilityOff
-                  sx={{
-                    color: theme.text.secondary,
-                    borderRadius: "50%",
-                    fontSize: "1.5rem",
-                    marginRight: "0.25rem",
-                    "&:hover": { color: theme.text.primary },
-                  }}
-                />
-              </Box>
-            </Tooltip>
-          )}
-          <Tooltip
-            text="Change field visibility"
-            placement="bottom-center"
-            data-cy="field-visibility-toggle-tooltip"
-          >
-            <Settings
-              data-cy="field-visibility-icon"
-              onClick={() => {
-                setSchemaModal({
-                  open: true,
-                });
-                resetTextFilter();
-              }}
+
+      <Box display="flex" alignItems="center">
+        {isFieldVisibilityActive && (
+          <Tooltip text="Clear field selection" placement="bottom-center">
+            <Box
+              data-cy="field-visibility-btn-clear"
               sx={{
-                color: theme.text.tertiary,
-                "&:hover": { color: theme.text.primary },
+                minWidth: "50px",
+                maxWidth: "100px",
+                background: theme.background.level1,
+                borderRadius: "25px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
-            />
+              onClick={() => {
+                resetSelectedFieldStages();
+                resetExcludedPaths();
+                setSearchResults([]);
+              }}
+            >
+              {affectedPathCount > 0 && (
+                <Typography
+                  fontSize={"0.75rem"}
+                  sx={{ color: theme.text.tertiary }}
+                  style={{ marginRight: "0.25rem" }}
+                >
+                  {affectedPathCount}
+                </Typography>
+              )}
+              <VisibilityOff
+                sx={{
+                  color: theme.text.secondary,
+                  borderRadius: "50%",
+                  fontSize: "1.5rem",
+                  marginRight: "0.25rem",
+                  "&:hover": { color: theme.text.primary },
+                }}
+              />
+            </Box>
           </Tooltip>
-        </Box>
-      )}
+        )}
+        <Tooltip
+          text="Change field visibility"
+          placement="bottom-center"
+          data-cy="field-visibility-toggle-tooltip"
+        >
+          <Settings
+            data-cy="field-visibility-icon"
+            onClick={() => {
+              setSchemaModal({
+                open: true,
+              });
+              resetTextFilter();
+            }}
+            sx={{
+              color: theme.text.tertiary,
+              "&:hover": { color: theme.text.primary },
+            }}
+          />
+        </Tooltip>
+      </Box>
     </FilterInputDiv>
   );
 };

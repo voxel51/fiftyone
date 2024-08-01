@@ -1,9 +1,9 @@
-import { Session } from "@fiftyone/state";
+import type { Session } from "@fiftyone/state";
 import { snakeCase } from "lodash";
-import { MutableRefObject, useCallback, useMemo } from "react";
-import { Queries } from "../makeRoutes";
-import { RoutingContext } from "../routing";
-import { AppReadyState, EVENTS } from "./registerEvent";
+import { type MutableRefObject, useCallback, useMemo } from "react";
+import type { Queries } from "../makeRoutes";
+import type { RoutingContext } from "../routing";
+import { type AppReadyState, EVENTS } from "./registerEvent";
 
 const HANDLERS = {};
 

@@ -2,7 +2,7 @@ import { folder, useControls } from "leva";
 import { useMemo, useState } from "react";
 import { PANEL_ORDER_PCD_CONTROLS } from "../constants";
 import { getThreeMaterialFromFo3dMaterial } from "../fo3d/utils";
-import { FoMeshMaterial } from "./use-fo3d";
+import type { FoMeshMaterial } from "./use-fo3d";
 
 export const useMeshMaterialControls = (
   name: string,

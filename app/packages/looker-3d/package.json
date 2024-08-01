@@ -2,6 +2,7 @@
     "name": "@fiftyone/looker-3d",
     "version": "0.0.0",
     "scripts": {
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
@@ -26,6 +27,7 @@
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {
+        "@biomejs/biome": "^1.8.3",
         "@types/node": "^20.11.10",
         "@types/react": "^18.2.48",
         "@types/react-dom": "^18.2.18",

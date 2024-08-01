@@ -30,7 +30,7 @@ const getRecoilRoot = (
                 sampleId: "1",
               },
             ]);
-            set(fos.currentModalSample, { id: "1", index: 1234 });
+            set(fos.modalSelector, { id: "1" });
           }
           if (type === "activeImageSort") {
             set(fos.similarityParameters, {
@@ -40,7 +40,7 @@ const getRecoilRoot = (
             });
           }
           if (modal) {
-            set(fos.currentModalSample, { index: 0, id: "0" });
+            set(fos.modalSelector, { id: "0" });
           }
         }}
       >

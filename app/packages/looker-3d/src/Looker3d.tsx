@@ -23,7 +23,9 @@ import {
 export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
   const hasFo3dSlice = useRecoilValue(fos.hasFo3dSlice);
-  const hasPcdSlices = useRecoilValue(fos.allPcdSlices).length > 0;
+  const hasPcdSlices = useRecoilValue(fos.groupMediaTypesSet).has(
+    "point_cloud"
+  );
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
 
@@ -56,7 +58,7 @@ export const Looker3d = () => {
     [mediaType, hasFo3dSlice, isDynamicGroup, parentMediaType]
   );
 
-  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
 
   useHotkey(
     "KeyG",
@@ -125,7 +127,7 @@ export const Looker3d = () => {
       }
 
       set(fos.hiddenLabels, {});
-      set(fos.currentModalSample, null);
+      set(fos.modalSelector, null);
     },
     [sampleMap, isHovering],
     false
@@ -147,14 +149,6 @@ export const Looker3d = () => {
       timeout.current && clearTimeout(timeout.current);
     };
   }, [clear, isHovering]);
-
-  if (mediaType === "group" && hasFo3dSlice && hasPcdSlices) {
-    return (
-      <div>
-        Only one fo3d slice or one or more pcd slices is allowed in a group.
-      </div>
-    );
-  }
 
   if (!shouldRenderPcdComponent && !shouldRenderFo3dComponent) {
     return <div>Unsupported media type: {mediaType}</div>;

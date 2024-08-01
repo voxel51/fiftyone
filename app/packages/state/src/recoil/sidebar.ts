@@ -36,9 +36,9 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import {
+  active3dSlices,
+  active3dSlicesToSampleMap,
   activeModalSidebarSample,
-  activePcdSlices,
-  activePcdSlicesToSampleMap,
   pinned3DSampleSlice,
 } from "./groups";
 import { isLargeVideo } from "./options";
@@ -858,10 +858,10 @@ export const hiddenNoneGroups = selector({
 
     const multipleSlices =
       Boolean(get(pinned3DSampleSlice)) &&
-      (get(activePcdSlices)?.length || 1) > 1;
+      (get(active3dSlices)?.length || 1) > 1;
     if (multipleSlices) {
-      samples = get(activePcdSlicesToSampleMap);
-      slices = Array.from(get(activePcdSlices) || []).sort();
+      samples = get(active3dSlicesToSampleMap);
+      slices = Array.from(get(active3dSlices) || []).sort();
     }
 
     const items = groups

@@ -25,8 +25,12 @@ const Body = styled.div`
   position: relative;
 `;
 
-function Dataset() {
+const ModalWrapper = () => {
   const isModalOpen = useRecoilValue(isModalActive);
+  return isModalOpen ? <Modal /> : null;
+};
+
+function Dataset() {
   const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
   const trackEvent = useTrackEvent();
 
@@ -39,9 +43,9 @@ function Dataset() {
 
   return (
     <>
-      {isModalOpen && <Modal />}
-      {isCustomizeColorModalActive && <ColorModal />}
-      <Container>
+      <ModalWrapper key={"modal"} />
+      {isCustomizeColorModalActive && <ColorModal key={"color"} />}
+      <Container key={"dataset"}>
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>

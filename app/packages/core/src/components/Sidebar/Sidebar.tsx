@@ -1,7 +1,7 @@
-import { useTheme, Resizable } from "@fiftyone/components";
+import { Resizable, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
-import { move, scrollbarStyles } from "@fiftyone/utilities";
+import { move } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { default as React, useCallback, useRef, useState } from "react";
@@ -372,16 +372,14 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  scrollbar-color: ${({ theme }) => theme.text.tertiary}
-    ${({ theme }) => theme.background.body};
   background: ${({ theme }) => theme.background.sidebar};
-  ${scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
   margin: 0 1rem;
+  scrollbar-width: none;
 
   & > div {
     position: absolute;
@@ -721,7 +719,7 @@ const InteractiveSidebar = ({
           <ViewSelection id="saved-views" />
         </Box>
       )}
-      <Filter modal={modal} />
+      {!modal && <Filter />}
       <SidebarColumn
         ref={container}
         data-cy="sidebar-column"

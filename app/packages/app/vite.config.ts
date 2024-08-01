@@ -35,7 +35,7 @@ async function loadConfig() {
       },
     },
     server: {
-      port: parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT || "5173"),
+      port: Number.parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT || "5173"),
       proxy: {
         "/plugins": {
           target: `http://127.0.0.1:${

@@ -35,12 +35,16 @@ class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
     Args:
+        color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
+        field_visibility_stage (None): a field visibility stage
+        group_id (None): a :attr:`fiftyone.core.groups.Group.id`
+        group_slice (None): a :attr:`fiftyone.core.groups.Group.name`
+        sample_id (None): a :attr:`fiftyone.core.sample.Sample.id`
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         spaces (None): a :class:`fiftyone.core.odm.workspace.Space`
-        color_scheme (None): a :class:`fiftyone.core.odm.dataset.ColorScheme`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
             saved view
@@ -48,34 +52,43 @@ class StateDescription(etas.Serializable):
 
     def __init__(
         self,
+        color_scheme=None,
         config=None,
         dataset=None,
+        field_visibility_stage=None,
+        group_id=None,
+        group_slice=None,
+        sample_id=None,
         selected=None,
         selected_labels=None,
         spaces=None,
-        color_scheme=None,
         view=None,
         view_name=None,
-        field_visibility_stage=None,
-        group_slice=None,
     ):
         self.config = config or fo.app_config.copy()
-        self.dataset = dataset
-        self.selected = selected or []
-        self.selected_labels = selected_labels or []
+
         if dataset is not None:
             dataset.reload()
+        self.dataset = dataset
+
+        self.color_scheme = color_scheme or build_color_scheme()
+        self.field_visibility_stage = field_visibility_stage
+
+        self.group_id = group_id
+        if group_slice is None and view is not None:
+            group_slice = view.group_slice
+        self.group_slice = group_slice
+
+        self.sample_id = sample_id
+        self.selected = selected or []
+        self.selected_labels = selected_labels or []
+        self.spaces = spaces
+
         self.view = (
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
         )
-        self.spaces = spaces
-        self.color_scheme = color_scheme or build_color_scheme()
-        self.field_visibility_stage = field_visibility_stage
-        if group_slice is None and view is not None:
-            group_slice = view.group_slice
-        self.group_slice = group_slice
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -187,15 +200,17 @@ class StateDescription(etas.Serializable):
             color_scheme = ColorScheme.from_dict(color_scheme)
 
         return cls(
+            color_scheme=color_scheme,
             config=config,
             dataset=dataset,
+            field_visibility_stage=d.get("field_visibility_stage", None),
+            group_id=d.get("group_id", None),
+            group_slice=d.get("group_slice", None),
+            sample_id=d.get("sample_id", None),
             selected=d.get("selected", []),
             selected_labels=d.get("selected_labels", []),
-            view=view,
             spaces=spaces,
-            color_scheme=color_scheme,
-            field_visibility_stage=d.get("field_visibility_stage", None),
-            group_slice=d.get("group_slice", None),
+            view=view,
         )
 
 

@@ -1,13 +1,13 @@
 import { useMemo, useRef } from "react";
 import { Vector3 } from "three";
-import { FoScene } from "../../hooks";
+import type { FoScene } from "../../hooks";
 import {
   getColorKey,
   getIntensityKey,
   getPositionKey,
   useLightControls,
 } from "../../hooks/use-light-controls";
-import { FoAmbientLightProps, FoDirectionalLightProps } from "../../utils";
+import type { FoAmbientLightProps, FoDirectionalLightProps } from "../../utils";
 import { useFo3dContext } from "../context";
 
 const LIGHT_POSITIONS = [

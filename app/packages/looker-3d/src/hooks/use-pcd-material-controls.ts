@@ -1,5 +1,5 @@
 import { folder, useControls } from "leva";
-import { OnChangeHandler } from "leva/plugin";
+import type { OnChangeHandler } from "leva/plugin";
 import { useCallback, useState } from "react";
 import {
   PANEL_ORDER_PCD_CONTROLS,
@@ -9,7 +9,7 @@ import {
   SHADE_BY_NONE,
   SHADE_BY_RGB,
 } from "../constants";
-import { FoPointcloudMaterialProps } from "./use-fo3d";
+import type { FoPointcloudMaterialProps } from "./use-fo3d";
 
 export const usePcdMaterialControls = (
   name: string,

@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
 import { useRecoilValue } from "recoil";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
@@ -7,13 +6,13 @@ import { GroupView } from "./GroupView";
 
 const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
-  const onlyPcd = useRecoilValue(fos.onlyPcd);
+  const only3d = useRecoilValue(fos.only3d);
 
   if (dynamic) {
     return <DynamicGroup />;
   }
 
-  if (onlyPcd) {
+  if (only3d) {
     return <GroupSample3d />;
   }
 

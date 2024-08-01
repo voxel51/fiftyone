@@ -1,25 +1,38 @@
-import Flashlight from "@fiftyone/flashlight";
-import { Sample } from "@fiftyone/looker/src/state";
+import { ID } from "@fiftyone/spotlight";
+import type { Sample } from "@fiftyone/state";
+
+import {
+  selectedSampleObjects,
+  selectedSamples,
+  useSetSelected,
+} from "@fiftyone/state";
+import { MutableRefObject } from "react";
 import { useRecoilCallback } from "recoil";
-import { selectedSampleObjects, selectedSamples } from "../recoil/atoms";
-import useSetSelected from "./useSetSelected";
+
+export interface SelectThumbnailData {
+  shiftKey: boolean;
+  id: string;
+  sample: Sample;
+  symbol: ID;
+}
+
+type Records = MutableRefObject<Map<string, number>>;
 
 const argFact = (compareFn) => (array) =>
   array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
 
 const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 
-const addRange = (
-  index: number,
-  items: string[],
-  map: { [key: string]: number }
-) => {
+const addRange = (index: number, items: string[], records: Records) => {
   const reverse = Object.fromEntries(
-    Object.entries(map).map(([k, v]) => [v, k])
+    Array.from(records.current.entries()).map(([k, v]) => [v, k])
   );
 
-  const close =
-    map[items[argMin(items.map((id) => Math.abs(map[id] - index)))]];
+  const min = argMin(
+    items.map((id) => Math.abs(records.current.get(id) - index))
+  );
+
+  const close = records.current.get(items[min]);
 
   const [start, end] = index < close ? [index, close] : [close, index];
 
@@ -33,10 +46,10 @@ const addRange = (
 const removeRange = (
   index: number,
   selected: Set<string>,
-  map: { [key: string]: number }
+  records: Records
 ) => {
   const reverse = Object.fromEntries(
-    Object.entries(map).map(([k, v]) => [v, k])
+    Array.from(records.current.entries()).map(([k, v]) => [v, k])
   );
 
   let before = index;
@@ -61,15 +74,11 @@ const removeRange = (
       : [index, after];
 
   return new Set(
-    Array.from(selected).filter((s) => map[s] < start || map[s] > end)
+    Array.from(selected).filter(
+      (s) => records.current.get(s) < start || records.current.get(s) > end
+    )
   );
 };
-
-export interface SelectThumbnailData {
-  shiftKey: boolean;
-  sampleId: string;
-  sample: Sample;
-}
 
 export default () => {
   const setSelected = useSetSelected();
@@ -77,21 +86,20 @@ export default () => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (
-        flashlight: Flashlight<number>,
-        { shiftKey, sampleId, sample }: SelectThumbnailData
+        records: Records,
+        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
       ) => {
         let selected = new Set(await snapshot.getPromise(selectedSamples));
         const selectedObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
-        const items = Array.from(selected);
-        const map = flashlight.itemIndexes;
-        const index = map[sampleId];
 
+        const items = Array.from(selected);
+        const index = records.current.get(symbol.description);
         if (shiftKey && !selected.has(sampleId)) {
-          selected = addRange(index, items, map);
+          selected = addRange(index, items, records);
         } else if (shiftKey) {
-          selected = removeRange(index, selected, map);
+          selected = removeRange(index, selected, records);
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)

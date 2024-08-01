@@ -1,6 +1,6 @@
-import React from "react";
-import { PreloadedQuery } from "react-relay";
-import { OperationType } from "relay-runtime";
+import type React from "react";
+import type { PreloadedQuery } from "react-relay";
+import type { OperationType } from "relay-runtime";
 export { default as Renderer } from "../Renderer";
 export * from "./RouteDefinition";
 export * from "./RouterContext";

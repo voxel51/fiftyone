@@ -5,7 +5,7 @@ import {
   datasetSnapshotName,
   useSetDataset,
 } from "@fiftyone/state";
-import React, { useMemo } from "react";
+import { default as React, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 const DatasetLink: React.FC<{ value: string; className?: string }> = ({
@@ -13,9 +13,9 @@ const DatasetLink: React.FC<{ value: string; className?: string }> = ({
   value,
 }) => {
   return (
-    <a className={className} title={value}>
+    <span className={className} title={value}>
       {value}
-    </a>
+    </span>
   );
 };
 

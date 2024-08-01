@@ -35,9 +35,13 @@ jobs:
         if: steps.node-cache.outputs.cache-hit != 'true'
         run: cd app && yarn install
 
-      - name: Read ESLint Packages List and Lint
-        if: steps.changes.outputs.changes == 'true'
+      - name: Lint ESLint packages
         run: |
           cd app
           ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
           yarn eslint $ESLINT_PACKAGES
+
+      - name: Lint Biome Packages
+        run: |
+          cd app
+          yarn check

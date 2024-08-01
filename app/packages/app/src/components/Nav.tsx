@@ -114,11 +114,11 @@ const Nav: React.FC<
           </div>
         )}
         {hasDataset && (
-          <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+          <Suspense fallback={<div style={{ flex: 1 }} />}>
             <ViewBar />
           </Suspense>
         )}
-        {!hasDataset && <div style={{ flex: 1 }}></div>}
+        {!hasDataset && <div style={{ flex: 1 }} />}
         <div className={iconContainer}>
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}

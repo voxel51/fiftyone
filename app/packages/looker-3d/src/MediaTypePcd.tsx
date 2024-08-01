@@ -2,15 +2,22 @@ import { useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { Typography } from "@mui/material";
-import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
+import type { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
 import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
+import {
+  type Box3,
+  type Camera,
+  Object3D,
+  type PerspectiveCamera,
+  Vector3,
+  type Vector3Tuple,
+} from "three";
 import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import {
-  Looker3dPluginSettings,
+  type Looker3dPluginSettings,
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import { Screenshot } from "./action-bar/Screenshot";
@@ -47,11 +54,11 @@ export const MediaTypePcdComponent = () => {
   const controlsRef = React.useRef();
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
 
-  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+  const all3dSlices = useRecoilValue(fos.all3dSlices);
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
 
   useLayoutEffect(() => {
     const canvas = document.getElementById(CANVAS_WRAPPER_ID);
@@ -66,7 +73,7 @@ export const MediaTypePcdComponent = () => {
     useRecoilState(customColorMapAtom);
   const pointSize = useRecoilValue(currentPointSizeAtom);
   const isPointSizeAttenuated = useRecoilValue(isPointSizeAttenuatedAtom);
-  const isPointcloudDataset = useRecoilValue(fos.isPointcloudDataset);
+  const isPointcloudDataset = useRecoilValue(fos.mediaType) === "point_cloud";
 
   const upVectorNormalized = useMemo(
     () =>
@@ -93,7 +100,7 @@ export const MediaTypePcdComponent = () => {
 
     // we want the camera to be along the up vector
     // the scaling factor determines by how much
-    const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
+    const scalingFactor = !Number.isNaN(absMax) ? absMax * 2 : 20;
     const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
     return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
   }, [pointCloudBounds, upVectorNormalized]);
@@ -112,9 +119,9 @@ export const MediaTypePcdComponent = () => {
         settings.defaultCameraPosition.y,
         settings.defaultCameraPosition.z,
       ];
-    } else {
-      return topCameraPosition;
     }
+
+    return topCameraPosition;
   }, [topCameraPosition, settings]);
 
   const onChangeView = useCallback(
@@ -167,7 +174,7 @@ export const MediaTypePcdComponent = () => {
   const minZ = _.get(settings, "pointCloud.minZ", null);
 
   const pcRotation = useMemo(
-    () => toEulerFromDegreesArray(pcRotationSetting),
+    () => toEulerFromDegreesArray(pcRotationSetting as Vector3Tuple),
     [pcRotationSetting]
   );
 
@@ -205,12 +212,12 @@ export const MediaTypePcdComponent = () => {
       });
     } else {
       const newCustomColorMap = {};
-      for (const slice of allPcdSlices) {
+      for (const slice of all3dSlices) {
         newCustomColorMap[slice] = DEFAULT_GREEN;
       }
       setCustomColorMap((prev) => ({ ...newCustomColorMap, ...(prev ?? {}) }));
     }
-  }, [isPointcloudDataset, allPcdSlices, setCustomColorMap]);
+  }, [isPointcloudDataset, all3dSlices, setCustomColorMap]);
 
   const theme = useTheme();
 
@@ -220,7 +227,7 @@ export const MediaTypePcdComponent = () => {
     () =>
       Object.entries(sampleMap)
         .map(([slice, sample]) => {
-          let mediaUrlUnresolved;
+          let mediaUrlUnresolved: string;
 
           if (Array.isArray(sample.urls)) {
             const mediaFieldObj = sample.urls.find(
@@ -242,8 +249,7 @@ export const MediaTypePcdComponent = () => {
           const mediaUrl = fos.getSampleSrc(mediaUrlUnresolved);
 
           const customColor =
-            (customColorMap &&
-              customColorMap[isPointcloudDataset ? "default" : slice]) ??
+            customColorMap?.[isPointcloudDataset ? "default" : slice] ??
             "#00ff00";
 
           return (

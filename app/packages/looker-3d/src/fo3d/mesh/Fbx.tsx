@@ -1,9 +1,9 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useMemo } from "react";
-import { AnimationMixer, Quaternion, Vector3 } from "three";
+import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { FBXLoader } from "three-stdlib";
-import { FbxAsset } from "../../hooks";
+import type { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";

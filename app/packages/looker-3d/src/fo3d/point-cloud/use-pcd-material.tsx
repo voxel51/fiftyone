@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { BufferGeometry } from "three";
+import type { BufferGeometry } from "three";
 import {
   PCD_SHADING_GRADIENTS,
   SHADE_BY_CUSTOM,
@@ -7,7 +7,7 @@ import {
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
 } from "../../constants";
-import { PcdAsset } from "../../hooks";
+import type { PcdAsset } from "../../hooks";
 import { useFo3dBounds } from "../../hooks/use-bounds";
 import { usePcdMaterialControls } from "../../hooks/use-pcd-material-controls";
 import {

@@ -1,8 +1,6 @@
 import { Bar } from "@fiftyone/components";
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useRef } from "react";
-import { PreloadedQuery } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../../Actions";
@@ -26,14 +24,9 @@ const ElementsContainer = styled.div`
   justify-content: center;
 `;
 
-export const NonNestedDynamicGroup = ({
-  queryRef,
-}: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery> | null;
-}) => {
+export const NonNestedDynamicGroup = () => {
   const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();
-  const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
@@ -48,15 +41,7 @@ export const NonNestedDynamicGroup = ({
     if (!isBigLookerVisible && viewMode !== "carousel") {
       setIsBigLookerVisible(true);
     }
-  }, [isBigLookerVisible, viewMode]);
-
-  if (!groupByFieldValue) {
-    return null;
-  }
-
-  if (viewMode !== "video" && !queryRef) {
-    throw new Error("no queryRef provided");
-  }
+  }, [isBigLookerVisible, viewMode, setIsBigLookerVisible]);
 
   return (
     <RootContainer>
@@ -70,7 +55,7 @@ export const NonNestedDynamicGroup = ({
             <NonNestedDynamicGroupBar lookerRef={lookerRef} />
           )}
           {isCarouselVisible && viewMode === "carousel" && (
-            <DynamicGroupCarousel key={groupByFieldValue} />
+            <DynamicGroupCarousel />
           )}
           {isBigLookerVisible && (
             <GroupSuspense>
@@ -85,9 +70,7 @@ export const NonNestedDynamicGroup = ({
             </GroupSuspense>
           )}
         </>
-        {viewMode === "pagination" && queryRef && (
-          <GroupElementsLinkBar queryRef={queryRef} />
-        )}
+        {viewMode === "pagination" && <GroupElementsLinkBar />}
       </ElementsContainer>
     </RootContainer>
   );

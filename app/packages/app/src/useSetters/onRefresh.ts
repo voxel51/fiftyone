@@ -1,4 +1,4 @@
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onRefresh: RegisteredSetter =
   ({ router }) =>

@@ -39,8 +39,8 @@ test.describe("tag", () => {
   });
 
   test("sample tag and label tag loads correct aggregation number on default view", async ({
-    tagger,
     gridActionsRow,
+    tagger,
   }) => {
     await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
@@ -55,20 +55,16 @@ test.describe("tag", () => {
   });
 
   test("In grid, I can add a new sample tag to all new samples", async ({
-    page,
-    tagger,
-    sidebar,
+    grid,
     gridActionsRow,
-    eventUtils,
+    page,
+    sidebar,
+    tagger,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "flashlight-refreshing",
-        () => true
-      );
+    const gridRefreshedEventPromise = grid.getWaitForGridRefreshPromise();
 
     await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
@@ -81,20 +77,16 @@ test.describe("tag", () => {
   });
 
   test("In grid, I can add a new label tag to all new samples", async ({
-    page,
-    tagger,
-    sidebar,
-    eventUtils,
+    grid,
     gridActionsRow,
+    page,
+    sidebar,
+    tagger,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
     // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "flashlight-refreshing",
-        () => true
-      );
+    const gridRefreshedEventPromise = grid.getWaitForGridRefreshPromise();
 
     await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("label");

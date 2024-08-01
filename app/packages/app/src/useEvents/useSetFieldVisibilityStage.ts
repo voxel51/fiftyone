@@ -4,7 +4,7 @@ import { useRecoilCallback } from "recoil";
 import { pendingEntry } from "../Renderer";
 import { useRouterContext } from "../routing";
 import { resolveURL } from "../utils";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
 const useSetFieldVisibilityStage: EventHandlerHook = () => {
   const setter = useSessionSetter();

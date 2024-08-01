@@ -1,3 +1,5 @@
+app/packages/app
+app/packages/spotlight
 *.html
 voxel51-website.js
 **/__generated__
