@@ -1630,6 +1630,104 @@ class CVATTests(unittest.TestCase):
             ).values("frames.frame_number", unwind=True),
         )
 
+    def test_frames_view(self):
+        dataset = foz.load_zoo_dataset(
+            "quickstart-video", max_samples=1
+        ).clone()
+
+        view = dataset.to_frames(sample_frames=True)
+
+        prev_ids = dataset.values(
+            "frames.detections.detections.id", unwind=True
+        )
+
+        # Test successful upload and download of annotations
+        anno_key = "anno_key_1"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="detections",
+        )
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = view.first().detections.detections[0].id
+            self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+
+            frame_id = list(list(results.frame_id_map.values())[0].values())[
+                0
+            ]["sample_id"]
+            self.assertEqual(frame_id, view.first().id)
+            sample_id = results.id_map["_frames"][frame_id]
+            self.assertEqual(sample_id, view.first().sample_id)
+
+        dataset.reload()
+        view.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("frames.detections.detections.id", unwind=True),
+        )
+
+        # Test creating new shapes, tags and tracks
+        anno_key = "anno_key_2"
+        results = view.annotate(
+            anno_key,
+            backend="cvat",
+            label_schema={
+                "detections_new": {
+                    "type": "detections",
+                    "classes": ["test_shape"],
+                },
+                "tags_new": {
+                    "type": "classification",
+                    "classes": ["test_tag"],
+                },
+            },
+        )
+        shape_frame = 0
+        tag_frame = 0
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape = {
+                "type": "rectangle",
+                "frame": shape_frame,
+                "label_id": _get_label(api, task_id, label="test_shape"),
+                "group": 0,
+                "attributes": [],
+                "points": [10, 20, 30, 40],
+                "occluded": False,
+            }
+            _create_annotation(api, task_id, shape=shape)
+            tag = {
+                "frame": tag_frame,
+                "label_id": _get_label(api, task_id, label="test_tag"),
+                "group": 0,
+                "attributes": [],
+            }
+            _create_annotation(api, task_id, tag=tag)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        shape_view = dataset.filter_labels(
+            "frames.detections_new", F("label") == "test_shape"
+        )
+
+        self.assertListEqual(
+            [shape_frame + 1],
+            shape_view.match_frames(
+                F("detections_new.detections").length() > 0
+            ).values("frames.frame_number", unwind=True),
+        )
+
+        self.assertListEqual(
+            [tag_frame + 1],
+            dataset.match_frames(F("tags_new").exists()).values(
+                "frames.frame_number", unwind=True
+            ),
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
