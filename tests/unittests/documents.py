@@ -1,3 +1,15 @@
+"""
+FiftyOne document-related unit tests.
+
+To run the unit tests, use the following command:
+
+    pytest tests/unittests/documents.py
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import unittest
 from mongoengine import EmbeddedDocument
 from mongoengine.errors import ValidationError
