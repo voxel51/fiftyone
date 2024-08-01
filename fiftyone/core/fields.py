@@ -5,7 +5,6 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 from copy import deepcopy
 from datetime import date, datetime
 import numbers
@@ -1502,15 +1501,6 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
-
-    def validate(self, value):
-        for v in value:
-            if v is None:
-                self.error(
-                    "Embedded document list fields cannot contain None values"
-                )
-
-        super().validate(value)
 
 
 class ReferenceField(mongoengine.fields.ReferenceField, Field):

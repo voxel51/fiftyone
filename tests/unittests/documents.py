@@ -22,14 +22,12 @@ class TestEmbeddedDocumentListField(unittest.TestCase):
                 name="filepath", ftype="fiftyone.core.fields.StringField"
             ),
         ]
-        from pdb import set_trace
 
-        set_trace()
         list_field.validate(valid_input)
 
         # Test with invalid input
         invalid_input = valid_input + [None]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             list_field.validate(invalid_input)
 
         # Test with invalid input type
