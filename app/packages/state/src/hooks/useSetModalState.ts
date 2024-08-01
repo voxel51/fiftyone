@@ -25,6 +25,11 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   set(filterAtoms.modalFilters, modalFilters);
 };
 
+/**
+ * Initializer that applys relevant grid settings to the modal, e.g. sidebar
+ * checkboxes. If no navigation is provided, next/previous in the modal is
+ * disabled
+ */
 export default () => {
   const environment = useRelayEnvironment();
   return useRecoilCallback(
@@ -60,6 +65,9 @@ export default () => {
       let pinned3d = false;
       let activeSlices = [];
       if (slice) {
+        // when a 3D slice is shown in the grid for group datasets, attempt
+        // to find an alternative 2D slice to present by default in the main
+        // view
         const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
         if (map[slice] === "point_cloud") {
           pinned3d = true;
@@ -77,6 +85,7 @@ export default () => {
       for (const i in results) {
         set(data[i][0], results[i]);
       }
+      // do not set modal filters from grid when navigation is not provided
       navigation && (await setModalFilters(cbInterface));
       navigation && set(modalAtoms.modalNavigation, () => navigation);
     },

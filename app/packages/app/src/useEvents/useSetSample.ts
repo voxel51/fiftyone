@@ -17,7 +17,7 @@ const useSetSample: EventHandlerHook = ({ router }) => {
   const setter = useSessionSetter();
 
   return useCallback(
-    (payload) => {
+    (payload: { sample_id?: string; group_id?: string }) => {
       setModalState().then(() => {
         const search = new URLSearchParams(router.history.location.search);
         if (payload?.group_id) {
