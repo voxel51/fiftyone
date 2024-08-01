@@ -16,10 +16,9 @@ import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { Button } from ".";
-import { getComponentProps, getPath, getProps } from "../utils";
+import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
-import { c } from "vite/dist/node/types.d-aGj9QkWt";
 
 const AddItemCTA = ({ onAdd }) => {
   return (
@@ -109,13 +108,12 @@ export default function DashboardView(props: ViewPropsType) {
   const [isDragging, setIsDragging] = useState(false);
   const theme = useTheme();
 
-  const baseGridProps: BoxProps = {};
   const MIN_ITEM_WIDTH = 400;
   const MIN_ITEM_HEIGHT = 300; // Setting minimum height for items
   const GRID_WIDTH = layout?.width; // Set based on your container's width
   const GRID_HEIGHT = layout?.height - 180; // Set based on your container's height - TODO remove button height hardcoded
-  const COLS = Math.floor(GRID_WIDTH / MIN_ITEM_WIDTH);
-  const ROWS = Math.ceil(propertiesAsArray.length / COLS);
+  const COLS = GRID_WIDTH ? Math.floor(GRID_WIDTH / MIN_ITEM_WIDTH) || 1 : 1;
+  const ROWS = Math.ceil(propertiesAsArray.length / COLS) || 1;
 
   const viewLayout = schema.view.layout;
   const defaultLayout = propertiesAsArray.map((property, index) => {
@@ -140,8 +138,6 @@ export default function DashboardView(props: ViewPropsType) {
     justifyContent: "space-between",
     alignItems: "center",
   }));
-  const [showGrid, setShowGrid] = useState(false);
-  const toggleGrid = useCallback(() => setShowGrid(!showGrid), [showGrid]);
 
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
@@ -156,72 +152,67 @@ export default function DashboardView(props: ViewPropsType) {
 
   return (
     <Box>
-      {!showGrid && <Button onClick={toggleGrid}>Toggle Grid</Button>}
-      {showGrid && (
-        <GridLayout
-          onLayoutChange={handleLayoutChange}
-          layout={finalLayout}
-          cols={COLS}
-          rowHeight={GRID_HEIGHT / ROWS} // Dynamic row height
-          width={GRID_WIDTH}
-          onDragStart={() => setIsDragging(true)}
-          onDragStop={() => setIsDragging(false)}
-          resizeHandles={["e", "w", "n", "s"]}
-          isDraggable={!isDragging}
-          isResizable={!isDragging} // Allow resizing
-          draggableHandle=".drag-handle"
-          resizeHandle={(axis, ref) => {
-            return <DashboardItemResizeHandle axis={axis} ref={ref} />;
-          }}
-        >
-          {propertiesAsArray.map((property) => {
-            const { id } = property;
-            const itemPath = getPath(path, id);
-            const baseItemProps: BoxProps = {
-              sx: { padding: 0.25, position: "relative" },
-              key: id,
-            };
-
-            return (
-              <Box
-                key={id}
-                {...getProps(
-                  { ...props, schema: property },
-                  "item",
-                  baseItemProps
+      <GridLayout
+        onLayoutChange={handleLayoutChange}
+        layout={finalLayout}
+        cols={COLS}
+        rowHeight={GRID_HEIGHT / ROWS} // Dynamic row height
+        width={GRID_WIDTH}
+        onDragStart={() => setIsDragging(true)}
+        onDragStop={() => setIsDragging(false)}
+        resizeHandles={["e", "w", "n", "s"]}
+        isDraggable={!isDragging}
+        isResizable={!isDragging} // Allow resizing
+        draggableHandle=".drag-handle"
+        resizeHandle={(axis, ref) => {
+          return <DashboardItemResizeHandle axis={axis} ref={ref} />;
+        }}
+      >
+        {propertiesAsArray.map((property) => {
+          const { id } = property;
+          const itemPath = getPath(path, id);
+          const baseItemProps: BoxProps = {
+            sx: { padding: 0.25, position: "relative" },
+          };
+          return (
+            <Box
+              key={id}
+              {...getProps(
+                { ...props, schema: property },
+                "item",
+                baseItemProps
+              )}
+            >
+              <DragHandle className="drag-handle">
+                <Typography>{property.title || id}</Typography>
+                {allow_deletion && (
+                  <IconButton
+                    size="small"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseItem({ id, path: getPath(path, id) });
+                    }}
+                    sx={{ color: theme.text.secondary }}
+                  >
+                    <CloseIcon />
+                  </IconButton>
                 )}
-              >
-                <DragHandle className="drag-handle">
-                  <Typography>{property.title || id}</Typography>
-                  {allow_deletion && (
-                    <IconButton
-                      size="small"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCloseItem({ id, path: getPath(path, id) });
-                      }}
-                      sx={{ color: theme.text.secondary }}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  )}
-                </DragHandle>
-                <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
-                  <DynamicIO
-                    {...props}
-                    schema={property}
-                    path={itemPath}
-                    data={data?.[id]}
-                    parentSchema={schema}
-                    relativePath={id}
-                  />
-                </Box>
+              </DragHandle>
+              <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
+                <DynamicIO
+                  {...props}
+                  schema={property}
+                  path={itemPath}
+                  data={data?.[id]}
+                  parentSchema={schema}
+                  relativePath={id}
+                />
               </Box>
-            );
-          })}
-        </GridLayout>
-      )}
+            </Box>
+          );
+        })}
+      </GridLayout>
       {allow_addition && <AddItemButton key="add-item" onAddItem={onAddItem} />}
     </Box>
   );
