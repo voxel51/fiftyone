@@ -226,6 +226,7 @@ class DatasetAppConfig:
 
     grid_media_field: str = "filepath"
     modal_media_field: str = "filepath"
+    disable_frame_filtering: bool = True
     media_fallback: bool = False
 
 

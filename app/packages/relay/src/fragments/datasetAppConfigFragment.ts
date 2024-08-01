@@ -11,5 +11,6 @@ export default graphql`
       ...colorSchemeFragment
     }
     mediaFallback
+    disableFrameFiltering
   }
 `;
