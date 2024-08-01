@@ -626,11 +626,41 @@ export const sidebarEntries = selectorFamily<
   },
 });
 
-export const disabledPaths = selector<Set<string>>({
-  key: "disabledPaths",
+/**
+ * Returns a set of paths that have their checkbox disabled in the sidebar
+ */
+export const disabledCheckboxPaths = selector<Set<string>>({
+  key: "disabledCheckboxPaths",
+  get: ({ get }) => {
+    return new Set(get(fullyDisabledPaths));
+  },
+});
+
+/**
+ * Returns a set of paths that have their filter dropdown disabled in the sidebar
+ */
+export const disabledFilterPaths = selector<Set<string>>({
+  key: "disabledFilterPaths",
+  get: ({ get }) => {
+    const paths = get(fullyDisabledPaths);
+    const disableFrameFiltering = Boolean(get(getDisableFrameFiltering));
+    const frameFields = get(atoms.frameFields);
+    if (disableFrameFiltering) {
+      frameFields.forEach((frame) => {
+        paths.add(`frames.${frame.path}`);
+      });
+    }
+    return new Set(paths);
+  },
+});
+
+/**
+ * Returns a set of paths that should have both their checkbox and filter dropdown disabled in the sidebar
+ */
+export const fullyDisabledPaths = selector<Set<string>>({
+  key: "fullyDisabledPaths",
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
-    const disableFrameFiltering = Boolean(get(getDisableFrameFiltering));
     const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
     sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
@@ -655,49 +685,54 @@ export const disabledPaths = selector<Set<string>>({
     });
 
     const frameFields = get(atoms.frameFields);
+    fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
+      (path) => paths.add(path)
+    );
 
-    if (disableFrameFiltering) {
-      frameFields.forEach((frame) => {
-        paths.add(`frames.${frame.path}`);
-      });
-    } else {
+    frameFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
-        frameFields,
-        primitivesMatcher,
+        parent.fields || [],
+        (field) => {
+          if (parent.ftype === LIST_FIELD) {
+            return true;
+          }
+
+          if (field.ftype === LIST_FIELD) {
+            return true;
+          }
+
+          return !LABELS.includes(field.embeddedDocType);
+        },
         undefined,
-        "frames."
+        `frames.${parent.name}.`
       ).forEach((path) => paths.add(path));
-
-      frameFields.filter(groupFilter).forEach((parent) => {
-        fieldsMatcher(
-          parent.fields || [],
-          (field) => {
-            if (parent.ftype === LIST_FIELD) {
-              return true;
-            }
-
-            if (field.ftype === LIST_FIELD) {
-              return true;
-            }
-
-            return !LABELS.includes(field.embeddedDocType);
-          },
-          undefined,
-          `frames.${parent.name}.`
-        ).forEach((path) => paths.add(path));
-      });
-    }
-
+    });
     return new Set(paths);
   },
 });
 
-export const isDisabledPath = selectorFamily<boolean, string>({
-  key: "isDisabledPath",
+export const isDisabledCheckboxPath = selectorFamily<boolean, string>({
+  key: "isDisabledCheckboxPath",
   get:
     (path) =>
     ({ get }) =>
-      get(disabledPaths).has(path),
+      get(disabledCheckboxPaths).has(path),
+});
+
+export const isDisabledFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFilterPaths).has(path),
+});
+
+export const isFullyDisabledPath = selectorFamily<boolean, string>({
+  key: "isFullyDisabledPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(fullyDisabledPaths).has(path),
 });
 
 const collapsedPaths = selector<Set<string>>({

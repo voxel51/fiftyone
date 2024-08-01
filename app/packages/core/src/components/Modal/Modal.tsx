@@ -57,7 +57,7 @@ const SampleModal = () => {
   const lookerRef = useRef<fos.Lookers>();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const disabled = useRecoilValue(fos.disabledPaths);
+  const disabled = useRecoilValue(fos.fullyDisabledPaths);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
 
   const mode = useRecoilValue(fos.groupStatistics(true));

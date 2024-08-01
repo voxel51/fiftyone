@@ -85,7 +85,7 @@ const useTitleTemplate = ({
   path: string;
 }) => {
   return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
-    const disabled = useRecoilValue(fos.isDisabledPath(path));
+    const disabled = useRecoilValue(fos.isFullyDisabledPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
     const unlocked = useUnlocked();

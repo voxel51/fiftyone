@@ -19,7 +19,7 @@ const Lightning = ({ path }: { path: string }) => {
 };
 
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
-  const disabled = useRecoilValue(fos.isDisabledPath(path));
+  const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const lightning = useRecoilValue(fos.lightning);
 

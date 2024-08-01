@@ -11,7 +11,7 @@ import { datasetSampleCount } from "./dataset";
 import { count } from "./pathData";
 import { fieldPaths, labelPaths } from "./schema";
 import { datasetAppConfig, isVideoDataset } from "./selectors";
-import { disabledPaths, sidebarEntries } from "./sidebar";
+import { fullyDisabledPaths, sidebarEntries } from "./sidebar";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -128,7 +128,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return "fast";
       }
 
-      const disabled = get(disabledPaths);
+      const disabled = get(fullyDisabledPaths);
       const paths = get(sidebarEntries({ modal: false, loading: true })).filter(
         (data) => data.kind === "PATH" && !disabled.has(data.path)
       );
