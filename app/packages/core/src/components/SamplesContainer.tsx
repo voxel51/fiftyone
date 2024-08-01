@@ -17,7 +17,7 @@ const Container = styled.div`
 
 function SamplesContainer() {
   const showSidebar = useRecoilValue(fos.sidebarVisible(false));
-  const disabled = useRecoilValue(fos.fullyDisabledPaths);
+  const disabled = useRecoilValue(fos.disabledFilterPaths);
   const isModalOpen = useRecoilValue(fos.isModalActive);
 
   const renderGridEntry = useCallback(

@@ -53,8 +53,6 @@ const FilterableEntry = ({
   const active = useRecoilValue(fos.activeField({ modal, path }));
   const pathColor = useRecoilValue(fos.pathColor(path));
   const field = useField(path);
-  const checkboxDisabled = useRecoilValue(fos.disabledCheckboxPaths).has(path);
-  console.log(`Path is: ${path} which is: ${checkboxDisabled}`);
   const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const expanded = useRecoilValue(
@@ -81,7 +79,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!checkboxDisabled && !(modal && path === LABEL_TAGS) && (
+          {!disabled && !(modal && path === LABEL_TAGS) && (
             <Checkbox
               key="checkbox"
               checked={active}

@@ -271,7 +271,7 @@ function FieldInfoExpanded({
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
-  const disabled = useRecoilValue(fos.fullyDisabledPaths);
+  const disabled = useRecoilValue(fos.disabledFilterPaths);
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
