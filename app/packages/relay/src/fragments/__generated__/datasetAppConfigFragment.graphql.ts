@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc1725ed3436d8b69ffb69144b5b53b7>>
+ * @generated SignedSource<<87d5fcf15f78b5b1f082312afde50070>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
   } | null;
-  readonly disableFrameFiltering: boolean;
+  readonly disableFrameFiltering: boolean | null;
   readonly gridMediaField: string;
   readonly mediaFallback: boolean;
   readonly mediaFields: ReadonlyArray<string> | null;
