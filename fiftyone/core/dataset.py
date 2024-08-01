@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 class DatasetNotFoundError(ValueError):
     """Exception raised when a dataset is not found."""
+
     def __init__(self, name):
         self._dataset_name = name
         super().__init__(f"Dataset {name} not found")
@@ -1080,7 +1081,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return "\n".join(lines)
 
-    def stats(self, include_media=False, compressed=False):
+    def stats(
+        self, include_media=False, compressed=False, include_indexes=False
+    ):
         """Returns stats about the dataset on disk.
 
         The ``samples`` keys refer to the sample documents stored in the
@@ -1101,6 +1104,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False)
+            include_indexes (False): whether to return the stats on the indexes
 
         Returns:
             a stats dict
@@ -1137,6 +1141,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
+
+        if include_indexes:
+            stats["nindexes"] = cs["nindexes"]
+            stats["totalIndexSize"] = cs["totalIndexSize"]
+            stats["indexSizes"] = cs["indexSizes"]
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
