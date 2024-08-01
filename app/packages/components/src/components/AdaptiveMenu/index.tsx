@@ -1,8 +1,16 @@
+import { escapeKeyHandlerIdsAtom, useKeyDown } from "@fiftyone/state";
 import { ExpandMore } from "@mui/icons-material";
 import { Box, BoxProps } from "@mui/material";
 import { throttle } from "lodash";
-import React, { useLayoutEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { MoveEvent, ReactSortable } from "react-sortablejs";
+import { useSetRecoilState } from "recoil";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
 import { hideOverflowingNodes, SHOW_MORE_ACTIONS_BUTTON_WIDTH } from "./utils";
@@ -208,6 +216,30 @@ function AdaptiveMenuItems(props: AdaptiveMenuItemsPropsType) {
 function MoreItems(props: MoreItemsPropsType) {
   const { id, items, onMove, onEnd, onStart, orientation } = props;
   const [open, setOpen] = React.useState(false);
+  const setEscapeHandlerIds = useSetRecoilState(escapeKeyHandlerIdsAtom);
+
+  useEffect(() => {
+    if (open) {
+      setEscapeHandlerIds((state) => {
+        const updated = new Set([...Array.from(state)]);
+        updated.add(id);
+        return updated;
+      });
+    } else {
+      setEscapeHandlerIds((state) => {
+        const updated = new Set([...Array.from(state)]);
+        updated.delete(id);
+        return updated;
+      });
+    }
+  }, [open, setEscapeHandlerIds, id]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  useKeyDown("Escape", close);
+
   return (
     <PopoutButton
       Button={
@@ -221,7 +253,7 @@ function MoreItems(props: MoreItemsPropsType) {
         />
       }
       open={open}
-      onClose={() => setOpen(false)}
+      onClose={close}
     >
       <ReactSortable
         group={id}

@@ -47,3 +47,4 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
+export { default as useKeyDown } from "./useKeyDown";
