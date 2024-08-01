@@ -727,14 +727,6 @@ export const isDisabledFilterPath = selectorFamily<boolean, string>({
       get(disabledFilterPaths).has(path),
 });
 
-export const isFullyDisabledPath = selectorFamily<boolean, string>({
-  key: "isFullyDisabledPath",
-  get:
-    (path) =>
-    ({ get }) =>
-      get(fullyDisabledPaths).has(path),
-});
-
 const collapsedPaths = selector<Set<string>>({
   key: "collapsedPaths",
   get: ({ get }) => {
