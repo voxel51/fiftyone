@@ -1,5 +1,5 @@
+import { selectedSamples } from "@fiftyone/state/src/recoil";
 import { useRecoilCallback } from "recoil";
-import { selectedSamples } from "../recoil";
 
 const useSelectSample = () => {
   return useRecoilCallback(

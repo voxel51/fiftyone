@@ -5,21 +5,21 @@ import {
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
+import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
-  Looker3dPluginSettings,
+  type Looker3dPluginSettings,
   defaultPluginSettings,
 } from "../Looker3dPlugin";
-import { usePathFilter } from "../hooks";
-import { toEulerFromDegreesArray } from "../utils";
-import { Cuboid, CuboidProps } from "./cuboid";
-import { OverlayLabel, load3dOverlays } from "./loader";
-import { PolyLineProps, Polyline } from "./polyline";
-import { folder, useControls } from "leva";
-import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
 import { PANEL_ORDER_LABELS } from "../constants";
+import { usePathFilter } from "../hooks";
+import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
+import { toEulerFromDegreesArray } from "../utils";
+import { Cuboid, type CuboidProps } from "./cuboid";
+import { type OverlayLabel, load3dOverlays } from "./loader";
+import { type PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
   sampleMap: Record<string, any>;

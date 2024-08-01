@@ -1,28 +1,27 @@
-import {
-  isElectron,
-  isNotebook,
-  NotFoundError,
-  Resource,
-} from "@fiftyone/utilities";
-import {
-  Action,
-  createBrowserHistory,
-  createMemoryHistory,
-  Location,
-} from "history";
-import React from "react";
-import { loadQuery, PreloadedQuery } from "react-relay";
-import {
+import type { Action, Location } from "history";
+import type { PreloadedQuery } from "react-relay";
+import type {
   ConcreteRequest,
   Environment,
-  fetchQuery,
   OperationType,
   VariablesOf,
 } from "relay-runtime";
-import { Route } from ".";
-import { Queries } from "../makeRoutes";
-import { LocationState, matchPath, MatchPathResult } from "./matchPath";
-import RouteDefinition from "./RouteDefinition";
+import type { Route } from ".";
+import type { Queries } from "../makeRoutes";
+import type RouteDefinition from "./RouteDefinition";
+import type { LocationState, MatchPathResult } from "./matchPath";
+
+import {
+  NotFoundError,
+  Resource,
+  isElectron,
+  isNotebook,
+} from "@fiftyone/utilities";
+import { createBrowserHistory, createMemoryHistory } from "history";
+import React from "react";
+import { loadQuery } from "react-relay";
+import { fetchQuery } from "relay-runtime";
+import { matchPath } from "./matchPath";
 
 export interface RouteData<T extends OperationType> {
   path: string;
@@ -53,9 +52,12 @@ type Subscribe<T extends OperationType> = (
 ) => () => void;
 
 export interface RoutingContext<T extends OperationType> {
+  get: (next?: boolean) => Entry<T>;
   history: ReturnType<typeof createBrowserHistory>;
-  get: (next: boolean) => Entry<T>;
+  location: FiftyOneLocation;
   load: (hard?: boolean) => Promise<Entry<T>>;
+  push(to: string, state: LocationState): void;
+  replace(to: string, state: LocationState): void;
   subscribe: Subscribe<T>;
 }
 
@@ -84,9 +86,9 @@ export const createRouter = <T extends OperationType>(
   >();
 
   const update = (location: FiftyOneLocation, action?: Action) => {
-    requestAnimationFrame(() =>
-      subscribers.forEach(([_, onPending]) => onPending && onPending())
-    );
+    requestAnimationFrame(() => {
+      for (const [_, [__, onPending]] of subscribers) onPending?.();
+    });
     currentEntryResource.load().then(({ cleanup }) => {
       nextCurrentEntryResource = getEntryResource<T>(
         environment,
@@ -100,7 +102,7 @@ export const createRouter = <T extends OperationType>(
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
-            subscribers.forEach(([cb]) => cb(entry, action));
+            for (const [_, [cb]] of subscribers) cb(entry, action);
             // update currentEntryResource after calling subscribers
             currentEntryResource = loadingResource;
             cleanup();
@@ -117,6 +119,22 @@ export const createRouter = <T extends OperationType>(
   const context: RoutingContext<T> = {
     history,
 
+    get location() {
+      return history.location as FiftyOneLocation;
+    },
+
+    get(next = false) {
+      const resource = next ? nextCurrentEntryResource : currentEntryResource;
+      if (!resource) {
+        throw new Error("no entry loaded");
+      }
+      const entry = resource.get();
+      if (!entry) {
+        throw new Error("entry is loading");
+      }
+      return entry;
+    },
+
     load(hard = false) {
       const runUpdate = !currentEntryResource || hard;
       if (!currentEntryResource || hard) {
@@ -131,17 +149,15 @@ export const createRouter = <T extends OperationType>(
       runUpdate && update(history.location as FiftyOneLocation);
       return currentEntryResource.load();
     },
-    get(next = false) {
-      const resource = next ? nextCurrentEntryResource : currentEntryResource;
-      if (!resource) {
-        throw new Error("no entry loaded");
-      }
-      const entry = resource.get();
-      if (!entry) {
-        throw new Error("entry is loading");
-      }
-      return entry;
+
+    push(to: string, state: LocationState) {
+      history.push(to, state);
     },
+
+    replace(to: string, state: LocationState) {
+      history.replace(to, state);
+    },
+
     subscribe(cb, onPending) {
       const id = nextId++;
       const dispose = () => {
@@ -153,7 +169,7 @@ export const createRouter = <T extends OperationType>(
   };
 
   return {
-    cleanup: () => cleanup && cleanup(),
+    cleanup: () => cleanup?.(),
     context,
   };
 };
@@ -166,7 +182,7 @@ const getEntryResource = <T extends OperationType>(
   handleError?: (error: unknown) => void
 ): Resource<Entry<T>> => {
   let route: RouteDefinition<T>;
-  let matchResult: MatchPathResult<T>;
+  let matchResult: MatchPathResult<T> | undefined = undefined;
   for (let index = 0; index < routes.length; index++) {
     route = routes[index];
     const match = matchPath<T>(
@@ -201,7 +217,7 @@ const getEntryResource = <T extends OperationType>(
         );
 
         let resolveEntry: (entry: Entry<T>) => void;
-        const promise = new Promise<Entry<T>>((resolve, reject) => {
+        const promise = new Promise<Entry<T>>((resolve) => {
           resolveEntry = resolve;
         });
         const subscription = fetchQuery(
@@ -224,7 +240,7 @@ const getEntryResource = <T extends OperationType>(
               },
             });
           },
-          error: (error) => handleError(error),
+          error: (error) => handleError?.(error),
         });
 
         return promise;

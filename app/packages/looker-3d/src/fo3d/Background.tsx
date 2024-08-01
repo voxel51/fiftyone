@@ -1,7 +1,12 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import { Color, CubeTexture, CubeTextureLoader, TextureLoader } from "three";
+import {
+  Color,
+  type CubeTexture,
+  CubeTextureLoader,
+  TextureLoader,
+} from "three";
 import type { FoSceneBackground } from "../utils";
 
 interface Fo3dBackgroundProps {

@@ -5,6 +5,7 @@ FiftyOne Server lightning queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
@@ -168,7 +169,7 @@ def _resolve_lightning_path_queries(
         path.exclude or path.search
     ):
         raise ValueError(
-            "'excluded' and 'search' are not valid for f{fof.StringField}"
+            f"'excluded' and 'search' are not valid for {fof.StringField}"
         )
 
     if meets_type(field, fof.BooleanField):

@@ -3,7 +3,7 @@ import { MeshWobbleMaterial } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { Color, Mesh } from "three";
+import { Color, type Mesh } from "three";
 import { fo3dAssetsParseStatusLog } from "./state";
 
 /**

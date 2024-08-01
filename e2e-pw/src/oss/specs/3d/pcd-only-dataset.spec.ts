@@ -73,7 +73,7 @@ test.describe("orthographic projections", () => {
   }) => {
     const mask = getScreenshotMasks(modal);
 
-    await expect(grid.firstFlashlightSection).toHaveScreenshot(
+    await expect(grid.getForwardSection()).toHaveScreenshot(
       "orthographic-projection-grid-cuboids.png",
       {
         mask,

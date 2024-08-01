@@ -106,8 +106,11 @@ def handle_app_initializer(subscription: str, initializer: AppInitializer):
         update = True
         dataset_change = True
         handle_dataset_change(state, initializer)
-    else:
-        update = handle_saved_view(state, initializer.view)
+    elif state.dataset is not None:
+        update = handle_group_id(state, initializer.group_id)
+        update = handle_group_slice(state, initializer.group_slice)
+        update = handle_sample_id(state, initializer.sample_id)
+        update = handle_saved_view(state, initializer.view) or update
         update = handle_workspace(state, initializer.workspace) or update
 
     if not update:
@@ -132,20 +135,29 @@ def handle_dataset_change(
     """
     try:
         state.dataset = fod.load_dataset(initializer.dataset)
+        state.group_id = None
         state.group_slice = state.dataset.group_slice
+        state.sample_id = None
         state.selected = []
         state.selected_labels = []
-        state.view = None
         state.spaces = None
-
+        state.view = None
     except:
         state.dataset = None
+        state.group_id = None
         state.group_slice = None
+        state.sample_id = None
         state.selected = []
         state.selected_labels = []
-        state.view = None
         state.spaces = None
+        state.view = None
         return
+
+    if initializer.group_id:
+        state.group_id = initializer.group_id
+
+    if initializer.sample_id:
+        state.sample_id = initializer.sample_id
 
     if initializer.view:
         try:
@@ -166,10 +178,72 @@ def handle_dataset_change(
             pass
 
 
+def handle_group_slice(
+    state: fos.StateDescription, group_slice: t.Optional[str] = None
+):
+    """Handle a group slice.
+
+    Args:
+        state: the state description
+        group_slice (None): an optional group slice
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
+    collection = state.view if state.view is not None else state.dataset
+    if state.group_slice != group_slice:
+        if group_slice is not None and collection.group_slices:
+            state.group_slice = group_slice
+            return True
+
+    return False
+
+
+def handle_group_id(
+    state: fos.StateDescription, group_id: t.Optional[str] = None
+):
+    """Handle a group id.
+
+    Args:
+        state: the state description
+        group_id (None): an optional group ID
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
+    if state.group_id != group_id:
+        if group_id is not None:
+            state.group_id = group_id
+            return True
+
+    return False
+
+
+def handle_sample_id(
+    state: fos.StateDescription, sample_id: t.Optional[str] = None
+):
+    """Handle a sample id.
+
+    Args:
+        state: the state description
+        sample_id (None): an optional sample ID
+
+
+    Returns:
+        True/False indicating if a state update event should be dispatched
+    """
+    if state.sample_id != sample_id:
+        if sample_id is not None:
+            state.sample_id = sample_id
+            return True
+
+    return False
+
+
 def handle_saved_view(
     state: fos.StateDescription, slug: t.Optional[str] = None
 ):
-    """Handle a saved view slug request.
+    """Handle a saved view slug.
 
     Args:
         state: the state description

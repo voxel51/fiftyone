@@ -3,7 +3,8 @@ import { NumberInput } from "@fiftyone/core/src/components/Common/Input";
 import { CloseTwoTone } from "@mui/icons-material";
 import GridOnIcon from "@mui/icons-material/GridOn";
 import { Checkbox, Typography } from "@mui/material";
-import React, { useCallback, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
 import { ActionItem } from "../containers";
 import {

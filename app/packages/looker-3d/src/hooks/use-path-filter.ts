@@ -1,4 +1,4 @@
-import { pathFilter, PathFilterSelector } from "@fiftyone/state";
+import { type PathFilterSelector, pathFilter } from "@fiftyone/state";
 import { useRef } from "react";
 import { useRecoilValueLoadable } from "recoil";
 

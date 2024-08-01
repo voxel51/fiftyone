@@ -14,7 +14,7 @@ const Sample3dContainer = styled.div`
 
 const Looker3dPluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
-  const modal = useRecoilValue(fos.currentModalSample);
+  const modal = useRecoilValue(fos.modalSelector);
 
   const dataset = useRecoilValue(fos.dataset);
   const plugin = useActivePlugins(PluginComponentType.Visualizer, {
@@ -31,7 +31,7 @@ const Looker3dPluginWrapper = () => {
   return (
     <plugin.component
       // use group id in group model sample filepath in non-group mode to force a remount when switching between samples
-      key={groupId ?? modal?.index}
+      key={groupId ?? modal?.id}
       api={pluginAPI}
     />
   );

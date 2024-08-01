@@ -1,8 +1,8 @@
-import * as fos from "@fiftyone/state";
-import usingAnalytics, { AnalyticsInfo } from "./usingAnalytics";
-import { useRecoilValue } from "recoil";
 import { useCallback } from "react";
+import { useRecoilValue } from "recoil";
 import { analyticsInfo } from "./state";
+import type { AnalyticsInfo } from "./usingAnalytics";
+import usingAnalytics from "./usingAnalytics";
 
 /**
  * Track an event. This can be called from any component to track an event, however

@@ -1,0 +1,64 @@
+/**
+ * Copyright 2017-2024, Voxel51, Inc.
+ */
+
+.spotlight {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+
+  --light-color: var(--fo-palette-text-tertiary);
+  --dark-color: var(--fo-palette-background-level2);
+}
+
+.spotlightLoaded {
+  background: var(--fo-palette-background-level2);
+}
+
+.spotlight.scrollbar::-webkit-scrollbar-track {
+  width: 14px;
+  box-shadow: inset 0 0 14px 14px var(--dark-color);
+}
+
+.spotlight.scrollbar::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px var(--light-color);
+  border-radius: 0;
+}
+
+.spotlightSection {
+  position: absolute;
+  display: block;
+  padding-left: 14px;
+  width: 100%;
+}
+
+.spotlightContainer {
+  position: relative;
+  display: block;
+  width: 100%;
+  contain: size layout paint;
+}
+
+.spotlightContainer:focus {
+  border: none;
+  outline: none;
+}
+
+.spotlightRow {
+  display: block;
+  position: absolute;
+  contain: size layout paint;
+}
+
+.spotlightRow > div {
+  position: absolute;
+  contain: size layout paint;
+  background-color: var(--fo-palette-background-level1);
+  overflow: hidden;
+}
+
+.spotlightRow.spotlightRowHidden > div > div {
+  display: none;
+}

@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useEffect, useMemo, useState } from "react";
-import { AnimationClip, AnimationMixer } from "three";
+import type { AnimationClip, AnimationMixer } from "three";
 import { PANEL_ORDER_ANIMATIONS } from "../constants";
 
 export const useAnimationSelect = (

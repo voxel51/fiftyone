@@ -8,6 +8,7 @@
     "scripts": {
         "build": "yarn workspace @fiftyone/app build",
         "build:win32": "yarn workspace @fiftyone/app build:win32",
+        "check": "yarn workspace @fiftyone/app check && yarn workspace @fiftyone/spotlight check",
         "compile": "yarn relay-compiler",
         "dev": "yarn workspace @fiftyone/app dev",
         "dev:py": "python ../fiftyone/server/main.py",

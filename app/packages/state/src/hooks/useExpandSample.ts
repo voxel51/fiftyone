@@ -1,162 +1,95 @@
-import { FlashlightConfig } from "@fiftyone/flashlight";
-import { getFieldInfo } from "@fiftyone/utilities";
+import type * as foq from "@fiftyone/relay";
+import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
+import type { ResponseFrom } from "../utils";
+
 import { get } from "lodash";
-import { useRelayEnvironment } from "react-relay";
-import { CallbackInterface, RecoilState, useRecoilCallback } from "recoil";
-import { State } from "../recoil";
+import { useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
-import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
-import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
-import * as modalAtoms from "../recoil/modal";
-import * as schemaAtoms from "../recoil/schema";
-import * as selectors from "../recoil/selectors";
-import * as sidebarAtoms from "../recoil/sidebar";
-import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
+import useSetModalState from "./useSetModalState";
 
-const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
-  const paths = await snapshot.getPromise(
-    schemaAtoms.labelPaths({ expanded: false })
-  );
-  const filters = await snapshot.getPromise(filterAtoms.filters);
-  const modalFilters = Object.fromEntries(
-    Object.entries(filters).filter(
-      ([path]) =>
-        paths.some((p) => path.startsWith(p)) || path === "_label_tags"
-    )
-  );
+export type Sample = Exclude<
+  Exclude<
+    ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"],
+    {
+      readonly __typename: "%other";
+    }
+  >,
+  null
+>;
 
-  set(filterAtoms.modalFilters, modalFilters);
-};
-
-export default <T extends Lookers>(store: LookerStore<T>) => {
-  const environment = useRelayEnvironment();
+export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
-
-  const setModalState = useRecoilCallback(
-    (cbInterface) => async (navigation: modalAtoms.ModalNavigation) => {
-      const { snapshot, set } = cbInterface;
-      const data = [
-        [filterAtoms.modalFilters, filterAtoms.filters],
-        ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
-          return [
-            selectors.appConfigOption({ key, modal: false }),
-            selectors.appConfigOption({ key, modal: false }),
-          ];
-        }),
-        [
-          schemaAtoms.activeFields({ modal: true }),
-          schemaAtoms.activeFields({ modal: false }),
-        ],
-        [atoms.cropToContent(true), atoms.cropToContent(false)],
-        [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
-        [
-          sidebarAtoms.sidebarGroupsDefinition(true),
-          sidebarAtoms.sidebarGroupsDefinition(false),
-        ],
-        [sidebarAtoms.sidebarWidth(true), sidebarAtoms.sidebarWidth(false)],
-        [sidebarAtoms.sidebarVisible(true), sidebarAtoms.sidebarVisible(false)],
-        [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
-
-        [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-      ];
-
-      const slice = await snapshot.getPromise(groupAtoms.groupSlice);
-
-      let pinned3d = false;
-      let activeSlices = [];
-      if (slice) {
-        const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-        if (map[slice] === "point_cloud") {
-          pinned3d = true;
-          activeSlices = [slice];
-        }
-      }
-
-      set(groupAtoms.pinned3d, pinned3d);
-      set(groupAtoms.activePcdSlices, activeSlices);
-
-      const results = await Promise.all(
-        data.map(([_, get]) => snapshot.getPromise(get as RecoilState<unknown>))
-      );
-
-      for (const i in results) {
-        set(data[i][0], results[i]);
-      }
-      await setModalFilters(cbInterface);
-
-      set(modalAtoms.currentModalNavigation, () => navigation);
-    },
-    [environment]
-  );
-
-  return useRecoilCallback<
-    Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
-    void
-  >(
+  const setModalState = useSetModalState();
+  return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (next, sampleId, itemIndexMap, event) => {
+      async ({
+        event,
+        item,
+        next: cursor,
+      }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
             const newSelected = new Set([...selected]);
-            if (newSelected.has(sampleId)) {
-              newSelected.delete(sampleId);
+            if (newSelected.has(item.id.description)) {
+              newSelected.delete(item.id.description);
             } else {
-              newSelected.add(sampleId);
+              newSelected.add(item.id.description);
             }
 
             return newSelected;
           });
           return;
         }
-        const clickedIndex = itemIndexMap[sampleId];
+
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
-        const dynamicGroupParameters = await snapshot.getPromise(
-          dynamicGroupAtoms.dynamicGroupParameters
-        );
 
-        const getItemAtIndex = async (index: number) => {
-          if (!store.indices.has(index)) await next();
+        const iter = async (request: Promise<ID | undefined>) => {
+          const id = await request;
+          const sample = store.get(id);
 
-          const id = store.indices.get(index);
-
-          if (!id) {
-            throw new Error(
-              `unable to paginate to next sample, index = ${index}`
-            );
+          if (!sample) {
+            throw new Error("unable to paginate to next sample");
           }
-
-          const sample = store.samples.get(id);
 
           let groupId: string;
           if (hasGroupSlices) {
             groupId = get(sample.sample, groupField)._id as string;
           }
 
-          let groupByFieldValue: string;
-          if (dynamicGroupParameters?.groupBy) {
-            const fieldSchema = await snapshot.getPromise(
-              schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
-            );
-            const fieldInfo = getFieldInfo(
-              dynamicGroupParameters.groupBy,
-              fieldSchema
-            );
-            const groupByKeyDbField = fieldInfo.pathWithDbField;
-            groupByFieldValue = String(get(sample.sample, groupByKeyDbField));
-          }
-
-          return { id, groupId, groupByFieldValue };
+          return { id: id.description, groupId };
         };
 
-        setModalState(getItemAtIndex).then(() =>
-          setExpandedSample(clickedIndex)
-        );
+        const next = async () => {
+          return {
+            hasNext: Boolean(await cursor(2, true)),
+            hasPrevious: true,
+            ...(await iter(cursor(1))),
+          };
+        };
+
+        const previous = async () => {
+          return {
+            hasNext: true,
+            hasPrevious: Boolean(await cursor(-2, true)),
+            ...(await iter(cursor(-1))),
+          };
+        };
+
+        const hasNext = Boolean(await cursor(1, true));
+        const hasPrevious = Boolean(await cursor(-1, true));
+
+        setModalState({
+          next,
+          previous,
+        })
+          .then(() => iter(Promise.resolve(item.id)))
+          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
       },
-    [setExpandedSample, setModalState, store]
+    [setExpandedSample, setModalState]
   );
 };

@@ -14,7 +14,7 @@ import {
 import { ActionPopOver } from "./shared";
 import style from "./style.module.css";
 
-const VALID_FLOAT_REGEX = new RegExp("^([0-9]+([.][0-9]*)?|[.][0-9]+)$");
+const VALID_FLOAT_REGEX = /^([0-9]+([.][0-9]*)?|[.][0-9]+)$/;
 
 export const PointSizeSlider = () => {
   const theme = useTheme();
@@ -57,7 +57,7 @@ export const PointSizeSlider = () => {
 
       setMinBound(Number(newValue) / 10);
 
-      if (parseInt(newValue) === 0) {
+      if (Number.parseInt(newValue) === 0) {
         setMaxBound(2);
       } else {
         setMaxBound(Number(newValue) * 2);

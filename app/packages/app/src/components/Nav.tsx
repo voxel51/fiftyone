@@ -19,8 +19,8 @@ import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
-import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
-import { NavFragment$key } from "./__generated__/NavFragment.graphql";
+import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
+import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -90,11 +90,11 @@ const Nav: React.FC<
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {hasDataset && (
-          <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+          <Suspense fallback={<div style={{ flex: 1 }} />}>
             <ViewBar />
           </Suspense>
         )}
-        {!hasDataset && <div style={{ flex: 1 }}></div>}
+        {!hasDataset && <div style={{ flex: 1 }} />}
         <div className={iconContainer}>
           <Teams />
           <IconButton

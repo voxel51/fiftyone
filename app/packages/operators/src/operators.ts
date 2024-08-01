@@ -1,11 +1,11 @@
+import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
+import { QueueItemStatus } from "./constants";
 import * as types from "./types";
+import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
-import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
-import { Analytics, AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
-import { QueueItemStatus } from "./constants";
 
 type RawInvocationRequest = {
   operator_uri?: string;
@@ -325,7 +325,8 @@ export class Operator {
   async resolvePlacement(): Promise<void | types.Placement> {
     return null;
   }
-  async execute() {
+  async execute(ctx: ExecutionContext) {
+    ctx;
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
   public isRemote = false;

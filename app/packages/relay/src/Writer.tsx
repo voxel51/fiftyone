@@ -10,6 +10,7 @@ import { datasetQuery } from "./queries";
 import { SelectorEffectContext, Setter } from "./selectorWithEffect";
 
 export interface PageQuery<T extends OperationType> {
+  event?: "modal";
   preloadedQuery: PreloadedQuery<T>;
   concreteRequest: ConcreteRequest;
   data: T["response"];
@@ -17,7 +18,7 @@ export interface PageQuery<T extends OperationType> {
 
 export type PageSubscription<T extends OperationType> = (
   pageQuery: PageQuery<T>,
-  transationInterface: TransactionInterface_UNSTABLE
+  transactionInterface: TransactionInterface_UNSTABLE
 ) => void;
 
 let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
@@ -56,9 +57,7 @@ export function getPageQuery<T extends OperationType>() {
  * Effect for restting an atom's value when the view or dataset changes.
  * Can be limited to only dataset changes when viewChange is false
  */
-export const resetEffect = <T extends unknown>(
-  viewChange = true
-): AtomEffect<T> => {
+export const resetEffect = <T,>(viewChange = true): AtomEffect<T> => {
   return ({ trigger, node }) => {
     if (trigger === "get") {
       const initialPage = getPageQuery<datasetQuery>();

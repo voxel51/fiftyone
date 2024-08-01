@@ -1,6 +1,6 @@
 import { useRecoilState } from "recoil";
 import { analyticsInfo } from "./state";
-import { AnalyticsInfo } from "./usingAnalytics";
+import type { AnalyticsInfo } from "./usingAnalytics";
 
 export default function useAnalyticsInfo(): [
   AnalyticsInfo,

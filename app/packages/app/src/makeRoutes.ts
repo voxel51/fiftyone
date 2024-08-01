@@ -1,8 +1,8 @@
 import { createResourceGroup } from "@fiftyone/utilities";
-import { ConcreteRequest } from "relay-runtime";
-import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
-import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import {
+import type { ConcreteRequest } from "relay-runtime";
+import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import type { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
+import type {
   Route,
   RouteDefinition,
   RouteOptions,

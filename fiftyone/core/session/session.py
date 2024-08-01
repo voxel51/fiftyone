@@ -34,6 +34,7 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
+import fiftyone.core.sample as fosa
 from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -49,6 +50,7 @@ from fiftyone.core.session.events import (
     SelectSamples,
     SetColorScheme,
     SetDatasetColorScheme,
+    SetSample,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -135,6 +137,8 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
+    group_id: str = None,
+    sample_id: str = None,
     spaces: Space = None,
     color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
@@ -155,35 +159,39 @@ def launch_app(
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
-            defining a space configuration to load
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
+        group_id (None): an optional expanded
+            :class:`fiftyone.core.groups.Group` id
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
 
     Returns:
         a :class:`Session`
@@ -192,6 +200,8 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
+        group_id=group_id,
+        sample_id=sample_id,
         spaces=spaces,
         color_scheme=color_scheme,
         plots=plots,
@@ -302,40 +312,47 @@ class Session(object):
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space` instance
-            defining a space configuration to load
-        color_scheme (None): an optional :class:`fiftyone.core.odm.dataset.ColorScheme`
-            defining a custom color scheme to use
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
+        color_scheme (None): an optional
+            :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
+            color scheme to use
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        group_id (None): an optional expanded
+            :class:`fiftyone.core.groups.Group` id
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
+        sample_id (None): an optional expanded
+            :class:`fiftyone.core.sample.Sample` id
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
     """
 
     def __init__(
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
+        group_id: str = None,
+        sample_id: str = None,
         view_name: str = None,
         spaces: Space = None,
         color_scheme: food.ColorScheme = None,
@@ -407,13 +424,15 @@ class Session(object):
             spaces = default_workspace_factory()
 
         self._state = StateDescription(
-            config=config,
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
-            view_name=final_view_name,
-            spaces=spaces,
             color_scheme=build_color_scheme(color_scheme, dataset, config),
+            config=config,
+            group_id=group_id,
             group_slice=_pull_group_slice(dataset, view),
+            sample_id=sample_id,
+            spaces=spaces,
+            view_name=final_view_name,
         )
         self._client = fosc.Client(
             address=address,
@@ -595,6 +614,32 @@ class Session(object):
             )
 
         self._state.config = config
+
+    @property
+    def group_id(self) -> t.Optional[str]:
+        """The current expanded :class:`fiftyone.core.groups.Group` id"""
+        return self._state.group_id
+
+    @group_id.setter  # type: ignore
+    def group_id(self, group_id: t.Optional[str]) -> None:
+        if group_id is not None and not isinstance(group_id, str):
+            raise ValueError(f"unexpected group id value '{group_id}'")
+
+        self._state.group_id = group_id
+        self._client.send_event(SetSample(group_id=group_id))
+
+    @property
+    def sample_id(self) -> t.Optional[str]:
+        """The current expanded :class:`fiftyone.core.sample.Sample` id"""
+        return self._state.sample_id
+
+    @sample_id.setter  # type: ignore
+    def sample_id(self, sample_id: t.Optional[str]) -> None:
+        if sample_id is not None and not isinstance(sample_id, str):
+            raise ValueError(f"unexpected sample id value '{sample_id}'")
+
+        self._state.sample_id = sample_id
+        self._client.send_event(SetSample(sample_id=sample_id))
 
     @property
     def spaces(self) -> Space:
@@ -956,6 +1001,11 @@ class Session(object):
         else:
             type_ = None
 
+        if self.group_id:
+            elements.append(("Group:", self.group_id))
+        elif self.sample_id:
+            elements.append(("Sample:", self.sample_id))
+
         if type_ is None:
             elements.append(("Session URL:", self.url))
         else:
@@ -1187,6 +1237,12 @@ def _attach_listeners(session: "Session"):
         event.slice,
     )
     session._client.add_event_listener("set_group_slice", on_set_group_slice)
+
+    def on_set_sample(event: SetSample) -> None:
+        session._state.sample_id = event.sample_id
+        session._state.group_id = event.group_id
+
+    session._client.add_event_listener("set_sample", on_set_sample)
 
     on_set_spaces: t.Callable[[SetSpaces], None] = lambda event: setattr(
         session._state,

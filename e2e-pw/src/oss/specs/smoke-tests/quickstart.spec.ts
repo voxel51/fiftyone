@@ -32,8 +32,16 @@ test.describe("quickstart", () => {
     await grid.assert.isEntryCountTextEqualTo("5 samples");
 
     // test navigation
+
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
+
+    grid.url.assert.verifySampleId(
+      await modal.sidebar.getSidebarEntryText("id")
+    );
+    await grid.url.back();
+    grid.url.assert.verifySampleId(null);
+    await modal.assert.isClosed();
   });
 
   test("entry counts text when toPatches then groupedBy", async ({ grid }) => {
