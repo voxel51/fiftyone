@@ -25,6 +25,7 @@ import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
+import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets, skip_windows
@@ -1027,6 +1028,20 @@ class DatasetTests(unittest.TestCase):
             dataset.validate_field_type(
                 "spam", embedded_doc_type=fo.Detections
             )
+
+    @drop_datasets
+    def test_validate_sample_fields(self):
+        dataset = foz.load_zoo_dataset("quickstart")
+        dataset._doc.sample_fields[-1] = None
+        with self.assertRaises(ValidationError):
+            dataset.save()
+
+    @drop_datasets
+    def test_validate_frame_fields(self):
+        dataset = foz.load_zoo_dataset("quickstart-video")
+        dataset._doc.frame_fields[-1] = None
+        with self.assertRaises(ValidationError):
+            dataset.save()
 
     @drop_datasets
     def test_frame_field_schemas(self):
