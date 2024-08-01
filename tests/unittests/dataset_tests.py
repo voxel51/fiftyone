@@ -1029,6 +1029,21 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_validate_sample_fields(self):
+        dataset = fo.Dataset()
+        dataset._doc.sample_fields.append(None)
+        with self.assertRaises(ValidationError):
+            dataset.save()
+
+    @drop_datasets
+    def test_validate_frame_fields(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset._doc.frame_fields.append(None)
+        with self.assertRaises(ValidationError):
+            dataset.save()
+
+    @drop_datasets
     def test_frame_field_schemas(self):
         dataset = fo.Dataset()
         dataset.media_type = "video"
