@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime
 import numbers
@@ -1505,8 +1506,10 @@ class EmbeddedDocumentListField(
     def validate(self, value):
         for v in value:
             if v is None:
-                raise ValueError("Embedded document list fields should not"
-                                 " contain None values.")
+                self.error(
+                    "Embedded document list fields cannot contain None values"
+                )
+
         super().validate(value)
 
 
