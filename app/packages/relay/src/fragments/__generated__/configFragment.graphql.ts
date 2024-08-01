@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e793650aee470e8b9fad177e5178503f>>
+ * @generated SignedSource<<6ee51afded806bd9c4deacaff2ca9f41>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type configFragment$data = {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
+    readonly disableFrameFiltering: boolean;
     readonly gridZoom: number;
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
@@ -191,6 +192,13 @@ return {
           "kind": "ScalarField",
           "name": "mediaFallback",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "disableFrameFiltering",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -202,6 +210,6 @@ return {
 };
 })();
 
-(node as any).hash = "bc14e5070d7a1c87baa60bc81fcccb5d";
+(node as any).hash = "232b1c132e5776a486300c236510c2d8";
 
 export default node;

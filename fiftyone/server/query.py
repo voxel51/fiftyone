@@ -226,7 +226,7 @@ class DatasetAppConfig:
 
     grid_media_field: str = "filepath"
     modal_media_field: str = "filepath"
-    disable_frame_filtering: bool = True
+    disable_frame_filtering: bool = False
     media_fallback: bool = False
 
 
@@ -390,6 +390,7 @@ class AppConfig:
     timezone: t.Optional[str]
     use_frame_number: bool
     spaces: t.Optional[JSON]
+    disable_frame_filtering: bool = False
     media_fallback: bool = False
 
 

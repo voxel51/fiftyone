@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  disableFrameFiltering: Boolean!
   mediaFallback: Boolean!
 }
 

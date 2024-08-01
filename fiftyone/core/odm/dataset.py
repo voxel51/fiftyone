@@ -376,7 +376,7 @@ class DatasetAppConfig(EmbeddedDocument):
         media_fallback (False): whether to fall back to the default media field
             (``"filepath"``) when the alternate media field value for a sample
             is not defined
-        disable_frame_filtering (True): whether to disable frame filtering for
+        disable_frame_filtering (False): whether to disable frame filtering for
             video datasets
         sidebar_mode (None): an optional default mode for the App sidebar.
             Supported values are ``("fast", "all", "best", "disabled")``
@@ -401,7 +401,7 @@ class DatasetAppConfig(EmbeddedDocument):
     grid_media_field = StringField(default="filepath")
     modal_media_field = StringField(default="filepath")
     media_fallback = BooleanField(default=False)
-    disable_frame_filtering = BooleanField(default=True)
+    disable_frame_filtering = BooleanField(default=False)
     sidebar_mode = StringField(default=None)
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None

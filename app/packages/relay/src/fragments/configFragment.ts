@@ -24,6 +24,7 @@ export default r(graphql`
       timezone
       useFrameNumber
       mediaFallback
+      disableFrameFiltering
     }
     colorscale
   }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bd7d0ce66b46197e5fc40f24af45279b>>
+ * @generated SignedSource<<930222f6df362ef7defe67469bb3e173>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -269,6 +269,13 @@ return {
             "kind": "ScalarField",
             "name": "mediaFallback",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "disableFrameFiltering",
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -417,12 +424,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f80a38e7e574b934552dbfe36118ef28",
+    "cacheID": "a5c10f8c6bed69d908a9437469ddcabe",
     "id": null,
     "metadata": {},
     "name": "IndexPageQuery",
     "operationKind": "query",
-    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: estimatedDatasetCount\n  ...NavFragment\n  ...configFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    lightningThreshold\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n    mediaFallback\n  }\n  colorscale\n}\n"
+    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: estimatedDatasetCount\n  ...NavFragment\n  ...configFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    lightningThreshold\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n    mediaFallback\n    disableFrameFiltering\n  }\n  colorscale\n}\n"
   }
 };
 })();
