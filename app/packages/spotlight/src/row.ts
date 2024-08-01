@@ -118,7 +118,7 @@ export default class Row<K, V> {
   }
 
   get last() {
-    return this.#row[this.#row.length - 1].item.id;
+    return this.#row[this.#row.length - ONE].item.id;
   }
 
   has(item: string) {
@@ -221,6 +221,6 @@ export default class Row<K, V> {
 
   get #singleAspectRatio() {
     const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
-    return set.size === ONE ? this.#row[0].item.aspectRatio : null;
+    return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
   }
 }

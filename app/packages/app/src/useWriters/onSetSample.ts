@@ -5,10 +5,6 @@ import { setSample } from "@fiftyone/relay";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 
-export const handleGroup = (search: URLSearchParams, group?: string) => {
-  group ? search.set("group", group) : search.delete("group");
-};
-
 export const handleGroupId = (search: URLSearchParams, groupId?: string) => {
   if (groupId) {
     search.delete("id");

@@ -191,7 +191,7 @@ export class Section<K, V> {
         index++;
 
         const d = minus(row);
-        if (d >= 0 && (delta === undefined || d < delta)) {
+        if (d >= ZERO && (delta === undefined || d < delta)) {
           pageRow = row;
           delta = d;
         }
@@ -234,8 +234,8 @@ export class Section<K, V> {
     }
 
     return this.#direction === DIRECTION.BACKWARD
-      ? this.#rows[0].last
-      : this.#rows[0].first;
+      ? this.#rows[ZERO].last
+      : this.#rows[ZERO].first;
   }
 
   async next(
@@ -365,7 +365,7 @@ export class Section<K, V> {
         ? DIRECTION.FORWARD
         : DIRECTION.BACKWARD;
 
-    let offset = 0;
+    let offset = ZERO;
     for (const row of this.#rows) {
       row.from = offset;
       offset += this.#config.spacing + row.height;
@@ -427,7 +427,7 @@ export class Section<K, V> {
 
     const first = !this.#rows.length
       ? undefined
-      : this.#rows[this.#rows.length - 1][
+      : this.#rows[this.#rows.length - ONE][
           this.#direction === DIRECTION.BACKWARD ? FIRST : LAST
         ];
 
@@ -466,7 +466,7 @@ export class Section<K, V> {
         dangle:
           this.#direction === DIRECTION.FORWARD &&
           finished &&
-          index === breakpoints.length - 1,
+          index === breakpoints.length - ONE,
         focus,
         from: from + offset,
         next,

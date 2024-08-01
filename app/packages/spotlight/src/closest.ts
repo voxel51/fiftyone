@@ -4,6 +4,7 @@
 
 import { ONE, TWO, ZERO } from "./constants";
 
+// Binary search for closest row
 export function closest<I>(
   rows: I[],
   target: number,

@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { SCROLL_TIMEOUT } from "./constants";
+import { SCROLL_TIMEOUT, ZERO } from "./constants";
 
 export default function createScrollReader(
   element: HTMLElement,
@@ -68,7 +68,7 @@ export default function createScrollReader(
 
   return {
     adjust: (offset: number) => {
-      element.scroll(0, element.scrollTop + offset);
+      element.scroll(ZERO, element.scrollTop + offset);
     },
     destroy: () => {
       destroyed = true;

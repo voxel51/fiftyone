@@ -164,7 +164,7 @@ export default class Spotlight<K, V> extends EventTarget {
           }
 
           this.#render({
-            at: { description: this.#focused.description, offset: 0 },
+            at: { description: this.#focused.description, offset: ZERO },
           });
           return this.#focused;
         },
@@ -213,7 +213,7 @@ export default class Spotlight<K, V> extends EventTarget {
           }
 
           this.#render({
-            at: { description: this.#focused.description, offset: 0 },
+            at: { description: this.#focused.description, offset: ZERO },
           });
           return this.#focused;
         },
@@ -333,8 +333,8 @@ export default class Spotlight<K, V> extends EventTarget {
       const hasAt = result.items
         .map((item) => item.id.description)
         .indexOf(this.#config.at?.description);
-      if (hasAt >= 0) {
-        remainder = result.items.slice(0, hasAt).reverse();
+      if (hasAt >= ZERO) {
+        remainder = result.items.slice(ZERO, hasAt).reverse();
         result.items = result.items.slice(hasAt);
       }
 

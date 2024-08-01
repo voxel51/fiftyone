@@ -22,11 +22,11 @@ export default (
 
   const aspectRatios = new Set(items);
   if (aspectRatios.size === ONE) {
-    let ar = items[0];
-    let count = 1;
+    let ar = items[ZERO];
+    let count = ONE;
     while (ar < threshold) {
       count++;
-      ar += items[0];
+      ar += items[ZERO];
     }
 
     const result = [];

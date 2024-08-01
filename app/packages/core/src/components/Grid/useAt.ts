@@ -48,6 +48,8 @@ export default function useAt(pageReset: string) {
       },
     [getKey]
   );
+
+  // when scrolling ends, use set to save the grid location to recoil
   const set = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
       ({ at, page, offset }: { at: ID; page: number; offset: number }) => {

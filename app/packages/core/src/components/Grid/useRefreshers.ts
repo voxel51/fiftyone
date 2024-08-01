@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { gridPage } from "./recoil";
+import { gridAt, gridPage } from "./recoil";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -15,12 +15,14 @@ export default function useRefreshers() {
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
   const view = fos.filterView(useRecoilValue(fos.view));
 
+  // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
     cropToContent;
     refresher;
     return uuid();
   }, [cropToContent, refresher]);
 
+  // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
     datasetName;
     extendedStages;
@@ -47,7 +49,11 @@ export default function useRefreshers() {
   useEffect(
     () =>
       subscribe(({ event }, { reset }) => {
-        event !== "modal" && reset(gridPage);
+        if (event === "modal") return;
+
+        // if not a modal page change, reset the grid location
+        reset(gridPage);
+        reset(gridAt);
       }),
     []
   );
