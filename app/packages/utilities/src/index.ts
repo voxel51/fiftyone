@@ -13,6 +13,7 @@ export * from "./paths";
 export * from "./schema";
 export * from "./styles";
 export * from "./type-check";
+export * from "./order";
 
 interface O {
   [key: string]: O | any;

@@ -1,4 +1,9 @@
-import { ErrorBoundary, Link, PillButton } from "@fiftyone/components";
+import {
+  AdaptiveMenuItemComponentPropsType,
+  ErrorBoundary,
+  Link,
+  PillButton,
+} from "@fiftyone/components";
 import { withSuspense } from "@fiftyone/state";
 import { Extension } from "@mui/icons-material";
 import styled from "styled-components";
@@ -13,14 +18,26 @@ import {
 import { Placement, Places } from "./types";
 import { isPrimitiveString } from "@fiftyone/utilities";
 
+export function OperatorPlacementWithErrorBoundary(
+  props: OperatorPlacementProps
+) {
+  return (
+    <ErrorBoundary Fallback={() => null}>
+      <OperatorPlacement {...props} />
+    </ErrorBoundary>
+  );
+}
+
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
   const { placements } = useOperatorPlacements(place);
 
   return placements.map((placement) => (
-    <ErrorBoundary key={placement?.operator?.uri} Fallback={() => null}>
-      <OperatorPlacement {...placement} place={place} />
-    </ErrorBoundary>
+    <OperatorPlacementWithErrorBoundary
+      key={placement?.operator?.uri}
+      place={place}
+      {...placement}
+    />
   ));
 }
 
@@ -44,7 +61,7 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 
 function ButtonPlacement(props: OperatorPlacementProps) {
   const promptForInput = usePromptOperatorInput();
-  const { operator, placement, place } = props;
+  const { operator, placement, place, adaptiveMenuItemProps } = props;
   const { uri, label: operatorLabel, name: operatorName } = operator;
   const { view = {} } = placement;
   const { label } = view;
@@ -84,6 +101,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   ) {
     return (
       <PillButton
+        {...(adaptiveMenuItemProps || {})}
         onClick={handleClick}
         icon={showIcon && IconComponent}
         text={!showIcon && title}
@@ -95,7 +113,11 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   }
 
   return (
-    <SquareButton to={handleClick} title={label}>
+    <SquareButton
+      {...(adaptiveMenuItemProps || {})}
+      to={handleClick}
+      title={label}
+    >
       {IconComponent}
     </SquareButton>
   );
@@ -109,6 +131,7 @@ type OperatorPlacementProps = {
   placement: Placement;
   place: Places;
   operator: Operator;
+  adaptiveMenuItemProps?: AdaptiveMenuItemComponentPropsType;
 };
 
 // todo: consolidate and move to component
