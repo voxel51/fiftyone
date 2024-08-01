@@ -218,9 +218,9 @@ def annotate(
             % (anno_backend.config.name, samples.media_type)
         )
 
-    if samples._is_clips and not anno_backend.supports_clip_views:
+    if samples._is_clips and not anno_backend.supports_clips_views:
         raise ValueError(
-            "Backend '%s' does not support annotating clip views"
+            "Backend '%s' does not support annotating clips views"
             % anno_backend.config.name
         )
 
@@ -2034,8 +2034,8 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
-    def supports_clip_views(self):
-        """Whether this backend supports annotating clip views."""
+    def supports_clips_views(self):
+        """Whether this backend supports annotating clips views."""
         return False
 
     @property

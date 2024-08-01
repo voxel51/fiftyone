@@ -3254,7 +3254,7 @@ class CVATBackend(foua.AnnotationBackend):
         ]
 
     @property
-    def supports_clip_views(self):
+    def supports_clips_views(self):
         return True
 
     @property
