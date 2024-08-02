@@ -307,6 +307,12 @@ __________
 Admins can review the actions and permissions available to each user role by
 navigating to the "Settings > Security > Roles" page:
 
-.. image:: /images/teams/admin_roles_page.png
+.. image:: /images/teams/admin_roles_page1.png
+   :alt: admin-roles-page
+   :align: center
+.. image:: /images/teams/admin_roles_page2.png
+   :alt: admin-roles-page
+   :align: center
+.. image:: /images/teams/admin_roles_page3.png
    :alt: admin-roles-page
    :align: center
