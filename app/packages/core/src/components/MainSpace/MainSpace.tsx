@@ -5,13 +5,13 @@ import { isEqual, size } from "lodash";
 import React, { useEffect, useRef } from "react";
 import { useSetRecoilState } from "recoil";
 
-const { FIFTYONE_SPACE_ID } = constants;
+const { FIFTYONE_GRID_SPACEs_ID } = constants;
 
 function MainSpace() {
   const [sessionSpaces, setSessionSpaces, sessionPanelsState] =
     useSessionSpaces();
   const { spaces, updateSpaces, clearSpaces } = useSpaces(
-    FIFTYONE_SPACE_ID,
+    FIFTYONE_GRID_SPACEs_ID,
     sessionSpaces
   );
   const [panelsState, setPanelsState] = usePanelsState();
@@ -62,7 +62,7 @@ function MainSpace() {
     spaces,
   ]);
 
-  return <SpacesRoot id={FIFTYONE_SPACE_ID} />;
+  return <SpacesRoot id={FIFTYONE_GRID_SPACEs_ID} />;
 }
 
 export default React.memo(MainSpace);
