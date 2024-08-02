@@ -69,7 +69,7 @@ workflow:
 * :ref:`Representativeness <brain-image-representativeness>`:
   When working with large datasets, it can be hard to determine what samples 
   within it are outliers and which are more typical. The FiftyOne Brain offers
-  a *representativeness measure* which can be used to find the most common
+  a *representativeness measure* that can be used to find the most common
   types of images in your dataset. This is especially helpful to find easy
   examples to train on in your data and for visualizing common modes of the
   data.
@@ -1713,8 +1713,8 @@ ________________________
 
 During the early stages of the ML workflow it can be useful to find
 prototypical samples in your data that accurately describe all the different
-aspects of your data. FiftyOne Brain provides a representativeness method, which
-finds samples that are very similar to large clusters of your data. Highly
+aspects of your data. FiftyOne Brain provides a representativeness method that
+finds samples which are very similar to large clusters of your data. Highly
 representative samples are great for finding modes or easy examples in your
 dataset.
 
@@ -1809,7 +1809,7 @@ methods on your dataset:
         The brain key of hardness runs is the value of the `hardness_field`
         passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
     
-    .. tab:: representativeness
+    .. tab:: Representativeness
 
         The brain key of representativeness runs is the value of the 
         `representativeness_field` passed to
