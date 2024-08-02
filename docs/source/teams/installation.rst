@@ -311,9 +311,9 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
     }
 
 In the above, the credentials file can contain any format supported by
-`google.auth.load_credentials_from_file() <https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file>`_, which includes a
-service account key, stored authorized user credentials, or external account
-credentials.
+`google.auth.load_credentials_from_file() <https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file>`_,
+which includes a service account key, stored authorized user credentials, or
+external account credentials.
 
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
