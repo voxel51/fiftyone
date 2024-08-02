@@ -118,35 +118,20 @@ export const ModalContent = React.memo(() => {
  */
 
 const TrivialModalPanel = () => {
-  const thisSample = useRecoilValue(fos.modalSample);
+  // the following a trigger grid rerender, super weird
+  // const thisSample = useRecoilValue(fos.modalSample);
 
   return (
     <div>
       <h2>Modal Panel</h2>
-      I'm operating on sample with filepath: {thisSample.sample.filepath}
+      {/* I'm operating on sample with filepath: {thisSample.sample.filepath} */}
     </div>
   );
 };
 
 registerComponent({
-  name: "SampleModal",
-  component: ModalContent,
-  label: "Sample",
-  type: PluginComponentType.Panel,
-  surfaces: "modal",
-  panelOptions: {
-    pinned: true,
-  },
-  activator: () => true,
-});
-
-registerComponent({
   name: "foo-modal",
-  component: () => (
-    <div style={{ margin: "1em" }}>
-      <TrivialModalPanel />
-    </div>
-  ),
+  component: TrivialModalPanel,
   label: "foo-modal",
   type: PluginComponentType.Panel,
   surfaces: "modal",
@@ -165,11 +150,3 @@ What is this plugin?
     `,
   activator: () => true,
 });
-
-/**
- * This is a no-op export to simply load the module, which will trigger the registration of the
- * `SampleModal` plugin.
- */
-export const NoOpModalContentPluginActivation = () => {
-  console.log("sashank");
-};
