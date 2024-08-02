@@ -2099,18 +2099,24 @@ class DashboardView(View):
         on_layout_change (None): event triggered when the layout changes
         on_add_item (None): event triggered when an item is added
         on_remove_item (None): event triggered when an item is closed
+        on_edit_item (None): event triggered when an item is edited
+        allow_addition (True): whether to allow adding items
+        allow_deletion (True): whether to allow deleting items
+        allow_edit (True): whether to allow editing items
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.allow_addition = kwargs.get("allow_addition", True)
         self.allow_deletion = kwargs.get("allow_deletion", True)
+        self.allow_edit = kwargs.get("allow_edit", True)
 
     def to_json(self):
         return {
             **super().to_json(),
             "allow_addition": self.allow_addition,
             "allow_deletion": self.allow_deletion,
+            "allow_edit": self.allow_edit,
         }
 
 

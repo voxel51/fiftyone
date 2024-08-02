@@ -19,6 +19,7 @@ import { Button } from ".";
 import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
+import { Edit } from "@mui/icons-material";
 
 const AddItemCTA = ({ onAdd }) => {
   return (
@@ -69,6 +70,7 @@ export default function DashboardView(props: ViewPropsType) {
   const propertiesAsArray = [];
   const allow_addition = schema.view.allow_addition;
   const allow_deletion = schema.view.allow_deletion;
+  const allow_edit = schema.view.allow_edit;
 
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
@@ -76,6 +78,17 @@ export default function DashboardView(props: ViewPropsType) {
   const panelId = usePanelId();
   const triggerPanelEvent = usePanelEvent();
 
+  const onEditItem = useCallback(
+    ({ id, path }) => {
+      if (schema.view.on_edit_item) {
+        triggerPanelEvent(panelId, {
+          operator: schema.view.on_edit_item,
+          params: { id, path },
+        });
+      }
+    },
+    [panelId, props, schema.view.on_edit_item, triggerPanelEvent]
+  );
   const onCloseItem = useCallback(
     ({ id, path }) => {
       if (schema.view.on_remove_item) {
@@ -185,19 +198,34 @@ export default function DashboardView(props: ViewPropsType) {
             >
               <DragHandle className="drag-handle">
                 <Typography>{property.title || id}</Typography>
-                {allow_deletion && (
-                  <IconButton
-                    size="small"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseItem({ id, path: getPath(path, id) });
-                    }}
-                    sx={{ color: theme.text.secondary }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
-                )}
+                <Box>
+                  {allow_edit && (
+                    <IconButton
+                      size="small"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditItem({ id, path: getPath(path, id) });
+                      }}
+                      sx={{ color: theme.text.secondary }}
+                    >
+                      <Edit />
+                    </IconButton>
+                  )}
+                  {allow_deletion && (
+                    <IconButton
+                      size="small"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseItem({ id, path: getPath(path, id) });
+                      }}
+                      sx={{ color: theme.text.secondary }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  )}
+                </Box>
               </DragHandle>
               <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
                 <DynamicIO
