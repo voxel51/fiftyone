@@ -28,11 +28,13 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   }
 
   return (
-    <Arrow
-      disabled={disabled}
-      expanded={fos.sidebarExpanded({ modal, path: expandedPath })}
-      id={path}
-    />
+    !disabled && (
+      <Arrow
+        disabled={disabled}
+        expanded={fos.sidebarExpanded({ modal, path: expandedPath })}
+        id={path}
+      />
+    )
   );
 };
 
