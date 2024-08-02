@@ -2,7 +2,7 @@ import {
   PluginComponentRegistration,
   PluginComponentType,
   subscribeToRegistry,
-  useActivePlugins
+  useActivePlugins,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {

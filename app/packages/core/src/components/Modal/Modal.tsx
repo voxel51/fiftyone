@@ -1,19 +1,13 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
-import { SpaceNodeJSON, usePanels, useSpaces } from "@fiftyone/spaces";
-import { Space } from "@fiftyone/spaces/src/components";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../Sidebar";
-import { NoOpModalContentPluginActivation } from "./ModalContentPlugin";
+import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
-
-NoOpModalContentPluginActivation();
-
-export const MODAL_SPACES_ID = "fo-space-modal";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -68,30 +62,6 @@ const Modal = () => {
       : { width: "95%", height: "90%", borderRadius: "3px" };
   }, [isFullScreen]);
 
-  const panelsPredicate = useCallback(
-    (panel) => panel.surfaces === "modal" || panel.surfaces === "grid modal",
-    []
-  );
-
-  const allModalPlugins = usePanels(panelsPredicate);
-
-  const defaultModalSpaces = useMemo(() => {
-    return {
-      id: "root",
-      children: allModalPlugins.map((modalPlugin) => ({
-        id: `${modalPlugin.name}`,
-        type: modalPlugin.name,
-        children: [],
-        ...modalPlugin.panelOptions,
-      })),
-      type: "panel-container",
-      // `SampleModal` is the default modal plugin registered in `ModalContentPlugin.tsx`
-      activeChild: "SampleModal",
-    } as SpaceNodeJSON;
-  }, [allModalPlugins]);
-
-  const { spaces } = useSpaces(MODAL_SPACES_ID, defaultModalSpaces);
-
   return ReactDOM.createPortal(
     <ModalWrapper ref={wrapperRef} onClick={onClickModalWrapper}>
       <ModalContainer
@@ -101,7 +71,7 @@ const Modal = () => {
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
         <TooltipInfo />
         <SpacesContainer>
-          <Space node={spaces.root} id={MODAL_SPACES_ID} type="modal" />
+          <ModalSpace />
         </SpacesContainer>
         <Sidebar render={renderEntry} modal={true} />
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
