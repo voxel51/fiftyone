@@ -25,23 +25,16 @@ test.describe("frame filtering", () => {
       `
       import fiftyone.zoo as foz
 
-      dataset = foz.load_zoo_dataset(
-        "quickstart-video", 
-        dataset_name="${datasetNameFilteringEnabled}", 
-        max_samples=1
-      )
-      dataset.app_config.disable_frame_filtering = False
-      dataset.persist = True
-      dataset.save()
-
-      dataset = foz.load_zoo_dataset(
-        "quickstart-video", 
-        dataset_name="${datasetNameFilteringDisabled}", 
-        max_samples=1
-      )
-      dataset.app_config.disable_frame_filtering = True
-      dataset.persist = True
-      dataset.save() 
+      datasets = [
+        ("${datasetNameFilteringEnabled}", False),
+        ("${datasetNameFilteringDisabled}", True),
+      ]
+      
+      for name, disable in datasets:
+        dataset = foz.load_zoo_dataset("quickstart-video", dataset_name=name, max_samples=1)
+        dataset.app_config.disable_frame_filtering = disable
+        dataset.persist = True
+        dataset.save()
       `
     );
   });
