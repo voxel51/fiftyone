@@ -57,7 +57,7 @@ import {
   datasetName,
   isVideoDataset,
   stateSubscription,
-  getDisableFrameFiltering,
+  disableFrameFiltering,
 } from "./selectors";
 import { State } from "./types";
 import {
@@ -643,9 +643,9 @@ export const disabledFilterPaths = selector<Set<string>>({
   key: "disabledFilterPaths",
   get: ({ get }) => {
     const paths = get(fullyDisabledPaths);
-    const disableFrameFiltering = Boolean(get(getDisableFrameFiltering));
+    const disableFrames = Boolean(get(disableFrameFiltering));
     const frameFields = get(atoms.frameFields);
-    if (disableFrameFiltering) {
+    if (disableFrames) {
       frameFields.forEach((frame) => {
         paths.add(`frames.${frame.path}`);
       });
@@ -655,7 +655,8 @@ export const disabledFilterPaths = selector<Set<string>>({
 });
 
 /**
- * Returns a set of paths that should have both their checkbox and filter dropdown disabled in the sidebar
+ * Returns a set of paths that should have both their checkbox and filter
+ * dropdown disabled in the sidebar
  */
 export const fullyDisabledPaths = selector<Set<string>>({
   key: "fullyDisabledPaths",

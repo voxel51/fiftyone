@@ -142,7 +142,7 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
-export const getDisableFrameFiltering = selector<boolean>({
+export const disableFrameFiltering = selector<boolean>({
   key: "disableFrameFiltering",
   get: ({ get }) => {
     const datasetDisableFrameFiltering =

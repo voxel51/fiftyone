@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<87d5fcf15f78b5b1f082312afde50070>>
+ * @generated SignedSource<<3bb7c6a93740cc39e63d2656c5b81445>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,6 +38,29 @@ const node: ReaderFragment = {
     {
       "alias": null,
       "args": null,
+      "concreteType": "ColorScheme",
+      "kind": "LinkedField",
+      "name": "colorScheme",
+      "plural": false,
+      "selections": [
+        {
+          "args": null,
+          "kind": "FragmentSpread",
+          "name": "colorSchemeFragment"
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "disableFrameFiltering",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
       "kind": "ScalarField",
       "name": "gridMediaField",
       "storageKey": null
@@ -60,6 +83,13 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
+      "name": "mediaFallback",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
       "name": "plugins",
       "storageKey": null
     },
@@ -69,42 +99,12 @@ const node: ReaderFragment = {
       "kind": "ScalarField",
       "name": "sidebarMode",
       "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "ColorScheme",
-      "kind": "LinkedField",
-      "name": "colorScheme",
-      "plural": false,
-      "selections": [
-        {
-          "args": null,
-          "kind": "FragmentSpread",
-          "name": "colorSchemeFragment"
-        }
-      ],
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "mediaFallback",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "disableFrameFiltering",
-      "storageKey": null
     }
   ],
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
 
-(node as any).hash = "55835770b58a479f155023cd49d24397";
+(node as any).hash = "e34c48a6289a03fae3a9954b35a83ee6";
 
 export default node;

@@ -3,7 +3,12 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("frame-filtering");
+const datasetNameFilteringEnabled = getUniqueDatasetNameWithPrefix(
+  "frame-filtering-enabled"
+);
+const datasetNameFilteringDisabled = getUniqueDatasetNameWithPrefix(
+  "frame-filtering-disabled"
+);
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -20,10 +25,13 @@ test.describe("frame filtering", () => {
       `
       import fiftyone.zoo as foz
 
-      dataset = foz.load_zoo_dataset("quickstart-video", dataset_name="${datasetName}", max_samples=1)
-      dataset.persistent = True
-      dataset.app_config.disable_frame_filtering = None
-      dataset.save()  
+      dataset = fo.load_dataset("${datasetNameFilteringEnabled}")
+      dataset.app_config.disable_frame_filtering = False
+      dataset.save()
+
+      dataset = fo.load_dataset("${datasetNameFilteringDisabled}")
+      dataset.app_config.disable_frame_filtering = True
+      dataset.save() 
       `
     );
   });
@@ -34,16 +42,10 @@ test.describe("frame filtering", () => {
     page,
     fiftyoneLoader,
   }) => {
-    await fiftyoneLoader.executePythonCode(
-      `
-        import fiftyone as fo
-
-        dataset = fo.load_dataset("${datasetName}")
-        dataset.app_config.disable_frame_filtering = None
-        dataset.save()  
-        `
+    await fiftyoneLoader.waitUntilGridVisible(
+      page,
+      datasetNameFilteringEnabled
     );
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.actionsRow.toggleDisplayOptions();
     await sidebar.asserter.assertFieldsEnabled([
       "frames.detections",
@@ -61,16 +63,10 @@ test.describe("frame filtering", () => {
     grid,
     page,
   }) => {
-    await fiftyoneLoader.executePythonCode(
-      `
-        import fiftyone as fo
-
-        dataset = fo.load_dataset("${datasetName}")
-        dataset.app_config.disable_frame_filtering = True
-        dataset.save()  
-        `
+    await fiftyoneLoader.waitUntilGridVisible(
+      page,
+      datasetNameFilteringDisabled
     );
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.actionsRow.toggleDisplayOptions();
     await sidebar.asserter.assertFieldDisabled("frames.detections");
     await sidebar.asserter.assertFieldEnabled("metadata.size_bytes");

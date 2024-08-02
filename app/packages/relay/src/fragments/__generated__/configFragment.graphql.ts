@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6ee51afded806bd9c4deacaff2ca9f41>>
+ * @generated SignedSource<<af77f7720adf5f214a0f43f0e4b20c6f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -85,6 +85,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "disableFrameFiltering",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "gridZoom",
           "storageKey": null
         },
@@ -100,6 +107,13 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "loopVideos",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaFallback",
           "storageKey": null
         },
         {
@@ -185,20 +199,6 @@ return {
           "kind": "ScalarField",
           "name": "useFrameNumber",
           "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "mediaFallback",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "disableFrameFiltering",
-          "storageKey": null
         }
       ],
       "storageKey": null
@@ -210,6 +210,6 @@ return {
 };
 })();
 
-(node as any).hash = "232b1c132e5776a486300c236510c2d8";
+(node as any).hash = "1f162e6489b61a178ecbd049eef370fd";
 
 export default node;

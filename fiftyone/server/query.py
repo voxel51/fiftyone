@@ -218,16 +218,15 @@ class SidebarMode(Enum):
 @gql.type
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
+    disable_frame_filtering: t.Optional[bool] = None
+    grid_media_field: str = "filepath"
     media_fields: t.Optional[t.List[str]]
+    modal_media_field: str = "filepath"
+    media_fallback: bool = False
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
     spaces: t.Optional[JSON]
-
-    grid_media_field: str = "filepath"
-    modal_media_field: str = "filepath"
-    disable_frame_filtering: t.Optional[bool] = None
-    media_fallback: bool = False
 
 
 @gql.type
