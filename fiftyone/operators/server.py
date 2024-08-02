@@ -6,6 +6,7 @@ FiftyOne operator server.
 |
 """
 
+import os
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -32,7 +33,12 @@ from .operator import Operator
 async def _get_operator_registry_for_route(
     RouteClass, request: Request, dataset_ids=None, is_list=False
 ):
-    requires_authentication = route_requires_auth(RouteClass)
+    SKIP_OPERATOR_PERMISSION_CHECK = (
+        os.getenv("SKIP_OPERATOR_PERMISSION_CHECK", "false").lower() == "true"
+    )
+    requires_authentication = (
+        route_requires_auth(RouteClass) and not SKIP_OPERATOR_PERMISSION_CHECK
+    )
     if requires_authentication:
         if is_list:
             registry = await PermissionedOperatorRegistry.from_list_request(
