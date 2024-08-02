@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
+    "pydash==8.0.1",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",
@@ -57,7 +58,6 @@ INSTALL_REQUIRES = [
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
-    "pydash==8.0.1",
     # teams specific
     "aiohttp",
     "azure-identity",
