@@ -133,9 +133,6 @@ class BaseRunConfig(Config):
         config_cls = d.get("cls", None)
         type = d.get("type", None)
 
-        for key in cls._virtual_attributes():
-            d.pop(key, None)
-
         try:
             config_cls = etau.get_class(config_cls)
         except:
@@ -143,6 +140,9 @@ class BaseRunConfig(Config):
                 "Unable to load '%s'; falling back to base class", config_cls
             )
             config_cls = cls.base_config_cls(type)
+
+        for key in config_cls._virtual_attributes():
+            d.pop(key, None)
 
         return config_cls(**d)
 
