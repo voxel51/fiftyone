@@ -11,11 +11,12 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { useTrackEvent } from "@fiftyone/analytics";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
-import { merge } from "lodash";
-import { useSetRecoilState, useRecoilCallback } from "recoil";
+import { cloneDeep, merge, set as setValue } from "lodash";
+import { useRecoilCallback, useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
@@ -30,7 +31,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 //
 // BUILT-IN OPERATORS
@@ -846,7 +846,7 @@ class SetPanelState extends Operator {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.updatePanelState(ctx, { targetPartial: "state" });
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", set: true });
   }
 }
 
@@ -862,7 +862,7 @@ class SetPanelData extends Operator {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.updatePanelState(ctx, { targetPartial: "data" });
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", set: true });
   }
 }
 
@@ -884,19 +884,31 @@ class PatchPanelData extends Operator {
 
 function useUpdatePanelStatePartial(local?: boolean) {
   const setPanelStateById = useSetPanelStateById(local);
-  return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
+  return (
+    ctx,
+    { targetPartial = "state", targetParam, patch, clear, deepMerge, set }
+  ) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
-        const param = ctx.params[targetParam];
-        if (patch) {
-          updatedState = merge({}, currentCustomPanelState, param);
+        const providedData = ctx.params[targetParam];
+        if (set) {
+          // set = replace entire state
+          updatedState = providedData;
+        } else if (deepMerge) {
+          updatedState = merge({}, currentCustomPanelState, providedData);
+        } else if (patch) {
+          updatedState = cloneDeep(currentCustomPanelState);
+          // patch = shallow merge OR set by path
+          for (let [path, value] of Object.entries(providedData)) {
+            setValue(updatedState, path, value);
+          }
         } else if (clear) {
           updatedState = {};
         } else {
-          updatedState = param;
+          throw new Error("useUpdatePanelStatePartial: Invalid operation");
         }
 
         return { ...current, [targetPartial]: updatedState };
@@ -963,6 +975,7 @@ class ShowPanelOutput extends Operator {
     ctx.hooks.updatePanelState(ctx, {
       targetPartial: "schema",
       targetParam: "output",
+      set: true,
     });
   }
 }

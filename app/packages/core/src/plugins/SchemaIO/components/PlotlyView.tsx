@@ -17,9 +17,7 @@ export default function PlotlyView(props) {
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
   const handleEvent = (event?: string) => (e) => {
-    // TODO: add more interesting/useful event data
     const data = EventDataMappers[event]?.(e) || {};
-    const x_data_source = view.x_data_source;
     let xValue = null;
     let yValue = null;
     if (event === "onClick") {
@@ -37,9 +35,12 @@ export default function PlotlyView(props) {
           range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
         } else if (type === "scatter") {
           selected.push(p.pointIndex);
+          xValue = p.x;
+          yValue = p.y;
         } else if (type === "bar") {
           xValue = p.x;
           yValue = p.y;
+          range = [p.x, p.x + p.width];
         } else if (type === "heatmap") {
           xValue = p.x;
           yValue = p.y;
@@ -52,29 +53,31 @@ export default function PlotlyView(props) {
 
     const eventHandlerOperator = view[snakeCase(event)];
 
+    const defaultParams = {
+      path: props.path,
+      relative_path: props.relativePath,
+      schema: props.schema,
+      view,
+      event,
+    };
+
     if (eventHandlerOperator) {
       let params = {};
       if (event === "onClick") {
         params = {
-          event,
-          data,
-          x_data_source,
+          ...defaultParams,
           range,
-          type: view.type,
           x: xValue,
           y: yValue,
         };
       } else if (event === "onSelected") {
         params = {
-          event,
+          ...defaultParams,
           data,
-          type: view.type,
+          path,
         };
       }
-      params = {
-        ...params,
-        path,
-      };
+
       triggerPanelEvent(panelId, {
         operator: eventHandlerOperator,
         params,
@@ -143,8 +146,8 @@ export default function PlotlyView(props) {
     return merge({}, configDefaults, config);
   }, [configDefaults, config]);
   const mergedData = useMemo(() => {
-    return mergeData(data, dataDefaults);
-  }, [data, dataDefaults]);
+    return mergeData(data || schema?.view?.data, dataDefaults);
+  }, [data, dataDefaults, schema?.view?.data]);
 
   return (
     <Box
