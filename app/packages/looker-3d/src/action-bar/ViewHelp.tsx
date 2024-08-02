@@ -1,5 +1,5 @@
 import { HelpIcon } from "@fiftyone/components";
-import { useHelpPanel } from "@fiftyone/state";
+import type { useHelpPanel } from "@fiftyone/state";
 import { ACTION_VIEW_HELP } from "../constants";
 import { ActionItem } from "../containers";
 

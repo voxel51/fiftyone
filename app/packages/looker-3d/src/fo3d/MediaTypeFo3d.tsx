@@ -1,7 +1,7 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
-import { Canvas, RootState } from "@react-three/fiber";
+import { Canvas, type RootState } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import {
   useCallback,
@@ -12,9 +12,9 @@ import {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import * as THREE from "three";
-import { PerspectiveCamera, Vector3 } from "three";
-import { Looker3dPluginSettings } from "../Looker3dPlugin";
+import type * as THREE from "three";
+import { type PerspectiveCamera, Vector3 } from "three";
+import type { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
@@ -148,7 +148,10 @@ export const MediaTypeFo3dComponent = () => {
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
 
   const topCameraPosition = useMemo(() => {
-    if (!sceneBoundingBox || Math.abs(sceneBoundingBox.max.x) === Infinity) {
+    if (
+      !sceneBoundingBox ||
+      Math.abs(sceneBoundingBox.max.x) === Number.POSITIVE_INFINITY
+    ) {
       return DEFAULT_CAMERA_POSITION();
     }
 
@@ -220,7 +223,10 @@ export const MediaTypeFo3dComponent = () => {
       );
     }
 
-    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
+    if (
+      sceneBoundingBox &&
+      Math.abs(sceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
+    ) {
       const center = sceneBoundingBox.getCenter(new Vector3());
       const size = sceneBoundingBox.getSize(new Vector3());
 

@@ -135,7 +135,126 @@ class Operations(object):
         """Set the view in the App from JSON present in clipboard."""
         return self._ctx.trigger("view_from_clipboard")
 
-    def open_panel(self, name, is_active=True, layout=None):
+    def _create_panel_params(self, panel_id, state=None, data=None):
+        params = {"panel_id": panel_id}
+        if panel_id is None:
+            params["panel_id"] = self._ctx.params.get("panel_id", None)
+        if state is not None:
+            params["state"] = state
+        if data is not None:
+            params["data"] = data
+        return params
+
+    def clear_panel_state(self, panel_id=None):
+        """Clear the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "clear_panel_state", params=self._create_panel_params(panel_id)
+        )
+
+    def clear_panel_data(self, panel_id=None):
+        """Clear the data of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "clear_panel_data", params=self._create_panel_params(panel_id)
+        )
+
+    def set_panel_state(self, state, panel_id=None):
+        """Set the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "set_panel_state",
+            params=self._create_panel_params(panel_id, state=state),
+        )
+
+    def set_panel_data(self, data, panel_id=None):
+        """Set the data of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "set_panel_data",
+            params=self._create_panel_params(panel_id, data=data),
+        )
+
+    def patch_panel_state(self, state, panel_id=None):
+        """Patch the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "patch_panel_state",
+            params=self._create_panel_params(panel_id, state=state),
+        )
+
+    def patch_panel_data(self, data, panel_id=None):
+        """Patch the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "patch_panel_data",
+            params=self._create_panel_params(panel_id, data=data),
+        )
+
+    def reduce_panel_state(self, reducer, panel_id=None):
+        """Reduce the state of the specified panel in the App.
+
+        Args:
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        return self._ctx.trigger(
+            "reduce_panel_state",
+            params={
+                **self._create_panel_params(panel_id),
+                "reducer": reducer,
+            },
+        )
+
+    def show_panel_output(self, output, panel_id=None):
+        """Show output in the specified panel in the App.
+
+        Args:
+            output: the output to show
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ctx.current_panel.id will be used.
+        """
+        params = self._create_panel_params(panel_id)
+        return self._ctx.trigger(
+            "show_panel_output",
+            params={
+                **params,
+                "output": output.to_json(),
+            },
+        )
+
+    def open_panel(
+        self,
+        name,
+        is_active=True,
+        layout=None,
+        force=False,
+        force_duplicate=False,
+    ):
         """Open a panel with the given name and layout options in the App.
 
         Args:
@@ -143,24 +262,87 @@ class Operations(object):
             is_active (True): whether to activate the panel immediately
             layout (None): the layout orientation
                 ``("horizontal", "vertical")``, if applicable
+            force (False): whether to force open the panel. Skips the check to see if a panel with
+                the same name exists or not. Note: this also skips allowDuplicates check
+            force_duplicate (False): whether to force open the panel even if it is already open.
+                Only applicable if force is ``True``
         """
-        params = {"name": name, "isActive": is_active}
+        params = {
+            "name": name,
+            "isActive": is_active,
+            "force": force,
+            "forceDuplicate": force_duplicate,
+        }
         if layout is not None:
             params["layout"] = layout
 
         return self._ctx.trigger("open_panel", params=params)
 
+    def register_panel(
+        self,
+        name,
+        label,
+        icon=None,
+        dark_icon=None,
+        light_icon=None,
+        on_load=None,
+        on_unload=None,
+        on_change=None,
+        on_change_ctx=None,
+        on_change_view=None,
+        on_change_dataset=None,
+        on_change_current_sample=None,
+        on_change_selected=None,
+        on_change_selected_labels=None,
+        on_change_extended_selection=None,
+        allow_duplicates=False,
+    ):
+        """Register a panel with the given name and lifecycle callbacks.
+
+        Args:
+            name: the name of the panel to register
+            icon (None): the icon to display in the panel tab
+            dark_icon (None): the icon to display in the panel tab in dark mode of app
+            light_icon (None): the icon to display in the panel tab in light mode of app
+            on_load (None): an operator to invoke when the panel is loaded
+            on_unload (None): an operator to invoke when the panel is unloaded
+            on_change (None): an operator to invoke when the panel state changes
+            allow_duplicates (False): whether to allow multiple instances of the panel
+        """
+        params = {
+            "panel_name": name,
+            "panel_label": label,
+            "icon": icon,
+            "dark_icon": dark_icon,
+            "light_icon": light_icon,
+            "on_load": on_load,
+            "on_unload": on_unload,
+            "on_change": on_change,
+            "allow_duplicates": allow_duplicates,
+            "on_change_ctx": on_change_ctx,
+            "on_change_view": on_change_view,
+            "on_change_dataset": on_change_dataset,
+            "on_change_current_sample": on_change_current_sample,
+            "on_change_selected": on_change_selected,
+            "on_change_selected_labels": on_change_selected_labels,
+            "on_change_extended_selection": on_change_extended_selection,
+        }
+        return self._ctx.trigger("register_panel", params=params)
+
     def open_all_panels(self):
         """Open all available panels in the App."""
         return self._ctx.trigger("open_all_panel")
 
-    def close_panel(self, name):
+    def close_panel(self, name=None, id=None):
         """Close the panel with the given name in the App.
 
         Args:
             name: the name of the panel to close
+            id: the id of the panel to close
         """
-        return self._ctx.trigger("close_panel", params={"name": name})
+        return self._ctx.trigger(
+            "close_panel", params={"name": name, "id": id}
+        )
 
     def close_all_panels(self):
         """Close all open panels in the App."""
@@ -317,6 +499,40 @@ class Operations(object):
         """Clear the selected labels in the App."""
         return self._ctx.trigger("clear_selected_labels")
 
+    def notify(self, message, variant="info"):
+        """Show a notification in the App.
+
+        Variants are "info", "success", "warning", and "error".
+
+        Args:
+            message: the message to show
+            variant ("info"): the type of notification
+        """
+        return self._ctx.trigger(
+            "notify", params={"message": message, "variant": variant}
+        )
+
+    def set_extended_selection(
+        self, selection=None, scope=None, clear=False, reset=False
+    ):
+        """Set the extended selection in the App.
+
+        Args:
+            selection: the selection to set
+            scope: the scope of the selection
+            clear: whether to clear the selection
+            reset: whether to reset the selection
+        """
+        return self._ctx.trigger(
+            "set_extended_selection",
+            params={
+                "selection": selection,
+                "scope": scope,
+                "clear": clear,
+                "reset": reset,
+            },
+        )
+
     def set_spaces(self, spaces=None, name=None):
         """Set space in the App by name or :class:`fiftyone.core.odm.workspace.Space`.
 
@@ -331,6 +547,38 @@ class Operations(object):
             params["spaces"] = self._ctx.dataset.load_workspace(name).to_dict()
 
         return self._ctx.trigger("set_spaces", params=params)
+
+    def set_active_fields(self, fields=[]):
+        """Set the active fields in the App.
+
+        Args:
+            fields: the fields to set such as "ground_truth", "metadata.width", etc.
+        """
+        return self._ctx.trigger(
+            "set_active_fields", params={"fields": fields}
+        )
+
+    def track_event(self, event, properties=None):
+        """Track an event in the App.
+
+        Args:
+            event: the event to track
+            properties (None): the properties to track
+        """
+        return self._ctx.trigger(
+            "track_event", params={"event": event, "properties": properties}
+        )
+
+    def set_panel_title(self, id=None, title=None):
+        """Set the title of the specified panel in the App.
+
+        Args:
+            id: the ID of the panel to set the title
+            title: the title to set
+        """
+        return self._ctx.trigger(
+            "set_panel_title", params={"id": id, "title": title}
+        )
 
 
 def _serialize_view(view):

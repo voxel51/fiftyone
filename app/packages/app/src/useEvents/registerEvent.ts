@@ -1,8 +1,8 @@
-import { Session } from "@fiftyone/state";
+import type { Session } from "@fiftyone/state";
 import { snakeCase } from "lodash";
-import { MutableRefObject } from "react";
-import { Queries } from "../makeRoutes";
-import { RoutingContext } from "../routing";
+import type { MutableRefObject } from "react";
+import type { Queries } from "../makeRoutes";
+import type { RoutingContext } from "../routing";
 
 export enum AppReadyState {
   CONNECTING = 0,

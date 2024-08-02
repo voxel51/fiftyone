@@ -11,7 +11,10 @@ describe("resolves datasets", () => {
       })
     ).toBe("/");
     expect(
-      resolveURL({ currentPathname: "/datasets/my-dataset", currentSearch: "" })
+      resolveURL({
+        currentPathname: "/datasets/my-dataset",
+        currentSearch: "",
+      })
     ).toBe("/datasets/my-dataset");
   });
 });
@@ -66,7 +69,7 @@ describe("resolves views", () => {
         nextDataset: "my-dataset",
         nextView: "view",
       })
-    ).toBe(`/datasets/my-dataset?view=view`);
+    ).toBe("/datasets/my-dataset?view=view");
   });
 });
 

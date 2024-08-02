@@ -94,8 +94,38 @@ class E2EProgress(foo.Operator):
             await asyncio.sleep(0.5)
 
 
+class E2ECounterPythonPanel(foo.Panel):
+    @property
+    def config(self):
+        return foo.PanelOperatorConfig(
+            name="e2e_counter_python_panel",
+            label="E2E: Counter Python Panel",
+            allow_multiple=True,
+        )
+
+    def on_load(self, ctx):
+        ctx.panel.state.count = 0
+
+    def render(self, ctx):
+        panel = types.Object()
+        panel.message("Count", f"Count: {ctx.panel.state.count}")
+        panel.btn("increment", label="Increment", on_click=self.increment)
+        panel.btn("decrement", label="Decrement", on_click=self.decrement)
+        return types.Property(panel)
+
+    def increment(self, ctx):
+        current_count = ctx.panel.state.count or 0
+        ctx.panel.state.count = current_count + 1
+
+    def decrement(self, ctx):
+        current_count = ctx.panel.state.count or 0
+        if current_count > 0:
+            ctx.panel.state.count = current_count - 1
+
+
 def register(p):
     p.register(E2ESetView)
     p.register(E2ESayHelloInModal)
     p.register(E2ESayHelloInDrawer)
     p.register(E2EProgress)
+    p.register(E2ECounterPythonPanel)

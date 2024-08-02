@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
-import { BoxGeometry, Mesh, Quaternion, Vector3 } from "three";
-import { BoxGeometryAsset } from "../../hooks";
+import type React from "react";
+import { useMemo } from "react";
+import { BoxGeometry, Mesh, type Quaternion, type Vector3 } from "three";
+import type { BoxGeometryAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 
 const DEFAULT_SEGMENTS = 3;

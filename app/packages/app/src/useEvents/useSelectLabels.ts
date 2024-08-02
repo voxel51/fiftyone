@@ -1,7 +1,7 @@
-import { State, useSessionSetter } from "@fiftyone/state";
+import { type State, useSessionSetter } from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
 const useSelectLabels: EventHandlerHook = () => {
   const setter = useSessionSetter();

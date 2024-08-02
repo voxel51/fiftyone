@@ -1,13 +1,14 @@
 import { isNullish } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useCallback, useMemo } from "react";
+import { ViewPropsType } from "../utils/types";
 
 const userChangedPaths = new Set<string>();
 const pathsRefreshCount = new Map<string, number>();
 
 export function useKey(
   path: string,
-  schema: { default: unknown },
+  schema: ViewPropsType["schema"],
   data?: unknown,
   useData?: boolean
 ): [string, () => void] {

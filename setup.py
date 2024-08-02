@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
+    "pydash==8.0.1",
     "pymongo>=3.12",
     "pytz",
     "PyYAML",

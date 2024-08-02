@@ -1,13 +1,13 @@
-import React, { useMemo, useState } from "react";
-import * as THREE from "three";
-import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
-import { OverlayProps } from "./shared";
 import { useCursor } from "@react-three/drei";
-import { useRecoilValue } from "recoil";
-import { cuboidLabelLineWidthAtom } from "../state";
 import { extend } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import * as THREE from "three";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { cuboidLabelLineWidthAtom } from "../state";
+import type { OverlayProps } from "./shared";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 

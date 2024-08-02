@@ -13,7 +13,7 @@ import {
 } from "../constants";
 import { ActionItem } from "../containers";
 import { currentActionAtom, customColorMapAtom, shadeByAtom } from "../state";
-import { ShadeBy } from "../types";
+import type { ShadeBy } from "../types";
 import { ActionPopOver } from "./shared";
 
 export const ChooseColorSpace = () => {
@@ -104,7 +104,7 @@ const CustomColorSpace = () => {
     config: { duration: 400 },
   });
 
-  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
+  const activePcdSlices = useRecoilValue(fos.active3dSlices);
   const defaultPcdSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const [customColorMap, setCustomColorMap] =
     useRecoilState(customColorMapAtom);

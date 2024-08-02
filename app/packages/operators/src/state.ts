@@ -26,10 +26,13 @@ import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
   resolveExecutionOptions,
+  resolveOperatorURI,
 } from "./operators";
 import { Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
+import { ExecutionCallback } from "./types-internal";
+import { useAnalyticsInfo } from "@fiftyone/analytics";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -63,13 +66,13 @@ export const usePromptOperatorInput = () => {
   );
   const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
-  const prompt = (operatorName) => {
+  const prompt = (operatorName, params = {}, options = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
       const update = new Set([operatorName, ...recentlyUsedOperators]);
       return Array.from(update).slice(0, 5);
     });
 
-    setPromptingOperator({ operatorName, params: {} });
+    setPromptingOperator({ operatorName, params, options });
   };
 
   return prompt;
@@ -85,6 +88,7 @@ const globalContextSelector = selector({
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
     const viewName = get(fos.viewName);
+    const extendedSelection = get(fos.extendedSelection);
 
     // Teams only
     const datasetHeadName = get(fos.datasetHeadName);
@@ -97,9 +101,9 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       viewName,
-
       // Teams only
       datasetHeadName,
+      extendedSelection,
     };
   },
 });
@@ -118,6 +122,14 @@ const currentContextSelector = selectorFamily({
     },
 });
 
+export function useGlobalExecutionContext(): ExecutionContext {
+  const globalCtx = useRecoilValue(globalContextSelector);
+  const ctx = useMemo(() => {
+    return new ExecutionContext({}, globalCtx);
+  }, [globalCtx]);
+  return ctx;
+}
+
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
   const currentSample = useCurrentSample();
@@ -130,10 +142,11 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     viewName,
-
     // Teams only
     datasetHeadName,
+    extendedSelection,
   } = curCtx;
+  const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -146,9 +159,10 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedLabels,
         currentSample,
         viewName,
-
         // Teams only
         datasetHeadName,
+        extendedSelection,
+        analyticsInfo,
       },
       hooks
     );
@@ -437,14 +451,16 @@ export const useOperatorPrompt = () => {
       }
   );
   const execute = useCallback(
-    async (options = null) => {
+    async (options = {}) => {
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
-      executor.execute(promptingOperator.params, options);
+      executor.execute(promptingOperator.params, {
+        ...promptingOperator.options,
+      });
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
@@ -859,10 +875,15 @@ export function useOperatorBrowser() {
   };
 }
 
+type OperatorExecutorOptions = {
+  delegationTarget?: string;
+  requestDelegation?: boolean;
+  callback?: ExecutionCallback;
+  skipOutput?: boolean;
+};
+
 export function useOperatorExecutor(uri, handlers: any = {}) {
-  if (!uri.includes("/")) {
-    uri = `@voxel51/operators/${uri}`;
-  }
+  uri = resolveOperatorURI(uri, { keepMethod: true });
 
   const { operator } = getLocalOrRemoteOperator(uri);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -1030,3 +1051,8 @@ export function useOperatorPlacements(place: Places) {
 
   return { placements };
 }
+
+export const panelsStateUpdatesCountAtom = atom({
+  key: "panelsStateUpdatesCountAtom",
+  default: 0,
+});

@@ -1,4 +1,4 @@
-import { BooleanButtonInput } from "./types";
+import type { BooleanButtonInput } from "./types";
 
 export const normalize = ({ ...settings }: BooleanButtonInput) => {
   return {

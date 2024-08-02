@@ -6,24 +6,24 @@ import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import React, { useEffect } from "react";
+import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
-import { Route } from "../../routing";
+import type { Route } from "../../routing";
 import style from "../index.module.css";
-import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
-    $search: String = ""
     $count: Int
     $cursor: String
-    $savedViewSlug: String
     $name: String!
+    $extendedView: BSONArray!
+    $savedViewSlug: String
+    $search: String = ""
     $view: BSONArray!
-    $extendedView: BSONArray
   ) {
     config {
       colorBy
@@ -99,19 +99,12 @@ const DatasetPageQueryNode = graphql`
 
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
-  const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
+
   const count = useRecoilValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
 
-  useEffect(() => {
-    document
-      .getElementById("modal")
-      ?.classList.toggle("modalon", isModalActive);
-  }, [isModalActive]);
-
   return (
-    <>
-      <Nav fragment={data} hasDataset={!isEmpty} />
+    <Nav fragment={data} hasDataset={!isEmpty}>
       <div className={style.page} data-cy={"dataset-page"}>
         {isEmpty ? (
           <Starter mode="ADD_SAMPLE" />
@@ -123,7 +116,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
         )}
       </div>
       <Snackbar />
-    </>
+    </Nav>
   );
 };
 

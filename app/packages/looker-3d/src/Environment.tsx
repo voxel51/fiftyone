@@ -3,10 +3,10 @@
  */
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { MutableRefObject, useEffect, useMemo } from "react";
-import { Box3, Camera, Vector3 } from "three";
-import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { Looker3dPluginSettings } from "./Looker3dPlugin";
+import { type MutableRefObject, useEffect, useMemo } from "react";
+import { type Box3, type Camera, Vector3 } from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import type { Looker3dPluginSettings } from "./Looker3dPlugin";
 import { getGridQuaternionFromUpVector } from "./utils";
 
 export const CAMERA_POSITION_KEY = "fiftyone-camera-position";

@@ -1,6 +1,6 @@
 import { JSONIcon } from "@fiftyone/components";
-import { Sample } from "@fiftyone/looker/src/state";
-import { ModalSample, useJSONPanel } from "@fiftyone/state";
+import type { Sample } from "@fiftyone/looker/src/state";
+import type { ModalSample, useJSONPanel } from "@fiftyone/state";
 import { ACTION_VIEW_JSON } from "../constants";
 import { ActionItem } from "../containers";
 

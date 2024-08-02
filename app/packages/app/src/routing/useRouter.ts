@@ -2,8 +2,8 @@ import { getEnvironment, setCurrentEnvironment } from "@fiftyone/state";
 import { useMemo, useRef } from "react";
 
 import { useErrorHandler } from "react-error-boundary";
-import { createRouter, Router } from ".";
-import makeRoutes, { Queries } from "../makeRoutes";
+import { type Router, createRouter } from ".";
+import makeRoutes, { type Queries } from "../makeRoutes";
 
 const environment = getEnvironment();
 setCurrentEnvironment(environment);
@@ -13,10 +13,10 @@ const useRouter = () => {
   const handleError = useErrorHandler();
 
   router.current = useMemo(() => {
-    router.current && router.current.cleanup();
+    router.current?.cleanup();
 
     return createRouter<Queries>(environment, makeRoutes(), handleError);
-  }, []);
+  }, [handleError]);
 
   return { context: router.current.context, environment };
 };

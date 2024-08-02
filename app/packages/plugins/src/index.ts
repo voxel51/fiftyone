@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
+import React, { FunctionComponent, useEffect, useMemo } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -41,6 +41,15 @@ export function registerComponent<T>(
  */
 export function unregisterComponent(name: string) {
   usingRegistry().unregister(name);
+}
+
+/**
+ * Subscribe to plugin registry's "subscribe" and "unsubscribe" event.
+ * @param handler The event handler called with the event type
+ * @returns A function to unsubscribe
+ */
+export function subscribeToRegistry(handler: RegistryEventHandler) {
+  return usingRegistry().subscribe(handler);
 }
 
 /**
@@ -222,6 +231,17 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
 }
 
 /**
+ * A react hook that returns a component plugin by name if exist.
+ * @param name The name of the plugin
+ * @param ctx Argument passed to the plugin's activator function
+ * @returns The plugin component or `undefined`
+ */
+export function usePluginComponent(name: string, ctx?: unknown) {
+  const plugins = useActivePlugins(PluginComponentType.Component, ctx);
+  return plugins.find((p) => p.name === name);
+}
+
+/**
  * The type of plugin component.
  *
  * - `Panel` - A panel that can be added to `@fiftyone/spaces`
@@ -244,6 +264,7 @@ type PanelOptions = {
 
 type PluginComponentProps<T> = T & {
   panelNode?: unknown;
+  dimensions?: unknown;
 };
 
 /**
@@ -287,6 +308,7 @@ class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
   private pluginDefinitions = new Map<string, PluginDefinition>();
   private scripts = new Set<string>();
+  private subscribers = new Set<RegistryEventHandler>();
   registerScript(name: string) {
     this.scripts.add(name);
   }
@@ -301,6 +323,7 @@ class PluginComponentRegistry {
   }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
+    this.notifyAllSubscribers("register");
 
     if (typeof registration.activator !== "function") {
       registration.activator = DEFAULT_ACTIVATOR;
@@ -329,6 +352,7 @@ class PluginComponentRegistry {
     this.data.set(name, wrappedRegistration);
   }
   unregister(name: string): boolean {
+    this.notifyAllSubscribers("register");
     return this.data.delete(name);
   }
   getByType(type: PluginComponentType) {
@@ -343,6 +367,20 @@ class PluginComponentRegistry {
   }
   clear() {
     this.data.clear();
+  }
+  subscribe(handler: RegistryEventHandler) {
+    this.subscribers.add(handler);
+    return () => {
+      this.subscribers.delete(handler);
+    };
+  }
+  notifySubscriber(event: RegistryEvent, subscriber: RegistryEventHandler) {
+    subscriber(event);
+  }
+  notifyAllSubscribers(event: RegistryEvent) {
+    for (const handler of this.subscribers) {
+      this.notifySubscriber(event, handler);
+    }
   }
 }
 
@@ -368,3 +406,6 @@ export function usePluginSettings<T>(
 }
 
 export * from "./state";
+
+type RegistryEvent = "register" | "unregister";
+type RegistryEventHandler = (event: RegistryEvent) => void;

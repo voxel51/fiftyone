@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
-import { Gradients } from "./renderables/pcd/shaders";
-import { ShadeBy } from "./types";
+import type { Gradients } from "./renderables/pcd/shaders";
+import type { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
 export const ACTION_SHADE_BY = "shadeBy";

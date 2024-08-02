@@ -3,7 +3,7 @@ import { Components, useInputContext } from "leva/plugin";
 import { useCallback } from "react";
 import styled from "styled-components";
 import style from "./boolean-button-style.module.css";
-import { BooleanButtonProps } from "./types";
+import type { BooleanButtonProps } from "./types";
 
 const BooleanButtonContainer = styled.div`
   display: flex;

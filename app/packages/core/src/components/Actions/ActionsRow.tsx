@@ -1,12 +1,19 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   PillButton,
-  scrollable,
-  scrollableSm,
   useTheme,
+  AdaptiveMenu,
+  LoadingDots,
+  AdaptiveMenuItemComponentPropsType,
 } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { OperatorPlacements, types } from "@fiftyone/operators";
-import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import {
+  OperatorPlacements,
+  OperatorPlacementWithErrorBoundary,
+  types,
+  useOperatorBrowser,
+  useOperatorPlacements,
+} from "@fiftyone/operators";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick } from "@fiftyone/state";
@@ -24,6 +31,7 @@ import {
   VisibilityOff,
   Wallpaper,
 } from "@mui/icons-material";
+import { Box } from "@mui/material";
 import React, {
   MutableRefObject,
   useCallback,
@@ -38,7 +46,6 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { activeColorEntry } from "../ColorModal/state";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
@@ -49,6 +56,7 @@ import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
 import { ActionDiv } from "./utils";
+import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -83,7 +91,7 @@ const Loading = () => {
   return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
 
-const Patches = () => {
+const Patches = ({ adaptiveMenuItemProps }: ActionProps) => {
   const [open, setOpen] = useState(false);
   const loading = useRecoilValue(fos.patching);
   const isVideo = useRecoilValue(fos.isVideoDataset);
@@ -92,7 +100,7 @@ const Patches = () => {
   const fields = useRecoilValue(patchesFields);
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         icon={loading ? <Loading /> : <FlipToBack />}
         open={open}
@@ -107,7 +115,12 @@ const Patches = () => {
   );
 };
 
-const Similarity = ({ modal }: { modal: boolean }) => {
+const Similarity = ({
+  modal,
+  adaptiveMenuItemProps,
+}: ActionProps & {
+  modal: boolean;
+}) => {
   const [open, setOpen] = useState(false);
   const [isImageSearch, setIsImageSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -123,7 +136,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   }, [showImageSimilarityIcon]);
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         key={"button"}
         icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
@@ -152,7 +165,8 @@ const Similarity = ({ modal }: { modal: boolean }) => {
 const Tag = ({
   modal,
   lookerRef,
-}: {
+  adaptiveMenuItemProps,
+}: ActionProps & {
   modal: boolean;
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
@@ -186,7 +200,7 @@ const Tag = ({
     : baseTitle;
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         style={{
           cursor: disableTag
@@ -217,7 +231,8 @@ const Tag = ({
 const Selected = ({
   modal,
   lookerRef,
-}: {
+  adaptiveMenuItemProps,
+}: ActionProps & {
   modal: boolean;
   lookerRef?: MutableRefObject<fos.Lookers | undefined>;
 }) => {
@@ -245,7 +260,7 @@ const Selected = ({
   }
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         icon={loading ? <Loading /> : <Check />}
         open={open}
@@ -275,13 +290,16 @@ const Selected = ({
   );
 };
 
-const Options = ({ modal }) => {
+const Options = ({
+  modal,
+  adaptiveMenuItemProps,
+}: ActionProps & { modal?: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         icon={<Settings />}
         open={open}
@@ -295,14 +313,17 @@ const Options = ({ modal }) => {
   );
 };
 
-const Colors = () => {
+const Colors = ({ adaptiveMenuItemProps }: ActionProps) => {
+  const trackEvent = useTrackEvent();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [activeField, setActiveField] = useRecoilState(activeColorEntry);
 
   const onOpen = () => {
+    trackEvent("open_color_settings");
     setOpen(!open);
     setActiveField(ACTIVE_FIELD.GLOBAL);
+    adaptiveMenuItemProps?.closeOverflow?.();
   };
 
   useEffect(() => {
@@ -314,7 +335,7 @@ const Colors = () => {
   }, [Boolean(activeField)]);
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         icon={<ColorLens />}
         open={open}
@@ -348,7 +369,7 @@ const Hidden = () => {
   );
 };
 
-const SaveFilters = () => {
+const SaveFilters = ({ adaptiveMenuItemProps }: ActionProps) => {
   const loading = useRecoilValue(fos.savingFilters);
 
   const saveFilters = useRecoilCallback(
@@ -405,7 +426,7 @@ const SaveFilters = () => {
   );
 
   return shouldToggleBookMarkIconOn ? (
-    <ActionDiv>
+    <ActionDiv {...(adaptiveMenuItemProps || {})}>
       <PillButton
         open={false}
         highlight={true}
@@ -419,9 +440,11 @@ const SaveFilters = () => {
   ) : null;
 };
 
-const ToggleSidebar: React.FC<{
-  modal: boolean;
-}> = React.forwardRef(({ modal }, ref) => {
+const ToggleSidebar: React.FC<
+  ActionProps & {
+    modal: boolean;
+  }
+> = React.forwardRef(({ modal, adaptiveMenuItemProps }, ref) => {
   const [visible, setVisible] = useRecoilState(fos.sidebarVisible(modal));
 
   return (
@@ -447,6 +470,7 @@ const ToggleSidebar: React.FC<{
       highlight={!visible}
       ref={ref}
       data-cy="action-toggle-sidebar"
+      {...(adaptiveMenuItemProps || {})}
     />
   );
 });
@@ -464,15 +488,18 @@ const ActionsRowDiv = styled.div`
   }
 `;
 
-export const BrowseOperations = () => {
+export const BrowseOperations = ({ adaptiveMenuItemProps }: ActionProps) => {
   const browser = useOperatorBrowser();
   return (
-    <ActionDiv>
+    <ActionDiv {...(adaptiveMenuItemProps || {})}>
       <PillButton
         open={false}
         highlight={true}
         icon={<List />}
-        onClick={() => browser.toggle()}
+        onClick={() => {
+          browser.toggle();
+          adaptiveMenuItemProps?.closeOverflow?.();
+        }}
         title={"Browse operations"}
         data-cy="action-browse-operations"
       />
@@ -481,52 +508,120 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const actionsRowDivRef = useRef<HTMLDivElement>();
-
-  useEffect(() => {
-    const actionsRowDivElem = actionsRowDivRef.current;
-    if (actionsRowDivElem) {
-      const handleWheel = (e) => {
-        const leftEnd = actionsRowDivElem.offsetWidth;
-        const rightEnd = actionsRowDivElem.scrollWidth;
-        const scrollLeft = actionsRowDivElem.scrollLeft;
-        const leftScrolledEnd = leftEnd + scrollLeft;
-        const allowLeftScroll = leftScrolledEnd === leftEnd;
-        const allowRightScroll = leftScrolledEnd === rightEnd;
-
-        if (
-          e.deltaY == 0 ||
-          (e.deltaY < 0 && allowLeftScroll) ||
-          (e.deltaY > 0 && allowRightScroll)
-        )
-          return;
-
-        e.preventDefault();
-        actionsRowDivElem.scrollLeft = actionsRowDivElem.scrollLeft + e.deltaY;
+  const { placements: primaryPlacements } = useOperatorPlacements(
+    types.Places.SAMPLES_GRID_ACTIONS
+  );
+  const { placements: secondaryPlacements } = useOperatorPlacements(
+    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS
+  );
+  const initialItems = [
+    {
+      id: "toggle-sidebar",
+      Component: (props) => {
+        return <ToggleSidebar modal={false} adaptiveMenuItemProps={props} />;
+      },
+      priority: 1, // always show this first
+    },
+    {
+      id: "colors",
+      Component: (props) => {
+        return <Colors adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "tag",
+      Component: (props) => {
+        return <Tag modal={false} adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "patches",
+      Component: (props) => {
+        return <Patches adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "similarity",
+      Component: (props) => {
+        return <Similarity modal={false} adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "save-filters",
+      Component: (props) => {
+        return <SaveFilters adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "selected",
+      Component: (props) => {
+        return <Selected modal={false} adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "dynamic-group-action",
+      Component: (props) => {
+        return <DynamicGroupAction adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "browse-operations",
+      Component: (props) => {
+        return <BrowseOperations adaptiveMenuItemProps={props} />;
+      },
+    },
+    {
+      id: "options",
+      Component: (props) => {
+        return <Options modal={false} adaptiveMenuItemProps={props} />;
+      },
+    },
+    ...primaryPlacements.map((placement) => {
+      return {
+        id: placement?.operator?.uri,
+        Component: (props) => {
+          return (
+            <OperatorPlacementWithErrorBoundary
+              place={types.Places.SAMPLES_GRID_ACTIONS}
+              adaptiveMenuItemProps={props}
+              {...placement}
+            />
+          );
+        },
       };
-      actionsRowDivElem.addEventListener("wheel", handleWheel);
-      return () => actionsRowDivElem.removeEventListener("wheel", handleWheel);
-    }
-  }, []);
+    }),
+    ...secondaryPlacements.map((placement) => {
+      return {
+        id: placement?.operator?.uri,
+        Component: (props) => {
+          return (
+            <OperatorPlacementWithErrorBoundary
+              place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS}
+              adaptiveMenuItemProps={props}
+              {...placement}
+            />
+          );
+        },
+      };
+    }),
+  ];
+  const { orderedItems, setOrder } = useItemsWithOrderPersistence(
+    initialItems,
+    "grid-actions-row"
+  );
+  const [items, setItems] = useState(orderedItems);
 
   return (
-    <ActionsRowDiv
-      className={`${scrollable} ${scrollableSm}`}
-      ref={actionsRowDivRef}
-    >
-      <ToggleSidebar modal={false} />
-      <Colors />
-      <Tag modal={false} />
-      <Patches />
-      <Similarity modal={false} />
-      <SaveFilters />
-      <Selected modal={false} />
-      <DynamicGroupAction />
-      <BrowseOperations />
-      <Options modal={false} />
-      <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
-      <OperatorPlacements place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS} />
-    </ActionsRowDiv>
+    <Box sx={{ width: "100%", minWidth: 100 }}>
+      <AdaptiveMenu
+        id="grid-actions-row"
+        items={items}
+        onOrderChange={(items) => {
+          setItems(items);
+          setOrder(items);
+        }}
+      />
+    </Box>
   );
 };
 
@@ -556,4 +651,8 @@ export const ModalActionsRow = ({
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );
+};
+
+type ActionProps = {
+  adaptiveMenuItemProps?: AdaptiveMenuItemComponentPropsType;
 };
