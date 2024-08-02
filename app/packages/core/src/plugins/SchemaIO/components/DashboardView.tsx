@@ -198,32 +198,34 @@ export default function DashboardView(props: ViewPropsType) {
             >
               <DragHandle className="drag-handle">
                 <Typography>{property.title || id}</Typography>
-                {allow_edit && (
-                  <IconButton
-                    size="small"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditItem({ id, path: getPath(path, id) });
-                    }}
-                    sx={{ color: theme.text.secondary }}
-                  >
-                    <Edit />
-                  </IconButton>
-                )}
-                {allow_deletion && (
-                  <IconButton
-                    size="small"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseItem({ id, path: getPath(path, id) });
-                    }}
-                    sx={{ color: theme.text.secondary }}
-                  >
-                    <CloseIcon />
-                  </IconButton>
-                )}
+                <Box>
+                  {allow_edit && (
+                    <IconButton
+                      size="small"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditItem({ id, path: getPath(path, id) });
+                      }}
+                      sx={{ color: theme.text.secondary }}
+                    >
+                      <Edit />
+                    </IconButton>
+                  )}
+                  {allow_deletion && (
+                    <IconButton
+                      size="small"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseItem({ id, path: getPath(path, id) });
+                      }}
+                      sx={{ color: theme.text.secondary }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  )}
+                </Box>
               </DragHandle>
               <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
                 <DynamicIO
