@@ -25,12 +25,22 @@ test.describe("frame filtering", () => {
       `
       import fiftyone.zoo as foz
 
-      dataset = fo.load_dataset("${datasetNameFilteringEnabled}")
+      dataset = foz.load_zoo_dataset(
+        "quickstart-video", 
+        dataset_name="${datasetNameFilteringEnabled}", 
+        max_samples=1
+      )
       dataset.app_config.disable_frame_filtering = False
+      dataset.persist = True
       dataset.save()
 
-      dataset = fo.load_dataset("${datasetNameFilteringDisabled}")
+      dataset = foz.load_zoo_dataset(
+        "quickstart-video", 
+        dataset_name="${datasetNameFilteringDisabled}", 
+        max_samples=1
+      )
       dataset.app_config.disable_frame_filtering = True
+      dataset.persist = True
       dataset.save() 
       `
     );
@@ -68,7 +78,7 @@ test.describe("frame filtering", () => {
       datasetNameFilteringDisabled
     );
     await grid.actionsRow.toggleDisplayOptions();
-    await sidebar.asserter.assertFieldDisabled("frames.detections");
+    await sidebar.asserter.assertFieldArrowRemoved("frames.detections");
     await sidebar.asserter.assertFieldEnabled("metadata.size_bytes");
     await sidebar.asserter.assertCheckboxesEnabled([
       "frames.detections",
