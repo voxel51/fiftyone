@@ -9049,10 +9049,13 @@ class SampleCollection(object):
 
         if include_size:
             dataset_stats = self._dataset.stats(include_indexes=True)
-            for index_name in dataset_stats["indexSizes"]:
-                sample_info[index_name]["size"] = dataset_stats["indexSizes"][
+            for index_name in dataset_stats["index_sizes"]:
+                sample_info[index_name]["size"] = dataset_stats["index_sizes"][
                     index_name
                 ]
+                sample_info[index_name]["bytes"] = dataset_stats[
+                    "index_bytes"
+                ][index_name]
 
         for key, info in sample_info.items():
             if len(info["key"]) == 1:

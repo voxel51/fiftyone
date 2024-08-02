@@ -1143,9 +1143,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total_bytes += media_bytes
 
         if include_indexes:
-            stats["nindexes"] = cs["nindexes"]
-            stats["totalIndexSize"] = cs["totalIndexSize"]
-            stats["indexSizes"] = {
+            stats["num_indexes"] = cs["nindexes"]
+            stats["indexes_bytes"] = cs["totalIndexSize"]
+            stats["indexes_sizes"] = etau.to_human_bytes_str(
+                cs["totalIndexSize"]
+            )
+            stats["index_bytes"] = cs["indexSizes"]
+            stats["index_sizes"] = {
                 k: etau.to_human_bytes_str(v)
                 for k, v in cs["indexSizes"].items()
             }
