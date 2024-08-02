@@ -168,7 +168,7 @@ credentials for use by all app users <teams-cloud-storage-page>`.
 
 .. _teams-cors:
 
-Cross-Origin Resource Sharing (CORS)
+Cross-origin resource sharing (CORS)
 ____________________________________
 
 If your datasets include cloud-backed
@@ -177,8 +177,8 @@ If your datasets include cloud-backed
 cross-origin resource sharing (CORS) for your cloud buckets. Details are
 provided below for each cloud platform.
 
-Browser Caching
------------------
+Browser caching
+_______________
 
 If your datasets include cloud-backed media, we strongly recommend configuring your data
 sources to allow for built in browser caching. This will cache signed URL responses
@@ -282,15 +282,14 @@ Google Cloud Storage
 ____________________
 
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
-you simply need to provide
-`service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
+you simply need to provide `credentials <https://cloud.google.com/docs/authentication>`_
 to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
-1. Configure/provide
+1. Configure
 `application default credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`_
-in another manner supported by Google Cloud, such as:
+in a manner supported by Google Cloud, such as:
 
 - `Using the gcloud CLI <https://cloud.google.com/docs/authentication/application-default-credentials#personal>`_
 - `Attaching a service account to your Google Cloud resource <https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa>`_
@@ -300,7 +299,7 @@ environment variables to point to your GCS credentials on disk:
 
 .. code-block:: shell
 
-    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-service-account.json"
+    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-credentials.json"
 
 3. Permanently register GCS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <teams-media-cache-config>`:
@@ -308,12 +307,13 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
 .. code-block:: json
 
     {
-        "google_application_credentials": "/path/to/gcp-service-account.json"
+        "google_application_credentials": "/path/to/gcp-credentials.json"
     }
 
-In the above, the credentials `.json` file can be a service account key, a
-configuration file for workforce identity federation, or a configuration file
-for workload identity federation.
+In the above, the credentials file can contain any format supported by
+`google.auth.load_credentials_from_file() <https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file>`_, which includes a
+service account key, stored authorized user credentials, or external account
+credentials.
 
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
@@ -572,7 +572,7 @@ Provider names and the class that extra kwargs are passed to:
 .. _teams-cloud-storage-page:
 
 Cloud storage page
-__________________
+------------------
 
 Admins can also configure cloud credentials via the Settings > Cloud storage
 page.
