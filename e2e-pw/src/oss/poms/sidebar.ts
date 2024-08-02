@@ -151,6 +151,30 @@ export class SidebarPom {
 class SidebarAsserter {
   constructor(private readonly sb: SidebarPom) {}
 
+  async assertCheckboxEnabled(fieldName: string) {
+    await expect(
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+    ).toBeVisible();
+  }
+
+  async assertCheckboxDisabled(fieldName: string) {
+    await expect(
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+    ).toHaveCount(0);
+  }
+
+  async assertCheckboxesEnabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertCheckboxEnabled(fieldNames[i]);
+    }
+  }
+
+  async assertCheckboxesDisabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertCheckboxDisabled(fieldNames[i]);
+    }
+  }
+
   async assertFieldInSidebar(fieldName: string) {
     await expect(this.sb.field(fieldName)).toBeVisible();
   }
