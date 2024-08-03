@@ -225,10 +225,10 @@ The following permissions are available to each user role:
    , **Can tag**, or **Can edit** access to a dataset to an email address that 
    is not yet user of a FiftyOne Teams deployment.
 
-   When the invitation is accepted, the user will become a Guest or
-   Collaborator (depending on whether the **Can view** or higher than 
-   **Can view** access was granted, respectively), and an Admin can upgrade 
-   this user to another role if desired via the Team Settings page.
+   When the invitation is accepted, the user will become a Guest if the
+   **Can view** permission is chosen or a Collaborator if a higher permission
+   is chosen, and an Admin can upgrade this user to another role if desired via
+   the Team Settings page.
 
 .. _teams-no-access:
 
@@ -263,8 +263,8 @@ Can tag
 A user with **Can tag** permissions on a dataset can find the dataset from
 their dataset listing page.
 
-Users with **Can tag** permissions cannot modify the dataset in any way, except
-for tagging.
+Users with **Can tag** permissions can modify sample/label tags but cannot
+modify the dataset in any other way.
 
 .. _teams-can-edit:
 
@@ -307,12 +307,6 @@ __________
 Admins can review the actions and permissions available to each user role by
 navigating to the "Settings > Security > Roles" page:
 
-.. image:: /images/teams/admin_roles_page1.png
-   :alt: admin-roles-page
-   :align: center
-.. image:: /images/teams/admin_roles_page2.png
-   :alt: admin-roles-page
-   :align: center
-.. image:: /images/teams/admin_roles_page3.png
+.. image:: /images/teams/admin_roles_page.png
    :alt: admin-roles-page
    :align: center
