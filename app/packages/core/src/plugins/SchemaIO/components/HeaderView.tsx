@@ -7,12 +7,13 @@ export default function HeaderView(props) {
   const { schema, errors, nested, ...otherProps } = props;
   const { view = {} } = schema;
   const { componentsProps } = view;
+  const { sx, ...viewWithoutSx } = view;
 
   return (
     <Box>
       <Header
         errors={getErrorsForView(props)}
-        {...view}
+        {...viewWithoutSx}
         {...otherProps}
         componentsProps={nested ? componentsProps?.header : componentsProps}
       />
