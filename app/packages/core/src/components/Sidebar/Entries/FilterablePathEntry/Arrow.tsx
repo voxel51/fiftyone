@@ -38,10 +38,6 @@ export default ({
     />
   );
 
-  if (disabled) {
-    return arrow;
-  }
-
   if (frameFilterDisabledPath) {
     return (
       <Tooltip
@@ -56,6 +52,10 @@ export default ({
         {arrow}
       </Tooltip>
     );
+  }
+
+  if (disabled) {
+    return arrow;
   }
 
   if (unindexed && !unlocked) {
