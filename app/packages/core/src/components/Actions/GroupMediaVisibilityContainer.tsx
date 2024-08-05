@@ -126,6 +126,7 @@ export const GroupMediaVisibilityContainer = ({
   return (
     <Container ref={ref} data-cy="action-toggle-group-media-visibility">
       <PillButton
+        tooltipPlacement={modal ? "top" : "bottom"}
         icon={
           <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />
         }
