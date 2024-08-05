@@ -24,12 +24,6 @@ export const processState = (
       state.color_scheme as ColorSchemeInput
     );
 
-    if (env().VITE_NO_STATE && !groupSlice) {
-      session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
-      unsubscribe();
-      return;
-    }
-
     session.sessionGroupSlice =
       groupSlice || data.dataset?.defaultGroupSlice || undefined;
     session.selectedLabels = resolveSelectedLabels(state);

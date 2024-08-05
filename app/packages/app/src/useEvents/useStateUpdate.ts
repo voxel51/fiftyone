@@ -35,8 +35,6 @@ const useStateUpdate: EventHandlerHook = ({
         },
       });
 
-      console.log(path);
-
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));
