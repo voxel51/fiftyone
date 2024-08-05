@@ -643,7 +643,7 @@ export const disabledFilterPaths = selector<Set<string>>({
   key: "disabledFilterPaths",
   get: ({ get }) => {
     const paths = get(fullyDisabledPaths);
-    paths.union(get(disabledFrameFilterPaths));
+    get(disabledFrameFilterPaths).forEach((path) => paths.add(path));
     return new Set(paths);
   },
 });
