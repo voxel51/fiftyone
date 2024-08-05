@@ -6,19 +6,25 @@ import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
 import DisabledReason from "./DisabledReason";
-import { LIGHTNING_MODE } from "../../../../utils/links";
+import {
+  FRAME_FILTERING_DISABLED,
+  LIGHTNING_MODE,
+} from "../../../../utils/links";
+import { isDisabledFrameFilterPath } from "@fiftyone/state";
 
 export default ({
   id,
   color,
   disabled,
   expanded,
+  frameFilterDisabledPath,
   unindexed,
 }: {
   id: string;
   color?: string;
   disabled?: boolean;
   expanded: RecoilState<boolean>;
+  frameFilterDisabledPath?: boolean;
   unindexed?: boolean;
 }) => {
   const [isExpanded, setExpanded] = useRecoilState(expanded);
@@ -34,6 +40,22 @@ export default ({
 
   if (disabled) {
     return arrow;
+  }
+
+  if (frameFilterDisabledPath) {
+    return (
+      <Tooltip
+        text={
+          <DisabledReason
+            text={"frame filtering disabled"}
+            href={FRAME_FILTERING_DISABLED}
+          />
+        }
+        placement="top-center"
+      >
+        {arrow}
+      </Tooltip>
+    );
   }
 
   if (unindexed && !unlocked) {

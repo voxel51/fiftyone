@@ -643,6 +643,15 @@ export const disabledFilterPaths = selector<Set<string>>({
   key: "disabledFilterPaths",
   get: ({ get }) => {
     const paths = get(fullyDisabledPaths);
+    paths.union(get(disabledFrameFilterPaths));
+    return new Set(paths);
+  },
+});
+
+export const disabledFrameFilterPaths = selector<Set<string>>({
+  key: "disabledFrameFilterPaths",
+  get: ({ get }) => {
+    const paths = new Set<string>();
     const disableFrames = Boolean(get(disableFrameFiltering));
     const frameFields = get(atoms.frameFields);
     if (disableFrames) {
@@ -718,6 +727,14 @@ export const isDisabledCheckboxPath = selectorFamily<boolean, string>({
     (path) =>
     ({ get }) =>
       get(disabledCheckboxPaths).has(path),
+});
+
+export const isDisabledFrameFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFrameFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFrameFilterPaths).has(path),
 });
 
 export const isDisabledFilterPath = selectorFamily<boolean, string>({

@@ -7,6 +7,9 @@ const Lightning = ({ path }: { path: string }) => {
   const lightning = useRecoilValue(fos.isLightningPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const color = useRecoilValue(fos.pathColor(path));
+  const frameFilteringDisabled = useRecoilValue(
+    fos.isDisabledFrameFilterPath(path)
+  );
 
   return (
     <Arrow
@@ -14,6 +17,7 @@ const Lightning = ({ path }: { path: string }) => {
       unindexed={!lightning}
       expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
       id={path}
+      frameFilterDisabledPath={frameFilteringDisabled}
     />
   );
 };
@@ -22,6 +26,9 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const lightning = useRecoilValue(fos.lightning);
+  const frameFilteringDisabled = useRecoilValue(
+    fos.isDisabledFrameFilterPath(path)
+  );
 
   if (lightning && !modal) {
     return <Lightning path={path} />;
@@ -32,6 +39,7 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
       <Arrow
         disabled={disabled}
         expanded={fos.sidebarExpanded({ modal, path: expandedPath })}
+        frameFilterDisabledPath={frameFilteringDisabled}
         id={path}
       />
     )
