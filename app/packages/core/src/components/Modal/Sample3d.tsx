@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import React, { Suspense, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { SampleWrapper } from "./Sample";
+import { SampleWrapper } from "./Sample2D";
 
 const Sample3dContainer = styled.div`
   width: 100%;

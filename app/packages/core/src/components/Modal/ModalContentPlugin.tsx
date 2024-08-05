@@ -1,14 +1,13 @@
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useCallback, useEffect, useRef } from "react";
+import React, { Suspense, useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
-import { GroupContextProvider } from "./Group/GroupContextProvider";
-import { usePanels as useLookerPanels } from "./hooks";
+import { usePanels as useLookerPanels, useModalContext } from "./hooks";
 import ModalNavigation from "./ModalNavigation";
-import Sample from "./Sample";
+import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
 
 const ContentColumn = styled.div`
@@ -25,7 +24,6 @@ export const ModalContent = React.memo(() => {
   const { jsonPanel, helpPanel, onNavigate } = useLookerPanels();
 
   const isGroup = useRecoilValue(fos.isGroup);
-  const isPcd = useRecoilValue(fos.isPointcloudDataset);
   const is3D = useRecoilValue(fos.is3DDataset);
 
   const tooltip = fos.useTooltip();
@@ -48,19 +46,20 @@ export const ModalContent = React.memo(() => {
     [isTooltipLocked, tooltip]
   );
 
-  const lookerRef = useRef<fos.Lookers>();
+  const { activeLookerRef, onLookerSetSubscribers } = useModalContext();
 
-  /**
-   * a bit hacky, this is using the callback-ref pattern to get looker reference so that event handler can be registered
-   * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
-   */
-  const lookerRefCallback = useCallback(
-    (looker: fos.Lookers) => {
-      lookerRef.current = looker;
+  useEffect(() => {
+    onLookerSetSubscribers.current.push((looker) => {
       looker.addEventListener("tooltip", tooltipEventHandler);
-    },
-    [tooltipEventHandler]
-  );
+    });
+
+    return () => {
+      activeLookerRef?.current?.removeEventListener(
+        "tooltip",
+        tooltipEventHandler
+      );
+    };
+  }, [activeLookerRef, onLookerSetSubscribers, tooltipEventHandler]);
 
   useEffect(() => {
     // reset tooltip state when modal is closed
@@ -71,27 +70,12 @@ export const ModalContent = React.memo(() => {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      lookerRef.current &&
-        lookerRef.current.removeEventListener("tooltip", tooltipEventHandler);
-    };
-  }, [tooltipEventHandler]);
-
   return (
     <ContentColumn>
       <ModalNavigation onNavigate={onNavigate} />
       <ErrorBoundary onReset={() => {}}>
         <Suspense>
-          {isGroup ? (
-            <GroupContextProvider lookerRefCallback={lookerRefCallback}>
-              <Group />
-            </GroupContextProvider>
-          ) : is3D || isPcd ? (
-            <Sample3d />
-          ) : (
-            <Sample lookerRefCallback={lookerRefCallback} />
-          )}
+          {isGroup ? <Group /> : is3D ? <Sample3d /> : <Sample2D />}
           {jsonPanel.isOpen && (
             <JSONPanel
               containerRef={jsonPanel.containerRef}
@@ -137,6 +121,28 @@ registerComponent({
   surfaces: "modal",
   helpMarkdown: `
 ###### My Modal
+
+Use \`Ctrl + drag\` to do something cool.
+
+What is this plugin?
+
+- It's a modal plugin
+- It's a simple plugin
+- It's a foo plugin
+- It's a bar plugin
+- Learn more at [fiftyone.ai](https://fiftyone.ai).
+    `,
+  activator: () => true,
+});
+
+registerComponent({
+  name: "foo-modal-2",
+  component: TrivialModalPanel,
+  label: "foo-modal-2",
+  type: PluginComponentType.Panel,
+  surfaces: "modal",
+  helpMarkdown: `
+###### My Modal 2
 
 Use \`Ctrl + drag\` to do something cool.
 

@@ -1,7 +1,8 @@
 import * as fos from "@fiftyone/state";
 import { useHelpPanel, useJSONPanel } from "@fiftyone/state";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 import { useRecoilCallback } from "recoil";
+import { modalContext } from "./modal-context";
 
 export const usePanels = () => {
   const jsonPanel = useJSONPanel();
@@ -36,4 +37,14 @@ export const useInitializeImaVidSubscriptions = () => {
   );
 
   return { subscribeToImaVidStateChanges };
+};
+
+export const useModalContext = () => {
+  const ctx = useContext(modalContext);
+
+  if (typeof ctx === "undefined") {
+    throw new Error("modal context is not defined");
+  }
+
+  return ctx;
 };

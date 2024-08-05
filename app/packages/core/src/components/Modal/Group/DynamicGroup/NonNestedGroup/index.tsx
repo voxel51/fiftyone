@@ -4,9 +4,8 @@ import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../../Actions";
-import Sample from "../../../Sample";
+import { Sample2D } from "../../../Sample2D";
 import { Sample3d } from "../../../Sample3d";
-import { useGroupContext } from "../../GroupContextProvider";
 import { GroupSuspense } from "../../GroupSuspense";
 import { DynamicGroupCarousel } from ".././carousel/DynamicGroupCarousel";
 import { GroupElementsLinkBar } from "../pagination";
@@ -25,7 +24,6 @@ const ElementsContainer = styled.div`
 `;
 
 export const NonNestedDynamicGroup = () => {
-  const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();
 
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
@@ -60,10 +58,7 @@ export const NonNestedDynamicGroup = () => {
           {isBigLookerVisible && (
             <GroupSuspense>
               {parent !== "point_cloud" && parent !== "three_d" ? (
-                <Sample
-                  lookerRefCallback={lookerRefCallback}
-                  lookerRef={lookerRef}
-                />
+                <Sample2D />
               ) : (
                 <Sample3d />
               )}
@@ -90,7 +85,7 @@ const NonNestedDynamicGroupBar = ({
         zIndex: 10000,
       }}
     >
-      <ModalActionsRow isGroup lookerRef={lookerRef} />
+      <ModalActionsRow isGroup />
     </Bar>
   );
 };
