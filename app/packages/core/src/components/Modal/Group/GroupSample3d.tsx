@@ -7,7 +7,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { SampleWrapper } from "../Sample";
+import { SampleWrapper } from "../Sample2D";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 import { GroupSuspense } from "./GroupSuspense";

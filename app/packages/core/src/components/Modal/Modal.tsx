@@ -4,9 +4,11 @@ import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
+import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
@@ -30,6 +32,7 @@ const ModalContainer = styled.div`
   justify-content: center;
   overflow: hidden;
   box-shadow: 0 20px 25px -20px #000;
+  z-index: 10001;
 `;
 
 const SpacesContainer = styled.div`
@@ -62,21 +65,51 @@ const Modal = () => {
       : { width: "95%", height: "90%", borderRadius: "3px" };
   }, [isFullScreen]);
 
+  const activeLookerRef = useRef<fos.Lookers>();
+
+  const onLookerSetSubscribers = useRef<((looker: fos.Lookers) => void)[]>([]);
+
+  const onLookerSet = useCallback((looker: fos.Lookers) => {
+    onLookerSetSubscribers.current.forEach((sub) => sub(looker));
+  }, []);
+
+  const setActiveLookerRef = useCallback(
+    (looker: fos.Lookers) => {
+      activeLookerRef.current = looker;
+      onLookerSet(looker);
+    },
+    [onLookerSet]
+  );
+
   return ReactDOM.createPortal(
-    <ModalWrapper ref={wrapperRef} onClick={onClickModalWrapper}>
-      <ModalContainer
-        style={{ ...screenParams, zIndex: 10001 }}
-        data-cy="modal"
-      >
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+    <modalContext.Provider
+      value={{
+        activeLookerRef,
+        setActiveLookerRef,
+        onLookerSetSubscribers,
+      }}
+    >
+      <ModalActionsRow />
+      <ModalWrapper ref={wrapperRef} onClick={onClickModalWrapper}>
         <TooltipInfo />
-        <SpacesContainer>
-          <ModalSpace />
-        </SpacesContainer>
-        <Sidebar render={renderEntry} modal={true} />
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
-      </ModalContainer>
-    </ModalWrapper>,
+        <ModalContainer style={{ ...screenParams }} data-cy="modal">
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+            }}
+          >
+            <SpacesContainer>
+              <ModalSpace />
+            </SpacesContainer>
+          </div>
+          <Sidebar render={renderEntry} modal={true} />
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+        </ModalContainer>
+      </ModalWrapper>
+    </modalContext.Provider>,
     document.getElementById("modal") as HTMLDivElement
   );
 };
