@@ -696,7 +696,6 @@ export function pluralize(
 // @fiftyone/utilities does not use the plugin, so this helper
 // is defined
 export const env = (): ImportMetaEnv => {
-  return { VITE_NO_STATE: true };
   return import.meta.env;
 };
 
