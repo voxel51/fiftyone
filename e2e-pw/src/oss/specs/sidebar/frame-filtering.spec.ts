@@ -71,7 +71,7 @@ test.describe("frame filtering", () => {
       datasetNameFilteringDisabled
     );
     await grid.actionsRow.toggleDisplayOptions();
-    await sidebar.asserter.assertFieldArrowRemoved("frames.detections");
+    await sidebar.asserter.assertFieldDisabled("frames.detections");
     await sidebar.asserter.assertFieldEnabled("metadata.size_bytes");
     await sidebar.asserter.assertCheckboxesEnabled([
       "frames.detections",
