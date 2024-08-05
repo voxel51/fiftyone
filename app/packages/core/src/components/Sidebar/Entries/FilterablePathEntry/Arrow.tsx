@@ -5,7 +5,8 @@ import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import AddIndex from "./AddIndex";
+import DisabledReason from "./DisabledReason";
+import { LIGHTNING_MODE } from "../../../../utils/links";
 
 export default ({
   id,
@@ -37,7 +38,10 @@ export default ({
 
   if (unindexed && !unlocked) {
     return (
-      <Tooltip text={<AddIndex />} placement="top-center">
+      <Tooltip
+        text={<DisabledReason text={"add an index"} href={LIGHTNING_MODE} />}
+        placement="top-center"
+      >
         {arrow}
       </Tooltip>
     );
