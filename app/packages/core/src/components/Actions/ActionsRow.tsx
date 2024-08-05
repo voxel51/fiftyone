@@ -61,6 +61,7 @@ import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
 import { ActionDiv } from "./utils";
+
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
@@ -500,20 +501,18 @@ const ToggleSidebar: React.FC<
 });
 
 const ModalActionsRowContainer = styled.div`
+  z-index: 100001;
   position: fixed;
-  z-index: 10000000000;
-  display: flex;
   right: 3em;
   top: 0.5em;
+  display: flex;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
   align-items: center;
-  overflow-x: hidden;
-  opacity: 0.7;
+  opacity: 0.8;
   transition: opacity 0.1s ease-in;
 
   &:hover {
-    overflow-x: auto;
     opacity: 1;
     transition: opacity 0.1s ease-out;
   }
@@ -522,10 +521,14 @@ const ModalActionsRowContainer = styled.div`
     font-size: 14px;
   }
 
-  div {
+  > div {
     max-height: 21px;
+
+    > div:first-child {
+      max-height: 21px;
+    }
   }
-`;
+}`;
 
 const DraggableHandleIconContainer = styled.div`
   cursor: grab;
