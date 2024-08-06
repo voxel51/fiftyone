@@ -1,5 +1,5 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
-import { Schema } from "@fiftyone/utilities";
+import { BUILT_IN_PANEL_PRIORITY_CONST, Schema } from "@fiftyone/utilities";
 import Map from "./Map";
 import MapIcon from "@mui/icons-material/Map";
 import MapTabIndicator from "./MapTabIndicator";
@@ -15,6 +15,7 @@ registerComponent({
   Icon: MapIcon,
   panelOptions: {
     TabIndicator: MapTabIndicator,
+    priority: BUILT_IN_PANEL_PRIORITY_CONST,
   },
 });
 
