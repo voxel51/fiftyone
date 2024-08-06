@@ -287,9 +287,9 @@ export const resetZoom: Control = {
 };
 
 export const settings: Control = {
-  title: "Settings",
-  shortcut: "s",
-  detail: "Toggle the settings panel",
+  title: "Preferences",
+  shortcut: "p",
+  detail: "Toggle the preferences panel",
   action: (update, dispatchEvent) => {
     update(
       ({ showOptions, config: { thumbnail }, options: { showControls } }) => {

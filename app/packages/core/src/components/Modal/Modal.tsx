@@ -105,7 +105,9 @@ const Modal = () => {
   const keysHandler = useRecoilCallback(
     ({ set }) =>
       async (e: KeyboardEvent) => {
-        if (e.key === "f") {
+        if (e.key === "s") {
+          set(fos.sidebarVisible(true), (prev) => !prev);
+        } else if (e.key === "f") {
           set(fos.fullscreen, (prev) => !prev);
         } else if (e.key === "Escape") {
           if (activeLookerRef.current) {
