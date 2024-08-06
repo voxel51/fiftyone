@@ -172,7 +172,6 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
-  fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
   inSelectionMode: boolean;
@@ -450,7 +449,6 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   },
   customizeColorSetting: [],
   smoothMasks: true,
-  fullscreen: false,
   zoomPad: 0.2,
   selected: false,
   inSelectionMode: false,

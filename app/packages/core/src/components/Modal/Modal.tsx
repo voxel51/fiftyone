@@ -1,8 +1,8 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
@@ -73,6 +73,54 @@ const Modal = () => {
 
   const renderEntry = useModalSidebarRenderEntry();
 
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+
+  const modalCloseHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        const isTooltipCurrentlyLocked = await snapshot.getPromise(
+          fos.isTooltipLocked
+        );
+        if (isTooltipCurrentlyLocked) {
+          set(fos.isTooltipLocked, false);
+          return;
+        }
+
+        jsonPanel.close();
+        helpPanel.close();
+
+        const isFullScreen = await snapshot.getPromise(fos.fullscreen);
+
+        if (isFullScreen) {
+          set(fos.fullscreen, false);
+          return;
+        }
+
+        clearModal();
+      },
+    [clearModal, jsonPanel, helpPanel]
+  );
+
+  const keysHandler = useRecoilCallback(
+    ({ set }) =>
+      async (e: KeyboardEvent) => {
+        if (e.key === "f") {
+          set(fos.fullscreen, (prev) => !prev);
+        } else if (e.key === "Escape") {
+          if (activeLookerRef.current) {
+            // we handle close logic in modal + other places
+            return;
+          } else {
+            await modalCloseHandler();
+          }
+        }
+      },
+    []
+  );
+
+  fos.useEventHandler(document, "keyup", keysHandler);
+
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
   const screenParams = useMemo(() => {
@@ -83,10 +131,20 @@ const Modal = () => {
 
   const activeLookerRef = useRef<fos.Lookers>();
 
+  // this is so that other components can add event listeners to the active looker
   const onLookerSetSubscribers = useRef<((looker: fos.Lookers) => void)[]>([]);
 
   const onLookerSet = useCallback((looker: fos.Lookers) => {
     onLookerSetSubscribers.current.forEach((sub) => sub(looker));
+
+    looker.addEventListener("close", modalCloseHandler);
+  }, []);
+
+  // cleanup effect
+  useEffect(() => {
+    return () => {
+      activeLookerRef.current?.removeEventListener("close", modalCloseHandler);
+    };
   }, []);
 
   const setActiveLookerRef = useCallback(
