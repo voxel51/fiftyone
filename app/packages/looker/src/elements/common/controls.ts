@@ -245,7 +245,7 @@ export class OptionsButtonElement<
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.style.display = "flex";
-    element.title = "Settings (s)";
+    element.title = "Preferences (p)";
     element.style.gridArea = "2 / 15 / 2 / 15";
     element.appendChild(options);
     return element;
