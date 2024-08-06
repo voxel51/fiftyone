@@ -117,9 +117,29 @@ const dispatchSideEffect = ({
     return;
   }
 
+  session.modalSelector = nextEntry.state.modalSelector;
+
+  if (
+    currentEntry.state.event === "modal" ||
+    nextEntry.state.event === "modal"
+  ) {
+    if (nextEntry.state.event !== "modal") {
+      session.selectedLabels = [];
+    }
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: nextEntry.state.modalSelector?.groupId,
+        id: nextEntry.state.modalSelector?.id,
+        subscription,
+      },
+    });
+    return;
+  }
+
   session.selectedLabels = [];
   session.selectedSamples = new Set();
-  session.modalSelector = nextEntry.state.modalSelector;
+
 
   const currentDataset: string | undefined =
     // @ts-ignore
@@ -139,20 +159,6 @@ const dispatchSideEffect = ({
     return;
   }
 
-  if (
-    currentEntry.state.event === "modal" ||
-    nextEntry.state.event === "modal"
-  ) {
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: nextEntry.state.modalSelector?.groupId,
-        id: nextEntry.state.modalSelector?.id,
-        subscription,
-      },
-    });
-    return;
-  }
 
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
