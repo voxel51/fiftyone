@@ -41,12 +41,6 @@ const useLookerOptionsUpdate = () => {
   );
 };
 
-const useFullscreen = () => {
-  return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
-    set(fos.fullscreen, event.detail);
-  });
-};
-
 const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
     set(fos.showOverlays, event.detail);
@@ -144,7 +138,6 @@ export const ModalLooker = React.memo(
 
     const updateLookerOptions = useLookerOptionsUpdate();
     useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
-    useEventHandler(looker, "fullscreen", useFullscreen());
     useEventHandler(looker, "showOverlays", useShowOverlays());
     useEventHandler(looker, "reset", () => {
       setReset((c) => !c);
@@ -153,20 +146,20 @@ export const ModalLooker = React.memo(
     const jsonPanel = fos.useJSONPanel();
     const helpPanel = fos.useHelpPanel();
 
-    useEventHandler(
-      looker,
-      "close",
-      useCallback(() => {
-        if (isTooltipLocked) {
-          setIsTooltipLocked(false);
-          return;
-        }
+    // useEventHandler(
+    //   looker,
+    //   "close",
+    //   useCallback(() => {
+    //     if (isTooltipLocked) {
+    //       setIsTooltipLocked(false);
+    //       return;
+    //     }
 
-        jsonPanel.close();
-        helpPanel.close();
-        clearModal();
-      }, [clearModal, jsonPanel, helpPanel, isTooltipLocked])
-    );
+    //     jsonPanel.close();
+    //     helpPanel.close();
+    //     clearModal();
+    //   }, [clearModal, jsonPanel, helpPanel, isTooltipLocked])
+    // );
 
     useEventHandler(looker, "select", useOnSelectLabel());
     useEventHandler(looker, "error", (event) => handleError(event.detail));

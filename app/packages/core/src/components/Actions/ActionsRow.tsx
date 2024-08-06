@@ -23,6 +23,8 @@ import {
   Check,
   ColorLens,
   FlipToBack,
+  Fullscreen,
+  FullscreenExit,
   KeyboardArrowLeft,
   KeyboardArrowRight,
   List,
@@ -464,6 +466,22 @@ const SaveFilters = ({ adaptiveMenuItemProps }: ActionProps) => {
   ) : null;
 };
 
+const ToggleModalFullScreen = () => {
+  const [fullScreen, setFullScreen] = useRecoilState(fos.fullscreen);
+
+  return (
+    <PillButton
+      icon={fullScreen ? <FullscreenExit /> : <Fullscreen />}
+      open={fullScreen}
+      highlight={fullScreen}
+      onClick={() => setFullScreen(!fullScreen)}
+      tooltipPlacement="bottom"
+      title={fullScreen ? "Exit fullscreen (f)" : "Enter fullscreen (f)"}
+      data-cy="action-toggle-fullscreen"
+    />
+  );
+};
+
 const ToggleSidebar: React.FC<
   ActionProps & {
     modal: boolean;
@@ -714,8 +732,8 @@ export const ModalActionsRow = () => {
         {isGroup && <GroupMediaVisibilityContainer modal={true} />}
         <BrowseOperations modal />
         <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
+        <ToggleModalFullScreen />
         <ToggleSidebar modal={true} />
-        <DragActionsRow />
       </ModalActionsRowContainer>
     </Draggable>
   );

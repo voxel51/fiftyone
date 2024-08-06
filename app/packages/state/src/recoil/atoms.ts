@@ -76,6 +76,9 @@ export const cropToContent = atomFamily<boolean, boolean>({
 export const fullscreen = atom<boolean>({
   key: "fullscreen",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fullscreen", { valueClass: "boolean" }),
+  ],
 });
 
 export const showOverlays = atom<boolean>({

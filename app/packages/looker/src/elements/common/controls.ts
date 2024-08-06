@@ -4,8 +4,6 @@
 
 import {
   crop,
-  fullscreen as fullscreenIcon,
-  fullscreenExit,
   help as helpIcon,
   json as jsonIcon,
   minus,
@@ -18,7 +16,6 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 import {
   cropToContent,
-  fullscreen,
   help,
   json,
   settings,
@@ -78,45 +75,6 @@ export class ControlsElement<
       this.element.style.height = "0";
     }
     this.showControls = showControls;
-    return this.element;
-  }
-}
-
-export class FullscreenButtonElement<
-  State extends BaseState
-> extends BaseElement<State, HTMLImageElement> {
-  private fullscreen: boolean;
-
-  getEvents(): Events<State> {
-    return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        fullscreen.action(update, dispatchEvent);
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerClickable);
-    element.style.padding = "2px";
-    element.style.display = "flex";
-    element.style.gridArea = "2 / 12 / 2 / 12";
-    return element;
-  }
-
-  renderSelf({ options: { fullscreen } }: Readonly<State>) {
-    if (this.fullscreen !== fullscreen) {
-      this.fullscreen = fullscreen;
-      fullscreen
-        ? this.element.classList.add(lookerControlActive)
-        : this.element.classList.remove(lookerControlActive);
-      if (this.element.firstChild) this.element.firstChild.remove();
-      this.element.appendChild(fullscreen ? fullscreenExit : fullscreenIcon);
-      this.element.title = `Toggle fullscreen (f)`;
-    }
-
     return this.element;
   }
 }
