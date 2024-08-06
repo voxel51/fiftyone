@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 
+import asyncio
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -64,6 +65,30 @@ def _make_registrar():
 
     registrar.all = registry
     return registrar
+
+
+def supports_sync_async(func):
+    """
+    Decorator to make a function support both sync and async execution.
+    """
+
+    def sync_wrapper(*args, **kwargs):
+        try:
+            # Attempt to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If the event loop is running, call the function asynchronously
+            return func(*args, **kwargs)
+        except RuntimeError:
+            # If no running loop is found, create a new one for synchronous
+            # execution
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(func(*args, **kwargs))
+            finally:
+                loop.close()
+
+    return sync_wrapper
 
 
 # Keeps track of all `ViewStage` methods
@@ -9063,7 +9088,10 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, **kwargs):
+    @supports_sync_async
+    async def create_index(
+        self, field_or_spec, unique=False, using_async=False, **kwargs
+    ):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -9097,6 +9125,7 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            using_async (False): whether to use asynchronous execution
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
 
@@ -9175,12 +9204,20 @@ class SampleCollection(object):
             # Satisfactory index already exists
             return index_name
 
-        if is_frame_index:
-            coll = self._dataset._frame_collection
+        if using_async:
+            coll = (
+                self._dataset._frame_collection_async
+                if is_frame_index
+                else self.self._dataset._sample_collection_async
+            )
+            name = await coll.create_index(index_spec, unique=unique, **kwargs)
         else:
-            coll = self._dataset._sample_collection
-
-        name = coll.create_index(index_spec, unique=unique, **kwargs)
+            coll = (
+                self._dataset._frame_collection
+                if is_frame_index
+                else self._dataset._sample_collection
+            )
+            name = coll.create_index(index_spec, unique=unique, **kwargs)
 
         if single_field_index:
             name = input_spec[0][0]

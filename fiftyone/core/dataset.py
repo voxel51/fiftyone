@@ -6999,6 +6999,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foo.get_db_conn()[self._frame_collection_name]
 
     @property
+    def _sample_collection_async(self):
+        return foo.get_async_db_conn()[self._sample_collection_name]
+
+    @property
+    def _frame_collection_async(self):
+        if self._frame_collection_name is None:
+            return None
+
+        return foo.get_async_db_conn()[self._frame_collection_name]
+
+    @property
     def _frame_indexes(self):
         frame_collection = self._frame_collection
         if frame_collection is None:
