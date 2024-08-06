@@ -56,8 +56,8 @@ def parse_field_str(field_str):
     return ftype, embedded_doc_type, subfield
 
 
-def validate_type_constraints(ftype=None, embedded_doc_type=None):
-    """Validates the given type constraints.
+def validate_constraints(ftype=None, embedded_doc_type=None, read_only=None):
+    """Validates the given field constraints.
 
     Args:
         ftype (None): an optional field type or iterable of types to enforce.
@@ -65,6 +65,8 @@ def validate_type_constraints(ftype=None, embedded_doc_type=None):
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        read_only (None): whether to optionally enforce that the field is
+            read-only (True) or not read-only (False)
 
     Raises:
         ValueError: if the constraints are not valid
@@ -102,9 +104,15 @@ def validate_type_constraints(ftype=None, embedded_doc_type=None):
                     % (_embedded_doc_type, foo.BaseEmbeddedDocument)
                 )
 
+    if read_only is not None:
+        if not isinstance(read_only, bool):
+            raise ValueError("read_only must be a boolean")
 
-def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
-    """Determines whether the field matches the given type constraints.
+
+def matches_constraints(
+    field, ftype=None, embedded_doc_type=None, read_only=None
+):
+    """Determines whether the field matches the given constraints.
 
     Args:
         field: a :class:`Field`
@@ -113,6 +121,8 @@ def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        read_only (None): whether to optionally enforce that the field is
+            read-only (True) or not read-only (False)
 
     Returns:
         True/False
@@ -133,11 +143,20 @@ def matches_type_constraints(field, ftype=None, embedded_doc_type=None):
         ):
             return False
 
+    if read_only is not None:
+        return read_only == field.read_only
+
     return True
 
 
-def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
-    """Validates that the field matches the given type constraints.
+def validate_field(
+    field,
+    path=None,
+    ftype=None,
+    embedded_doc_type=None,
+    read_only=None,
+):
+    """Validates that the field matches the given constraints.
 
     Args:
         field: a :class:`Field`
@@ -148,6 +167,8 @@ def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to enforce. Must be subclass(es) of
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        read_only (None): whether to optionally enforce that the field is
+            read-only (True) or not read-only (False)
 
     Raises:
         ValueError: if the constraints are not valid
@@ -184,6 +205,13 @@ def validate_field(field, path=None, ftype=None, embedded_doc_type=None):
                 % (_make_prefix(path), field.document_type, embedded_doc_type)
             )
 
+    if read_only is not None:
+        if read_only != field.read_only:
+            raise ValueError(
+                "%s has read_only %s, not %s"
+                % (_make_prefix(path), field.read_only, read_only)
+            )
+
 
 def _make_prefix(path):
     if path is None:
@@ -192,10 +220,29 @@ def _make_prefix(path):
     return "Field '%s'" % path
 
 
+def get_field_metadata(field):
+    """Returns a dict of editable metadata for the given field.
+
+    Args:
+        field: a :class:`Field`
+
+    Returns:
+        a dict of field metadata
+    """
+    metadata = {}
+    for key in ("description", "info", "read_only"):
+        value = getattr(field, key, None)
+        if value is not None:
+            metadata[key] = value
+
+    return metadata
+
+
 def flatten_schema(
     schema,
     ftype=None,
     embedded_doc_type=None,
+    read_only=None,
     include_private=False,
 ):
     """Returns a flattened copy of the given schema where all embedded document
@@ -209,25 +256,45 @@ def flatten_schema(
         embedded_doc_type (None): an optional embedded document type or
             iterable of types to which to restrict the returned schema. Must be
             subclass(es) of :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+        read_only (None): whether to restrict to (True) or exclude (False)
+            read-only fields. By default, all fields are included
         include_private (False): whether to include fields that start with
             ``_`` in the returned schema
 
     Returns:
         a dictionary mapping flattened paths to :class:`Field` instances
     """
-    validate_type_constraints(ftype=ftype, embedded_doc_type=embedded_doc_type)
+    validate_constraints(
+        ftype=ftype,
+        embedded_doc_type=embedded_doc_type,
+        read_only=read_only,
+    )
 
     _schema = {}
     for name, field in schema.items():
         _flatten(
-            _schema, "", name, field, ftype, embedded_doc_type, include_private
+            _schema,
+            "",
+            name,
+            field,
+            ftype,
+            embedded_doc_type,
+            read_only,
+            include_private,
         )
 
     return _schema
 
 
 def _flatten(
-    schema, prefix, name, field, ftype, embedded_doc_type, include_private
+    schema,
+    prefix,
+    name,
+    field,
+    ftype,
+    embedded_doc_type,
+    read_only,
+    include_private,
 ):
     if not include_private and name.startswith("_"):
         return
@@ -237,8 +304,11 @@ def _flatten(
     else:
         prefix = name
 
-    if matches_type_constraints(
-        field, ftype=ftype, embedded_doc_type=embedded_doc_type
+    if matches_constraints(
+        field,
+        ftype=ftype,
+        embedded_doc_type=embedded_doc_type,
+        read_only=read_only,
     ):
         schema[prefix] = field
 
@@ -254,6 +324,7 @@ def _flatten(
                 _field,
                 ftype,
                 embedded_doc_type,
+                read_only,
                 include_private,
             )
 
@@ -264,12 +335,14 @@ class Field(mongoengine.fields.BaseField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
         self.__dataset = None
         self.__path = None
@@ -363,6 +436,27 @@ class Field(mongoengine.fields.BaseField):
     def info(self, info):
         self._info = info
 
+    @property
+    def read_only(self):
+        """Whether the field is read-only.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            field = dataset.get_field("uniqueness")
+            field.read_only = True
+            field.save()
+        """
+        return self._read_only
+
+    @read_only.setter
+    def read_only(self, read_only):
+        self._read_only = read_only
+
     def copy(self):
         """Returns a copy of the field.
 
@@ -419,12 +513,14 @@ class IntField(mongoengine.fields.IntField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -439,12 +535,14 @@ class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -465,12 +563,14 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
 
 class BooleanField(mongoengine.fields.BooleanField, Field):
@@ -479,12 +579,14 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def validate(self, value):
         if not isinstance(value, (bool, np.bool_)):
@@ -497,12 +599,14 @@ class DateField(mongoengine.fields.DateField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -536,12 +640,17 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def validate(self, value):
         if not isinstance(value, datetime):
@@ -554,12 +663,14 @@ class FloatField(mongoengine.fields.FloatField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -588,16 +699,24 @@ class StringField(mongoengine.fields.StringField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
 
 class ColorField(StringField):
-    """A string field that holds a hex color string like '#FF6D04'."""
+    """A string field that holds a hex color string like '#FF6D04'.
+
+    Args:
+        description (None): an optional description
+        info (None): an optional info dict
+        read_only (False): whether the field is read-only
+    """
 
     def validate(self, value):
         try:
@@ -617,9 +736,17 @@ class ListField(mongoengine.fields.ListField, Field):
             type of the list elements
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, field=None, description=None, info=None, **kwargs):
+    def __init__(
+        self,
+        field=None,
+        description=None,
+        info=None,
+        read_only=False,
+        **kwargs,
+    ):
         if field is not None:
             if not isinstance(field, Field):
                 raise ValueError(
@@ -630,6 +757,7 @@ class ListField(mongoengine.fields.ListField, Field):
         super().__init__(field=field, **kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def __str__(self):
         if self.field is not None:
@@ -654,6 +782,7 @@ class HeatmapRangeField(ListField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __init__(self, **kwargs):
@@ -687,9 +816,17 @@ class DictField(mongoengine.fields.DictField, Field):
             of the values in the dict
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, field=None, description=None, info=None, **kwargs):
+    def __init__(
+        self,
+        field=None,
+        description=None,
+        info=None,
+        read_only=False,
+        **kwargs,
+    ):
         if field is not None:
             if not isinstance(field, Field):
                 raise ValueError(
@@ -700,6 +837,7 @@ class DictField(mongoengine.fields.DictField, Field):
         super().__init__(field=field, **kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def __str__(self):
         if self.field is not None:
@@ -736,6 +874,7 @@ class KeypointsField(ListField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __str__(self):
@@ -758,6 +897,7 @@ class PolylinePointsField(ListField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __str__(self):
@@ -789,6 +929,7 @@ class _GeoField(Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     # The GeoJSON type of the field. Subclasses must implement this
@@ -815,6 +956,7 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "Point"
@@ -836,6 +978,7 @@ class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "LineString"
@@ -864,6 +1007,7 @@ class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "Polygon"
@@ -885,6 +1029,7 @@ class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "MultiPoint"
@@ -912,6 +1057,7 @@ class GeoMultiLineStringField(
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "MultiLineString"
@@ -945,6 +1091,7 @@ class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     _TYPE = "MultiPolygon"
@@ -967,12 +1114,14 @@ class VectorField(mongoengine.fields.BinaryField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -1011,12 +1160,14 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, read_only=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def to_mongo(self, value):
         if value is None:
@@ -1042,6 +1193,7 @@ class FrameNumberField(IntField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def validate(self, value):
@@ -1057,6 +1209,7 @@ class FrameSupportField(ListField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __init__(self, **kwargs):
@@ -1088,6 +1241,7 @@ class ClassesField(ListField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __init__(self, **kwargs):
@@ -1109,6 +1263,7 @@ class MaskTargetsField(DictField):
     Args:
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
     def __init__(self, **kwargs):
@@ -1209,13 +1364,22 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             stored in this field
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, document_type, description=None, info=None, **kwargs):
+    def __init__(
+        self,
+        document_type,
+        description=None,
+        info=None,
+        read_only=False,
+        **kwargs,
+    ):
         super().__init__(document_type, **kwargs)
         self.fields = kwargs.get("fields", [])
         self._description = description
         self._info = info
+        self._read_only = read_only
         self._selected_fields = None
         self._excluded_fields = None
         self.__fields = None
@@ -1334,6 +1498,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
         include_private=False,
         flat=False,
     ):
@@ -1348,6 +1513,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1356,15 +1523,20 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         Returns:
              a dict mapping field names to field types
         """
-        validate_type_constraints(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+        validate_constraints(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
         )
 
         schema = {}
         for name in self._get_field_names(include_private=include_private):
             field = self._fields[name]
-            if matches_type_constraints(
-                field, ftype=ftype, embedded_doc_type=embedded_doc_type
+            if matches_constraints(
+                field,
+                ftype=ftype,
+                embedded_doc_type=embedded_doc_type,
+                read_only=read_only,
             ):
                 schema[name] = field
 
@@ -1373,6 +1545,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 schema,
                 ftype=ftype,
                 embedded_doc_type=embedded_doc_type,
+                read_only=read_only,
                 include_private=include_private,
             )
 
@@ -1393,21 +1566,34 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             if val is not None:
                 v.validate(val)
 
-    def _merge_fields(self, path, field, validate=True, recursive=True):
+    def _merge_fields(
+        self,
+        path,
+        field,
+        validate=True,
+        recursive=True,
+        overwrite=False,
+    ):
         if validate:
             foo.validate_fields_match(path, field, self)
-        elif not isinstance(field, EmbeddedDocumentField):
-            return None
+
+        if not isinstance(field, EmbeddedDocumentField):
+            return None, None
 
         new_schema = {}
-        existing_fields = self._fields
+        new_metadata = {}
 
+        existing_fields = self._fields
         for name, _field in field._fields.items():
+            _path = path + "." + name
             _existing_field = existing_fields.get(name, None)
+
             if _existing_field is not None:
                 if validate:
-                    _path = path + "." + name
                     foo.validate_fields_match(_path, _field, _existing_field)
+
+                if overwrite:
+                    new_metadata[_path] = get_field_metadata(_field)
 
                 if recursive:
                     while isinstance(_existing_field, ListField):
@@ -1418,21 +1604,26 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                             _existing_field = None
 
                     if isinstance(_existing_field, EmbeddedDocumentField):
-                        _path = path + "." + name
-                        _new_schema = _existing_field._merge_fields(
+                        (
+                            _new_schema,
+                            _new_metadata,
+                        ) = _existing_field._merge_fields(
                             _path,
                             _field,
                             validate=validate,
                             recursive=recursive,
+                            overwrite=overwrite,
                         )
 
                         if _new_schema:
                             new_schema.update(_new_schema)
+
+                        if _new_metadata:
+                            new_metadata.update(_new_metadata)
             else:
-                _path = path + "." + name
                 new_schema[_path] = _field
 
-        return new_schema
+        return new_schema, new_metadata
 
     def _declare_field(self, dataset, path, field_or_doc):
         if isinstance(field_or_doc, foo.SampleFieldDocument):
@@ -1488,12 +1679,21 @@ class EmbeddedDocumentListField(
             stored in this field
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field is read-only
     """
 
-    def __init__(self, document_type, description=None, info=None, **kwargs):
+    def __init__(
+        self,
+        document_type,
+        description=None,
+        info=None,
+        read_only=False,
+        **kwargs,
+    ):
         super().__init__(document_type, **kwargs)
         self._description = description
         self._info = info
+        self._read_only = read_only
 
     def __str__(self):
         # pylint: disable=no-member

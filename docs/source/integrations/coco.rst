@@ -284,12 +284,14 @@ dataset:
     Persistent:  False
     Tags:        []
     Sample fields:
-        id:         fiftyone.core.fields.ObjectIdField
-        filepath:   fiftyone.core.fields.StringField
-        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        coco_id:    fiftyone.core.fields.IntField
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        detections:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        coco_id:          fiftyone.core.fields.IntField
 
 In the above call to
 :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`, we provide

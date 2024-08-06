@@ -871,6 +871,7 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
         include_private=False,
         flat=False,
     ):
@@ -885,6 +886,8 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -896,6 +899,7 @@ class DatasetView(foc.SampleCollection):
         schema = self._dataset.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
             include_private=include_private,
         )
 
@@ -906,6 +910,7 @@ class DatasetView(foc.SampleCollection):
                 schema,
                 ftype=ftype,
                 embedded_doc_type=embedded_doc_type,
+                read_only=read_only,
                 include_private=include_private,
             )
 
@@ -915,6 +920,7 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
         include_private=False,
         flat=False,
     ):
@@ -931,6 +937,8 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -946,6 +954,7 @@ class DatasetView(foc.SampleCollection):
         schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
             include_private=include_private,
         )
 
@@ -956,6 +965,7 @@ class DatasetView(foc.SampleCollection):
                 schema,
                 ftype=ftype,
                 embedded_doc_type=embedded_doc_type,
+                read_only=read_only,
                 include_private=include_private,
             )
 
@@ -1782,6 +1792,22 @@ class DatasetView(foc.SampleCollection):
 
         return selected_fields, excluded_fields
 
+    def _get_edited_fields(self, frames=False):
+        edited_fields = None
+
+        _view = self._base_view
+        for stage in self._stages:
+            ef = stage.get_edited_fields(_view, frames=frames)
+            if ef:
+                if edited_fields is None:
+                    edited_fields = set(ef)
+                else:
+                    edited_fields.update(ef)
+
+            _view = _view._add_view_stage(stage, validate=False)
+
+        return edited_fields
+
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
 
@@ -1810,13 +1836,6 @@ class DatasetView(foc.SampleCollection):
             view_schema = self.get_field_schema()
 
         return set(dataset_schema.keys()) - set(view_schema.keys())
-
-    def _contains_all_fields(self, frames=False):
-        selected_fields, excluded_fields = self._get_selected_excluded_fields(
-            frames=frames
-        )
-        filtered_fields = self._get_filtered_fields(frames=frames)
-        return not any((selected_fields, excluded_fields, filtered_fields))
 
     def _get_group_media_types(self):
         for stage in reversed(self._stages):

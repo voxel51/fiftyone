@@ -436,12 +436,14 @@ detection dataset:
     Media type:  image
     Num patches: 1232
     Patch fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        sample_id:    fiftyone.core.fields.ObjectIdField
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
+        id:               fiftyone.core.fields.ObjectIdField
+        sample_id:        fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
         1. ToPatches(field='ground_truth', config=None)
 
@@ -480,16 +482,18 @@ sample for each true positive, false positive, and false negative example.
     Media type:  image
     Num patches: 5363
     Patch fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        sample_id:    fiftyone.core.fields.ObjectIdField
-        type:         fiftyone.core.fields.StringField
-        iou:          fiftyone.core.fields.FloatField
-        crowd:        fiftyone.core.fields.BooleanField
+        id:               fiftyone.core.fields.ObjectIdField
+        sample_id:        fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        predictions:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        type:             fiftyone.core.fields.StringField
+        iou:              fiftyone.core.fields.FloatField
+        crowd:            fiftyone.core.fields.BooleanField
     View stages:
         1. ToEvaluationPatches(eval_key='eval', config=None)
 
@@ -525,16 +529,20 @@ by a specific field or expression in a video collection.
    Media type: video
    Num clips:  11
    Clip fields:
-       id:        fiftyone.core.fields.ObjectIdField
-       sample_id: fiftyone.core.fields.ObjectIdField
-       filepath:  fiftyone.core.fields.StringField
-       support:   fiftyone.core.fields.FrameSupportField
-       tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-       metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+       id:               fiftyone.core.fields.ObjectIdField
+       sample_id:        fiftyone.core.fields.ObjectIdField
+       filepath:         fiftyone.core.fields.StringField
+       support:          fiftyone.core.fields.FrameSupportField
+       tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+       metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
+       created_at:       fiftyone.core.fields.DateTimeField
+       last_modified_at: fiftyone.core.fields.DateTimeField
    Frame fields:
-       id:           fiftyone.core.fields.ObjectIdField
-       frame_number: fiftyone.core.fields.FrameNumberField
-       detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+       id:               fiftyone.core.fields.ObjectIdField
+       frame_number:     fiftyone.core.fields.FrameNumberField
+       created_at:       fiftyone.core.fields.DateTimeField
+       last_modified_at: fiftyone.core.fields.DateTimeField
+       detections:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
    View stages:
        1. FilterLabels(field='frames.detections', ...)
        2. ToClips(field_or_expr='frames.detections', config=None)
@@ -565,13 +573,15 @@ frame in the input collection.
    Media type:  image
    Num samples: 1279
    Sample fields:
-      id:           fiftyone.core.fields.ObjectIdField
-      filepath:     fiftyone.core.fields.StringField
-      tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-      metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-      sample_id:    fiftyone.core.fields.ObjectIdField
-      frame_number: fiftyone.core.fields.FrameNumberField
-      detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+      id:               fiftyone.core.fields.ObjectIdField
+      sample_id:        fiftyone.core.fields.ObjectIdField
+      frame_number:     fiftyone.core.fields.FrameNumberField
+      filepath:         fiftyone.core.fields.StringField
+      tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+      metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+      created_at:       fiftyone.core.fields.DateTimeField
+      last_modified_at: fiftyone.core.fields.DateTimeField
+      detections:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
    View stages:
      1. ToFrames(config=None)
 
@@ -604,11 +614,14 @@ For example, the following code creates an image collection from the "left" and
     Media type:  image
     Num samples: 400
     Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
     View stages:
         1. SelectGroupSlices(slices=['left', 'right'])
 

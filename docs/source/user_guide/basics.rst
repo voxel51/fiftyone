@@ -77,10 +77,12 @@ obtain a desired subset of the samples.
     Persistent:     False
     Tags:           []
     Sample fields:
-        id:         fiftyone.core.fields.ObjectIdField
-        filepath:   fiftyone.core.fields.StringField
-        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
 
 .. _basics-samples:
 
@@ -120,7 +122,8 @@ about the samples. Thinking of a |Dataset| as a table where each row is a
 
 All samples must have their `filepath` field populated, which points to the
 source data for the sample on disk. By default, samples are also given `id`,
-`media_type`, `metadata`, and `tags` fields that store common information:
+`media_type`, `tags`, `metadata`, `created_at`, and `last_modified_at` fields
+that store common information:
 
 .. code-block:: python
     :linenos:
@@ -139,6 +142,8 @@ source data for the sample on disk. By default, samples are also given `id`,
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
+        'created_at': None,
+        'last_modified_at': None,
     }>
 
 Custom fields can contain any Python primitive data type:
@@ -194,13 +199,15 @@ schema and thus accessible on all other samples in the dataset.
     Persistent:     False
     Tags:           []
     Sample fields:
-        id:        fiftyone.core.fields.ObjectIdField
-        filepath:  fiftyone.core.fields.StringField
-        tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        quality:   fiftyone.core.fields.FloatField
-        keypoints: fiftyone.core.fields.ListField
-        geo_json:  fiftyone.core.fields.DictField
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        quality:          fiftyone.core.fields.FloatField
+        keypoints:        fiftyone.core.fields.ListField
+        geo_json:         fiftyone.core.fields.DictField
 
 .. custombutton::
     :button_text: Learn more about sample fields
@@ -284,6 +291,8 @@ metadata about the source media of the sample.
             'height': 664,
             'num_channels': 3,
         }>,
+        'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+        'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
     }>
 
 .. _basics-labels:
@@ -350,6 +359,8 @@ Using FiftyOne's |Label| types enables you to visualize your labels in the
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
+        'created_at': None,
+        'last_modified_at': None,
         'weather': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
         'animals': <Detections: {
             'detections': [

@@ -5,6 +5,7 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import datetime
 import inspect
 import itertools
 import logging
@@ -1849,6 +1850,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 slug=doc.slug,
                 persistent=doc.persistent,
                 created_at=doc.created_at,
+                last_modified_at=doc.last_modified_at,
                 last_loaded_at=doc.last_loaded_at,
                 sample_collection_name=doc.sample_collection_name,
                 frame_collection_name=doc.frame_collection_name,
@@ -1905,6 +1907,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         media_fields = self._media_fields
         dataset_id = dataset._doc.id
+        now = datetime.utcnow()
 
         def _parse_sample(sd):
             if not os.path.isabs(sd["filepath"]):
@@ -1918,7 +1921,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             if media_fields:
                 _parse_media_fields(sd, media_fields, rel_dir)
 
+            sd["created_at"] = now
+            sd["last_modified_at"] = now
             sd["_dataset_id"] = dataset_id
+
             return sd
 
         sample_ids = foo.insert_documents(
@@ -1946,6 +1952,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 num_frames = len(frames)
 
             def _parse_frame(fd):
+                fd["created_at"] = now
+                fd["last_modified_at"] = now
                 fd["_dataset_id"] = dataset_id
                 return fd
 

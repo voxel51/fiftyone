@@ -182,6 +182,7 @@ def create_field(
     db_field=None,
     description=None,
     info=None,
+    read_only=False,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -213,6 +214,7 @@ def create_field(
             ``name`` is used
         description (None): an optional description
         info (None): an optional info dict
+        read_only (False): whether the field should be read-only
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -223,9 +225,12 @@ def create_field(
         else:
             db_field = name
 
-    # All user-defined fields are nullable
     field_kwargs = dict(
-        null=True, db_field=db_field, description=description, info=info
+        null=True,  # all user-defined fields are nullable
+        db_field=db_field,
+        description=description,
+        info=info,
+        read_only=read_only,
     )
     field_kwargs.update(kwargs)
 
@@ -307,6 +312,7 @@ def get_field_kwargs(field):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
+        "read_only": field.read_only,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -405,6 +411,7 @@ def _get_field_kwargs(value, field, dynamic):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
+        "read_only": field.read_only,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
