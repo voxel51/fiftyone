@@ -1,9 +1,14 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { isPathUserChanged } from "../hooks";
-import { getComponent, getErrorsForView, isCompositeView } from "../utils";
+import {
+  getComponent,
+  getErrorsForView,
+  isCompositeView,
+  isInitialized,
+} from "../utils";
 import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
 
@@ -20,7 +25,8 @@ export default function DynamicIO(props: ViewPropsType) {
       !isCompositeView(schema) &&
       !isEqual(data, defaultValue) &&
       !isPathUserChanged(path) &&
-      !isNullish(defaultValue)
+      !isNullish(defaultValue) &&
+      !isInitialized(props)
     ) {
       onChange(path, defaultValue, computedSchema);
     }
