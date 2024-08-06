@@ -5,12 +5,11 @@ import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import DisabledReason from "./DisabledReason";
 import {
   FRAME_FILTERING_DISABLED,
   LIGHTNING_MODE,
 } from "../../../../utils/links";
-import { isDisabledFrameFilterPath } from "@fiftyone/state";
+import DisabledReason from "./DisabledReason";
 
 export default ({
   id,
@@ -43,7 +42,7 @@ export default ({
       <Tooltip
         text={
           <DisabledReason
-            text={"frame filtering disabled"}
+            text={"frame filtering is disabled"}
             href={FRAME_FILTERING_DISABLED}
           />
         }

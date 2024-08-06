@@ -55,9 +55,9 @@ import {
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 import {
   datasetName,
+  disableFrameFiltering,
   isVideoDataset,
   stateSubscription,
-  disableFrameFiltering,
 } from "./selectors";
 import { State } from "./types";
 import {

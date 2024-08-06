@@ -366,24 +366,19 @@ class DatasetAppConfig(EmbeddedDocument):
     the App.
 
     Args:
+        color_scheme (None): an optional :class:`ColorScheme` for the dataset
+        disable_frame_filtering (False): whether to disable frame filtering for
+            video datasets in the App's grid view
+        grid_media_field ("filepath"): the default sample field from which to
+            serve media in the App's grid view
+            media_fallback (False): whether to fall back to the default media
+            field (``"filepath"``) when the alternate media field value for a
+            sample is not defined
         media_fields (["filepath"]): the list of sample fields that contain
             media and should be available to choose from the App's settings
             menus
-        grid_media_field ("filepath"): the default sample field from which to
-            serve media in the App's grid view
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
-        media_fallback (False): whether to fall back to the default media field
-            (``"filepath"``) when the alternate media field value for a sample
-            is not defined
-        disable_frame_filtering (False): whether to disable frame filtering for
-            video datasets in the App's grid view
-        sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("fast", "all", "best", "disabled")``
-        sidebar_groups (None): an optional list of
-            :class:`SidebarGroupDocument` describing sidebar groups to use in
-            the App
-        color_scheme (None): an optional :class:`ColorScheme` for the dataset
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -392,22 +387,27 @@ class DatasetAppConfig(EmbeddedDocument):
             -   ``"point-cloud"``: See the
                 :ref:`3D visualizer docs <app-3d-visualizer-config>` for
                 supported options
+        sidebar_groups (None): an optional list of
+            :class:`SidebarGroupDocument` describing sidebar groups to use in
+            the App
+        sidebar_mode (None): an optional default mode for the App sidebar.
+            Supported values are ``("fast", "all", "best", "disabled")``
     """
 
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
-    media_fields = ListField(StringField(), default=["filepath"])
+    color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
+    disable_frame_filtering = BooleanField(default=None)
     grid_media_field = StringField(default="filepath")
-    modal_media_field = StringField(default="filepath")
     media_fallback = BooleanField(default=False)
-    disable_frame_filtering = BooleanField(default=False)
-    sidebar_mode = StringField(default=None)
+    media_fields = ListField(StringField(), default=["filepath"])
+    modal_media_field = StringField(default="filepath")
+    plugins = DictField()
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
-    color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
-    plugins = DictField()
+    sidebar_mode = StringField(default=None)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):

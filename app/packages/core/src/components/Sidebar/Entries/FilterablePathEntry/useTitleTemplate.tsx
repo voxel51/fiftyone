@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -91,27 +91,25 @@ const useTitleTemplate = ({
     const unlocked = useUnlocked();
 
     return (
-      <>
-        <NameAndCountContainer
-          ref={container}
-          data-cy={`sidebar-field-container-${path}`}
-        >
-          <span key="path" data-cy={`sidebar-field-${path}`}>
-            <span ref={hoverTarget} {...hoverHandlers}>
-              {PATH_OVERRIDES[path] || path}
-            </span>
+      <NameAndCountContainer
+        ref={container}
+        data-cy={`sidebar-field-container-${path}`}
+      >
+        <span key="path" data-cy={`sidebar-field-${path}`}>
+          <span ref={hoverTarget} {...hoverHandlers}>
+            {PATH_OVERRIDES[path] || path}
           </span>
-          {modal && (
-            <Suspense>
-              <Hidden path={path} />
-            </Suspense>
-          )}
-          {!disabled && isFilterMode && (unlocked || modal) && (
-            <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-          )}
-          <Icon modal={modal} path={path} />
-        </NameAndCountContainer>
-      </>
+        </span>
+        {modal && (
+          <Suspense>
+            <Hidden path={path} />
+          </Suspense>
+        )}
+        {!disabled && isFilterMode && (unlocked || modal) && (
+          <PathEntryCounts key="count" modal={modal} path={expandedPath} />
+        )}
+        <Icon modal={modal} path={path} />
+      </NameAndCountContainer>
     );
   };
 };
