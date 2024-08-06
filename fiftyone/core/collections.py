@@ -75,12 +75,14 @@ def supports_sync_async(func):
     def sync_wrapper(*args, **kwargs):
         try:
             # Attempt to get the current event loop
-            loop = asyncio.get_running_loop()
+            logging.info("Checking for running event loop")
+            asyncio.get_running_loop()
             # If the event loop is running, call the function asynchronously
             return func(*args, **kwargs)
         except RuntimeError:
             # If no running loop is found, create a new one for synchronous
             # execution
+            logging.info("No running event loop found, running synchronously")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -9205,13 +9207,15 @@ class SampleCollection(object):
             return index_name
 
         if using_async:
+            logging.info("Creating index '%s' asynchronously...", index_name)
             coll = (
                 self._dataset._frame_collection_async
                 if is_frame_index
-                else self.self._dataset._sample_collection_async
+                else self._dataset._sample_collection_async
             )
             name = await coll.create_index(index_spec, unique=unique, **kwargs)
         else:
+            logging.info("Creating index '%s' synchronously...", index_name)
             coll = (
                 self._dataset._frame_collection
                 if is_frame_index
