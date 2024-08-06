@@ -50,7 +50,7 @@ export default function ButtonView(props: ViewPropsType) {
               });
             }
             if (onClick) {
-              onClick();
+              onClick(computedParams, props);
             }
           }}
           startIcon={icon_position === "left" ? Icon : undefined}

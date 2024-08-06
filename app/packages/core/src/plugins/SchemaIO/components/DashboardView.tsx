@@ -213,7 +213,6 @@ export default function DashboardView(props: ViewPropsType) {
           const value = data?.[id];
           const label = property.view?.layout?.title || value?.name || id;
           const itemPath = getPath(path, id);
-          console.log();
           const baseItemProps: BoxProps = {
             sx: { padding: 0.25, position: "relative" },
           };
