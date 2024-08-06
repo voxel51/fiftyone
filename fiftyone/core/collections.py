@@ -73,29 +73,27 @@ def supports_sync_async(func):
     """
 
     def sync_wrapper(*args, **kwargs):
+        new_loop = None
         try:
             # Only run async if the `using_async` flag is set
             if kwargs.get("using_async", False):
                 logging.info("Running async, checking for running event loop")
-                # Attempt to get the current event loop
-                asyncio.get_running_loop()
                 # Call the function asynchronously
                 return func(*args, **kwargs)
+            else:
+                loop = asyncio.get_event_loop()
+                return loop.run_until_complete(func(*args, **kwargs))
         except RuntimeError:
             # If no running loop is found, create a new one for synchronous
             # execution
             logging.info("RuntimeError, probably no running event loop found")
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            return new_loop.run_until_complete(func(*args, **kwargs))
         finally:
-            logging.info("Creating a new event loop")
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(func(*args, **kwargs))
-            except Exception as e:
-                logging.error(f"Exception occurred: {e}")
-                raise
-            finally:
-                loop.close()
+            # Close the loop if it was created
+            if new_loop:
+                new_loop.close()
 
     return sync_wrapper
 
