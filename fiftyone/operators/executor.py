@@ -8,6 +8,7 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
+import contextlib
 import inspect
 import logging
 import os
@@ -20,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.internal.context_vars as ficv
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
@@ -28,8 +30,7 @@ from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
-from fiftyone.operators.utils import resolve_operation_user
-
+from fiftyone.internal.api_requests import resolve_operation_user
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +235,10 @@ async def execute_or_delegate_operator(
     else:
         operator, executor, ctx, inputs = prepared
 
-    execution_options = operator.resolve_execution_options(ctx)
+    # User code
+    with ctx:
+        execution_options = operator.resolve_execution_options(ctx)
+
     if (
         not execution_options.allow_immediate_execution
         and not execution_options.allow_delegated_execution
@@ -243,9 +247,13 @@ async def execute_or_delegate_operator(
             "This operation does not support immediate OR delegated execution"
         )
 
-    should_delegate = (
-        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
-    )
+    # User code
+    with ctx:
+        should_delegate = (
+            operator.resolve_delegation(ctx)
+            or ctx.requesting_delegated_execution
+        )
+
     if should_delegate:
         if not execution_options.allow_delegated_execution:
             logger.warning(
@@ -340,7 +348,11 @@ async def prepare_operator_executor(
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
     )
-    inputs = operator.resolve_input(ctx)
+
+    # User code
+    with ctx:
+        inputs = operator.resolve_input(ctx)
+
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
@@ -351,24 +363,26 @@ async def prepare_operator_executor(
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
-    result = await (
-        operator.execute(ctx)
-        if asyncio.iscoroutinefunction(operator.execute)
-        else fou.run_sync_task(operator.execute, ctx)
-    )
+    # User code
+    with ctx:
+        result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else fou.run_sync_task(operator.execute, ctx)
+        )
 
-    if not exhaust:
-        return result
+        if not exhaust:
+            return result
 
-    if inspect.isgenerator(result):
-        # Fastest way to exhaust sync generator, re: itertools consume()
-        #   https://docs.python.org/3/library/itertools.html
-        collections.deque(result, maxlen=0)
-    elif inspect.isasyncgen(result):
-        async for _ in result:
-            pass
-    else:
-        return result
+        if inspect.isgenerator(result):
+            # Fastest way to exhaust sync generator, re: itertools consume()
+            #   https://docs.python.org/3/library/itertools.html
+            collections.deque(result, maxlen=0)
+        elif inspect.isasyncgen(result):
+            async for _ in result:
+                pass
+        else:
+            return result
 
 
 async def resolve_type(
@@ -410,9 +424,11 @@ async def resolve_type(
         operator._plugin_secrets, request_token=request_token
     )
     try:
-        return operator.resolve_type(
-            ctx, request_params.get("target", "inputs")
-        )
+        # User code
+        with ctx:
+            return operator.resolve_type(
+                ctx, request_params.get("target", "inputs")
+            )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
@@ -476,7 +492,11 @@ async def resolve_execution_options(
         search_params = {}
         search_params[operator.uri] = ["available_operators"]
         matching_orcs = orc_svc.list(search=search_params)
-        execution_options = operator.resolve_execution_options(ctx)
+
+        # User code
+        with ctx:
+            execution_options = operator.resolve_execution_options(ctx)
+
         execution_options.update(available_orchestrators=matching_orcs)
         return execution_options
 
@@ -510,7 +530,9 @@ async def resolve_placement(
         user=execution_context_user,
     )
     try:
-        return operator.resolve_placement(ctx)
+        # User code
+        with ctx:
+            return operator.resolve_placement(ctx)
     except Exception as e:
         return ExecutionResult(error=str(e))
 
@@ -533,12 +555,14 @@ class ExecutionContextUser(object):
         name=None,
         role=None,
         dataset_permission=None,
+        _request_token=None,
     ):
         self.email = email
         self.id = id
         self.name = name
         self.role = role
         self.dataset_permission = dataset_permission
+        self._request_token = _request_token
 
     @classmethod
     def from_dict(self, user):
@@ -548,6 +572,7 @@ class ExecutionContextUser(object):
             name=user.get("name", None),
             role=user.get("role", None),
             dataset_permission=user.get("dataset_permission", None),
+            _request_token=user.get("_request_token"),
         )
 
     def to_dict(self):
@@ -557,13 +582,14 @@ class ExecutionContextUser(object):
             "name": self.name,
             "role": self.role,
             "dataset_permission": self.dataset_permission,
+            # Do not serialize _request_token field
         }
 
     def serialize(self):
         return self.to_dict()
 
 
-class ExecutionContext(object):
+class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
 
     Operators can use the execution context to access the view, dataset, and
@@ -599,6 +625,7 @@ class ExecutionContext(object):
         self._view = None
         self._ops = Operations(self)
         self.user = user
+        self.__context_tokens = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -774,6 +801,34 @@ class ExecutionContext(object):
     def user_id(self) -> Optional[str]:
         """The ID of the user executing the operation."""
         return self.user.id if self.user else None
+
+    @property
+    def user_request_token(self) -> Optional[str]:
+        """The request token authenticating the user executing the operation."""
+        return self.user._request_token if self.user else None
+
+    def __enter__(self):
+        if self.__context_tokens:
+            raise RuntimeError(
+                "ExecutionContext can't run with nested with expressions"
+            )
+
+        self.__context_tokens = [
+            ficv.running_user_id.set(self.user_id),
+            ficv.running_user_request_token.set(self.user_request_token),
+            ficv.no_singleton_cache.set(True),
+        ]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        (
+            running_uid_tok,
+            running_user_request_token,
+            singleton_token,
+        ) = self.__context_tokens
+        self.__context_tokens = None
+        ficv.running_user_id.reset(running_uid_tok)
+        ficv.running_user_request_token.reset(running_user_request_token)
+        ficv.no_singleton_cache.reset(singleton_token)
 
     def prompt(
         self,

@@ -5,7 +5,7 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.internal.requests import make_request
+from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_token_from_request
 
 

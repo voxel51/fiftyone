@@ -22,7 +22,7 @@ from fiftyone.teams.authorize import (
     authorize_gql_class,
 )
 
-from fiftyone.internal.requests import make_request
+from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_session_cookie_name
 
 logger = logging.getLogger(__name__)

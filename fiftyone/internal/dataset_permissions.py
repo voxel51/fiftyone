@@ -9,22 +9,10 @@ import enum
 import inspect
 from functools import wraps
 
-import fiftyone.internal.context_vars as fo_context_vars
-from fiftyone.internal.util import get_api_url
-from fiftyone.internal.requests import make_sync_request
-
-
-_API_URL = get_api_url()
-
-_DATASET_USER_PERMISSION_QUERY = """
-query DatasetUserPermissionQuery($dataset: String!, $userId: String!) {
-  dataset(identifier: $dataset) {
-    user(id: $userId) {
-      activePermission
-    }
-  }
-}
-"""
+from fiftyone.internal import api_requests, context_vars as fo_context_vars
+from fiftyone.internal.util import (
+    access_nested_element,
+)
 
 
 class DatasetPermission(enum.Enum):
@@ -59,17 +47,16 @@ class DatasetPermissionException(PermissionError):
         super().__init__(message)
 
 
-def _access_nested_element(root, nested_attrs):
-    node = root
-    # Traverse nested attributes if any, get()ing or getattr()ing along the way.
-    for attr in nested_attrs:
-        if node is None:
-            break
-        elif isinstance(node, dict):
-            node = node.get(attr, None)
-        else:
-            node = getattr(node, attr, None)
-    return node
+def create_dataset_with_current_user_permissions(dataset):
+    """Attempt to create the dataset serverside via API, which attaches
+    permissions also. Returns True if API did create and caller should not
+    create again.
+    """
+    user_id = fo_context_vars.running_user_id.get()
+    if not user_id:
+        return False
+
+    return api_requests.create_dataset_with_user_permissions(dataset, user_id)
 
 
 def get_dataset_permissions_for_current_user(dataset):
@@ -78,21 +65,17 @@ def get_dataset_permissions_for_current_user(dataset):
     if not user_id:
         return None
 
-    result = make_sync_request(
-        f"{_API_URL}/graphql/v1",
-        None,  # FIFTYONE_API_KEY will be used if token is None
-        _DATASET_USER_PERMISSION_QUERY,
-        variables={"dataset": dataset, "userId": user_id},
-    )
-
-    result = _access_nested_element(
-        result, ("data", "dataset", "user", "activePermission")
-    )
+    result = api_requests.get_dataset_permissions_for_user(dataset, user_id)
 
     if not result or result == "NO_ACCESS":
         raise DatasetPermissionException("Dataset", None)
 
     return DatasetPermission[result]
+
+
+def running_in_user_context():
+    """Return True if current running context has a user attached to it."""
+    return bool(fo_context_vars.running_user_id.get())
 
 
 def _get_argument_by_param_name(func, param_name, *args, **kwargs):
@@ -116,7 +99,7 @@ def _get_argument_by_param_name(func, param_name, *args, **kwargs):
         )
 
     # Traverse nested attributes if any, get()ing or getattr()ing along the way.
-    arg = _access_nested_element(arg, nested_attrs)
+    arg = access_nested_element(arg, nested_attrs)
 
     return arg
 

@@ -15,7 +15,7 @@ from fiftyone.internal.secrets.util import normalize_secret_key
 from fiftyone.internal.util import (
     get_api_url,
 )
-from fiftyone.internal.requests import make_request, make_sync_request
+from fiftyone.internal.api_requests import make_request, make_sync_request
 from fiftyone.utils.decorators import async_ttl_cache
 from fiftyone.internal.constants import TTL_CACHE_LIFETIME_SECONDS
 

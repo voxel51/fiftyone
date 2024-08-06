@@ -46,6 +46,7 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.internal import context_vars as ficv
 from fiftyone.internal import dataset_permissions
 from fiftyone.internal.dataset_permissions import (
     requires_can_edit,
@@ -80,6 +81,10 @@ def list_datasets(glob_patt=None, tags=None, info=False):
     Returns:
         a list of dataset names or info dicts
     """
+    # Don't check for permissions to filter list of datasets, as it is a lot of
+    #   squeeze without much juice! If user doesn't have access to a dataset
+    #   they just won't be able to load it.
+
     if info:
         return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
@@ -375,20 +380,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if overwrite and dataset_exists(name):
             delete_dataset(name)
 
+        self.__permission = None
         if _create:
-            self.__permission = dataset_permissions.DatasetPermission.MANAGE
-            doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                self, name, persistent=persistent, **kwargs
-            )
+            docs = self._create_dataset_docs(name, persistent, **kwargs)
         else:
-            self.__permission = (
-                dataset_permissions.get_dataset_permissions_for_current_user(
-                    name
-                )
-            )
-            doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self, name, virtual=_virtual
-            )
+            docs = self._load_dataset_docs(name, _virtual)
+
+        doc, sample_doc_cls, frame_doc_cls = docs
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
@@ -405,6 +403,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if not _virtual:
             self._update_last_loaded_at()
+
+    def _load_dataset_docs(self, name, _virtual):
+        self.__permission = (
+            dataset_permissions.get_dataset_permissions_for_current_user(name)
+        )
+        return _load_dataset(self, name, virtual=_virtual)
+
+    def _create_dataset_docs(self, name, persistent, **kwargs):
+        # Only attempt server creation if persistent. If we can't do it then
+        #   fall back to local creation with no permissions attached.
+        if (
+            persistent
+            and dataset_permissions.create_dataset_with_current_user_permissions(
+                name
+            )
+        ):
+            self.__permission = dataset_permissions.DatasetPermission.MANAGE
+            return _load_dataset(self, name, virtual=False)
+        else:
+            return _create_dataset(self, name, persistent=persistent, **kwargs)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -756,8 +774,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
         # Update singleton
-        self._instances.pop(_name, None)
-        self._instances[name] = self
+        # If we're not using the cache in this context, then just make sure
+        #   the singleton (if any) is renamed and replaced. STW 7/29/24
+        singleton = self._instances.pop(_name, None)
+        if ficv.no_singleton_cache.get():
+            if singleton is not None:
+                singleton.name = name
+                self._instances[name] = singleton
+        else:
+            self._instances[name] = self
 
     @property
     def head_name(self):
@@ -800,6 +825,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @persistent.setter
     @requires_can_manage
     def persistent(self, value):
+        if dataset_permissions.running_in_user_context():
+            message = (
+                "Changing dataset persistence after creation is "
+                "unsupported in this context."
+            )
+            if value:
+                message += " Use `fo.Dataset(..., persistent=True)` instead."
+            raise NotImplementedError(message)
+
         self._doc.persistent = value
         self.save()
 

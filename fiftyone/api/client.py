@@ -39,12 +39,14 @@ class Client:
     def __init__(
         self,
         base_url: str,
-        key: str,
+        key: str = None,
+        token: str = None,
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
         disable_websocket_info_logs: bool = True,
     ):
         self.__base_url = base_url
         self.__key = key
+        self.__token = token
         self._timeout = timeout
         self.__disable_websocket_info_logs = disable_websocket_info_logs
 
@@ -54,9 +56,17 @@ class Client:
         except metadata.PackageNotFoundError:
             version = ""
         self._extra_headers = {
-            "X-API-Key": self.__key,
             "User-Agent": f"FiftyOne Teams client/{version}",
         }
+        if self.__key:
+            self._extra_headers["X-API-Key"] = self.__key
+        elif self.__token:
+            self._extra_headers["Authorization"] = self.__token
+        else:
+            raise ValueError(
+                "Client requires either key or token to authenticate"
+            )
+
         self._session.headers.update(self._extra_headers)
 
     def __eq__(self, other: Any) -> bool:
