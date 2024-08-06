@@ -9,7 +9,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { MoveEvent, ReactSortable } from "react-sortablejs";
+import { MoveEvent, ReactSortable, SortableEvent } from "react-sortablejs";
 import { useSetRecoilState } from "recoil";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
@@ -121,7 +121,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
     draggingEndedRef.current = false;
   }
 
-  function onEnd() {
+  function onEnd(e: SortableEvent) {
     draggingEndedRef.current = true;
     if (previewItems) {
       handleOrderChange(previewItems);
@@ -129,7 +129,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
     if (pendingMoveRef.current.length === 2) {
       const updatedItems = [...items];
       const [from, to] = pendingMoveRef.current;
-      if (from !== to) {
+      if (from !== to && e.oldIndex !== e.newIndex) {
         if (from > to) {
           updatedItems.splice(to, 0, updatedItems[from]);
           updatedItems.splice(from + 1, 1);
@@ -175,7 +175,11 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
         onStart={onStart}
         onEnd={onEnd}
       >
-        <AdaptiveMenuItems items={computedItems} variant="visible" />
+        <AdaptiveMenuItems
+          items={computedItems}
+          variant="visible"
+          refresh={autoFitNodes}
+        />
       </ReactSortable>
       {hidden > 0 && (
         <MoreItems
@@ -192,6 +196,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
             handleOrderChange(updatedItems);
           }}
           orientation={moreItemsOrientation}
+          refresh={autoFitNodes}
         />
       )}
     </Box>
@@ -199,7 +204,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
 }
 
 function AdaptiveMenuItems(props: AdaptiveMenuItemsPropsType) {
-  const { items, variant, closeOverflow } = props;
+  const { items, variant, closeOverflow, refresh } = props;
   return items.map((item) => {
     const { Component, id } = item;
     return (
@@ -208,13 +213,14 @@ function AdaptiveMenuItems(props: AdaptiveMenuItemsPropsType) {
         variant={variant}
         data-item-id={id}
         closeOverflow={closeOverflow}
+        refresh={refresh}
       />
     );
   });
 }
 
 function MoreItems(props: MoreItemsPropsType) {
-  const { id, items, onMove, onEnd, onStart, orientation } = props;
+  const { id, items, onMove, onEnd, onStart, orientation, refresh } = props;
   const [open, setOpen] = React.useState(false);
   const setEscapeHandlerIds = useSetRecoilState(escapeKeyHandlerIdsAtom);
 
@@ -276,6 +282,7 @@ function MoreItems(props: MoreItemsPropsType) {
           closeOverflow={() => {
             setOpen(false);
           }}
+          refresh={refresh}
         />
       </ReactSortable>
     </PopoutButton>
@@ -285,6 +292,7 @@ function MoreItems(props: MoreItemsPropsType) {
 export type AdaptiveMenuItemComponentPropsType = {
   variant: "visible" | "overflow";
   closeOverflow?: () => void;
+  refresh?: () => void;
 };
 
 type AdaptiveMenuItemPropsType = {
@@ -313,6 +321,7 @@ type MoreItemsPropsType = {
   onStart: () => void;
   onOrderChange?: (items: AdaptiveMenuItems) => void;
   orientation?: MenuOrientation;
+  refresh?: () => void;
 };
 
 type MenuVariant = "visible" | "overflow";
@@ -322,4 +331,5 @@ type AdaptiveMenuItemsPropsType = {
   items: AdaptiveMenuItems;
   variant: MenuVariant;
   closeOverflow?: () => void;
+  refresh?: () => void;
 };
