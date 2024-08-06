@@ -653,7 +653,6 @@ export const disabledFrameFilterPaths = selector<Set<string>>({
   get: ({ get }) => {
     const paths = new Set<string>();
     const disableFrames = Boolean(get(disableFrameFiltering));
-    console.log(disableFrames);
     const frameFields = get(atoms.frameFields);
     if (disableFrames) {
       frameFields.forEach((frame) => {
