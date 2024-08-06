@@ -47,6 +47,7 @@ export type SpaceNodeJSON = {
 export type PanelProps = {
   node: SpaceNode;
   spaceId: string;
+  isModalPanel?: boolean;
 };
 
 export type PanelTabProps = {

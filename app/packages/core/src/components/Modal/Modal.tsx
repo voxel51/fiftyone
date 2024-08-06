@@ -38,7 +38,23 @@ const ModalContainer = styled.div`
 const SpacesContainer = styled.div`
   width: 100%;
   height: 100%;
-  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const SidebarPanelBlendInDiv = styled.div`
+  height: 2em;
+  background-color: #262626;
+  width: 100%;
+  margin-bottom: 1px;
+  flex-shrink: 0;
+`;
+
+const SidebarContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 `;
 
 const Modal = () => {
@@ -94,18 +110,13 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }} data-cy="modal">
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              width: "100%",
-            }}
-          >
-            <SpacesContainer>
-              <ModalSpace />
-            </SpacesContainer>
-          </div>
-          <Sidebar render={renderEntry} modal={true} />
+          <SpacesContainer>
+            <ModalSpace />
+          </SpacesContainer>
+          <SidebarContainer>
+            <SidebarPanelBlendInDiv />
+            <Sidebar render={renderEntry} modal={true} />
+          </SidebarContainer>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
         </ModalContainer>
       </ModalWrapper>
