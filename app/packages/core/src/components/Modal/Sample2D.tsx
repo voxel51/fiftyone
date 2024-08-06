@@ -34,7 +34,6 @@ export const SampleWrapper = ({
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const sample = useRecoilValue(sampleAtom);
-  const isGroup = useRecoilValue(isDynamicGroup);
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
@@ -45,16 +44,6 @@ export const SampleWrapper = ({
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hoverEventHandlers}
     >
-      {
-        !isGroup && null
-        // test: remove this i'm just testing moving this to the modal component
-        // <SampleBar
-        //   sampleId={sample.sample._id}
-        //   visible={hovering}
-        //   hoveringRef={hoveringRef}
-        //   actions={actions}
-        // />
-      }
       {children}
     </div>
   );

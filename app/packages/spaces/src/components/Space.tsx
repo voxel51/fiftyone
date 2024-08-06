@@ -50,7 +50,7 @@ export default function Space({ node, id, type }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && <Workspaces type={type} />}
+        {node.isRoot() && !(type === "modal") && <Workspaces type={type} />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -80,8 +80,12 @@ export default function Space({ node, id, type }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && <Workspaces type={type} />}
-        <PanelTabs data-type="panel-container" data-cy="panel-container">
+        {node.isRoot() && !(type === "modal") && <Workspaces type={type} />}
+        <PanelTabs
+          data-type="panel-container"
+          data-cy="panel-container"
+          isModal={type === "modal"}
+        >
           <ReactSortable
             group="panel-tabs"
             list={node.children}
@@ -132,16 +136,20 @@ export default function Space({ node, id, type }: SpaceProps) {
           </ReactSortable>
         </PanelTabs>
         {node.hasActiveChild() && activeChild ? (
-          <Panel node={activeChild as SpaceNode} spaceId={id} />
+          <Panel
+            node={activeChild as SpaceNode}
+            spaceId={id}
+            isModalPanel={type === "modal"}
+          />
         ) : null}
       </PanelContainer>
     );
   } else if (node.isPanel() && node) {
-    return <Panel node={node} spaceId={id} />;
+    return <Panel node={node} spaceId={id} isModalPanel={type === "modal"} />;
   } else if (node.isEmpty()) {
     return (
       <PanelContainer data-type="panel-container">
-        <PanelTabs>
+        <PanelTabs isModal={type === "modal"}>
           <AddPanelButton node={node} spaceId={id} />
         </PanelTabs>
       </PanelContainer>

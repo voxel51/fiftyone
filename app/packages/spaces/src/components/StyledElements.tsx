@@ -12,15 +12,20 @@ export const PanelContainer = styled.div`
   overflow: hidden;
 `;
 
-export const PanelTabs = styled.div`
+export const PanelTabs = styled.div<{ isModal?: boolean }>`
   display: flex;
   background: var(--fo-palette-background-header);
   padding-bottom: 0px;
+  position: ${(props) => (props.isModal ? "absolute" : "initial")};
+  height: ${(props) => (props.isModal ? "2em" : "initial")};
+  z-index: 100001;
+  width: 100%;
 `;
 
-export const StyledPanel = styled.div`
+export const StyledPanel = styled.div<{ isModalPanel?: boolean }>`
   width: 100%;
-  height: calc(100% - 28px);
+  height: ${(props) => (props.isModalPanel ? "100%" : "calc(100% - 28px)")};
+  padding-top: ${(props) => (props.isModalPanel ? "2.2em" : "initial")};
   overflow: auto;
   background: var(--fo-palette-background-mediaSpace);
 `;
