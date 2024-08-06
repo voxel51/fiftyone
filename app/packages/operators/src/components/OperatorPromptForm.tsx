@@ -20,6 +20,7 @@ export function OperatorPromptForm({ operatorPrompt }) {
         onChange={setFormState}
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
+        initialData={operatorPrompt.promptingOperator.initialParams}
       />
     </Box>
   );

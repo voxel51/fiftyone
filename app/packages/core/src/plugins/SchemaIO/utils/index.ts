@@ -8,6 +8,7 @@ import {
   ViewPropsType,
 } from "./types";
 import { getLayoutProps } from "./layout";
+import { isNullish } from "@fiftyone/utilities";
 
 export function log(...args: string[]) {
   console.groupCollapsed(">>>", ...args);
@@ -93,4 +94,9 @@ const COMPOSITE_VIEWS = [
 
 export function isCompositeView(schema: SchemaType) {
   return COMPOSITE_VIEWS.includes(schema?.view?.component);
+}
+
+export function isInitialized(props: ViewPropsType) {
+  const { initialData, path } = props;
+  return !isNullish(get(initialData, path));
 }
