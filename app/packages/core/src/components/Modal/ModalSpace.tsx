@@ -3,7 +3,7 @@ import { SpaceNodeJSON, usePanels, useSpaces } from "@fiftyone/spaces";
 import { Space } from "@fiftyone/spaces/src/components";
 import { FIFTYONE_MODAL_SPACE_ID } from "@fiftyone/state/src/constants";
 import React, { useCallback, useMemo } from "react";
-import { ModalContent } from "./ModalContentPlugin";
+import { ModalSample } from "./ModalSamplePlugin";
 
 const SAMPLE_MODAL_PLUGIN_NAME = "SampleModal";
 
@@ -44,7 +44,7 @@ export const ModalSpace = React.memo(() => {
 
 registerComponent({
   name: SAMPLE_MODAL_PLUGIN_NAME,
-  component: ModalContent,
+  component: ModalSample,
   label: "Sample",
   type: PluginComponentType.Panel,
   surfaces: "modal",

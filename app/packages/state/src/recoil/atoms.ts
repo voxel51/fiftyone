@@ -86,6 +86,16 @@ export const showOverlays = atom<boolean>({
   default: true,
 });
 
+export const showModalNavigationControls = atom<boolean>({
+  key: "showModalNavigationControls",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("showModalNavigationControls", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
