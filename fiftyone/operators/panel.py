@@ -12,7 +12,7 @@ from fiftyone.operators.operator import OperatorConfig, Operator
 import pydash
 
 
-class PanelOperatorConfig(OperatorConfig):
+class PanelConfig(OperatorConfig):
     """A configuration for a panel operator."""
 
     def __init__(
@@ -47,6 +47,10 @@ class PanelOperatorConfig(OperatorConfig):
             "light_icon": self.light_icon,
             "allow_multiple": self.allow_multiple,
         }
+
+
+# Alias for backwards compatibility
+PanelOperatorConfig = PanelConfig
 
 
 class Panel(Operator):

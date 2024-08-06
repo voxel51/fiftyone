@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from fiftyone.operators.panel import (
     Panel,
-    PanelOperatorConfig,
+    PanelConfig,
     PanelRef,
     PanelRefState,
     PanelRefData,
@@ -19,7 +19,7 @@ def simulate_event(panel, mock_ctx, event_name):
 class TestPanel(Panel):
     @property
     def config(self):
-        return PanelOperatorConfig(name="test_panel", label="Test Panel")
+        return PanelConfig(name="test_panel", label="Test Panel")
 
     def render(self, ctx):
         panel = Object()
