@@ -92,5 +92,11 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await modal.assert.verifySelectionCount(1);
     await modal.close();
     await grid.assert.isSelectionCountEqualTo(1);
+
+    await grid.openNthSample(1);
+    await modal.assert.verifySelectionCount(1);
+    await grid.url.back();
+    await modal.assert.isClosed();
+    await grid.assert.isSelectionCountEqualTo(1);
   });
 });
