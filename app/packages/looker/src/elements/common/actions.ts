@@ -43,12 +43,7 @@ const escape: Control = {
       ({
         hasDefaultZoom,
         showOptions,
-        options: {
-          fullscreen: fullscreenSetting,
-          showJSON,
-          showHelp,
-          selectedLabels,
-        },
+        options: { showJSON, showHelp, selectedLabels },
       }) => {
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
@@ -69,11 +64,6 @@ const escape: Control = {
           return {
             setZoom: true,
           };
-        }
-
-        if (fullscreenSetting) {
-          fullscreen.action(update, dispatchEvent, eventKey);
-          return {};
         }
 
         if (selectedLabels.length) {
@@ -345,23 +335,6 @@ export const controlsToggle: Control = {
   },
 };
 
-export const fullscreen: Control = {
-  title: "Fullscreen",
-  shortcut: "f",
-  detail: "Toggle fullscreen mode",
-  action: (update, dispatchEvent) => {
-    update(
-      ({ config: { thumbnail }, options: { fullscreen } }) =>
-        thumbnail ? {} : { options: { fullscreen: !fullscreen } },
-      ({ config: { thumbnail }, options: { fullscreen } }) => {
-        if (!thumbnail) {
-          dispatchEvent("fullscreen", fullscreen);
-        }
-      }
-    );
-  },
-};
-
 export const json: Control = {
   title: "JSON",
   shortcut: "j",
@@ -390,7 +363,6 @@ export const COMMON = {
   resetZoom,
   controlsToggle,
   settings,
-  fullscreen,
   json,
   wheel,
   toggleOverlays,
@@ -619,12 +591,7 @@ const videoEscape: Control<VideoState> = {
         showOptions,
         frameNumber,
         config: { support },
-        options: {
-          fullscreen: fullscreenSetting,
-          showHelp,
-          showJSON,
-          selectedLabels,
-        },
+        options: { showHelp, showJSON, selectedLabels },
         lockedToSupport,
       }) => {
         if (showHelp) {
@@ -660,11 +627,6 @@ const videoEscape: Control<VideoState> = {
             frameNumber: 1,
             playing: false,
           };
-        }
-
-        if (fullscreenSetting) {
-          fullscreen.action(update, dispatchEvent, eventKey);
-          return {};
         }
 
         if (selectedLabels.length) {
