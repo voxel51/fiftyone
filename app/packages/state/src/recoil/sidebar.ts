@@ -641,11 +641,8 @@ export const disabledCheckboxPaths = selector<Set<string>>({
  */
 export const disabledFilterPaths = selector<Set<string>>({
   key: "disabledFilterPaths",
-  get: ({ get }) => {
-    const paths = get(fullyDisabledPaths);
-    get(disabledFrameFilterPaths).forEach((path) => paths.add(path));
-    return new Set(paths);
-  },
+  get: ({ get }) =>
+    new Set([...get(fullyDisabledPaths), ...get(disabledFrameFilterPaths)]),
 });
 
 export const disabledFrameFilterPaths = selector<Set<string>>({
@@ -667,7 +664,7 @@ export const disabledFrameFilterPaths = selector<Set<string>>({
  * Returns a set of paths that should have both their checkbox and filter
  * dropdown disabled in the sidebar
  */
-export const fullyDisabledPaths = selector<Set<string>>({
+export const fullyDisabledPaths = selector({
   key: "fullyDisabledPaths",
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
@@ -717,7 +714,8 @@ export const fullyDisabledPaths = selector<Set<string>>({
         `frames.${parent.name}.`
       ).forEach((path) => paths.add(path));
     });
-    return new Set(paths);
+
+    return paths;
   },
 });
 

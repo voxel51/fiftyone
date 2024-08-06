@@ -150,7 +150,7 @@ export const disableFrameFiltering = selector<boolean>({
     const globalDisableFrameFiltering = Boolean(
       get(appConfigOption({ modal: true, key: "disableFrameFiltering" }))
     );
-    console.log(datasetDisableFrameFiltering, globalDisableFrameFiltering);
+
     return datasetDisableFrameFiltering !== null
       ? datasetDisableFrameFiltering
       : globalDisableFrameFiltering;
