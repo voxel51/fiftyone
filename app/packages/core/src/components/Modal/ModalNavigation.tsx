@@ -27,7 +27,7 @@ const Arrow = styled.span<{ isRight?: boolean }>`
   background-color: var(--fo-palette-background-button);
   box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
   border-radius: 3px;
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity 0.15s ease-in-out;
   transition: box-shadow 0.15s ease-in-out;
   &:hover {
