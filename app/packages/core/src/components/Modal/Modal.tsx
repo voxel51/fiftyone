@@ -1,3 +1,4 @@
+import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
@@ -6,9 +7,11 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
+import { usePanels as useLookerPanels } from "./hooks";
+import { modalContext } from "./modal-context";
+import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
-import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
@@ -33,6 +36,17 @@ const ModalContainer = styled.div`
   overflow: hidden;
   box-shadow: 0 20px 25px -20px #000;
   z-index: 10001;
+`;
+
+const ModalNavigationContainer = styled.div<{ isSidebarVisible: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: ${({ isSidebarVisible }) =>
+    isSidebarVisible ? "calc(100% - 300px)" : "100%"};
+  height: 100%;
+  position: absolute;
+  left: 0;
 `;
 
 const SpacesContainer = styled.div`
@@ -73,8 +87,7 @@ const Modal = () => {
 
   const renderEntry = useModalSidebarRenderEntry();
 
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
+  const { jsonPanel, helpPanel, onNavigate } = useLookerPanels();
 
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -124,6 +137,10 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const showModalNavigationControls = useRecoilValue(
+    fos.showModalNavigationControls
+  );
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -170,6 +187,11 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }} data-cy="modal">
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+          {showModalNavigationControls && (
+            <ModalNavigationContainer isSidebarVisible={isSidebarVisible}>
+              <ModalNavigation onNavigate={onNavigate} />
+            </ModalNavigationContainer>
+          )}
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
@@ -178,6 +200,22 @@ const Modal = () => {
             <Sidebar render={renderEntry} modal={true} />
           </SidebarContainer>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+
+          {jsonPanel.isOpen && (
+            <JSONPanel
+              containerRef={jsonPanel.containerRef}
+              onClose={() => jsonPanel.close()}
+              onCopy={() => jsonPanel.copy()}
+              json={jsonPanel.json}
+            />
+          )}
+          {helpPanel.isOpen && (
+            <HelpPanel
+              containerRef={helpPanel.containerRef}
+              onClose={() => helpPanel.close()}
+              items={helpPanel.items}
+            />
+          )}
         </ModalContainer>
       </ModalWrapper>
     </modalContext.Provider>,

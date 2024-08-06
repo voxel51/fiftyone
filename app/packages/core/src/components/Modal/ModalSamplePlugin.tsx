@@ -1,4 +1,4 @@
-import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
+import { ErrorBoundary } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useCallback, useEffect } from "react";
@@ -6,7 +6,6 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
 import { usePanels as useLookerPanels, useModalContext } from "./hooks";
-import ModalNavigation from "./ModalNavigation";
 import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
 
@@ -20,8 +19,8 @@ const ContentColumn = styled.div`
   position: relative;
 `;
 
-export const ModalContent = React.memo(() => {
-  const { jsonPanel, helpPanel, onNavigate } = useLookerPanels();
+export const ModalSample = React.memo(() => {
+  const { jsonPanel, helpPanel } = useLookerPanels();
 
   const isGroup = useRecoilValue(fos.isGroup);
   const is3D = useRecoilValue(fos.is3DDataset);
@@ -72,25 +71,9 @@ export const ModalContent = React.memo(() => {
 
   return (
     <ContentColumn>
-      <ModalNavigation onNavigate={onNavigate} />
       <ErrorBoundary onReset={() => {}}>
         <Suspense>
           {isGroup ? <Group /> : is3D ? <Sample3d /> : <Sample2D />}
-          {jsonPanel.isOpen && (
-            <JSONPanel
-              containerRef={jsonPanel.containerRef}
-              onClose={() => jsonPanel.close()}
-              onCopy={() => jsonPanel.copy()}
-              json={jsonPanel.json}
-            />
-          )}
-          {helpPanel.isOpen && (
-            <HelpPanel
-              containerRef={helpPanel.containerRef}
-              onClose={() => helpPanel.close()}
-              items={helpPanel.items}
-            />
-          )}
         </Suspense>
       </ErrorBoundary>
     </ContentColumn>

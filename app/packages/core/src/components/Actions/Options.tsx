@@ -324,6 +324,37 @@ const HideFieldSetting = () => {
   );
 };
 
+const ShowModalNav = () => {
+  const [showModalNavigationControls, setShowModalNavigationControls] =
+    useRecoilState(fos.showModalNavigationControls);
+  const theme = useTheme();
+
+  return (
+    <>
+      <ActionOption
+        id="show-modal-navigation-controls"
+        text="Modal navigation controls"
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <TabOption
+        active={showModalNavigationControls ? "enable" : "disable"}
+        options={["disable", "enable"].map((value) => ({
+          text: value,
+          title: value,
+          onClick: () =>
+            setShowModalNavigationControls(value === "enable" ? true : false),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   anchorRef: RefObject<HTMLElement>;
@@ -337,6 +368,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
       {modal && <HideFieldSetting />}
+      {modal && <ShowModalNav />}
       {isDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
