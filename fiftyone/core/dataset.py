@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 class DatasetNotFoundError(ValueError):
     """Exception raised when a dataset is not found."""
+
     def __init__(self, name):
         self._dataset_name = name
         super().__init__(f"Dataset {name} not found")
@@ -1080,17 +1081,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return "\n".join(lines)
 
-    def stats(self, include_media=False, compressed=False):
+    def stats(
+        self,
+        include_media=False,
+        include_indexes=False,
+        compressed=False,
+    ):
         """Returns stats about the dataset on disk.
 
         The ``samples`` keys refer to the sample documents stored in the
         database.
 
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
         The ``media`` keys refer to the raw media associated with each sample
         on disk.
 
-        For video datasets, the ``frames`` keys refer to the frame documents
-        stored in the database.
+        The ``index[es]`` keys refer to the indexes associated with the
+        dataset.
 
         Note that dataset-level metadata such as annotation runs are not
         included in this computation.
@@ -1098,6 +1107,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the dataset
+            include_indexes (False): whether to return the stats on the indexes
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False)
@@ -1137,6 +1147,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
+
+        if include_indexes:
+            ii = self.get_index_information(include_size=True)
+            index_bytes = {k: v["size"] for k, v in ii.items()}
+            indexes_bytes = sum(index_bytes.values())
+
+            stats["indexes_count"] = len(index_bytes)
+            stats["indexes_bytes"] = indexes_bytes
+            stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            stats["index_bytes"] = index_bytes
+            stats["index_sizes"] = {
+                k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
+            }
+            total_bytes += indexes_bytes
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)

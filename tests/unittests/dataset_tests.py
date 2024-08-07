@@ -533,6 +533,34 @@ class DatasetTests(unittest.TestCase):
             dataset.create_index("non_existent_field")
 
     @drop_datasets
+    def test_index_sizes(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("gt.detections.label")
+        dataset.create_index("frames.gt.detections.label")
+
+        info = dataset.get_index_information(include_size=True)
+
+        indexes = [
+            "id",
+            "filepath",
+            "gt.detections.label",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+            "frames.gt.detections.label",
+        ]
+
+        self.assertListEqual(dataset.list_indexes(), indexes)
+        self.assertSetEqual(set(info.keys()), set(indexes))
+        for d in info.values():
+            self.assertTrue(d.get("size") is not None)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
