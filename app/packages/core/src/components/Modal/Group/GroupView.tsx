@@ -73,7 +73,7 @@ export const GroupView = () => {
             )}
             {isMainVisible && (
               <EnsureGroupSample>
-                <GroupImageVideoSample lookerRef={lookerRef} />
+                <GroupImageVideoSample />
               </EnsureGroupSample>
             )}
             {shouldRender3DBelow && <GroupSample3d />}
