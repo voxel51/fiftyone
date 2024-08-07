@@ -38,12 +38,12 @@ const ModalContainer = styled.div`
   z-index: 10001;
 `;
 
-const ModalNavigationContainer = styled.div<{ sidebarWidth: number }>`
+const ModalNavigationContainer = styled.div<{ sidebarwidth: number }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: ${({ sidebarWidth }) =>
-    sidebarWidth ? `calc(100% - ${sidebarWidth}px)` : "100%"};
+  width: ${({ sidebarwidth }) =>
+    sidebarwidth ? `calc(100% - ${sidebarwidth}px)` : "100%"};
   height: 100%;
   position: absolute;
   left: 0;
@@ -54,6 +54,7 @@ const SpacesContainer = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const SidebarPanelBlendInDiv = styled.div`
@@ -158,7 +159,7 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
-  const sidebarWidth = useRecoilValue(fos.sidebarWidth(true));
+  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -205,7 +206,7 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }} data-cy="modal">
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigationContainer sidebarWidth={sidebarWidth}>
+          <ModalNavigationContainer sidebarwidth={sidebarwidth}>
             <ModalNavigation onNavigate={onNavigate} />
           </ModalNavigationContainer>
           <SpacesContainer>
