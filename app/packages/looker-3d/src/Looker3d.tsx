@@ -69,14 +69,6 @@ export const Looker3d = () => {
   );
 
   useHotkey(
-    "KeyF",
-    async ({ set }) => {
-      set(fos.fullscreen, (f) => !f);
-    },
-    []
-  );
-
-  useHotkey(
     "Escape",
     async ({ snapshot, set }) => {
       const isTooltipLocked = await snapshot.getPromise(fos.isTooltipLocked);
