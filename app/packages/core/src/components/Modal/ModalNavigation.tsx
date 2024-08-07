@@ -4,11 +4,7 @@ import {
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useRef } from "react";
-import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
 const Arrow = styled.span<{ isRight?: boolean }>`
@@ -21,13 +17,13 @@ const Arrow = styled.span<{ isRight?: boolean }>`
   left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 40vh;
+  bottom: 33vh;
   width: 3rem;
   height: 3rem;
   background-color: var(--fo-palette-background-button);
   box-shadow: 0 1px 3px var(--fo-palette-custom-shadowDark);
   border-radius: 3px;
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity 0.15s ease-in-out;
   transition: box-shadow 0.15s ease-in-out;
   &:hover {
@@ -39,7 +35,10 @@ const Arrow = styled.span<{ isRight?: boolean }>`
 `;
 
 const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
-  const [isNavigationHidden, setIsNavigationHidden] = React.useState(false);
+  const showModalNavigationControls = useRecoilValue(
+    fos.showModalNavigationControls
+  );
+
   const countLoadable = useRecoilValueLoadable(
     fos.count({ path: "", extended: true, modal: false })
   );
@@ -64,51 +63,37 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     setModal(result);
   }, [onNavigate, navigation, setModal]);
 
-  const keyboardHandler = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (e: KeyboardEvent) => {
-        const active = document.activeElement;
-        if (active?.tagName === "INPUT") {
-          if ((active as HTMLInputElement).type === "text") {
-            return;
-          }
-        }
-
-        if (e.altKey || e.ctrlKey || e.metaKey) {
+  const keyboardHandler = useCallback(
+    (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        if ((active as HTMLInputElement).type === "text") {
           return;
         }
+      }
 
-        if (e.key === "x") {
-          const current = await snapshot.getPromise(fos.modalSelector);
-          set(fos.selectedSamples, (selected) => {
-            const newSelected = new Set([...Array.from(selected)]);
-            if (current) {
-              if (newSelected.has(current.id)) {
-                newSelected.delete(current.id);
-              } else {
-                newSelected.add(current.id);
-              }
-            }
+      if (e.altKey || e.ctrlKey || e.metaKey) {
+        return;
+      }
 
-            return newSelected;
-          });
-        } else if (e.key === "ArrowLeft") {
-          navigatePrevious();
-        } else if (e.key === "ArrowRight") {
-          navigateNext();
-        } else if (e.key === "c") {
-          setIsNavigationHidden((prev) => !prev);
-        }
-        // note: don't stop event propagation here
-      },
+      if (e.key === "ArrowLeft") {
+        navigatePrevious();
+      } else if (e.key === "ArrowRight") {
+        navigateNext();
+      }
+    },
     [navigateNext, navigatePrevious]
   );
 
   fos.useEventHandler(document, "keyup", keyboardHandler);
 
+  if (!modal) {
+    return null;
+  }
+
   return (
     <>
-      {!isNavigationHidden && modal.hasPrevious && (
+      {showModalNavigationControls && modal.hasPrevious && (
         <Arrow>
           <LookerArrowLeftIcon
             data-cy="nav-left-button"
@@ -116,7 +101,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           />
         </Arrow>
       )}
-      {!isNavigationHidden && modal.hasNext && (
+      {showModalNavigationControls && modal.hasNext && (
         <Arrow isRight>
           <LookerArrowRightIcon
             data-cy="nav-right-button"

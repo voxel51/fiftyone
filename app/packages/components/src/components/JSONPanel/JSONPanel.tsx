@@ -76,8 +76,8 @@ export default function JSONPanel(props: JSONPanelPropsType) {
 }
 
 type JSONPanelPropsType = {
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | undefined>;
   onClose: () => void;
   onCopy: () => void;
-  json: string;
+  json: string | null;
 };
