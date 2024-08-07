@@ -81,11 +81,6 @@
   width: 14px;
 }
 
-.scrollbar::-webkit-scrollbar {
-  height: 14px;
-  width: 14px;
-}
-
 .scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }

@@ -17,11 +17,6 @@
   width: 14px;
 }
 
-.scrollable::-webkit-scrollbar {
-  height: 14px;
-  width: 14px;
-}
-
 .scrollable::-webkit-scrollbar-corner {
   background: transparent;
 }

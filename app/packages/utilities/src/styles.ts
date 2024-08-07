@@ -13,11 +13,6 @@ export const scrollbarStyles = `
   width: 14px;
 }
 
-&::-webkit-scrollbar {
-  height: 14px;
-  width: 14px;
-}
-
 &::-webkit-scrollbar-corner {
   background: transparent;
 }
