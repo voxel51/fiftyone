@@ -36,6 +36,6 @@ const ReactJSONContainer = styled.div`
   background: var(--fo-palette-background-level3);
   border-radius: 4px;
   .react-json-view {
-    ${styles.scrollbar}
+    ${styles.scrollbarStyles}
   }
 `;

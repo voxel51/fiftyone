@@ -40,7 +40,7 @@ const Code = styled.pre`
   border-radius: 3px;
   overflow: auto;
 
-  ${styles.scrollbar}
+  ${styles.scrollbarStyles}
 `;
 
 const port = (() => {
@@ -129,7 +129,7 @@ const SetupWrapper = styled.div`
   background: ${({ theme }) => theme.background.level2};
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 
-  ${styles.scrollbar}
+  ${styles.scrollbarStyles}
 `;
 
 const SetupContainer = styled.div`

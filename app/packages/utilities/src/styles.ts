@@ -1,4 +1,4 @@
-export const scrollbar = `
+export const scrollbarStyles = `
 --scrollbar-color: var(--fo-palette-text-tertiary);
 
 @-moz-document url-prefix() {

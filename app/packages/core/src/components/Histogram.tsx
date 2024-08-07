@@ -21,7 +21,7 @@ const Container = styled.div`
   width: 100%;
   flex: 1;
 
-  ${styles.scrollbar}
+  ${styles.scrollbarStyles}
 `;
 
 const LIMIT = 200;

@@ -375,7 +375,7 @@ const SidebarColumn = styled.div`
 
   background: ${({ theme }) => theme.background.sidebar};
 
-  ${styles.scrollbar}
+  ${styles.scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
