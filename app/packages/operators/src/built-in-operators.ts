@@ -145,10 +145,10 @@ class OpenPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks() {
-    const { FIFTYONE_GRID_SPACEs_ID } = fos.constants;
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const availablePanels = usePanels();
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACEs_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACEs_ID);
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { availablePanels, openedPanels, spaces };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -199,9 +199,9 @@ class OpenAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACEs_ID } = fos.constants;
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const availablePanels = usePanels();
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACEs_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openPanelOperator = useOperatorExecutor("open_panel");
     return { availablePanels, openedPanels, openPanelOperator };
   }
@@ -242,9 +242,9 @@ class ClosePanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACEs_ID } = fos.constants;
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACEs_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACEs_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { openedPanels, spaces };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -272,8 +272,8 @@ class CloseAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACEs_ID } = fos.constants;
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACEs_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const closePanel = useOperatorExecutor("close_panel");
     return { openedPanels, closePanel };
   }
@@ -303,9 +303,9 @@ class SplitPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACEs_ID } = fos.constants;
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACEs_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACEs_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { spaces, openedPanels };
   }
   async execute({ hooks, params }: ExecutionContext) {
