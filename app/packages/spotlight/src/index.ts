@@ -16,7 +16,7 @@ import {
   SCROLLBAR_WIDTH,
   TWO,
   ZERO,
-  ZOOMING_COEFFICIENT,
+  ZOOMING_COEFFICIENT
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import { Load, RowChange } from "./events";
@@ -280,7 +280,7 @@ export default class Spotlight<K, V> extends EventTarget {
     await this.#next(false);
 
     while (
-      this.#containerHeight < this.#height + this.#padding * TWO &&
+      this.#containerHeight < this.#height &&
       !this.#forward.finished
     ) {
       await this.#next(false);
