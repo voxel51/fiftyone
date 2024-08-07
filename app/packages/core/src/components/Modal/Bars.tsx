@@ -104,7 +104,6 @@ export const GroupBar: React.FC<{
           {pinnedSliceLabel}
         </div>
       </div>
-      <ModalActionsRow lookerRef={lookerRef} isGroup />
     </Bar>
   );
 };
