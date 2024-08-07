@@ -40,7 +40,7 @@ export const ModalSpace = React.memo(() => {
   const { spaces } = useSpaces(FIFTYONE_MODAL_SPACES_ID, defaultModalSpaces);
 
   return (
-    <Space node={spaces.root} id={FIFTYONE_MODAL_SPACES_ID} type="modal" />
+    <Space node={spaces.root} id={FIFTYONE_MODAL_SPACES_ID} archetype="modal" />
   );
 });
 

@@ -23,10 +23,10 @@ import { UNSAVED_WORKSPACE_COLOR } from "./constants";
 import { useWorkspaces } from "./hooks";
 
 interface WorkspacesProps {
-  type: "grid" | "modal";
+  archetype: "grid" | "modal";
 }
 
-export default function Workspaces({ type }: WorkspacesProps) {
+export default function Workspaces({ archetype }: WorkspacesProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { workspaces, loadWorkspace, initialized, listWorkspace } =
