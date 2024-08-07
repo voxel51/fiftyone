@@ -1149,20 +1149,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total_bytes += media_bytes
 
         if include_indexes:
-            ii = self.get_index_information(include_size=True)
+            ii = self.get_index_information(
+                include_size=True, include_progress=True
+            )
             index_bytes = {k: v["size"] for k, v in ii.items()}
             indexes_bytes = sum(index_bytes.values())
 
+            # `indexes_count` is the number of indexes
             stats["indexes_count"] = len(index_bytes)
+            # `indexes_bytes` is the total size of all indexes
             stats["indexes_bytes"] = indexes_bytes
+            # `indexes_size` is the total size in human-readable form
             stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            # `index_bytes` is a dict mapping index names to their sizes
             stats["index_bytes"] = index_bytes
+            # `index_sizes` is a dict mapping index-size in human-readable form
             stats["index_sizes"] = {
                 k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
             }
+            # `indexes_in_progress` is a list of indexes that are in progress
+            stats["indexes_in_progress"] = [
+                k for k in ii if ii[k].get("in_progress", False)
+            ]
             total_bytes += indexes_bytes
-
-            stats["indexes_in_progress"] = ii["indexBuilds"]
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
