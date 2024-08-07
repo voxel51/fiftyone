@@ -38,12 +38,12 @@ const ModalContainer = styled.div`
   z-index: 10001;
 `;
 
-const ModalNavigationContainer = styled.div<{ isSidebarVisible: boolean }>`
+const ModalNavigationContainer = styled.div<{ sidebarWidth: number }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: ${({ isSidebarVisible }) =>
-    isSidebarVisible ? "calc(100% - 300px)" : "100%"};
+  width: ${({ sidebarWidth }) =>
+    sidebarWidth ? `calc(100% - ${sidebarWidth}px)` : "100%"};
   height: 100%;
   position: absolute;
   left: 0;
@@ -116,12 +116,33 @@ const Modal = () => {
   );
 
   const keysHandler = useRecoilCallback(
-    ({ set }) =>
+    ({ snapshot, set }) =>
       async (e: KeyboardEvent) => {
+        const active = document.activeElement;
+        if (active?.tagName === "INPUT") {
+          if ((active as HTMLInputElement).type === "text") {
+            return;
+          }
+        }
+
         if (e.key === "s") {
           set(fos.sidebarVisible(true), (prev) => !prev);
         } else if (e.key === "f") {
           set(fos.fullscreen, (prev) => !prev);
+        } else if (e.key === "x") {
+          const current = await snapshot.getPromise(fos.modalSelector);
+          set(fos.selectedSamples, (selected) => {
+            const newSelected = new Set([...Array.from(selected)]);
+            if (current?.id) {
+              if (newSelected.has(current.id)) {
+                newSelected.delete(current.id);
+              } else {
+                newSelected.add(current.id);
+              }
+            }
+
+            return newSelected;
+          });
         } else if (e.key === "Escape") {
           if (activeLookerRef.current) {
             // we handle close logic in modal + other places
@@ -137,10 +158,7 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
-  const showModalNavigationControls = useRecoilValue(
-    fos.showModalNavigationControls
-  );
+  const sidebarWidth = useRecoilValue(fos.sidebarWidth(true));
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -187,11 +205,9 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }} data-cy="modal">
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          {showModalNavigationControls && (
-            <ModalNavigationContainer isSidebarVisible={isSidebarVisible}>
-              <ModalNavigation onNavigate={onNavigate} />
-            </ModalNavigationContainer>
-          )}
+          <ModalNavigationContainer sidebarWidth={sidebarWidth}>
+            <ModalNavigation onNavigate={onNavigate} />
+          </ModalNavigationContainer>
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
