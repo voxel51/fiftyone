@@ -8,9 +8,11 @@ export default r(graphql`
       colorBy
       colorPool
       colorscale
+      disableFrameFiltering
       gridZoom
       lightningThreshold
       loopVideos
+      mediaFallback
       multicolorKeypoints
       notebookHeight
       plugins
@@ -23,7 +25,6 @@ export default r(graphql`
       theme
       timezone
       useFrameNumber
-      mediaFallback
     }
     colorscale
   }
