@@ -69,7 +69,7 @@ test("modal dynamic group carousel has correct second page (all 21 samples)", as
   page,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    savedView: "group",
+    searchParams: new URLSearchParams({ view: "group" }),
   });
   await grid.openFirstSample();
   await modal.group.setDynamicGroupsNavigationMode("carousel");
