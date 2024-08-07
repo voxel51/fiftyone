@@ -474,7 +474,7 @@ export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
   "line",
   "polygons",
 ];
-export const BUILT_IN_PANEL_PRIORITY_CONST = 1000;
+export const BUILT_IN_PANEL_PRIORITY_CONST = 51000;
 
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
