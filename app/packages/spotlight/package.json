@@ -18,9 +18,6 @@
         "dist",
         "README.md"
     ],
-    "dependencies": {
-        "@fiftyone/components": "*"
-    },
     "devDependencies": {
         "@biomejs/biome": "^1.7.1",
         "typescript": "^5.4.5",

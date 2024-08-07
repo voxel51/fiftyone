@@ -1,5 +1,5 @@
 import { JSONViewer } from "@fiftyone/components";
-import { scrollbarStyles } from "@fiftyone/utilities";
+import { styles } from "@fiftyone/utilities";
 import { Stack } from "@mui/material";
 import React from "react";
 import styled from "styled-components";
@@ -36,6 +36,6 @@ const ReactJSONContainer = styled.div`
   background: var(--fo-palette-background-level3);
   border-radius: 4px;
   .react-json-view {
-    ${scrollbarStyles}
+    ${styles.scrollbar}
   }
 `;

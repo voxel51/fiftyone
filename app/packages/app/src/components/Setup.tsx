@@ -7,7 +7,7 @@ import {
   useTheme,
 } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
-import { isElectron, scrollbarStyles } from "@fiftyone/utilities";
+import { isElectron, styles } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -40,7 +40,7 @@ const Code = styled.pre`
   border-radius: 3px;
   overflow: auto;
 
-  ${scrollbarStyles}
+  ${styles.scrollbar}
 `;
 
 const port = (() => {
@@ -129,7 +129,7 @@ const SetupWrapper = styled.div`
   background: ${({ theme }) => theme.background.level2};
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 
-  ${scrollbarStyles};
+  ${styles.scrollbar}
 `;
 
 const SetupContainer = styled.div`
