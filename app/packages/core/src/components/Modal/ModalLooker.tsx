@@ -3,20 +3,9 @@ import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
 
@@ -82,7 +71,6 @@ export const ModalLooker = React.memo(
     const { sample } = sampleData;
 
     const theme = useTheme();
-    const clearModal = fos.useClearModal();
     const initialRef = useRef<boolean>(true);
     const lookerOptions = fos.useLookerOptions(true);
     const [reset, setReset] = useState(false);
@@ -93,10 +81,6 @@ export const ModalLooker = React.memo(
     const setModalLooker = useSetRecoilState(fos.modalLooker);
     const { subscribeToImaVidStateChanges } =
       useInitializeImaVidSubscriptions();
-
-    const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
-      fos.isTooltipLocked
-    );
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -145,21 +129,6 @@ export const ModalLooker = React.memo(
 
     const jsonPanel = fos.useJSONPanel();
     const helpPanel = fos.useHelpPanel();
-
-    // useEventHandler(
-    //   looker,
-    //   "close",
-    //   useCallback(() => {
-    //     if (isTooltipLocked) {
-    //       setIsTooltipLocked(false);
-    //       return;
-    //     }
-
-    //     jsonPanel.close();
-    //     helpPanel.close();
-    //     clearModal();
-    //   }, [clearModal, jsonPanel, helpPanel, isTooltipLocked])
-    // );
 
     useEventHandler(looker, "select", useOnSelectLabel());
     useEventHandler(looker, "error", (event) => handleError(event.detail));
