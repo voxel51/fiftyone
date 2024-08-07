@@ -13,6 +13,7 @@ import {
   simpleSchema,
 } from "./input.json";
 import { data, schema as outputSchema } from "./output.json";
+import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env?.MODE === "development") {
@@ -22,6 +23,9 @@ if (import.meta.env?.MODE === "development") {
     component: OperatorIO,
     type: PluginComponentType.Panel,
     activator: () => true,
+    panelOptions: {
+      priority: BUILT_IN_PANEL_PRIORITY_CONST,
+    },
   });
 }
 
