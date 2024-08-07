@@ -9324,6 +9324,10 @@ class SampleCollection(object):
 
         coll.drop_index(index_map[name])
 
+    def check_index(self):
+        # return index operations
+        pass
+
     def _get_default_indexes(self, frames=False):
         if frames:
             if self._has_frame_fields():
