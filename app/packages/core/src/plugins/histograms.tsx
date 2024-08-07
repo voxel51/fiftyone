@@ -14,6 +14,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import Histogram from "../components/Histogram";
+import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 
 const HistogramsContainer = styled.div`
   position: relative;
@@ -105,4 +106,7 @@ registerComponent({
   type: PluginComponentType.Panel,
   activator: () => true,
   Icon: BarChart,
+  panelOptions: {
+    priority: BUILT_IN_PANEL_PRIORITY_CONST,
+  },
 });
