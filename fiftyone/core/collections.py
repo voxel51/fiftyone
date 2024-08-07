@@ -81,15 +81,19 @@ def supports_sync_async(func):
                 # Call the function asynchronously
                 return func(*args, **kwargs)
             else:
-                loop = asyncio.get_event_loop()
-                return loop.run_until_complete(func(*args, **kwargs))
-        except RuntimeError:
-            # If no running loop is found, create a new one for synchronous
-            # execution
-            logging.info("RuntimeError, probably no running event loop found")
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            return new_loop.run_until_complete(func(*args, **kwargs))
+                return asyncio.run(func(*args, **kwargs))
+        except RuntimeError as e:
+            error_message = str(e)
+            if "no running event loop" in error_message:
+                # If no running loop is found, create a new one
+                logging.info("RuntimeError: no running event loop found")
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                return new_loop.run_until_complete(func(*args, **kwargs))
+            elif "asyncio.run() cannot be called" in error_message:
+                return func(*args, **kwargs)
+            else:
+                raise e
         finally:
             # Close the loop if it was created
             if new_loop:
