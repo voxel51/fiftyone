@@ -25,7 +25,7 @@ export const PanelTabs = styled.div<{ isModal?: boolean }>`
 export const StyledPanel = styled.div<{ isModalPanel?: boolean }>`
   width: 100%;
   height: ${(props) => (props.isModalPanel ? "100%" : "calc(100% - 28px)")};
-  padding-top: ${(props) => (props.isModalPanel ? "2.2em" : "initial")};
+  padding: ${(props) => (props.isModalPanel ? "2.2em 5px 0 5px" : "initial")};
   overflow: auto;
   background: var(--fo-palette-background-mediaSpace);
 `;
