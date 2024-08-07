@@ -59,7 +59,7 @@ export type PanelTabProps = {
 export type SpaceProps = {
   node: SpaceNode;
   id: string;
-  type: "grid" | "modal";
+  archetype?: "grid" | "modal";
 };
 
 export type PanelStateParameter = {
