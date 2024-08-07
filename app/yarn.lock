@@ -3141,7 +3141,7 @@ __metadata:
     numeral: ^2.0.6
     path-to-regexp: ^6.2.0
     prettier: 2.2.1
-    re-resizable: ^6.8.0
+    re-resizable: ^6.9.17
     react-color: ^2.19.3
     react-draggable: ^4.4.5
     react-error-boundary: ^3.1.4
@@ -16340,13 +16340,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"re-resizable@npm:^6.8.0":
-  version: 6.9.11
-  resolution: "re-resizable@npm:6.9.11"
+"re-resizable@npm:^6.9.17":
+  version: 6.9.17
+  resolution: "re-resizable@npm:6.9.17"
   peerDependencies:
     react: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-dom: ^16.13.1 || ^17.0.0 || ^18.0.0
-  checksum: 04be62e2985caff8ff082664b9b66d7c49df383a9560e691f32f583cba75ce51077be8b718c5cda5a1fa07e701337102cbd9ff5b03a58541d9092f25753f47f7
+  checksum: 49aa715d67020884b6f662c184d2ca5cebe7a20b1a865dd8450bd877f6118cc18e508e420fcfcf6a6dedc98c3b17d5100b43237b9dbcc2666ef0840e636da007
   languageName: node
   linkType: hard
 
