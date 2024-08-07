@@ -1162,6 +1162,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
             total_bytes += indexes_bytes
 
+            stats["indexes_in_progress"] = ii["indexBuilds"]
+
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
 
