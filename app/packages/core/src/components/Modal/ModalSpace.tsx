@@ -1,7 +1,7 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { SpaceNodeJSON, usePanels, useSpaces } from "@fiftyone/spaces";
 import { Space } from "@fiftyone/spaces/src/components";
-import { FIFTYONE_MODAL_SPACE_ID } from "@fiftyone/state/src/constants";
+import { FIFTYONE_MODAL_SPACES_ID } from "@fiftyone/state/src/constants";
 import React, { useCallback, useMemo } from "react";
 import { ModalSample } from "./ModalSamplePlugin";
 
@@ -37,9 +37,11 @@ export const ModalSpace = React.memo(() => {
     } as SpaceNodeJSON;
   }, [allModalPlugins]);
 
-  const { spaces } = useSpaces(FIFTYONE_MODAL_SPACE_ID, defaultModalSpaces);
+  const { spaces } = useSpaces(FIFTYONE_MODAL_SPACES_ID, defaultModalSpaces);
 
-  return <Space node={spaces.root} id={FIFTYONE_MODAL_SPACE_ID} type="modal" />;
+  return (
+    <Space node={spaces.root} id={FIFTYONE_MODAL_SPACES_ID} type="modal" />
+  );
 });
 
 registerComponent({
