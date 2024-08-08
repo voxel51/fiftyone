@@ -1,7 +1,7 @@
 import { Resizable, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
-import { move } from "@fiftyone/utilities";
+import { move, styles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { default as React, useCallback, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
+import style from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
 const MARGIN = 3;
@@ -373,12 +374,13 @@ const SidebarColumn = styled.div`
   overflow-x: hidden;
 
   background: ${({ theme }) => theme.background.sidebar};
+
+  ${styles.scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 1rem;
   scrollbar-width: none;
 
   & > div {
@@ -732,7 +734,10 @@ const InteractiveSidebar = ({
           down.current && animate(last.current);
         }}
       >
-        <Container style={containerController.springs}>
+        <Container
+          className={style.sidebar}
+          style={containerController.springs}
+        >
           {order.current.map((key) => {
             const entry = items.current[key].entry;
             if (entry.kind === fos.EntryKind.GROUP) {
