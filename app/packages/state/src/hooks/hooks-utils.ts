@@ -58,7 +58,7 @@ export const useKeydownHandler = (handler: React.KeyboardEventHandler) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (
-  ref: React.MutableRefObject<HTMLElement | null>,
+  ref: React.MutableRefObject<HTMLElement | null | undefined>,
   handler: React.MouseEventHandler,
   eventName = "mousedown"
 ) => {

@@ -236,6 +236,7 @@ const Selected = ({
   modal: boolean;
   lookerRef?: MutableRefObject<fos.Lookers | undefined>;
 }) => {
+  const { refresh } = adaptiveMenuItemProps || {};
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const samples = useRecoilValue(fos.selectedSamples);
@@ -247,6 +248,10 @@ const Selected = ({
     useEventHandler(lookerRef.current, "buffering", (e) =>
       setLoading(e.detail)
     );
+
+  useEffect(() => {
+    refresh?.();
+  }, [samples.size, refresh]);
 
   if (samples.size < 1 && !modal) {
     return null;

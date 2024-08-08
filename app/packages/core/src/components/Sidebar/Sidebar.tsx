@@ -422,7 +422,7 @@ const InteractiveSidebar = ({
   const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
-  const disabled = useRecoilValue(fos.disabledPaths);
+  const disabled = useRecoilValue(fos.disabledFilterPaths);
   const cb = useRef<() => void>();
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
