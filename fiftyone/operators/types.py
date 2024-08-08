@@ -2102,7 +2102,6 @@ class DashboardView(View):
         allow_addition (True): whether to allow adding items
         allow_deletion (True): whether to allow deleting items
         allow_edit (True): whether to allow editing items
-        layout (None): the layout of the dashboard
         cta_title (None): the title of the call to action
         cta_body (None): the body of the call to action
         cta_button_label (None): the label of the call to action button
@@ -2117,7 +2116,6 @@ class DashboardView(View):
         self.allow_addition = kwargs.get("allow_addition", True)
         self.allow_deletion = kwargs.get("allow_deletion", True)
         self.allow_edit = kwargs.get("allow_edit", True)
-        self.layout = kwargs.get("layout", None)
         self.cta_title = kwargs.get("cta_title", None)
         self.cta_body = kwargs.get("cta_body", None)
         self.cta_button_label = kwargs.get("cta_button_label", None)
@@ -2132,7 +2130,6 @@ class DashboardView(View):
             "allow_addition": self.allow_addition,
             "allow_deletion": self.allow_deletion,
             "allow_edit": self.allow_edit,
-            "layout": self.layout,
             "cta_title": self.cta_title,
             "cta_body": self.cta_body,
             "cta_button_label": self.cta_button_label,
