@@ -4,7 +4,7 @@ import { useCallback, useContext } from "react";
 import { useRecoilCallback } from "recoil";
 import { modalContext } from "./modal-context";
 
-export const usePanels = () => {
+export const useLookerHelpers = () => {
   const jsonPanel = useJSONPanel();
   const helpPanel = useHelpPanel();
   const onNavigate = useCallback(() => {

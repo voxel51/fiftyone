@@ -5,7 +5,7 @@ import React, { Suspense, useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
-import { usePanels as useLookerPanels, useModalContext } from "./hooks";
+import { useModalContext } from "./hooks";
 import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
 
@@ -20,8 +20,6 @@ const ContentColumn = styled.div`
 `;
 
 export const ModalSample = React.memo(() => {
-  const { jsonPanel, helpPanel } = useLookerPanels();
-
   const isGroup = useRecoilValue(fos.isGroup);
   const is3D = useRecoilValue(fos.is3DDataset);
 

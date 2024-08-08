@@ -7,7 +7,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
-import { usePanels as useLookerPanels } from "./hooks";
+import { useLookerHelpers } from "./hooks";
 import { modalContext } from "./modal-context";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
@@ -88,7 +88,7 @@ const Modal = () => {
 
   const renderEntry = useModalSidebarRenderEntry();
 
-  const { jsonPanel, helpPanel, onNavigate } = useLookerPanels();
+  const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
 
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
