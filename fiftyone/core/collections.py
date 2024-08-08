@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 
+import asyncio
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -64,6 +65,41 @@ def _make_registrar():
 
     registrar.all = registry
     return registrar
+
+
+def supports_sync_async(func):
+    """
+    Decorator to make a function support both sync and async execution.
+    """
+
+    def sync_wrapper(*args, **kwargs):
+        new_loop = None
+        try:
+            # Only run async if the `using_async` flag is set
+            if kwargs.get("using_async", False):
+                logging.info("Running async, checking for running event loop")
+                # Call the function asynchronously
+                return func(*args, **kwargs)
+            else:
+                return asyncio.run(func(*args, **kwargs))
+        except RuntimeError as e:
+            error_message = str(e)
+            if "no running event loop" in error_message:
+                # If no running loop is found, create a new one
+                logging.info("RuntimeError: no running event loop found")
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                return new_loop.run_until_complete(func(*args, **kwargs))
+            elif "asyncio.run() cannot be called" in error_message:
+                return func(*args, **kwargs)
+            else:
+                raise e
+        finally:
+            # Close the loop if it was created
+            if new_loop:
+                new_loop.close()
+
+    return sync_wrapper
 
 
 # Keeps track of all `ViewStage` methods
@@ -9107,7 +9143,10 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, **kwargs):
+    @supports_sync_async
+    async def create_index(
+        self, field_or_spec, unique=False, using_async=False, **kwargs
+    ):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -9141,6 +9180,7 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            using_async (False): whether to use asynchronous execution
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
 
@@ -9219,12 +9259,22 @@ class SampleCollection(object):
             # Satisfactory index already exists
             return index_name
 
-        if is_frame_index:
-            coll = self._dataset._frame_collection
+        if using_async:
+            logging.info("Creating index '%s' asynchronously...", index_name)
+            coll = (
+                self._dataset._frame_collection_async
+                if is_frame_index
+                else self._dataset._sample_collection_async
+            )
+            name = await coll.create_index(index_spec, unique=unique, **kwargs)
         else:
-            coll = self._dataset._sample_collection
-
-        name = coll.create_index(index_spec, unique=unique, **kwargs)
+            logging.info("Creating index '%s' synchronously...", index_name)
+            coll = (
+                self._dataset._frame_collection
+                if is_frame_index
+                else self._dataset._sample_collection
+            )
+            name = coll.create_index(index_spec, unique=unique, **kwargs)
 
         if single_field_index:
             name = input_spec[0][0]
@@ -9273,6 +9323,10 @@ class SampleCollection(object):
             )
 
         coll.drop_index(index_map[name])
+
+    def check_index(self):
+        # return index operations
+        pass
 
     def _get_default_indexes(self, frames=False):
         if frames:
