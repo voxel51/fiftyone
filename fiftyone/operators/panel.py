@@ -152,17 +152,20 @@ class PanelRefBase(object):
         self._data = {}
         self._ctx = ctx
 
-    def set(self, key, value):
-        """Sets the value in the dictionary.
+    def set(self, key, value=None):
+        """Sets some value(s) in the dictionary.
 
         Args:
-            key: a key
-            value: the value
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        pydash.set_(self._data, key, value)
+        d = {key: value} if value is not None else key
+        for k, v in d.items():
+            pydash.set_(self._data, k, v)
 
     def get(self, key, default=None):
-        """Gets the value from the dictionary.
+        """Gets a value from the dictionary.
 
         Args:
             key: a key
@@ -203,16 +206,21 @@ class PanelRefState(PanelRefBase):
         super().__init__(ctx)
         self._data = ctx.panel_state
 
-    def set(self, key, value):
-        """Sets the state of the panel.
+    def set(self, key, value=None):
+        """Sets some panel state.
 
         Args:
-            key: a key or ``"nested.key.path"``
-            value: the state value
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        super().set(key, value)
+        d = {key: value} if value is not None else key
+
         args = {}
-        pydash.set_(args, key, value)
+        for k, v in d.items():
+            super().set(k, v)
+            pydash.set_(args, k, v)
+
         self._ctx.ops.patch_panel_state(args)
 
     def clear(self):
@@ -228,18 +236,22 @@ class PanelRefData(PanelRefBase):
         ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
-    def set(self, key, value, _exec_op=True):
-        """Sets the data of the panel.
+    def set(self, key, value=None):
+        """Sets some panel data.
 
         Args:
-            key: a key or ``"nested.key.path"``
-            value: the data value
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        super().set(key, value)
+        d = {key: value} if value is not None else key
+
         args = {}
-        pydash.set_(args, key, value)
-        if _exec_op:
-            self._ctx.ops.patch_panel_data(args)
+        for k, v in d.items():
+            super().set(k, v)
+            pydash.set_(args, k, v)
+
+        self._ctx.ops.patch_panel_data(args)
 
     def get(self, key, default=None):
         raise WriteOnlyError("Panel data is write-only")
@@ -281,17 +293,18 @@ class PanelRef(object):
         """Closes the panel."""
         self._ctx.ops.close_panel(id=self.id)
 
-    def set_state(self, key, value):
-        """Sets the state of the panel.
+    def set_state(self, key, value=None):
+        """Sets some panel state.
 
         Args:
-            key: a key or ``"nested.key.path"``
-            value: the state value
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        self._state.set(key, value)
+        self._state.set(key, value=value)
 
     def get_state(self, key, default=None):
-        """Gets the state of the panel.
+        """Gets some panel state.
 
         Args:
             key: the key or ``"nested.key.path"``
@@ -300,27 +313,17 @@ class PanelRef(object):
         Returns:
             the state value
         """
-        return self._state.get(key, default)
+        return self._state.get(key, default=default)
 
-    def set_data(self, key, value):
-        """Sets the data of the panel.
-
-        Args:
-            key: a key or ``"nested.key.path"``
-            value: the data value
-        """
-        self._data.set(key, value)
-
-    def batch_set_data(self, data):
-        """
-        Sets multiple data values by path.
+    def set_data(self, key, value=None):
+        """Sets some panel data.
 
         Args:
-            data (dict): A dictionary of key-value pairs. Where the key is the path and the value is the data value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        for key, value in data.items():
-            self._data.set(key, value, _exec_op=False)
-        self._ctx.ops.patch_panel_data(data)
+        self._data.set(key, value=value)
 
     def set_title(self, title):
         """Sets the title of the panel.
