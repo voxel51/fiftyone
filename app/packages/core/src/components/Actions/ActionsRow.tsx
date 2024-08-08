@@ -64,6 +64,8 @@ import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
 import { ActionDiv } from "./utils";
 
+const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
+
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
   get: ({ get }) => {
@@ -702,7 +704,7 @@ export const GridActionsRow = () => {
 
 const DragActionsRow = () => {
   return (
-    <DraggableHandleIconContainer className="fo-modal-action-bar-handle">
+    <DraggableHandleIconContainer className={MODAL_ACTION_BAR_HANDLE_CLASS}>
       <DragIndicatorIcon />
     </DraggableHandleIconContainer>
   );
@@ -720,7 +722,7 @@ export const ModalActionsRow = () => {
   );
 
   return (
-    <Draggable handle=".fo-modal-action-bar-handle" axis="x">
+    <Draggable handle={`.${MODAL_ACTION_BAR_HANDLE_CLASS}`} axis="x">
       <ModalActionsRowContainer>
         <DragActionsRow />
         <Hidden />
