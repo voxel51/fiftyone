@@ -643,8 +643,7 @@ class Frames(object):
         return foo.aggregate(self._frame_collection, pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return Frame.from_doc(doc, dataset=self._dataset)
+        return self._dataset._make_frame(d)
 
     def _make_dict(
         self,
@@ -848,20 +847,14 @@ class FramesView(Frames):
 
         view = sample_view._view
 
-        sf, ef = view._get_selected_excluded_fields(
-            frames=True, roots_only=True
-        )
-        ff = view._get_filtered_fields(frames=True)
-
+        filtered_fields = view._get_filtered_fields(frames=True)
         needs_frames = view._needs_frames()
 
         optimized_view = fov.make_optimized_select_view(view, sample_view.id)
         frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
-        self._selected_fields = sf
-        self._excluded_fields = ef
-        self._filtered_fields = ff
+        self._filtered_fields = filtered_fields
         self._needs_frames = needs_frames
         self._frames_pipeline = frames_pipeline
 
@@ -996,14 +989,7 @@ class FramesView(Frames):
         return foo.aggregate(self._sample_collection, self._frames_pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return FrameView(
-            doc,
-            self._view,
-            selected_fields=self._selected_fields,
-            excluded_fields=self._excluded_fields,
-            filtered_fields=self._filtered_fields,
-        )
+        return self._view._make_frame(d)
 
     def _save_replacements(self, validate=True, deferred=False):
         return super()._save_replacements(

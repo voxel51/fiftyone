@@ -1405,6 +1405,7 @@ class SampleCollection(object):
         read_only=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
@@ -1423,9 +1424,14 @@ class SampleCollection(object):
                 read-only fields. By default, all fields are included
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
@@ -1436,9 +1442,10 @@ class SampleCollection(object):
         read_only=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
-        """Returns a schema dictionary describing the fields of the frames of
-        the samples in the collection.
+        """Returns a schema dictionary describing the fields of the frames in
+        the collection.
 
         Only applicable for collections that contain videos.
 
@@ -1455,10 +1462,14 @@ class SampleCollection(object):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the collection does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the collection does not contain videos
         """
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
@@ -1478,8 +1489,8 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them
         """
         return self._get_dynamic_field_schema(
             fields=fields, recursive=recursive
@@ -1487,7 +1498,7 @@ class SampleCollection(object):
 
     def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
-        frames of the samples in the collection.
+        frames in the collection.
 
         Dynamic fields are embedded document fields with at least one non-None
         value that have not been declared on the dataset's schema.
@@ -1499,8 +1510,9 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types, or ``None`` if the collection does not contain videos
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them, or ``None`` if the collection does not
+            contain videos
         """
         if not self._has_frame_fields():
             return None

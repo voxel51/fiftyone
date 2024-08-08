@@ -1145,8 +1145,8 @@ New fields can be added to a |Sample| using item assignment:
     sample["integer_field"] = 51
     sample.save()
 
-If the |Sample| belongs to a |Dataset|, the dataset's field schema will be
-updated to reflect the new field:
+If the |Sample| belongs to a |Dataset|, the dataset's schema will automatically
+be updated to reflect the new field:
 
 .. code-block:: python
     :linenos:
@@ -1176,7 +1176,7 @@ A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
 .. code-block:: python
     :linenos:
 
-    sample["ground_truth"] = fo.Classification(label="alligator")
+    sample["animal"] = fo.Classification(label="alligator")
     sample.save()
 
 Whenever a new field is added to a sample in a dataset, the field is available
