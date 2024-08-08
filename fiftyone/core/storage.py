@@ -2381,9 +2381,6 @@ def upload_media(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-
-    Returns:
-        the list of remote paths
     """
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
@@ -2392,7 +2389,7 @@ def upload_media(
 
     contains_3d = sample_collection._contains_media_type(fom.THREE_D)
     media_field = sample_collection._resolve_media_field(media_field)
-    filepaths = sample_collection.values(media_field)
+    ids, filepaths = sample_collection.values(["id", media_field])
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
@@ -2400,13 +2397,16 @@ def upload_media(
         ignore_existing=True,
     )
 
+    remote_paths = {}
     paths_map = {}
 
-    for filepath in filepaths:
-        if filepath not in paths_map:
-            paths_map[filepath] = filename_maker.get_output_path(filepath)
+    for _id, filepath in zip(ids, filepaths):
+        if filepath is None:
+            continue
 
-    remote_paths = [paths_map[f] for f in filepaths]
+        remote_path = filename_maker.get_output_path(filepath)
+        remote_paths[_id] = remote_path
+        paths_map[filepath] = remote_path
 
     if contains_3d:
         _update_scene_asset_paths(paths_map, filename_maker)
@@ -2428,9 +2428,7 @@ def upload_media(
         )
 
     if update_filepaths:
-        sample_collection.set_values(media_field, remote_paths)
-
-    return remote_paths
+        sample_collection.set_values(media_field, remote_paths, key_field="id")
 
 
 def _update_scene_asset_paths(paths_map, filename_maker):
