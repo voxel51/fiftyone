@@ -9,8 +9,6 @@ FiftyOne operators.
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
 
-import pydash
-
 
 class PanelConfig(OperatorConfig):
     """A configuration for a panel operator."""
@@ -139,7 +137,16 @@ class PanelRefBase:
             key (str): The key.
             value (any): The value.
         """
-        pydash.set_(self._data, key, value)
+        parts = key.split(".")
+        if len(parts) == 1:
+            self._data[key] = value
+        else:
+            current_dict = self._data
+            for part in parts[:-1]:
+                new_dict = {}
+                current_dict[part] = new_dict
+                current_dict = new_dict
+            current_dict[parts[-1]] = value
 
     def get(self, key, default=None):
         """
@@ -152,7 +159,19 @@ class PanelRefBase:
         Returns:
             The value.
         """
-        return pydash.get(self._data, key, default)
+        parts = key.split(".")
+        if len(parts) == 1:
+            return self._data.get(key, default)
+        else:
+            current_dict = self._data
+            for part in parts[:-1]:
+                if not isinstance(current_dict, dict):
+                    return default
+                elif part not in current_dict:
+                    return default
+                else:
+                    current_dict = current_dict[part]
+            return current_dict.get(parts[-1], default)
 
     def clear(self):
         """Clears the dictionary."""
