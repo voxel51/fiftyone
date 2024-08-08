@@ -47,7 +47,7 @@ export const Sample3d = () => {
         {isGroup ? (
           <Looker3dPluginWrapper />
         ) : (
-          <SampleWrapper lookerRef={lookerRef}>
+          <SampleWrapper>
             <Looker3dPluginWrapper />
           </SampleWrapper>
         )}

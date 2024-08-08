@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
 
+// todo: this is currently not used, remove it
 const SelectableBar: React.FC<
   React.PropsWithChildren<{
     sampleId: string;
@@ -43,6 +44,7 @@ const SelectableBar: React.FC<
   );
 };
 
+// todo: this is currently not used, remove it
 export const SampleBar: React.FC<{
   sampleId: string;
   visible?: boolean;
