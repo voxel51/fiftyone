@@ -6,7 +6,7 @@ import { Entries } from "../Sidebar";
 
 export const useModalSidebarRenderEntry = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
-  const disabled = useRecoilValue(fos.disabledPaths);
+  const disabled = useRecoilValue(fos.fullyDisabledPaths);
   const mode = useRecoilValue(fos.groupStatistics(true));
 
   return useCallback(
