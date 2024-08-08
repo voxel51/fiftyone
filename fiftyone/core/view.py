@@ -18,7 +18,9 @@ import eta.core.utils as etau
 
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -194,6 +196,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _sample_cls(self):
         return fos.SampleView
+
+    @property
+    def _frame_cls(self):
+        return fofr.FrameView
 
     @property
     def _stages(self):
@@ -524,12 +530,11 @@ class DatasetView(foc.SampleCollection):
                     save_context.save(sample)
 
     def _iter_samples(self):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
             for d in self._aggregate(detach_frames=True, detach_groups=True):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 index += 1
                 yield sample
@@ -540,16 +545,29 @@ class DatasetView(foc.SampleCollection):
             for sample in view._iter_samples():
                 yield sample
 
-    def _make_sample_fcn(self):
+    def _make_sample(self, d):
+        if getattr(self, "_make_sample_fcn", None) is None:
+            self._make_sample_fcn = self._init_make_sample()
+
+        return self._make_sample_fcn(d)
+
+    def _make_frame(self, d):
+        if getattr(self, "_make_frame_fcn", None) is None:
+            self._make_frame_fcn = self._init_make_frame()
+
+        return self._make_frame_fcn(d)
+
+    def _init_make_sample(self):
         sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             roots_only=True
         )
         filtered_fields = self._get_filtered_fields()
+        sample_doc_cls = self._dataset._sample_doc_cls
 
         def make_sample(d):
             try:
-                doc = self._dataset._sample_dict_to_doc(d)
+                doc = sample_doc_cls.from_dict(d)
                 return sample_cls(
                     doc,
                     self,
@@ -564,6 +582,32 @@ class DatasetView(foc.SampleCollection):
                 ) from e
 
         return make_sample
+
+    def _init_make_frame(self):
+        frame_cls = self._frame_cls
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames=True, roots_only=True
+        )
+        filtered_fields = self._get_filtered_fields(frames=True)
+        frame_doc_cls = self._dataset._frame_doc_cls
+
+        def make_frame(d):
+            try:
+                doc = frame_doc_cls.from_dict(d)
+                return frame_cls(
+                    doc,
+                    self,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load frame from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
+
+        return make_frame
 
     def iter_groups(
         self,
@@ -674,7 +718,6 @@ class DatasetView(foc.SampleCollection):
                         save_context.save(sample)
 
     def _iter_groups(self, group_slices=None):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         group_field = self.group_field
@@ -685,7 +728,7 @@ class DatasetView(foc.SampleCollection):
             for d in self._aggregate(
                 detach_frames=True, groups_only=True, group_slices=group_slices
             ):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 group_id = sample[group_field].id
                 if curr_id is None:
@@ -800,7 +843,7 @@ class DatasetView(foc.SampleCollection):
         group_field = self.group_field
         id_field = group_field + "._id"
 
-        view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
+        view = self.match(F(id_field) == ObjectId(group_id))
 
         try:
             groups = view._iter_groups(group_slices=group_slices)
@@ -874,6 +917,7 @@ class DatasetView(foc.SampleCollection):
         read_only=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -892,29 +936,30 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         schema = self._dataset.get_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            read_only=read_only,
-            include_private=include_private,
+            include_private=include_private
         )
 
         schema = self._get_filtered_schema(schema)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                read_only=read_only,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def get_frame_field_schema(
         self,
@@ -923,6 +968,7 @@ class DatasetView(foc.SampleCollection):
         read_only=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
@@ -943,33 +989,33 @@ class DatasetView(foc.SampleCollection):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the view does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the view does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
         schema = self._dataset.get_frame_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            read_only=read_only,
             include_private=include_private,
         )
 
         schema = self._get_filtered_schema(schema, frames=True)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                read_only=read_only,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
@@ -1293,7 +1339,7 @@ class DatasetView(foc.SampleCollection):
             ``fields`` is used to omit such fields from the save.
 
         Args:
-            fields (None): an optional field or list of fields to save. If
+            fields (None): an optional field or iterable of fields to save. If
                 specified, only these field's contents are modified
         """
         self._dataset._save(view=self, fields=fields)
@@ -1331,6 +1377,10 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
         for stage in self._stages:
             _view = _view.add_stage(stage)
+
+        for name in ("_make_sample_fcn", "_make_frame_fcn"):
+            if hasattr(self, name):
+                delattr(self, name)
 
     def to_dict(
         self,
@@ -1490,6 +1540,11 @@ class DatasetView(foc.SampleCollection):
         _group_slices = set()
         _attach_groups_idx = None
 
+        if not _contains_videos:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
+
         idx = 0
         for stage in self._stages:
             if isinstance(stage, fost.SelectGroupSlices):
@@ -1622,11 +1677,11 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
+            media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
             support=support,
-            media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
             detach_groups=detach_groups,
@@ -1827,15 +1882,18 @@ class DatasetView(foc.SampleCollection):
     def _get_missing_fields(self, frames=False):
         if frames:
             if not self._has_frame_fields():
-                return set()
+                return None
 
-            dataset_schema = self._dataset.get_frame_field_schema()
-            view_schema = self.get_frame_field_schema()
+            dataset_schema = self._dataset.get_frame_field_schema(flat=True)
+            view_schema = self.get_frame_field_schema(flat=True)
         else:
-            dataset_schema = self._dataset.get_field_schema()
-            view_schema = self.get_field_schema()
+            dataset_schema = self._dataset.get_field_schema(flat=True)
+            view_schema = self.get_field_schema(flat=True)
 
-        return set(dataset_schema.keys()) - set(view_schema.keys())
+        missing_fields = set(dataset_schema.keys()) - set(view_schema.keys())
+        _discard_nested_leafs(missing_fields)
+
+        return missing_fields
 
     def _get_group_media_types(self):
         for stage in reversed(self._stages):
@@ -2032,3 +2090,17 @@ def _filter_embedded_field_schema(
         _filter_embedded_field_schema(
             _field, _path, selected_fields, excluded_fields
         )
+
+
+def _discard_nested_leafs(paths):
+    discard = set()
+
+    for path in paths:
+        chunks = path.split(".")
+        for i in range(1, len(chunks)):
+            root = ".".join(chunks[:i])
+            if root in paths:
+                discard.add(path)
+
+    for path in discard:
+        paths.discard(path)

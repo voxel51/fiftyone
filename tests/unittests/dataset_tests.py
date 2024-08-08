@@ -2522,6 +2522,7 @@ class DatasetTests(unittest.TestCase):
         field.read_only = False
         field.save()
 
+        view.reload()
         sample_view = view.first()
         sample_view.predictions.detections[0].label = "cat"
         sample_view.save()
@@ -2693,6 +2694,7 @@ class DatasetTests(unittest.TestCase):
         field.read_only = False
         field.save()
 
+        view.reload()
         sample_view = view.first()
         frame_view = sample_view.frames.first()
         frame_view.predictions.detections[0].label = "cat"

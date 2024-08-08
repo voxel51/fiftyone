@@ -2153,11 +2153,17 @@ class SetAttributes(object):
         self._obj = obj
         self._kwargs = kwargs
         self._orig_kwargs = None
+        self._new_kwargs = None
 
     def __enter__(self):
         self._orig_kwargs = {}
+        self._new_kwargs = set()
         for k, v in self._kwargs.items():
-            self._orig_kwargs[k] = getattr(self._obj, k)
+            if hasattr(self._obj, k):
+                self._orig_kwargs[k] = getattr(self._obj, k)
+            else:
+                self._new_kwargs.add(k)
+
             setattr(self._obj, k, v)
 
         return self
@@ -2165,6 +2171,9 @@ class SetAttributes(object):
     def __exit__(self, *args):
         for k, v in self._orig_kwargs.items():
             setattr(self._obj, k, v)
+
+        for k in self._new_kwargs:
+            delattr(self._obj, k)
 
 
 class SuppressLogging(object):

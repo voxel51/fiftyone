@@ -179,6 +179,8 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         read_only=None,
         include_private=False,
+        flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of this document.
 
@@ -197,31 +199,31 @@ class DatasetMixin(object):
                 read-only fields. By default, all fields are included
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
+            flat (False): whether to return a flattened schema where all
+                embedded document fields are included as top-level keys
+            mode (None): whether to apply the `above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
-        fof.validate_constraints(
+        schema = OrderedDict(
+            (fn, cls._fields[fn])  # pylint: disable=no-member
+            for fn in cls._get_fields_ordered(include_private=include_private)
+        )
+
+        return fof.filter_schema(
+            schema,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
         )
-
-        schema = OrderedDict()
-        field_names = cls._get_fields_ordered(include_private=include_private)
-        for field_name in field_names:
-            # pylint: disable=no-member
-            field = cls._fields[field_name]
-
-            if fof.matches_constraints(
-                field,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                read_only=read_only,
-            ):
-                schema[field_name] = field
-
-        return schema
 
     @classmethod
     def merge_field_schema(
@@ -235,8 +237,7 @@ class DatasetMixin(object):
         """Merges the field schema into this document.
 
         Args:
-            schema: a dictionary mapping field names or
-                ``embedded.field.names`` to
+            schema: a dict mapping field names or ``embedded.field.names`` to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that fields already exist with
