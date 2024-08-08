@@ -1,8 +1,8 @@
 import { ErrorBoundary } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import React, { Suspense, useEffect } from "react";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
 import { useModalContext } from "./hooks";
@@ -24,23 +24,26 @@ export const ModalSample = React.memo(() => {
   const is3D = useRecoilValue(fos.is3DDataset);
 
   const tooltip = fos.useTooltip();
-  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
-    fos.isTooltipLocked
-  );
+  const setIsTooltipLocked = useSetRecoilState(fos.isTooltipLocked);
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
 
-  const tooltipEventHandler = useCallback(
-    (e) => {
-      if (e.detail) {
-        setTooltipDetail(e.detail);
-        if (!isTooltipLocked && e.detail?.coordinates) {
-          tooltip.setCoords(e.detail.coordinates);
+  const tooltipEventHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (e) => {
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .getValue();
+
+        if (e.detail) {
+          set(fos.tooltipDetail, e.detail);
+          if (!isTooltipLocked && e.detail?.coordinates) {
+            tooltip.setCoords(e.detail.coordinates);
+          }
+        } else if (!isTooltipLocked) {
+          set(fos.tooltipDetail, null);
         }
-      } else if (!isTooltipLocked) {
-        setTooltipDetail(null);
-      }
-    },
-    [isTooltipLocked, tooltip]
+      },
+    [tooltip]
   );
 
   const { activeLookerRef, onLookerSetSubscribers } = useModalContext();
