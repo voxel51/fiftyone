@@ -35,13 +35,13 @@ and models.
 Plugin types
 ------------
 
-FiftyOne plugins can be written in JS or Python, or a combination of both.
+FiftyOne plugins can be written in Python or JS, or a combination of both.
+
+Python Plugins are built using the `fiftyone` package, pip packages, and your
+own Python. They can consist of Panels, Operators, and Components.
 
 JS Plugins are built using the `@fiftyone` TypeScript packages, npm packages,
 and your own TypeScript. They can consist of Panels, Operators, and Components.
-
-Python Plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can currently only define Operators.
 
 .. _plugins-design-panels:
 
@@ -69,8 +69,8 @@ FiftyOne natively includes the following Panels:
 
 .. note::
 
-    Jump to :ref:`this section <developing-js-plugins>` for more information
-    about developing panels.
+    Jump to :ref:`this section <developing-panels>` for more information about
+    developing panels.
 
 .. _plugins-design-operators:
 
@@ -836,8 +836,9 @@ Execution context
 
 An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
 passed to each of the operator's methods at runtime. This `ctx` contains static
-information about the current state of the App (dataset, view, selection, etc)
-as well as dynamic information about the current parameters and results.
+information about the current state of the App (dataset, view, panel,
+selection, etc) as well as dynamic information about the current parameters and
+results.
 
 An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
 contains the following properties:
@@ -851,6 +852,11 @@ contains the following properties:
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
+-   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
+-   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
+    instance that you can use to read and write the :ref:`state <panel-state>`
+    and :ref:`data <panel-data>` of the current panel, if the operator was
+    invoked from a panel
 -   `ctx.delegated` - whether delegated execution has been forced for the
     operation
 -   `ctx.requesting_delegated_execution` - whether delegated execution has been
@@ -1625,6 +1631,501 @@ method as demonstrated below:
         }
 
         registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME);
+
+.. _developing-panels:
+
+Developing panels
+_________________
+
+Panels are miniature full-featured data applications that you can open in
+:ref:`App Spaces <app-spaces>` and interactively manipulate to explore your
+dataset and update/respond to updates from other spaces that are currently open
+in the App.
+
+Panels can be defined in either Python or JS, and FiftyOne comes with a
+number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
+
+Like :ref:`Operators <developing-operators>`, Panels can make use of the
+:mod:`fiftyone.operators.types` module and the
+:js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
+rich builtin type system that panel developers can use to implement the layout
+and associated events that define the panel.
+
+Panels can trigger both Python and JS operators, either programmatically or
+by interactively launching a prompt that users can fill out to provide the
+necessary parameters for the operator's execution. This powerful composability
+allows panels to define interactive workflows that guide the user through
+executing workflows on their data and then interactively exploring and
+analyzing the results of the computation.
+
+Panels can also interact with other components of the App, such as responding
+to changes in (or programmatically updating) the current dataset, view, current
+selection, or active sample in the modal.
+
+.. _panel-interface:
+
+Panel interface
+---------------
+
+The code block below describes the Python interface for defining panels.
+We'll dive into each component of the interface in more detail in the
+subsequent sections.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ExamplePanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                # The panels's URI: f"{plugin_name}/{name}"
+                name="example_panel",  # required
+
+                # The display name of the panel in the "+" menu
+                label="Example panel",  # required
+
+                # Custom icons to use in the "+"" menu
+                icon="/assets/icon.svg",
+                light_icon="/assets/icon-light.svg",  # light theme only
+                dark_icon="/assets/icon-dark.svg",  # dark theme only
+
+                # Whether to allow multiple instances of the panel to be opened
+                allow_multiple=False,
+            )
+
+        def render(self, ctx):
+            """Implement this method to define your panel's layout and events.
+
+            This method is called after every panel event is executed (panel
+            load, button callback, context change event, etc).
+
+            Returns:
+                a `types.Property` defining the panel's components
+            """
+            panel = types.Object()
+
+            # Define a menu of actions for the panel
+            menu = panel.menu("menu", width=100, align_y="center")
+            actions = menu.btn_group("actions")
+            actions.enum(
+                "brain_key",
+                label="Brain key",  # placeholder text
+                values=["foo", "bar"],
+                on_change=self.on_change_brain_key,  # custom event callback
+            )
+            actions.btn(
+                "learn_more",
+                label="Learn more",  # tooltip text
+                icon="help",  # material UI icon
+                on_click=self.on_click_learn_more,  # custom event callback
+            )
+
+            # Define components that appear in the panel's main body
+            panel.str("event", label="The last event")
+            panel.bool("show_start_button", default=True)
+
+            # You can use conditional logic to dynamically change the layout
+            # based on the current panel state
+            if ctx.panel.state.show_start_button:
+                # Define a button with a custom on click event
+                panel.btn(
+                    "start",
+                    label="Start",  # button text
+                    on_click=self.on_click_start,  # custom event callback
+                )
+            else:
+                # Define an interactive plot with custom callbacks
+                panel.plot(
+                    "embeddings",
+                    config=...,
+                    layout=...,
+                    on_selected=self.on_selected_embeddings,  # custom event callback
+                )
+
+            return types.Property(panel)
+
+        #######################################################################
+        # Builtin events
+        #######################################################################
+
+        def on_load(self, ctx):
+            """Implement this method to set panel state/data when the panel
+            initially loads.
+            """
+            event = {
+                "data": None,
+                "description": "the panel is loaded",
+            }
+            ctx.panel.set_state("event", "on_load")
+            ctx.panel.set_data("event", event)
+
+        def on_unload(self, ctx):
+            """Implement this method to set panel state/data when the panel is
+            being closed.
+            """
+            event = {
+                "data": None,
+                "description": "the panel is unloaded",
+            }
+            ctx.panel.set_state("event", "on_unload")
+            ctx.panel.set_data("event", event)
+
+        def on_change_ctx(self, ctx):
+            """Implement this method to set panel state/data when any aspect
+            of the execution context changes.
+
+            The current execution context will be available via ``ctx``.
+            """
+            event = {
+                "data": ctx.to_dict(),
+                "description": "the current ExecutionContext",
+            }
+            ctx.panel.set_state("event", "on_change_ctx")
+            ctx.panel.set_data("event", event)
+
+        def on_change_dataset(self, ctx):
+            """Implement this method to set panel state/data when the current
+            dataset is changed.
+
+            The new dataset will be available via ``ctx.dataset``.
+            """
+            event = {
+                "data": ctx.dataset.name,
+                "description": "the current dataset name",
+            }
+            ctx.panel.set_state("event", "on_change_dataset")
+            ctx.panel.set_data("event", event)
+
+        def on_change_view(self, ctx):
+            """Implement this method to set panel state/data when the current
+            view is changed.
+
+            The new view will be available via ``ctx.view``.
+            """
+            event = {
+                "data": ctx.view._serialize(),
+                "description": "the current view",
+            }
+            ctx.panel.set_state("event", "on_change_view")
+            ctx.panel.set_data("event", event)
+
+        def on_change_current_sample(self, ctx):
+            """Implement this method to set panel state/data when a new sample
+            is loaded in the Sample modal.
+
+            The ID of the new sample will be available via
+            ``ctx.current_sample``.
+            """
+            event = {
+                "data": ctx.current_sample,
+                "description": "the current sample",
+            }
+            ctx.panel.set_state("event", "on_change_current_sample")
+            ctx.panel.set_data("event", event)
+
+        def on_change_selected(self, ctx):
+            """Implement this method to set panel state/data when the current
+            selection changes (eg in the Samples panel).
+
+            The IDs of the current selected samples will be available via
+            ``ctx.selected``.
+            """
+            event = {
+                "data": ctx.selected,
+                "description": "the current selection",
+            }
+            ctx.panel.set_state("event", "on_change_selected")
+            ctx.panel.set_data("event", event)
+
+        def on_change_selected_labels(self, ctx):
+            """Implement this method to set panel state/data when the current
+            selected labels change (eg in the Sample modal).
+
+            Information about the current selected labels will be available
+            via ``ctx.selected_labels``.
+            """
+            event = {
+                "data": ctx.selected_labels,
+                "description": "the current selected labels",
+            }
+            ctx.panel.set_state("event", "on_change_selected_labels")
+            ctx.panel.set_data("event", event)
+
+        def on_change_extended_selection(self, ctx):
+            """Implement this method to set panel state/data when the current
+            extended selection changes.
+
+            The IDs of the current extended selection will be available via
+            ``ctx.extended_selection``.
+            """
+            event = {
+                "data": ctx.extended_selection,
+                "description": "the current extended selection",
+            }
+            ctx.panel.set_state("event", "on_change_extended_selection")
+            ctx.panel.set_data("event", event)
+
+        #######################################################################
+        # Custom events
+        # These events are defined by user code above and, just like builtin
+        # events, take `ctx` as input and are followed by a call to render()
+        #######################################################################
+
+        def on_change_brain_key(self, ctx):
+            # Load expensive content based on current `brain_key`
+            brain_key = ctx.panel.state.menu.actions.brain_key
+            results = ctx.dataset.load_brain_results(brain_key)
+
+            # Store large content as panel data for efficiency
+            data = {"points": results.points, ...}
+            ctx.panel.set_data("embeddings", data)
+
+        def on_click_start(self, ctx):
+            # Launch an interactive prompt for user to execute an operator
+            ctx.prompt("@voxel51/brain/compute_visualization")
+
+            # Lightweight state update
+            ctx.panel.set_state("show_start_button", False)
+
+        def on_click_learn_more(self, ctx):
+            # Trigger a builtin operation via `ctx.ops`
+            url = https://docs.voxel51.com/plugins/developing_plugins.html
+            ctx.ops.notify(f"Check out {url} for more information")
+
+        def on_selected_embeddings(self, ctx):
+            # Retrieve data from plot
+            selected_points = ctx.panel.state.embeddings.get("data", [])
+            selected_sample_ids = [d.get("id", None) for d in selected_points]
+
+            # Conditionally trigger a builtin operation via `ctx.ops`
+            if len(selected_sample_ids) > 0:
+                ctx.ops.set_extended_selection(selected_sample_ids)
+
+    def register(p):
+        """Always implement this method and register() each panel that your
+        plugin defines.
+        """
+        p.register(ExamplePanel)
+
+.. note::
+
+    Remember that you must also include `example_panel` (the panel's name)
+    in the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+
+.. _panel-config:
+
+Panel config
+------------
+
+Every panel must define a
+:meth:`config <fiftyone.operators.panel.Panel.config>` property that
+defines its name, display name, and other optional metadata about its
+behavior:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.PanelConfig(
+            # The panels's URI: f"{plugin_name}/{name}"
+            name="example_panel",  # required
+
+            # The display name of the panel in the "+" menu
+            label="Example panel",  # required
+
+            # Custom icons to use in the "+"" menu
+            icon="/assets/icon.svg",
+            light_icon="/assets/icon-light.svg",  # light theme only
+            dark_icon="/assets/icon-dark.svg",  # dark theme only
+
+            # Whether to allow multiple instances of the panel to be opened
+            allow_multiple=False,
+        )
+
+.. _panel-execution-context:
+
+Execution context
+-----------------
+
+Like operators, an
+:class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
+passed to each of the panel's methods at runtime. This `ctx` contains static
+information about the current state of the App (dataset, view, panel,
+selection, etc) as well as dynamic information about the panel's current
+:ref:`state and data <panel-state-and-data>`.
+
+See :ref:`this section <operator-execution-context>` for a full description
+of execution context.
+
+.. _panel-state-and-data:
+
+Panel state and data
+--------------------
+
+Panels provide two mechanisms for persisting information:
+:ref:`panel state <panel-state>` and :ref:`panel data <panel-data>`.
+
+.. _panel-state:
+
+Panel state
+~~~~~~~~~~~
+
+Panel state is included in every event handler request, and it is analogous to
+:ref:`operator parameters <operator-inputs>` in the following ways:
+
+-   The current panel state is readable during a panel's execution
+    (like `ctx.params` for operators)
+-   The values of any components defined in a panel's
+    :meth:`render() <fiftyone.operators.panel.Panel.render>` method are
+    available via corresponding state properties of the same name
+
+.. note::
+
+    Panel state is included in every event handler request, so it is not
+    intended to store large values. Use panel data for this instead.
+
+.. code-block:: python
+    :linenos:
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        menu = panel.menu("menu", ...)
+        actions = menu.btn_group("actions")
+        actions.enum(
+            "mode",
+            values=["foo", "bar"],
+            on_change=self.on_change_mode,
+            ...
+        )
+
+        panel.str("user_input", default="spam")
+
+    def on_change_mode(self, ctx):
+        # Object-based interface
+        mode = ctx.panel.state.menu.actions.mode
+        user_input = ctx.panel.state.user_input
+
+        # Functional interface
+        mode = ctx.panel.get_state("menu.actions.mode")
+        user_input = ctx.panel.get_state("user_input")
+
+In addition, panel state can be programmatically updated in panel methods via
+the two syntaxes shown below:
+
+.. code-block:: python
+    :linenos:
+
+    def on_change_view(self, ctx):
+        # Top-level state attributes can be modified by setting properties
+        ctx.panel.state.foo = "bar"
+
+        # Use set_state() to efficiently apply nested updates
+        ctx.panel.set_state("foo.bar", {"spam": "eggs"})
+
+.. warning::
+
+    Don't directly modify panel state in
+    :meth:`render() <fiftyone.operators.panel.Panel.render>`, just like how
+    `setState()` should not be called in
+    React's
+    `render() <https://legacy.reactjs.org/docs/react-component.html#render>`_.
+
+    Instead set panel state in event callbacks as demonstrated above.
+
+.. _panel-data:
+
+Panel data
+~~~~~~~~~~
+
+Panel data is designed to store larger content such as plot data that is
+loaded once and henceforward stored *only* clientside to avoid
+unnecessary/expensive reloads and serverside serialization during the lifecycle
+of the panel.
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        self.update_plot_data(ctx)
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        menu = panel.menu("menu", ...)
+        actions = menu.btn_group("actions")
+        actions.enum(
+            "brain_key",
+            label="Brain key",
+            values=["foo", "bar"],
+            default=None,
+            on_change=self.update_plot_data,
+        )
+
+        panel.plot("embeddings", config=..., layout=...)
+
+        return types.Property(panel)
+
+    def update_plot_data(self, ctx):
+        brain_key = ctx.panel.state.menu.actions.brain_key
+        if brain_key is None:
+            return
+
+        # Load expensive content based on current `brain_key`
+        results = ctx.dataset.load_brain_results(brain_key)
+
+        # Store large content as panel data for efficiency
+        data = {"points": results.points, ...}
+        ctx.panel.set_data("embeddings", data)
+
+Note how the panel's `on_load()` hook is implemented so that panel data can be
+hydrated when the panel is initially loaded, and then subsequently plot data is
+loaded only when the `brain_key` property is modified.
+
+.. note::
+
+    Panel data is never readable in Python; it is only implicitly used by
+    the types you define when they are rendered clientside.
+
+.. _panel-saved-workspaces
+
+Saved workspaces
+----------------
+
+:ref:`Saved workspaces <app-workspaces>` may contain any number of Python
+panels!
+
+When a workspace is saved, the :ref:`state <panel-state>` of any panels in the
+layout is persisted as part of the workspace's definition. Thus when the
+workspace is loaded later, all panels will "remember" their state.
+
+Panel data (which may be large), on the other hand, is *not* explicitly
+persisted. Instead it should be hydrated when the panel is loaded using the
+pattern :ref:`demonstrated above <panel-data>`
+
+.. _panel-accessing-secrets:
+
+Accessing secrets
+-----------------
+
+Like operators, panels can :ref:`access secrets <operator-secrets>` defined by
+their plugin.
+
+At runtime, the panel's :ref:`execution context <operator-execution-context>`
+is automatically hydrated with any available secrets that are declared by the
+plugin. Panels access these secrets via the `ctx.secrets` dict:
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        url = ctx.secrets["FIFTYONE_CVAT_URL"]
+        username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+        password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
 .. _developing-js-plugins:
 
