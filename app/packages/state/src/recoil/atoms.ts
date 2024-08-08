@@ -16,7 +16,7 @@ import {
 import { StrictField } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
-import { SPACES_DEFAULT, sessionAtom } from "../session";
+import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
@@ -353,7 +353,7 @@ export const readOnly = sessionAtom({
 
 export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
-  default: SPACES_DEFAULT,
+  default: GRID_SPACES_DEFAULT,
 });
 
 export const colorScheme = sessionAtom({
