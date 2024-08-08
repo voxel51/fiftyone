@@ -150,7 +150,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "clear_panel_state", params=self._create_panel_params(panel_id)
@@ -161,7 +161,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "clear_panel_data", params=self._create_panel_params(panel_id)
@@ -171,9 +171,9 @@ class Operations(object):
         """Set the entire state of the specified panel in the App.
 
         Args:
+            state: the state to set
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
-            state (dict): the state to set
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "set_panel_state",
@@ -184,9 +184,9 @@ class Operations(object):
         """Set the entire data of the specified panel in the App.
 
         Args:
-            panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
             data (dict): the data to set
+            panel_id (None): the optional ID of the panel to clear.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "set_panel_data",
@@ -198,7 +198,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "patch_panel_state",
@@ -210,7 +210,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "patch_panel_data",
@@ -222,7 +222,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         return self._ctx.trigger(
             "reduce_panel_state",
@@ -238,7 +238,7 @@ class Operations(object):
         Args:
             output: the output to show
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.current_panel.id`` will be used
         """
         params = self._create_panel_params(panel_id)
         return self._ctx.trigger(
@@ -264,8 +264,9 @@ class Operations(object):
             is_active (True): whether to activate the panel immediately
             layout (None): the layout orientation
                 ``("horizontal", "vertical")``, if applicable
-            force (False): whether to force open the panel. Skips the check to see if a panel with
-                the same name exists or not. Note: this also skips allowDuplicates check
+            force (False): whether to force open the panel. Skips the check to
+                see if a panel with the same name exists or whether the panel
+                declares ``allow_multiple=False``
             force_duplicate (False): whether to force open the panel even if it is already open.
                 Only applicable if force is ``True``
         """

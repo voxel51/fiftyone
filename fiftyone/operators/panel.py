@@ -1,27 +1,39 @@
 """
-FiftyOne operators.
+FiftyOne panels.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import pydash
+
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
 
-import pydash
-
 
 class PanelConfig(OperatorConfig):
-    """A configuration for a panel operator."""
+    """Configuration for a panel.
+
+    Args:
+        name: the name of the panel
+        label: the display name for the panel
+        icon (None): icon to show for the operator in the Operator Browser
+        light_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the light mode
+        dark_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the dark mode
+        allow_multiple (False): whether to allow multiple instances of the
+            panel to be opened
+    """
 
     def __init__(
         self,
         name,
         label,
         icon=None,
-        dark_icon=None,
         light_icon=None,
+        dark_icon=None,
         allow_multiple=False,
         **kwargs
     ):
@@ -29,8 +41,8 @@ class PanelConfig(OperatorConfig):
         self.name = name
         self.label = label
         self.icon = icon
-        self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
@@ -43,8 +55,8 @@ class PanelConfig(OperatorConfig):
             "name": self.name,
             "label": self.label,
             "icon": self.icon,
-            "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
         }
 
@@ -54,9 +66,20 @@ PanelOperatorConfig = PanelConfig
 
 
 class Panel(Operator):
-    """A panel operator."""
+    """A panel."""
 
     def render(self, ctx):
+        """Defines the panel's layout and events.
+
+        This method is called after every panel event is called (on load,
+        button callback, context change event, etc).
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Property`
+        """
         raise NotImplementedError("Subclasses must implement render()")
 
     def resolve_input(self, ctx):
@@ -118,13 +141,11 @@ class WriteOnlyError(Exception):
     """Error raised when trying to read a write-only property."""
 
 
-class PanelRefBase:
-    """
-    Base class for panel state and data.
+class PanelRefBase(object):
+    """Base class for panel state and data.
 
-    Attributes:
-        _data (dict): A dictionary to store the data or state.
-        _ctx: The context object containing the operations.
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
@@ -132,25 +153,23 @@ class PanelRefBase:
         self._ctx = ctx
 
     def set(self, key, value):
-        """
-        Sets the value in the dictionary.
+        """Sets the value in the dictionary.
 
         Args:
-            key (str): The key.
-            value (any): The value.
+            key: a key
+            value: the value
         """
         pydash.set_(self._data, key, value)
 
     def get(self, key, default=None):
-        """
-        Gets the value from the dictionary.
+        """Gets the value from the dictionary.
 
         Args:
-            key (str): The key.
-            default (any): The default value if key is not found.
+            key: a key
+            default (None): a default value if the key is not found
 
         Returns:
-            The value.
+            the value
         """
         return pydash.get(self._data, key, default)
 
@@ -174,8 +193,10 @@ class PanelRefBase:
 
 
 class PanelRefState(PanelRefBase):
-    """
-    Class representing the state of a panel.
+    """Class representing the state of a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
@@ -183,12 +204,11 @@ class PanelRefState(PanelRefBase):
         self._data = ctx.panel_state
 
     def set(self, key, value):
-        """
-        Sets the state of the panel.
+        """Sets the state of the panel.
 
         Args:
-            key (str): A dot delimited path.
-            value (any): The state value.
+            key: a key or ``"nested.key.path"``
+            value: the state value
         """
         super().set(key, value)
         args = {}
@@ -202,17 +222,18 @@ class PanelRefState(PanelRefBase):
 
 
 class PanelRefData(PanelRefBase):
-    """
-    Class representing the data of a panel.
+    """Class representing the data of a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def set(self, key, value, _exec_op=True):
-        """
-        Sets the data of the panel.
+        """Sets the data of the panel.
 
         Args:
-            key (str): The data key.
-            value (any): The data value.
+            key: a key or ``"nested.key.path"``
+            value: the data value
         """
         super().set(key, value)
         args = {}
@@ -229,9 +250,11 @@ class PanelRefData(PanelRefBase):
         self._ctx.ops.clear_panel_data()
 
 
-class PanelRef:
-    """
-    Represents a panel in the app.
+class PanelRef(object):
+    """Class representing a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
@@ -259,35 +282,32 @@ class PanelRef:
         self._ctx.ops.close_panel(id=self.id)
 
     def set_state(self, key, value):
-        """
-        Sets the state of the panel.
+        """Sets the state of the panel.
 
         Args:
-            key (str): A dot delimited path.
-            value (any): The state value.
+            key: a key or ``"nested.key.path"``
+            value: the state value
         """
         self._state.set(key, value)
 
     def get_state(self, key, default=None):
-        """
-        Gets the state of the panel.
+        """Gets the state of the panel.
 
         Args:
-            key (str): A dot delimited path.
-            default (any): The default value if key is not found.
+            key: the key or ``"nested.key.path"``
+            default (None): a default value if the key is not found
 
         Returns:
-            The state value.
+            the state value
         """
         return self._state.get(key, default)
 
     def set_data(self, key, value):
-        """
-        Sets the data of the panel.
+        """Sets the data of the panel.
 
         Args:
-            path (str): The dot delimited path to set.
-            value (any): The data value.
+            key: a key or ``"nested.key.path"``
+            value: the data value
         """
         self._data.set(key, value)
 
@@ -303,11 +323,10 @@ class PanelRef:
         self._ctx.ops.patch_panel_data(data)
 
     def set_title(self, title):
-        """
-        Sets the title of the panel.
+        """Sets the title of the panel.
 
         Args:
-            title (str): The title.
+            title: a title string
         """
         if title is None:
             raise ValueError("title cannot be None")

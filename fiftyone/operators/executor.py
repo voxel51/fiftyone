@@ -384,15 +384,16 @@ async def resolve_type(registry, operator_uri, request_params):
 
 
 async def resolve_type_with_context(request_params, target: str = None):
-    """Resolves the "inputs" or "outputs" schema of an operator with the given context.
+    """Resolves the "inputs" or "outputs" schema of an operator with the given
+    context.
 
     Args:
         request_params: a dictionary of request parameters
         target (None): the target schema ("inputs" or "outputs")
 
     Returns:
-        the schema of "inputs" or "outputs" :class:`fiftyone.operators.types.Property` of
-        an operator, or None
+        the schema of "inputs" or "outputs"
+        :class:`fiftyone.operators.types.Property` of an operator, or None
     """
     computed_target = target or request_params.get("target", None)
     computed_request_params = {**request_params, "target": computed_target}
@@ -672,14 +673,14 @@ class ExecutionContext(object):
         Args:
             operator_uri: the URI of the operator
             params (None): a dictionary of parameters for the operator
-            on_success (None): a callback to invoke if the user successfully executes the operator
+            on_success (None): a callback to invoke if the user successfully
+                executes the operator
             on_error (None): a callback to invoke if the execution fails
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
             instructions for the FiftyOne App to prompt the user
         """
-
         return self.trigger(
             "prompt_user_for_operation",
             params=_convert_callables_to_operator_uris(
@@ -782,9 +783,7 @@ class ExecutionContext(object):
     @property
     def panel_id(self):
         """The ID of the panel that invoked the operator, if any."""
-        #
-        # TODO: move panel_id to top level params
-        #
+        # @todo: move panel_id to top level param
         return self.params.get("panel_id", None)
 
     @property
@@ -793,10 +792,11 @@ class ExecutionContext(object):
 
     @property
     def panel(self):
-        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can use
-        to read and write the state and data of the corresponding panel.
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
 
-        Only available when the operator is invoked from a panel."""
+        Only available when the operator is invoked from a panel.
+        """
         return self._panel
 
     def serialize(self):
@@ -847,7 +847,8 @@ class ExecutionResult(object):
         error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
-        outputs_schema (None): a JSON dict representing the output schema of the operator
+        outputs_schema (None): a JSON dict representing the output schema of
+            the operator
     """
 
     def __init__(
@@ -960,6 +961,7 @@ class ValidationContext(object):
         ctx: the :class:`ExecutionContext`
         inputs_property: the :class:`fiftyone.operators.types.Property` of the
             operator inputs
+        operator: the :class:`fiftyone.operators.operator.Operator`
     """
 
     def __init__(self, ctx, inputs_property, operator):
