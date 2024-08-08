@@ -18,7 +18,11 @@ import string
 import timeit
 import warnings
 
+
 from bson import ObjectId
+from functools import wraps
+from signal import signal, alarm, SIGALRM
+
 from pymongo import InsertOne, UpdateOne, UpdateMany
 
 import eta.core.serial as etas
@@ -64,6 +68,43 @@ def _make_registrar():
 
     registrar.all = registry
     return registrar
+
+
+class GracefulTimeoutError(Exception):
+    def __init__(self, seconds):
+        message = "Graceful timeout after %s seconds" % seconds
+        logging.info(message)
+        super().__init__(message)
+
+
+def timeout(
+    *, seconds=3, error_message="Call to function timed out!", graceful=False
+):
+    """Abort the wrapped function call after the specified number of seconds
+    have elapsed."""
+
+    def _handle_timeout(signum, frame):
+        if graceful:
+            raise GracefulTimeoutError(seconds)
+        else:
+            raise TimeoutError(
+                "Function call timed out after %s seconds" % seconds
+            )
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            signal(SIGALRM, _handle_timeout)
+            alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                alarm(0)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 # Keeps track of all `ViewStage` methods
@@ -9107,6 +9148,7 @@ class SampleCollection(object):
 
         return index_info
 
+    @timeout(seconds=10, graceful=True)
     def create_index(self, field_or_spec, unique=False, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
