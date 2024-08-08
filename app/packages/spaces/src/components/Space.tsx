@@ -50,9 +50,7 @@ export default function Space({ node, id, archetype }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && !(archetype === "modal") && (
-          <Workspaces archetype={archetype} />
-        )}
+        {node.isRoot() && archetype !== "modal" && <Workspaces />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -82,9 +80,7 @@ export default function Space({ node, id, archetype }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && !(archetype === "modal") && (
-          <Workspaces archetype={archetype} />
-        )}
+        {node.isRoot() && archetype !== "modal" && <Workspaces />}
         <PanelTabs
           data-type="panel-container"
           data-cy="panel-container"
