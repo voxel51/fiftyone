@@ -720,14 +720,16 @@ class Session(object):
         else:
             self._state.group_slice = None
 
-        self._state.dataset = dataset
-        self._state.view = None
-        self._state.spaces = default_workspace_factory()
         self._state.color_scheme = build_color_scheme(
             None, dataset, self.config
         )
+        self._state.dataset = dataset
+        self._state.group_id = None
+        self._state.sample_id = None
+        self._state.spaces = default_workspace_factory()
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.view = None
 
     @property
     def view(self) -> t.Union[fov.DatasetView, None]:
@@ -767,6 +769,8 @@ class Session(object):
             self._state.view = view
             self._state.view_name = view.name
 
+        self._state.group_id = None
+        self._state.sample_id = None
         self._state.selected = []
         self._state.selected_labels = []
 
