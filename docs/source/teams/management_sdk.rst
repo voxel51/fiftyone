@@ -41,7 +41,7 @@ API keys
 
 .. _teams-sdk-cloud-credentials:
 
-Cloud Credentials
+Cloud credentials
 -----------------
 
 .. automodule:: fiftyone.management.cloud_credentials
@@ -79,7 +79,7 @@ Plugin management
 .. _teams-sdk-snapshots:
 
 Snapshots
----------------------
+---------
 
 .. automodule:: fiftyone.management.snapshot
    :members:
@@ -91,5 +91,14 @@ User management
 ---------------
 
 .. automodule:: fiftyone.management.users
+   :members:
+   :undoc-members:
+
+.. _teams-sdk-group-management:
+
+Group management
+----------------
+
+.. automodule:: fiftyone.management.user_groups
    :members:
    :undoc-members:

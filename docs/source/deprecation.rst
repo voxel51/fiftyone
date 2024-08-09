@@ -1,3 +1,5 @@
+.. _deprecation-notices:
+
 FiftyOne Deprecation Notices
 ============================
 
