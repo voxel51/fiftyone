@@ -113,9 +113,11 @@ class SaveContext(object):
         self._dataset = sample_collection._dataset
         self._sample_coll = sample_collection._dataset._sample_collection
         self._frame_coll = sample_collection._dataset._frame_collection
+        self._is_generated = sample_collection._is_generated
 
         self._sample_ops = []
         self._frame_ops = []
+        self._batch_ids = []
         self._reload_parents = []
 
         self._batching_strategy = batching_strategy
@@ -158,6 +160,9 @@ class SaveContext(object):
         if frame_ops:
             self._frame_ops.extend(frame_ops)
 
+        if updated and self._is_generated:
+            self._batch_ids.append(sample.id)
+
         if updated and isinstance(sample, fosa.SampleView):
             self._reload_parents.append(sample)
 
@@ -193,6 +198,10 @@ class SaveContext(object):
         if self._frame_ops:
             foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
             self._frame_ops.clear()
+
+        if self._batch_ids and self._is_generated:
+            self.sample_collection._sync_source(ids=self._batch_ids)
+            self._batch_ids.clear()
 
         if self._reload_parents:
             for sample in self._reload_parents:
