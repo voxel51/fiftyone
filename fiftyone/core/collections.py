@@ -18,7 +18,11 @@ import string
 import timeit
 import warnings
 
+
 from bson import ObjectId
+from functools import wraps
+from signal import signal, alarm, SIGALRM
+
 from pymongo import InsertOne, UpdateOne, UpdateMany
 
 import eta.core.serial as etas
@@ -64,6 +68,83 @@ def _make_registrar():
 
     registrar.all = registry
     return registrar
+
+
+class SuccessTimeout(Exception):
+    def __init__(self, seconds):
+        message = "Succeeded after %s seconds" % seconds
+        logging.info(message)
+        super().__init__(message)
+
+
+class GracefulTimeoutError(Exception):
+    def __init__(self, seconds):
+        message = "Graceful timeout after %s seconds" % seconds
+        logging.info(message)
+        super().__init__(message)
+
+
+def timeout(*, seconds=3, graceful=False, max_timeout=30):
+    """Abort the wrapped function call after the specified number of seconds
+    have elapsed."""
+    timeout.validate_func = None
+    timeout.time_count = 0
+
+    def _handle_timeout(signum, frame):
+        validate_func = timeout.validate_func
+        time_count = timeout.time_count + seconds
+        if callable(validate_func):
+            result = validate_func()
+            if result:
+                timeout.time_count = 0
+                raise SuccessTimeout(time_count)
+            elif time_count < max_timeout:
+                timeout.time_count = time_count
+                signal(SIGALRM, _handle_timeout)
+                alarm(seconds)
+            else:
+                timeout.time_count = 0
+                raise (
+                    GracefulTimeoutError(time_count)
+                    if graceful
+                    else TimeoutError(
+                        "Function call timed out after %s seconds" % time_count
+                    )
+                )
+        else:
+            raise (
+                GracefulTimeoutError(time_count)
+                if graceful
+                else TimeoutError(
+                    "Function call timed out after %s seconds" % time_count
+                )
+            )
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            dataset = args[0]
+            index_name = args[1] if len(args) > 1 else kwargs.get("index_name")
+            index_name += "_1"
+            conn = foo.get_db_conn()
+            timeout.validate_func = (
+                lambda: index_name
+                in conn.command(
+                    "collstats", dataset._dataset._sample_collection_name
+                )["indexBuilds"]
+            )
+
+            signal(SIGALRM, _handle_timeout)
+            alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                alarm(0)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 # Keeps track of all `ViewStage` methods
@@ -9107,6 +9188,7 @@ class SampleCollection(object):
 
         return index_info
 
+    @timeout(seconds=10, graceful=True)
     def create_index(self, field_or_spec, unique=False, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
