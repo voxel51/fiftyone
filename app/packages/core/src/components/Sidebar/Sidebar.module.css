@@ -9,3 +9,13 @@
 .resizeHandle {
   transition: background-color 0.1s ease;
 }
+
+.sidebar {
+  margin-left: 1rem;
+}
+
+@-moz-document url-prefix() {
+  .sidebar {
+    margin-right: 1rem;
+  }
+}

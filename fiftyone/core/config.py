@@ -398,6 +398,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_MEDIA_FALLBACK",
             default=False,
         )
+        self.disable_frame_filtering = self.parse_bool(
+            d,
+            "disable_frame_filtering",
+            env_var="FIFTYONE_APP_DISABLE_FRAME_FILTERING",
+            default=False,
+        )
         self.multicolor_keypoints = self.parse_bool(
             d,
             "multicolor_keypoints",

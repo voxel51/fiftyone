@@ -7,6 +7,7 @@ import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import type { LocationState } from "../routing";
+import { getParam } from "../utils";
 import { AppReadyState } from "./registerEvent";
 
 export const appReadyState = atom<AppReadyState>({
@@ -23,43 +24,102 @@ export const processState = (
       state.color_scheme as ColorSchemeInput
     );
 
-    if (env().VITE_NO_STATE) {
-      session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
-      unsubscribe();
-      return;
-    }
-
-    session.sessionGroupSlice = state.group_slice as string;
-    session.selectedLabels = toCamelCase(
-      state.selected_labels as object
-    ) as State.SelectedLabel[];
-    session.selectedSamples = new Set(state.selected as string[]);
-    session.sessionSpaces = (state.spaces ||
-      session.sessionSpaces) as SpaceNodeJSON;
-    session.fieldVisibilityStage =
-      (state.field_visibility_stage as State.FieldVisibilityStage) || undefined;
+    session.sessionGroupSlice =
+      groupSlice || data.dataset?.defaultGroupSlice || undefined;
+    session.selectedLabels = resolveSelectedLabels(state);
+    session.selectedSamples = resolveSelected(state);
+    session.sessionSpaces = workspace;
+    session.fieldVisibilityStage = fieldVisibility;
     session.modalSelector = modalSelector;
 
     unsubscribe();
   });
 
-  if (env().VITE_NO_STATE) {
-    return { view: [], fieldVisibility: undefined };
-  }
-
-  const modalSelector =
-    state.group_id || state.sample_id
-      ? {
-          groupId: state.group_id as string,
-          id: state.sample_id as string,
-        }
-      : undefined;
+  const fieldVisibility = resolveFieldVisibility(state);
+  const groupSlice = resolveGroupSlice(state);
+  const modalSelector = resolveModalSelector(state);
+  const view = resolveView(state);
+  const workspace = resolveWorkspace(session, state);
 
   return {
-    fieldVisibility: state.field_visibility_stage as State.FieldVisibilityStage,
-    groupSlice: state.group_slice as string,
+    fieldVisibility,
+    groupSlice,
     modalSelector,
-    view: state.view || [],
-    workspace: state.spaces as SpaceNodeJSON,
+    view,
+    workspace,
   };
+};
+const resolveSelected = (state: { selected?: string[] }) => {
+  if (env().VITE_NO_STATE) {
+    return new Set<string>();
+  }
+
+  return new Set<string>(state.selected || []);
+};
+
+const resolveSelectedLabels = (state: { selected_labels?: string[] }) => {
+  if (env().VITE_NO_STATE) {
+    return [];
+  }
+
+  return (
+    (toCamelCase(state.selected_labels as object) as State.SelectedLabel[]) ||
+    []
+  );
+};
+
+const resolveFieldVisibility = (state: {
+  field_visibility?: State.FieldVisibilityStage;
+}) => {
+  if (env().VITE_NO_STATE) {
+    return undefined;
+  }
+
+  return state.field_visibility;
+};
+
+const resolveGroupSlice = (state: { group_slice?: string }) => {
+  if (env().VITE_NO_STATE) {
+    return getParam("slice") || undefined;
+  }
+
+  return state.group_slice;
+};
+
+const resolveModalSelector = (state: {
+  group_id?: string;
+  sample_id?: string;
+}) => {
+  if (env().VITE_NO_STATE) {
+    const groupId = getParam("groupId") || undefined;
+    const id = getParam("id") || undefined;
+
+    return groupId || id ? { groupId, id } : undefined;
+  }
+
+  return state.group_id || state.sample_id
+    ? {
+        groupId: state.group_id as string,
+        id: state.sample_id as string,
+      }
+    : undefined;
+};
+
+const resolveView = (state: { view?: object[] }) => {
+  if (env().VITE_NO_STATE) {
+    return [];
+  }
+
+  return state.view || [];
+};
+
+const resolveWorkspace = (
+  session: Session,
+  state: { spaces?: SpaceNodeJSON }
+) => {
+  if (env().VITE_NO_STATE) {
+    return session.sessionSpaces;
+  }
+
+  return state.spaces || session.sessionSpaces;
 };

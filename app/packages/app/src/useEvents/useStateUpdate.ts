@@ -29,8 +29,8 @@ const useStateUpdate: EventHandlerHook = ({
           : (payload.state.saved_view_slug as string),
         extra: {
           groupId: state.modalSelector?.groupId || null,
-          slice: state.groupSlice || null,
-          sampleId: state.modalSelector?.id || null,
+          id: state.modalSelector?.id || null,
+          slice: stateless ? getParam("slice") : state.groupSlice || null,
           workspace: state.workspace?._name || null,
         },
       });

@@ -328,6 +328,24 @@ class Object(BaseType):
         self.define_property(name, obj, view=grid)
         return obj
 
+    def dashboard(self, name, **kwargs):
+        """Defines a dashboard view as a :class:`View`.
+
+        See :class:`DashboardView` for more information.
+
+        Args:
+            name: the name of the property
+
+        Returns:
+            an :class:`Object`
+
+        See :class:`DashboardView` for more information.
+        """
+        dashboard = DashboardView(**kwargs)
+        obj = Object()
+        self.define_property(name, obj, view=dashboard)
+        return obj
+
     def plot(self, name, **kwargs):
         """Defines an object property displayed as a plot.
 
@@ -335,6 +353,8 @@ class Object(BaseType):
             name: the name of the property
             config (None): the chart config
             layout (None): the chart layout
+
+        See :class:`PlotlyView` for more information.
         """
         plot = PlotlyView(**kwargs)
         obj = Object()
@@ -1904,13 +1924,13 @@ class PromptView(View):
         import fiftyone.operators.types as types
 
         # in resolve_input
-        prompt = types.Prompt(
+        prompt = types.PromptView(
             label="This is the title",
             submit_button_label="Click me",
             cancel_button_label="Abort"
         )
         inputs = types.Object()
-        inputs.str("message", label="Message")
+        inputs.md("Hello world!")
         return types.Property(inputs, view=prompt)
 
     Args:
@@ -2067,6 +2087,56 @@ class GridView(View):
             "gap": self.gap,
             "align_x": self.align_x,
             "align_y": self.align_y,
+        }
+
+
+class DashboardView(View):
+    """Defines a Dashboard view.
+
+    Args:
+        layout (None): the layout of the dashboard.
+        on_save_layout (None): event triggered when the layout changes
+        on_add_item (None): event triggered when an item is added
+        on_remove_item (None): event triggered when an item is closed
+        on_edit_item (None): event triggered when an item is edited
+        allow_addition (True): whether to allow adding items
+        allow_deletion (True): whether to allow deleting items
+        allow_edit (True): whether to allow editing items
+        cta_title (None): the title of the call to action
+        cta_body (None): the body of the call to action
+        cta_button_label (None): the label of the call to action button
+        rows (None): the number of rows in the dashboard
+        cols (None): the number of columns in the dashboard
+        items (None): the custom layout of the dashboard
+        auto_layout (True): whether to automatically layout the dashboard
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.allow_addition = kwargs.get("allow_addition", True)
+        self.allow_deletion = kwargs.get("allow_deletion", True)
+        self.allow_edit = kwargs.get("allow_edit", True)
+        self.cta_title = kwargs.get("cta_title", None)
+        self.cta_body = kwargs.get("cta_body", None)
+        self.cta_button_label = kwargs.get("cta_button_label", None)
+        self.rows = kwargs.get("rows", None)
+        self.cols = kwargs.get("cols", None)
+        self.items = kwargs.get("items", None)
+        self.auto_layout = kwargs.get("auto_layout", None)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "allow_addition": self.allow_addition,
+            "allow_deletion": self.allow_deletion,
+            "allow_edit": self.allow_edit,
+            "cta_title": self.cta_title,
+            "cta_body": self.cta_body,
+            "cta_button_label": self.cta_button_label,
+            "rows": self.rows,
+            "cols": self.cols,
+            "items": self.items,
+            "auto_layout": self.auto_layout,
         }
 
 

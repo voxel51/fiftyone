@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e793650aee470e8b9fad177e5178503f>>
+ * @generated SignedSource<<af77f7720adf5f214a0f43f0e4b20c6f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type configFragment$data = {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
+    readonly disableFrameFiltering: boolean;
     readonly gridZoom: number;
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
@@ -84,6 +85,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "disableFrameFiltering",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "gridZoom",
           "storageKey": null
         },
@@ -99,6 +107,13 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "loopVideos",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaFallback",
           "storageKey": null
         },
         {
@@ -184,13 +199,6 @@ return {
           "kind": "ScalarField",
           "name": "useFrameNumber",
           "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "mediaFallback",
-          "storageKey": null
         }
       ],
       "storageKey": null
@@ -202,6 +210,6 @@ return {
 };
 })();
 
-(node as any).hash = "bc14e5070d7a1c87baa60bc81fcccb5d";
+(node as any).hash = "1f162e6489b61a178ecbd049eef370fd";
 
 export default node;
