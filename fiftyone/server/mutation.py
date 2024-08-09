@@ -90,13 +90,17 @@ class Mutation(SetColorScheme):
     ) -> bool:
         state = get_state()
         state.dataset = fod.load_dataset(name) if name is not None else None
-        state.selected = []
-        state.selected_labels = []
-        state.view = None
-        state.spaces = foo.default_workspace_factory()
+
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
+        state.group_id = None
+        state.sample_id = None
+        state.selected = []
+        state.selected_labels = []
+        state.spaces = foo.default_workspace_factory()
+        state.view = None
+
         if state.dataset is not None:
             state.group_slice = state.dataset.group_slice
 
@@ -200,14 +204,18 @@ class Mutation(SetColorScheme):
         form: t.Optional[StateForm] = None,
     ) -> t.Union[BSONArray, None]:
         state = get_state()
+        state.group_id = None
+        state.sample_id = None
         state.selected = []
         state.selected_labels = []
+
         if not dataset_name:
             state.dataset = None
-            state.view = None
-            state.spaces = foo.default_workspace_factory()
             state.group_slice = None
+            state.spaces = foo.default_workspace_factory()
+            state.view = None
             await dispatch_event(subscription, fose.StateUpdate(state=state))
+            return None
 
         result_view = None
         ds = fod.load_dataset(dataset_name)
