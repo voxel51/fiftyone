@@ -104,6 +104,7 @@ export default function PlotlyView(props) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
+        automargin: true, // Enable automatic margin adjustment
       },
       yaxis: {
         showgrid: true,
@@ -112,13 +113,14 @@ export default function PlotlyView(props) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
+        automargin: true, // Enable automatic margin adjustment
       },
       autosize: true,
       margin: {
-        t: 0,
-        l: 0,
-        b: 0,
-        r: 0,
+        t: 20, // Adjust top margin
+        l: 50, // Adjust left margin for y-axis labels
+        b: 50, // Adjust bottom margin for x-axis labels
+        r: 20, // Adjust right margin
         pad: 0,
       },
       paper_bgcolor: theme.background.mediaSpace,
@@ -131,6 +133,7 @@ export default function PlotlyView(props) {
       },
     };
   }, [theme]);
+
   const configDefaults = useMemo(() => {
     return {
       displaylogo: false,

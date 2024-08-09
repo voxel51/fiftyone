@@ -2,26 +2,43 @@ import { useTheme } from "@fiftyone/components";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId } from "@fiftyone/spaces";
 import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
+import CheckIcon from "@mui/icons-material/Check";
 import {
   Box,
   BoxProps,
-  Grid,
   IconButton,
   Paper,
   styled,
   Typography,
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Button,
+  RadioGroup,
+  FormControl,
+  FormLabel,
+  Radio,
+  Popover,
+  Fab,
 } from "@mui/material";
-import React, { forwardRef, useCallback, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useState } from "react";
 import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { Button, ButtonView } from ".";
+import { ButtonView } from ".";
 import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
-import { Edit, Add } from "@mui/icons-material";
+import { Add } from "@mui/icons-material";
 
-const AddItemCTA = ({ onAdd }) => {
+const AddItemCTA = ({ onAdd, view }) => {
+  const header = view?.cta_title || "No items yet";
+  const body =
+    view?.cta_body ||
+    "Add items to this dashboard to start exploring, plotting, and sharing.";
+  const cta_button_label = view?.cta_button_label || "Add Item";
   return (
     <Box
       sx={{
@@ -44,13 +61,12 @@ const AddItemCTA = ({ onAdd }) => {
       >
         <Box sx={{ textAlign: "center" }}>
           <Typography variant="h5" gutterBottom>
-            No items yet
+            {header}
           </Typography>
         </Box>
         <Box sx={{ textAlign: "center" }}>
           <Typography variant="body2" sx={{ marginBottom: 2 }}>
-            Add items to this dashboard to start exploring, plotting, and
-            sharing.
+            {body}
           </Typography>
         </Box>
         <Box>
@@ -60,7 +76,7 @@ const AddItemCTA = ({ onAdd }) => {
               view: {
                 variant: "contained",
                 icon: "add",
-                label: "Add Item",
+                label: cta_button_label,
               },
             }}
           />
@@ -69,13 +85,120 @@ const AddItemCTA = ({ onAdd }) => {
     </Box>
   );
 };
-const AddItemButton = ({ onAddItem }) => {
+
+const LayoutPopover = ({
+  anchorEl,
+  handleClose,
+  autoLayout,
+  onAutoLayoutChange,
+  layoutMode,
+  onLayoutModeChange,
+  numRows,
+  onNumRowsChange,
+  numCols,
+  onNumColsChange,
+  isEditMode,
+}) => {
+  const open = Boolean(anchorEl);
+  const id = open ? "simple-popover" : undefined;
+  const theme = useTheme();
+
+  return (
+    <Popover
+      id={id}
+      open={open}
+      anchorEl={anchorEl}
+      onClose={handleClose}
+      anchorOrigin={{
+        vertical: "bottom",
+        horizontal: "left",
+      }}
+    >
+      <Box
+        sx={{
+          padding: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          backgroundColor: (theme) => theme.palette.background.default,
+        }}
+      >
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={autoLayout}
+              onChange={onAutoLayoutChange}
+              name="autoLayout"
+              color="primary"
+            />
+          }
+          label="Auto Layout"
+        />
+        {isEditMode && !autoLayout && (
+          <>
+            <FormControl component="fieldset" sx={{ marginBottom: 2 }}>
+              <FormLabel component="legend">Layout Mode</FormLabel>
+              <RadioGroup
+                row
+                aria-label="layout-mode"
+                name="layout-mode"
+                value={layoutMode}
+                onChange={onLayoutModeChange}
+              >
+                <FormControlLabel
+                  value="columns"
+                  control={<Radio />}
+                  label="Columns"
+                />
+                <FormControlLabel
+                  value="rows"
+                  control={<Radio />}
+                  label="Rows"
+                />
+              </RadioGroup>
+            </FormControl>
+            {layoutMode === "rows" && (
+              <TextField
+                label="Rows"
+                type="number"
+                value={numRows}
+                onChange={onNumRowsChange}
+                inputProps={{ min: 1, max: 100 }}
+                sx={{ width: 80, marginBottom: 2 }}
+              />
+            )}
+            {layoutMode === "columns" && (
+              <TextField
+                label="Columns"
+                type="number"
+                value={numCols}
+                onChange={onNumColsChange}
+                inputProps={{ min: 1, max: 100 }}
+                sx={{ width: 80, marginBottom: 2 }}
+              />
+            )}
+          </>
+        )}
+      </Box>
+    </Popover>
+  );
+};
+
+const ControlContainer = ({ onAddItem, onEditLayoutClick, isEditMode }) => {
+  if (!isEditMode) {
+    return null;
+  }
   return (
     <Box
       height="50px"
       width="100%"
-      sx={{ padding: 1, overflow: "hidden" }}
-      backgroundColor="background.default"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        padding: 1,
+        gap: 2,
+        backgroundColor: "background.default",
+      }}
     >
       <ButtonView
         onClick={onAddItem}
@@ -83,6 +206,15 @@ const AddItemButton = ({ onAddItem }) => {
           view: {
             icon: "add",
             label: "Add Item",
+          },
+        }}
+      />
+      <ButtonView
+        onClick={onEditLayoutClick}
+        schema={{
+          view: {
+            icon: "edit",
+            label: "Edit Layout",
           },
         }}
       />
@@ -101,6 +233,7 @@ export default function DashboardView(props: ViewPropsType) {
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
   }
+
   const panelId = usePanelId();
   const triggerPanelEvent = usePanelEvent();
 
@@ -115,6 +248,7 @@ export default function DashboardView(props: ViewPropsType) {
     },
     [panelId, props, schema.view.on_edit_item, triggerPanelEvent]
   );
+
   const onCloseItem = useCallback(
     ({ id, path }) => {
       if (schema.view.on_remove_item) {
@@ -126,6 +260,7 @@ export default function DashboardView(props: ViewPropsType) {
     },
     [panelId, props, schema.view.on_remove_item, triggerPanelEvent]
   );
+
   const onAddItem = useCallback(() => {
     if (schema.view.on_add_item) {
       triggerPanelEvent(panelId, {
@@ -133,33 +268,108 @@ export default function DashboardView(props: ViewPropsType) {
       });
     }
   }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
-  const handleLayoutChange = useCallback(
-    (layout: any) => {
-      if (schema.view.on_layout_change) {
-        triggerPanelEvent(panelId, {
-          operator: schema.view.on_layout_change,
-          params: { layout },
-        });
-      }
-    },
-    [panelId, props, schema.view.on_layout_change, triggerPanelEvent]
-  );
+
+  const auto_layout_default = schema.view.auto_layout === false ? false : true;
+  const [autoLayout, setAutoLayout] = useState(auto_layout_default);
+  const [numRows, setNumRows] = useState(schema.view.rows || 1);
+  const [numCols, setNumCols] = useState(schema.view.cols || 1);
+  const [layoutMode, setLayoutMode] = useState("columns");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [customLayout, setCustomLayout] = useState(schema.view.items || []);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  const handleAutoLayoutChange = (event) => {
+    const { checked } = event.target;
+    setAutoLayout(checked);
+    triggerPanelEvent(panelId, {
+      operator: schema.view.on_auto_layout_change,
+      params: { auto_layout: checked },
+    });
+  };
+
+  const handleNumRowsChange = (event) => {
+    const { value } = event.target;
+    const newValue = Math.max(1, Math.min(value, propertiesAsArray.length));
+    setNumRows(value);
+  };
+
+  const handleNumColsChange = (event) => {
+    const { value } = event.target;
+    const newValue = Math.max(1, Math.min(value, propertiesAsArray.length));
+    setNumCols(newValue);
+  };
+
+  const handleLayoutModeChange = (event) => {
+    const { value } = event.target;
+    setLayoutMode(value);
+    if (value === "rows") {
+      setNumCols(1);
+    } else {
+      setNumRows(1);
+    }
+  };
+
+  const handleSaveLayout = () => {
+    if (schema.view.on_save_layout) {
+      triggerPanelEvent(panelId, {
+        operator: schema.view.on_save_layout,
+        params: {
+          items: customLayout,
+          rows: numRows,
+          cols: numCols,
+          auto_layout: autoLayout,
+        },
+      });
+    }
+  };
+
+  const handleEditLayoutClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClosePopover = () => {
+    setAnchorEl(null);
+  };
+
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      handleSaveLayout();
+    }
+    setIsEditMode(!isEditMode);
+  };
+
   const theme = useTheme();
 
+  const NUM_ITEMS = propertiesAsArray.length;
   const MIN_ITEM_WIDTH = 400;
-  const MIN_ITEM_HEIGHT = 300; // Setting minimum height for items
-  const GRID_WIDTH = layout?.width; // Set based on your container's width
+  const MIN_ITEM_HEIGHT = 300;
+  const ASPECT_RATIO = 4 / 3; // width / height
+  const HEIGHT_FACTOR = 1 / ASPECT_RATIO;
+  const GRID_WIDTH = layout?.width;
   const GRID_HEIGHT = layout?.height - 80; // panel height - footer height
-  let COLS = GRID_WIDTH ? Math.floor(GRID_WIDTH / MIN_ITEM_WIDTH) || 1 : 1;
-  let ROWS = Math.ceil(propertiesAsArray.length / COLS) || 1;
+  const TARGET_ITEM_WIDTH = Math.max(MIN_ITEM_WIDTH, GRID_WIDTH / NUM_ITEMS);
+  const TARGET_ITEM_HEIGHT = HEIGHT_FACTOR * TARGET_ITEM_WIDTH;
+  let COLS = autoLayout
+    ? Math.floor(GRID_WIDTH / TARGET_ITEM_WIDTH) || 1
+    : layoutMode === "columns"
+    ? numCols
+    : Math.ceil(NUM_ITEMS / numRows);
+  let ROWS = autoLayout
+    ? Math.ceil(NUM_ITEMS / COLS) || 1
+    : layoutMode === "rows"
+    ? numRows
+    : Math.ceil(NUM_ITEMS / numCols);
+  const ROW_HEIGHT = Math.min(GRID_HEIGHT, TARGET_ITEM_HEIGHT);
 
   if (propertiesAsArray.length === 1) {
     COLS = 1;
     ROWS = 1;
   }
-
-  const viewLayout = schema.view.layout;
-  const defaultLayout = propertiesAsArray.map((property, index) => {
+  const orderedProperties = sortPropertiesByCustomLayout(
+    propertiesAsArray,
+    customLayout
+  );
+  const defaultLayout = orderedProperties.map((property, index) => {
     return {
       i: property.id,
       x: index % COLS,
@@ -170,7 +380,7 @@ export default function DashboardView(props: ViewPropsType) {
       minH: Math.ceil(MIN_ITEM_HEIGHT / (GRID_HEIGHT / ROWS)), // Minimum height in grid units
     };
   });
-  const gridLayout = viewLayout || defaultLayout;
+  const gridLayout = defaultLayout;
 
   const DragHandle = styled(Box)(({ theme }) => ({
     cursor: "move",
@@ -186,91 +396,124 @@ export default function DashboardView(props: ViewPropsType) {
     if (!allow_addition) {
       return null;
     }
-    return <AddItemCTA onAdd={onAddItem} />;
+    return <AddItemCTA onAdd={onAddItem} view={schema.view} />;
   }
-  const finalLayout = [
-    ...gridLayout,
-    { i: "add-item", x: 0, y: ROWS, w: COLS, h: 1, static: true },
-  ];
 
   return (
-    <Box>
-      {allow_addition && <AddItemButton key="add-item" onAddItem={onAddItem} />}
-      <GridLayout
-        onLayoutChange={handleLayoutChange}
-        layout={finalLayout}
-        cols={COLS}
-        rowHeight={GRID_HEIGHT / ROWS} // Dynamic row height
-        width={GRID_WIDTH}
-        resizeHandles={["e", "w", "n", "s"]}
-        draggableHandle=".drag-handle"
-        resizeHandle={(axis, ref) => {
-          return <DashboardItemResizeHandle axis={axis} ref={ref} />;
-        }}
+    <>
+      <Box
+        sx={{ height: layout?.height, overflowY: "auto", overflowX: "hidden" }}
       >
-        {propertiesAsArray.map((property) => {
-          const { id } = property;
-          const value = data?.[id];
-          const label = property.view?.layout?.title || value?.name || id;
-          const itemPath = getPath(path, id);
-          const baseItemProps: BoxProps = {
-            sx: { padding: 0.25, position: "relative" },
-          };
-          return (
-            <Box
-              key={id}
-              {...getProps(
-                { ...props, schema: property },
-                "item",
-                baseItemProps
-              )}
-            >
-              <DragHandle className="drag-handle">
-                <Typography>{label}</Typography>
-                <Box>
-                  {allow_edit && (
-                    <IconButton
-                      size="small"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditItem({ id, path: getPath(path, id) });
-                      }}
-                      sx={{ color: theme.text.secondary }}
-                    >
-                      <Edit />
-                    </IconButton>
+        <ControlContainer
+          onAddItem={onAddItem}
+          onEditLayoutClick={handleEditLayoutClick}
+          isEditMode={isEditMode}
+        />
+        <LayoutPopover
+          anchorEl={anchorEl}
+          handleClose={handleClosePopover}
+          autoLayout={autoLayout}
+          onAutoLayoutChange={handleAutoLayoutChange}
+          layoutMode={layoutMode}
+          onLayoutModeChange={handleLayoutModeChange}
+          numRows={numRows}
+          onNumRowsChange={handleNumRowsChange}
+          numCols={numCols}
+          onNumColsChange={handleNumColsChange}
+          onSaveLayout={handleSaveLayout}
+          isEditMode={isEditMode}
+        />
+        <GridLayout
+          onLayoutChange={(layout) => {
+            setCustomLayout(layout);
+          }}
+          layout={gridLayout}
+          cols={COLS}
+          rowHeight={ROW_HEIGHT} // Dynamic row height
+          width={GRID_WIDTH}
+          resizeHandles={autoLayout || !isEditMode ? [] : ["e", "w", "n", "s"]}
+          draggableHandle=".drag-handle"
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          resizeHandle={(axis, ref) => {
+            return <DashboardItemResizeHandle axis={axis} ref={ref} />;
+          }}
+        >
+          {propertiesAsArray.map((property) => {
+            const { id } = property;
+            const value = data?.[id];
+            const label = property.view?.layout?.title || value?.name || id;
+            const itemPath = getPath(path, id);
+            const baseItemProps: BoxProps = {
+              sx: { padding: 0.25, position: "relative" },
+            };
+            return (
+              <Box
+                key={id}
+                {...getProps(
+                  { ...props, schema: property },
+                  "item",
+                  baseItemProps
+                )}
+              >
+                <DragHandle className="drag-handle">
+                  <Typography>{label}</Typography>
+                  {isEditMode && (
+                    <Box>
+                      {allow_edit && (
+                        <IconButton
+                          size="small"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditItem({ id, path: getPath(path, id) });
+                          }}
+                          sx={{ color: theme.text.secondary }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      )}
+                      {allow_deletion && (
+                        <IconButton
+                          size="small"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCloseItem({ id, path: getPath(path, id) });
+                          }}
+                          sx={{ color: theme.text.secondary }}
+                        >
+                          <CloseIcon />
+                        </IconButton>
+                      )}
+                    </Box>
                   )}
-                  {allow_deletion && (
-                    <IconButton
-                      size="small"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCloseItem({ id, path: getPath(path, id) });
-                      }}
-                      sx={{ color: theme.text.secondary }}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  )}
+                </DragHandle>
+                <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
+                  <DynamicIO
+                    {...props}
+                    schema={property}
+                    path={itemPath}
+                    data={data?.[id]}
+                    parentSchema={schema}
+                    relativePath={id}
+                  />
                 </Box>
-              </DragHandle>
-              <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
-                <DynamicIO
-                  {...props}
-                  schema={property}
-                  path={itemPath}
-                  data={data?.[id]}
-                  parentSchema={schema}
-                  relativePath={id}
-                />
               </Box>
-            </Box>
-          );
-        })}
-      </GridLayout>
-    </Box>
+            );
+          })}
+        </GridLayout>
+      </Box>
+      <Fab
+        color={isEditMode ? "primary" : "secondary"}
+        aria-label="edit"
+        size="small"
+        onClick={toggleEditMode}
+        sx={{ position: "absolute", bottom: 16, right: 16 }}
+      >
+        {isEditMode ? <CheckIcon /> : <EditIcon />}
+      </Fab>
+    </>
   );
 }
 
@@ -329,3 +572,16 @@ const AXIS_SX = {
     cursor: "n-resize",
   },
 };
+
+function sortPropertiesByCustomLayout(properties, customLayout) {
+  const customLayoutMap = customLayout.reduce((acc, item) => {
+    acc[item.i] = item;
+    return acc;
+  }, {});
+
+  return properties.sort((a, b) => {
+    const aIndex = customLayoutMap[a.id]?.y * 100 + customLayoutMap[a.id]?.x;
+    const bIndex = customLayoutMap[b.id]?.y * 100 + customLayoutMap[b.id]?.x;
+    return aIndex - bIndex;
+  });
+}
