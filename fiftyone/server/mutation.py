@@ -211,7 +211,7 @@ class Mutation(SetColorScheme):
 
         if not dataset_name:
             state.dataset = None
-            state.group_slice
+            state.group_slice = None
             state.spaces = foo.default_workspace_factory()
             state.view = None
             await dispatch_event(subscription, fose.StateUpdate(state=state))
