@@ -78,8 +78,8 @@ class OperatorConfig(object):
         self.disable_schema_validation = disable_schema_validation
         self.delegation_target = delegation_target
         self.icon = icon
-        self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.dark_icon = dark_icon
         self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
