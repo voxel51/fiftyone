@@ -9051,7 +9051,21 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self, include_size=False):
+    def _sample_stats(self) -> dict:
+        """Returns the collection stats for the sample collection."""
+        conn = foo.get_db_conn()
+        cs = conn.command("collstats", self._dataset._sample_collection_name)
+        return cs
+
+    def _frame_stats(self) -> dict:
+        """Returns the collection stats for the frame collection."""
+        conn = foo.get_db_conn()
+        cs = conn.command("collstats", self._dataset._frame_collection_name)
+        return cs
+
+    def get_index_information(
+        self, include_size=False, include_progress=False
+    ):
         """Returns a dictionary of information about the indexes on this
         collection.
 
@@ -9059,6 +9073,7 @@ class SampleCollection(object):
         details on the structure of this dictionary.
 
         include_size (False): whether to include the size of each index
+        include_progress (False): whether to include the build status of index
 
         Returns:
             a dict mapping index names to info dicts
@@ -9069,14 +9084,18 @@ class SampleCollection(object):
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
 
+        sample_cs = None
         if include_size:
-            conn = foo.get_db_conn()
-            cs = conn.command(
-                "collstats", self._dataset._sample_collection_name
-            )
-            for key, size in cs["indexSizes"].items():
+            sample_cs = self._sample_stats()
+            for key, size in sample_cs["indexSizes"].items():
                 if key in sample_info:
                     sample_info[key]["size"] = size
+
+        if include_progress:
+            sample_cs = sample_cs or self._sample_stats()
+            for key in sample_cs["indexBuilds"]:
+                if key in sample_info:
+                    sample_info[key]["in_progress"] = True
 
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
@@ -9090,13 +9109,18 @@ class SampleCollection(object):
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
 
+            frame_cs = None
             if include_size:
-                cs = conn.command(
-                    "collstats", self._dataset._frame_collection_name
-                )
-                for key, size in cs["indexSizes"].items():
+                frame_cs = self._frame_stats()
+                for key, size in frame_cs["indexSizes"].items():
                     if key in frame_info:
                         frame_info[key]["size"] = size
+
+            if include_progress:
+                frame_cs = frame_cs or self._frame_stats()
+                for key in frame_cs["indexBuilds"]:
+                    if key in frame_info:
+                        frame_info[key]["in_progress"] = True
 
             for key, info in frame_info.items():
                 if len(info["key"]) == 1:
