@@ -203,7 +203,7 @@ via the `group_id` parameter:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-groups")
-    group_id = dataset.last().id
+    group_id = dataset.last().group.id
 
     session = fo.launch_app(dataset, group_id=group_id)
 
@@ -214,7 +214,7 @@ by setting its
 .. code-block:: python
     :linenos:
 
-    group_id = dataset.take(1).first().id
+    group_id = dataset.take(1).first().group.id
 
     session.group_id = group_id
 
