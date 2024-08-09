@@ -13,6 +13,8 @@ import logging
 import os
 import traceback
 
+from typing import Optional
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
@@ -477,6 +479,7 @@ class ExecutionContext(object):
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
+        self.user = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -647,6 +650,11 @@ class ExecutionContext(object):
         you can use to trigger builtin operations on the current context.
         """
         return self._ops
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
 
     def prompt(
         self,
