@@ -721,8 +721,21 @@ export const ModalActionsRow = () => {
     [isActualGroup, isDynamicGroup]
   );
 
+  const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
+    "modal-actions-row-x-coord",
+    0,
+    false
+  );
+
   return (
-    <Draggable handle={`.${MODAL_ACTION_BAR_HANDLE_CLASS}`} axis="x">
+    <Draggable
+      handle={`.${MODAL_ACTION_BAR_HANDLE_CLASS}`}
+      axis="x"
+      defaultPosition={{ x: defaultXCoord ?? 0, y: 0 }}
+      onDrag={(_e, { x, y }) => {
+        setDefaultXCoord(x);
+      }}
+    >
       <ModalActionsRowContainer>
         <DragActionsRow />
         <Hidden />
