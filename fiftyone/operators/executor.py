@@ -620,12 +620,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self.user = user
 
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
-        self.user = None
-        self.__context_tokens = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -641,6 +640,8 @@ class ExecutionContext(contextlib.AbstractContextManager):
         if self.panel_id:
             self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
+
+        self.__context_tokens = None
 
     @property
     def dataset(self):
