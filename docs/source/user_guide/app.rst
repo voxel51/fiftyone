@@ -161,6 +161,73 @@ first 10 samples in the dataset sorted by their `uniqueness` field:
    :alt: app-views1
    :align: center
 
+.. _loading-a-sample-or-group:
+
+Loading a sample or group
+-------------------------
+
+You can immediately load a specific sample
+:ref:`in the modal <app-sample-view>` when launching a new |Session| by
+providing its ID via the `sample_id` parameter:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    sample_id = dataset.last().id
+
+    session = fo.launch_app(dataset, sample_id=sample_id)
+
+You can also programmatically load a sample in the modal on an existing session
+by setting its
+:meth:`session.sample_id <fiftyone.core.session.Session.sample_id>` property:
+
+.. code-block:: python
+    :linenos:
+
+    sample_id = dataset.take(1).first().id
+
+    session.sample_id = sample_id
+
+.. note::
+
+    Did you know? You can link directly to a sample by copy + pasting the App's
+    URL into your browser search bar!
+
+Similarly, for :ref:`group datasets <groups>`, you can immediately load a
+specific group in the modal when launching a new |Session| by providing its ID
+via the `group_id` parameter:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+    group_id = dataset.last().group.id
+
+    session = fo.launch_app(dataset, group_id=group_id)
+
+You can also programmatically load a group in the modal on an existing session
+by setting its
+:meth:`session.group_id <fiftyone.core.session.Session.group_id>` property:
+
+.. code-block:: python
+    :linenos:
+
+    group_id = dataset.take(1).first().group.id
+
+    session.group_id = group_id
+
+.. note::
+
+    Did you know? You can link directly to a group by copy + pasting the App's
+    URL into your browser search bar!
+
 .. _remote-session:
 
 Remote sessions
