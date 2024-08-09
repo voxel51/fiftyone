@@ -9063,14 +9063,12 @@ class SampleCollection(object):
     def _sample_stats(self) -> dict:
         """Returns the collection stats for the sample collection."""
         conn = foo.get_db_conn()
-        cs = conn.command("collstats", self._dataset._sample_collection_name)
-        return cs
+        return conn.command("collstats", self._dataset._sample_collection_name)
 
     def _frame_stats(self) -> dict:
         """Returns the collection stats for the frame collection."""
         conn = foo.get_db_conn()
-        cs = conn.command("collstats", self._dataset._frame_collection_name)
-        return cs
+        return conn.command("collstats", self._dataset._frame_collection_name)
 
     def get_index_information(
         self, include_size=False, include_progress=False
@@ -9081,8 +9079,8 @@ class SampleCollection(object):
         See :meth:`pymongo:pymongo.collection.Collection.index_information` for
         details on the structure of this dictionary.
 
-        include_size (False): whether to include the size of each index
         include_progress (False): whether to include the build status of index
+        include_size (False): whether to include the size of each index
 
         Returns:
             a dict mapping index names to info dicts
