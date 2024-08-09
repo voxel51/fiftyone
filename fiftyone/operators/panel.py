@@ -9,8 +9,6 @@ FiftyOne operators.
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
 
-import pydash
-
 
 class PanelConfig(OperatorConfig):
     """A configuration for a panel operator."""
@@ -139,7 +137,7 @@ class PanelRefBase:
             key (str): The key.
             value (any): The value.
         """
-        pydash.set_(self._data, key, value)
+        _set(self._data, key, value)
 
     def get(self, key, default=None):
         """
@@ -152,7 +150,7 @@ class PanelRefBase:
         Returns:
             The value.
         """
-        return pydash.get(self._data, key, default)
+        return _get(self._data, key, default=default)
 
     def clear(self):
         """Clears the dictionary."""
@@ -192,7 +190,7 @@ class PanelRefState(PanelRefBase):
         """
         super().set(key, value)
         args = {}
-        pydash.set_(args, key, value)
+        _set(args, key, value)
         self._ctx.ops.patch_panel_state(args)
 
     def clear(self):
@@ -216,7 +214,7 @@ class PanelRefData(PanelRefBase):
         """
         super().set(key, value)
         args = {}
-        pydash.set_(args, key, value)
+        _set(args, key, value)
         if _exec_op:
             self._ctx.ops.patch_panel_data(args)
 
@@ -312,3 +310,37 @@ class PanelRef:
         if title is None:
             raise ValueError("title cannot be None")
         self._ctx.ops.set_panel_title(id=self.id, title=title)
+
+
+def _get(data, key, default=None):
+    parts = key.split(".")
+    if len(parts) == 1:
+        return data.get(key, default)
+
+    current_dict = data
+    for part in parts[:-1]:
+        if (
+            not isinstance(current_dict, dict)
+            or part not in current_dict
+            or not current_dict[part]
+        ):
+            return default
+
+        current_dict = current_dict[part]
+
+    return current_dict.get(parts[-1], default)
+
+
+def _set(data, key, value):
+    parts = key.split(".")
+    if len(parts) == 1:
+        data[key] = value
+        return
+
+    current_dict = data
+    for part in parts[:-1]:
+        if part not in current_dict or not current_dict[part]:
+            current_dict[part] = {}
+        current_dict = current_dict[part]
+
+    current_dict[parts[-1]] = value
