@@ -1,10 +1,13 @@
-import { debounce, isEqual, merge } from "lodash";
+import { debounce, isEqual, merge, throttle } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { PANEL_STATE_CHANGE_DEBOUNCE } from "./constants";
+import {
+  PANEL_STATE_CHANGE_DEBOUNCE,
+  PANEL_STATE_PATH_CHANGE_DEBOUNCE,
+} from "./constants";
 import { executeOperator } from "./operators";
 import {
   panelsStateUpdatesCountAtom,
@@ -209,21 +212,24 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     });
   };
 
-  const handlePanelStatePathChange = useCallback(
-    (path, value, schema) => {
-      if (schema?.onChange) {
-        // This timeout allows the change to be applied before executing the operator
-        // it might make sense to do this for all operator executions
-        setTimeout(() => {
-          triggerPanelEvent(panelId, {
-            operator: schema.onChange,
-            params: { path, value },
-          });
-        }, 0);
-      }
-    },
-    [triggerPanelEvent, panelId]
-  );
+  const handlePanelStatePathChange = useMemo(() => {
+    return throttle(
+      (path, value, schema) => {
+        if (schema?.onChange) {
+          // This timeout allows the change to be applied before executing the operator
+          // it might make sense to do this for all operator executions
+          setTimeout(() => {
+            triggerPanelEvent(panelId, {
+              operator: schema.onChange,
+              params: { path, value },
+            });
+          }, 0);
+        }
+      },
+      PANEL_STATE_PATH_CHANGE_DEBOUNCE,
+      { leading: true, trailing: true }
+    );
+  }, [panelId, triggerPanelEvent]);
 
   return {
     loaded: isLoaded,
