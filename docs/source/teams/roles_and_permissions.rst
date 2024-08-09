@@ -38,9 +38,9 @@ invitation.
 
 .. note::
 
-   Invited users may login using any identity provider that has been enabled
-   on your deployment. Contact your Voxel51 CS engineer for more information
-   about configuring IdPs.
+   Invited users may login using any identity provider that has been enabled on your 
+   deployment. If you need more information about configuring IdPs or increasing
+   your user quotas, contact your Voxel51 CS engineer.
 
 .. image:: /images/teams/user_invitation.png
    :alt: user-invitation

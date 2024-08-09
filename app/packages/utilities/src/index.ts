@@ -12,7 +12,7 @@ export * from "./order";
 export * from "./paths";
 export * from "./Resource";
 export * from "./schema";
-export * from "./styles";
+export * as styles from "./styles";
 export * from "./type-check";
 
 interface O {
