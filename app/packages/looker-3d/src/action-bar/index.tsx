@@ -7,7 +7,6 @@ import { ActionBarContainer, ActionsBar } from "../containers";
 import { useHotkey } from "../hooks";
 import { fo3dContainsBackground as fo3dContainsBackgroundAtom } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
-import { FullScreenToggler } from "./FullScreenToggler";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
@@ -120,10 +119,7 @@ export const ActionBar = ({
     >
       {hasMultiplePcdSlices && <SliceSelector />}
       <Logs />
-      <ActionsBar>
-        {componentsToRender}
-        <FullScreenToggler />
-      </ActionsBar>
+      <ActionsBar>{componentsToRender}</ActionsBar>
     </ActionBarContainer>
   );
 };

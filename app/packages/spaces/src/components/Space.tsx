@@ -15,11 +15,11 @@ import {
 import AddPanelButton from "./AddPanelButton";
 import Panel from "./Panel";
 import PanelTab from "./PanelTab";
-import Workspaces from "./Workspaces";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
+import Workspaces from "./Workspaces";
 
-export default function Space({ node, id }: SpaceProps) {
+export default function Space({ node, id, archetype }: SpaceProps) {
   const { spaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
@@ -50,7 +50,7 @@ export default function Space({ node, id }: SpaceProps) {
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && <Workspaces />}
+        {node.isRoot() && archetype !== "modal" && <Workspaces />}
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -67,7 +67,7 @@ export default function Space({ node, id }: SpaceProps) {
             const preferredSize = toPercentage(node.sizes?.[i]);
             return (
               <Allotment.Pane key={space.id} preferredSize={preferredSize}>
-                <Space node={space} id={id} />
+                <Space node={space} id={id} archetype={archetype} />
               </Allotment.Pane>
             );
           })}
@@ -80,8 +80,12 @@ export default function Space({ node, id }: SpaceProps) {
 
     return (
       <PanelContainer>
-        {node.isRoot() && <Workspaces />}
-        <PanelTabs data-type="panel-container" data-cy="panel-container">
+        {node.isRoot() && archetype !== "modal" && <Workspaces />}
+        <PanelTabs
+          data-type="panel-container"
+          data-cy="panel-container"
+          isModal={archetype === "modal"}
+        >
           <ReactSortable
             group="panel-tabs"
             list={node.children}
@@ -131,17 +135,23 @@ export default function Space({ node, id }: SpaceProps) {
             </div>
           </ReactSortable>
         </PanelTabs>
-        {node.hasActiveChild() ? (
-          <Panel node={activeChild as SpaceNode} spaceId={id} />
+        {node.hasActiveChild() && activeChild ? (
+          <Panel
+            node={activeChild as SpaceNode}
+            spaceId={id}
+            isModalPanel={archetype === "modal"}
+          />
         ) : null}
       </PanelContainer>
     );
-  } else if (node.isPanel()) {
-    return <Panel node={node} spaceId={id} />;
+  } else if (node.isPanel() && node) {
+    return (
+      <Panel node={node} spaceId={id} isModalPanel={archetype === "modal"} />
+    );
   } else if (node.isEmpty()) {
     return (
       <PanelContainer data-type="panel-container">
-        <PanelTabs>
+        <PanelTabs isModal={archetype === "modal"}>
           <AddPanelButton node={node} spaceId={id} />
         </PanelTabs>
       </PanelContainer>

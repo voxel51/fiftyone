@@ -149,7 +149,7 @@ const dispatchSideEffect = ({
     nextEntry.preloadedQuery.variables.name;
 
   if (!nextDataset) {
-    session.sessionSpaces = fos.SPACES_DEFAULT;
+    session.sessionSpaces = fos.GRID_SPACES_DEFAULT;
     commitMutation<setDatasetMutation>(nextEntry.preloadedQuery.environment, {
       mutation: setDataset,
       variables: {
@@ -181,7 +181,7 @@ const dispatchSideEffect = ({
       data.config
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
-    session.sessionSpaces = nextEntry.state?.workspace ?? fos.SPACES_DEFAULT;
+    session.sessionSpaces = nextEntry.state?.workspace ?? fos.GRID_SPACES_DEFAULT;
   }
 
   update &&

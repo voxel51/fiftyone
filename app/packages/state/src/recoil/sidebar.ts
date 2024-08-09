@@ -35,6 +35,7 @@ import {
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
@@ -890,6 +891,11 @@ export const textFilter = atomFamily<string, boolean>({
 export const sidebarVisible = atomFamily<boolean, boolean>({
   key: "sidebarVisible",
   default: true,
+  effects: (isModal) => [
+    getBrowserStorageEffectForKey(`sidebarVisible-modal-${isModal}`, {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const sidebarWidth = atomFamily<number, boolean>({

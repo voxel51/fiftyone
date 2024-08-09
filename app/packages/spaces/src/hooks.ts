@@ -1,4 +1,5 @@
 import {
+  PluginComponentRegistration,
   PluginComponentType,
   subscribeToRegistry,
   useActivePlugins,
@@ -47,18 +48,21 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
     }
   }, [state, setState, defaultState]);
 
-  const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
-    setState(spaces);
-  });
+  const spaces = useMemo(
+    () =>
+      new SpaceTree(state, (spaces: SpaceNodeJSON) => {
+        setState(spaces);
+      }),
+    [state]
+  );
 
   const clearSpaces = useCallback(() => {
     setState(undefined);
   }, [setState]);
 
-  return {
-    spaces,
-    updateSpaces: (
-      serializedTreeOrUpdater: (spaces: SpaceTree) => void | SpaceNodeJSON
+  const updateSpaces = useCallback(
+    (
+      serializedTreeOrUpdater: ((spaces: SpaceTree) => void) | SpaceNodeJSON
     ) => {
       if (typeof serializedTreeOrUpdater === "function") {
         setState((latestSpaces) => {
@@ -70,7 +74,13 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
         setState(serializedTreeOrUpdater);
       }
     },
+    []
+  );
+
+  return {
+    spaces,
     clearSpaces,
+    updateSpaces,
   };
 }
 
@@ -100,17 +110,40 @@ export function useSpaceNodes(spaceId: string) {
   }, [spaces]);
 }
 
-export function usePanels() {
+/**
+ * Hook to get all panels registered in the app, optionally filtered by a
+ * predicate.
+ *
+ * @param predicate - A function that takes a panel and returns `true` if
+ * the panel should be included in the result. It is important for the predicate
+ * to be memoized using `useCallback` to avoid unnecessary re-renders.
+ */
+export function usePanels(
+  predicate?: (panel: PluginComponentRegistration) => boolean
+) {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const plots = useActivePlugins(PluginComponentType.Plot, { schema });
-  const panels = useActivePlugins(PluginComponentType.Panel, { schema });
-  return panels.concat(plots);
+  const ctx = useMemo(() => ({ schema }), [schema]);
+  const plots = useActivePlugins(PluginComponentType.Plot, ctx);
+  const panels = useActivePlugins(PluginComponentType.Panel, ctx);
+
+  const panelsToReturn = useMemo(() => {
+    const allPanels = plots.concat(panels);
+    if (predicate) {
+      return allPanels.filter(predicate);
+    }
+    return allPanels;
+  }, [plots, panels, predicate]) as PluginComponentRegistration[];
+
+  return panelsToReturn;
 }
 
-export function usePanel(name: SpaceNodeType) {
-  const panels = usePanels();
+export function usePanel(
+  name: SpaceNodeType,
+  predicate?: (panel: PluginComponentRegistration) => boolean
+) {
+  const panels = usePanels(predicate);
   return panels.find((panel) => panel.name === name);
 }
 

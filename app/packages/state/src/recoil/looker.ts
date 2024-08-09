@@ -100,7 +100,6 @@ export const lookerOptions = selectorFamily<
           activeFilter,
           activeVisibility
         ),
-        fullscreen: get(atoms.fullscreen),
         filter: withFilter ? get(pathFilter(modal)) : undefined,
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
         timeZone: get(selectors.timeZone),

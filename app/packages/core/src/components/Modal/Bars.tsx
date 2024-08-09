@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
 
+// todo: this is currently not used, remove it
 const SelectableBar: React.FC<
   React.PropsWithChildren<{
     sampleId: string;
@@ -43,16 +44,16 @@ const SelectableBar: React.FC<
   );
 };
 
+// todo: this is currently not used, remove it
 export const SampleBar: React.FC<{
   sampleId: string;
-  lookerRef?: React.MutableRefObject<fos.Lookers | undefined>;
   visible?: boolean;
-  hoveringRef: MutableRefObject<boolean>;
+  hoveringRef?: MutableRefObject<boolean>;
   actions?: boolean;
-}> = ({ hoveringRef, lookerRef, sampleId, visible, actions = true }) => {
+}> = ({ hoveringRef, sampleId, visible, actions = true }) => {
   return visible ? (
     <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
-      {actions && <ModalActionsRow lookerRef={lookerRef} />}
+      {actions && <ModalActionsRow />}
     </SelectableBar>
   ) : null;
 };
@@ -105,7 +106,6 @@ export const GroupBar: React.FC<{
           {pinnedSliceLabel}
         </div>
       </div>
-      <ModalActionsRow lookerRef={lookerRef} isGroup />
     </Bar>
   );
 };

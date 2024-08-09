@@ -5,6 +5,7 @@ import {
   PillButton,
 } from "@fiftyone/components";
 import { withSuspense } from "@fiftyone/state";
+import { isPrimitiveString } from "@fiftyone/utilities";
 import { Extension } from "@mui/icons-material";
 import styled from "styled-components";
 import { types } from ".";
@@ -16,7 +17,6 @@ import {
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
-import { isPrimitiveString } from "@fiftyone/utilities";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps
@@ -28,13 +28,16 @@ export function OperatorPlacementWithErrorBoundary(
   );
 }
 
-function OperatorPlacements(props: OperatorPlacementsProps) {
-  const { place } = props;
+function OperatorPlacements(
+  props: OperatorPlacementsProps & { modal?: boolean }
+) {
+  const { place, modal } = props;
   const { placements } = useOperatorPlacements(place);
 
   return placements.map((placement) => (
     <OperatorPlacementWithErrorBoundary
       key={placement?.operator?.uri}
+      modal={modal}
       place={place}
       {...placement}
     />
@@ -54,14 +57,14 @@ function getPlacementComponent(placement: Placement) {
 }
 
 function OperatorPlacement(props: OperatorPlacementProps) {
-  const { placement } = props;
+  const { placement, modal } = props;
   const Component = getPlacementComponent(placement);
   return <Component {...props} />;
 }
 
 function ButtonPlacement(props: OperatorPlacementProps) {
   const promptForInput = usePromptOperatorInput();
-  const { operator, placement, place, adaptiveMenuItemProps } = props;
+  const { operator, placement, place, adaptiveMenuItemProps, modal } = props;
   const { uri, label: operatorLabel, name: operatorName } = operator;
   const { view = {} } = placement;
   const { label } = view;
@@ -108,6 +111,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         title={title}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
+        tooltipPlacement={modal ? "top" : "bottom"}
       />
     );
   }
@@ -128,6 +132,7 @@ type OperatorPlacementsProps = {
 };
 
 type OperatorPlacementProps = {
+  modal?: boolean;
   placement: Placement;
   place: Places;
   operator: Operator;

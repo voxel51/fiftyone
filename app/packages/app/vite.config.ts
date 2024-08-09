@@ -2,6 +2,7 @@ import reactRefresh from "@vitejs/plugin-react-refresh";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
 import relay from "vite-plugin-relay";
+import svgr from "vite-plugin-svgr";
 import { basePlugins } from "../../vite.base.config";
 
 async function loadConfig() {
@@ -11,6 +12,7 @@ async function loadConfig() {
     base: "",
     plugins: [
       ...basePlugins,
+      svgr(),
       reactRefresh({
         parserPlugins: ["classProperties", "classPrivateProperties"],
       }),

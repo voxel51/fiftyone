@@ -24,7 +24,7 @@ const useAlign = (
     }
   }, [anchorRef, modal]);
 
-  return modal ? { right: align } : { left: align };
+  return modal ? { marginRight: align, left: 0, right: 0 } : { left: align };
 };
 
 const Popout = ({

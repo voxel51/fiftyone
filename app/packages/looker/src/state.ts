@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { BufferManager } from "@fiftyone/utilities";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
@@ -172,7 +172,6 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
-  fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
   inSelectionMode: boolean;
@@ -450,7 +449,6 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   },
   customizeColorSetting: [],
   smoothMasks: true,
-  fullscreen: false,
   zoomPad: 0.2,
   selected: false,
   inSelectionMode: false,
