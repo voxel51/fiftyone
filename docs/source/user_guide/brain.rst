@@ -423,15 +423,14 @@ optional `backend` parameter to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to switch to
 another supported backend:
 
--   **sklearn** (*default*): a `scikit-learn <https://scikit-learn.org>`_
-    backend
+-   **sklearn** (*default*): a `scikit-learn <https://scikit-learn.org>`_ backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **redis**: a :ref:`Redis backend <redis-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
 -   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
+-   **elasticsearch**: a :ref:`Elasticsearch backend <elasticsearch-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
--   **elasticsearch**: a :ref:`Elasticsearch backend <elasticsearch-integration>`
 
 .. code-block:: python
     :linenos:
@@ -831,6 +830,7 @@ The relevant classes for the builtin similarity backends are:
 -   **redis**: :class:`fiftyone.brain.internal.core.redis.RedisSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
 -   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
+-   **elasticsearch**: a :ref:`fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
@@ -1904,6 +1904,9 @@ and the CLI:
                 "mongodb": {
                     "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
                 },
+                "elasticsearch": {
+                    "config_cls": "fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig"
+                },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
@@ -1954,6 +1957,9 @@ and the CLI:
                 },
                 "mongodb": {
                     "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
+                },
+                "elasticsearch": {
+                    "config_cls": "fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig"
                 },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"

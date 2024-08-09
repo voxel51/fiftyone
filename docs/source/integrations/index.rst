@@ -112,6 +112,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
+    :header: Elasticsearch
+    :description: Use our Elasticsearch integration to enable vector search and query your FiftyOne datasets at scale.
+    :link: elasticsearch.html
+    :image: ../_static/images/integrations/elasticsearch.jpg
+    :tags: Brain,Embeddings,Vector-Search
+
+.. customcarditem::
     :header: Milvus
     :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: milvus.html
@@ -123,13 +130,6 @@ on the cards below to see how!
     :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
     :link: lancedb.html
     :image: ../_static/images/integrations/lancedb.png
-    :tags: Brain,Embeddings,Vector-Search
-
-.. customcarditem::
-    :header: Elasticsearch
-    :description: Use our Elasticsearch integration to enable vector search and query your FiftyOne datasets at scale.
-    :link: elasticsearch.html
-    :image: ../_static/images/integrations/elasticsearch.jpg
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
@@ -210,9 +210,9 @@ on the cards below to see how!
     Redis <redis.rst>
     Pinecone <pinecone.rst>
     MongoDB <mongodb.rst>
+    Elasticsearch <elasticsearch.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
-    Elasticsearch <elasticsearch.rst>
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
     Albumentations <albumentations.rst>

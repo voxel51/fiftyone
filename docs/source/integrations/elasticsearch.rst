@@ -1,7 +1,7 @@
 .. _elasticsearch-integration:
 
-Elasticsearch Integration
-=========================
+Elasticsearch Vector Search Integration
+=======================================
 
 .. default-role:: code
 
@@ -13,15 +13,15 @@ directly from FiftyOne!
 Follow these :ref:`simple instructions <elasticsearch-setup>` to get started
 using Elasticsearch + FiftyOne.
 
-FiftyOne provides an API to create Elasticsearch indexes, upload vectors, and run
-similarity queries, both :ref:`programmatically <elasticsearch-query>` in Python and
-via point-and-click in the App.
+FiftyOne provides an API to create Elasticsearch indexes, upload vectors, and
+run similarity queries, both :ref:`programmatically <elasticsearch-query>` in
+Python and via point-and-click in the App.
 
 .. note::
 
     Did you know? You can
-    :ref:`search by natural language <brain-similarity-text>` using Elasticsearch
-    similarity indexes!
+    :ref:`search by natural language <brain-similarity-text>` using
+    Elasticsearch similarity indexes!
 
 .. image:: /images/brain/brain-image-similarity.gif
    :alt: image-similarity
@@ -32,8 +32,8 @@ via point-and-click in the App.
 Basic recipe
 ____________
 
-The basic workflow to use Elasticsearch to create a similarity index on your FiftyOne
-datasets and use this to query your data is as follows:
+The basic workflow to use Elasticsearch to create a similarity index on your
+FiftyOne datasets and use this to query your data is as follows:
 
 1)  Connect to or start an Elasticsearch server
 
@@ -43,9 +43,9 @@ datasets and use this to query your data is as follows:
     a model to use to generate embeddings
 
 4)  Use the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-    method to generate a Elasticsearch similarity index for the samples or object
-    patches in a dataset by setting the parameter `backend="elasticsearch"` and
-    specifying a `brain_key` of your choice
+    method to generate a Elasticsearch similarity index for the samples or
+    object patches in a dataset by setting the parameter
+    `backend="elasticsearch"` and specifying a `brain_key` of your choice
 
 5)  Use this Elasticsearch similarity index to query your data with
     :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
@@ -67,9 +67,10 @@ The example below demonstrates this workflow.
 
         pip install elasticsearch
 
-    Note that, if you are using a custom Elasticsearch server, you can store your
-    credentials as described in :ref:`this section <elasticsearch-setup>` to avoid
-    entering them manually each time you interact with your Elasticsearch index.
+    Note that, if you are using a custom Elasticsearch server, you can store
+    your credentials as described in :ref:`this section <elasticsearch-setup>`
+    to avoid entering them manually each time you interact with your
+    Elasticsearch index.
 
 First let's load a dataset into FiftyOne and compute embeddings for the samples:
 
@@ -114,8 +115,8 @@ by specifying the `brain_key`:
 
 .. note::
 
-    Skip to :ref:`this section <elasticsearch-examples>` for a variety of common
-    Elasticsearch query patterns.
+    Skip to :ref:`this section <elasticsearch-examples>` for a variety of
+    common Elasticsearch query patterns.
 
 .. _elasticsearch-setup:
 
@@ -136,7 +137,7 @@ In order to use the Elasticsearch backend, you must also install the
     pip install elasticsearch
 
 Using the Elasticsearch backend
-------------------------
+-------------------------------
 
 By default, calling
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` or
@@ -144,7 +145,8 @@ By default, calling
 will use an sklearn backend.
 
 To use the Elasticsearch backend, simply set the optional `backend` parameter of
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to `"elasticsearch"`:
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to
+`"elasticsearch"`:
 
 .. code:: python
     :linenos:
@@ -153,8 +155,8 @@ To use the Elasticsearch backend, simply set the optional `backend` parameter of
 
     fob.compute_similarity(..., backend="elasticsearch", ...)
 
-Alternatively, you can permanently configure FiftyOne to use the Elasticsearch backend
-by setting the following environment variable:
+Alternatively, you can permanently configure FiftyOne to use the Elasticsearch
+backend by setting the following environment variable:
 
 .. code-block:: shell
 
@@ -172,21 +174,21 @@ or by setting the `default_similarity_backend` parameter of your
 Authentication
 --------------
 
-If you are using a custom Elasticsearch server, you can provide your credentials in a
-`variety of ways. <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/connecting.html#connecting>`_
+If you are using a custom Elasticsearch server, you can provide your
+credentials in a
+`variety of ways <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/connecting.html#connecting>`_.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Elasticsearch credentials is to store them in
-the environment variables shown below, which are automatically accessed by
-FiftyOne whenever a connection to Elasticsearch is made.
+The recommended way to configure your Elasticsearch credentials is to store
+them in the environment variables shown below, which are automatically accessed
+by FiftyOne whenever a connection to Elasticsearch is made.
 
 .. code-block:: shell
 
-    export FIFTYONE_BRAIN_SIMILARITY_ELASTICSEARCH_HOSTS=https://localhost:9200
+    export FIFTYONE_BRAIN_SIMILARITY_ELASTICSEARCH_HOSTS=http://localhost:9200
     export FIFTYONE_BRAIN_SIMILARITY_ELASTICSEARCH_USERNAME=XXXXXXXX
     export FIFTYONE_BRAIN_SIMILARITY_ELASTICSEARCH_PASSWORD=XXXXXXXX
-    export FIFTYONE_BRAIN_SIMILARITY_ELASTICSEARCH_SSL_ASSERT_FINGERPRINT=XXXXXXXX
 
 This is only one example of variables that can be used to authenticate an
 Elasticsearch client. Find more information
@@ -202,10 +204,9 @@ located at `~/.fiftyone/brain_config.json`:
     {
         "similarity_backends": {
             "elasticsearch": {
-                "hosts": "https://localhost:9200",
+                "hosts": "http://localhost:9200",
                 "username": "XXXXXXXX",
-                "password": "XXXXXXXX",
-                "ssl_assert_fingerprint": "XXXXXXXX",
+                "password": "XXXXXXXX"
             }
         }
     }
@@ -227,10 +228,9 @@ that require connections to Elasticsearch:
         ...
         backend="elasticsearch",
         brain_key="elasticsearch_index",
-        hosts="https://localhost:9200",
+        hosts="http://localhost:9200",
         username="XXXXXXXX",
         password="XXXXXXXX",
-        ssl_assert_fingerprint="XXXXXXXX",
     )
 
 Note that, when using this strategy, you must manually provide the credentials
@@ -242,11 +242,9 @@ when loading an index later via
 
     elasticsearch_index = dataset.load_brain_results(
         "elasticsearch_index",
-        url="http://localhost:6333",
-        hosts="https://localhost:9200",
+        hosts="http://localhost:9200",
         username="XXXXXXXX",
         password="XXXXXXXX",
-        ssl_assert_fingerprint="XXXXXXXX",
     )
 
 .. _elasticsearch-config-parameters:
@@ -254,12 +252,11 @@ when loading an index later via
 Elasticsearch config parameters
 -------------------------------
 
-The Elasticsearch backend supports a variety of query parameters that can be used to
-customize your similarity queries. These parameters broadly fall into four
-categories:
+The Elasticsearch backend supports a variety of query parameters that can be
+used to customize your similarity queries. These parameters include:
 
--   **index_name** (*None*): the name of the Elasticsearch vector search index to use
-    or create. If not specified, a new unique name is generated automatically
+-   **index_name** (*None*): the name of the Elasticsearch vector search index
+    to use or create. If not specified, a new unique name is generated automatically
 -   **metric** (*"cosine"*): the distance/similarity metric to use when
     creating a new index. The supported values are
     ``("cosine", "dotproduct", "euclidean", "innerproduct")``
@@ -382,8 +379,8 @@ a FiftyOne dataset using the Elasticsearch backend.
 
 .. note::
 
-    All of the examples below assume you have configured your Elasticsearch server
-    as described in :ref:`this section <elasticsearch-setup>`.
+    All of the examples below assume you have configured your Elasticsearch
+    server as described in :ref:`this section <elasticsearch-setup>`.
 
 .. _elasticsearch-new-similarity-index:
 
@@ -588,7 +585,7 @@ to retrieve embeddings from a Elasticsearch index by ID:
 .. _elasticsearch-query:
 
 Querying a Elasticsearch index
--------------------------------
+------------------------------
 
 You can query a Elasticsearch index by appending a
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
@@ -649,8 +646,8 @@ stage to any dataset or view. The query can be any of the following:
 Accessing the Elasticsearch client
 ----------------------------------
 
-You can use the `client` property of a Elasticsearch index to directly access the
-underlying Elasticsearch client instance and use its methods as desired:
+You can use the `client` property of a Elasticsearch index to directly access
+the underlying Elasticsearch client instance and use its methods as desired:
 
 .. code:: python
     :linenos:
@@ -676,12 +673,12 @@ underlying Elasticsearch client instance and use its methods as desired:
 Advanced usage
 --------------
 
-As :ref:`previously mentioned <elasticsearch-config-parameters>`, you can customize
-your Elasticsearch indexes by providing optional parameters to
+As :ref:`previously mentioned <elasticsearch-config-parameters>`, you can
+customize your Elasticsearch indexes by providing optional parameters to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`.
 
-Here's an example of creating a similarity index backed by a customized Elasticsearch
-index. Just for fun, we'll specify a custom index name, use dot
+Here's an example of creating a similarity index backed by a customized
+Elasticsearch index. Just for fun, we'll specify a custom index name, use dot
 product similarity, and populate the index for only a subset of our dataset:
 
 .. code:: python
@@ -708,5 +705,3 @@ product similarity, and populate the index for only a subset of our dataset:
     view = dataset.take(10)
     embeddings, sample_ids, _ = elasticsearch_index.compute_embeddings(view)
     elasticsearch_index.add_to_index(embeddings, sample_ids)
-
-    elasticsearch_client = elasticsearch_index.client
