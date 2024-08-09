@@ -39,9 +39,24 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   parentSchema?: SchemaType;
   relativePath: string;
   data?: any;
+  initialData?: any;
   layout?: {
     height: number;
     width: number;
+  };
+  /**
+   * Experimental. Only available for DashboardView
+   */
+  relativeLayout?: {
+    i: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    minW: number;
+    minH: number;
+    COLS: number;
+    ROWS: number;
   };
   autoFocused?: React.MutableRefObject<boolean>;
 };
