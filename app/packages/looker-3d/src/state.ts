@@ -67,6 +67,11 @@ export const isGridOnAtom = atom<boolean>({
   ],
 });
 
+export const isLevaConfigPanelOnAtom = atom<boolean>({
+  key: "fo3d-isLevaConfigPanelOn",
+  default: false,
+});
+
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
