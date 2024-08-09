@@ -192,6 +192,11 @@ by setting its
 
     session.sample_id = sample_id
 
+.. note::
+
+    Did you know? You can link directly to a sample by copy + pasting the App's
+    URL into your browser search bar!
+
 Similarly, for :ref:`group datasets <groups>`, you can immediately load a
 specific group in the modal when launching a new |Session| by providing its ID
 via the `group_id` parameter:
@@ -217,6 +222,11 @@ by setting its
     group_id = dataset.take(1).first().group.id
 
     session.group_id = group_id
+
+.. note::
+
+    Did you know? You can link directly to a group by copy + pasting the App's
+    URL into your browser search bar!
 
 .. _remote-session:
 
