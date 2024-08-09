@@ -22,8 +22,12 @@ export const useHotkey = (
 
   const handle = useCallback(
     (e: KeyboardEventUnionType) => {
-      const shouldIgnore = e.target.tagName.toLowerCase() === "input";
-      if (!shouldIgnore && e.code === keyCode) {
+      const active = document.activeElement;
+      if (active?.tagName === "INPUT") {
+        return;
+      }
+
+      if (e.code === keyCode) {
         cbAsRecoilTransaction();
       }
     },

@@ -92,28 +92,38 @@ const TrivialModalPanel = () => {
   return (
     <div>
       <h2>Modal Panel</h2>
-      {/* I'm operating on sample with filepath: {thisSample.sample.filepath} */}
+      Basic panel
+    </div>
+  );
+};
+
+const RerunIframe = () => {
+  return (
+    <div style={{ width: "100%", height: "100%" }}>
+      <iframe
+        src="https://rerun.io/viewer?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2F0.17.0%2Fexamples%2Farkit_scenes.rrd"
+        width="100%"
+        height="100%"
+      />
     </div>
   );
 };
 
 registerComponent({
-  name: "foo-modal",
-  component: TrivialModalPanel,
-  label: "foo-modal",
+  name: "rerun",
+  component: RerunIframe,
+  label: "rerun",
   type: PluginComponentType.Panel,
   surfaces: "modal",
   helpMarkdown: `
-###### My Modal
+###### Rerun Tab
 
 Use \`Ctrl + drag\` to do something cool.
 
 What is this plugin?
 
-- It's a modal plugin
-- It's a simple plugin
-- It's a foo plugin
-- It's a bar plugin
+- We're embedding Rerun's ARKit Scene in Fiftyone panel.
+
 - Learn more at [fiftyone.ai](https://fiftyone.ai).
     `,
   activator: () => true,

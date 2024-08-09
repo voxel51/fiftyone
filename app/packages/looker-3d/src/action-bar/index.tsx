@@ -4,9 +4,11 @@ import { useRecoilValue } from "recoil";
 import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
+import { LEVA_CONTAINER_ID } from "../fo3d/Leva";
 import { useHotkey } from "../hooks";
 import { fo3dContainsBackground as fo3dContainsBackgroundAtom } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
+import { LevaConfigPanel } from "./LevaConfigPanel";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
@@ -58,6 +60,8 @@ export const ActionBar = ({
 
   const componentsToRender = useMemo(() => {
     const components = [];
+
+    components.push(<LevaConfigPanel key="leva-config-panel" />);
 
     if (isFo3d) {
       components.push(<ViewFo3d jsonPanel={jsonPanel} key="inspect-fo3d" />);
@@ -112,14 +116,28 @@ export const ActionBar = ({
   }, [fo3dContainsBackground, isFo3d, jsonPanel, helpPanel, sampleForJsonView]);
 
   return (
-    <ActionBarContainer
-      data-cy="looker3d-action-bar"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {hasMultiplePcdSlices && <SliceSelector />}
-      <Logs />
-      <ActionsBar>{componentsToRender}</ActionsBar>
-    </ActionBarContainer>
+    <>
+      <ActionBarContainer
+        data-cy="looker3d-action-bar"
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        {hasMultiplePcdSlices && <SliceSelector />}
+        <Logs />
+        <ActionsBar>{componentsToRender}</ActionsBar>
+      </ActionBarContainer>
+
+      {/* will be inserted from portal */}
+      <div
+        id={LEVA_CONTAINER_ID}
+        style={{
+          position: "absolute",
+          minWidth: "300px",
+          bottom: "3em",
+          right: 0,
+          zIndex: 1111,
+        }}
+      />
+    </>
   );
 };

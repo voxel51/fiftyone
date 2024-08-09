@@ -33,7 +33,7 @@ import {
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import Leva from "./Leva";
+import { Leva } from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
 import {
