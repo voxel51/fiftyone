@@ -602,7 +602,8 @@ class SampleCollection(object):
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the collection
-            include_indexes (False): whether to return the stats on the indexes
+            include_indexes (False): whether to include stats on the dataset's
+                indexes
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False). This option is
@@ -649,13 +650,17 @@ class SampleCollection(object):
             total_bytes += media_bytes
 
         if include_indexes:
-            ii = self.get_index_information(include_size=True)
+            ii = self.get_index_information(include_stats=True)
             index_bytes = {k: v["size"] for k, v in ii.items()}
             indexes_bytes = sum(index_bytes.values())
+            indexes_in_progress = [
+                k for k, v in ii.items() if v.get("in_progress", False)
+            ]
 
             stats["indexes_count"] = len(index_bytes)
             stats["indexes_bytes"] = indexes_bytes
             stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            stats["indexes_in_progress"] = indexes_in_progress
             stats["index_bytes"] = index_bytes
             stats["index_sizes"] = {
                 k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
@@ -9060,27 +9065,16 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def _sample_stats(self) -> dict:
-        """Returns the collection stats for the sample collection."""
-        conn = foo.get_db_conn()
-        return conn.command("collstats", self._dataset._sample_collection_name)
-
-    def _frame_stats(self) -> dict:
-        """Returns the collection stats for the frame collection."""
-        conn = foo.get_db_conn()
-        return conn.command("collstats", self._dataset._frame_collection_name)
-
-    def get_index_information(
-        self, include_size=False, include_progress=False
-    ):
+    def get_index_information(self, include_stats=False):
         """Returns a dictionary of information about the indexes on this
         collection.
 
         See :meth:`pymongo:pymongo.collection.Collection.index_information` for
         details on the structure of this dictionary.
 
-        include_progress (False): whether to include the build status of index
-        include_size (False): whether to include the size of each index
+        Args:
+            include_stats (False): whether to include the size and build status
+                of each index
 
         Returns:
             a dict mapping index names to info dicts
@@ -9091,16 +9085,13 @@ class SampleCollection(object):
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
 
-        sample_cs = None
-        if include_size:
-            sample_cs = self._sample_stats()
-            for key, size in sample_cs["indexSizes"].items():
+        if include_stats:
+            cs = self._dataset._sample_collstats()
+            for key, size in cs["indexSizes"].items():
                 if key in sample_info:
                     sample_info[key]["size"] = size
 
-        if include_progress:
-            sample_cs = sample_cs or self._sample_stats()
-            for key in sample_cs["indexBuilds"]:
+            for key in cs["indexBuilds"]:
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
 
@@ -9116,16 +9107,13 @@ class SampleCollection(object):
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
 
-            frame_cs = None
-            if include_size:
-                frame_cs = self._frame_stats()
-                for key, size in frame_cs["indexSizes"].items():
+            if include_stats:
+                cs = self._dataset._frame_collstats()
+                for key, size in cs["indexSizes"].items():
                     if key in frame_info:
                         frame_info[key]["size"] = size
 
-            if include_progress:
-                frame_cs = frame_cs or self._frame_stats()
-                for key in frame_cs["indexBuilds"]:
+                for key in cs["indexBuilds"]:
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
 
