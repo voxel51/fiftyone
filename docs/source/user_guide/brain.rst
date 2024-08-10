@@ -66,6 +66,14 @@ workflow:
   predictions on unlabeled samples to determine which are the most valuable to
   have annotated and fed back into the system as training samples, for example.
 
+* :ref:`Representativeness <brain-image-representativeness>`:
+  When working with large datasets, it can be hard to determine what samples 
+  within it are outliers and which are more typical. The FiftyOne Brain offers
+  a *representativeness measure* that can be used to find the most common
+  types of images in your dataset. This is especially helpful to find easy
+  examples to train on in your data and for visualizing common modes of the
+  data.
+
 .. note::
 
     Check out the :ref:`tutorials page <tutorials>` for detailed examples
@@ -1698,6 +1706,58 @@ demonstrated empirical value in many model training exercises.
    :alt: hardness
    :align: center
 
+.. _brain-image-representativeness:
+
+Image representativeness
+________________________
+
+During the early stages of the ML workflow it can be useful to find
+prototypical samples in your data that accurately describe all the different
+aspects of your data. FiftyOne Brain provides a representativeness method that
+finds samples which are very similar to large clusters of your data. Highly
+representative samples are great for finding modes or easy examples in your
+dataset.
+
+The representativeness of a |Dataset| can be computed directly without the need
+for the predictions of a pre-trained model via the
+:meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
+
+    fob.compute_representativeness(dataset)
+
+**Input**: An unlabeled (or labeled) image dataset. There are
+:ref:`recipes <recipes>` for building datasets from a wide variety of image
+formats, ranging from a simple directory of images to complicated dataset
+structures like `COCO <https://cocodataset.org/#home>`_.
+
+**Output**: A scalar-valued `representativeness` field is populated for each 
+sample that ranks the representativeness of that sample (higher value means
+more representative). The representativeness values for a dataset are 
+normalized to `[0, 1]`, with the most representative samples in the collection
+having a representativeness value of `1`.
+
+You can customize the name of this field by passing the optional
+`representativeness_field` argument to
+:meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`
+.
+
+**What to expect**: Representativeness uses a clustering algorithm to find
+similar looking groups of samples. The representativeness is then computed
+based on each sample's proximity to the computed cluster centers, farther
+samples being less representative and closer samples being more representative.
+
+.. image:: /images/brain/brain-representativeness.png
+   :alt: representativeness
+   :align: center
+
 .. _brain-managing-runs:
 
 Managing brain runs
@@ -1748,6 +1808,12 @@ methods on your dataset:
 
         The brain key of hardness runs is the value of the `hardness_field`
         passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
+    
+    .. tab:: Representativeness
+
+        The brain key of representativeness runs is the value of the 
+        `representativeness_field` passed to
+        :meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`.
 
 The example below demonstrates the basic interface:
 

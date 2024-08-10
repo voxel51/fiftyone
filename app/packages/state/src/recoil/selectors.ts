@@ -142,6 +142,21 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
+export const disableFrameFiltering = selector<boolean>({
+  key: "disableFrameFiltering",
+  get: ({ get }) => {
+    const datasetDisableFrameFiltering =
+      get(datasetAppConfig)?.disableFrameFiltering;
+    const globalDisableFrameFiltering = Boolean(
+      get(appConfigOption({ modal: true, key: "disableFrameFiltering" }))
+    );
+
+    return datasetDisableFrameFiltering !== null
+      ? datasetDisableFrameFiltering
+      : globalDisableFrameFiltering;
+  },
+});
+
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {

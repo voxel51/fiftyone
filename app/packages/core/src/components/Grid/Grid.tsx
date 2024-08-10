@@ -159,7 +159,7 @@ function Grid() {
 
   useEscape();
 
-  return <div id={id} className={styles.spotlightLooker} data-cy="fo-grid" />;
+  return <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />;
 }
 
 export default React.memo(Grid);

@@ -1,11 +1,7 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { distribution } from "@fiftyone/state";
-import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  scrollbarStyles,
-} from "@fiftyone/utilities";
+import { DATE_FIELD, DATE_TIME_FIELD, styles } from "@fiftyone/utilities";
 import React, { PureComponent, Suspense, useLayoutEffect } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
@@ -20,11 +16,12 @@ import {
 import { ContentDiv, ContentHeader } from "./utils";
 
 const Container = styled.div`
-  ${scrollbarStyles}
   overflow-y: hidden;
   overflow-x: auto;
   width: 100%;
   flex: 1;
+
+  ${styles.scrollbarStyles}
 `;
 
 const LIMIT = 200;

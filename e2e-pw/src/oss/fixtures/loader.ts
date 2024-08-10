@@ -121,15 +121,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
     datasetName: string,
     options?: WaitUntilGridVisibleOptions
   ) {
-    const { isEmptyDataset, savedView, withGrid } = options ?? {
+    const { isEmptyDataset, searchParams, withGrid } = options ?? {
       isEmptyDataset: false,
-      savedView: undefined,
+      searchParams: undefined,
       withGrid: true,
     };
 
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
-      await page.getByTestId(`selector-Select dataset`).click();
+      await page.getByTestId("selector-Select dataset").click();
 
       if (datasetName) {
         await page.getByTestId(`selector-result-${datasetName}`).click();
@@ -141,8 +141,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    if (savedView) {
-      await page.goto(`/datasets/${datasetName}?view=${savedView}`);
+    const search = searchParams ? searchParams.toString() : undefined;
+    if (search) {
+      await page.goto(`/datasets/${datasetName}?${search}`);
     } else {
       await page.goto(`/datasets/${datasetName}`);
     }
@@ -152,11 +153,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
       await forceDatasetFromSelector();
     }
 
-    if (savedView) {
+    const view = searchParams?.get("view");
+    if (view) {
       const search = await page.evaluate(() => window.location.search);
 
       const params = new URLSearchParams(search);
-      if (params.get("view") !== savedView) {
+      if (params.get("view") !== view) {
         throw new Error(`wrong view: '${params.get("view")}'`);
       }
     }

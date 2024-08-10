@@ -620,12 +620,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self.user = user
 
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
-        self.user = user
-        self.__context_tokens = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -641,6 +640,8 @@ class ExecutionContext(contextlib.AbstractContextManager):
         if self.panel_id:
             self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
+
+        self.__context_tokens = None
 
     @property
     def dataset(self):
@@ -799,7 +800,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def user_id(self) -> Optional[str]:
-        """The ID of the user executing the operation."""
+        """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
 
     @property
@@ -836,7 +837,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
         params=None,
         on_success=None,
         on_error=None,
-        on_cancel=None,
     ):
         """Prompts the user to execute the operator with the given URI.
 
@@ -845,7 +845,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
             params (None): a dictionary of parameters for the operator
             on_success (None): a callback to invoke if the user successfully executes the operator
             on_error (None): a callback to invoke if the execution fails
-            on_cancel (None): a callback to invoke if the user cancels the operation
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing

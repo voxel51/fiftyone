@@ -54,7 +54,7 @@ test.describe("quickstart-groups", () => {
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      savedView: "dynamic",
+      searchParams: new URLSearchParams({ view: "dynamic" }),
     });
   });
 

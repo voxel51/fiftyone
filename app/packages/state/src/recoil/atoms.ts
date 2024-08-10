@@ -367,3 +367,8 @@ export const noneValuedPaths = atom<Record<string, Set<string>>>({
   key: "noneValuedPaths",
   default: {},
 });
+
+export const escapeKeyHandlerIdsAtom = atom<Set<string>>({
+  key: "escapeKeyHandlerIdsAtom",
+  default: new Set(),
+});

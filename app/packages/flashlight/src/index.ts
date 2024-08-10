@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
 import {
@@ -22,6 +23,7 @@ import {
   flashlight,
   flashlightContainer,
   flashlightPixels,
+  scrollbar,
 } from "./styles.module.css";
 import tile from "./tile";
 import { argMin, getDims } from "./util";
@@ -64,7 +66,7 @@ export default class Flashlight<K> {
     this.showPixels();
     this.element = document.createElement("div");
     config.elementId && this.element.setAttribute("id", config.elementId);
-    this.element.classList.add(flashlight);
+    this.element.classList.add(flashlight, scrollbar);
     this.element.setAttribute("data-cy", "flashlight");
     this.state = this.getEmptyState(config);
 

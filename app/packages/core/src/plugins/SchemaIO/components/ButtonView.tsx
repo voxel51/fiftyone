@@ -10,7 +10,7 @@ import Button from "./Button";
 import TooltipProvider from "./TooltipProvider";
 
 export default function ButtonView(props: ViewPropsType) {
-  const { schema, path } = props;
+  const { schema, path, onClick } = props;
   const { view = {} } = schema;
   const {
     description,
@@ -41,12 +41,17 @@ export default function ButtonView(props: ViewPropsType) {
         <Button
           variant={variant}
           href={href}
-          onClick={() => {
-            handleClick(panelId, {
-              params: computedParams,
-              operator,
-              prompt,
-            });
+          onClick={(e) => {
+            if (operator) {
+              handleClick(panelId, {
+                params: computedParams,
+                operator,
+                prompt,
+              });
+            }
+            if (onClick) {
+              onClick(e, computedParams, props);
+            }
           }}
           startIcon={icon_position === "left" ? Icon : undefined}
           endIcon={icon_position === "right" ? Icon : undefined}

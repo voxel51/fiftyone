@@ -29,7 +29,7 @@ class GitHubRepository(object):
     Args:
         repo: the GitHub repository or identifier, which can be:
 
-            -   a GitHub URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
             -   a GitHub ref like
                 ``https://github.com/<user>/<repo>/tree/<branch>`` or
                 ``https://github.com/<user>/<repo>/commit/<commit>``
@@ -217,8 +217,8 @@ class GitHubRepository(object):
     @staticmethod
     def parse_url(url):
         m = re.search(
-            "github.com/(?P<user>[A-Za-z0-9_-]+)/((?P<repo>["
-            "A-Za-z0-9_-]+)((/.+?)?/(?P<ref>[A-Za-z0-9_-]+)?/(?P<path>.*)?)?)",
+            "github.com/(?P<user>[A-Za-z0-9_-]+)/"
+            "((?P<repo>[A-Za-z0-9_-]+)((/.+?)?/(?P<ref>.*)?)?)",
             url.rstrip("/"),
         )
 
@@ -228,15 +228,16 @@ class GitHubRepository(object):
             raise ValueError(f"Invalid GitHub URL '{url}'")
 
     @staticmethod
-    def parse_identifier(repo):
-        params = repo.split("/")
+    def parse_identifier(identifier):
+        params = identifier.split("/", 2)
         if len(params) < 2:
             raise ValueError(
-                f"Invalid identifier '{repo}'. Expected <user>/<repo>[/<ref>]"
+                f"Invalid identifier '{identifier}'. "
+                "Expected <user>/<repo>[/<ref>]"
             )
 
-        return dict(
-            user=params[0],
-            repo=params[1],
-            ref=params[2] if len(params) > 2 else None,
-        )
+        user = params[0]
+        repo = params[1]
+        ref = params[2] if len(params) > 2 else None
+
+        return dict(user=user, repo=repo, ref=ref)

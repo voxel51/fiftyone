@@ -5,19 +5,25 @@ import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import AddIndex from "./AddIndex";
+import {
+  FRAME_FILTERING_DISABLED,
+  LIGHTNING_MODE,
+} from "../../../../utils/links";
+import DisabledReason from "./DisabledReason";
 
 export default ({
   id,
   color,
   disabled,
   expanded,
+  frameFilterDisabledPath,
   unindexed,
 }: {
   id: string;
   color?: string;
   disabled?: boolean;
   expanded: RecoilState<boolean>;
+  frameFilterDisabledPath?: boolean;
   unindexed?: boolean;
 }) => {
   const [isExpanded, setExpanded] = useRecoilState(expanded);
@@ -31,13 +37,32 @@ export default ({
     />
   );
 
+  if (frameFilterDisabledPath) {
+    return (
+      <Tooltip
+        text={
+          <DisabledReason
+            text={"frame filtering is disabled"}
+            href={FRAME_FILTERING_DISABLED}
+          />
+        }
+        placement="top-center"
+      >
+        {arrow}
+      </Tooltip>
+    );
+  }
+
   if (disabled) {
     return arrow;
   }
 
   if (unindexed && !unlocked) {
     return (
-      <Tooltip text={<AddIndex />} placement="top-center">
+      <Tooltip
+        text={<DisabledReason text={"add an index"} href={LIGHTNING_MODE} />}
+        placement="top-center"
+      >
         {arrow}
       </Tooltip>
     );

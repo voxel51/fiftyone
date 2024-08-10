@@ -4,16 +4,16 @@ import mime from "mime";
 import { isElectron } from "./electron";
 import { Field } from "./schema";
 
-export * from "./Resource";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./paths";
-export * from "./schema";
-export * from "./styles";
-export * from "./type-check";
 export * from "./order";
+export * from "./paths";
+export * from "./Resource";
+export * from "./schema";
+export * as styles from "./styles";
+export * from "./type-check";
 
 interface O {
   [key: string]: O | any;
@@ -474,6 +474,7 @@ export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
   "line",
   "polygons",
 ];
+export const BUILT_IN_PANEL_PRIORITY_CONST = 51000;
 
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
