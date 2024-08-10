@@ -579,16 +579,22 @@ class DatasetTests(unittest.TestCase):
 
         frame_stats = dataset._frame_stats()
         frame_stats["indexBuilds"] = ["gt.detections.label_1"]
-        with patch.object(dataset, "_sample_stats", return_value=sample_stats):
-            with patch.object(
-                dataset, "_frame_stats", return_value=frame_stats
-            ):
-                info = dataset.get_index_information(include_progress=True)
-                for key in [
-                    "gt.detections.label",
-                    "frames.gt.detections.label",
-                ]:
-                    self.assertTrue(info[key].get("in_progress") is not None)
+        with patch.object(
+            dataset, "_sample_stats", return_value=sample_stats
+        ), patch.object(dataset, "_frame_stats", return_value=frame_stats):
+            info = dataset.get_index_information(include_progress=True)
+            for key in [
+                "gt.detections.label",
+                "frames.gt.detections.label",
+            ]:
+                self.assertTrue(info[key].get("in_progress"))
+
+            stats = dataset.stats(include_indexes=True)
+            self.assertTrue("indexes_in_progress" in stats)
+            self.assertEqual(
+                set(stats["indexes_in_progress"]),
+                {"gt.detections.label", "frames.gt.detections.label"},
+            )
 
     @drop_datasets
     def test_iter_samples(self):
