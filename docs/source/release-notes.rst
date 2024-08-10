@@ -122,7 +122,7 @@ Core
   `#4614 <https://github.com/voxel51/fiftyone/pull/4614>`_
 - Added support for including index statistics in
   :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
-  `#4607 <https://github.com/voxel51/fiftyone/pull/4607>`_
+  `#4653 <https://github.com/voxel51/fiftyone/pull/4653>`_
 - Added a source install script for Windows
   `#4582 <https://github.com/voxel51/fiftyone/pull/4582>`_
 - Ubuntu 24.04 users no longer have to manually install MongoDB
