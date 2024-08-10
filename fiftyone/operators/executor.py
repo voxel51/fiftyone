@@ -570,6 +570,13 @@ class ExecutionContext(object):
     def target_view(self, param_name="view_target"):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
+
+        Args:
+            param_name ("view_target"): the name of the enum parameter defining
+                the target view choice
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name, None)
         if target == "SELECTED_SAMPLES":
@@ -611,6 +618,11 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def extended_selection(self):
+        """The extended selection of the view (if any)."""
+        return self.request_params.get("extended_selection", None)
+
+    @property
     def current_sample(self):
         """The ID of the current sample being processed (if any).
 
@@ -618,6 +630,34 @@ class ExecutionContext(object):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def user_id(self):
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        # @todo: move panel_id to top level param
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        """The current panel state.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel_state
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel
 
     @property
     def delegated(self):
@@ -655,11 +695,6 @@ class ExecutionContext(object):
         you can use to trigger builtin operations on the current context.
         """
         return self._ops
-
-    @property
-    def user_id(self) -> Optional[str]:
-        """The ID of the user executing the operation, if known."""
-        return self.user.id if self.user else None
 
     def prompt(
         self,
@@ -780,24 +815,20 @@ class ExecutionContext(object):
         """
         return self.trigger("console_log", {"message": message})
 
-    @property
-    def panel_id(self):
-        """The ID of the panel that invoked the operator, if any."""
-        # @todo: move panel_id to top level param
-        return self.params.get("panel_id", None)
+    def set_progress(self, progress=None, label=None):
+        """Sets the progress of the current operation.
 
-    @property
-    def panel_state(self):
-        return self._panel_state
-
-    @property
-    def panel(self):
-        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
-        use to read and write the state and data of the current panel.
-
-        Only available when the operator is invoked from a panel.
+        Args:
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
         """
-        return self._panel
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress} - {label}")
 
     def serialize(self):
         """Serializes the execution context.
@@ -815,26 +846,6 @@ class ExecutionContext(object):
         return {
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
-
-    def set_progress(self, progress=None, label=None):
-        """Sets the progress of the current operation.
-
-        Args:
-            progress (None): an optional float between 0 and 1 (0% to 100%)
-            label (None): an optional label to display
-        """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
-        else:
-            self.log(f"Progress: {progress} - {label}")
-
-    @property
-    def extended_selection(self):
-        """The extended selection of the view."""
-        return self.request_params.get("extended_selection", None)
 
 
 class ExecutionResult(object):

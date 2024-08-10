@@ -852,6 +852,8 @@ contains the following properties:
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
+-   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
     instance that you can use to read and write the :ref:`state <panel-state>`
