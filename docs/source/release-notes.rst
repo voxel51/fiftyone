@@ -143,6 +143,22 @@ Plugins
   :meth:`set_active_fields() <fiftyone.operators.operations.Operations.set_active_fields>`
   operator for programmatically controlling the selected fields in the sidebar
   `#4482 <https://github.com/voxel51/fiftyone/pull/4482>`_
+- Added a
+  :meth:`notify() <fiftyone.operators.operations.Operations.notify>`
+  operator for programmatically showing notifications in the App
+  `#4344 <https://github.com/voxel51/fiftyone/pull/4344>`_
+- Added
+  :meth:`ctx.extended_selection <fiftyone.operators.executor.ExecutionContext.extended_selection>`
+  to retrieve the current extended selection
+  `#4413 <https://github.com/voxel51/fiftyone/pull/4413>`_
+- Added a
+  :meth:`set_extended_selection() <fiftyone.operators.operations.Operations.set_extended_selection>`
+  operator for programmatically setting the extended selection
+  `#4409 <https://github.com/voxel51/fiftyone/pull/4409>`_
+- Added a
+  :meth:`track_event() <fiftyone.operators.operations.Operations.track_event>`
+  operator for logging plugin events in the App
+  `#4489 <https://github.com/voxel51/fiftyone/pull/4489>`_
 
 Zoo
 
