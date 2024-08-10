@@ -2127,6 +2127,153 @@ plugin. Panels access these secrets via the `ctx.secrets` dict:
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
+.. _panel-common-patterns:
+
+Common patterns
+---------------
+
+Panels have a few common patterns when it comes to utilizing components such as buttons,
+building interactive plots, and developing helpful tutorial-style walkthroughs. Following
+these patterns will help you build your panel faster and avoid roadblocks along the way.
+
+Type Casting
+-----------
+
+Defining the variable type of common variables used with Panels will allow you to inspect the methods
+available to an object and will dramatically help you increase your speed of development. Type casting
+will allow your IDE to preview helpful docstrings, trace `fiftyone` source code, and see what available methods
+exist on your object during the development process.
+
+Here is an example of how to type the `ctx` variable using the built in class type :ref:`ExecutionContext <operator-execution-context>`.
+Typing `ctx` will reveal to you all the available methods that come with the `ExecutionContext` class:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators.executor import ExecutionContext
+
+    @property
+    def config(self):
+        return foo.PanelOperatorConfig(
+            name="example_panel", label="Example Panel"
+        )
+
+    # type cast ctx variable with ExecutionContext within on_load function
+    def on_load(ctx: ExecutionContext):
+        ctx.trigger()
+        ctx.ops()
+        ctx.secrets()
+
+        # reveal the remaining methods available to ctx
+        ctx.
+        ...
+
+Callbacks
+-------
+
+Panels have callback methods like `on_click` and `on_change` for most rendered objects
+that can trigger state functions and perform operations.
+
+Here is an example of how clicking a button or changing the state of a slider
+can initiate a callback and trigger the execution of a function. Functions triggered have access to the
+context variable `ctx` and such context does change respective to the state updates that occur due to action being performed.
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        # set initial slider state
+        ctx.panel.state.slider_value = 5
+
+    def open_compute(self, ctx):
+        # Launch an interactive prompt for user to execute an operator
+        ctx.prompt("@voxel51/brain/compute_visualization")
+
+    def open_embeddings(self, ctx):
+        # Open embeddings panel
+        ctx.trigger("open_panel", params=dict(name="Embeddings"))
+
+    def change_value(self, ctx: ExecutionContext):
+        # grab value from ctx.params which has context from the state change of the slider
+        ctx.panel.state.slider_value = (
+            ctx.params["value"] or ctx.params["panel_state"]["slider_value"]
+        )
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        # define buttons that work with on_click callbacks
+        panel.btn("button_1", label="Open Compute Visualization", on_click=self.open_compute)
+        panel.btn("button_2", label="Open Embeddings Panel", on_click=self.open_embeddings)
+
+        # define slider that works with on_change callback
+        schema = {"min": 0, "max": 10, "multipleOf": 1}
+        slider = types.SliderView(
+            data=ctx.panel.state.slider_value, label="Example Slider"
+        )
+
+        panel.int(
+            "slider_value", view=slider, on_change=self.change_value, **schema
+        )
+
+
+
+Interactive plots
+-----------------
+
+Plots built within Panels have the ability to be interactive respective to your sample data. You can create views in `fiftyone` that
+alter the visual state of your panel and vice versa. Since Panels have access to the current render state of your `fiftyone` environment
+via :ref:`built-in events <panel-interface>`, you can call these methods to render different plots or can use the change in state of `ctx.params` to alter the visual view
+state of your `fiftyone` instance.
+
+Below is an example of how to create an interactive bar chart where clicking a bar will change your respective `fiftyone` view.
+
+.. code-block:: python
+    :linenos:
+
+    def filter_data(self, ctx):
+        filter_label = ctx.params["data"]["label"]
+
+        # create a view of the dataset that only includes samples with the filter label
+        filtered_view = ctx.dataset.filter_labels(
+            "ground_truth", F("label") == filter_label
+        )
+
+        # display the filtered view
+        ctx.trigger(
+            "set_view",
+            params=dict(
+                view=json.loads(json_util.dumps(filtered_view._serialize()))
+            ),
+        )
+
+    def reset(self, ctx):
+        # clear any saved views on operator
+        ctx.ops.clear_view()
+        self.on_load(ctx)
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        # Bar Chart - Histogram
+        panel.plot(
+            "histogram",
+            layout=ctx.panel.state.layout,
+            label="Interactive Histogram",
+            on_click=self.filter_data,
+        )
+
+        # Buttons
+        panel.btn("reset", label="Reset Chart", on_click=self.reset)
+
+        return types.Property(
+            panel,
+            view=types.GridView(
+                align_x="center", align_y="center", orientation="vertical"
+            ),
+        )
+
+
 .. _developing-js-plugins:
 
 Developing JS plugins
