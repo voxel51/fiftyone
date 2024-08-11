@@ -2384,7 +2384,10 @@ walkthrough tutorials similar to the ones found on `try.fiftyone.ai <https://try
 
 Here is an example of how you would create a step by step tutorialized style Panel:
 
-TODO
+.. code-block:: python
+    :linenos:
+
+    # TODO
 
 Displaying multimedia
 ~~~~~~~~~~~~~~~~~~~~~
@@ -2509,7 +2512,17 @@ Here are some examples on how to create panels that render, manipulate, and load
 
 Layering panels with dropdown menus
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TODO
+When creating a Panel, you might want to give yourself or the user of the panel the ability to pick and
+choose what to render and showcase within the contents of your panel. The best way to do that, without having
+to change your source code and simply render different versions of your panel dependent on user input would be
+via our `MenuView` component.
+
+Here's an example of how to create a dropdown menu with selectable options that alter your panel based on user input:
+
+.. code-block:: python
+    :linenos:
+
+    # TODO
 
 .. _developing-js-plugins:
 
