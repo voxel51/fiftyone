@@ -1,10 +1,12 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import styles from "./styles.module.css";
+
+import type Iter from "./iter";
 import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
 
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
-import styles from "./styles.module.css";
 import { create, pixels } from "./utilities";
 
 export default class Row<K, V> {
@@ -23,7 +25,7 @@ export default class Row<K, V> {
     from,
     focus,
     items,
-    next,
+    iter,
     width,
   }: {
     config: SpotlightConfig<K, V>;
@@ -31,7 +33,7 @@ export default class Row<K, V> {
     focus: Focus;
     from: number;
     items: ItemData<K, V>[];
-    next: (from: number, soft?: boolean) => Promise<ID | undefined>;
+    iter: Iter<K, V>;
     width: number;
   }) {
     this.#config = config;
@@ -55,7 +57,7 @@ export default class Row<K, V> {
           config.onItemClick({
             event,
             item,
-            next,
+            iter,
           });
         });
         element.addEventListener("contextmenu", (event) => {
@@ -67,7 +69,7 @@ export default class Row<K, V> {
           config.onItemClick({
             event,
             item,
-            next,
+            iter,
           });
         });
       }

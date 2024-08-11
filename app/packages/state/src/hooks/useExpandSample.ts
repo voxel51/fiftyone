@@ -27,7 +27,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
       async ({
         event,
         item,
-        next: cursor,
+        iter: cursor,
       }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
@@ -65,25 +65,25 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         };
 
         const next = async () => {
-          const result = await iter(cursor(1));
+          const result = await iter(cursor.next(1));
           return {
-            hasNext: Boolean(await cursor(1, true)),
+            hasNext: Boolean(await cursor.next(1, true)),
             hasPrevious: true,
             ...result,
           };
         };
 
         const previous = async () => {
-          const result = await iter(cursor(-1));
+          const result = await iter(cursor.next(-1));
           return {
             hasNext: true,
-            hasPrevious: Boolean(await cursor(-1, true)),
+            hasPrevious: Boolean(await cursor.next(-1, true)),
             ...result,
           };
         };
 
-        const hasNext = Boolean(await cursor(1, true));
-        const hasPrevious = Boolean(await cursor(-1, true));
+        const hasNext = Boolean(await cursor.next(1, true));
+        const hasPrevious = Boolean(await cursor.next(-1, true));
 
         setModalState({
           next,

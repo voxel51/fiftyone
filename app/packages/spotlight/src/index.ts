@@ -20,7 +20,7 @@ import {
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import { Load, RowChange } from "./events";
-import { Section } from "./section";
+import Section from "./section";
 import { create } from "./utilities";
 
 export { Load, RowChange } from "./events";
@@ -174,7 +174,8 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    return await this.#forward.next(
+    let section = this.#forward;
+    return await section.next(
       forward,
       (runner) => {
         if (!render) {
@@ -198,7 +199,14 @@ export default class Spotlight<K, V> extends EventTarget {
           this.#render({ zooming: false, offset, go: false });
         });
       },
-      () => this.#backward
+      (apply) => {
+        const result =
+          section === this.#forward ? this.#backward : this.#forward;
+        if (apply) {
+          section = result;
+        }
+        return result;
+      }
     );
   }
 
@@ -223,7 +231,8 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    return await this.#backward.next(
+    let section = this.#backward;
+    return await section.next(
       backward,
       (runner) => {
         if (!render) {
@@ -263,7 +272,14 @@ export default class Spotlight<K, V> extends EventTarget {
 
         run();
       },
-      () => this.#forward
+      (apply) => {
+        const result =
+          section === this.#forward ? this.#backward : this.#forward;
+        if (apply) {
+          section = result;
+        }
+        return result;
+      }
     );
   }
 
