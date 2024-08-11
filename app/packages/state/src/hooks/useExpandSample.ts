@@ -65,18 +65,20 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         };
 
         const next = async () => {
+          const result = await iter(cursor(1));
           return {
-            hasNext: Boolean(await cursor(2, true)),
+            hasNext: Boolean(await cursor(1, true)),
             hasPrevious: true,
-            ...(await iter(cursor(1))),
+            ...result,
           };
         };
 
         const previous = async () => {
+          const result = await iter(cursor(-1));
           return {
             hasNext: true,
-            hasPrevious: Boolean(await cursor(-2, true)),
-            ...(await iter(cursor(-1))),
+            hasPrevious: Boolean(await cursor(-1, true)),
+            ...result,
           };
         };
 

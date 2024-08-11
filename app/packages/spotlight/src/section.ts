@@ -24,6 +24,7 @@ import {
   LAST,
   ONE,
   SECTION_ROW_LIMIT,
+  SLOW_DOWN,
   TOP,
   ZERO,
 } from "./constants";
@@ -243,12 +244,17 @@ export class Section<K, V> {
     renderer: Renderer<K, V>,
     sibling: () => Section<K, V>
   ) {
-    if (this.#end?.key === null && !this.#end.remainder?.length) {
-      return Boolean(this.#end?.key === null);
-    }
     const end = this.#end;
-    this.#end = undefined;
+    if (!end) {
+      // already requested, give up
+      throw SLOW_DOWN;
+    }
 
+    if (end?.key === null && !end.remainder?.length) {
+      return Boolean(end?.key === null);
+    }
+
+    this.#end = undefined;
     const data = await request(end.key);
 
     renderer(() => {
@@ -327,14 +333,13 @@ export class Section<K, V> {
     }
 
     if (this.#direction === DIRECTION.FORWARD) {
-      const result = await this.next(request, renderer, sibling);
-      if (result) return this.#nextMap.get(id);
-    } else {
-      return await sibling().first(request, renderer, sibling);
+      await this.next(request, renderer, sibling);
+      return this.#nextMap.get(id);
     }
 
-    return undefined;
+    return await sibling().first(request, renderer, sibling);
   }
+
   async #previous(
     id: ID,
     request: Request<K, V>,
@@ -347,14 +352,11 @@ export class Section<K, V> {
     }
 
     if (this.#direction === DIRECTION.BACKWARD) {
-      const result = await this.next(request, renderer, sibling);
-
-      if (result) return this.#previousMap.get(id);
-    } else {
-      return await sibling().first(request, renderer, sibling);
+      await this.next(request, renderer, sibling);
+      return this.#previousMap.get(id);
     }
 
-    return undefined;
+    return await sibling().first(request, renderer, sibling);
   }
 
   #reverse() {

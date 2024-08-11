@@ -23,6 +23,7 @@ export const SECTION_ROW_LIMIT = 40;
 export const SCROLL_TIMEOUT = 500;
 export const RESIZE_TIMEOUT = 1000;
 export const SCROLLBAR_WIDTH = 14;
+export const SLOW_DOWN = "slow down, you're clicking a lot";
 export const THREE = 3;
 export const TOP = "top";
 export const TWO = 2;
