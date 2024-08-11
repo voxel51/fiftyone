@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { SCROLL_TIMEOUT, ZERO } from "./constants";
+import { SCROLL_TIMEOUT } from "./constants";
 
 export default function createScrollReader(
   element: HTMLElement,
@@ -10,20 +10,10 @@ export default function createScrollReader(
   getScrollSpeedThreshold: () => number
 ) {
   let destroyed = false;
-  let guard = false;
   let prior: number;
   let scrolling = undefined;
   let timeout: ReturnType<typeof setTimeout>;
   let zooming = false;
-
-  element.addEventListener("scroll", () => {
-    guard = true;
-  });
-
-  element.addEventListener("scrollend", () => {
-    guard = false;
-    requestAnimationFrame(() => render(zooming, true));
-  });
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
@@ -43,7 +33,7 @@ export default function createScrollReader(
         scrolling = false;
         timeout = undefined;
         zooming = false;
-        render(false);
+        render(false, true);
       }, SCROLL_TIMEOUT);
     }
 
@@ -67,13 +57,9 @@ export default function createScrollReader(
   animate();
 
   return {
-    adjust: (offset: number) => {
-      element.scroll(ZERO, element.scrollTop + offset);
-    },
     destroy: () => {
       destroyed = true;
     },
-    guard: () => guard,
-    zooming: () => zooming,
+    scrolling: () => scrolling,
   };
 }

@@ -183,21 +183,32 @@ export default class Spotlight<K, V> extends EventTarget {
           return;
         }
 
-        requestAnimationFrame(() => {
-          const { section } = runner();
-          const before = this.#containerHeight;
-          let offset: false | number = false;
-          if (section) {
-            const backward = this.#forward;
-            this.#forward = section;
-            this.#forward.attach(this.#element);
-            this.#backward.remove();
-            this.#backward = backward;
-            offset = before - this.#containerHeight + this.#config.spacing;
-          }
+        const run = () =>
+          requestAnimationFrame(() => {
+            if (
+              this.#element.scrollTop > this.#containerHeight ||
+              this.#scrollReader.scrolling()
+            ) {
+              requestAnimationFrame(run);
+              return;
+            }
 
-          this.#render({ zooming: false, offset, go: false });
-        });
+            const { section } = runner();
+            const before = this.#containerHeight;
+            let offset: false | number = false;
+            if (section) {
+              const backward = this.#forward;
+              this.#forward = section;
+              this.#forward.attach(this.#element);
+              this.#backward.remove();
+              this.#backward = backward;
+              offset = before - this.#containerHeight + this.#config.spacing;
+            }
+
+            this.#render({ zooming: false, offset, go: false });
+          });
+
+        run();
       },
       (apply) => {
         const result =
@@ -243,10 +254,8 @@ export default class Spotlight<K, V> extends EventTarget {
         const run = () =>
           requestAnimationFrame(() => {
             if (
-              this.#element.scrollTop > this.#containerHeight ||
               this.#element.scrollTop < ZERO ||
-              this.#scrollReader.zooming() ||
-              (this.#scrollReader.guard() && this.#element.scrollTop === ZERO)
+              this.#scrollReader.scrolling()
             ) {
               requestAnimationFrame(run);
               return;
