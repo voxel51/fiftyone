@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
@@ -13,6 +14,7 @@ import os
 import random
 import string
 import unittest
+from unittest.mock import patch
 
 from bson import ObjectId
 from mongoengine import ValidationError
@@ -544,7 +546,7 @@ class DatasetTests(unittest.TestCase):
         dataset.create_index("gt.detections.label")
         dataset.create_index("frames.gt.detections.label")
 
-        info = dataset.get_index_information(include_size=True)
+        info = dataset.get_index_information(include_stats=True)
 
         indexes = [
             "id",
@@ -559,6 +561,41 @@ class DatasetTests(unittest.TestCase):
         self.assertSetEqual(set(info.keys()), set(indexes))
         for d in info.values():
             self.assertTrue(d.get("size") is not None)
+
+    @drop_datasets
+    def test_index_in_progress(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("gt.detections.label")
+        dataset.create_index("frames.gt.detections.label")
+
+        sample_stats = dataset._sample_collstats()
+        sample_stats["indexBuilds"] = ["gt.detections.label_1"]
+
+        frame_stats = dataset._frame_collstats()
+        frame_stats["indexBuilds"] = ["gt.detections.label_1"]
+
+        with patch.object(
+            dataset, "_sample_collstats", return_value=sample_stats
+        ), patch.object(dataset, "_frame_collstats", return_value=frame_stats):
+            info = dataset.get_index_information(include_stats=True)
+            for key in [
+                "gt.detections.label",
+                "frames.gt.detections.label",
+            ]:
+                self.assertTrue(info[key].get("in_progress"))
+
+            stats = dataset.stats(include_indexes=True)
+            self.assertTrue("indexes_in_progress" in stats)
+            self.assertEqual(
+                set(stats["indexes_in_progress"]),
+                {"gt.detections.label", "frames.gt.detections.label"},
+            )
 
     @drop_datasets
     def test_iter_samples(self):
