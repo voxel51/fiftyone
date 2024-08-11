@@ -1662,6 +1662,110 @@ Panels can also interact with other components of the App, such as responding
 to changes in (or programmatically updating) the current dataset, view, current
 selection, or active sample in the modal.
 
+Panels
+-----------------------------------
+
+Below are the core design patterns to consider when building a Panel.
+
+Base structure
+~~~~~~~~~~~~~~
+All panels follow a common core structure. When building a panel:
+
+1. Import `fiftyone`
+2. Define your Panel as a Python class
+3. Configure your Panel
+4. Add state or perform an operations on Panel load
+5. Create the visual components of your Panel
+5. Render the components of your Panel
+6. Register your Panel within your FiftyOne App
+
+Below is an example of Panel in its most rudimentary state.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+
+
+    class BasicPanel(foo.Panel):
+        @property
+        def config(self):
+            # configure your panel with its operator name and label to visually identify it in fiftyone
+            return foo.PanelOperatorConfig(
+                name="basic_panel", label="Example Python Panel"
+            )
+
+        def on_load(self, ctx):
+            # load your data prior to rendering the components of your panel
+            pass
+
+        def render(self, ctx):
+            # define components like buttons, plots, markdown, and more
+            pass
+
+    def register(p):
+        # register your panel so that the fiftyone app has access to it
+        p.register(BasicPanel)
+
+
+Hello world panel
+~~~~~~~~~~~~~~~~~
+
+A simple panel that renders "Hello world" in a panel would look like this:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HelloWorldPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="hello_world_panel",
+                label="Hello World Panel"
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.hello_message = "Hello world!"
+
+        def say_hello(self, ctx):
+            ctx.ops.notify(ctx.panel.state.hello_message)
+
+        def render(self, ctx):
+            panel = types.Object()
+            panel.btn("hello_btn", label="Say Hello", on_click=self.say_hello)
+            return types.Property(panel, view=types.GridView())
+
+
+    def register(p):
+        p.register(HelloWorldPanel)
+
+
+Panel examples
+~~~~~~~~~~~~~~~~~~~~~
+
+Panels are very powerful interfaces within the `fiftyone` ecosystem. Using only Python,
+Javascript, or a combination of both, you can create a multitude of resources to enhance your
+development workflow.
+
+Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>` repository
+to find our full collection of panel specific examples, that include how to:
+
+* Create Plots
+* Create Dashboards
+* Build Tutorials
+* Render Markdown
+* Display Audio, Visual, and Multimedia Data
+* Create Tables
+* Create Menus
+* Create Interactive Panels that alter Sample Data
+* Create Panel Templates
+* Create User Input Dependent Panels
+* and more!
+
+
 .. _panel-interface:
 
 Panel interface
@@ -2136,8 +2240,8 @@ Panels have a few common patterns when it comes to utilizing components such as 
 building interactive plots, and developing helpful tutorial-style walkthroughs. Following
 these patterns will help you build your panel faster and avoid roadblocks along the way.
 
-Type Casting
------------
+Type casting
+~~~~~~~~~~~~
 
 Defining the variable type of common variables used with Panels will allow you to inspect the methods
 available to an object and will dramatically help you increase your speed of development. Type casting
@@ -2169,7 +2273,7 @@ Typing `ctx` will reveal to you all the available methods that come with the `Ex
         ...
 
 Callbacks
--------
+~~~~~~~~~
 
 Panels have callback methods like `on_click` and `on_change` for most rendered objects
 that can trigger state functions and perform operations.
@@ -2219,7 +2323,7 @@ context variable `ctx` and such context does change respective to the state upda
 
 
 Interactive plots
------------------
+~~~~~~~~~~~~~~~~~
 
 Plots built within Panels have the ability to be interactive respective to your sample data. You can create views in `fiftyone` that
 alter the visual state of your panel and vice versa. Since Panels have access to the current render state of your `fiftyone` environment
@@ -2273,6 +2377,139 @@ Below is an example of how to create an interactive bar chart where clicking a b
             ),
         )
 
+Creating walkthrough tutorials
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using a combination of various Panel objects like markdown, buttons, arrow navigation, containers, and more, you can create
+walkthrough tutorials similar to the ones found on `try.fiftyone.ai <https://try.fiftyone.ai/datasets/example/samples>`.
+
+Here is an example of how you would create a step by step tutorialized style Panel:
+
+TODO
+
+Displaying multimedia
+~~~~~~~~~~~~~~~~~~~~~
+
+Displaying images, videos, and other forms of multimedia are super simple in Panels. Panels can embed
+3rd party resources like urls for respective image and video locations and they can natively load any multimedia
+data stored in your local directories. Playback of all multimedia is natively supported in panels, which makes creating
+cool things like instructional videos for your team and sharing them as a Panel to your working group super simple!
+
+Here are some examples on how to create panels that render, manipulate, and load various forms of image and video data:
+
+.. code-block:: python
+    :linenos:
+
+    ###
+    # Images
+    ###
+
+    class ImagePanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="example_image", label="Python Panel Example: Image"
+            )
+
+        @staticmethod
+        def on_load(ctx: ExecutionContext):
+            # filter 10 images from data set and set it to a state variable
+
+            ctx.panel.state.single_image = "https://static6.depositphotos.com/1119834/620/i/450/depositphotos_6201075-stock-photo-african-elephant-smelling.jpg"
+
+            samples = ctx.dataset.limit(10)
+            for index, sample in enumerate(samples):
+                image_path = (
+                    f"http://localhost:5151/media?filepath={sample.filepath}"
+                )
+                ctx.panel.set_state(f"image{index}", image_path)
+
+        def render(self, ctx: ExecutionContext):
+            panel = types.Object()
+
+            panel.md(
+                "# Image Collection\n\n_Here's a collage of images that can be loaded a few different ways_",
+                name="intro_message",
+            )
+
+            # loading a single image from an url
+            panel.md(
+                "## Single Image\n\n_This image was loaded from a url_",
+                name="header_one",
+            )
+            image_holder = types.ImageView()
+
+            panel.view(
+                "single_image", view=image_holder, caption="A picture of a canyon"
+            )
+
+            panel.md("---", name="divider")
+            panel.md(
+                "## Multiple Images\n\n_All these images were loaded from our current dataset_",
+                name="header_two",
+            )
+
+            # load all images in state variable from dataset
+            for index in range(10):
+                image_holder = types.ImageView()
+                panel.view(
+                    f"image{index}", view=image_holder, caption=f"Image {index}"
+                )
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    align_x="center", align_y="center", orientation="vertical"
+                ),
+            )
+
+    ###
+    # Media Player
+    ###
+
+
+    class MediaPlayerPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="example_media_player",
+                label="Python Panel Example: Media Player",
+            )
+
+        @staticmethod
+        def on_load(ctx: ExecutionContext):
+            ctx.panel.state.media_player = {
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            }
+
+        def render(self, ctx: ExecutionContext):
+            panel = types.Object()
+
+            panel.md(
+                "# Media View Player Example\n\n_Here's a fun video to check out_",
+                name="intro_message",
+            )
+
+            media_player = types.MediaPlayerView()
+
+            panel.obj(
+                "media_player",
+                view=media_player,
+                label="Media Player Example",
+                default={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+            )
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    align_x="center", align_y="center", orientation="vertical"
+                ),
+            )
+
+
+
+Layering panels with dropdown menus
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TODO
 
 .. _developing-js-plugins:
 
