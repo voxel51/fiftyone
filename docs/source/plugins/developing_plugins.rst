@@ -1350,7 +1350,7 @@ involve updating the current state of the App:
         ctx.ops.close_panel("Embeddings")
 
 The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
-property is a lower-level funtion that allows you to invoke arbitrary
+property is a lower-level function that allows you to invoke arbitrary
 operations by providing their URI and parameters, including all builtin
 operations as well as any operations installed via custom plugins. For example,
 here's how to trigger the same App-related operations from above:
@@ -1676,10 +1676,9 @@ All panels follow a common core structure. When building a panel:
 3. Configure your Panel
 4. Add state or perform an operations on Panel load
 5. Create the visual components of your Panel
-5. Render the components of your Panel
-6. Register your Panel within your FiftyOne App
+6. Render the components of your Panel
+7. Register your Panel within your FiftyOne App
 
-Below is an example of Panel in its most rudimentary state.
 
 .. code-block:: python
     :linenos:
@@ -1690,7 +1689,8 @@ Below is an example of Panel in its most rudimentary state.
     class BasicPanel(foo.Panel):
         @property
         def config(self):
-            # configure your panel with its operator name and label to visually identify it in fiftyone
+            # configure your panel with its operator name
+            # label it to visually identify it in fiftyone
             return foo.PanelOperatorConfig(
                 name="basic_panel", label="Example Python Panel"
             )
@@ -1750,7 +1750,7 @@ Panels are very powerful interfaces within the `fiftyone` ecosystem. Using only 
 Javascript, or a combination of both, you can create a multitude of resources to enhance your
 development workflow.
 
-Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>` repository
+Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_ repository
 to find our full collection of panel specific examples, that include how to:
 
 * Create Plots
@@ -1785,7 +1785,7 @@ subsequent sections.
         @property
         def config(self):
             return foo.PanelConfig(
-                # The panels's URI: f"{plugin_name}/{name}"
+                # The panel's URI: f"{plugin_name}/{name}"
                 name="example_panel",  # required
 
                 # The display name of the panel in the "+" menu
@@ -2035,7 +2035,7 @@ behavior:
     @property
     def config(self):
         return foo.PanelConfig(
-            # The panels's URI: f"{plugin_name}/{name}"
+            # The panel's URI: f"{plugin_name}/{name}"
             name="example_panel",  # required
 
             # The display name of the panel in the "+" menu
@@ -2380,7 +2380,7 @@ Below is an example of how to create an interactive bar chart where clicking a b
 Creating walkthrough tutorials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Using a combination of various Panel objects like markdown, buttons, arrow navigation, containers, and more, you can create
-walkthrough tutorials similar to the ones found on `try.fiftyone.ai <https://try.fiftyone.ai/datasets/example/samples>`.
+walkthrough tutorials similar to the ones found on `try.fiftyone.ai <https://try.fiftyone.ai/datasets/example/samples>`_.
 
 Here is an example of how you would create a step by step tutorialized style Panel:
 
@@ -2394,8 +2394,7 @@ Displaying multimedia
 
 Displaying images, videos, and other forms of multimedia are super simple in Panels. Panels can embed
 3rd party resources like urls for respective image and video locations and they can natively load any multimedia
-data stored in your local directories. Playback of all multimedia is natively supported in panels, which makes creating
-cool things like instructional videos for your team and sharing them as a Panel to your working group super simple!
+data stored in your local directories. Playback of all multimedia is natively supported in panels.
 
 Here are some examples on how to create panels that render, manipulate, and load various forms of image and video data:
 
@@ -2436,7 +2435,7 @@ Here are some examples on how to create panels that render, manipulate, and load
 
             # loading a single image from an url
             panel.md(
-                "## Single Image\n\n_This image was loaded from a url_",
+                "## Single Image\n\nThis image was loaded from a url",
                 name="header_one",
             )
             image_holder = types.ImageView()
@@ -2488,7 +2487,7 @@ Here are some examples on how to create panels that render, manipulate, and load
             panel = types.Object()
 
             panel.md(
-                "# Media View Player Example\n\n_Here's a fun video to check out_",
+                "# Media View Player Example\n\nHere's a fun video to check out",
                 name="intro_message",
             )
 
@@ -2513,16 +2512,103 @@ Here are some examples on how to create panels that render, manipulate, and load
 Layering panels with dropdown menus
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 When creating a Panel, you might want to give yourself or the user of the panel the ability to pick and
-choose what to render and showcase within the contents of your panel. The best way to do that, without having
-to change your source code and simply render different versions of your panel dependent on user input would be
-via our `MenuView` component.
+choose what to render and showcase within the contents of your panel. Using dropdown menus is the best way to do that, without having
+to change your source code and simply render different versions of your panel dependent on user input.
 
 Here's an example of how to create a dropdown menu with selectable options that alter your panel based on user input:
 
 .. code-block:: python
     :linenos:
 
-    # TODO
+    class DropdownMenuPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="example_dropdown_menu",
+                label="Python Panel Example: Dropdown Menu",
+            )
+
+        def on_load(self, ctx: ExecutionContext):
+            ctx.panel.state.selection = None
+
+        def alter_selection(self, ctx: ExecutionContext):
+            ctx.panel.state.selection = ctx.params["value"]
+
+        def refresh_page(self, ctx: ExecutionContext):
+            ctx.ops.reload_dataset()
+
+        def reload_samples(self, ctx: ExecutionContext):
+            ctx.ops.reload_samples()
+
+        def say_hi(self, ctx: ExecutionContext):
+            ctx.ops.notify("Hi!")
+
+        def render(self, ctx: ExecutionContext):
+            panel = types.Object()
+
+            panel.md(
+                """
+                ### Welcome to the Python Panel Dropdown Menu Example
+                Use the menu below to select what you would like to do next!
+
+                ---
+
+            """,
+                name="header",
+                width="500px",
+                height="200px",
+            )
+
+            # define a dropdown menu and add choices
+            dropdown = types.DropdownView()
+            dropdown.add_choice(
+                "refresh",
+                label="Display Refresh Button",
+                description="Displays button that will refresh the FiftyOne App",
+            )
+            dropdown.add_choice(
+                "reload_samples",
+                label="Display Reload Samples Button",
+                description="Displays button that will reload the samples view",
+            )
+            dropdown.add_choice(
+                "say_hi",
+                label="Display Hi Button",
+                description="Displays button that will say hi",
+            )
+
+            # add dropdown menu to the panel as a view, and use the on_change callback method to trigger the alter_selection function
+            panel.view(
+                "dropdown",
+                view=dropdown,
+                label="Dropdown Menu",
+                on_change=self.alter_selection,
+            )
+
+            # change panel visual state dependent on dropdown menu selection
+            if ctx.panel.state.selection == "refresh":
+                panel.btn(
+                    "refresh", label="Refresh FiftyOne", on_click=self.refresh_page
+                )
+            elif ctx.panel.state.selection == "reload_samples":
+                panel.btn(
+                    "reload_samples",
+                    label="Reload Samples",
+                    on_click=self.reload_samples,
+                )
+            elif ctx.panel.state.selection == "say_hi":
+                panel.btn("say_hi", label="Say Hi", on_click=self.say_hi)
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    height=100,
+                    width=100,
+                    align_x="center",
+                    align_y="center",
+                    orientation="vertical",
+                ),
+            )
 
 .. _developing-js-plugins:
 
