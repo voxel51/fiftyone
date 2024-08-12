@@ -3209,7 +3209,6 @@ __metadata:
   resolution: "@fiftyone/spotlight@workspace:packages/spotlight"
   dependencies:
     "@biomejs/biome": ^1.7.1
-    "@fiftyone/components": "*"
     typescript: ^5.4.5
     typescript-plugin-css-modules: ^5.1.0
     vite: ^5.2.8

@@ -41,7 +41,7 @@ export default function ButtonView(props: ViewPropsType) {
         <Button
           variant={variant}
           href={href}
-          onClick={() => {
+          onClick={(e) => {
             if (operator) {
               handleClick(panelId, {
                 params: computedParams,
@@ -50,7 +50,7 @@ export default function ButtonView(props: ViewPropsType) {
               });
             }
             if (onClick) {
-              onClick(computedParams, props);
+              onClick(e, computedParams, props);
             }
           }}
           startIcon={icon_position === "left" ? Icon : undefined}

@@ -137,8 +137,8 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 def launch_app(
     dataset: fod.Dataset = None,
     view: fov.DatasetView = None,
-    group_id: str = None,
     sample_id: str = None,
+    group_id: str = None,
     spaces: Space = None,
     color_scheme: food.ColorScheme = None,
     plots: fop.PlotManager = None,
@@ -159,39 +159,39 @@ def launch_app(
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
+        sample_id (None): an optional :class:`fiftyone.core.sample.Sample` ID
+            to load in the modal
+        group_id (None): an optional :class:`fiftyone.core.groups.Group` ID
+            to load in the modal
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
-        group_id (None): an optional expanded
-            :class:`fiftyone.core.groups.Group` id
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        sample_id (None): an optional expanded
-            :class:`fiftyone.core.sample.Sample` id
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
-            instance defining a space configuration to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
 
     Returns:
         a :class:`Session`
@@ -200,8 +200,8 @@ def launch_app(
     _session = Session(
         dataset=dataset,
         view=view,
-        group_id=group_id,
         sample_id=sample_id,
+        group_id=group_id,
         spaces=spaces,
         color_scheme=color_scheme,
         plots=plots,
@@ -287,6 +287,14 @@ class Session(object):
         :attr:`Session.view` property of the session to your
         :class:`fiftyone.core.view.DatasetView`.
 
+    -   To load a specific sample in the modal, simply set the
+        :attr:`Session.sample_id` property of the session to the ID of the
+        :class:`fiftyone.core.sample.Sample`.
+
+    -   To load a specific group in the modal, simply set the
+        :attr:`Session.group_id` property of the session to the ID of the
+        :class:`fiftyone.core.groups.Group`.
+
     -   To attach/remove interactive plots, use the methods exposed on the
         :attr:`Session.plots` property of the session.
 
@@ -312,48 +320,47 @@ class Session(object):
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
             :class:`fiftyone.core.view.DatasetView` to load
-        address (None): the address to serve the App. If None,
-            ``fiftyone.config.default_app_address`` is used
-        auto (True): whether to automatically show a new App window
-            whenever the state of the session is updated. Only applicable
-            in notebook contexts
-        browser (None): an optional browser to use to open the App. If None,
-            the default browser will be used. Refer to list of supported
-            browsers at https://docs.python.org/3/library/webbrowser.html
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
+            load
+        sample_id (None): an optional :class:`fiftyone.core.sample.Sample` ID
+            to load in the modal
+        group_id (None): an optional :class:`fiftyone.core.groups.Group` ID
+            to load in the modal
+        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
+            instance defining a space configuration to load
         color_scheme (None): an optional
             :class:`fiftyone.core.odm.dataset.ColorScheme` defining a custom
             color scheme to use
-        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
-        group_id (None): an optional expanded
-            :class:`fiftyone.core.groups.Group` id
-        height (None): an optional height, in pixels, at which to render App
-            instances in notebook cells. Only applicable in notebook contexts
         plots (None): an optional
             :class:`fiftyone.core.plots.manager.PlotManager` to connect to this
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        sample_id (None): an optional expanded
-            :class:`fiftyone.core.sample.Sample` id
-        spaces (None): an optional :class:`fiftyone.core.odm.workspace.Space`
-            instance defining a space configuration to load
-        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
-            load
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
+        height (None): an optional height, in pixels, at which to render App
+            instances in notebook cells. Only applicable in notebook contexts
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
     """
 
     def __init__(
         self,
         dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
-        group_id: str = None,
         sample_id: str = None,
-        view_name: str = None,
+        group_id: str = None,
         spaces: Space = None,
         color_scheme: food.ColorScheme = None,
         plots: fop.PlotManager = None,
@@ -365,6 +372,7 @@ class Session(object):
         height: int = None,
         auto: bool = True,
         config: AppConfig = None,
+        view_name: str = None,
     ) -> None:
         focx.init_context()
 
@@ -426,13 +434,13 @@ class Session(object):
         self._state = StateDescription(
             dataset=view._root_dataset if view is not None else dataset,
             view=view,
-            color_scheme=build_color_scheme(color_scheme, dataset, config),
-            config=config,
+            view_name=final_view_name,
+            sample_id=sample_id,
             group_id=group_id,
             group_slice=_pull_group_slice(dataset, view),
-            sample_id=sample_id,
             spaces=spaces,
-            view_name=final_view_name,
+            color_scheme=build_color_scheme(color_scheme, dataset, config),
+            config=config,
         )
         self._client = fosc.Client(
             address=address,
@@ -617,7 +625,9 @@ class Session(object):
 
     @property
     def group_id(self) -> t.Optional[str]:
-        """The current expanded :class:`fiftyone.core.groups.Group` id"""
+        """The current :class:`fiftyone.core.groups.Group` ID in the modal, if
+        any.
+        """
         return self._state.group_id
 
     @group_id.setter  # type: ignore
@@ -630,7 +640,9 @@ class Session(object):
 
     @property
     def sample_id(self) -> t.Optional[str]:
-        """The current expanded :class:`fiftyone.core.sample.Sample` id"""
+        """The current :class:`fiftyone.core.sample.Sample` ID in the modal, if
+        any.
+        """
         return self._state.sample_id
 
     @sample_id.setter  # type: ignore
@@ -661,6 +673,11 @@ class Session(object):
         self._client.send_event(SetSpaces(spaces=spaces.to_dict()))
 
     def load_workspace(self, workspace: str) -> None:
+        """Loads the given saved workspace.
+
+        Args:
+            workspace: the name of a saved workspace
+        """
         spaces = self.dataset.load_workspace(workspace)
         self.spaces = spaces
 
@@ -720,14 +737,16 @@ class Session(object):
         else:
             self._state.group_slice = None
 
-        self._state.dataset = dataset
-        self._state.view = None
-        self._state.spaces = default_workspace_factory()
         self._state.color_scheme = build_color_scheme(
             None, dataset, self.config
         )
+        self._state.dataset = dataset
+        self._state.group_id = None
+        self._state.sample_id = None
+        self._state.spaces = default_workspace_factory()
         self._state.selected = []
         self._state.selected_labels = []
+        self._state.view = None
 
     @property
     def view(self) -> t.Union[fov.DatasetView, None]:
@@ -767,6 +786,8 @@ class Session(object):
             self._state.view = view
             self._state.view_name = view.name
 
+        self._state.group_id = None
+        self._state.sample_id = None
         self._state.selected = []
         self._state.selected_labels = []
 

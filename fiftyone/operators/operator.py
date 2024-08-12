@@ -32,9 +32,9 @@ class OperatorConfig(object):
             validation should be disabled
         icon (None): icon to show for the operator in the Operator Browser
         light_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the light mode
+            when the App is in the light mode
         dark_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the dark mode
+            when the App is in the dark mode
         allow_immediate_execution (True): whether the operator should allow
             immediate execution
         allow_delegated_execution (False): whether the operator should allow
@@ -104,8 +104,8 @@ class OperatorConfig(object):
             "disable_schema_validation": self.disable_schema_validation,
             "delegation_target": self.delegation_target,
             "icon": self.icon,
-            "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "dark_icon": self.dark_icon,
             "allow_immediate_execution": self.allow_immediate_execution,
             "allow_delegated_execution": self.allow_delegated_execution,
             "default_choice_to_delegated": self.default_choice_to_delegated,

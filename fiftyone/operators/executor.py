@@ -13,6 +13,8 @@ import logging
 import os
 import traceback
 
+from typing import Optional
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
@@ -279,16 +281,20 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
 
         return ExecutionResult(result=result, executor=executor)
@@ -478,6 +484,7 @@ class ExecutionContext(object):
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
+        self.user = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -563,6 +570,13 @@ class ExecutionContext(object):
     def target_view(self, param_name="view_target"):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
+
+        Args:
+            param_name ("view_target"): the name of the enum parameter defining
+                the target view choice
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name, None)
         if target == "SELECTED_SAMPLES":
@@ -604,6 +618,11 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def extended_selection(self):
+        """The extended selection of the view (if any)."""
+        return self.request_params.get("extended_selection", None)
+
+    @property
     def current_sample(self):
         """The ID of the current sample being processed (if any).
 
@@ -611,6 +630,34 @@ class ExecutionContext(object):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def user_id(self):
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        # @todo: move panel_id to top level param
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        """The current panel state.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel_state
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel
 
     @property
     def delegated(self):
@@ -768,24 +815,20 @@ class ExecutionContext(object):
         """
         return self.trigger("console_log", {"message": message})
 
-    @property
-    def panel_id(self):
-        """The ID of the panel that invoked the operator, if any."""
-        # @todo: move panel_id to top level param
-        return self.params.get("panel_id", None)
+    def set_progress(self, progress=None, label=None):
+        """Sets the progress of the current operation.
 
-    @property
-    def panel_state(self):
-        return self._panel_state
-
-    @property
-    def panel(self):
-        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
-        use to read and write the state and data of the current panel.
-
-        Only available when the operator is invoked from a panel.
+        Args:
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
         """
-        return self._panel
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress} - {label}")
 
     def serialize(self):
         """Serializes the execution context.
@@ -804,26 +847,6 @@ class ExecutionContext(object):
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
-    def set_progress(self, progress=None, label=None):
-        """Sets the progress of the current operation.
-
-        Args:
-            progress (None): an optional float between 0 and 1 (0% to 100%)
-            label (None): an optional label to display
-        """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
-        else:
-            self.log(f"Progress: {progress} - {label}")
-
-    @property
-    def extended_selection(self):
-        """The extended selection of the view."""
-        return self.request_params.get("extended_selection", None)
-
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
@@ -831,7 +854,8 @@ class ExecutionResult(object):
     Args:
         result (None): the execution result
         executor (None): an :class:`Executor`
-        error (None): an error message
+        error (None): an error traceback, if an error occurred
+        error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
         outputs_schema (None): a JSON dict representing the output schema of
@@ -843,6 +867,7 @@ class ExecutionResult(object):
         result=None,
         executor=None,
         error=None,
+        error_message=None,
         validation_ctx=None,
         delegated=False,
         outputs_schema=None,
@@ -850,6 +875,7 @@ class ExecutionResult(object):
         self.result = result
         self.executor = executor
         self.error = error
+        self.error_message = error_message
         self.validation_ctx = validation_ctx
         self.delegated = delegated
         self.outputs_schema = outputs_schema
@@ -897,6 +923,7 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "error_message": self.error_message,
             "delegated": self.delegated,
             "validation_ctx": (
                 self.validation_ctx.to_json() if self.validation_ctx else None

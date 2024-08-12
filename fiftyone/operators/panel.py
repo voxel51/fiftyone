@@ -18,11 +18,11 @@ class PanelConfig(OperatorConfig):
     Args:
         name: the name of the panel
         label: the display name for the panel
-        icon (None): icon to show for the operator in the Operator Browser
-        light_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the light mode
-        dark_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the dark mode
+        icon (None): the icon to show in the panel's tab
+        light_icon (None): the icon to show in the panel's tab when the App is
+            in light mode
+        dark_icon (None): the icon to show in the panel's tab when the App is
+            in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
     """
