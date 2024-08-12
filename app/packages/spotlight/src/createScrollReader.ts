@@ -30,8 +30,6 @@ export default function createScrollReader(
       return false;
     }
 
-    scrolling = prior !== undefined && !!Math.abs(element.scrollTop - prior);
-
     if (
       prior === undefined ||
       Math.abs(element.scrollTop - prior) > threshold
