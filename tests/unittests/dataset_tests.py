@@ -613,9 +613,8 @@ class DatasetTests(unittest.TestCase):
 
         with patch.object(
             dataset, "_sample_collstats", return_value=sample_stats
-        ):
-            with self.assertRaises(RuntimeError):
-                dataset.create_index("frames.gt.detections.label")
+        ), self.assertRaises(RuntimeError):
+            dataset.create_index("frames.gt.detections.label")
 
     @drop_datasets
     def test_iter_samples(self):
