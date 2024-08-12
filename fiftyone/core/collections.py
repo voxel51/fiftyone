@@ -9169,10 +9169,10 @@ class SampleCollection(object):
         """
         logging.info("Checking the number of indexes in progress...")
         ii = self.get_index_information(include_stats=True)
-        num_in_progress = sum(
+        num_in_progress = len(
             [index for index in ii.values() if index.get("in_progress")]
         )
-        if num_in_progress > fo.config.max_indexes_in_progress:
+        if num_in_progress >= fo.config.max_indexes_in_progress:
             raise RuntimeError(
                 "Too many indexes are currently being built; "
                 "please try again later."

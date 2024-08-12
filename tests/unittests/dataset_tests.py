@@ -598,6 +598,26 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_create_index_max_indexes_in_progress(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Create an index and update information payload
+        dataset.create_index("gt.detections.label")
+        sample_stats = dataset._sample_collstats()
+        sample_stats["indexBuilds"] = ["gt.detections.label_1"]
+        fo.config.max_indexes_in_progress = 1
+
+        with patch.object(
+            dataset, "_sample_collstats", return_value=sample_stats
+        ):
+            with self.assertRaises(RuntimeError):
+                dataset.create_index("frames.gt.detections.label")
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
