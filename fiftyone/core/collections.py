@@ -24,6 +24,7 @@ from pymongo import InsertOne, UpdateOne, UpdateMany
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -9166,6 +9167,11 @@ class SampleCollection(object):
         Returns:
             the name of the index
         """
+        ii = self.get_index_information(include_stats=True)
+        num_in_progress = sum([index for index in ii if index.get("in_progress")])
+        if num_in_progress > fo.config.max_indexes_in_progress:
+            raise RuntimeError("Too many indexes are currently being built; please try again later.")
+
         if etau.is_str(field_or_spec):
             input_spec = [(field_or_spec, 1)]
         else:

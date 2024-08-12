@@ -250,6 +250,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.max_indexes_in_progress = self.parse_int(
+            d,
+            "max_indexes_in_progress",
+            env_var="FIFTYONE_MAX_INDEXES_IN_PROGRESS",
+            default=2,
+        )
 
         self._init()
 
