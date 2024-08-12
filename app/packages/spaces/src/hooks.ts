@@ -26,6 +26,7 @@ import {
   panelStateSelector,
   panelTitlesState,
   panelsCloseEffect,
+  panelsLoadingStateAtom,
   panelsStateAtom,
   previousTabsGroupAtom,
   spaceSelector,
@@ -143,6 +144,36 @@ export function usePanelTitle(id?: string): [string, (title: string) => void] {
     setPanelTitles(updatedPanelTitles);
   }
   return [panelTitle, setPanelTitle];
+}
+
+/**
+ * Get and set loading state of a panel
+ *
+ * Note: `id` is optional if hook is used within the component of a panel.
+ */
+export function usePanelLoading(
+  id?: string
+): [boolean, (loading: boolean, id?: string) => void] {
+  const panelContext = useContext(PanelContext);
+  const [panelsLoadingState, setPanelsLoadingState] = useRecoilState(
+    panelsLoadingStateAtom
+  );
+
+  const panelId = (id || panelContext?.node?.id) as string;
+  const panelLoading = Boolean(panelsLoadingState.get(panelId));
+
+  const setPanelLoading = useCallback(
+    (loading: boolean, id?: string) => {
+      setPanelsLoadingState((panelsLoading) => {
+        const updatedPanelsLoading = new Map(panelsLoading);
+        updatedPanelsLoading.set(id || panelId, loading);
+        return updatedPanelsLoading;
+      });
+    },
+    [panelId, setPanelsLoadingState]
+  );
+
+  return [panelLoading, setPanelLoading];
 }
 
 export function usePanelContext() {
