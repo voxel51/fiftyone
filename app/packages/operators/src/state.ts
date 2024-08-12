@@ -940,13 +940,14 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
+        const msg = e.message || "Failed to execute an operation";
         if (!isAbortError) {
           setError(e);
           setResult(null);
           handlers.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
-          notify({ msg: e.message, variant: "error" });
+          notify({ msg, variant: "error" });
         }
       }
       setHasExecuted(true);
