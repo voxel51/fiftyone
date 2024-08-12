@@ -94,9 +94,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const observer = new ResizeObserver(() => {
       this.#rect = this.#element.getBoundingClientRect();
-      requestAnimationFrame(() =>
-        this.#forward ? this.#render({}) : this.#fill()
-      );
+      this.attached &&
+        requestAnimationFrame(() =>
+          this.#forward ? this.#render({}) : this.#fill()
+        );
     });
     observer.observe(this.#element);
   }
