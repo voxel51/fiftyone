@@ -42,15 +42,18 @@ export default function createScrollReader(
     return true;
   };
 
+  updateScrollStatus();
+
   const animate = () => {
     if (destroyed) {
       return;
     }
 
     if (element.parentElement) {
-      updateScrollStatus();
       scrolling && prior && render(zooming);
+      updateScrollStatus();
     }
+
     requestAnimationFrame(animate);
   };
 
