@@ -13,7 +13,7 @@ import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
 
 export default function DynamicIO(props: ViewPropsType) {
-  const { data, schema, onChange, path } = props;
+  const { data, schema, onChange, path, root_id } = props;
   const customComponents = useCustomComponents();
   const Component = getComponent(schema, customComponents);
   const computedSchema = getComputedSchema(props);
@@ -24,7 +24,7 @@ export default function DynamicIO(props: ViewPropsType) {
     if (
       !isCompositeView(schema) &&
       !isEqual(data, defaultValue) &&
-      !isPathUserChanged(path) &&
+      !isPathUserChanged(path,root_id) &&
       !isNullish(defaultValue) &&
       !isInitialized(props)
     ) {

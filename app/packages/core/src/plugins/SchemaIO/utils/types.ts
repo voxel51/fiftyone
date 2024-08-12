@@ -26,6 +26,7 @@ export type SchemaType =
   | NumberSchemaType;
 
 export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
+  root_id?: string;
   schema: Schema;
   path: string;
   errors: { [key: string]: string[] };
