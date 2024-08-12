@@ -350,6 +350,8 @@ def get_metadata_cls(media_type):
         return ImageMetadata
     elif media_type == fom.VIDEO:
         return VideoMetadata
+    elif media_type == fom.THREE_D:
+        return SceneMetadata
 
     return Metadata
 
