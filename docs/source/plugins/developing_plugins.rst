@@ -1650,7 +1650,7 @@ number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 Like :ref:`Operators <developing-operators>`, Panels can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
-rich builtin type system that panel developers can use to implement the layout
+rich built-in type system that panel developers can use to implement the layout
 and associated events that define the panel.
 
 Panels can trigger both Python and JS operators, either programmatically or
@@ -1676,7 +1676,7 @@ All panels follow a common core structure. When building a panel:
 1. Import `fiftyone`
 2. Define your Panel as a Python class
 3. Configure your Panel
-4. Add state or perform an operations on Panel load
+4. Add state or perform an operation on Panel load
 5. Create the visual components of your Panel
 6. Render the components of your Panel
 7. Register your Panel within your FiftyOne App
@@ -1753,7 +1753,7 @@ Javascript, or a combination of both, you can create a multitude of resources to
 development workflow.
 
 Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_ repository
-to find our full collection of panel specific examples, that include how to:
+to find our full collection of panel specific examples, which include how to:
 
 * Create Plots
 * Create Dashboards
@@ -2065,7 +2065,7 @@ selection, etc) as well as dynamic information about the panel's current
 :ref:`state and data <panel-state-and-data>`.
 
 See :ref:`this section <operator-execution-context>` for a full description
-of execution context.
+of the execution context.
 
 .. _panel-state-and-data:
 
@@ -2250,7 +2250,7 @@ available to an object and will dramatically help you increase your speed of dev
 will allow your IDE to preview helpful docstrings, trace `fiftyone` source code, and see what available methods
 exist on your object during the development process.
 
-Here is an example of how to type the `ctx` variable using the built in class type :ref:`ExecutionContext <operator-execution-context>`.
+Here is an example of how to type the `ctx` variable using the built-in class type :ref:`ExecutionContext <operator-execution-context>`.
 Typing `ctx` will reveal to you all the available methods that come with the `ExecutionContext` class:
 
 .. code-block:: python
@@ -2575,7 +2575,7 @@ Displaying multimedia
 ~~~~~~~~~~~~~~~~~~~~~
 
 Displaying images, videos, and other forms of multimedia are super simple in Panels. Panels can embed
-3rd party resources like urls for respective image and video locations and they can natively load any multimedia
+3rd party resources like URLs for respective image and video locations and can natively load any multimedia
 data stored in your local directories. Playback of all multimedia is natively supported in panels.
 
 Here are some examples on how to create panels that render, manipulate, and load various forms of image and video data:
