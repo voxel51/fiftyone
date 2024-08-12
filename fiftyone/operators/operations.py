@@ -303,6 +303,7 @@ class Operations(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
+        surfaces="grid",
         on_load=None,
         on_unload=None,
         on_change=None,
@@ -325,6 +326,8 @@ class Operations(object):
                 is in light mode
             dark_icon (None): the icon to show in the panel's tab when the App
                 is in dark mode
+            surfaces ('grid'): surfaces in which to show the panel. Must be
+                one of 'grid', 'modal', or 'grid modal'
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
@@ -352,6 +355,7 @@ class Operations(object):
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
+            "surfaces": surfaces,
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
