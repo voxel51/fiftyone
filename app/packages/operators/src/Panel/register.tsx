@@ -9,6 +9,7 @@ export default function registerPanel(ctx: ExecutionContext) {
     name: ctx.params.panel_name,
     component: defineCustomPanel(ctx.params),
     label: ctx.params.panel_label,
+    surfaces: ctx.params.surfaces,
     activator: () => true,
     Icon: () => {
       return (
