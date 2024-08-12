@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { SCROLL_TIMEOUT } from "./constants";
+import { ZOOM_TIMEOUT } from "./constants";
 
 export default function createScrollReader(
   element: HTMLElement,
@@ -11,9 +11,18 @@ export default function createScrollReader(
 ) {
   let destroyed = false;
   let prior: number;
-  let scrolling = undefined;
+  let scrolling = false;
   let timeout: ReturnType<typeof setTimeout>;
   let zooming = false;
+
+  element.addEventListener("scroll", () => {
+    scrolling = true;
+  });
+
+  element.addEventListener("scrollend", () => {
+    scrolling = false;
+    requestAnimationFrame(() => render(zooming, true));
+  });
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
@@ -21,7 +30,7 @@ export default function createScrollReader(
       return false;
     }
 
-    scrolling = prior !== undefined && Math.abs(element.scrollTop - prior);
+    scrolling = prior !== undefined && !!Math.abs(element.scrollTop - prior);
 
     if (
       prior === undefined ||
@@ -30,11 +39,10 @@ export default function createScrollReader(
       zooming = prior !== undefined;
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
-        scrolling = false;
         timeout = undefined;
         zooming = false;
-        render(false, true);
-      }, SCROLL_TIMEOUT);
+        render(false);
+      }, ZOOM_TIMEOUT);
     }
 
     prior = element.scrollTop;
@@ -50,6 +58,9 @@ export default function createScrollReader(
     }
 
     if (element.parentElement) {
+      if (element.scrollTop > element.scrollHeight) {
+        element.scrollTo(0, element.scrollHeight);
+      }
       scrolling && prior && render(zooming);
       updateScrollStatus();
     }

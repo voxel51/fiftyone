@@ -2,6 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import "@af-utils/scrollend-polyfill";
+
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
