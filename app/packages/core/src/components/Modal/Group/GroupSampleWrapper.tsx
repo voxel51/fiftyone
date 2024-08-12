@@ -55,14 +55,6 @@ export const GroupSampleWrapper: React.FC<
       onClickCapture={onClick}
     >
       {children}
-      {/* TODO: remove this, i'm just testing */}
-      {/* {hovering && (
-        <GroupSampleBar
-          hoveringRef={hoveringRef}
-          sampleId={sampleId}
-          pinned={pinned}
-        />
-      )} */}
     </div>
   );
 };

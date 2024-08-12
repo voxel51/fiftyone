@@ -42,6 +42,7 @@ export const GroupView = () => {
               width: is3dVisible && !shouldRender3DBelow ? width : "100%",
             }}
             minWidth={300}
+            minHeight={"100%"}
             maxWidth={is3dVisible && !shouldRender3DBelow ? "90%" : "100%"}
             enable={{
               top: false,
