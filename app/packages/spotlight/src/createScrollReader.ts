@@ -58,9 +58,6 @@ export default function createScrollReader(
     }
 
     if (element.parentElement) {
-      if (element.scrollTop > element.scrollHeight) {
-        element.scrollTo(0, element.scrollHeight);
-      }
       scrolling && prior && render(zooming);
       updateScrollStatus();
     }
