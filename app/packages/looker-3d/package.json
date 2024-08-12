@@ -37,8 +37,7 @@
         "rollup-plugin-external-globals": "^0.6.1",
         "typescript": "^5.4.5",
         "vite": "^5.2.12",
-        "vite-plugin-externals": "^0.5.0",
-        "vitest": "^1.6.0"
+        "vite-plugin-externals": "^0.5.0"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
