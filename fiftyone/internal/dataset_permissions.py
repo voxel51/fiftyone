@@ -73,6 +73,17 @@ def get_dataset_permissions_for_current_user(dataset):
     return DatasetPermission[result]
 
 
+def list_datasets_for_current_user(glob_patt=None, tags=None, info=False):
+    """Lists datasets current context user has access to"""
+    user_id = fo_context_vars.running_user_id.get()
+    if not user_id:
+        return None
+
+    return api_requests.list_datasets_for_user(
+        user_id, glob_patt=glob_patt, tags=tags, info=info
+    )
+
+
 def running_in_user_context():
     """Return True if current running context has a user attached to it."""
     return bool(fo_context_vars.running_user_id.get())

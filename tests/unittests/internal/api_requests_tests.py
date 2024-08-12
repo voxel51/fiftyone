@@ -271,7 +271,11 @@ class TestCreateDatasetWithPermissions:
         }
         key, token = mock.Mock(), mock.Mock()
         _get_key_or_token_mock.return_value = key, token
+
+        #####
         assert api_requests.create_dataset_with_user_permissions(dataset, user)
+        #####
+
         client_mock.post_graphql_request.assert_called_with(
             api_requests._CREATE_DATASET_MUTATION,
             variables={"dataset": dataset, "userId": user},
@@ -281,7 +285,266 @@ class TestCreateDatasetWithPermissions:
             api_requests._API_URL, key=key, token=token
         )
 
+        # Test 2
         client_mock.post_graphql_request.return_value = {"createDataset": None}
+
+        #####
         assert not api_requests.create_dataset_with_user_permissions(
             dataset, user
+        )
+        #####
+
+
+class TestListDatasetsForUser:
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_default(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.return_value = [
+            {"name": "ds1"},
+            {"name": "ds2"},
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(user) == ["ds1", "ds2"]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_called_once_with(
+            api_requests._LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={"userId": user},
+        )
+
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_one_tag(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.return_value = [
+            {"name": "ds1", "tags": ["tag1", "tag2"]},
+            {"name": "ds2", "tags": ["tag1"]},
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(user, tags="tag1") == [
+            "ds1",
+            "ds2",
+        ]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_called_once_with(
+            api_requests._LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={
+                "userId": user,
+                "search": {"term": "tag1", "fields": "tags"},
+            },
+        )
+
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_multiple_tags(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.side_effect = [
+            [
+                {"name": "ds1", "tags": ["tag1"]},
+                {"name": "ds2", "tags": ["tag1", "tag2"]},
+                {"name": "false", "tags": ["tag11"]},
+            ],
+            [
+                {"name": "ds2", "tags": ["tag1", "tag2"]},
+                {"name": "ds3", "tags": ["tag2", "tag3"]},
+            ],
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(
+            user, tags=["tag1", "tag2"]
+        ) == ["ds1", "ds2", "ds3"]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_has_calls(
+            [
+                mock.call(
+                    api_requests._LIST_DATASETS_FOR_USER_QUERY,
+                    "user.datasetsConnection",
+                    variables={
+                        "userId": user,
+                        "search": {"term": "tag1", "fields": "tags"},
+                    },
+                ),
+                mock.call(
+                    api_requests._LIST_DATASETS_FOR_USER_QUERY,
+                    "user.datasetsConnection",
+                    variables={
+                        "userId": user,
+                        "search": {"term": "tag2", "fields": "tags"},
+                    },
+                ),
+            ]
+        )
+
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_glob_patt(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.return_value = [
+            {"name": "fiftyone"},
+            {"name": "fiftytwo"},
+            {"name": "fiftyone1"},
+            {"name": "zfiftyone other - 1 - 23"},
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(
+            user, glob_patt="*fiftyone*1*"
+        ) == [
+            "fiftyone1",
+            "zfiftyone other - 1 - 23",
+        ]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_called_once_with(
+            api_requests._LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={
+                "userId": user,
+                "search": {"term": "fiftyone 1", "fields": "name"},
+            },
+        )
+
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_complex_glob_patt(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.return_value = [
+            {"name": "ds1"},
+            {"name": "ds2"},
+            {"name": "dsZ"},
+            {"name": " ds3"},
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(
+            user, glob_patt="ds[1-9]"
+        ) == ["ds1", "ds2"]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_called_once_with(
+            api_requests._LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={"userId": user},
+        )
+
+    @mock.patch.object(api_requests, "_get_key_or_token")
+    @mock.patch.object(api_requests.api_client, "Client")
+    def test_list_datasets_for_user_tags_and_patt(
+        self, ClientMock, _get_key_or_token_mock
+    ):
+        user = "user123"
+
+        key, token = mock.Mock(), mock.Mock()
+        _get_key_or_token_mock.return_value = key, token
+
+        client_mock = ClientMock.return_value
+        client_mock.post_graphql_connectioned_request.side_effect = [
+            [
+                {"name": "ds1", "tags": ["tag1"]},
+                {"name": "ds2", "tags": ["tag1", "tag2"]},
+            ],
+            [
+                {"name": "ds2", "tags": ["tag1", "tag2"]},
+                {"name": "dataset", "tags": ["tag2", "tag3"]},
+            ],
+        ]
+
+        #####
+        assert api_requests.list_datasets_for_user(
+            user, tags=["tag1", "tag2"], glob_patt="ds*"
+        ) == ["ds1", "ds2"]
+        #####
+
+        # assert results
+        _get_key_or_token_mock.assert_called_once()
+        ClientMock.assert_called_once_with(
+            api_requests._API_URL, key=key, token=token
+        )
+        client_mock.post_graphql_connectioned_request.assert_has_calls(
+            [
+                mock.call(
+                    api_requests._LIST_DATASETS_FOR_USER_QUERY,
+                    "user.datasetsConnection",
+                    variables={
+                        "userId": user,
+                        "search": {"term": "tag1", "fields": "tags"},
+                    },
+                ),
+                mock.call(
+                    api_requests._LIST_DATASETS_FOR_USER_QUERY,
+                    "user.datasetsConnection",
+                    variables={
+                        "userId": user,
+                        "search": {"term": "tag2", "fields": "tags"},
+                    },
+                ),
+            ]
         )

@@ -105,6 +105,31 @@ class InternalDatasetPermissionsTests(unittest.TestCase):
         finally:
             context_vars.running_user_id.reset(reset_token)
 
+    @unittest.mock.patch.object(
+        dataset_permissions.api_requests, "list_datasets_for_user"
+    )
+    def test_list_datasets_for_current_user(self, list_datasets_for_user_mock):
+        user_id = "test_user"
+
+        context_vars.running_user_id.set(None)
+
+        #####
+        self.assertIsNone(dataset_permissions.list_datasets_for_current_user())
+        #####
+
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            glob_patt, tags, info = mock.Mock(), mock.Mock(), mock.Mock()
+            result = dataset_permissions.list_datasets_for_current_user(
+                glob_patt=glob_patt, tags=tags, info=info
+            )
+            list_datasets_for_user_mock.assert_called_with(
+                user_id, glob_patt=glob_patt, tags=tags, info=info
+            )
+            self.assertEqual(result, list_datasets_for_user_mock.return_value)
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
     def test_running_in_user_context(self):
         context_vars.running_user_id.set(None)
         self.assertFalse(dataset_permissions.running_in_user_context())

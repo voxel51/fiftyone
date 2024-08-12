@@ -5,13 +5,17 @@ FiftyOne Api Requests
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fnmatch
 import os
+import re
 from typing import Optional
 
 import aiohttp
-import cachetools.func
-import requests
 from aiohttp.http_exceptions import InvalidHeader
+import cachetools.func
+from dateutil import parser as date_parser
+import requests
+
 
 from fiftyone.api import client as api_client
 from fiftyone.internal.constants import TTL_CACHE_LIFETIME_SECONDS
@@ -71,6 +75,32 @@ query ViewerQuery($dataset: String!) {
     }
   }
 }
+"""
+
+_LIST_DATASETS_FOR_USER_QUERY = """
+    query ($userId: String!, $search: DatasetSearchFieldsSearch, $after: String){
+        user(id: $userId) {
+            datasetsConnection(
+                    first: 25,
+                    after: $after,
+                    search: $search,
+                    order: {field: name}) {
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
+                edges {
+                    node {
+                        name
+                        tags
+                        createdAt
+                        lastLoadedAt
+                        mediaType
+                    }
+                }
+            }
+        }
+    }
 """
 
 _USER_QUERY = """
@@ -259,6 +289,16 @@ def get_dataset_permissions_for_user(dataset, user_id):
 
 
 def create_dataset_with_user_permissions(dataset, user_id):
+    """
+    Create empty dataset on behalf of user, using the teams API.
+
+    Args:
+        dataset: the dataset name
+        user_id: the user ID
+
+    Returns:
+        True if creation successful
+    """
     key, token = _get_key_or_token()
     client = api_client.Client(_API_URL, key=key, token=token)
     result = client.post_graphql_request(
@@ -266,3 +306,101 @@ def create_dataset_with_user_permissions(dataset, user_id):
         variables={"dataset": dataset, "userId": user_id},
     )
     return access_nested_element(result, ("createDataset", "name")) == dataset
+
+
+def _format_list_datasets(dataset_docs_map, info):
+    if info:
+        return [
+            {
+                "name": result.get("name", None),
+                "created_at": (
+                    date_parser.parse(result["createdAt"])
+                    if result.get("createdAt")
+                    else None
+                ),
+                "last_loaded_at": (
+                    date_parser.parse(result["lastLoadedAt"])
+                    if result.get("lastLoadedAt")
+                    else None
+                ),
+                "version": result.get("version", None),
+                "persistent": True,
+                "media_type": result.get("mediaType", None),
+                "tags": result.get("tags", []),
+            }
+            for result in dataset_docs_map.values()
+        ]
+    else:
+        return list(dataset_docs_map.keys())
+
+
+def list_datasets_for_user(user_id, glob_patt=None, tags=None, info=False):
+    """
+    List datasets user has access to, using the teams API.
+
+    Args:
+        user_id: the user ID
+        glob_patt (None): an optional glob pattern of names to return
+        tags (None): only include datasets that have the specified tag or list
+            of tags
+        info (False): whether to return info dicts describing each dataset
+            rather than just their names
+
+    Returns:
+        list of dataset names or list of dataset info dicts if info is True
+    """
+    key, token = _get_key_or_token()
+    client = api_client.Client(_API_URL, key=key, token=token)
+
+    results = []
+    # If tags are set we have to search for each one separately and combine.
+    if tags:
+        if isinstance(tags, str):
+            tags = [tags]
+
+        for tag in tags:
+            search = {"term": tag, "fields": "tags"}
+            result = client.post_graphql_connectioned_request(
+                _LIST_DATASETS_FOR_USER_QUERY,
+                "user.datasetsConnection",
+                variables={"userId": user_id, "search": search},
+            )
+            # API returns partial matches so make sure we have a full tag match
+            result = list(filter(lambda result: tag in result["tags"], result))
+            results += result
+
+    # If glob_patt has [] in it, it can't be expressed in search terms.
+    #   Just get all results and we'll filter later.
+    elif glob_patt and "[" not in glob_patt:
+        # Converts glob pattern into space-separated search terms.
+        #   E.g., '?fifty?*one' becomes 'fifty one'
+        modified_glob_patt = glob_patt.strip("*?").replace("?", "*")
+        search_terms = modified_glob_patt.split("*")
+        search_terms = " ".join(filter(bool, search_terms))
+
+        # Execute query with search terms on name
+        search = {"term": search_terms, "fields": "name"}
+        results = client.post_graphql_connectioned_request(
+            _LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={"userId": user_id, "search": search},
+        )
+    else:
+        results = client.post_graphql_connectioned_request(
+            _LIST_DATASETS_FOR_USER_QUERY,
+            "user.datasetsConnection",
+            variables={"userId": user_id},
+        )
+
+    # No matter how we got results above, redo the glob_patt match to make sure
+    #   they all match
+    if glob_patt:
+        matcher = re.compile(fnmatch.translate(glob_patt))
+        results = list(
+            filter(lambda result: matcher.fullmatch(result["name"]), results)
+        )
+
+    # Dedupe results on name
+    deduped_results = {result["name"]: result for result in results}
+
+    return _format_list_datasets(deduped_results, info=info)

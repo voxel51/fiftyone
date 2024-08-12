@@ -81,10 +81,14 @@ def list_datasets(glob_patt=None, tags=None, info=False):
     Returns:
         a list of dataset names or info dicts
     """
-    # Don't check for permissions to filter list of datasets, as it is a lot of
-    #   squeeze without much juice! If user doesn't have access to a dataset
-    #   they just won't be able to load it.
+    # First try to list datasets user has access to if in user context
+    user_datasets = dataset_permissions.list_datasets_for_current_user(
+        glob_patt=glob_patt, tags=tags, info=info
+    )
+    if user_datasets is not None:
+        return user_datasets
 
+    # Now normal list
     if info:
         return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
@@ -7539,7 +7543,9 @@ def _get_random_characters(n):
     )
 
 
-def _list_datasets(include_private=False, glob_patt=None, tags=None):
+def _list_datasets(
+    include_private=False, glob_patt=None, tags=None, info=False
+):
     conn = foo.get_db_conn()
     query = _list_datasets_query(
         include_private=include_private, glob_patt=glob_patt, tags=tags

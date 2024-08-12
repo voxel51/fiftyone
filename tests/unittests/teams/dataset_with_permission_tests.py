@@ -679,3 +679,63 @@ class CreateDatasetWithPermissionsTests(unittest.TestCase):
         ds = fo.Dataset(dataset, persistent=False)
         self.assertRaises(NotImplementedError, setattr, ds, "persistent", True)
         ds.delete()
+
+
+class ListDatasetsWithPermissionsTests(unittest.TestCase):
+    @mock.patch.object(fo.core.dataset, "_list_datasets")
+    @mock.patch.object(fo.core.dataset, "_list_datasets_info")
+    @mock.patch.object(
+        dataset_permissions,
+        "list_datasets_for_current_user",
+    )
+    def test_list_with_no_permissions(
+        self,
+        list_datasets_for_current_user_mock,
+        _list_datasets_info_mock,
+        _list_datasets_mock,
+    ):
+        list_datasets_for_current_user_mock.return_value = None
+
+        glob_patt, tags = mock.Mock(), mock.Mock()
+
+        for info, list_mock, other_mock in [
+            (False, _list_datasets_mock, _list_datasets_info_mock),
+            (True, _list_datasets_info_mock, _list_datasets_mock),
+        ]:
+            list_datasets_for_current_user_mock.reset_mock()
+            _list_datasets_mock.reset_mock()
+            _list_datasets_info_mock.reset_mock()
+
+            #####
+            self.assertEqual(
+                fo.core.dataset.list_datasets(
+                    glob_patt=glob_patt, tags=tags, info=info
+                ),
+                list_mock.return_value,
+            )
+            #####
+
+            list_datasets_for_current_user_mock.assert_called_once_with(
+                glob_patt=glob_patt, tags=tags, info=info
+            )
+            list_mock.assert_called_with(glob_patt=glob_patt, tags=tags)
+            other_mock.assert_not_called()
+
+    @mock.patch.object(
+        dataset_permissions,
+        "list_datasets_for_current_user",
+    )
+    def test_list_with_permissions(
+        self,
+        list_datasets_for_current_user_mock,
+    ):
+        glob_patt, tags, info = mock.Mock(), mock.Mock(), mock.Mock()
+
+        #####
+        self.assertEqual(
+            fo.core.dataset.list_datasets(
+                glob_patt=glob_patt, tags=tags, info=info
+            ),
+            list_datasets_for_current_user_mock.return_value,
+        )
+        #####
