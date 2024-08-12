@@ -2,18 +2,35 @@
   overflow: auto;
   overscroll-behavior: contain;
 
-  --light-color: var(--fo-palette-text-tertiary);
-  --dark-color: var(--fo-palette-background-level2);
+  --scrollbar-color: var(--fo-palette-text-tertiary);
+}
+
+@-moz-document url-prefix() {
+  .scrollable {
+    scrollbar-color: var(--scrollbar-color) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+.scrollable::-webkit-scrollbar {
+  height: 14px;
+  width: 14px;
+}
+
+.scrollable::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .scrollable::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 14px 14px transparent;
+  height: 14px;
   width: 14px;
-  box-shadow: inset 0 0 14px 14px var(--dark-color);
 }
 
 .scrollable::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px var(--light-color);
+  border: solid 3px transparent;
   border-radius: 0;
+  box-shadow: inset 0 0 8px 8px var(--scrollbar-color);
 }
 
 .scrollableSm::-webkit-scrollbar {

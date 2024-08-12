@@ -162,7 +162,8 @@ export class OperatorResult {
     public result: object = {},
     public executor: Executor = null,
     public error: string,
-    public delegated: boolean = false
+    public delegated: boolean = false,
+    public errorMessage: string = null
   ) {}
   hasOutputContent() {
     if (this.delegated) return false;
@@ -657,6 +658,7 @@ export async function executeOperatorWithContext(
 
   let result;
   let error;
+  let errorMessage;
   let executor;
   let delegated = false;
 
@@ -667,6 +669,7 @@ export async function executeOperatorWithContext(
         result = serverResult.result;
         delegated = serverResult.delegated;
         error = serverResult.error;
+        errorMessage = serverResult.error_message;
       } catch (e) {
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
@@ -674,6 +677,7 @@ export async function executeOperatorWithContext(
           error = e;
           console.error(`Error executing operator ${operatorURI}:`);
           console.error(error);
+          errorMessage = error.message;
         }
       }
     } else {
@@ -700,6 +704,7 @@ export async function executeOperatorWithContext(
       );
       result = serverResult.result;
       error = serverResult.error;
+      errorMessage = serverResult.error_message;
       executor = serverResult.executor;
       delegated = serverResult.delegated;
     }
@@ -741,7 +746,14 @@ export async function executeOperatorWithContext(
     error,
   });
 
-  return new OperatorResult(operator, result, executor, error, delegated);
+  return new OperatorResult(
+    operator,
+    result,
+    executor,
+    error,
+    delegated,
+    errorMessage
+  );
 }
 
 type CurrentContext = {
