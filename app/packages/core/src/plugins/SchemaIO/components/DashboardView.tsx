@@ -22,6 +22,7 @@ import {
   Radio,
   Popover,
   Fab,
+  Alert,
 } from "@mui/material";
 import React, { forwardRef, useCallback, useEffect, useState } from "react";
 import GridLayout from "react-grid-layout";
@@ -184,7 +185,13 @@ const LayoutPopover = ({
   );
 };
 
-const ControlContainer = ({ onAddItem, onEditLayoutClick, isEditMode }) => {
+const ControlContainer = ({
+  onAddItem,
+  onEditLayoutClick,
+  isEditMode,
+  autoLayout,
+  editLayoutOpen,
+}) => {
   if (!isEditMode) {
     return null;
   }
@@ -205,7 +212,7 @@ const ControlContainer = ({ onAddItem, onEditLayoutClick, isEditMode }) => {
         schema={{
           view: {
             icon: "add",
-            label: "Add Item",
+            label: "Add item",
           },
         }}
       />
@@ -214,10 +221,26 @@ const ControlContainer = ({ onAddItem, onEditLayoutClick, isEditMode }) => {
         schema={{
           view: {
             icon: "edit",
-            label: "Edit Layout",
+            label: "Edit layout",
           },
         }}
       />
+      {editLayoutOpen && (
+        <Alert severity="info">
+          {autoLayout && (
+            <Typography>
+              You can customize the layout of the items in this dashboard by
+              dragging to re-order.
+            </Typography>
+          )}
+          {!autoLayout && (
+            <Typography>
+              You can customize the layout of the items in this dashboard by
+              resizing them and dragging to re-order.
+            </Typography>
+          )}
+        </Alert>
+      )}
     </Box>
   );
 };
@@ -229,6 +252,7 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_addition = schema.view.allow_addition;
   const allow_deletion = schema.view.allow_deletion;
   const allow_edit = schema.view.allow_edit;
+  const allowMutation = allow_edit || allow_deletion;
 
   for (const property in properties) {
     propertiesAsArray.push({ id: property, ...properties[property] });
@@ -380,7 +404,7 @@ export default function DashboardView(props: ViewPropsType) {
       minH: Math.ceil(MIN_ITEM_HEIGHT / (GRID_HEIGHT / ROWS)), // Minimum height in grid units
     };
   });
-  const gridLayout = defaultLayout;
+  const gridLayout = customLayout || defaultLayout;
 
   const DragHandle = styled(Box)(({ theme }) => ({
     cursor: "move",
@@ -408,6 +432,8 @@ export default function DashboardView(props: ViewPropsType) {
           onAddItem={onAddItem}
           onEditLayoutClick={handleEditLayoutClick}
           isEditMode={isEditMode}
+          autoLayout={autoLayout}
+          editLayoutOpen={Boolean(anchorEl)}
         />
         <LayoutPopover
           anchorEl={anchorEl}
@@ -504,15 +530,17 @@ export default function DashboardView(props: ViewPropsType) {
           })}
         </GridLayout>
       </Box>
-      <Fab
-        color={isEditMode ? "primary" : "secondary"}
-        aria-label="edit"
-        size="small"
-        onClick={toggleEditMode}
-        sx={{ position: "absolute", bottom: 16, right: 16 }}
-      >
-        {isEditMode ? <CheckIcon /> : <EditIcon />}
-      </Fab>
+      {allowMutation && (
+        <Fab
+          color={isEditMode ? "primary" : "secondary"}
+          aria-label="edit"
+          size="small"
+          onClick={toggleEditMode}
+          sx={{ position: "absolute", bottom: 16, right: 16 }}
+        >
+          {isEditMode ? <CheckIcon /> : <EditIcon />}
+        </Fab>
+      )}
     </>
   );
 }

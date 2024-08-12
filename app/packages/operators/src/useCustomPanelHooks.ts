@@ -72,7 +72,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     data: panelStateLocal?.data,
   });
   const panelSchema = panelStateLocal?.schema;
-  const view = useRecoilValue(fos.view);
   const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
   const lastPanelLoadState = useRef({
     count: panelsStateUpdatesCount,
@@ -82,6 +81,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const isLoaded: boolean = useMemo(() => {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
+  const triggerPanelEvent = usePanelEvent();
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
@@ -140,11 +140,22 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   useEffect(() => {
     onLoad();
+  }, [
+    panelId,
+    onLoad,
+    props.onUnLoad,
+    isLoaded,
+    setPanelStateLocal,
+    triggerPanelEvent,
+  ]);
+
+  useEffect(() => {
     return () => {
-      if (props.onUnLoad)
-        executeOperator(props.onUnLoad, { panel_id: panelId });
+      if (props.onUnLoad) {
+        triggerPanelEvent(panelId, { operator: props.onUnLoad });
+      }
     };
-  }, [panelId, props.onLoad, props.onUnLoad, isLoaded, setPanelStateLocal]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trigger panel "onLoad" operator when panel state changes externally
   useEffect(() => {
@@ -170,21 +181,14 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const handlePanelStateChangeOpDebounced = useMemo(() => {
     return debounce(
       (state, onChange, panelId) => {
-        if (onChange && state)
-          executeOperator(onChange, { panel_id: panelId, panel_state: state });
+        if (onChange && state) {
+          triggerPanelEvent(panelId, { operator: onChange });
+        }
       },
       PANEL_STATE_CHANGE_DEBOUNCE,
       { leading: true }
     );
   }, []);
-
-  useEffect(() => {
-    if (props.onViewChange)
-      executeOperator(props.onViewChange, {
-        panel_id: panelId,
-        panel_state: panelState?.state,
-      });
-  }, [view]);
 
   useEffect(() => {
     handlePanelStateChangeOpDebounced(
@@ -199,8 +203,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     handlePanelStateChangeOpDebounced,
   ]);
 
-  const triggerPanelPropertyChange = usePanelEvent();
-
   const handlePanelStateChange = (newState) => {
     setCustomPanelState((state: any) => {
       return merge({}, state, newState);
@@ -213,14 +215,14 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
         // This timeout allows the change to be applied before executing the operator
         // it might make sense to do this for all operator executions
         setTimeout(() => {
-          triggerPanelPropertyChange(panelId, {
+          triggerPanelEvent(panelId, {
             operator: schema.onChange,
             params: { path, value },
           });
         }, 0);
       }
     },
-    [triggerPanelPropertyChange, panelId]
+    [triggerPanelEvent, panelId]
   );
 
   return {

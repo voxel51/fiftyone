@@ -299,16 +299,20 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
 
         return ExecutionResult(result=result, executor=executor)
@@ -1015,7 +1019,8 @@ class ExecutionResult(object):
     Args:
         result (None): the execution result
         executor (None): an :class:`Executor`
-        error (None): an error message
+        error (None): an error traceback, if an error occurred
+        error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
         outputs_schema (None): a JSON dict representing the output schema of the operator
@@ -1026,6 +1031,7 @@ class ExecutionResult(object):
         result=None,
         executor=None,
         error=None,
+        error_message=None,
         validation_ctx=None,
         delegated=False,
         outputs_schema=None,
@@ -1033,6 +1039,7 @@ class ExecutionResult(object):
         self.result = result
         self.executor = executor
         self.error = error
+        self.error_message = error_message
         self.validation_ctx = validation_ctx
         self.delegated = delegated
         self.outputs_schema = outputs_schema
@@ -1080,6 +1087,7 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "error_message": self.error_message,
             "delegated": self.delegated,
             "validation_ctx": (
                 self.validation_ctx.to_json() if self.validation_ctx else None

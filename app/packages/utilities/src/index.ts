@@ -392,7 +392,6 @@ export const PATCHES_FIELDS = withPath(LABELS_PATH, [
   "Polylines",
 ]);
 export const CLIPS_SAMPLE_FIELDS = withPath(LABELS_PATH, [
-  "TemporalDetection",
   "TemporalDetections",
 ]);
 export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
