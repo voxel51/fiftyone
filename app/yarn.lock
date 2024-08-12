@@ -26,6 +26,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@af-utils/scrollend-polyfill@npm:^0.0.13":
+  version: 0.0.13
+  resolution: "@af-utils/scrollend-polyfill@npm:0.0.13"
+  checksum: 952a0326acf34d8c9779e97038f52f73c54b89d4900b6b964147a596130159fcd50cca16e804d2da0968c242bac6a4d0b53f6449238c1a933bbc159745b72ee6
+  languageName: node
+  linkType: hard
+
 "@ampproject/remapping@npm:^2.2.0, @ampproject/remapping@npm:^2.3.0":
   version: 2.3.0
   resolution: "@ampproject/remapping@npm:2.3.0"
@@ -3241,6 +3248,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/spotlight@workspace:packages/spotlight"
   dependencies:
+    "@af-utils/scrollend-polyfill": ^0.0.13
     "@biomejs/biome": ^1.7.1
     typescript: ^5.4.5
     typescript-plugin-css-modules: ^5.1.0
