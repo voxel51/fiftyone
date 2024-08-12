@@ -1,13 +1,21 @@
 import {
   ModalSample,
-  isDynamicGroup,
   modalSample,
   modalSampleId,
   useHoveredSample,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import styled from "styled-components";
 import { ModalLooker } from "./ModalLooker";
+import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
+
+const CheckboxWrapper = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+`;
 
 export const SampleWrapper = ({
   children,
@@ -44,6 +52,11 @@ export const SampleWrapper = ({
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hoverEventHandlers}
     >
+      {hovering && (
+        <CheckboxWrapper>
+          <SelectSampleCheckbox sampleId={sample.id} />
+        </CheckboxWrapper>
+      )}
       {children}
     </div>
   );
