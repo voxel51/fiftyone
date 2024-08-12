@@ -1,7 +1,7 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { isPathUserChanged, useUnboundState } from "../hooks";
 import {
   getComponent,
@@ -62,7 +62,7 @@ function useCustomComponents() {
 
 // todo: need to improve initializing the state... refactor this function
 function useStateInitializer(props: ViewPropsType) {
-  const { data, schema, onChange, path, root_id } = props;
+  const { data, schema, onChange } = props;
   const computedSchema = getComputedSchema(props);
   const { default: defaultValue } = computedSchema;
   const basicData = useMemo(() => {
@@ -70,16 +70,11 @@ function useStateInitializer(props: ViewPropsType) {
       return data;
     }
   }, [data, schema]);
-  const unboundState = useUnboundState({
-    computedSchema,
-    data,
-    path,
-    root_id,
-    props,
-  });
+  const unboundState = useUnboundState({ computedSchema, props });
 
   useEffect(() => {
-    const { computedSchema, data, path, root_id, props } = unboundState || {};
+    const { computedSchema, props } = unboundState || {};
+    const { data, path, root_id } = props || {};
     if (
       !isCompositeView(computedSchema) &&
       !isEqual(data, defaultValue) &&
@@ -93,7 +88,8 @@ function useStateInitializer(props: ViewPropsType) {
 
   useEffect(() => {
     if (basicData) {
-      const { computedSchema, path, data } = unboundState || {};
+      const { computedSchema, props } = unboundState || {};
+      const { data, path } = props || {};
       if (
         !isEqual(data, basicData) &&
         !isCompositeView(computedSchema) &&
