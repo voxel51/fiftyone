@@ -1,13 +1,13 @@
 import { CenteredStack, CodeBlock } from "@fiftyone/components";
-import { PanelSkeleton } from "@fiftyone/spaces";
+import { PanelSkeleton, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { Property } from "./types";
-
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useEffect } from "react";
+import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel } = props;
@@ -21,6 +21,13 @@ export function CustomPanel(props: CustomPanelProps) {
     onLoadError,
   } = useCustomPanelHooks(props);
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
+  const setPanelCloseEffect = useSetPanelCloseEffect();
+
+  useEffect(() => {
+    setPanelCloseEffect(() => {
+      clearUseKeyStores(panelId);
+    });
+  }, []);
 
   if (pending && !panelSchema && !onLoadError) {
     return <PanelSkeleton />;
@@ -55,11 +62,13 @@ export function CustomPanel(props: CustomPanelProps) {
     >
       <DimensionRefresher dimensions={dimensions}>
         <OperatorIO
+          id={panelId}
           schema={schema}
           onChange={handlePanelStateChange}
           data={data}
           layout={{ height, width }}
           onPathChange={handlePanelStatePathChange}
+          shouldClearUseKeyStores={false}
         />
       </DimensionRefresher>
     </Box>
