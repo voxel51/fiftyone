@@ -118,6 +118,7 @@ from .core.metadata import (
     Metadata,
     ImageMetadata,
     VideoMetadata,
+    SceneMetadata,
 )
 from .core.models import (
     apply_model,
