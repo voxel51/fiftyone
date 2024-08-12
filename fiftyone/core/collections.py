@@ -9167,10 +9167,16 @@ class SampleCollection(object):
         Returns:
             the name of the index
         """
+        logging.info("Checking the number of indexes in progress...")
         ii = self.get_index_information(include_stats=True)
-        num_in_progress = sum([index for index in ii if index.get("in_progress")])
+        num_in_progress = sum(
+            [index for index in ii.values() if index.get("in_progress")]
+        )
         if num_in_progress > fo.config.max_indexes_in_progress:
-            raise RuntimeError("Too many indexes are currently being built; please try again later.")
+            raise RuntimeError(
+                "Too many indexes are currently being built; "
+                "please try again later."
+            )
 
         if etau.is_str(field_or_spec):
             input_spec = [(field_or_spec, 1)]
@@ -9249,6 +9255,7 @@ class SampleCollection(object):
         else:
             coll = self._dataset._sample_collection
 
+        logging.info("Sending index build command to the database...")
         name = coll.create_index(index_spec, unique=unique, **kwargs)
 
         if single_field_index:
