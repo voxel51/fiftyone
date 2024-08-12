@@ -2382,12 +2382,192 @@ Creating walkthrough tutorials
 Using a combination of various Panel objects like markdown, buttons, arrow navigation, containers, and more, you can create
 walkthrough tutorials similar to the ones found on `try.fiftyone.ai <https://try.fiftyone.ai/datasets/example/samples>`_.
 
-Here is an example of how you would create a step by step tutorialized style Panel:
+Here is an example of how you would create a step-by-step tutorial style Panel:
 
 .. code-block:: python
     :linenos:
 
-    # TODO
+    class WalkthroughTutorialPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="example_walkthrough_tutorial",
+                label="Python Panel Example: Walkthrough Tutorial",
+            )
+
+        def on_load(self, ctx: ExecutionContext):
+            ctx.panel.state.page = 1
+
+            info_table = [
+                {
+                    "Dataset Name": f"{ctx.dataset.name}",
+                    "Dataset Description": "FiftyOne Quick Start Zoo Dataset",
+                    "Number of Samples": f"{ctx.dataset.count()}",
+                },
+            ]
+
+            ctx.panel.state.info_table = info_table
+
+        def go_to_next_page(self, ctx: ExecutionContext):
+            ctx.panel.state.page = ctx.panel.state.page + 1
+
+        def go_to_previous_page(self, ctx: ExecutionContext):
+            ctx.panel.state.page = ctx.panel.state.page - 1
+
+        def reset_page(self, ctx: ExecutionContext):
+            ctx.panel.state.page = 1
+
+        def open_operator_io(self, ctx: ExecutionContext):
+            ctx.ops.open_panel("OperatorIO")
+
+        def render(self, ctx: ExecutionContext):
+            panel = types.Object()
+
+            # define a vertical stack to live inside your panel
+            stack = panel.v_stack(
+                "welcome", gap=2, width=75, align_x="center", align_y="center"
+            )
+            button_container = types.GridView(
+                gap=2, align_x="left", align_y="center"
+            )
+
+            if ctx.panel.state.page == 1:
+                stack.md(
+                    """
+                    ### A Tutorial Walkthrough
+
+                    Welcome to the FiftyOne App! Here is a great example of what it looks like to create a tutorial style walkthrough via a Python Panel.
+                """,
+                    name="markdown_screen_1",
+                )
+                stack.media_player(
+                    "video",
+                    "https://youtu.be/ad79nYk2keg",
+                    align_x="center",
+                    align_y="center",
+                )
+                # define tutorial navigation buttons
+                add_panel_navigation(
+                    panel,
+                    left=False,
+                    right=True,
+                    on_left=self.go_to_previous_page,
+                    on_right=self.go_to_next_page,
+                )
+            elif ctx.panel.state.page == 2:
+                stack.md(
+                    """
+                    ### Information About Your Dataset
+
+                    Perhaps you would like to know some more information about your dataset?
+                """,
+                    name="markdown_screen_2",
+                )
+                table = types.TableView()
+
+                # set table columns
+                table.add_column("Dataset Name", label="Dataset Name")
+                table.add_column("Dataset Description", label="Description")
+                table.add_column("Number of Samples", label="Number of Samples")
+
+                panel.obj(
+                    name="info_table",
+                    view=table,
+                    label="Cool Info About Your Data",
+                )
+
+                add_panel_navigation(
+                    panel,
+                    left=True,
+                    right=True,
+                    on_left=self.go_to_previous_page,
+                    on_right=self.go_to_next_page,
+                )
+
+            elif ctx.panel.state.page == 3:
+
+                if ctx.panel.state.operator_status != "opened":
+                    stack.md(
+                        """
+                        ### One Last Trick
+
+                        If you want to do something cool, click the button below.
+                    """,
+                        name="markdown_screen_3",
+                    )
+                    btns = stack.obj("top_btns", view=button_container)
+                    btns.type.btn(
+                        "open_operator_io",
+                        label="Do Something Cool",
+                        on_click=self.open_operator_io,
+                    )
+
+                add_panel_navigation(
+                    panel,
+                    left=True,
+                    right=True,
+                    on_left=self.go_to_previous_page,
+                    on_right=self.go_to_next_page,
+                )
+            else:
+                stack.md(
+                    """
+                    #### How did you get here?
+                    Looks like you found the end of the walkthrough. Or have you gotten a little lost in the grid? No worries, let's get you back to the walkthrough!
+                """
+                )
+                btns = stack.obj("btns", view=button_container)
+                btns.type.btn("reset", label="Go Home", on_click=self.reset_page)
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    height=100,
+                    width=100,
+                    align_x="center",
+                    align_y="center",
+                    componentsProps={
+                        "container": {"sx": {"position": "relative"}}
+                    },
+                ),
+            )
+
+
+    # Utility function to enhance styling of navigation buttons
+
+
+    def add_panel_navigation(
+        panel, left=True, right=False, on_left=None, on_right=None
+    ):
+        base_btn_styles = {
+            "position": "absolute",
+            "top": "50%",
+            "minWidth": 0,
+            "padding": "8px",
+            "background": "#333333",
+            "&:hover": {"background": "#2b2a2a"},
+        }
+        if left:
+            panel.btn(
+                "previous",
+                label="Previous",
+                icon="arrow_back",
+                variant="contained",
+                componentsProps={"button": {"sx": {**base_btn_styles, "left": 8}}},
+                on_click=on_left,
+            )
+        if right:
+            panel.btn(
+                "next",
+                label="Next",
+                icon="arrow_forward",
+                variant="contained",
+                componentsProps={
+                    "button": {"sx": {**base_btn_styles, "right": 8}}
+                },
+                on_click=on_right,
+            )
+
 
 Displaying multimedia
 ~~~~~~~~~~~~~~~~~~~~~
