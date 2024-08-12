@@ -2337,6 +2337,55 @@ Below is an example of how to create an interactive bar chart where clicking a b
 .. code-block:: python
     :linenos:
 
+    @property
+    def config(self):
+        return foo.PanelOperatorConfig(
+            name="interactive_histogram_panel",
+            label="Interactive Histogram Example",
+        )
+
+    @staticmethod
+    def on_load(ctx):
+
+        # tabulate histogram values
+        label_counts = {}
+        for sample in ctx.dataset.iter_samples():
+            if sample.ground_truth.detections is not None:
+                for detection in sample.ground_truth.detections:
+                    label = detection.label
+                    if label not in label_counts:
+                        label_counts[label] = 1
+                    else:
+                        label_counts[label] += 1
+
+        # sort label counts by values and create list of only the keys of label counts in descending order
+        sorted_label_counts = sorted(
+            label_counts.items(), key=lambda x: x[1], reverse=True
+        )
+        labels = [label_count[0] for label_count in sorted_label_counts]
+        values = [label_count[1] for label_count in sorted_label_counts]
+
+        ctx.panel.state.labels = labels
+        ctx.panel.state.values = values
+
+        histogram_data = [
+            {
+                "x": ctx.panel.state.labels,
+                "y": ctx.panel.state.values,
+                "type": "bar",
+                "marker": {"color": "orange"},
+            }
+        ]
+        layout = {
+            "width": 600,
+            "xaxis": {"title": "Label Name"},
+            "yaxis": {"title": "Count"},
+            "title": "A Fancy Plot",
+        }
+
+        ctx.panel.state.histogram = histogram_data
+        ctx.panel.state.layout = layout
+
     def filter_data(self, ctx):
         filter_label = ctx.params["data"]["label"]
 
