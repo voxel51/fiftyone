@@ -30,15 +30,6 @@ export const AddPanelButtonContainer = styled.div`
   margin-left: 4px;
 `;
 
-export const StyledPanelItem = styled.div`
-  cursor: pointer;
-  padding: 4px 8px;
-
-  &:hover {
-    background: var(--fo-palette-background-body);
-  }
-`;
-
 export const StyledTab = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
