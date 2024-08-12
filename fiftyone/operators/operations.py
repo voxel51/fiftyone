@@ -300,6 +300,7 @@ class Operations(object):
         self,
         name,
         label,
+        help_markdown=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -320,6 +321,8 @@ class Operations(object):
 
         Args:
             name: the name of the panel
+            help_markdown (None): help text associated with the panel in
+                markdown format
             label: the display name of the panel
             icon (None): the icon to show in the panel's tab
             light_icon (None): the icon to show in the panel's tab when the App
@@ -352,6 +355,7 @@ class Operations(object):
         params = {
             "panel_name": name,
             "panel_label": label,
+            "help_markdown": help_markdown,
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
