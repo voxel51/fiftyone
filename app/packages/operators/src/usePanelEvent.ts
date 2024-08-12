@@ -10,6 +10,7 @@ type HandlerOptions = {
   prompt?: boolean;
   panelId: string;
   callback?: ExecutionCallback;
+  currentPanelState?: any; // most current panel state
 };
 
 export default function usePanelEvent() {
@@ -17,11 +18,12 @@ export default function usePanelEvent() {
   const notify = useNotification();
   return usePanelStateByIdCallback((panelId, panelState, args) => {
     const options = args[0] as HandlerOptions;
-    const { params, operator, prompt } = options;
+    const { params, operator, prompt, currentPanelState } = options;
+
     const actualParams = {
       ...params,
       panel_id: panelId,
-      panel_state: panelState?.state || {},
+      panel_state: currentPanelState ?? (panelState?.state || {}),
     };
 
     const eventCallback = (result) => {

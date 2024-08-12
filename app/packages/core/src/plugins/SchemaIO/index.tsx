@@ -20,27 +20,34 @@ export function SchemaIOComponent(props) {
 
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
-      if (onPathChange) {
-        onPathChange(path, value, schema);
-      }
       const currentState = stateRef.current;
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(value));
       stateRef.current = updatedState;
-      if (onChange) onChange(updatedState);
+      if (onPathChange) {
+        onPathChange(path, value, schema, updatedState);
+      }
+      if (onChange) {
+        onChange(updatedState);
+      }
 
       // propagate the change to all ancestors
       for (const ancestorPath in ancestors) {
         const ancestorSchema = ancestors[ancestorPath];
         const ancestorValue = get(updatedState, ancestorPath);
         if (onPathChange) {
-          onPathChange(ancestorPath, ancestorValue, ancestorSchema);
+          onPathChange(
+            ancestorPath,
+            ancestorValue,
+            ancestorSchema,
+            updatedState
+          );
         }
       }
 
       return updatedState;
     },
-    [onChange]
+    [onChange, onPathChange]
   );
 
   return (
