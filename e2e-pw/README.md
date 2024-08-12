@@ -113,7 +113,7 @@ yarn build-linux-screenshot-docker-image
 docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
 
 # inside the docker container, run:
-# if playwright version was updated,
+# if playwright version is mismatched (happens when playwright version in package.json doesn't match version in Dockerfile), run:
 npx playwright install chromium
 
 npx playwright test --update-snapshots -g "description of my test"
