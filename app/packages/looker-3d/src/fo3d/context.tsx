@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
 import type { Box3, Vector3 } from "three";
-import type { Looker3dPluginSettings } from "../Looker3dPlugin";
+import type { Looker3dSettings } from "../settings";
 
 interface Fo3dContextT {
   isSceneInitialized: boolean;
   upVector: Vector3 | null;
   sceneBoundingBox: Box3 | null;
-  pluginSettings: Looker3dPluginSettings | null;
+  pluginSettings: Looker3dSettings | null;
   fo3dRoot: string | null;
 }
 

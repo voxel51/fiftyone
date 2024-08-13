@@ -31,7 +31,6 @@ export const excludedPluginsAtom = atom({
 });
 
 export enum PluginComponentType {
-  Visualizer,
   Plot,
   Panel,
 }
