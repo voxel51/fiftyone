@@ -3,14 +3,17 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
-import * as fos from "@fiftyone/state";
-import { PANEL_STATE_CHANGE_DEBOUNCE } from "./constants";
+import {
+  PANEL_STATE_CHANGE_DEBOUNCE,
+  PANEL_STATE_PATH_CHANGE_DEBOUNCE,
+} from "./constants";
 import { executeOperator } from "./operators";
 import {
   panelsStateUpdatesCountAtom,
   useGlobalExecutionContext,
 } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { memoizedDebounce } from "./utils";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -41,7 +44,8 @@ export interface CustomPanelHooks {
   handlePanelStatePathChange: (
     path: string,
     value: unknown,
-    schema: unknown
+    schema: unknown,
+    state?: unknown
   ) => void;
   data: unknown;
   panelSchema: unknown;
@@ -188,7 +192,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       PANEL_STATE_CHANGE_DEBOUNCE,
       { leading: true }
     );
-  }, []);
+  }, [triggerPanelEvent]);
 
   useEffect(() => {
     handlePanelStateChangeOpDebounced(
@@ -209,26 +213,29 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     });
   };
 
-  const handlePanelStatePathChange = useCallback(
-    (path, value, schema) => {
+  const handlePanelStatePathChange = useMemo(() => {
+    return (path, value, schema, state) => {
       if (schema?.onChange) {
-        // This timeout allows the change to be applied before executing the operator
-        // it might make sense to do this for all operator executions
-        setTimeout(() => {
-          triggerPanelEvent(panelId, {
-            operator: schema.onChange,
-            params: { path, value },
-          });
-        }, 0);
+        triggerPanelEvent(panelId, {
+          operator: schema.onChange,
+          params: { path, value },
+          currentPanelState: state,
+        });
       }
-    },
-    [triggerPanelEvent, panelId]
-  );
+    };
+  }, [panelId, triggerPanelEvent]);
+
+  const handlePanelStatePathChangeDebounced = useMemo(() => {
+    return memoizedDebounce(
+      handlePanelStatePathChange,
+      PANEL_STATE_PATH_CHANGE_DEBOUNCE
+    );
+  }, [handlePanelStatePathChange]);
 
   return {
     loaded: isLoaded,
     handlePanelStateChange,
-    handlePanelStatePathChange,
+    handlePanelStatePathChange: handlePanelStatePathChangeDebounced,
     data,
     panelSchema,
     onLoadError: panelStateLocal?.onLoadError,

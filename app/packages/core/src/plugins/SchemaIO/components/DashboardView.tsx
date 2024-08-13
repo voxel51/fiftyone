@@ -1,30 +1,28 @@
 import { useTheme } from "@fiftyone/components";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId } from "@fiftyone/spaces";
+import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
-import SaveIcon from "@mui/icons-material/Save";
-import CheckIcon from "@mui/icons-material/Check";
 import {
+  Alert,
   Box,
   BoxProps,
+  Checkbox,
+  Fab,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
   IconButton,
   Paper,
-  styled,
-  Typography,
-  TextField,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  RadioGroup,
-  FormControl,
-  FormLabel,
-  Radio,
   Popover,
-  Fab,
-  Alert,
+  Radio,
+  RadioGroup,
+  styled,
+  TextField,
+  Typography,
 } from "@mui/material";
-import React, { forwardRef, useCallback, useEffect, useState } from "react";
+import React, { forwardRef, useCallback, useMemo, useState } from "react";
 import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -32,7 +30,6 @@ import { ButtonView } from ".";
 import { getPath, getProps } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
-import { Add } from "@mui/icons-material";
 
 const AddItemCTA = ({ onAdd, view }) => {
   const header = view?.cta_title || "No items yet";
@@ -305,10 +302,13 @@ export default function DashboardView(props: ViewPropsType) {
   const handleAutoLayoutChange = (event) => {
     const { checked } = event.target;
     setAutoLayout(checked);
-    triggerPanelEvent(panelId, {
-      operator: schema.view.on_auto_layout_change,
-      params: { auto_layout: checked },
-    });
+    const operator = schema.view.on_auto_layout_change;
+    if (operator) {
+      triggerPanelEvent(panelId, {
+        operator,
+        params: { auto_layout: checked },
+      });
+    }
   };
 
   const handleNumRowsChange = (event) => {
@@ -416,6 +416,13 @@ export default function DashboardView(props: ViewPropsType) {
     alignItems: "center",
   }));
 
+  const gridLayoutById = useMemo(() => {
+    return gridLayout.reduce((layout, item) => {
+      layout[item.i] = item;
+      return layout;
+    }, {});
+  }, [gridLayout]);
+
   if (!propertiesAsArray.length) {
     if (!allow_addition) {
       return null;
@@ -473,6 +480,9 @@ export default function DashboardView(props: ViewPropsType) {
             const baseItemProps: BoxProps = {
               sx: { padding: 0.25, position: "relative" },
             };
+            const propertyIsPlotlyView = isPlotlyView(property);
+            const propertyLayout = { ...gridLayoutById[id], COLS, ROWS };
+
             return (
               <Box
                 key={id}
@@ -515,7 +525,12 @@ export default function DashboardView(props: ViewPropsType) {
                     </Box>
                   )}
                 </DragHandle>
-                <Box sx={{ height: "calc(100% - 35px)", overflow: "auto" }}>
+                <Box
+                  sx={{
+                    height: "calc(100% - 35px)",
+                    overflow: propertyIsPlotlyView ? "hidden" : "auto",
+                  }}
+                >
                   <DynamicIO
                     {...props}
                     schema={property}
@@ -523,6 +538,7 @@ export default function DashboardView(props: ViewPropsType) {
                     data={data?.[id]}
                     parentSchema={schema}
                     relativePath={id}
+                    relativeLayout={propertyLayout}
                   />
                 </Box>
               </Box>
@@ -576,28 +592,32 @@ const AXIS_SX = {
     right: 0,
     top: 0,
     borderRight: "2px solid",
-    cursor: "e-resize",
+    cursor: "ew-resize",
+    pl: 1,
   },
   w: {
     height: "100%",
     left: 0,
     top: 0,
     borderLeft: "2px solid",
-    cursor: "w-resize",
+    cursor: "ew-resize",
+    pr: 1,
   },
   s: {
     width: "100%",
     bottom: 0,
     left: 0,
     borderBottom: "2px solid",
-    cursor: "s-resize",
+    cursor: "ns-resize",
+    pt: 1,
   },
   n: {
     width: "100%",
     top: 0,
     left: 0,
     borderTop: "2px solid",
-    cursor: "n-resize",
+    cursor: "ns-resize",
+    pb: 1,
   },
 };
 
@@ -612,4 +632,8 @@ function sortPropertiesByCustomLayout(properties, customLayout) {
     const bIndex = customLayoutMap[b.id]?.y * 100 + customLayoutMap[b.id]?.x;
     return aIndex - bIndex;
   });
+}
+
+function isPlotlyView(schema) {
+  return schema?.view?.name === "PlotlyView";
 }
