@@ -215,7 +215,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -248,7 +248,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -281,7 +281,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -314,7 +314,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -346,7 +346,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -379,7 +379,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -412,7 +412,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -445,7 +445,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything-2", "segmentation", "torch", "zero-shot"],
+            "tags": ["segment-anything-2", "torch", "zero-shot"],
             "date_added": "2024-08-05 14:38:20"
         },
         {
