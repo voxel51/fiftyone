@@ -71,9 +71,9 @@ test.describe("quickstart-groups", () => {
     test('changes slice to "pcd" when 3D viewer is clicked', async ({
       modal,
     }) => {
-      await modal.group.assert.assertGroupPinnedText("left is pinned");
+      await modal.assert.verifyTitle("left", { pinned: true });
       await modal.clickOnLooker3d();
-      await modal.group.assert.assertGroupPinnedText("pcd is pinned");
+      await modal.assert.verifyTitle("pcd", { pinned: true });
     });
 
     test("navigation works", async ({ modal }) => {

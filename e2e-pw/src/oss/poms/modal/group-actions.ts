@@ -46,12 +46,6 @@ export class ModalGroupActionsPom {
     }
   }
 
-  async getGroupPinnedText() {
-    return this.modal.locator
-      .getByTestId("pinned-slice-bar-description")
-      .textContent();
-  }
-
   async selectNthItemFromCarousel(index: number) {
     return this.modal.locator
       .getByTestId("flashlight-section-horizontal")
@@ -89,11 +83,6 @@ export class ModalGroupActionsPom {
 
 class ModalGroupActionsAsserter {
   constructor(private readonly groupActionsPom: ModalGroupActionsPom) {}
-
-  async assertGroupPinnedText(text: string) {
-    const pinnedText = await this.groupActionsPom.getGroupPinnedText();
-    expect(pinnedText).toBe(text);
-  }
 
   async assertIsCarouselVisible() {
     await expect(this.groupActionsPom.modal.carousel).toBeVisible();
