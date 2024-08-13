@@ -10,10 +10,13 @@ export const createBlankImage = async (options: {
 }) => {
   const { width, height, outputPath, fillColor, hideLogs } = options;
   const startTime = performance.now();
-  !hideLogs &&
+
+  if (!hideLogs) {
     console.log(
       `Creating blank image with options: ${JSON.stringify(options)}`
     );
+  }
+
   const image = new Jimp(width, height, fillColor ?? "#00ddff");
 
   if (options.watermarkString) {
@@ -35,8 +38,10 @@ export const createBlankImage = async (options: {
   await image.writeAsync(outputPath);
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
-  !hideLogs &&
+
+  if (!hideLogs) {
     console.log(
       `Image generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
     );
+  }
 };
