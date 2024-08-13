@@ -130,6 +130,7 @@ export const ActionBar = ({
       {/* will be inserted from portal */}
       <div
         id={LEVA_CONTAINER_ID}
+        data-cy="looker3d-leva-container"
         style={{
           position: "absolute",
           minWidth: "300px",
