@@ -199,51 +199,51 @@ const useModalActions = (
 
   return [
     selected.size > 0 && {
-      text: `Clear selected ${elementNames.plural}`,
-      title: `Deselect all selected ${elementNames.plural}`,
+      text: `Clear selected labels ${elementNames.plural}`,
+      title: `Deselect all selected labels ${elementNames.plural}`,
       onClick: clearSelection,
     },
     {
-      text: `Select visible (current ${elementNames.singular})`,
+      text: `Select visible labels (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(null, visibleSampleLabels)),
     },
     {
-      text: `Unselect visible (current ${elementNames.singular})`,
+      text: `Unselect visible labels (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(null, toIds(visibleSampleLabels))
       ),
     },
     isVideo && {
-      text: "Select visible (current frame)",
+      text: "Select visible labels (current frame)",
       hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(null, visibleFrameLabels)),
     },
     isVideo && {
-      text: "Unselect visible (current frame)",
+      text: "Unselect visible labels (current frame)",
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(null, toIds(visibleFrameLabels))
       ),
     },
     {
-      text: "Clear selection",
+      text: "Clear selected labels",
       hidden: !selectedLabels.size,
       onClick: closeAndCall(useClearSelectedLabels(close)),
     },
     {
-      text: "Hide selected",
+      text: "Hide selected labels",
       hidden: !selectedLabels.size,
       onClick: closeAndCall(useHideSelected()),
     },
     {
-      text: `Hide unselected (current ${elementNames.singular})`,
+      text: `Hide unselected labels (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useHideOthers(null, visibleSampleLabels)),
     },
     isVideo && {
-      text: "Hide unselected (current frame)",
+      text: "Hide unselected labels (current frame)",
       hidden: !hasFrameVisibleUnselected,
       onClick: closeAndCall(useHideOthers(null, visibleFrameLabels)),
     },

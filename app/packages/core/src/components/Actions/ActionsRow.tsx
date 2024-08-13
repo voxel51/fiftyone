@@ -292,7 +292,7 @@ const Selected = ({
         }}
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
-        title={`Manage selected`}
+        title={`Manage selected labels`}
         tooltipPlacement={modal ? "bottom" : "top"}
         style={{
           cursor: loading ? "default" : "pointer",
@@ -738,7 +738,7 @@ export const ModalActionsRow = () => {
     >
       <ModalActionsRowContainer>
         <DragActionsRow />
-        <Hidden />
+        <Hidden modal />
         <Selected modal={true} lookerRef={activeLookerRef} />
         <Colors modal />
         <Similarity modal={true} />
