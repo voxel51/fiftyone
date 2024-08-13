@@ -144,8 +144,15 @@ export function usePanel(
   name: SpaceNodeType,
   predicate?: (panel: PluginComponentRegistration) => boolean
 ) {
-  const panels = usePanels(predicate);
-  return panels.find((panel) => panel.name === name);
+  const combinedPredicate = useMemo(() => {
+    if (predicate) {
+      return (panel: PluginComponentRegistration) =>
+        panel.name === name && predicate(panel);
+    }
+    return (panel: PluginComponentRegistration) => panel.name === name;
+  }, [predicate]);
+  const panels = usePanels(combinedPredicate);
+  return panels.at(0);
 }
 
 export function useReactivePanel(name: SpaceNodeType) {
@@ -155,8 +162,15 @@ export function useReactivePanel(name: SpaceNodeType) {
       setCount((count) => count + 1); // trigger re-resolution of panels
     });
   }, []);
-  const panels = usePanels();
-  return panels.find((panel) => panel.name === name);
+  const predicate = useCallback(
+    (panel: PluginComponentRegistration) => {
+      return panel.name === name;
+    },
+    [name]
+  );
+  const panels = usePanels(predicate);
+
+  return panels.at(0);
 }
 
 /**

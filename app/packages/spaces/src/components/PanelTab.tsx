@@ -61,7 +61,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
           <TabIndicator />
         </TabIndicatorContainer>
       )}
-      {panel.helpMarkdown && (
+      {panel?.helpMarkdown && (
         <HelpTabIconContainer>
           <HelpTooltip
             title={panel.helpMarkdown}
