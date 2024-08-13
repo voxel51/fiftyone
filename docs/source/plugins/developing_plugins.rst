@@ -35,12 +35,13 @@ and models.
 Plugin types
 ------------
 
-FiftyOne plugins can be written in Python or JS, or a combination of both.
+FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
+of both.
 
-Python Plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of Panels, Operators, and Components.
+Python plugins are built using the `fiftyone` package, pip packages, and your
+own Python. They can consist of Panels and Operators.
 
-JS Plugins are built using the `@fiftyone` TypeScript packages, npm packages,
+JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
 and your own TypeScript. They can consist of Panels, Operators, and Components.
 
 .. _plugins-design-panels:
@@ -1664,110 +1665,6 @@ Panels can also interact with other components of the App, such as responding
 to changes in (or programmatically updating) the current dataset, view, current
 selection, or active sample in the modal.
 
-Panels
------------------------------------
-
-Below are the core design patterns to consider when building a Panel.
-
-Base structure
-~~~~~~~~~~~~~~
-All panels follow a common core structure. When building a panel:
-
-1. Import `fiftyone`
-2. Define your Panel as a Python class
-3. Configure your Panel
-4. Add state or perform an operation on Panel load
-5. Create the visual components of your Panel
-6. Render the components of your Panel
-7. Register your Panel within your FiftyOne App
-
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.operators as foo
-
-
-    class BasicPanel(foo.Panel):
-        @property
-        def config(self):
-            # configure your panel with its operator name
-            # label it to visually identify it in fiftyone
-            return foo.PanelOperatorConfig(
-                name="basic_panel", label="Example Python Panel"
-            )
-
-        def on_load(self, ctx):
-            # load your data prior to rendering the components of your panel
-            pass
-
-        def render(self, ctx):
-            # define components like buttons, plots, markdown, and more
-            pass
-
-    def register(p):
-        # register your panel so that the fiftyone app has access to it
-        p.register(BasicPanel)
-
-
-Hello world panel
-~~~~~~~~~~~~~~~~~
-
-A simple panel that renders "Hello world" in a panel would look like this:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.operators as foo
-    import fiftyone.operators.types as types
-
-    class HelloWorldPanel(foo.Panel):
-        @property
-        def config(self):
-            return foo.PanelOperatorConfig(
-                name="hello_world_panel",
-                label="Hello World Panel"
-            )
-
-        def on_load(self, ctx):
-            ctx.panel.state.hello_message = "Hello world!"
-
-        def say_hello(self, ctx):
-            ctx.ops.notify(ctx.panel.state.hello_message)
-
-        def render(self, ctx):
-            panel = types.Object()
-            panel.btn("hello_btn", label="Say Hello", on_click=self.say_hello)
-            return types.Property(panel, view=types.GridView())
-
-
-    def register(p):
-        p.register(HelloWorldPanel)
-
-
-Panel examples
-~~~~~~~~~~~~~~~~~~~~~
-
-Panels are very powerful interfaces within the `fiftyone` ecosystem. Using only Python,
-Javascript, or a combination of both, you can create a multitude of resources to enhance your
-development workflow.
-
-Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_ repository
-to find our full collection of panel specific examples, which include how to:
-
-* Create Plots
-* Create Dashboards
-* Build Tutorials
-* Render Markdown
-* Display Audio, Visual, and Multimedia Data
-* Create Tables
-* Create Menus
-* Create Interactive Panels that alter Sample Data
-* Create Panel Templates
-* Create User Input Dependent Panels
-* and more!
-
-
 .. _panel-interface:
 
 Panel interface
@@ -1791,9 +1688,11 @@ subsequent sections.
                 name="example_panel",  # required
 
                 # The display name of the panel in the "+" menu
-                label="Example panel",  # required
+                label="Example panel",  # required,
 
-                # Custom icons to use in the "+"" menu
+                # Custom icons to use in the "+"" menu. The value can be a URL
+                # or a name of one of pre-included icons listed
+                # at https://marella.me/material-icons/demo/
                 icon="/assets/icon.svg",
                 light_icon="/assets/icon-light.svg",  # light theme only
                 dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -1830,7 +1729,8 @@ subsequent sections.
             )
 
             # Define components that appear in the panel's main body
-            panel.str("event", label="The last event")
+            panel.str("event", label="The last event name", view=types.LabelValueView())
+            panel.obj("event_data", label="The last event data", view=types.JSONView())
             panel.bool("show_start_button", default=True)
 
             # You can use conditional logic to dynamically change the layout
@@ -1866,7 +1766,7 @@ subsequent sections.
                 "description": "the panel is loaded",
             }
             ctx.panel.set_state("event", "on_load")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_unload(self, ctx):
             """Implement this method to set panel state/data when the panel is
@@ -1877,7 +1777,7 @@ subsequent sections.
                 "description": "the panel is unloaded",
             }
             ctx.panel.set_state("event", "on_unload")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_ctx(self, ctx):
             """Implement this method to set panel state/data when any aspect
@@ -1890,7 +1790,7 @@ subsequent sections.
                 "description": "the current ExecutionContext",
             }
             ctx.panel.set_state("event", "on_change_ctx")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_dataset(self, ctx):
             """Implement this method to set panel state/data when the current
@@ -1903,7 +1803,7 @@ subsequent sections.
                 "description": "the current dataset name",
             }
             ctx.panel.set_state("event", "on_change_dataset")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_view(self, ctx):
             """Implement this method to set panel state/data when the current
@@ -1916,7 +1816,7 @@ subsequent sections.
                 "description": "the current view",
             }
             ctx.panel.set_state("event", "on_change_view")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_current_sample(self, ctx):
             """Implement this method to set panel state/data when a new sample
@@ -1930,7 +1830,7 @@ subsequent sections.
                 "description": "the current sample",
             }
             ctx.panel.set_state("event", "on_change_current_sample")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_selected(self, ctx):
             """Implement this method to set panel state/data when the current
@@ -1944,7 +1844,7 @@ subsequent sections.
                 "description": "the current selection",
             }
             ctx.panel.set_state("event", "on_change_selected")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_selected_labels(self, ctx):
             """Implement this method to set panel state/data when the current
@@ -1958,7 +1858,7 @@ subsequent sections.
                 "description": "the current selected labels",
             }
             ctx.panel.set_state("event", "on_change_selected_labels")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         def on_change_extended_selection(self, ctx):
             """Implement this method to set panel state/data when the current
@@ -1972,7 +1872,7 @@ subsequent sections.
                 "description": "the current extended selection",
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
-            ctx.panel.set_data("event", event)
+            ctx.panel.set_data("event_data", event)
 
         #######################################################################
         # Custom events
@@ -2073,7 +1973,89 @@ Panel state and data
 --------------------
 
 Panels provide two mechanisms for persisting information:
-:ref:`panel state <panel-state>` and :ref:`panel data <panel-data>`.
+:ref:`panel state <panel-state>` and :ref:`panel data <panel-data>`. Panel state
+and data is merged into a single object and the values are made available to
+corresponding properties in the Object type returned by the render method of a
+panel.
+
+.. _panel-state-and-data-structure:
+
+Structure
+~~~~~~~~~
+
+Panel state and data can be accessed and updated via the `ctx.panel.state` and
+`ctx.panel.data`. The structure of the panel state and data is a nested object
+that maps 1-to-1 to `types.Object` defined by the panel's `render()` method. See
+example code below to see how to access and update panel state and data:
+
+.. code-block:: python
+    :linenos:
+
+    class CounterPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelOperatorConfig(
+                name="counter_panel", label="Counter Panel", icon="123"
+            )
+
+    def on_load(self, ctx: ExecutionContext):
+        # Setting state (method 1)
+        ctx.panel.state.v_stack = {"h_stack": {"count": 3}}
+
+    def increment(self, ctx: ExecutionContext):
+        # Getting state (method 1)
+        current_count = ctx.panel.state.get("v_stack.h_stack.count", 0)
+        ctx.panel.state.set("v_stack.h_stack.count", current_count + 1)
+
+    def decrement(self, ctx: ExecutionContext):
+        # Getting state (method 2)
+        current_count = ctx.panel.get_state("v_stack.h_stack.count", 0)
+        ctx.panel.set_state("v_stack.h_stack.count", current_count + 1)
+
+    def render(self, ctx: ExecutionContext):
+        # define a root object
+        panel = types.Object() # path: ""
+
+        # define a vertical stack object with the name "v_stack" on the root object
+        v_stack = panel.v_stack("v_stack", align_x="center", gap=2) # path: "v_stack"
+
+        # define a horizontal stack object with the name "h_stack" on "v_stack"
+        h_stack = v_stack.h_stack("h_stack", align_y="center") # path: "v_stack.h_stack"
+
+        # Getting state (method 3)
+        v_stack_state = ctx.panel.state.v_stack # dict as it's defined as an object above
+        h_stack_state = v_stack_state["h_stack"] if v_stack_state is not None else None
+        count = h_stack_state["count"] if h_stack_state is not None else 0
+
+        # add a message to the horizontal stack object with the name "count"
+        h_stack.message("count", f"Count: {count}") # path: "v_stack.h_stack.count"
+
+        # add a button to the horizontal stack object with the name "increment"
+        h_stack.btn(
+            "increment",
+            label="Increment",
+            icon="add",
+            on_click=self.increment,
+            variant="contained",
+        ) # path: "v_stack.h_stack.count"
+
+        # add a button to the horizontal stack object with the name "decrement"
+        h_stack.btn(
+            "decrement",
+            label="Decrement",
+            icon="remove",
+            on_click=self.decrement,
+            variant="contained",
+        ) # path: "v_stack.h_stack.count"
+
+        return types.Property(panel)
+
+.. note::
+    
+    Since panel state and data are merged into a single object, it is important
+    to avoid naming conflicts between state and data keys. If a key is present
+    in both state and data, the value in data will be used.
+
 
 .. _panel-state:
 
@@ -2233,6 +2215,97 @@ plugin. Panels access these secrets via the `ctx.secrets` dict:
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
+Panels
+-----------------------------------
+
+Below are the core design patterns to consider when building a Panel.
+
+Base structure
+~~~~~~~~~~~~~~
+All panels follow a common core structure. When building a panel:
+
+1. Import `fiftyone`
+2. Define your Panel as a Python class
+3. Configure your Panel
+4. Add state or perform an operation on Panel load
+5. Create the visual components of your Panel
+6. Render the components of your Panel
+7. Register your Panel within your FiftyOne App
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+
+
+    class BasicPanel(foo.Panel):
+        @property
+        def config(self):
+            # configure your panel with its operator name
+            # label it to visually identify it in fiftyone
+            return foo.PanelOperatorConfig(
+                name="basic_panel", label="Example Python Panel"
+            )
+
+        def on_load(self, ctx):
+            # load your data prior to rendering the components of your panel
+            pass
+
+        def render(self, ctx):
+            # define components like buttons, plots, markdown, and more
+            pass
+
+    def register(p):
+        # register your panel so that the fiftyone app has access to it
+        p.register(BasicPanel)
+
+
+Hello world panel
+~~~~~~~~~~~~~~~~~
+
+A simple panel that renders "Hello world" in a panel would look like this:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HelloWorldPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="hello_world_panel",
+                label="Hello World Panel"
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.hello_message = "Hello world!"
+
+        def say_hello(self, ctx):
+            ctx.ops.notify(ctx.panel.state.hello_message)
+
+        def render(self, ctx):
+            panel = types.Object()
+            panel.btn(
+                "hello_btn",
+                label="Say Hello",
+                icon="emoji_people",
+                on_click=self.say_hello,
+                variant="contained",
+            )
+
+            panel_view = types.GridView(
+                width=100, height=100, align_x="center", align_y="center"
+            )
+            return types.Property(panel, view=panel_view)
+
+
+    def register(p):
+        p.register(HelloWorldPanel)
+
+
 .. _panel-common-patterns:
 
 Common patterns
@@ -2242,7 +2315,7 @@ Panels have a few common patterns when it comes to utilizing components such as 
 building interactive plots, and developing helpful tutorial-style walkthroughs. Following
 these patterns will help you build your panel faster and avoid roadblocks along the way.
 
-Type casting
+Type hints
 ~~~~~~~~~~~~
 
 Defining the variable type of common variables used with Panels will allow you to inspect the methods
@@ -2260,7 +2333,7 @@ Typing `ctx` will reveal to you all the available methods that come with the `Ex
 
     @property
     def config(self):
-        return foo.PanelOperatorConfig(
+        return foo.PanelConfig(
             name="example_panel", label="Example Panel"
         )
 
@@ -2441,7 +2514,7 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
     class WalkthroughTutorialPanel(foo.Panel):
         @property
         def config(self):
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="example_walkthrough_tutorial",
                 label="Python Panel Example: Walkthrough Tutorial",
             )
@@ -2457,7 +2530,7 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                 },
             ]
 
-            ctx.panel.state.info_table = info_table
+        ctx.panel.state.info_table = info_table
 
         def go_to_next_page(self, ctx: ExecutionContext):
             ctx.panel.state.page = ctx.panel.state.page + 1
@@ -2482,7 +2555,9 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                 gap=2, align_x="left", align_y="center"
             )
 
-            if ctx.panel.state.page == 1:
+            page = ctx.panel.state.get("page", 1)
+
+            if page == 1:
                 stack.md(
                     """
                     ### A Tutorial Walkthrough
@@ -2497,15 +2572,7 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                     align_x="center",
                     align_y="center",
                 )
-                # define tutorial navigation buttons
-                add_panel_navigation(
-                    panel,
-                    left=False,
-                    right=True,
-                    on_left=self.go_to_previous_page,
-                    on_right=self.go_to_next_page,
-                )
-            elif ctx.panel.state.page == 2:
+            elif page == 2:
                 stack.md(
                     """
                     ### Information About Your Dataset
@@ -2527,15 +2594,7 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                     label="Cool Info About Your Data",
                 )
 
-                add_panel_navigation(
-                    panel,
-                    left=True,
-                    right=True,
-                    on_left=self.go_to_previous_page,
-                    on_right=self.go_to_next_page,
-                )
-
-            elif ctx.panel.state.page == 3:
+            elif page == 3:
 
                 if ctx.panel.state.operator_status != "opened":
                     stack.md(
@@ -2551,15 +2610,8 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                         "open_operator_io",
                         label="Do Something Cool",
                         on_click=self.open_operator_io,
+                        variant="contained"
                     )
-
-                add_panel_navigation(
-                    panel,
-                    left=True,
-                    right=True,
-                    on_left=self.go_to_previous_page,
-                    on_right=self.go_to_next_page,
-                )
             else:
                 stack.md(
                     """
@@ -2570,55 +2622,21 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                 btns = stack.obj("btns", view=button_container)
                 btns.type.btn("reset", label="Go Home", on_click=self.reset_page)
 
+            # Arrow Navigation to go to next or previous page
+            panel.arrow_nav(
+                "arrow_nav",
+                forward=page != 3, # Hidden for the last page
+                backward=page != 1, # Hidden for the first page
+                on_forward=self.go_to_next_page,
+                on_backward=self.go_to_previous_page,
+            )
+
             return types.Property(
                 panel,
                 view=types.GridView(
-                    height=100,
-                    width=100,
-                    align_x="center",
-                    align_y="center",
-                    componentsProps={
-                        "container": {"sx": {"position": "relative"}}
-                    },
+                    height=100, width=100, align_x="center", align_y="center"
                 ),
             )
-
-
-    # Utility function to enhance styling of navigation buttons
-
-
-    def add_panel_navigation(
-        panel, left=True, right=False, on_left=None, on_right=None
-    ):
-        base_btn_styles = {
-            "position": "absolute",
-            "top": "50%",
-            "minWidth": 0,
-            "padding": "8px",
-            "background": "#333333",
-            "&:hover": {"background": "#2b2a2a"},
-        }
-        if left:
-            panel.btn(
-                "previous",
-                label="Previous",
-                icon="arrow_back",
-                variant="contained",
-                componentsProps={"button": {"sx": {**base_btn_styles, "left": 8}}},
-                on_click=on_left,
-            )
-        if right:
-            panel.btn(
-                "next",
-                label="Next",
-                icon="arrow_forward",
-                variant="contained",
-                componentsProps={
-                    "button": {"sx": {**base_btn_styles, "right": 8}}
-                },
-                on_click=on_right,
-            )
-
 
 Displaying multimedia
 ~~~~~~~~~~~~~~~~~~~~~
@@ -2639,7 +2657,7 @@ Here are some examples on how to create panels that render, manipulate, and load
     class ImagePanel(foo.Panel):
         @property
         def config(self):
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="example_image", label="Python Panel Example: Image"
             )
 
@@ -2703,7 +2721,7 @@ Here are some examples on how to create panels that render, manipulate, and load
     class MediaPlayerPanel(foo.Panel):
         @property
         def config(self):
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="example_media_player",
                 label="Python Panel Example: Media Player",
             )
@@ -2754,7 +2772,7 @@ Here's an example of how to create a dropdown menu with selectable options that 
     class DropdownMenuPanel(foo.Panel):
         @property
         def config(self):
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="example_dropdown_menu",
                 label="Python Panel Example: Dropdown Menu",
             )
@@ -2840,6 +2858,28 @@ Here's an example of how to create a dropdown menu with selectable options that 
                     orientation="vertical",
                 ),
             )
+
+Panel examples
+-----------------------------------
+
+Panels are very powerful interfaces within the `fiftyone` ecosystem. Using only Python,
+Javascript, or a combination of both, you can create a multitude of resources to enhance your
+development workflow.
+
+Visit our `Panel Examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_ repository
+to find our full collection of panel specific examples, which include how to:
+
+* Create Plots
+* Create Dashboards
+* Build Tutorials
+* Render Markdown
+* Display Audio, Visual, and Multimedia Data
+* Create Tables
+* Create Menus
+* Create Interactive Panels that alter Sample Data
+* Create Panel Templates
+* Create User Input Dependent Panels
+* and more!
 
 .. _developing-js-plugins:
 
