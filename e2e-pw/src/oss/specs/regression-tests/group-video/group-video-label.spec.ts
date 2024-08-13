@@ -95,7 +95,7 @@ test.describe("groups video labels", () => {
     await modal.video.clickUseFrameNumber();
 
     const checkVideo = async (slice: "v1" | "v2") => {
-      await modal.group.assert.assertGroupPinnedText(`${slice} is pinned`);
+      await modal.assert.verifyTitle(slice, { pinned: true });
 
       await modal.looker.hover();
 

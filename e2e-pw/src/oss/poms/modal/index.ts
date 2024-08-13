@@ -4,9 +4,9 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
+import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
-import { Looker3DControlsPom } from "./looker-3d-controls";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -39,6 +39,12 @@ export class ModalPom {
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
+  }
+
+  get title() {
+    return this.locator
+      .getByTestId("panel-tab-fo-sample-modal-plugins")
+      .textContent();
   }
 
   get groupLooker() {
@@ -277,5 +283,14 @@ class ModalAsserter {
   async verifySampleNavigation(direction: "forward" | "backward") {
     const navigation = this.modalPom.getSampleNavigation(direction);
     await expect(navigation).toBeVisible();
+  }
+
+  async verifyTitle(
+    title: string,
+    { pinned }: { pinned: boolean } = { pinned: false }
+  ) {
+    const actualTitle = await this.modalPom.title;
+    const expectedTitle = pinned ? `📌 ${title}` : title;
+    expect(actualTitle).toBe(expectedTitle);
   }
 }
