@@ -4,9 +4,9 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
-import { ModalLevaPom } from "./leva";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
+import { Looker3DControlsPom } from "./looker-3d-controls";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -15,12 +15,12 @@ export class ModalPom {
 
   readonly assert: ModalAsserter;
   readonly group: ModalGroupActionsPom;
-  readonly leva: ModalLevaPom;
   readonly locator: Locator;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
   readonly video: ModalVideoControlsPom;
+  readonly looker3dControls: Looker3DControlsPom;
 
   constructor(
     private readonly page: Page,
@@ -34,11 +34,11 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.group = new ModalGroupActionsPom(page, this);
-    this.leva = new ModalLevaPom(page, this);
     this.tagger = new ModalTaggerPom(page, this);
     this.sidebar = new ModalSidebarPom(page);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
+    this.looker3dControls = new Looker3DControlsPom(page, this);
   }
 
   get groupLooker() {
@@ -51,6 +51,7 @@ export class ModalPom {
     return this.locator.getByTestId("looker3d");
   }
 
+  // todo: remove this in favor of looker3dControls
   get looker3dActionBar() {
     return this.locator.getByTestId("looker3d-action-bar");
   }

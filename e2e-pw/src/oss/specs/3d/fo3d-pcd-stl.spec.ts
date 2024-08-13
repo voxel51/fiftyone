@@ -89,18 +89,22 @@ test.describe("fo3d", () => {
 
     await grid.openFirstSample();
     await modal.modalContainer.hover();
-    await modal.leva.getFolder("Visibility").hover();
+
+    const leva = modal.looker3dControls.leva;
+
+    await modal.looker3dControls.toggleRenderPreferences();
+    await leva.getFolder("Visibility").hover();
     await expect(modal.modalContainer).toHaveScreenshot("scene.png", {
       mask,
       animations: "allow",
     });
 
-    await modal.leva.toggleFolder("Labels");
-    await modal.leva.assert.verifyDefaultFolders();
-    await modal.leva.assert.verifyAssetFolders(["pcd", "stl"]);
+    await modal.looker3dControls.leva.toggleFolder("Labels");
+    await leva.assert.verifyDefaultFolders();
+    await leva.assert.verifyAssetFolders(["pcd", "stl"]);
 
-    await modal.leva.minSlider("Polyline Line Width");
-    await modal.leva.minSlider("Cuboid Line Width");
+    await leva.moveSliderToMin("Polyline Line Width");
+    await leva.moveSliderToMin("Cuboid Line Width");
     await expect(modal.modalContainer).toHaveScreenshot(
       "min-line-width-scene.png",
       {
@@ -109,8 +113,8 @@ test.describe("fo3d", () => {
       }
     );
 
-    await modal.leva.maxSlider("Polyline Line Width");
-    await modal.leva.maxSlider("Cuboid Line Width");
+    await leva.moveSliderToMax("Polyline Line Width");
+    await leva.moveSliderToMax("Cuboid Line Width");
     await expect(modal.modalContainer).toHaveScreenshot(
       "max-line-width-scene.png",
       {
