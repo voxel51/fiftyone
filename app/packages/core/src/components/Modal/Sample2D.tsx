@@ -46,7 +46,6 @@ export const SampleWrapper = ({
     update,
     clear,
   });
-
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
@@ -54,7 +53,9 @@ export const SampleWrapper = ({
     >
       {hovering && (
         <CheckboxWrapper>
-          <SelectSampleCheckbox sampleId={sample.id} />
+          <SelectSampleCheckbox
+            sampleId={sample.sample._id ?? sample.sample.id}
+          />
         </CheckboxWrapper>
       )}
       {children}

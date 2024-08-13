@@ -199,17 +199,17 @@ const useModalActions = (
 
   return [
     selected.size > 0 && {
-      text: `Clear selected labels ${elementNames.plural}`,
-      title: `Deselect all selected labels ${elementNames.plural}`,
+      text: `Clear selected ${elementNames.plural}`,
+      title: `Deselect all selected ${elementNames.plural}`,
       onClick: clearSelection,
     },
     {
-      text: `Select visible labels (current ${elementNames.singular})`,
+      text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(null, visibleSampleLabels)),
     },
     {
-      text: `Unselect visible labels (current ${elementNames.singular})`,
+      text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(null, toIds(visibleSampleLabels))

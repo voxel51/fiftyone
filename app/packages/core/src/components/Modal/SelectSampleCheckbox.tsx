@@ -33,6 +33,7 @@ export const SelectSampleCheckbox = ({
       checked={selected}
       style={{ color: theme.primary.plainColor }}
       onClick={() => select(sampleId)}
+      data-cy="select-sample-checkbox"
     />
   );
 };
