@@ -69,6 +69,6 @@ export default function createScrollReader(
     destroy: () => {
       destroyed = true;
     },
-    scrolling: () => scrolling,
+    zooming: () => zooming
   };
 }
