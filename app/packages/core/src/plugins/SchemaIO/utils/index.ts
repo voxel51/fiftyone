@@ -97,6 +97,6 @@ export function isCompositeView(schema: SchemaType) {
 }
 
 export function isInitialized(props: ViewPropsType) {
-  const { initialData, path } = props;
+  const { initialData, path } = props || {};
   return !isNullish(get(initialData, path));
 }

@@ -31,6 +31,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 
 //
 // BUILT-IN OPERATORS
@@ -890,7 +891,8 @@ function useUpdatePanelStatePartial(local?: boolean) {
   ) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
-      setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
+      const panelId = ctx.getCurrentPanelId();
+      setPanelStateById(panelId, (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
         const providedData = ctx.params[targetParam];
@@ -903,6 +905,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
           updatedState = cloneDeep(currentCustomPanelState);
           // patch = shallow merge OR set by path
           for (let [path, value] of Object.entries(providedData)) {
+            setPathUserUnchanged(path, panelId); // clear user changed flag
             setValue(updatedState, path, value);
           }
         } else if (clear) {
@@ -1210,6 +1213,20 @@ export class SetPanelTitle extends Operator {
   }
 }
 
+export class ApplyPanelStatePath extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "apply_panel_state_path",
+      label: "Apply panel state path",
+      unlisted: true,
+    });
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { panel_id, path } = ctx.params;
+    setPathUserUnchanged(path, panel_id);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1255,6 +1272,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetActiveFields);
     _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
+    _registerBuiltInOperator(ApplyPanelStatePath);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

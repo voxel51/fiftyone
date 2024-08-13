@@ -13,11 +13,15 @@ function OperatorIOComponent(props) {
     layout,
     onPathChange,
     initialData,
+    id,
+    shouldClearUseKeyStores,
   } = props;
   const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
 
   return (
     <SchemaIOComponent
+      id={id}
+      shouldClearUseKeyStores={shouldClearUseKeyStores}
       schema={ioSchema}
       onChange={onChange}
       onPathChange={onPathChange}
