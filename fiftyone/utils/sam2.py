@@ -242,13 +242,12 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         return sorted(classes)
 
     def _forward_pass(self, imgs):
-        if self._curr_prompt_type == "boxes":
-            return self._forward_pass_boxes(imgs)
-
-        if self._curr_prompt_type == "points":
-            return self._forward_pass_points(imgs)
-
-        return self._forward_pass_auto(imgs)
+        forward_methods = {
+            "boxes": self._forward_pass_boxes,
+            "points": self._forward_pass_points,
+            None: self._forward_pass_auto,
+        }
+        return forward_methods.get(self._curr_prompt_type, self._forward_pass_auto)(imgs)
 
     def _forward_pass_boxes(self, imgs):
         sam2_predictor = smip.SAM2ImagePredictor(self._model)
