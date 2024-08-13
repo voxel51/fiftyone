@@ -4,6 +4,7 @@ import { get, isEqual, set } from "lodash";
 import React, { useEffect, useMemo } from "react";
 import { isPathUserChanged, useUnboundState } from "../hooks";
 import {
+  allowDefaultInitialization,
   getComponent,
   getErrorsForView,
   isCompositeView,
@@ -74,13 +75,14 @@ function useStateInitializer(props: ViewPropsType) {
 
   useEffect(() => {
     const { computedSchema, props } = unboundState || {};
-    const { data, path, root_id } = props || {};
+    const { data, path, root_id, skipDefaultValueUpdates } = props || {};
     if (
       !isCompositeView(computedSchema) &&
       !isEqual(data, defaultValue) &&
       !isPathUserChanged(path, root_id) &&
       !isNullish(defaultValue) &&
-      !isInitialized(props)
+      !isInitialized(props) &&
+      allowDefaultInitialization(computedSchema, data, skipDefaultValueUpdates)
     ) {
       onChange(path, defaultValue, computedSchema);
     }

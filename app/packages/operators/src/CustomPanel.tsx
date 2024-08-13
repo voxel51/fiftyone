@@ -69,6 +69,7 @@ export function CustomPanel(props: CustomPanelProps) {
           layout={{ height, width }}
           onPathChange={handlePanelStatePathChange}
           shouldClearUseKeyStores={false}
+          skipDefaultValueUpdates={true}
         />
       </DimensionRefresher>
     </Box>

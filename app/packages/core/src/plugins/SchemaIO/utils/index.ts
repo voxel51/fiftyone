@@ -100,3 +100,13 @@ export function isInitialized(props: ViewPropsType) {
   const { initialData, path } = props || {};
   return !isNullish(get(initialData, path));
 }
+
+export function allowDefaultInitialization(
+  schema: SchemaType,
+  data: any,
+  skipDefaultValueUpdates?: boolean
+) {
+  if (!skipDefaultValueUpdates) return true;
+  const defaultValue = get(schema, "default");
+  return isNullish(data) && !isNullish(defaultValue);
+}
