@@ -83,9 +83,14 @@ export class ModalPom {
     );
   }
 
-  async toggleSelection(pcd = false) {
-    pcd ? await this.looker3d.hover() : await this.looker.hover();
-    await this.locator.getByTestId("selectable-bar").click();
+  async toggleSelection(isPcd = false) {
+    if (isPcd) {
+      await this.looker3d.hover();
+    } else {
+      await this.looker.hover();
+    }
+
+    await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
   async navigateSample(

@@ -292,7 +292,7 @@ const Selected = ({
         }}
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
-        title={`Manage selected labels`}
+        title={`Manage selected`}
         tooltipPlacement={modal ? "bottom" : "top"}
         style={{
           cursor: loading ? "default" : "pointer",
