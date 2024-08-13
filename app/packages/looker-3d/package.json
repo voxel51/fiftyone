@@ -12,7 +12,7 @@
     "files": [
         "dist"
     ],
-    "main": "src/Looker3dPlugin.tsx",
+    "main": "src/Looker3d.tsx",
     "dependencies": {
         "@emotion/react": "^11.11.3",
         "@emotion/styled": "^11.11.0",

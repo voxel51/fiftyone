@@ -271,10 +271,8 @@ export function usePluginComponent(name: string, ctx?: unknown) {
  *
  * - `Panel` - A panel that can be added to `@fiftyone/spaces`
  * - `Plot` - **deprecated** - A plot that can be added as a panel
- * - `Visualizer` - Visualizes sample data
  */
 export enum PluginComponentType {
-  Visualizer,
   Plot,
   Panel,
   Component,
