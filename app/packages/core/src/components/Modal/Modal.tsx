@@ -201,10 +201,14 @@ const Modal = () => {
         onLookerSetSubscribers,
       }}
     >
-      <ModalActionsRow />
-      <ModalWrapper ref={wrapperRef} onClick={onClickModalWrapper}>
+      <ModalWrapper
+        ref={wrapperRef}
+        onClick={onClickModalWrapper}
+        data-cy="modal"
+      >
+        <ModalActionsRow />
         <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }} data-cy="modal">
+        <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
           <ModalNavigationContainer sidebarwidth={sidebarwidth}>
             <ModalNavigation onNavigate={onNavigate} />
