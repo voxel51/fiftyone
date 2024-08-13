@@ -1,11 +1,10 @@
 import { useTheme } from "@fiftyone/components";
-import { VideoLooker } from "@fiftyone/looker";
+import { usePanelTitle } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { GroupBar } from "../Bars";
 import EnsureGroupSample from "./EnsureGroupSample";
 import { groupContainer, mainGroup } from "./Group.module.css";
 import { GroupCarousel } from "./GroupCarousel";
@@ -15,7 +14,6 @@ import GroupSample3d from "./GroupSample3d";
 const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
 export const GroupView = () => {
-  const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
@@ -31,9 +29,22 @@ export const GroupView = () => {
     return isCarouselVisible && is3dVisible && !isMainVisible;
   }, [is3dVisible, isCarouselVisible, isMainVisible]);
 
+  const activeSliceDescriptorLabel = useRecoilValue(
+    fos.activeSliceDescriptorLabel
+  );
+  const [_, setPanelTitle, resetPanelTitle] = usePanelTitle();
+
+  useEffect(() => {
+    const updatedTitle = `📌 ${activeSliceDescriptorLabel}`;
+    setPanelTitle(updatedTitle);
+
+    return () => {
+      resetPanelTitle();
+    };
+  }, [activeSliceDescriptorLabel]);
+
   return (
     <div className={groupContainer} data-cy="group-container">
-      <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
         {(isCarouselVisible || isMainVisible) && (
           <Resizable

@@ -58,9 +58,7 @@ export const SampleBar: React.FC<{
   ) : null;
 };
 
-export const GroupBar: React.FC<{
-  lookerRef: React.MutableRefObject<VideoLooker | undefined>;
-}> = ({ lookerRef }) => {
+export const GroupBar = () => {
   const activeSliceDescriptorLabel = useRecoilValue(
     fos.activeSliceDescriptorLabel
   );

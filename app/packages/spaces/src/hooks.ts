@@ -178,19 +178,29 @@ export function useReactivePanel(name: SpaceNodeType) {
  *
  * Note: `id` is optional if hook is used within the component of a panel.
  */
-export function usePanelTitle(id?: string): [string, (title: string) => void] {
+export function usePanelTitle(id?: string) {
   const panelContext = useContext(PanelContext);
   const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
 
   const panelId = id || panelContext?.node?.id;
   const panelTitle = panelTitles.get(panelId);
 
-  function setPanelTitle(title: string, id?: string) {
+  const setPanelTitle = useCallback(
+    (title: string, id?: string) => {
+      const updatedPanelTitles = new Map(panelTitles);
+      updatedPanelTitles.set(id || panelId, title);
+      setPanelTitles(updatedPanelTitles);
+    },
+    [panelTitles, panelId]
+  );
+
+  const resetPanelTitle = useCallback(() => {
     const updatedPanelTitles = new Map(panelTitles);
-    updatedPanelTitles.set(id || panelId, title);
+    updatedPanelTitles.delete(id || panelId);
     setPanelTitles(updatedPanelTitles);
-  }
-  return [panelTitle, setPanelTitle];
+  }, [panelTitles, panelId]);
+
+  return [panelTitle, setPanelTitle, resetPanelTitle] as const;
 }
 
 /**
