@@ -23,6 +23,8 @@ export default function PlotlyView(props: ViewPropsType) {
     const data = EventDataMappers[event]?.(e) || {};
     let xValue = null;
     let yValue = null;
+    let value;
+    let label;
     if (event === "onClick") {
       const values = e.points[0];
       let selected = [];
@@ -47,6 +49,9 @@ export default function PlotlyView(props: ViewPropsType) {
         } else if (type === "heatmap") {
           xValue = p.x;
           yValue = p.y;
+        } else if (type === "pie") {
+          value = p.v;
+          label = p.label;
         }
       }
       if (selected.length === 0) {
@@ -55,13 +60,14 @@ export default function PlotlyView(props: ViewPropsType) {
     }
 
     const eventHandlerOperator = view[snakeCase(event)];
-
     const defaultParams = {
       path: props.path,
       relative_path: props.relativePath,
       schema: props.schema,
       view,
       event,
+      value,
+      label,
     };
 
     if (eventHandlerOperator) {

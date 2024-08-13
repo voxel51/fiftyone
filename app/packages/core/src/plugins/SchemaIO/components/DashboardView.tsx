@@ -302,10 +302,13 @@ export default function DashboardView(props: ViewPropsType) {
   const handleAutoLayoutChange = (event) => {
     const { checked } = event.target;
     setAutoLayout(checked);
-    triggerPanelEvent(panelId, {
-      operator: schema.view.on_auto_layout_change,
-      params: { auto_layout: checked },
-    });
+    const operator = schema.view.on_auto_layout_change;
+    if (operator) {
+      triggerPanelEvent(panelId, {
+        operator,
+        params: { auto_layout: checked },
+      });
+    }
   };
 
   const handleNumRowsChange = (event) => {

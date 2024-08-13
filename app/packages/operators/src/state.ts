@@ -1063,3 +1063,8 @@ export const panelsStateUpdatesCountAtom = atom({
   key: "panelsStateUpdatesCountAtom",
   default: 0,
 });
+
+export const activePanelsEventCountAtom = atom({
+  key: "activePanelsEventCountAtom",
+  default: new Map<string, number>(),
+});
