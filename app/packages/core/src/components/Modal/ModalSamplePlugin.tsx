@@ -1,5 +1,4 @@
 import { ErrorBoundary } from "@fiftyone/components";
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useEffect } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
