@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo } from "react";
+import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -222,18 +222,37 @@ export function getAbsolutePluginPath(name: string, path: string): string {
  * @returns A list of active plugins
  */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  return useMemo(
-    () =>
-      usingRegistry()
+  const [plugins, setPlugins] = useState<PluginComponentRegistration[]>(
+    usingRegistry()
+      .getByType(type)
+      .filter((p) => {
+        if (typeof p.activator === "function") {
+          return p.activator(ctx);
+        }
+        return false;
+      })
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRegistry(() => {
+      const refreshedPlugins = usingRegistry()
         .getByType(type)
         .filter((p) => {
           if (typeof p.activator === "function") {
             return p.activator(ctx);
           }
           return false;
-        }),
-    [type, ctx]
-  );
+        });
+
+      setPlugins(refreshedPlugins);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [type, ctx]);
+
+  return plugins;
 }
 
 /**
@@ -339,7 +358,6 @@ class PluginComponentRegistry {
   }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
-    this.notifyAllSubscribers("register");
 
     if (typeof registration.activator !== "function") {
       registration.activator = DEFAULT_ACTIVATOR;
@@ -366,9 +384,11 @@ class PluginComponentRegistry {
     };
 
     this.data.set(name, wrappedRegistration);
+
+    this.notifyAllSubscribers("register");
   }
   unregister(name: string): boolean {
-    this.notifyAllSubscribers("register");
+    this.notifyAllSubscribers("unregister");
     return this.data.delete(name);
   }
   getByType(type: PluginComponentType) {
