@@ -36,7 +36,7 @@ export const modalLooker = atom<AbstractLooker<BaseState> | null>({
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
-    if (get(shouldRenderImaVidLooker)) {
+    if (get(shouldRenderImaVidLooker(true))) {
       const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
       const isPlaying = get(imaVidLookerState("playing"));
       const isSeeking = get(imaVidLookerState("seeking"));

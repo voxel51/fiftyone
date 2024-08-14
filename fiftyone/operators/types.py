@@ -390,13 +390,22 @@ class Object(BaseType):
         return obj
 
     def menu(self, name, **kwargs):
-        """Defines a menu object.
+        """Defined an :class:`Object` property that is displayed as a menu.
+
+        .. note::
+            Can be used for an :class:`Button` type with properties whose views are one of
+            :class:`Button`, :class:`Dropdown`, :class:`DropdownView`, and :class;`Choices`. The variant
+            and color of the items can be set using the `variant` and `color` parameters.
 
         Args:
             name: the name of the property
             variant (None): the variant for the items of the menu. Can be ``"contained"``,
                 ``"outlined"``, ``"round"`` or ``"square"``
             color (None): the color for the items of the menu.
+            overlay (None): whether to display the menu as an overlay. Can be ``"top-left"``,
+            ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
+            ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
+            another content (for example, menu for full-panel-width plot)
         Returns:
             a :class:`Object`
         """
@@ -436,6 +445,17 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
+            url: the URL of the media to display
+            on_start (None): the operator to execute when the media starts
+            on_play (None): the operator to execute when the media is played
+            on_pause (None): the operator to execute when the media is paused
+            on_buffer (None): the operator to execute when the media is buffering
+            on_buffer_end (None): the operator to execute when the media stops buffering
+            on_ended (None): the operator to execute when the media ends
+            on_error (None): the operator to execute when the media errors
+            on_duration (None): the operator to execute when the media duration is loaded
+            on_seek (None): the operator to execute when the media is seeked
+            on_progress (None): the operator to execute when the media progresses
 
         Returns:
             a :class:`Object`
@@ -448,13 +468,22 @@ class Object(BaseType):
         return obj
 
     def arrow_nav(
-        self, name, forward=None, backward=None, position=None, **kwargs
+        self,
+        name,
+        forward=None,
+        backward=None,
+        on_forward=None,
+        on_backward=None,
+        position=None,
+        **kwargs,
     ):
         """Defines a floating navigation arrows as a :class:`ArrowNavView`.
 
         Args:
             forward (True): Whether to display the forward arrow
             backward (True): Whether to display the backward arrow
+            on_forward (None): The operator to execute when the forward arrow is clicked
+            on_backward (None): The operator to execute when the backward arrow is clicked
             position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
                 ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
 
@@ -462,7 +491,12 @@ class Object(BaseType):
             a :class:`Property`
         """
         view = ArrowNavView(
-            forward=forward, backward=backward, position=position, **kwargs
+            forward=forward,
+            backward=backward,
+            on_forward=on_forward,
+            on_backward=on_backward,
+            position=position,
+            **kwargs,
         )
         return self.view(name, view, **kwargs)
 
@@ -1877,7 +1911,22 @@ class MarkdownView(View):
 
 
 class MediaPlayerView(View):
-    """Renders a media player for audio and video files."""
+    """Renders a media player for audio and video files.
+
+    Args:
+        name: the name of the property
+        url: the URL of the media to display
+        on_start (None): the operator to execute when the media starts
+        on_play (None): the operator to execute when the media is played
+        on_pause (None): the operator to execute when the media is paused
+        on_buffer (None): the operator to execute when the media is buffering
+        on_buffer_end (None): the operator to execute when the media stops buffering
+        on_ended (None): the operator to execute when the media ends
+        on_error (None): the operator to execute when the media errors
+        on_duration (None): the operator to execute when the media duration is loaded
+        on_seek (None): the operator to execute when the media is seeked
+        on_progress (None): the operator to execute when the media progresses
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -2250,8 +2299,21 @@ class MenuView(GridView):
     """Displays a menu of options in a vertical stack.
 
     .. note::
+        Can be used for an :class:`Button` type with properties whose views are one of
+        :class:`Button`, :class:`Dropdown`, :class:`DropdownView`, and :class;`Choices`. The variant
+        and color of the items can be set using the `variant` and `color` parameters.
 
-        Must be used with :class:`Button` properties.
+    Args:
+        name: the name of the property
+        variant (None): the variant for the items of the menu. Can be ``"contained"``,
+            ``"outlined"``, ``"round"`` or ``"square"``
+        color (None): the color for the items of the menu.
+        overlay (None): whether to display the menu as an overlay. Can be ``"top-left"``,
+        ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
+        ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
+        another content (for example, menu for full-panel-width plot)
+    Returns:
+        a :class:`Object`
     """
 
     def __init__(self, orientation="horizontal", **kwargs):
@@ -2267,6 +2329,8 @@ class ArrowNavView(View):
     Args:
         forward (True): Whether to display the forward arrow
         backward (True): Whether to display the backward arrow
+        on_forward (None): The operator to execute when the forward arrow is clicked
+        on_backward (None): The operator to execute when the backward arrow is clicked
         position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
             ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
     """
@@ -2275,6 +2339,8 @@ class ArrowNavView(View):
         super().__init__(**kwargs)
         self.forward = kwargs.get("forward", True)
         self.backward = kwargs.get("backward", True)
+        self.on_forward = kwargs.get("on_forward", None)
+        self.on_backward = kwargs.get("on_backward", None)
         self.position = kwargs.get("position", "center")
 
     def to_json(self):
@@ -2282,6 +2348,8 @@ class ArrowNavView(View):
             **super().to_json(),
             "forward": self.forward,
             "backward": self.backward,
+            "on_forward": self.on_forward,
+            "on_backward": self.on_backward,
             "position": self.position,
         }
 

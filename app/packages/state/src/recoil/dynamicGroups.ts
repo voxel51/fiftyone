@@ -326,9 +326,14 @@ export const isOrderedDynamicGroup = selector<boolean>({
   },
 });
 
-export const shouldRenderImaVidLooker = selector<boolean>({
+export const shouldRenderImaVidLooker = selectorFamily({
   key: "shouldRenderImaVidLooker",
-  get: ({ get }) => {
-    return get(isOrderedDynamicGroup) && get(dynamicGroupsViewMode) === "video";
-  },
+  get:
+    (modal: boolean) =>
+    ({ get }) => {
+      return (
+        get(isOrderedDynamicGroup) &&
+        get(dynamicGroupsViewMode(modal)) === "video"
+      );
+    },
 });

@@ -10,7 +10,7 @@ export const useDynamicGroupSamples = () => {
   const view = useRecoilValue(fos.dynamicGroupViewQuery(null));
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
-  const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
 
   const filter = useMemo(
     () => (slice ? { group: { slice, slices: [slice] } } : {}),
