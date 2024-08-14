@@ -18,7 +18,7 @@ import {
   SCROLLBAR_WIDTH,
   TWO,
   ZERO,
-  ZOOMING_COEFFICIENT,
+  ZOOMING_COEFFICIENT
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import { Load, RowChange } from "./events";
@@ -190,7 +190,7 @@ export default class Spotlight<K, V> extends EventTarget {
           requestAnimationFrame(() => {
             if (
               this.#element.scrollTop > this.#containerHeight ||
-              this.#scrollReader.scrolling()
+              this.#scrollReader.zooming()
             ) {
               requestAnimationFrame(run);
               return;
@@ -258,7 +258,7 @@ export default class Spotlight<K, V> extends EventTarget {
           requestAnimationFrame(() => {
             if (
               this.#element.scrollTop < ZERO ||
-              this.#scrollReader.scrolling()
+              this.#scrollReader.zooming()
             ) {
               requestAnimationFrame(run);
               return;

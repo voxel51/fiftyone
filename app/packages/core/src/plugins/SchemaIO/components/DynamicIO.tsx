@@ -1,8 +1,8 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import { useEffect, useMemo } from "react";
-import { isPathUserChanged } from "../hooks";
+import React, { useEffect, useMemo } from "react";
+import { isPathUserChanged, useUnboundState } from "../hooks";
 import {
   getComponent,
   getErrorsForView,
@@ -13,24 +13,12 @@ import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
 
 export default function DynamicIO(props: ViewPropsType) {
-  const { data, schema, onChange, path } = props;
+  const { schema, onChange } = props;
   const customComponents = useCustomComponents();
   const Component = getComponent(schema, customComponents);
   const computedSchema = getComputedSchema(props);
-  const { default: defaultValue } = computedSchema;
 
-  // todo: need to improve initializing default value in state
-  useEffect(() => {
-    if (
-      !isCompositeView(schema) &&
-      !isEqual(data, defaultValue) &&
-      !isPathUserChanged(path) &&
-      !isNullish(defaultValue) &&
-      !isInitialized(props)
-    ) {
-      onChange(path, defaultValue, computedSchema);
-    }
-  }, [defaultValue]);
+  useStateInitializer(props);
 
   const onChangeWithSchema = useMemo(() => {
     return (
@@ -70,6 +58,47 @@ function useCustomComponents() {
     componentsByName[component.name] = component.component;
     return componentsByName;
   }, {});
+}
+
+// todo: need to improve initializing the state... refactor this function
+function useStateInitializer(props: ViewPropsType) {
+  const { data, schema, onChange } = props;
+  const computedSchema = getComputedSchema(props);
+  const { default: defaultValue } = computedSchema;
+  const basicData = useMemo(() => {
+    if (!isCompositeView(schema)) {
+      return data;
+    }
+  }, [data, schema]);
+  const unboundState = useUnboundState({ computedSchema, props });
+
+  useEffect(() => {
+    const { computedSchema, props } = unboundState || {};
+    const { data, path, root_id } = props || {};
+    if (
+      !isCompositeView(computedSchema) &&
+      !isEqual(data, defaultValue) &&
+      !isPathUserChanged(path, root_id) &&
+      !isNullish(defaultValue) &&
+      !isInitialized(props)
+    ) {
+      onChange(path, defaultValue, computedSchema);
+    }
+  }, [defaultValue, onChange, unboundState]);
+
+  useEffect(() => {
+    if (basicData) {
+      const { computedSchema, props } = unboundState || {};
+      const { data, path } = props || {};
+      if (
+        !isEqual(data, basicData) &&
+        !isCompositeView(computedSchema) &&
+        !isNullish(path)
+      ) {
+        onChange(path, basicData, computedSchema);
+      }
+    }
+  }, [basicData, onChange, unboundState]);
 }
 
 function schemaWithInheritedDefault(
