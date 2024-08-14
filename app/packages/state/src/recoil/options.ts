@@ -70,7 +70,9 @@ export const dynamicGroupsViewMode = atomFamily<
 >({
   key: "dynamicGroupsViewMode",
   default: "pagination",
-  effects: [getBrowserStorageEffectForKey("dynamicGroupsViewMode")],
+  effects: (modal) => [
+    getBrowserStorageEffectForKey(`dynamicGroupsViewMode-${modal}`),
+  ],
 });
 
 export const configuredSidebarModeDefault = selectorFamily<
