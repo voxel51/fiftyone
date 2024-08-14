@@ -12,7 +12,7 @@ import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (update: object, updater?: Function) => {
+      async (update: object, updater?: (updated: {}) => void) => {
         const currentOptions = await snapshot.getPromise(
           fos.savedLookerOptions
         );
@@ -115,7 +115,7 @@ export const ModalLooker = React.memo(
     }, [sample, colorScheme]);
 
     useEffect(() => {
-      return () => looker && looker.destroy();
+      return () => looker?.destroy();
     }, [looker]);
 
     const handleError = useErrorHandler();
@@ -171,7 +171,7 @@ export const ModalLooker = React.memo(
     const hoveredSample = useRecoilValue(fos.hoveredSample);
 
     useEffect(() => {
-      const hoveredSampleId = hoveredSample && hoveredSample._id;
+      const hoveredSampleId = hoveredSample?._id;
       looker.updater((state) => ({
         ...state,
         // todo: `|| shouldRenderImaVidLooker` is a hack until hoveredSample works for imavid looker

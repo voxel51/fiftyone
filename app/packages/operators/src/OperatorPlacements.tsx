@@ -57,7 +57,7 @@ function getPlacementComponent(placement: Placement) {
 }
 
 function OperatorPlacement(props: OperatorPlacementProps) {
-  const { placement, modal } = props;
+  const { placement } = props;
   const Component = getPlacementComponent(placement);
   return <Component {...props} />;
 }
