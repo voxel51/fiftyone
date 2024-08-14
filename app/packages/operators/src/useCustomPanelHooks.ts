@@ -1,6 +1,5 @@
-import { debounce, isEqual, merge } from "lodash";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { debounce, merge } from "lodash";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
 import {
@@ -8,10 +7,7 @@ import {
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
 } from "./constants";
 import { executeOperator } from "./operators";
-import {
-  panelsStateUpdatesCountAtom,
-  useGlobalExecutionContext,
-} from "./state";
+import { useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
 
@@ -76,11 +72,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     data: panelStateLocal?.data,
   });
   const panelSchema = panelStateLocal?.schema;
-  const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
-  const lastPanelLoadState = useRef({
-    count: panelsStateUpdatesCount,
-    state: panelState,
-  });
   const ctx = useGlobalExecutionContext();
   const isLoaded: boolean = useMemo(() => {
     return panelStateLocal?.loaded;
@@ -160,27 +151,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Trigger panel "onLoad" operator when panel state changes externally
-  useEffect(() => {
-    if (
-      lastPanelLoadState.current?.count !== panelsStateUpdatesCount &&
-      !isEqual(lastPanelLoadState.current?.state, panelState)
-    ) {
-      setPanelStateLocal({});
-      onLoad();
-    }
-    lastPanelLoadState.current = {
-      count: panelsStateUpdatesCount,
-      state: panelState,
-    };
-  }, [
-    panelsStateUpdatesCount,
-    panelState,
-    panelId,
-    onLoad,
-    setPanelStateLocal,
-  ]);
 
   const handlePanelStateChangeOpDebounced = useMemo(() => {
     return debounce(

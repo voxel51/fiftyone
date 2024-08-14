@@ -382,7 +382,7 @@ def _do_download_media(task):
                         task_id, chunk_id, data_type="chunk"
                     )
                 )
-                chunk_path = fos.join(tmp_dir, "%d.%s" % (chunk_id, ext))
+                chunk_path = fos.join(tmp_dir, "%d%s" % (chunk_id, ext))
                 fos.write_file(resp._content, chunk_path)
                 chunk_paths.append(chunk_path)
 

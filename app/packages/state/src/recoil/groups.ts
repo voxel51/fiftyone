@@ -59,7 +59,7 @@ export const groupMediaIsCarouselVisible = selector<boolean>({
   key: "groupMediaIsCarouselVisible",
   get: ({ get }) => {
     const isImaVidInNestedGroup =
-      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+      get(shouldRenderImaVidLooker(true)) && get(isNestedDynamicGroup);
 
     return get(groupMediaIsCarouselVisibleSetting) && !isImaVidInNestedGroup;
   },
@@ -82,7 +82,7 @@ export const groupMediaIs3dVisible = selector<boolean>({
     const set = get(groupMediaTypesSet);
     const has3d = set.has(POINT_CLOUD) || set.has(THREE_D);
     const isImaVidInNestedGroup =
-      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+      get(shouldRenderImaVidLooker(true)) && get(isNestedDynamicGroup);
     return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
   },
 });
@@ -512,7 +512,7 @@ export const activeModalSample = selector({
 export const activeModalSidebarSample = selector({
   key: "activeModalSidebarSample",
   get: ({ get }) => {
-    if (get(shouldRenderImaVidLooker)) {
+    if (get(shouldRenderImaVidLooker(true))) {
       const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
 
       if (!currentFrameNumber) {
