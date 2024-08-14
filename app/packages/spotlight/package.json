@@ -9,8 +9,7 @@
         "url": "https://github.com/voxel51/fiftyone"
     },
     "scripts": {
-        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
-        "test": "vitest run"
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts"
     },
     "main": "./src/index.ts",
     "private": true,
@@ -18,15 +17,14 @@
         "dist",
         "README.md"
     ],
-    "dependencies": {
-        "@fiftyone/components": "*"
-    },
     "devDependencies": {
         "@biomejs/biome": "^1.7.1",
         "typescript": "^5.4.5",
         "typescript-plugin-css-modules": "^5.1.0",
-        "vite": "^5.2.8",
-        "vitest": "^1.5.1"
+        "vite": "^5.2.8"
     },
-    "type": "module"
+    "type": "module",
+    "dependencies": {
+        "@af-utils/scrollend-polyfill": "^0.0.13"
+    }
 }

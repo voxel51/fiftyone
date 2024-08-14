@@ -3,25 +3,28 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import Plot from "react-plotly.js";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
+import { ViewPropsType } from "../utils/types";
 
-export default function PlotlyView(props) {
-  const { data, schema, path } = props;
+export default function PlotlyView(props: ViewPropsType) {
+  const { data, schema, path, relativeLayout } = props;
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
   const panelId = usePanelId();
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
+  const [revision, setRevision] = React.useState(0);
+
   const handleEvent = (event?: string) => (e) => {
-    // TODO: add more interesting/useful event data
     const data = EventDataMappers[event]?.(e) || {};
-    const x_data_source = view.x_data_source;
     let xValue = null;
     let yValue = null;
+    let value;
+    let label;
     if (event === "onClick") {
       const values = e.points[0];
       let selected = [];
@@ -37,12 +40,18 @@ export default function PlotlyView(props) {
           range = [xValue - xBinsSize / 2, xValue + xBinsSize / 2];
         } else if (type === "scatter") {
           selected.push(p.pointIndex);
+          xValue = p.x;
+          yValue = p.y;
         } else if (type === "bar") {
           xValue = p.x;
           yValue = p.y;
+          range = [p.x, p.x + p.width];
         } else if (type === "heatmap") {
           xValue = p.x;
           yValue = p.y;
+        } else if (type === "pie") {
+          value = p.v;
+          label = p.label;
         }
       }
       if (selected.length === 0) {
@@ -51,30 +60,33 @@ export default function PlotlyView(props) {
     }
 
     const eventHandlerOperator = view[snakeCase(event)];
+    const defaultParams = {
+      path: props.path,
+      relative_path: props.relativePath,
+      schema: props.schema,
+      view,
+      event,
+      value,
+      label,
+    };
 
     if (eventHandlerOperator) {
       let params = {};
       if (event === "onClick") {
         params = {
-          event,
-          data,
-          x_data_source,
+          ...defaultParams,
           range,
-          type: view.type,
           x: xValue,
           y: yValue,
         };
       } else if (event === "onSelected") {
         params = {
-          event,
+          ...defaultParams,
           data,
-          type: view.type,
+          path,
         };
       }
-      params = {
-        ...params,
-        path,
-      };
+
       triggerPanelEvent(panelId, {
         operator: eventHandlerOperator,
         params,
@@ -101,6 +113,7 @@ export default function PlotlyView(props) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
+        automargin: true, // Enable automatic margin adjustment
       },
       yaxis: {
         showgrid: true,
@@ -109,13 +122,14 @@ export default function PlotlyView(props) {
         zerolinecolor: theme.text.tertiary,
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
+        automargin: true, // Enable automatic margin adjustment
       },
       autosize: true,
       margin: {
-        t: 0,
-        l: 0,
-        b: 0,
-        r: 0,
+        t: 20, // Adjust top margin
+        l: 50, // Adjust left margin for y-axis labels
+        b: 50, // Adjust bottom margin for x-axis labels
+        r: 20, // Adjust right margin
         pad: 0,
       },
       paper_bgcolor: theme.background.mediaSpace,
@@ -128,6 +142,7 @@ export default function PlotlyView(props) {
       },
     };
   }, [theme]);
+
   const configDefaults = useMemo(() => {
     return {
       displaylogo: false,
@@ -143,8 +158,14 @@ export default function PlotlyView(props) {
     return merge({}, configDefaults, config);
   }, [configDefaults, config]);
   const mergedData = useMemo(() => {
-    return mergeData(data, dataDefaults);
-  }, [data, dataDefaults]);
+    return mergeData(data || schema?.view?.data, dataDefaults);
+  }, [data, dataDefaults, schema?.view?.data]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setRevision((r) => r + 1);
+    }, 500); // Delay to allow for layout to be animated
+  }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
 
   return (
     <Box
@@ -154,6 +175,7 @@ export default function PlotlyView(props) {
     >
       <HeaderView {...props} nested />
       <Plot
+        revision={revision}
         data={mergedData}
         style={{ height: "100%", width: "100%", zIndex: 1 }}
         config={mergedConfig}

@@ -7,6 +7,8 @@ Core utilities.
 """
 import abc
 import atexit
+import contextvars
+
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -35,8 +37,6 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 from concurrent.futures import ThreadPoolExecutor
 
@@ -2352,7 +2352,11 @@ async def run_sync_task(func, *args):
         the function's return value(s)
     """
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_get_sync_task_executor(), func, *args)
+    # Run sync function in threadpool with current `contextvars.Context`
+    context = contextvars.copy_context()
+    return await loop.run_in_executor(
+        _get_sync_task_executor(), context.run, func, *args
+    )
 
 
 def datetime_to_timestamp(dt):

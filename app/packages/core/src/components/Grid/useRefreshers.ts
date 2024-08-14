@@ -11,6 +11,7 @@ export default function useRefreshers() {
   const extendedStages = fos.stringifyObj(useRecoilValue(fos.extendedStages));
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
+  const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
   const view = fos.filterView(useRecoilValue(fos.view));
@@ -18,9 +19,10 @@ export default function useRefreshers() {
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
     cropToContent;
+    mediaField;
     refresher;
     return uuid();
-  }, [cropToContent, refresher]);
+  }, [cropToContent, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {

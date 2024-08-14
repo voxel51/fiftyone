@@ -168,11 +168,12 @@ class Operations(object):
         )
 
     def set_panel_state(self, state, panel_id=None):
-        """Set the state of the specified panel in the App.
+        """Set the entire state of the specified panel in the App.
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
                 If not provided, the ctx.current_panel.id will be used.
+            state (dict): the state to set
         """
         return self._ctx.trigger(
             "set_panel_state",
@@ -180,11 +181,12 @@ class Operations(object):
         )
 
     def set_panel_data(self, data, panel_id=None):
-        """Set the data of the specified panel in the App.
+        """Set the entire data of the specified panel in the App.
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
                 If not provided, the ctx.current_panel.id will be used.
+            data (dict): the data to set
         """
         return self._ctx.trigger(
             "set_panel_data",
@@ -228,6 +230,18 @@ class Operations(object):
                 **self._create_panel_params(panel_id),
                 "reducer": reducer,
             },
+        )
+
+    def apply_panel_state_path(self, path, panel_id=None):
+        """Force update the state for path in the specified panel in the App.
+
+        Args:
+
+            path (str): the path to force update
+        """
+        return self._ctx.trigger(
+            "apply_panel_state_path",
+            params={**self._create_panel_params(panel_id), "path": path},
         )
 
     def show_panel_output(self, output, panel_id=None):

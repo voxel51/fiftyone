@@ -38,6 +38,11 @@ export const panelTitlesState = atom({
   default: new Map(),
 });
 
+export const panelsLoadingStateAtom = atom({
+  key: "panelsLoadingStateAtom",
+  default: new Map<string, boolean>(),
+});
+
 export const panelsStateAtom = atom({
   key: "panelsState",
   default: new Map(),

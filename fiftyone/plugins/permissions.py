@@ -1,11 +1,11 @@
 """
 FiftyOne operator permissions.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.internal.requests import make_request
+from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_token_from_request
 
 

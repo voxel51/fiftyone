@@ -538,6 +538,34 @@ You can configure the organization and default expansion state of the
 
     session.refresh()
 
+.. _dataset-app-config-disable-frame-filtering:
+
+Disable frame filtering
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Filtering by frame-level fields of video datasets in the App's grid view can be
+expensive when the dataset is large.
+
+You can disable frame filtering for a video dataset as follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    dataset.app_config.disable_frame_filtering = True
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Did you know? You can also globally disable frame filtering for all video
+    datasets via your :ref:`App config <configuring-fiftyone-app>`.
+
 .. _dataset-app-config-reset:
 
 Resetting a dataset's App config

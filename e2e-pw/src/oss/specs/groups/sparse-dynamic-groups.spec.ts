@@ -87,7 +87,7 @@ test(`left slice (default)`, async ({ fiftyoneLoader, page, grid, modal }) => {
 
 test(`right slice`, async ({ fiftyoneLoader, page, grid, modal }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    savedView: "group",
+    searchParams: new URLSearchParams({ view: "group" }),
   });
   await grid.selectSlice("right");
   await grid.assert.isEntryCountTextEqualTo("1 group with slice");

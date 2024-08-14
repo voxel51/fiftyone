@@ -2,49 +2,64 @@ import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { cloneDeep, get, set } from "lodash";
 import React, { useCallback, useEffect, useRef } from "react";
 import DynamicIO from "./components/DynamicIO";
-import { clearUseKeyStores } from "./hooks";
+import { clearUseKeyStores, SchemaIOContext } from "./hooks";
 
 export function SchemaIOComponent(props) {
-  const { onChange, onPathChange } = props;
+  const { onChange, onPathChange, id, shouldClearUseKeyStores } = props;
   const stateRef = useRef({});
   const autoFocused = useRef(false);
+  const schemaIOContext = { id };
 
   useEffect(() => {
-    return clearUseKeyStores;
+    return () => {
+      if (shouldClearUseKeyStores !== false) {
+        clearUseKeyStores(id);
+      }
+    };
   }, []);
 
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
-      if (onPathChange) {
-        onPathChange(path, value, schema);
-      }
       const currentState = stateRef.current;
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(value));
       stateRef.current = updatedState;
-      if (onChange) onChange(updatedState);
+      if (onPathChange) {
+        onPathChange(path, value, schema, updatedState);
+      }
+      if (onChange) {
+        onChange(updatedState);
+      }
 
       // propagate the change to all ancestors
       for (const ancestorPath in ancestors) {
         const ancestorSchema = ancestors[ancestorPath];
         const ancestorValue = get(updatedState, ancestorPath);
         if (onPathChange) {
-          onPathChange(ancestorPath, ancestorValue, ancestorSchema);
+          onPathChange(
+            ancestorPath,
+            ancestorValue,
+            ancestorSchema,
+            updatedState
+          );
         }
       }
 
       return updatedState;
     },
-    [onChange]
+    [onChange, onPathChange]
   );
 
   return (
-    <DynamicIO
-      {...props}
-      onChange={onIOChange}
-      path=""
-      autoFocused={autoFocused}
-    />
+    <SchemaIOContext.Provider value={schemaIOContext}>
+      <DynamicIO
+        {...props}
+        root_id={id}
+        onChange={onIOChange}
+        path=""
+        autoFocused={autoFocused}
+      />
+    </SchemaIOContext.Provider>
   );
 }
 

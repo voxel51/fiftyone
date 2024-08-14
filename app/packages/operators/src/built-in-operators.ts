@@ -11,11 +11,12 @@ import {
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
+import { useTrackEvent } from "@fiftyone/analytics";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
-import { merge } from "lodash";
-import { useSetRecoilState, useRecoilCallback } from "recoil";
+import { cloneDeep, merge, set as setValue } from "lodash";
+import { useRecoilCallback, useSetRecoilState } from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
@@ -30,7 +31,7 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { useTrackEvent } from "@fiftyone/analytics";
+import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 
 //
 // BUILT-IN OPERATORS
@@ -846,7 +847,7 @@ class SetPanelState extends Operator {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.updatePanelState(ctx, { targetPartial: "state" });
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "state", set: true });
   }
 }
 
@@ -862,7 +863,7 @@ class SetPanelData extends Operator {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.updatePanelState(ctx, { targetPartial: "data" });
+    ctx.hooks.updatePanelState(ctx, { targetPartial: "data", set: true });
   }
 }
 
@@ -884,19 +885,33 @@ class PatchPanelData extends Operator {
 
 function useUpdatePanelStatePartial(local?: boolean) {
   const setPanelStateById = useSetPanelStateById(local);
-  return (ctx, { targetPartial = "state", targetParam, patch, clear }) => {
+  return (
+    ctx,
+    { targetPartial = "state", targetParam, patch, clear, deepMerge, set }
+  ) => {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
-      setPanelStateById(ctx.getCurrentPanelId(), (current = {}) => {
+      const panelId = ctx.getCurrentPanelId();
+      setPanelStateById(panelId, (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
-        const param = ctx.params[targetParam];
-        if (patch) {
-          updatedState = merge({}, currentCustomPanelState, param);
+        const providedData = ctx.params[targetParam];
+        if (set) {
+          // set = replace entire state
+          updatedState = providedData;
+        } else if (deepMerge) {
+          updatedState = merge({}, currentCustomPanelState, providedData);
+        } else if (patch) {
+          updatedState = cloneDeep(currentCustomPanelState);
+          // patch = shallow merge OR set by path
+          for (let [path, value] of Object.entries(providedData)) {
+            setPathUserUnchanged(path, panelId); // clear user changed flag
+            setValue(updatedState, path, value);
+          }
         } else if (clear) {
           updatedState = {};
         } else {
-          updatedState = param;
+          throw new Error("useUpdatePanelStatePartial: Invalid operation");
         }
 
         return { ...current, [targetPartial]: updatedState };
@@ -963,6 +978,7 @@ class ShowPanelOutput extends Operator {
     ctx.hooks.updatePanelState(ctx, {
       targetPartial: "schema",
       targetParam: "output",
+      set: true,
     });
   }
 }
@@ -1197,6 +1213,20 @@ export class SetPanelTitle extends Operator {
   }
 }
 
+export class ApplyPanelStatePath extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "apply_panel_state_path",
+      label: "Apply panel state path",
+      unlisted: true,
+    });
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { panel_id, path } = ctx.params;
+    setPathUserUnchanged(path, panel_id);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1242,6 +1272,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetActiveFields);
     _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
+    _registerBuiltInOperator(ApplyPanelStatePath);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

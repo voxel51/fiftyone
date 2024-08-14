@@ -1,21 +1,22 @@
 """
-FiftyOne dataset-snapshot related unit tests.
+FiftyOne dataset permission related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-import re
 import unittest
+from unittest import mock
 
 import bson
 
 import fiftyone as fo
+from fiftyone.api import errors as api_errors
 import fiftyone.core.dataset as fod
 import fiftyone.core.runs as focr
 
-from fiftyone.internal import dataset_permissions
+from fiftyone.internal import context_vars, dataset_permissions
 from fiftyone.internal.dataset_permissions import DatasetPermission
 
 
@@ -534,3 +535,207 @@ class DatasetPermissionTests(unittest.TestCase):
                 ("keep_fields", 0),
             ]
             self._assert_funcs_readonly(patches_mutators, patches)
+
+
+class LoadDatasetPermissionsTests(unittest.TestCase):
+    def test_dataset_no_singleton(self):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_dataset_no_singleton.__name__
+        orig_dataset = fo.Dataset(dataset)
+        self.assertIs(fo.Dataset._instances[dataset], orig_dataset)
+
+        reset_token = context_vars.no_singleton_cache.set(True)
+        try:
+            ds = fo.load_dataset(dataset)
+            self.assertIsNot(ds, orig_dataset)
+        finally:
+            context_vars.no_singleton_cache.reset(reset_token)
+
+    def test_dataset_rename_non_singleton(self):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_dataset_no_singleton.__name__
+        orig_dataset = fo.Dataset(dataset)
+
+        reset_token = context_vars.no_singleton_cache.set(True)
+        try:
+            ds = fo.load_dataset(dataset)
+            ds.name = "new name who dis"
+            self.assertEqual(orig_dataset.name, ds.name)
+            self.assertIs(fo.Dataset._instances[ds.name], orig_dataset)
+            self.assertIsNot(ds, orig_dataset)
+        finally:
+            context_vars.no_singleton_cache.reset(reset_token)
+
+    def test_load_dataset_with_no_permissions(self):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_load_dataset_with_no_permissions.__name__
+        fo.Dataset(dataset)
+        fo.Dataset._instances.clear()
+        ds = fo.load_dataset(dataset)
+        self.assertIsNone(ds._permission)
+
+    @mock.patch.object(
+        fo.core.dataset.dataset_permissions,
+        "get_dataset_permissions_for_current_user",
+    )
+    def test_load_dataset_with_permissions(
+        self, get_dataset_permissions_for_current_user_mock
+    ):
+        fo.delete_non_persistent_datasets()
+        get_dataset_permissions_for_current_user_mock.return_value = (
+            dataset_permissions.DatasetPermission.EDIT
+        )
+        dataset = self.test_load_dataset_with_permissions.__name__
+        user_id = "test_user123"
+        fo.Dataset(dataset)
+        fo.Dataset._instances.clear()
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            ds = fo.load_dataset(dataset)
+            self.assertEqual(
+                ds._permission, dataset_permissions.DatasetPermission.EDIT
+            )
+            get_dataset_permissions_for_current_user_mock.assert_called_with(
+                dataset
+            )
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
+
+class CreateDatasetWithPermissionsTests(unittest.TestCase):
+    def test_create_dataset_with_no_permissions(self):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_create_dataset_with_no_permissions.__name__
+
+        # Create persistent dataset with no user_id should have no perms
+        ds = fo.Dataset(dataset, persistent=False)
+        self.assertIsNone(ds._permission)
+        ds.delete()
+
+        # Create nonpersistent dataset even with user_id set should have no perms
+        user_id = "testuser1234"
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            ds = fo.Dataset(dataset, persistent=False)
+            self.assertIsNone(ds._permission)
+            ds.delete()
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
+    @mock.patch.object(
+        dataset_permissions,
+        "create_dataset_with_current_user_permissions",
+    )
+    def test_create_dataset_with_permissions(
+        self, create_dataset_with_current_user_permissions_mock
+    ):
+        fo.delete_non_persistent_datasets()
+        create_dataset_with_current_user_permissions_mock.return_value = True
+        dataset = self.test_create_dataset_with_permissions.__name__
+
+        # Passes permission error down
+        create_dataset_with_current_user_permissions_mock.side_effect = (
+            api_errors.FiftyOneTeamsAPIError
+        )
+        self.assertRaises(
+            api_errors.FiftyOneTeamsAPIError,
+            fo.Dataset,
+            dataset,
+            persistent=True,
+        )
+        create_dataset_with_current_user_permissions_mock.assert_called_with(
+            dataset
+        )
+
+        create_dataset_with_current_user_permissions_mock.reset_mock()
+
+        def _make_dataset_docs(dataset):
+            fo.core.dataset._create_dataset(self, dataset, persistent=True)
+            fo.Dataset._instances.clear()
+            return True
+
+        create_dataset_with_current_user_permissions_mock.side_effect = (
+            _make_dataset_docs
+        )
+
+        ds = fo.Dataset(dataset, persistent=True)
+
+        self.assertEqual(
+            ds._permission, dataset_permissions.DatasetPermission.MANAGE
+        )
+        create_dataset_with_current_user_permissions_mock.assert_called_with(
+            dataset
+        )
+        ds.delete()
+
+    @mock.patch.object(
+        dataset_permissions,
+        "running_in_user_context",
+    )
+    def test_cant_upgrade_persistence(self, running_in_user_context_mock):
+        fo.delete_non_persistent_datasets()
+        running_in_user_context_mock.return_value = True
+        dataset = self.test_cant_upgrade_persistence.__name__
+        ds = fo.Dataset(dataset, persistent=False)
+        self.assertRaises(NotImplementedError, setattr, ds, "persistent", True)
+        ds.delete()
+
+
+class ListDatasetsWithPermissionsTests(unittest.TestCase):
+    @mock.patch.object(fo.core.dataset, "_list_datasets")
+    @mock.patch.object(fo.core.dataset, "_list_datasets_info")
+    @mock.patch.object(
+        dataset_permissions,
+        "list_datasets_for_current_user",
+    )
+    def test_list_with_no_permissions(
+        self,
+        list_datasets_for_current_user_mock,
+        _list_datasets_info_mock,
+        _list_datasets_mock,
+    ):
+        list_datasets_for_current_user_mock.return_value = None
+
+        glob_patt, tags = mock.Mock(), mock.Mock()
+
+        for info, list_mock, other_mock in [
+            (False, _list_datasets_mock, _list_datasets_info_mock),
+            (True, _list_datasets_info_mock, _list_datasets_mock),
+        ]:
+            list_datasets_for_current_user_mock.reset_mock()
+            _list_datasets_mock.reset_mock()
+            _list_datasets_info_mock.reset_mock()
+
+            #####
+            self.assertEqual(
+                fo.core.dataset.list_datasets(
+                    glob_patt=glob_patt, tags=tags, info=info
+                ),
+                list_mock.return_value,
+            )
+            #####
+
+            list_datasets_for_current_user_mock.assert_called_once_with(
+                glob_patt=glob_patt, tags=tags, info=info
+            )
+            list_mock.assert_called_with(glob_patt=glob_patt, tags=tags)
+            other_mock.assert_not_called()
+
+    @mock.patch.object(
+        dataset_permissions,
+        "list_datasets_for_current_user",
+    )
+    def test_list_with_permissions(
+        self,
+        list_datasets_for_current_user_mock,
+    ):
+        glob_patt, tags, info = mock.Mock(), mock.Mock(), mock.Mock()
+
+        #####
+        self.assertEqual(
+            fo.core.dataset.list_datasets(
+                glob_patt=glob_patt, tags=tags, info=info
+            ),
+            list_datasets_for_current_user_mock.return_value,
+        )
+        #####

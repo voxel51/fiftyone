@@ -2256,6 +2256,30 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(frames_dataset), len(frames_view))
 
     @drop_datasets
+    def test_frames_save_context(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(filepath="frame11.jpg")
+        sample1.frames[2] = fo.Frame(filepath="frame12.jpg")
+        sample1.frames[3] = fo.Frame(filepath="frame13.jpg")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(filepath="frame31.jpg")
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.to_frames()
+
+        for sample in view.iter_samples(autosave=True):
+            sample["foo"] = "bar"
+
+        self.assertEqual(view.count("foo"), 4)
+        self.assertEqual(dataset.count("frames.foo"), 4)
+
+    @drop_datasets
     def test_to_clip_frames(self):
         dataset = fo.Dataset()
 
@@ -3352,6 +3376,52 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(
             clips_dataset.count("frames"), clips_view.count("frames")
         )
+
+    @drop_datasets
+    def test_clips_save_context(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample3 = fo.Sample(
+            filepath="video3.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="party", support=[3, 5]),
+                ]
+            ),
+        )
+        sample3.frames[1] = fo.Frame()
+        sample3.frames[3] = fo.Frame()
+        sample3.frames[5] = fo.Frame()
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.to_clips("events")
+
+        for sample in view.iter_samples(autosave=True):
+            sample.events.foo = "bar"
+            for frame in sample.frames.values():
+                frame["foo"] = "bar"
+
+        self.assertEqual(view.count("events.foo"), 3)
+        # tricky: this is 7 because `view` contains overlapping frame supports
+        self.assertEqual(view.count("frames.foo"), 7)
+        self.assertEqual(dataset.count("events.detections.foo"), 3)
+        self.assertEqual(dataset.count("frames.foo"), 5)
 
 
 if __name__ == "__main__":

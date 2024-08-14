@@ -2,6 +2,7 @@ import styles from "./Grid.module.css";
 
 import type { Lookers } from "@fiftyone/state";
 
+import { freeVideos } from "@fiftyone/looker";
 import Spotlight, { type ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, {
@@ -114,6 +115,7 @@ function Grid() {
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      freeVideos();
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
@@ -159,7 +161,7 @@ function Grid() {
 
   useEscape();
 
-  return <div id={id} className={styles.spotlightLooker} data-cy="fo-grid" />;
+  return <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />;
 }
 
 export default React.memo(Grid);
