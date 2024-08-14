@@ -98,6 +98,15 @@ _MODEL_TEMPLATE = """
         max_samples=50,
         shuffle=True,
     )
+{% elif 'segment-anything-2' in name and 'video' in name %}
+    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
+
+    # Only retain detections in the first frame
+    for sample in dataset:
+        for frame_idx, frame in sample.frames.items():
+            if frame_idx >= 2:
+                frame.detections = None
+        sample.save()
 {% else %}
     dataset = foz.load_zoo_dataset(
         "coco-2017",
@@ -108,7 +117,7 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
-{% if 'segment-anything' in tags %}
+{% if 'segment-anything' in tags and 'video' not in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
     # Segment inside boxes
@@ -120,6 +129,17 @@ _MODEL_TEMPLATE = """
 
     # Full automatic segmentations
     dataset.apply_model(model, label_field="auto")
+
+    session = fo.launch_app(dataset)
+{% elif 'segment-anything' in tags and 'video' in tags %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    # Segment inside boxes
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="frames.detections",  # can contain Detections or Keypoints
+    )
 
     session = fo.launch_app(dataset)
 {% elif 'dinov2' in name %}
