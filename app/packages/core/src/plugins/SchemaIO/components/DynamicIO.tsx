@@ -1,8 +1,8 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import React, { useEffect, useMemo } from "react";
-import { isPathUserChanged, useUnboundState } from "../hooks";
+import { useEffect, useMemo } from "react";
+import { isPathUserChanged } from "../hooks";
 import {
   getComponent,
   getErrorsForView,
@@ -11,6 +11,7 @@ import {
 } from "../utils";
 import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
+import { useUnboundState } from "@fiftyone/state";
 
 export default function DynamicIO(props: ViewPropsType) {
   const { schema, onChange } = props;
