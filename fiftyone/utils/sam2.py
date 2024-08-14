@@ -207,6 +207,8 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 box=sam_boxes[None, :],
                 multimask_output=False,
             )
+            if masks.ndim == 3:
+                masks = np.expand_dims(masks, axis=0)
             outputs.append(
                 {
                     "boxes": input_boxes,
