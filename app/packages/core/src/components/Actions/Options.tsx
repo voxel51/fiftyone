@@ -347,8 +347,7 @@ const ShowModalNav = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
-          onClick: () =>
-            setShowModalNavigationControls(value === "enable" ? true : false),
+          onClick: () => setShowModalNavigationControls(value === "enable"),
         }))}
       />
     </>

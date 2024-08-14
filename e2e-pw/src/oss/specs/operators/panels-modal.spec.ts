@@ -3,8 +3,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-// todo: test JS plugins
-
 const SAMPLE_TAB_LABEL = "Sample";
 const COUNTER_TAB_ID = "e2e_counter_python_panel";
 const COUNTER_TAB_LABEL = "E2E: Counter Python Panel";
