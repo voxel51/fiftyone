@@ -202,12 +202,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_t.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -235,12 +235,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_s.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -268,12 +268,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_b+.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -301,12 +301,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_l.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -334,11 +334,11 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_t.yaml"}
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -366,12 +366,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_s.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -399,12 +399,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_b+.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -432,12 +432,12 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": {"model_cfg" : "sam2_hiera_l.yaml"},
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
             },
             "requirements": {
-                "packages": ["torch"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
