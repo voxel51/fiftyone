@@ -22,6 +22,14 @@ export default function usePanelEvent() {
     const options = args[0] as HandlerOptions;
     const { params, operator, prompt, currentPanelState } = options;
 
+    if (!operator) {
+      notify({
+        msg: "No operator provided for panel event.",
+        variant: "error",
+      });
+      return console.error("No operator provided for panel event.");
+    }
+
     const actualParams = {
       ...params,
       panel_id: panelId,
