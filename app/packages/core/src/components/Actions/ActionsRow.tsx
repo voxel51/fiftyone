@@ -524,7 +524,7 @@ const ModalActionsRowContainer = styled.div`
   z-index: 100001;
   position: fixed;
   right: 3em;
-  top: 0.3em;
+  top: 0.16em;
   display: flex;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
