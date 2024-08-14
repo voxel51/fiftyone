@@ -247,6 +247,9 @@ const EventDataMappers = {
       selected.push({
         idx: point.pointIndex,
         id: Array.isArray(ids) ? ids[point.pointIndex] : null,
+        x: Array.isArray(x) ? x[point.pointIndex] : null,
+        y: Array.isArray(y) ? y[point.pointIndex] : null,
+        z: Array.isArray(z) ? z[point.pointIndex] : null,
       });
     }
     return selected;
