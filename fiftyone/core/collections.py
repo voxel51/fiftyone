@@ -6835,7 +6835,11 @@ class SampleCollection(object):
 
     @view_stage
     def to_patches(
-        self, field, other_fields=None, keep_label_lists=False, **kwargs
+        self,
+        field,
+        other_fields=None,
+        keep_label_lists=False,
+        **kwargs,
     ):
         """Creates a view that contains one sample per object patch in the
         specified field of the collection.
@@ -7087,7 +7091,12 @@ class SampleCollection(object):
 
     @view_stage
     def to_trajectories(
-        self, field, other_fields=None, tol=0, min_len=0, **kwargs
+        self,
+        field,
+        other_fields=None,
+        tol=0,
+        min_len=0,
+        **kwargs,
     ):
         """Creates a view that contains one clip for each unique object
         trajectory defined by their ``(label, index)`` in a frame-level field
@@ -7136,8 +7145,8 @@ class SampleCollection(object):
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
             tol (0): the maximum number of false frames that can be overlooked
-                when generating clips.
-            min_len (0): the minimum allowable length of a clip, in frames.
+                when generating clips
+            min_len (0): the minimum allowable length of a clip, in frames
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
                 to perform the conversion
@@ -7145,7 +7154,15 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.clips.TrajectoriesView`
         """
-        return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
+        return self._add_view_stage(
+            fos.ToTrajectories(
+                field,
+                other_fields=other_fields,
+                tol=tol,
+                min_len=min_len,
+                **kwargs,
+            )
+        )
 
     @view_stage
     def to_frames(
