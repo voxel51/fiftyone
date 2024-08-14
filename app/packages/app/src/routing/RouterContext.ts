@@ -43,7 +43,8 @@ export interface Entry<T extends OperationType> extends FiftyOneLocation {
 
 type Subscription<T extends OperationType> = (
   entry: Entry<T>,
-  action?: Action
+  action?: Action,
+  previousEntry?: Entry<T>
 ) => void;
 
 type Subscribe<T extends OperationType> = (
@@ -102,7 +103,11 @@ export const createRouter = <T extends OperationType>(
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
-            for (const [_, [cb]] of subscribers) cb(entry, action);
+            let current: Entry<T> | undefined = undefined;
+            try {
+              current = currentEntryResource.read();
+            } catch {}
+            for (const [_, [cb]] of subscribers) cb(entry, action, current);
             // update currentEntryResource after calling subscribers
             currentEntryResource = loadingResource;
             cleanup();

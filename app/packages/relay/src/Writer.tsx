@@ -18,7 +18,8 @@ export interface PageQuery<T extends OperationType> {
 
 export type PageSubscription<T extends OperationType> = (
   pageQuery: PageQuery<T>,
-  transactionInterface: TransactionInterface_UNSTABLE
+  transactionInterface: TransactionInterface_UNSTABLE,
+  previousPageQuery?: PageQuery<T>
 ) => void;
 
 let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
@@ -108,13 +109,16 @@ export function Writer<T extends OperationType>({
   );
 
   React.useEffect(() => {
+    let previous: PageQuery<T> | undefined;
     return subscribe((pageQuery) => {
       // @ts-ignore
       pageQueryReader = () => pageQuery;
       set((transactionInterface) => {
-        subscribersBefore.forEach((cb) => cb(pageQuery, transactionInterface));
-        subscribers.forEach((cb) => cb(pageQuery, transactionInterface));
+        for (const cb of [...subscribersBefore, ...subscribers]) {
+          cb(pageQuery, transactionInterface, previous);
+        }
       });
+      previous = pageQuery;
     });
   }, [set, subscribe]);
 

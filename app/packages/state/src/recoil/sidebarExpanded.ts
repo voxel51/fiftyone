@@ -9,7 +9,9 @@ export const sidebarExpandedStore = atomFamily<
   default: {},
   effects: [
     ({ node }) =>
-      subscribe(({ event }, { reset }) => event !== "modal" && reset(node)),
+      subscribe(({ event }, { reset }, previous) => {
+        event !== "modal" && previous?.event !== "modal" && reset(node);
+      }),
   ],
 });
 
@@ -36,7 +38,10 @@ export const granularSidebarExpandedStore = atom<{ [key: string]: boolean }>({
   default: {},
   effects: [
     ({ node }) =>
-      subscribe(({ event }, { set }) => event !== "modal" && set(node, {})),
+      subscribe(
+        ({ event }, { set }, previous) =>
+          event !== "modal" && previous?.event !== "modal" && set(node, {})
+      ),
   ],
 });
 
