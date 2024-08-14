@@ -13,7 +13,9 @@ export default function useRefreshers() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const refresher = useRecoilValue(fos.refresher);
-  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const shouldRenderImaVidLooker = useRecoilValue(
+    fos.shouldRenderImaVidLooker(false)
+  );
   const view = fos.filterView(useRecoilValue(fos.view));
 
   // only reload, attempt to return to the last grid location

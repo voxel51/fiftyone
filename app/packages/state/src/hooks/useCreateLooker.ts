@@ -57,7 +57,7 @@ export default <T extends AbstractLooker<BaseState>>(
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(
-    dynamicGroupAtoms.shouldRenderImaVidLooker
+    dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
   // callback to get the latest promise inside another recoil callback
