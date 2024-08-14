@@ -15,14 +15,16 @@ export const SelectSampleCheckbox = ({
   const selected = useRecoilValue(fos.selectedSamples).has(sampleId);
   const select = fos.useSelectSample();
 
+  const isVideoDataset = useRecoilValue(fos.isVideoDataset);
+
   // select sample on space key press
   const spaceKeyHandler = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === " ") {
+      if (e.key === " " && !isVideoDataset) {
         select(sampleId);
       }
     },
-    [sampleId, select]
+    [sampleId, select, isVideoDataset]
   );
 
   fos.useEventHandler(document, "keyup", spaceKeyHandler);
