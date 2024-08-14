@@ -50,8 +50,8 @@ export default function useRefreshers() {
 
   useEffect(
     () =>
-      subscribe(({ event }, { reset }) => {
-        if (event === "modal") return;
+      subscribe(({ event }, { reset }, previous) => {
+        if (event === "modal" || previous?.event === "modal") return;
 
         // if not a modal page change, reset the grid location
         reset(gridPage);
