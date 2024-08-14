@@ -207,7 +207,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -240,7 +240,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -273,7 +273,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -306,7 +306,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -338,7 +338,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -371,7 +371,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -404,7 +404,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
@@ -437,7 +437,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "sam2"],
+                "packages": ["torch", "torchvision"],
                 "cpu": {
                     "support": true
                 },
