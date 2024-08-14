@@ -399,6 +399,8 @@ def _to_sam_box(box, w, h):
 
 def _mask_to_box(mask):
     pos_indices = np.where(mask)
+    if all(arr.size == 0 for arr in pos_indices):
+        return None
     x1 = np.min(pos_indices[1])
     x2 = np.max(pos_indices[1])
     y1 = np.min(pos_indices[0])
