@@ -7,13 +7,15 @@ import { ModalGroupActionsPom } from "./group-actions";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
+import { ModalPanelPom } from "../panels/modal-panel";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
   readonly looker: Locator;
   readonly modalContainer: Locator;
-
   readonly assert: ModalAsserter;
+
+  readonly panel: ModalPanelPom;
   readonly group: ModalGroupActionsPom;
   readonly locator: Locator;
   readonly sidebar: ModalSidebarPom;
@@ -34,6 +36,7 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.group = new ModalGroupActionsPom(page, this);
+    this.panel = new ModalPanelPom(page, this);
     this.tagger = new ModalTaggerPom(page, this);
     this.sidebar = new ModalSidebarPom(page);
     this.url = new UrlPom(page, eventUtils);

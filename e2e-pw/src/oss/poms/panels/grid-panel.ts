@@ -1,20 +1,20 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 
-export type PanelName =
+export type GridPanelName =
   | "Samples"
   | "Histograms"
   | "Embeddings"
   | "OperatorIO"
   | string;
-export class PanelPom {
+export class GridPanelPom {
   readonly page: Page;
   readonly locator: Locator;
-  readonly assert: PanelAsserter;
+  readonly assert: GridPanelAsserter;
   readonly selectionCount: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.assert = new PanelAsserter(this);
+    this.assert = new GridPanelAsserter(this);
 
     this.locator = this.page.getByTestId("panel-container");
     this.selectionCount = this.page.getByTestId("selection-count-container");
@@ -32,19 +32,19 @@ export class PanelPom {
     return this.locator.getByTitle("Close");
   }
 
-  getPanelOption(name: PanelName) {
+  getPanelOption(name: GridPanelName) {
     return this.locator.getByTestId(`new-panel-option-${name}`);
   }
 
-  getTab(name: PanelName) {
+  getTab(name: GridPanelName) {
     return this.locator.getByTestId(`panel-tab-${name.toLocaleLowerCase()}`);
   }
 
-  getContent(name: PanelName) {
+  getContent(name: GridPanelName) {
     return this.page.getByTestId(`panel-content-${name}`);
   }
 
-  async open(panelName: PanelName) {
+  async open(panelName: GridPanelName) {
     await this.newPanelBtn.click();
     await this.getPanelOption(panelName).click();
   }
@@ -53,13 +53,13 @@ export class PanelPom {
     await this.closePanelBtn.click();
   }
 
-  async bringPanelToForeground(panelName: PanelName) {
+  async bringPanelToForeground(panelName: GridPanelName) {
     await this.getTab(panelName).click();
   }
 }
 
-class PanelAsserter {
-  constructor(private readonly panelPom: PanelPom) {}
+class GridPanelAsserter {
+  constructor(private readonly panelPom: GridPanelPom) {}
 
   async hasError() {
     await expect(this.panelPom.errorBoundary).toBeVisible();

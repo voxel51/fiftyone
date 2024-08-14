@@ -1,11 +1,11 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { PanelPom } from "src/oss/poms/panels/panel";
+import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix(`python-panels`);
-const test = base.extend<{ panel: PanelPom }>({
+const datasetName = getUniqueDatasetNameWithPrefix(`python-panels-grid`);
+const test = base.extend<{ panel: GridPanelPom }>({
   panel: async ({ page }, use) => {
-    await use(new PanelPom(page));
+    await use(new GridPanelPom(page));
   },
 });
 
