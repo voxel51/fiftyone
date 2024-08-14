@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.0.0
 --------------------
-*Released August 13, 2024*
+*Released August 19, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.0 <release-notes-v0.25.0>`, plus:
 
@@ -56,7 +56,7 @@ SDK
 
 FiftyOne 0.25.0
 ---------------
-*Released August 13, 2024*
+*Released August 19, 2024*
 
 What's New
 
@@ -133,6 +133,9 @@ Core
 - Fixed a bug that could cause side effects when creating clip views defined
   by expressions
   `#4492 <https://github.com/voxel51/fiftyone/pull/4492>`_
+- Fixed a concatenation bug when downloading videos from
+  :ref:`CVAT <cvat-integration>`
+  `#4674 <https://github.com/voxel51/fiftyone/pull/4674>`_
 
 Plugins
 
