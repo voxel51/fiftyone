@@ -1,12 +1,12 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
-import { PanelPom } from "src/oss/poms/panels/panel";
+import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`histograms`);
-const test = base.extend<{ histogram: HistogramPom; panel: PanelPom }>({
+const test = base.extend<{ histogram: HistogramPom; panel: GridPanelPom }>({
   panel: async ({ page }, use) => {
-    await use(new PanelPom(page));
+    await use(new GridPanelPom(page));
   },
   histogram: async ({ page, eventUtils }, use) => {
     await use(new HistogramPom(page, eventUtils));
