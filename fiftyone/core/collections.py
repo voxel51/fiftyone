@@ -6834,7 +6834,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Take(size, seed=seed))
 
     @view_stage
-    def to_patches(self, field, **kwargs):
+    def to_patches(
+        self, field, other_fields=None, keep_label_lists=False, **kwargs
+    ):
         """Creates a view that contains one sample per object patch in the
         specified field of the collection.
 
@@ -6875,14 +6877,24 @@ class SampleCollection(object):
             keep_label_lists (False): whether to store the patches in label
                 list fields of the same type as the input collection rather
                 than using their single label variants
+            **kwargs: other optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_patches_dataset` specifying
+                how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
         """
-        return self._add_view_stage(fos.ToPatches(field, **kwargs))
+        return self._add_view_stage(
+            fos.ToPatches(
+                field,
+                other_fields=other_fields,
+                keep_label_lists=keep_label_lists,
+                **kwargs,
+            )
+        )
 
     @view_stage
-    def to_evaluation_patches(self, eval_key, **kwargs):
+    def to_evaluation_patches(self, eval_key, other_fields=None, **kwargs):
         """Creates a view based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the collection, respectively.
@@ -6946,16 +6958,29 @@ class SampleCollection(object):
                 -   a field or list of fields to include
                 -   ``True`` to include all other fields
                 -   ``None``/``False`` to include no other fields
+            **kwargs: other optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+                specifying how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
         return self._add_view_stage(
-            fos.ToEvaluationPatches(eval_key, **kwargs)
+            fos.ToEvaluationPatches(
+                eval_key, other_fields=other_fields, **kwargs
+            )
         )
 
     @view_stage
-    def to_clips(self, field_or_expr, **kwargs):
+    def to_clips(
+        self,
+        field_or_expr,
+        other_fields=None,
+        tol=0,
+        min_len=0,
+        trajectories=False,
+        **kwargs,
+    ):
         """Creates a view that contains one sample per clip defined by the
         given field or expression in the video collection.
 
@@ -7042,14 +7067,28 @@ class SampleCollection(object):
             trajectories (False): whether to create clips for each unique
                 object trajectory defined by their ``(label, index)``. Only
                 applicable when ``field_or_expr`` is a frame-level field
+            **kwargs: other optional keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.clips.ClipsView`
         """
-        return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
+        return self._add_view_stage(
+            fos.ToClips(
+                field_or_expr,
+                other_fields=other_fields,
+                tol=tol,
+                min_len=min_len,
+                trajectories=trajectories,
+                **kwargs,
+            )
+        )
 
     @view_stage
-    def to_trajectories(self, field, **kwargs):
+    def to_trajectories(
+        self, field, other_fields=None, tol=0, min_len=0, **kwargs
+    ):
         """Creates a view that contains one clip for each unique object
         trajectory defined by their ``(label, index)`` in a frame-level field
         of a video collection.
@@ -7090,6 +7129,15 @@ class SampleCollection(object):
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`
+            other_fields (None): controls whether sample fields other than the
+                default sample fields are included. Can be any of the
+                following:
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            tol (0): the maximum number of false frames that can be overlooked
+                when generating clips.
+            min_len (0): the minimum allowable length of a clip, in frames.
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
                 to perform the conversion
@@ -7100,7 +7148,23 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
     @view_stage
-    def to_frames(self, **kwargs):
+    def to_frames(
+        self,
+        sample_frames=False,
+        fps=None,
+        max_fps=None,
+        size=None,
+        min_size=None,
+        max_size=None,
+        sparse=False,
+        output_dir=None,
+        rel_dir=None,
+        frames_patt=None,
+        force_sample=False,
+        skip_failures=True,
+        verbose=False,
+        **kwargs,
+    ):
         """Creates a view that contains one sample per frame in the video
         collection.
 
@@ -7253,11 +7317,31 @@ class SampleCollection(object):
                 raising an error if a video cannot be sampled
             verbose (False): whether to log information about the frames that
                 will be sampled, if any
+            **kwargs: other optional keyword arguments for
+                :meth:`fiftyone.core.video.make_frames_dataset` specifying how
+                to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`
         """
-        return self._add_view_stage(fos.ToFrames(**kwargs))
+        return self._add_view_stage(
+            fos.ToFrames(
+                sample_frames=sample_frames,
+                fps=fps,
+                max_fps=max_fps,
+                size=size,
+                min_size=min_size,
+                max_size=max_size,
+                sparse=sparse,
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                frames_patt=frames_patt,
+                force_sample=force_sample,
+                skip_failures=skip_failures,
+                verbose=verbose,
+                **kwargs,
+            )
+        )
 
     @classmethod
     def list_aggregations(cls):
