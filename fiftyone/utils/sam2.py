@@ -236,11 +236,10 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         # Only retain detections on the first frame of each video
         for sample in dataset:
-            for frame_idx in sample.frames:
-                frame = sample.frames[frame_idx]
+            for frame_idx, frame in sample.frames.items():
                 if frame_idx >= 2:
                     frame.detections = None
-                sample.save()
+            sample.save()
 
         model = foz.load_zoo_model("segment-anything-2-hiera-tiny-video-torch")
 
