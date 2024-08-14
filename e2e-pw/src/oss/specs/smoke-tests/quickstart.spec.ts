@@ -44,7 +44,7 @@ test.describe("quickstart", () => {
     );
     await sidebar.clickFieldDropdown("id");
     await expanded;
-    await sidebar.waitForElement("categorical-filter-id");
+    await sidebar.asserter.assertFilterIsVisibile("id", "categorical");
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
@@ -57,7 +57,7 @@ test.describe("quickstart", () => {
     await modal.assert.isClosed();
 
     // id filter should still be open
-    await sidebar.waitForElement("categorical-filter-id");
+    await sidebar.asserter.assertFilterIsVisibile("id", "categorical");
   });
 
   test("entry counts text when toPatches then groupedBy", async ({ grid }) => {
