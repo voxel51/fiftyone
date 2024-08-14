@@ -31,7 +31,7 @@ export const NonNestedDynamicGroup = () => {
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
-  const viewMode = useRecoilValue(fos.dynamicGroupsViewMode);
+  const viewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
