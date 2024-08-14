@@ -73,7 +73,7 @@ function useStateInitializer(props: ViewPropsType) {
   const unboundState = useUnboundState({ computedSchema, props });
 
   useEffect(() => {
-    const { computedSchema, props } = unboundState || {};
+    const { computedSchema, props } = unboundState;
     const { data, path, root_id } = props || {};
     if (
       !isCompositeView(computedSchema) &&
@@ -88,7 +88,7 @@ function useStateInitializer(props: ViewPropsType) {
 
   useEffect(() => {
     if (basicData) {
-      const { computedSchema, props } = unboundState || {};
+      const { computedSchema, props } = unboundState;
       const { data, path } = props || {};
       if (
         !isEqual(data, basicData) &&
