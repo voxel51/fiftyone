@@ -30,6 +30,7 @@ samg = fou.lazy_import("sam2.automatic_mask_generator")
 
 logger = logging.getLogger(__name__)
 
+
 class SegmentAnything2ImageModelConfig(
     fout.TorchImageModelConfig, fozm.HasZooModel
 ):
@@ -56,6 +57,7 @@ class SegmentAnything2ImageModelConfig(
         if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
             raise ValueError("mask_index must be 0, 1, or 2")
 
+
 class SegmentAnything2VideoModelConfig(
     fout.TorchImageModelConfig, fozm.HasZooModel
 ):
@@ -68,6 +70,7 @@ class SegmentAnything2VideoModelConfig(
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
+
 
 class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """Wrapper for running `Segment Anything 2 <https://ai.meta.com/sam2/>`_
@@ -153,7 +156,9 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     def _load_model(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         model = entrypoint(
-            config.entrypoint_args["model_cfg"], ckpt_path=config.model_path
+            config.entrypoint_args["model_cfg"],
+            ckpt_path=config.model_path,
+            device=self._device,
         )
 
         model = model.to(self._device)
@@ -176,7 +181,7 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         self._curr_prompt_type = prompt_type
         self._curr_prompts = prompts
         self._curr_classes = classes
-        
+
         return self._predict_all(imgs)
 
     def _get_field(self):
@@ -247,7 +252,9 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             "points": self._forward_pass_points,
             None: self._forward_pass_auto,
         }
-        return forward_methods.get(self._curr_prompt_type, self._forward_pass_auto)(imgs)
+        return forward_methods.get(
+            self._curr_prompt_type, self._forward_pass_auto
+        )(imgs)
 
     def _forward_pass_boxes(self, imgs):
         sam2_predictor = smip.SAM2ImagePredictor(self._model)
@@ -290,7 +297,11 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                 multimask_output=False,
             )
             outputs.append(
-                {"boxes": input_boxes, "labels": labels, "masks": torch.tensor(masks, device=sam2_predictor.device)}
+                {
+                    "boxes": input_boxes,
+                    "labels": labels,
+                    "masks": torch.tensor(masks, device=sam2_predictor.device),
+                }
             )
 
         return outputs
@@ -378,6 +389,7 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
         return outputs
 
+
 class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
     """Wrapper for running `Segment Anything 2 <https://ai.meta.com/sam2/>`_
     inference on videos.
@@ -414,6 +426,12 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
     def __init__(self, config):
         self._fields = {}
         self.config = config
+        device = self.config.device
+        if device is None:
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        # Device details
+        self._device = torch.device(device)
 
         self._download_model(config)
         try:
@@ -430,7 +448,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         self._curr_classes = None
         self._curr_frame_width = None
         self._curr_frame_height = None
-        
 
     @property
     def media_type(self):
@@ -443,18 +460,21 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         with self.ctx:
             model = entrypoint(
-                config.entrypoint_args["model_cfg"], ckpt_path=config.model_path
+                config.entrypoint_args["model_cfg"],
+                ckpt_path=config.model_path,
+                device=self._device,
             )
         return model
 
     def predict(self, video_reader, sample):
         field_name = self._get_field()
-        self._curr_frame_width, self._curr_frame_height = (
-            video_reader.frame_size
-        )
+        (
+            self._curr_frame_width,
+            self._curr_frame_height,
+        ) = video_reader.frame_size
         self._curr_prompts = self._get_prompts(sample, field_name)
         self._curr_prompt_type = self._get_prompt_type(sample, field_name)
-        
+
         return self._forward_pass(video_reader, sample)
 
     def _get_field(self):
@@ -542,13 +562,13 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 box = _to_sam_box(
                     detection.bounding_box,
                     self._curr_frame_width,
-                    self._curr_frame_height
+                    self._curr_frame_height,
                 )
                 _, _, _ = self.model.add_new_points_or_box(
                     inference_state=inference_state,
                     frame_idx=frame_idx,
                     obj_id=ann_obj_id,
-                    box=box
+                    box=box,
                 )
 
         sample_detections = {}
@@ -559,7 +579,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         ) in self.model.propagate_in_video(inference_state):
             detections = []
             for i, out_obj_id in enumerate(out_obj_ids):
-                mask = np.squeeze((out_mask_logits[i] > 0.0).cpu().numpy(), axis=0)
+                mask = np.squeeze(
+                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
+                )
                 box = _mask_to_box(mask)
                 if box is None:
                     continue
@@ -580,10 +602,12 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                         label=label,
                         bounding_box=bounding_box,
                         mask=mask,
-                        index=out_obj_id
+                        index=out_obj_id,
                     )
                 )
-            sample_detections[int(out_frame_idx) + 1] = fol.Detections(detections=detections)
+            sample_detections[int(out_frame_idx) + 1] = fol.Detections(
+                detections=detections
+            )
         return sample_detections
 
     def _forward_pass_points(self, video_reader, sample):
@@ -615,7 +639,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     keypoint.points,
                     self._curr_frame_width,
                     self._curr_frame_height,
-                    keypoint
+                    keypoint,
                 )
                 _, _, _ = self.model.add_new_points_or_box(
                     inference_state=inference_state,
@@ -633,7 +657,9 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         ) in self.model.propagate_in_video(inference_state):
             detections = []
             for i, out_obj_id in enumerate(out_obj_ids):
-                mask = np.squeeze((out_mask_logits[i] > 0.0).cpu().numpy(), axis=0)
+                mask = np.squeeze(
+                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
+                )
                 box = _mask_to_box(mask)
                 if box is None:
                     continue
@@ -654,14 +680,18 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                         label=label,
                         bounding_box=bounding_box,
                         mask=mask,
-                        index=out_obj_id
+                        index=out_obj_id,
                     )
                 )
-            sample_detections[int(out_frame_idx) + 1] = fol.Detections(detections=detections)
+            sample_detections[int(out_frame_idx) + 1] = fol.Detections(
+                detections=detections
+            )
         return sample_detections
+
 
 def _to_sam_input(tensor):
     return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
+
 
 def _to_sam_points(points, w, h, keypoint):
     points = np.array(points)
@@ -696,45 +726,48 @@ def _mask_to_box(mask):
     y2 = np.max(pos_indices[0])
     return [x1, y1, x2, y2]
 
+
 def load_fiftyone_video_frames(
-        video_path,
-        image_size,
-        offload_video_to_cpu,
-        img_mean=(0.485, 0.456, 0.406),
-        img_std=(0.229, 0.224, 0.225),
-        async_loading_frames=False,
-    ):
-        sample, video_reader = video_path
-        img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
-        img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
+    video_path,
+    image_size,
+    offload_video_to_cpu,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    async_loading_frames=False,
+    compute_device=torch.device("cuda"),
+):
+    sample, video_reader = video_path
+    img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
+    img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
 
-        num_frames = len(sample.frames)
-        try:
-            images = torch.zeros(
-                num_frames, 3, image_size, image_size, dtype=torch.float32
-            )
-        except Exception as e:
-            raise(e)
-        for frame_number in range(num_frames):
-            current_frame = video_reader.read()
-            resized_frame = (
-                cv2.resize(current_frame, (image_size, image_size)) / 255.0
-            )
-            img = torch.from_numpy(resized_frame).permute(2, 0, 1)
-            images[frame_number] = img
-
-        video_width, video_height = (
-            current_frame.shape[1],
-            current_frame.shape[0],
+    num_frames = len(sample.frames)
+    try:
+        images = torch.zeros(
+            num_frames, 3, image_size, image_size, dtype=torch.float32
         )
-        if not offload_video_to_cpu:
-            images = images.cuda()
-            img_mean = img_mean.cuda()
-            img_std = img_std.cuda()
+    except Exception as e:
+        raise (e)
+    for frame_number in range(num_frames):
+        current_frame = video_reader.read()
+        resized_frame = (
+            cv2.resize(current_frame, (image_size, image_size)) / 255.0
+        )
+        img = torch.from_numpy(resized_frame).permute(2, 0, 1)
+        images[frame_number] = img
 
-        images -= img_mean
-        images /= img_std
-        return images, video_height, video_width
+    video_width, video_height = (
+        current_frame.shape[1],
+        current_frame.shape[0],
+    )
+    if not offload_video_to_cpu:
+        images = images.to(compute_device)
+        img_mean = img_mean.to(compute_device)
+        img_std = img_std.to(compute_device)
+
+    images -= img_mean
+    images /= img_std
+    return images, video_height, video_width
+
 
 def _load_video_frames_monkey_patch():
     entrypoint_module = smutil.load_video_frames
