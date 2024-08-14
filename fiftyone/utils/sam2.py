@@ -16,6 +16,7 @@ import logging
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
+import fiftyone.utils.sam as fosam
 import fiftyone.zoo.models as fozm
 import fiftyone.core.models as fom
 
@@ -72,7 +73,7 @@ class SegmentAnything2VideoModelConfig(
         super().__init__(d)
 
 
-class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
+class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
     """Wrapper for running `Segment Anything 2 <https://ai.meta.com/sam2/>`_
     inference on images.
 
@@ -143,15 +144,7 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        fout.TorchSamplesMixin.__init__(self)
-        fout.TorchImageModel.__init__(self, config)
-
-        self._curr_prompt_type = None
-        self._curr_prompts = None
-        self._curr_classes = None
-
-    def _download_model(self, config):
-        config.download_model_if_necessary()
+        super().__init__(config=config)
 
     def _load_model(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
@@ -169,95 +162,11 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
         return model
 
-    def predict_all(self, imgs, samples=None):
-        field_name = self._get_field()
-        if field_name is not None and samples is not None:
-            prompt_type, prompts, classes = self._parse_samples(
-                samples, field_name
-            )
-        else:
-            prompt_type, prompts, classes = None, None, None
-
-        self._curr_prompt_type = prompt_type
-        self._curr_prompts = prompts
-        self._curr_classes = classes
-
-        return self._predict_all(imgs)
-
-    def _get_field(self):
-        if "prompt_field" in self.needs_fields:
-            prompt_field = self.needs_fields["prompt_field"]
-        else:
-            prompt_field = next(iter(self.needs_fields.values()), None)
-
-        if prompt_field is not None and prompt_field.startswith("frames."):
-            prompt_field = prompt_field[len("frames.") :]
-
-        return prompt_field
-
-    def _parse_samples(self, samples, field_name):
-        prompt_type = self._get_prompt_type(samples, field_name)
-        prompts = self._get_prompts(samples, field_name)
-        classes = self._get_classes(samples, field_name)
-        return prompt_type, prompts, classes
-
-    def _get_prompt_type(self, samples, field_name):
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if value is None:
-                continue
-
-            if isinstance(value, fol.Detections):
-                return "boxes"
-
-            if isinstance(value, fol.Keypoints):
-                return "points"
-
-            raise ValueError(
-                "Unsupported prompt type %s. The supported field types are %s"
-                % (type(value), (fol.Detections, fol.Keypoints))
-            )
-
-        return None
-
-    def _get_prompts(self, samples, field_name):
-        prompts = []
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if value is not None:
-                prompts.append(value)
-            else:
-                raise ValueError(
-                    "Sample %s is missing a prompt in field '%s'"
-                    % (sample.id, field_name)
-                )
-
-        return prompts
-
-    def _get_classes(self, samples, field_name):
-        classes = set()
-        for sample in samples:
-            value = sample.get_field(field_name)
-            if isinstance(value, fol.Detections):
-                classes.update(det.label for det in value.detections)
-
-            if isinstance(value, fol.Keypoints):
-                classes.update(kp.label for kp in value.keypoints)
-
-        return sorted(classes)
-
-    def _forward_pass(self, imgs):
-        forward_methods = {
-            "boxes": self._forward_pass_boxes,
-            "points": self._forward_pass_points,
-            None: self._forward_pass_auto,
-        }
-        return forward_methods.get(
-            self._curr_prompt_type, self._forward_pass_auto
-        )(imgs)
+    def _load_predictor(self):
+        return smip.SAM2ImagePredictor(self._model)
 
     def _forward_pass_boxes(self, imgs):
-        sam2_predictor = smip.SAM2ImagePredictor(self._model)
+        sam2_predictor = self._load_predictor()
         self._output_processor = fout.InstanceSegmenterOutputProcessor(
             self._curr_classes
         )
@@ -274,12 +183,14 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                     }
                 )
                 continue
-            inp = _to_sam_input(img)
+            inp = fosam._to_sam_input(img)
             sam2_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
 
             boxes = [d.bounding_box for d in detections.detections]
-            sam_boxes = np.array([_to_sam_box(box, w, h) for box in boxes])
+            sam_boxes = np.array(
+                [fosam._to_sam_box(box, w, h) for box in boxes]
+            )
             input_boxes = torch.tensor(sam_boxes, device=sam2_predictor.device)
 
             labels = torch.tensor(
@@ -306,88 +217,9 @@ class SegmentAnything2ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
         return outputs
 
-    def _forward_pass_points(self, imgs):
-        sam2_predictor = smip.SAM2ImagePredictor(self._model)
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self._curr_classes
-        )
-
-        outputs = []
-        for img, keypoints in zip(imgs, self._curr_prompts):
-            inp = _to_sam_input(img)
-            sam2_predictor.set_image(inp)
-            h, w = img.size(1), img.size(2)
-
-            boxes, labels, scores, masks = [], [], [], []
-
-            ## If no keypoints, return empty tensors instead of running SAM
-            if keypoints is None or len(keypoints.keypoints) == 0:
-                outputs.append(
-                    {
-                        "boxes": torch.tensor([[]]),
-                        "labels": torch.empty([0, 4]),
-                        "masks": torch.empty([0, 1, h, w]),
-                    }
-                )
-                continue
-
-            for kp in keypoints.keypoints:
-                sam_points, sam_labels = _to_sam_points(kp.points, w, h, kp)
-
-                multi_mask, mask_scores, _ = sam2_predictor.predict(
-                    point_coords=sam_points,
-                    point_labels=sam_labels,
-                    multimask_output=True,
-                )
-
-                mask_index = self.config.points_mask_index
-                if mask_index is None:
-                    mask_index = np.argmax(mask_scores)
-
-                mask = multi_mask[mask_index].astype(int)
-                if mask.any():
-                    boxes.append(_mask_to_box(mask))
-                    labels.append(self._curr_classes.index(kp.label))
-                    scores.append(min(1.0, np.max(mask_scores)))
-                    masks.append(mask)
-
-            outputs.append(
-                {
-                    "boxes": torch.tensor(boxes, device=sam2_predictor.device),
-                    "labels": torch.tensor(
-                        labels, device=sam2_predictor.device
-                    ),
-                    "scores": torch.tensor(
-                        scores, device=sam2_predictor.device
-                    ),
-                    "masks": torch.tensor(
-                        np.array(masks), device=sam2_predictor.device
-                    ).unsqueeze(1),
-                }
-            )
-
-        return outputs
-
-    def _forward_pass_auto(self, imgs):
+    def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
-        mask_generator = samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
-        self._output_processor = None
-
-        outputs = []
-        for img in imgs:
-            inp = _to_sam_input(img)
-            detections = []
-            for data in mask_generator.generate(inp):
-                detection = fol.Detection.from_mask(
-                    mask=data["segmentation"],
-                    score=data["predicted_iou"],
-                    stability=data["stability_score"],
-                )
-                detections.append(detection)
-            detections = fol.Detections(detections=detections)
-            outputs.append(detections)
-
-        return outputs
+        return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
 
 
 class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
@@ -559,7 +391,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     ann_obj_id = current_obj_idx
                     current_obj_idx += 1
                 classes_obj_id_map[ann_obj_id] = detection.label
-                box = _to_sam_box(
+                box = fosam._to_sam_box(
                     detection.bounding_box,
                     self._curr_frame_width,
                     self._curr_frame_height,
@@ -582,7 +414,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 mask = np.squeeze(
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
-                box = _mask_to_box(mask)
+                box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
                 label = classes_obj_id_map[out_obj_id]
@@ -635,7 +467,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     ann_obj_id = current_obj_idx
                     current_obj_idx += 1
                 classes_obj_id_map[ann_obj_id] = keypoint.label
-                points, labels = _to_sam_points(
+                points, labels = fosam._to_sam_points(
                     keypoint.points,
                     self._curr_frame_width,
                     self._curr_frame_height,
@@ -660,7 +492,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 mask = np.squeeze(
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
-                box = _mask_to_box(mask)
+                box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
                 label = classes_obj_id_map[out_obj_id]
@@ -687,44 +519,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 detections=detections
             )
         return sample_detections
-
-
-def _to_sam_input(tensor):
-    return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
-
-
-def _to_sam_points(points, w, h, keypoint):
-    points = np.array(points)
-    valid_rows = ~np.isnan(points).any(axis=1)
-    scaled_points = np.array(points[valid_rows]) * np.array([w, h])
-    labels = (
-        np.array(keypoint.sam2_labels)[valid_rows]
-        if "sam2_labels" in keypoint
-        else np.ones(len(scaled_points))
-    )
-    return scaled_points.astype(np.float32), labels.astype(np.uint32)
-
-
-def _to_sam_box(box, w, h):
-    new_box = np.copy(np.array(box))
-    new_box[0] *= w
-    new_box[2] *= w
-    new_box[1] *= h
-    new_box[3] *= h
-    new_box[2] += new_box[0]
-    new_box[3] += new_box[1]
-    return np.round(new_box).astype(int)
-
-
-def _mask_to_box(mask):
-    pos_indices = np.where(mask)
-    if all(arr.size == 0 for arr in pos_indices):
-        return None
-    x1 = np.min(pos_indices[1])
-    x2 = np.max(pos_indices[1])
-    y1 = np.min(pos_indices[0])
-    y2 = np.max(pos_indices[0])
-    return [x1, y1, x2, y2]
 
 
 def load_fiftyone_video_frames(
