@@ -1,9 +1,7 @@
-import { panelsStateUpdatesCountAtom } from "@fiftyone/operators/src/state";
 import { SpacesRoot, usePanelsState, useSpaces } from "@fiftyone/spaces";
 import { constants, useSessionSpaces } from "@fiftyone/state";
 import { isEqual, size } from "lodash";
 import React, { useEffect, useRef } from "react";
-import { useSetRecoilState } from "recoil";
 
 const { FIFTYONE_SPACE_ID } = constants;
 
@@ -15,9 +13,6 @@ function MainSpace() {
     sessionSpaces
   );
   const [panelsState, setPanelsState] = usePanelsState();
-  const setPanelStateUpdatesCount = useSetRecoilState(
-    panelsStateUpdatesCountAtom
-  );
   const oldSpaces = useRef(spaces);
   const oldPanelsState = useRef(panelsState);
   const isMounted = useRef(false);
@@ -32,7 +27,6 @@ function MainSpace() {
 
   useEffect(() => {
     if (size(sessionPanelsState) && !isEqual(sessionPanelsState, panelsState)) {
-      setPanelStateUpdatesCount((count) => count + 1);
       setPanelsState(sessionPanelsState);
     }
   }, [sessionPanelsState]);
