@@ -1,42 +1,42 @@
 import { Loading } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
-  Writer,
   setDataset,
-  type setDatasetMutation,
   setGroupSlice,
-  type setGroupSliceMutation,
   setSample,
-  type setSampleMutation,
   setSpaces,
-  type setSpacesMutation,
   setView,
+  Writer,
+  type setDatasetMutation,
+  type setGroupSliceMutation,
+  type setSampleMutation,
+  type setSpacesMutation,
   type setViewMutation,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   SESSION_DEFAULT,
-  type Session,
   stateSubscription,
+  type Session,
 } from "@fiftyone/state";
 import type { Action } from "history";
 import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
 import {
+  commitMutation,
   type Environment,
   type OperationType,
-  commitMutation,
 } from "relay-runtime";
 import Setup from "./components/Setup";
-import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import type {
   DatasetPageQuery,
   DatasetPageQuery$data,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { type Entry, useRouterContext } from "./routing";
-import useEventSource from "./useEventSource";
+import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import { useRouterContext, type Entry } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
+import useEventSource from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
@@ -140,7 +140,6 @@ const dispatchSideEffect = ({
   session.selectedLabels = [];
   session.selectedSamples = new Set();
 
-
   const currentDataset: string | undefined =
     // @ts-ignore
     currentEntry.preloadedQuery.variables.name;
@@ -158,7 +157,6 @@ const dispatchSideEffect = ({
     });
     return;
   }
-
 
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
