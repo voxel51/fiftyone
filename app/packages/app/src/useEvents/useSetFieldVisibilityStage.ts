@@ -31,6 +31,7 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
           }),
           {
             ...router.get().state,
+            event: "fieldVisibility",
             fieldVisibility: stage,
           }
         );
