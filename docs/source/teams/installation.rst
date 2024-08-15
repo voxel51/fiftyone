@@ -321,13 +321,13 @@ here is an example configuration:
 .. code-block:: json
 
     [
-    {
-        "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
-        "method": ["GET", "HEAD"],
-        "responseHeader": ["*"],
-        "maxAgeSeconds": 3600
-    }
-]
+        {
+            "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
+            "method": ["GET", "HEAD"],
+            "responseHeader": ["*"],
+            "maxAgeSeconds": 3600
+        }
+    ]
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
