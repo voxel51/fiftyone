@@ -56,6 +56,7 @@ class PanelConfig(OperatorConfig):
             "light_icon": self.light_icon,
             "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
+            "on_startup": self.on_startup,
         }
 
 
