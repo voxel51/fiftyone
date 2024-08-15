@@ -68,6 +68,9 @@ What's New
   `Dashboard panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/dashboard>`_
   that allows users to build custom no-code dashboards that display statistics
   of interest about the current dataset (and beyond)
+- Added `Segment Anything 2 <https://ai.meta.com/sam2>`_ to the
+  :ref:`model zoo <segment-anything-2-hiera-small-video-torch>`!
+  `#4671 <https://github.com/voxel51/fiftyone/pull/4671>`_
 - Added an :ref:`Elasticsearch integration <elasticsearch-integration>` for
   native text and image searches on FiftyOne datasets!
 - Added an :ref:`image representativeness <brain-image-representativeness>`
