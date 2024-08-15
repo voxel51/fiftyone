@@ -262,6 +262,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
     def __init__(self, config):
         dir(sam2)  # ensure package is installed
+        self._fields = {}
 
         self.config = config
         device = self.config.device
