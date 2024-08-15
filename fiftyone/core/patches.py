@@ -38,6 +38,14 @@ class _PatchView(fos.SampleView):
     def _frame_id(self):
         return ObjectId(self._doc.frame_id)
 
+    @property
+    def _readonly(self):
+        return self._collection._readonly
+
+    @property
+    def _permission(self):
+        return self._collection._permission
+
     def _save(self, deferred=False):
         sample_ops, frame_ops = super()._save(deferred=deferred)
 
@@ -128,6 +136,14 @@ class _PatchesView(fov.DatasetView):
     @property
     def _dataset(self):
         return self._patches_dataset
+
+    @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
 
     @property
     def _root_dataset(self):

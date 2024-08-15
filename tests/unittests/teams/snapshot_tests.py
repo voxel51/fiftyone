@@ -463,6 +463,7 @@ class DatasetSnapshotTests(unittest.TestCase):
 
         # FramesView
         frames_view = view.first().frames
+        self.assertTrue(frames_view._readonly)
         self.assertRaises(ReadOnlyObjectException, frames_view.save)
         self.assertRaises(
             ReadOnlyObjectException, frames_view.add_frame, 2, frame
@@ -492,6 +493,7 @@ class DatasetSnapshotTests(unittest.TestCase):
 
         # Clips
         clips = snapshot.to_clips("frames.objects")
+        self.assertTrue(clips._readonly)
         clips_mutators = [
             ("set_values", 1),
             ("set_label_values", 1),
@@ -503,6 +505,7 @@ class DatasetSnapshotTests(unittest.TestCase):
 
         # Trajectories
         trajs = snapshot.to_trajectories("frames.objects")
+        self.assertTrue(trajs._readonly)
         trajs_mutators = [
             ("set_values", 1),
             ("set_label_values", 1),
@@ -511,6 +514,37 @@ class DatasetSnapshotTests(unittest.TestCase):
             ("keep_fields", 0),
         ]
         self._assert_funcs_readonly(trajs_mutators, trajs)
+
+        # To Frames
+        to_frames = snapshot.to_frames()
+        self.assertTrue(to_frames._readonly)
+        to_frames_mutators = [
+            ("set_values", 1),
+            ("set_label_values", 1),
+            ("save", 0),
+            ("keep", 0),
+            ("keep_fields", 0),
+        ]
+        self._assert_funcs_readonly(to_frames_mutators, to_frames)
+
+        # Crazy view
+        crazy_patches = (
+            snapshot.limit(51)
+            .to_clips("frames.objects")
+            .limit(51)
+            .to_frames()
+            .limit(10)
+            .to_patches("objects")
+        )
+        self.assertTrue(crazy_patches._readonly)
+        patches_mutators = [
+            ("set_values", 1),
+            ("set_label_values", 1),
+            ("save", 0),
+            ("keep", 0),
+            ("keep_fields", 0),
+        ]
+        self._assert_funcs_readonly(patches_mutators, crazy_patches)
 
     def test_snapshot_patches_is_readonly(self):
         fo.delete_non_persistent_datasets()
@@ -532,6 +566,7 @@ class DatasetSnapshotTests(unittest.TestCase):
 
         # Patches
         patches = snapshot.to_patches("detections")
+        self.assertTrue(patches._readonly)
         patches_mutators = [
             ("set_values", 1),
             ("set_label_values", 1),

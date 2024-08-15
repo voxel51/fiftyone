@@ -409,9 +409,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._update_last_loaded_at()
 
     def _load_dataset_docs(self, name, _virtual):
-        self.__permission = (
-            dataset_permissions.get_dataset_permissions_for_current_user(name)
-        )
+        if not _virtual:
+            self.__permission = (
+                dataset_permissions.get_dataset_permissions_for_current_user(
+                    name
+                )
+            )
         return _load_dataset(self, name, virtual=_virtual)
 
     def _create_dataset_docs(self, name, persistent, **kwargs):

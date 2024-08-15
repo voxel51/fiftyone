@@ -9,6 +9,7 @@ import enum
 import inspect
 from functools import wraps
 
+import fiftyone.core.odm as foo
 from fiftyone.internal import api_requests, context_vars as fo_context_vars
 from fiftyone.internal.util import (
     access_nested_element,
@@ -38,7 +39,10 @@ class DatasetPermissionException(PermissionError):
 
     def __init__(self, class_name, dataset_permission):
         if dataset_permission is None:
-            message = f"User does not have access to this {class_name} object."
+            message = (
+                f"User does not have access to this {class_name} object, "
+                "or it doesn't exist."
+            )
         else:
             message = (
                 f"User does not have {dataset_permission.name} permission "
@@ -67,8 +71,18 @@ def get_dataset_permissions_for_current_user(dataset):
 
     result = api_requests.get_dataset_permissions_for_user(dataset, user_id)
 
-    if not result or result == "NO_ACCESS":
-        raise DatasetPermissionException("Dataset", None)
+    if not result or result == DatasetPermission.NO_ACCESS.name:
+        # See if this is a non-persistent dataset. If so, API doesn't
+        #   know about it, but we will grant MANAGE access.
+        #   Someday maybe TODO: would be ideal if API just handled this for us.
+
+        db = foo.get_db_conn()
+        res = db.datasets.find_one({"name": dataset}, {"persistent": True})
+
+        if res and not res.get("persistent", False):
+            result = DatasetPermission.MANAGE.name
+        else:
+            raise DatasetPermissionException("Dataset", None)
 
     return DatasetPermission[result]
 
@@ -101,13 +115,8 @@ def _get_argument_by_param_name(func, param_name, *args, **kwargs):
 
     if param_name in bound_args.arguments:
         arg = bound_args.arguments[param_name]
-    elif param_name in kwargs:
-        arg = kwargs[param_name]
     else:
-        raise RuntimeError(
-            f"Param '{param_name}' is not in signature"
-            f" of function '{func.__name__}'"
-        )
+        arg = kwargs.get(param_name)
 
     # Traverse nested attributes if any, get()ing or getattr()ing along the way.
     arg = access_nested_element(arg, nested_attrs)
@@ -127,9 +136,9 @@ def _mutates_data(
     Including readonly and permission checking.
     """
 
-    def check_readonly_decorator(func):
+    def check_perm_decorator(func):
         @wraps(func)
-        def check_readonly_wrapper(*args, **kwargs):
+        def check_perm_wrapper(*args, **kwargs):
             try:
                 data_object = _get_argument_by_param_name(
                     func, data_obj_param, *args, **kwargs
@@ -170,12 +179,12 @@ def _mutates_data(
 
             return func(*args, **kwargs)
 
-        return check_readonly_wrapper
+        return check_perm_wrapper
 
     return (
-        check_readonly_decorator(maybe_func)
+        check_perm_decorator(maybe_func)
         if maybe_func
-        else check_readonly_decorator
+        else check_perm_decorator
     )
 
 

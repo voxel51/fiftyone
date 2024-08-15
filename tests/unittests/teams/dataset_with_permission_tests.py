@@ -396,6 +396,7 @@ class DatasetPermissionTests(unittest.TestCase):
 
             # FramesView
             frames_view = view.first().frames
+            self.assertEqual(frames_view._permission, the_perm)
             self.assertRaises(
                 dataset_permissions.DatasetPermissionException,
                 frames_view.save,
@@ -442,6 +443,7 @@ class DatasetPermissionTests(unittest.TestCase):
 
             # Trajectories
             trajs = dataset.to_trajectories("frames.objects")
+            self.assertEqual(trajs._permission, the_perm)
             trajs_mutators = [
                 ("set_values", 1),
                 ("set_label_values", 1),
@@ -450,6 +452,37 @@ class DatasetPermissionTests(unittest.TestCase):
                 ("keep_fields", 0),
             ]
             self._assert_funcs_readonly(trajs_mutators, trajs)
+
+            # To Frames
+            to_frames = dataset.to_frames()
+            self.assertEqual(to_frames._permission, the_perm)
+            to_frames_mutators = [
+                ("set_values", 1),
+                ("set_label_values", 1),
+                ("save", 0),
+                ("keep", 0),
+                ("keep_fields", 0),
+            ]
+            self._assert_funcs_readonly(to_frames_mutators, to_frames)
+
+            # Crazy view
+            crazy_patches = (
+                dataset.limit(51)
+                .to_clips("frames.objects")
+                .limit(51)
+                .to_frames()
+                .limit(10)
+                .to_patches("objects")
+            )
+            self.assertEqual(crazy_patches._permission, the_perm)
+            patches_mutators = [
+                ("set_values", 1),
+                ("set_label_values", 1),
+                ("save", 0),
+                ("keep", 0),
+                ("keep_fields", 0),
+            ]
+            self._assert_funcs_readonly(patches_mutators, crazy_patches)
 
         # We can now
         dataset._Dataset__permission = DatasetPermission.EDIT
@@ -527,6 +560,7 @@ class DatasetPermissionTests(unittest.TestCase):
             dataset._Dataset__permission = the_perm
             # Patches
             patches = dataset.to_patches("detections")
+            self.assertEqual(patches._permission, the_perm)
             patches_mutators = [
                 ("set_values", 1),
                 ("set_label_values", 1),
@@ -600,6 +634,135 @@ class LoadDatasetPermissionsTests(unittest.TestCase):
             )
         finally:
             context_vars.running_user_id.reset(reset_token)
+
+    @mock.patch.object(
+        fo.core.dataset.dataset_permissions,
+        "get_dataset_permissions_for_current_user",
+    )
+    def test_virtual_no_permissions(
+        self, get_dataset_permissions_for_current_user_mock
+    ):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_virtual_no_permissions.__name__
+
+        fo.Dataset(dataset)
+        fo.Dataset._instances.clear()
+
+        ds = fo.Dataset(dataset, _create=False, _virtual=True)
+        get_dataset_permissions_for_current_user_mock.assert_not_called()
+        ds.delete()
+
+    @mock.patch.object(
+        fo.core.dataset.dataset_permissions.api_requests,
+        "get_dataset_permissions_for_user",
+    )
+    def test_generated_virtual(self, get_dataset_permissions_for_user_mock):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_virtual_no_permissions.__name__
+        get_dataset_permissions_for_user_mock.return_value = "NO_ACCESS"
+
+        ds = fo.Dataset(dataset)
+        sample = fo.Sample("/blah.jpg", foo="bar")
+        sample["detections"] = fo.Detections(
+            detections=[
+                fo.Detection(label="blah", bounding_box=[0.1, 0.2, 0.3, 0.4])
+            ]
+        )
+        sample["ground_truth"] = fo.Detections(
+            detections=[
+                fo.Detection(label="blah", bounding_box=[0.1, 0.2, 0.3, 0.4])
+            ]
+        )
+        ds.add_sample(sample)
+        ds.evaluate_detections("detections", eval_key="eval")
+
+        patches = ds.to_patches("detections")
+        eval_patches = ds.to_evaluation_patches("eval")
+        ds.save_view("patches", patches)
+        ds.save_view("eval_patches", eval_patches)
+        fo.Dataset._instances.clear()
+
+        loaded = ds.load_saved_view("patches")
+        loaded = ds.load_saved_view("eval_patches")
+
+        ds.delete()
+
+    @mock.patch.object(
+        fo.core.dataset.dataset_permissions.api_requests,
+        "get_dataset_permissions_for_user",
+    )
+    def test_video_generated_virtual(
+        self, get_dataset_permissions_for_user_mock
+    ):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_virtual_no_permissions.__name__
+
+        def _load_self_but_nothing_else(name, _):
+            if name == dataset:
+                return dataset_permissions.DatasetPermission.EDIT.name
+            return dataset_permissions.DatasetPermission.NO_ACCESS.name
+
+        get_dataset_permissions_for_user_mock.side_effect = (
+            _load_self_but_nothing_else
+        )
+
+        ds = fo.Dataset(dataset)
+        sample = fo.Sample("/blah.mp4", foo="bar")
+        sample["detections"] = fo.Detections(
+            detections=[fo.Detection(label="blah")]
+        )
+        frame = fo.Frame(
+            quality=97.12,
+            weather=fo.Classification(label="sunny"),
+            objects=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]
+                    ),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.7, 0.7, 0.2, 0.2]
+                    ),
+                ]
+            ),
+        )
+        sample.frames[1] = frame
+
+        ds.add_sample(sample)
+
+        clips = ds.to_clips("frames.objects")
+        frames = ds.to_frames()
+        trajs = ds.to_trajectories("frames.objects")
+        ds.save_view("clips", clips)
+        ds.save_view("frames", frames)
+        ds.save_view("trajs", trajs)
+
+        fo.Dataset._instances.clear()
+
+        loaded = ds.load_saved_view("clips")
+        loaded = ds.load_saved_view("frames")
+        loaded = ds.load_saved_view("trajs")
+
+        ds.delete()
+
+    @mock.patch.object(
+        fo.core.dataset.dataset_permissions.api_requests,
+        "get_dataset_permissions_for_user",
+    )
+    def test_load_non_persistent(self, get_dataset_permissions_for_user_mock):
+        fo.delete_non_persistent_datasets()
+        dataset = self.test_load_non_persistent.__name__
+
+        get_dataset_permissions_for_user_mock.return_value = (
+            dataset_permissions.DatasetPermission.NO_ACCESS.name
+        )
+        ds = fo.Dataset(dataset)
+
+        fo.Dataset._instances.clear()
+
+        ds2 = fo.load_dataset(dataset)
+        self.assertEqual(ds2.name, dataset)
+
+        ds.delete()
 
 
 class CreateDatasetWithPermissionsTests(unittest.TestCase):

@@ -48,15 +48,14 @@ class InternalDatasetPermissionsTests(unittest.TestCase):
         finally:
             context_vars.running_user_id.reset(reset_token)
 
+    @unittest.mock.patch.object(dataset_permissions.foo, "get_db_conn")
     @unittest.mock.patch.object(
         dataset_permissions.api_requests, "get_dataset_permissions_for_user"
     )
-    def test_get_dataset_permissions_for_current_user(
-        self, get_dataset_permissions_for_user_mock
+    def test_get_dataset_permissions_for_current_user_not_set(
+        self, get_dataset_permissions_for_user_mock, get_db_conn_mock
     ):
         dataset = "my_dataset"
-        user_id = "test_user"
-
         context_vars.running_user_id.set(None)
 
         #####
@@ -67,41 +66,133 @@ class InternalDatasetPermissionsTests(unittest.TestCase):
         )
         #####
 
-        reset_token = context_vars.running_user_id.set(user_id)
+        get_dataset_permissions_for_user_mock.assert_not_called()
+        get_db_conn_mock.assert_not_called()
 
+    @unittest.mock.patch.object(dataset_permissions.foo, "get_db_conn")
+    @unittest.mock.patch.object(
+        dataset_permissions.api_requests, "get_dataset_permissions_for_user"
+    )
+    def test_get_dataset_permissions_for_current_user_nonexistent(
+        self, get_dataset_permissions_for_user_mock, get_db_conn_mock
+    ):
+        dataset = "my_dataset"
+        user_id = "test_user"
+        db = get_db_conn_mock.return_value
+        db.datasets.find_one.return_value = {}
+        get_dataset_permissions_for_user_mock.return_value = None
+
+        reset_token = context_vars.running_user_id.set(user_id)
         try:
             #####
-            get_dataset_permissions_for_user_mock.return_value = None
             self.assertRaises(
                 dataset_permissions.DatasetPermissionException,
                 dataset_permissions.get_dataset_permissions_for_current_user,
                 dataset,
             )
-            get_dataset_permissions_for_user_mock.assert_called_with(
-                dataset, user_id
-            )
-
             #####
-            get_dataset_permissions_for_user_mock.reset_mock()
-            get_dataset_permissions_for_user_mock.return_value = "NO_ACCESS"
+
+            get_db_conn_mock.assert_called()
+            db.datasets.find_one.assert_called_once_with(
+                {"name": dataset}, {"persistent": True}
+            )
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
+    @unittest.mock.patch.object(dataset_permissions.foo, "get_db_conn")
+    @unittest.mock.patch.object(
+        dataset_permissions.api_requests, "get_dataset_permissions_for_user"
+    )
+    def test_get_dataset_permissions_for_current_user_no_access(
+        self, get_dataset_permissions_for_user_mock, get_db_conn_mock
+    ):
+        dataset = "my_dataset"
+        user_id = "test_user"
+        db = get_db_conn_mock.return_value
+        db.datasets.find_one.return_value = {"persistent": True}
+        get_dataset_permissions_for_user_mock.return_value = (
+            dataset_permissions.DatasetPermission.NO_ACCESS.name
+        )
+
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            #####
             self.assertRaises(
                 dataset_permissions.DatasetPermissionException,
                 dataset_permissions.get_dataset_permissions_for_current_user,
                 dataset,
             )
-            get_dataset_permissions_for_user_mock.assert_called_with(
-                dataset, user_id
-            )
-
             #####
-            get_dataset_permissions_for_user_mock.reset_mock()
-            get_dataset_permissions_for_user_mock.return_value = "VIEW"
-            self.assertEqual(
+
+            get_db_conn_mock.assert_called()
+            db.datasets.find_one.assert_called_once_with(
+                {"name": dataset}, {"persistent": True}
+            )
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
+    @unittest.mock.patch.object(dataset_permissions.foo, "get_db_conn")
+    @unittest.mock.patch.object(
+        dataset_permissions.api_requests, "get_dataset_permissions_for_user"
+    )
+    def test_get_dataset_permissions_for_current_user_nonpersistent(
+        self, get_dataset_permissions_for_user_mock, get_db_conn_mock
+    ):
+        dataset = "my_dataset"
+        user_id = "test_user"
+        db = get_db_conn_mock.return_value
+        db.datasets.find_one.return_value = {"persistent": False}
+        get_dataset_permissions_for_user_mock.return_value = (
+            dataset_permissions.DatasetPermission.NO_ACCESS.name
+        )
+
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            #####
+            result = (
                 dataset_permissions.get_dataset_permissions_for_current_user(
                     dataset
-                ),
-                DatasetPermission.VIEW,
+                )
             )
+            #####
+
+            self.assertEqual(
+                result, dataset_permissions.DatasetPermission.MANAGE
+            )
+            get_db_conn_mock.assert_called()
+            db.datasets.find_one.assert_called_once_with(
+                {"name": dataset}, {"persistent": True}
+            )
+        finally:
+            context_vars.running_user_id.reset(reset_token)
+
+    @unittest.mock.patch.object(dataset_permissions.foo, "get_db_conn")
+    @unittest.mock.patch.object(
+        dataset_permissions.api_requests, "get_dataset_permissions_for_user"
+    )
+    def test_get_dataset_permissions_for_current_user_ok(
+        self, get_dataset_permissions_for_user_mock, get_db_conn_mock
+    ):
+        dataset = "my_dataset"
+        user_id = "test_user"
+        get_dataset_permissions_for_user_mock.return_value = (
+            dataset_permissions.DatasetPermission.EDIT.name
+        )
+
+        reset_token = context_vars.running_user_id.set(user_id)
+        try:
+            #####
+            result = (
+                dataset_permissions.get_dataset_permissions_for_current_user(
+                    dataset
+                )
+            )
+            #####
+
+            self.assertEqual(
+                result, dataset_permissions.DatasetPermission.EDIT
+            )
+            get_db_conn_mock.assert_not_called()
         finally:
             context_vars.running_user_id.reset(reset_token)
 

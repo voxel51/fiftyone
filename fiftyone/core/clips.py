@@ -48,6 +48,14 @@ class ClipView(fos.SampleView):
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
 
+    @property
+    def _readonly(self):
+        return self._collection._readonly
+
+    @property
+    def _permission(self):
+        return self._collection._permission
+
     def _save(self, deferred=False):
         sample_ops, frame_ops = super()._save(deferred=deferred)
 
@@ -131,6 +139,14 @@ class ClipsView(fov.DatasetView):
     @property
     def _dataset(self):
         return self._clips_dataset
+
+    @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
 
     @property
     def _root_dataset(self):
