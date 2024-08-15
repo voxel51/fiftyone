@@ -90,6 +90,11 @@ const Modal = () => {
 
   const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
 
+  const hoveringSample = useRecoilValue(fos.hoveredSample);
+  const currentModalSampleId = useRecoilValue(fos.modalSampleId);
+
+  const select = fos.useSelectSample();
+
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -126,7 +131,19 @@ const Modal = () => {
           }
         }
 
-        if (e.key === "s") {
+        if (e.altKey && e.code === "Space") {
+          const hoveringSampleId = (
+            await snapshot.getPromise(fos.hoveredSample)
+          )?._id;
+          if (hoveringSampleId) {
+            select(hoveringSampleId);
+          } else {
+            const modalSampleId = await snapshot.getPromise(fos.modalSampleId);
+            if (modalSampleId) {
+              select(modalSampleId);
+            }
+          }
+        } else if (e.key === "s") {
           set(fos.sidebarVisible(true), (prev) => !prev);
         } else if (e.key === "f") {
           set(fos.fullscreen, (prev) => !prev);
