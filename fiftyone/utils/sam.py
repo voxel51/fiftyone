@@ -221,16 +221,20 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         return sorted(classes)
 
     def _forward_pass(self, imgs):
-        if self._curr_prompt_type == "boxes":
-            return self._forward_pass_boxes(imgs)
+        forward_methods = {
+            "boxes": self._forward_pass_boxes,
+            "points": self._forward_pass_points,
+            None: self._forward_pass_auto,
+        }
+        return forward_methods.get(
+            self._curr_prompt_type, self._forward_pass_auto
+        )(imgs)
 
-        if self._curr_prompt_type == "points":
-            return self._forward_pass_points(imgs)
-
-        return self._forward_pass_auto(imgs)
+    def _load_predictor(self):
+        return sam.SamPredictor(self._model)
 
     def _forward_pass_boxes(self, imgs):
-        sam_predictor = sam.SamPredictor(self._model)
+        sam_predictor = self._load_predictor()
         self._output_processor = fout.InstanceSegmenterOutputProcessor(
             self._curr_classes
         )
@@ -280,7 +284,7 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         return outputs
 
     def _forward_pass_points(self, imgs):
-        sam_predictor = sam.SamPredictor(self._model)
+        sam_predictor = self._load_predictor()
         self._output_processor = fout.InstanceSegmenterOutputProcessor(
             self._curr_classes
         )
@@ -305,7 +309,7 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                 continue
 
             for kp in keypoints.keypoints:
-                sam_points, sam_labels = _to_sam_points(kp.points, w, h)
+                sam_points, sam_labels = _to_sam_points(kp.points, w, h, kp)
 
                 multi_mask, mask_scores, _ = sam_predictor.predict(
                     point_coords=sam_points,
@@ -341,9 +345,12 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
         return outputs
 
-    def _forward_pass_auto(self, imgs):
+    def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
-        mask_generator = sam.SamAutomaticMaskGenerator(self._model, **kwargs)
+        return sam.SamAutomaticMaskGenerator(self._model, **kwargs)
+
+    def _forward_pass_auto(self, imgs):
+        mask_generator = self._load_auto_generator()
         self._output_processor = None
 
         outputs = []
@@ -367,10 +374,16 @@ def _to_sam_input(tensor):
     return (255 * tensor.cpu().numpy()).astype("uint8").transpose(1, 2, 0)
 
 
-def _to_sam_points(points, w, h, negative=False):
-    scaled_points = np.array(points) * np.array([w, h])
-    labels = np.zeros(len(points)) if negative else np.ones(len(points))
-    return scaled_points, labels
+def _to_sam_points(points, w, h, keypoint):
+    points = np.array(points)
+    valid_rows = ~np.isnan(points).any(axis=1)
+    scaled_points = np.array(points[valid_rows]) * np.array([w, h])
+    labels = (
+        np.array(keypoint.sam2_labels)[valid_rows]
+        if "sam_labels" in keypoint
+        else np.ones(len(scaled_points))
+    )
+    return scaled_points.astype(np.float32), labels.astype(np.uint32)
 
 
 def _to_sam_box(box, w, h):
@@ -386,6 +399,8 @@ def _to_sam_box(box, w, h):
 
 def _mask_to_box(mask):
     pos_indices = np.where(mask)
+    if all(arr.size == 0 for arr in pos_indices):
+        return None
     x1 = np.min(pos_indices[1])
     x2 = np.max(pos_indices[1])
     y1 = np.min(pos_indices[0])

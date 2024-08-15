@@ -49,20 +49,15 @@ class PanelConfig(OperatorConfig):
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
-        d = super().to_json()
         return {
-            **d,
             "name": self.name,
             "label": self.label,
             "icon": self.icon,
             "light_icon": self.light_icon,
             "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
+            "on_startup": self.on_startup,
         }
-
-
-# Alias for backwards compatibility
-PanelOperatorConfig = PanelConfig
 
 
 class Panel(Operator):
@@ -160,7 +155,8 @@ class PanelRefBase(object):
                 possibly-nested keys to values
             value (None): the value, if key is a string
         """
-        d = {key: value} if value is not None else key
+        d = key if isinstance(key, dict) else {key: value}
+
         for k, v in d.items():
             pydash.set_(self._data, k, v)
 
@@ -168,7 +164,7 @@ class PanelRefBase(object):
         """Gets a value from the dictionary.
 
         Args:
-            key: a key
+            key: a key or ``"nested.key.path"``
             default (None): a default value if the key is not found
 
         Returns:
@@ -214,7 +210,7 @@ class PanelRefState(PanelRefBase):
                 possibly-nested keys to values
             value (None): the value, if key is a string
         """
-        d = {key: value} if value is not None else key
+        d = key if isinstance(key, dict) else {key: value}
 
         args = {}
         for k, v in d.items():
@@ -253,7 +249,7 @@ class PanelRefData(PanelRefBase):
                 possibly-nested keys to values
             value (None): the value, if key is a string
         """
-        d = {key: value} if value is not None else key
+        d = key if isinstance(key, dict) else {key: value}
 
         args = {}
         for k, v in d.items():

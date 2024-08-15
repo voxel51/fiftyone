@@ -90,6 +90,9 @@ _MODEL_TEMPLATE = """
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+{% if 'segment-anything' in name and 'video' in name %}
+    from fiftyone import ViewField as F
+{% endif %}
 
 {% if 'imagenet' in name %}
     dataset = foz.load_zoo_dataset(
@@ -97,6 +100,16 @@ _MODEL_TEMPLATE = """
         dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
+    )
+{% elif 'segment-anything' in name and 'video' in name %}
+    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
+
+    # Only retain detections in the first frame
+    (
+        dataset
+        .match_frames(F("frame_number") > 1)
+        .set_field("frames.detections", None)
+        .save()
     )
 {% else %}
     dataset = foz.load_zoo_dataset(
@@ -108,7 +121,7 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
-{% if 'segment-anything' in tags %}
+{% if 'segment-anything' in tags and 'video' not in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
     # Segment inside boxes
@@ -120,6 +133,17 @@ _MODEL_TEMPLATE = """
 
     # Full automatic segmentations
     dataset.apply_model(model, label_field="auto")
+
+    session = fo.launch_app(dataset)
+{% elif 'segment-anything' in tags and 'video' in tags %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    # Segment inside boxes and propagate to all frames
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="frames.detections",  # can contain Detections or Keypoints
+    )
 
     session = fo.launch_app(dataset)
 {% elif 'dinov2' in name %}

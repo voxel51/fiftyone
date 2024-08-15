@@ -201,6 +201,7 @@ following fields are available:
 -   `fiftyone.version`: a semver version specifier (or `*`) describing the
     required FiftyOne version for the plugin to work properly
 -   `operators`: a list of operator names registered by the plugin
+-   `panels`: a list of panel names registred by the plugin
 -   `secrets`: a list of secret keys that may be used by the plugin
 
 Check out the
@@ -218,7 +219,7 @@ Python plugins
 Python plugins should define the following files:
 
 -   `__init__.py` **(required)**: entrypoint that defines the Python operators
-    that the plugin defines
+    and panels that the plugin defines
 -   `requirements.txt`: specifies the Python package requirements to run the
     plugin
 
@@ -628,6 +629,8 @@ subsequent sections.
                 on_dataset_open=True/False,  # default False
 
                 # Custom icons to use
+                # Can be a URL, a local path in the plugin directory, or the
+                # name of a MUI icon: https://marella.me/material-icons/demo
                 icon="/assets/icon.svg",
                 light_icon="/assets/icon-light.svg",  # light theme only
                 dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -819,6 +822,8 @@ execution:
             on_dataset_open=True/False,  # default False
 
             # Custom icons to use
+            # Can be a URL, a local path in the plugin directory, or the
+            # name of a MUI icon: https://marella.me/material-icons/demo
             icon="/assets/icon.svg",
             light_icon="/assets/icon-light.svg",  # light theme only
             dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -1648,10 +1653,10 @@ in the App.
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
-Like :ref:`Operators <developing-operators>`, Panels can make use of the
+Panels, like :ref:`Operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
-rich built-in type system that panel developers can use to implement the layout
+rich builtin type system that panel developers can use to implement the layout
 and associated events that define the panel.
 
 Panels can trigger both Python and JS operators, either programmatically or
@@ -1674,6 +1679,11 @@ The code block below describes the Python interface for defining panels.
 We'll dive into each component of the interface in more detail in the
 subsequent sections.
 
+.. note::
+
+    See :ref:`this section <developing-js-plugins>` for more information on
+    developing panels in JS.
+
 .. code-block:: python
     :linenos:
 
@@ -1688,11 +1698,11 @@ subsequent sections.
                 name="example_panel",  # required
 
                 # The display name of the panel in the "+" menu
-                label="Example panel",  # required,
+                label="Example panel",  # required
 
-                # Custom icons to use in the "+"" menu. The value can be a URL
-                # or a name of one of pre-included icons listed
-                # at https://marella.me/material-icons/demo/
+                # Custom icons to use in the "+"" menu
+                # Can be a URL, a local path in the plugin directory, or the
+                # name of a MUI icon: https://marella.me/material-icons/demo
                 icon="/assets/icon.svg",
                 light_icon="/assets/icon-light.svg",  # light theme only
                 dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -1729,7 +1739,7 @@ subsequent sections.
             )
 
             # Define components that appear in the panel's main body
-            panel.str("event", label="The last event name", view=types.LabelValueView())
+            panel.str("event", label="The last event", view=types.LabelValueView())
             panel.obj("event_data", label="The last event data", view=types.JSONView())
             panel.bool("show_start_button", default=True)
 
@@ -1944,6 +1954,8 @@ behavior:
             label="Example panel",  # required
 
             # Custom icons to use in the "+"" menu
+            # Can be a URL, a local path in the plugin directory, or the
+            # name of a MUI icon: https://marella.me/material-icons/demo
             icon="/assets/icon.svg",
             light_icon="/assets/icon-light.svg",  # light theme only
             dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -1957,8 +1969,7 @@ behavior:
 Execution context
 -----------------
 
-Like operators, an
-:class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
+An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
 passed to each of the panel's methods at runtime. This `ctx` contains static
 information about the current state of the App (dataset, view, panel,
 selection, etc) as well as dynamic information about the panel's current
@@ -2200,8 +2211,7 @@ pattern :ref:`demonstrated above <panel-data>`
 Accessing secrets
 -----------------
 
-Like operators, panels can :ref:`access secrets <operator-secrets>` defined by
-their plugin.
+Panels can :ref:`access secrets <operator-secrets>` defined by their plugin.
 
 At runtime, the panel's :ref:`execution context <operator-execution-context>`
 is automatically hydrated with any available secrets that are declared by the

@@ -2719,6 +2719,9 @@ class OperatorsListCommand(Command):
 
         # List disabled operators
         fiftyone operators list --disabled
+
+        # Only list panels
+        fiftyone operators list --panels-only
     """
 
     @staticmethod
@@ -2738,6 +2741,20 @@ class OperatorsListCommand(Command):
             help="only show disabled operators",
         )
         parser.add_argument(
+            "-o",
+            "--operators-only",
+            action="store_true",
+            default=None,
+            help="only show operators",
+        )
+        parser.add_argument(
+            "-p",
+            "--panels-only",
+            action="store_true",
+            default=None,
+            help="only show panels",
+        )
+        parser.add_argument(
             "-n",
             "--names-only",
             action="store_true",
@@ -2753,11 +2770,18 @@ class OperatorsListCommand(Command):
         else:
             enabled = "all"
 
-        _print_operators_list(enabled, args.names_only)
+        if args.operators_only:
+            type = "operator"
+        elif args.panels_only:
+            type = "panel"
+        else:
+            type = None
+
+        _print_operators_list(enabled, type, args.names_only)
 
 
-def _print_operators_list(enabled, names_only):
-    operators = foo.list_operators(enabled=enabled)
+def _print_operators_list(enabled, type, names_only):
+    operators = foo.list_operators(enabled=enabled, type=type)
 
     if names_only:
         operators_map = defaultdict(list)
@@ -2771,7 +2795,7 @@ def _print_operators_list(enabled, names_only):
 
         return
 
-    headers = ["uri", "enabled", "builtin", "unlisted"]
+    headers = ["uri", "enabled", "builtin", "panel", "unlisted"]
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
@@ -2782,6 +2806,7 @@ def _print_operators_list(enabled, names_only):
                 "uri": op.uri,
                 "enabled": op.builtin or op.plugin_name in enabled_plugins,
                 "builtin": op.builtin,
+                "panel": isinstance(op, foo.Panel),
                 "unlisted": op.config.unlisted,
             }
         )
