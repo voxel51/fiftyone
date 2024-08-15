@@ -1691,240 +1691,284 @@ subsequent sections.
     import fiftyone.operators.types as types
 
     class ExamplePanel(foo.Panel):
-        @property
-        def config(self):
-            return foo.PanelConfig(
-                # The panel's URI: f"{plugin_name}/{name}"
-                name="example_panel",  # required
+    @property
+    def config(self):
+        return foo.PanelConfig(
+            # The panel's URI: f"{plugin_name}/{name}"
+            name="example_panel",  # required
 
-                # The display name of the panel in the "+" menu
-                label="Example panel",  # required
+            # The display name of the panel in the "+" menu
+            label="Example panel",  # required
 
-                # Custom icons to use in the "+"" menu
-                # Can be a URL, a local path in the plugin directory, or the
-                # name of a MUI icon: https://marella.me/material-icons/demo
-                icon="/assets/icon.svg",
-                light_icon="/assets/icon-light.svg",  # light theme only
-                dark_icon="/assets/icon-dark.svg",  # dark theme only
+            # Custom icons to use in the "+"" menu
+            # Can be a URL, a local path in the plugin directory, or the
+            # name of a MUI icon: https://marella.me/material-icons/demo
+            icon="/assets/icon.svg",
+            light_icon="developer_mode",  # light theme only, takes precedence over `icon`
+            dark_icon="developer_mode",  # dark theme only, takes precedence over `icon`
+            
+            # Whether to allow multiple instances of the panel to be opened
+            allow_multiple=False,
+        )
 
-                # Whether to allow multiple instances of the panel to be opened
-                allow_multiple=False,
+    def render(self, ctx):
+        """Implement this method to define your panel's layout and events.
+
+        This method is called after every panel event is executed (panel
+        load, button callback, context change event, etc).
+
+        Returns:
+            a `types.Property` defining the panel's components
+        """
+        panel = types.Object()
+
+        brain_keys = ctx.panel.get_state("brain_keys", [])
+
+        # Define a menu of actions for the panel
+        menu = panel.menu("menu", variant="square", color="51")
+        menu.enum(
+            "brain_key",
+            label="Choose a brain key",  # placeholder text
+            values=brain_keys,
+            on_change=self.on_change_brain_key,  # custom event callback
+        )
+        menu.btn(
+            "learn_more",
+            label="Learn more",  # tooltip text
+            icon="help",  # material UI icon
+            on_click=self.on_click_learn_more,  # custom event callback
+        )
+
+        # Define components that appear in the panel's main body
+        panel.str("event", label="The last event", view=types.LabelValueView())
+        panel.obj("event_data", label="The last event data", view=types.JSONView())
+
+        #  Display a checkbox to toggle between plot and compute visualization button
+        show_compute_visualization_btn = ctx.panel.get_state("show_start_button", True)
+        panel.bool(
+            "show_start_button",
+            label="Show compute visualization button",
+            on_change=self.on_change_show_start_button,
+        )
+
+        # You can use conditional logic to dynamically change the layout
+        # based on the current panel state
+        if show_compute_visualization_btn:
+            # Define a button with a custom on click event
+            panel.btn(
+                "start",
+                label="Compute visualization",  # button text
+                on_click=self.on_click_start,  # custom event callback
+                variant="contained",  # button style
+            )
+        else:
+            # Define an interactive plot with custom callbacks
+            panel.plot(
+                "embeddings",
+                config={},  # plotly config
+                layout={},  # plotly layout config
+                on_selected=self.on_selected_embeddings,  # custom event callback
+                height="400px",
             )
 
-        def render(self, ctx):
-            """Implement this method to define your panel's layout and events.
+        return types.Property(panel, view=types.GridView(orientation="vertical"))
 
-            This method is called after every panel event is executed (panel
-            load, button callback, context change event, etc).
+    #######################################################################
+    # Builtin events
+    #######################################################################
 
-            Returns:
-                a `types.Property` defining the panel's components
-            """
-            panel = types.Object()
+    def on_load(self, ctx):
+        """Implement this method to set panel state/data when the panel
+        initially loads.
+        """
+        event = {
+            "data": None,
+            "description": "the panel is loaded",
+        }
+        ctx.panel.set_state("event", "on_load")
+        ctx.panel.set_data("event_data", event)
 
-            # Define a menu of actions for the panel
-            menu = panel.menu("menu", width=100, align_y="center")
-            actions = menu.btn_group("actions")
-            actions.enum(
-                "brain_key",
-                label="Brain key",  # placeholder text
-                values=["foo", "bar"],
-                on_change=self.on_change_brain_key,  # custom event callback
-            )
-            actions.btn(
-                "learn_more",
-                label="Learn more",  # tooltip text
-                icon="help",  # material UI icon
-                on_click=self.on_click_learn_more,  # custom event callback
-            )
+        # Get the list of brain keys from the dataset to populate brain_key dropdown in render()
+        visualization_keys = ctx.dataset.list_brain_runs("visualization")
+        ctx.panel.set_state("brain_keys", visualization_keys)
 
-            # Define components that appear in the panel's main body
-            panel.str("event", label="The last event", view=types.LabelValueView())
-            panel.obj("event_data", label="The last event data", view=types.JSONView())
-            panel.bool("show_start_button", default=True)
+        # Show compute visualization button by default
+        ctx.panel.set_state("show_start_button", True)
 
-            # You can use conditional logic to dynamically change the layout
-            # based on the current panel state
-            if ctx.panel.state.show_start_button:
-                # Define a button with a custom on click event
-                panel.btn(
-                    "start",
-                    label="Start",  # button text
-                    on_click=self.on_click_start,  # custom event callback
-                )
-            else:
-                # Define an interactive plot with custom callbacks
-                panel.plot(
-                    "embeddings",
-                    config=...,
-                    layout=...,
-                    on_selected=self.on_selected_embeddings,  # custom event callback
-                )
+    def on_unload(self, ctx):
+        """Implement this method to set panel state/data when the panel is
+        being closed.
+        """
+        event = {
+            "data": None,
+            "description": "the panel is unloaded",
+        }
+        ctx.panel.set_state("event", "on_unload")
+        ctx.panel.set_data("event_data", event)
 
-            return types.Property(panel)
+    def on_change_ctx(self, ctx):
+        """Implement this method to set panel state/data when any aspect
+        of the execution context (view, selected samples, filters, etc.) changes.
 
-        #######################################################################
-        # Builtin events
-        #######################################################################
+        The current execution context :class:`fiftyone.operators.ExecutionContext` will be available
+        via ``ctx`` param.
+        """
+        event = {
+            "data": {
+                "view": ctx.view._serialize(),
+                "selected": ctx.selected,
+                "has_custom_view": ctx.has_custom_view,
+            },
+            "description": "the current ExecutionContext",
+        }
+        ctx.panel.set_state("event", "on_change_ctx")
+        ctx.panel.set_data("event_data", event)
 
-        def on_load(self, ctx):
-            """Implement this method to set panel state/data when the panel
-            initially loads.
-            """
-            event = {
-                "data": None,
-                "description": "the panel is loaded",
-            }
-            ctx.panel.set_state("event", "on_load")
-            ctx.panel.set_data("event_data", event)
+    def on_change_dataset(self, ctx):
+        """Implement this method to set panel state/data when the current
+        dataset is changed.
 
-        def on_unload(self, ctx):
-            """Implement this method to set panel state/data when the panel is
-            being closed.
-            """
-            event = {
-                "data": None,
-                "description": "the panel is unloaded",
-            }
-            ctx.panel.set_state("event", "on_unload")
-            ctx.panel.set_data("event_data", event)
+        The new dataset will be available via ``ctx.dataset``.
+        """
+        event = {
+            "data": ctx.dataset.name,
+            "description": "the current dataset name",
+        }
+        ctx.panel.set_state("event", "on_change_dataset")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_ctx(self, ctx):
-            """Implement this method to set panel state/data when any aspect
-            of the execution context changes.
+    def on_change_view(self, ctx):
+        """Implement this method to set panel state/data when the current
+        view is changed.
 
-            The current execution context will be available via ``ctx``.
-            """
-            event = {
-                "data": ctx.to_dict(),
-                "description": "the current ExecutionContext",
-            }
-            ctx.panel.set_state("event", "on_change_ctx")
-            ctx.panel.set_data("event_data", event)
+        The new view will be available via ``ctx.view``.
+        """
+        event = {
+            "data": ctx.view._serialize(),
+            "description": "the current view",
+        }
+        ctx.panel.set_state("event", "on_change_view")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_dataset(self, ctx):
-            """Implement this method to set panel state/data when the current
-            dataset is changed.
+    def on_change_current_sample(self, ctx):
+        """Implement this method to set panel state/data when a new sample
+        is loaded in the Sample modal.
 
-            The new dataset will be available via ``ctx.dataset``.
-            """
-            event = {
-                "data": ctx.dataset.name,
-                "description": "the current dataset name",
-            }
-            ctx.panel.set_state("event", "on_change_dataset")
-            ctx.panel.set_data("event_data", event)
+        The ID of the new sample will be available via
+        ``ctx.current_sample``.
+        """
+        event = {
+            "data": ctx.current_sample,
+            "description": "the current sample",
+        }
+        ctx.panel.set_state("event", "on_change_current_sample")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_view(self, ctx):
-            """Implement this method to set panel state/data when the current
-            view is changed.
+    def on_change_selected(self, ctx):
+        """Implement this method to set panel state/data when the current
+        selection changes (eg in the Samples panel).
 
-            The new view will be available via ``ctx.view``.
-            """
-            event = {
-                "data": ctx.view._serialize(),
-                "description": "the current view",
-            }
-            ctx.panel.set_state("event", "on_change_view")
-            ctx.panel.set_data("event_data", event)
+        The IDs of the current selected samples will be available via
+        ``ctx.selected``.
+        """
+        event = {
+            "data": ctx.selected,
+            "description": "the current selection",
+        }
+        ctx.panel.set_state("event", "on_change_selected")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_current_sample(self, ctx):
-            """Implement this method to set panel state/data when a new sample
-            is loaded in the Sample modal.
+    def on_change_selected_labels(self, ctx):
+        """Implement this method to set panel state/data when the current
+        selected labels change (eg in the Sample modal).
 
-            The ID of the new sample will be available via
-            ``ctx.current_sample``.
-            """
-            event = {
-                "data": ctx.current_sample,
-                "description": "the current sample",
-            }
-            ctx.panel.set_state("event", "on_change_current_sample")
-            ctx.panel.set_data("event_data", event)
+        Information about the current selected labels will be available
+        via ``ctx.selected_labels``.
+        """
+        event = {
+            "data": ctx.selected_labels,
+            "description": "the current selected labels",
+        }
+        ctx.panel.set_state("event", "on_change_selected_labels")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_selected(self, ctx):
-            """Implement this method to set panel state/data when the current
-            selection changes (eg in the Samples panel).
+    def on_change_extended_selection(self, ctx):
+        """Implement this method to set panel state/data when the current
+        extended selection changes.
 
-            The IDs of the current selected samples will be available via
-            ``ctx.selected``.
-            """
-            event = {
-                "data": ctx.selected,
-                "description": "the current selection",
-            }
-            ctx.panel.set_state("event", "on_change_selected")
-            ctx.panel.set_data("event_data", event)
+        The IDs of the current extended selection will be available via
+        ``ctx.extended_selection``.
+        """
+        event = {
+            "data": ctx.extended_selection,
+            "description": "the current extended selection",
+        }
+        ctx.panel.set_state("event", "on_change_extended_selection")
+        ctx.panel.set_data("event_data", event)
 
-        def on_change_selected_labels(self, ctx):
-            """Implement this method to set panel state/data when the current
-            selected labels change (eg in the Sample modal).
+    #######################################################################
+    # Custom events
+    # These events are defined by user code above and, just like builtin
+    # events, take `ctx` as input and are followed by a call to render()
+    #######################################################################
 
-            Information about the current selected labels will be available
-            via ``ctx.selected_labels``.
-            """
-            event = {
-                "data": ctx.selected_labels,
-                "description": "the current selected labels",
-            }
-            ctx.panel.set_state("event", "on_change_selected_labels")
-            ctx.panel.set_data("event_data", event)
+    def on_change_brain_key(self, ctx):
+        # Load expensive content based on current `brain_key`
+        brain_key = ctx.panel.get_state("menu.brain_key")
+        results = ctx.dataset.load_brain_results(brain_key)
 
-        def on_change_extended_selection(self, ctx):
-            """Implement this method to set panel state/data when the current
-            extended selection changes.
+        # Format results for plotly
+        x_points = []
+        y_points = []
+        for point in results.points:
+            x_points.append(point[0])
+            y_points.append(point[1])
+        plot_data = [
+            {"x": x_points, "y": y_points, "type": "scatter", "mode": "markers"}
+        ]
 
-            The IDs of the current extended selection will be available via
-            ``ctx.extended_selection``.
-            """
-            event = {
-                "data": ctx.extended_selection,
-                "description": "the current extended selection",
-            }
-            ctx.panel.set_state("event", "on_change_extended_selection")
-            ctx.panel.set_data("event_data", event)
+        # Store large content as panel data for efficiency
+        ctx.panel.set_data("embeddings", plot_data)
 
-        #######################################################################
-        # Custom events
-        # These events are defined by user code above and, just like builtin
-        # events, take `ctx` as input and are followed by a call to render()
-        #######################################################################
+        # Show plot with embeddings data instead of the compute visualization button
+        ctx.panel.set_state("show_start_button", False)
 
-        def on_change_brain_key(self, ctx):
-            # Load expensive content based on current `brain_key`
-            brain_key = ctx.panel.state.menu.actions.brain_key
-            results = ctx.dataset.load_brain_results(brain_key)
+    def on_click_start(self, ctx):
+        # Launch an interactive prompt for user to execute an operator
+        ctx.prompt("@voxel51/brain/compute_visualization")
 
-            # Store large content as panel data for efficiency
-            data = {"points": results.points, ...}
-            ctx.panel.set_data("embeddings", data)
+        # Lightweight state update
+        ctx.panel.set_state("show_start_button", False)
 
-        def on_click_start(self, ctx):
-            # Launch an interactive prompt for user to execute an operator
-            ctx.prompt("@voxel51/brain/compute_visualization")
+    def on_click_learn_more(self, ctx):
+        # Trigger a builtin operation via `ctx.ops`
+        url = "https://docs.voxel51.com/plugins/developing_plugins.html"
+        ctx.ops.notify(f"Check out {url} for more information")
 
-            # Lightweight state update
-            ctx.panel.set_state("show_start_button", False)
+    def on_selected_embeddings(self, ctx):
+        # Retrieve data from plot
+        selected_points = ctx.panel.state.embeddings.get("data", [])
+        selected_sample_ids = [d.get("id", None) for d in selected_points]
 
-        def on_click_learn_more(self, ctx):
-            # Trigger a builtin operation via `ctx.ops`
-            url = https://docs.voxel51.com/plugins/developing_plugins.html
-            ctx.ops.notify(f"Check out {url} for more information")
+        # Conditionally trigger a builtin operation via `ctx.ops`
+        if len(selected_sample_ids) > 0:
+            ctx.ops.set_extended_selection(selected_sample_ids)
 
-        def on_selected_embeddings(self, ctx):
-            # Retrieve data from plot
-            selected_points = ctx.panel.state.embeddings.get("data", [])
-            selected_sample_ids = [d.get("id", None) for d in selected_points]
+    def on_change_show_start_button(self, ctx):
+        # Get current state of the checkbox on change
+        current_state = ctx.params.get("value", None)
+        print("Current state of checkbox:", current_state)
 
-            # Conditionally trigger a builtin operation via `ctx.ops`
-            if len(selected_sample_ids) > 0:
-                ctx.ops.set_extended_selection(selected_sample_ids)
+
 
     def register(p):
         """Always implement this method and register() each panel that your
         plugin defines.
         """
         p.register(ExamplePanel)
+
+.. image:: /images/plugins/panels/example-panel-inline.gif
+    :align: center
 
 .. note::
 
@@ -2005,7 +2049,7 @@ example code below to see how to access and update panel state and data:
     class CounterPanel(foo.Panel):
         @property
         def config(self):
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="counter_panel", label="Counter Panel", icon="123"
             )
 
@@ -2060,6 +2104,9 @@ example code below to see how to access and update panel state and data:
         ) # path: "v_stack.h_stack.count"
 
         return types.Property(panel)
+
+.. image:: /images/plugins/panels/counter-panel-inline.gif
+    :align: center
 
 .. note::
     
@@ -2254,7 +2301,7 @@ All panels follow a common core structure. When building a panel:
         def config(self):
             # configure your panel with its operator name
             # label it to visually identify it in fiftyone
-            return foo.PanelOperatorConfig(
+            return foo.PanelConfig(
                 name="basic_panel", label="Example Python Panel"
             )
 
@@ -2315,6 +2362,8 @@ A simple panel that renders "Hello world" in a panel would look like this:
     def register(p):
         p.register(HelloWorldPanel)
 
+.. image:: /images/plugins/panels/hello-world-panel-inline.gif
+    :align: center
 
 .. _panel-common-patterns:
 
@@ -2407,8 +2456,8 @@ context variable `ctx` and such context does change respective to the state upda
 
 
 
-Interactive plots
-~~~~~~~~~~~~~~~~~
+Interactive plot
+~~~~~~~~~~~~~~~~
 
 Plots built within Panels have the ability to be interactive respective to your sample data. You can create views in `fiftyone` that
 alter the visual state of your panel and vice versa. Since Panels have access to the current render state of your `fiftyone` environment
@@ -2420,96 +2469,105 @@ Below is an example of how to create an interactive bar chart where clicking a b
 .. code-block:: python
     :linenos:
 
+    import fiftyone.operators as foo
+    import fiftyone.operators.executor as ExecutionContext
+    import fiftyone.operators.types as types
+
+    from fiftyone import ViewField as F
+
+    class InteractiveHistogram(foo.Panel):
     @property
     def config(self):
-        return foo.PanelOperatorConfig(
-            name="interactive_histogram_panel",
+        return foo.PanelConfig(
+            name="interactive_histogram_example",
             label="Interactive Histogram Example",
+            icon="bar_chart"
         )
 
-    @staticmethod
-    def on_load(ctx):
+    # utility function to get the view for a category
+    def get_view_for_category(self, field, category, view):
+        is_label_field = field.endswith(".label")
+        is_tag_field = field.endswith("tags")
+        if is_label_field:
+            parent_field = field.split(".")[0]
+            return view.filter_labels(parent_field, F('label') == category)
+        elif is_tag_field:
+            return view.match_tags(category)
+        else:
+            return view.match(F(field) == category)
 
-        # tabulate histogram values
-        label_counts = {}
-        for sample in ctx.dataset.iter_samples():
-            if sample.ground_truth.detections is not None:
-                for detection in sample.ground_truth.detections:
-                    label = detection.label
-                    if label not in label_counts:
-                        label_counts[label] = 1
-                    else:
-                        label_counts[label] += 1
+    def on_load(self, ctx: ExecutionContext):
+        target_field = ctx.panel.state.target_field or "ground_truth.detections.label"
+        ctx.panel.state.target_field = target_field
+        counts = ctx.dataset.count_values(target_field)
+        raw_keys = list(counts.keys())
+        keys = [str(k) for k in raw_keys]
+        sorted_items = sorted(zip(keys, counts.values()), key=lambda x: x[0])
+        keys, values = zip(*sorted_items)
 
-        # sort label counts by values and create list of only the keys of label counts in descending order
-        sorted_label_counts = sorted(
-            label_counts.items(), key=lambda x: x[1], reverse=True
-        )
-        labels = [label_count[0] for label_count in sorted_label_counts]
-        values = [label_count[1] for label_count in sorted_label_counts]
+        histogram_data = {"x": keys, "y": values, "type": "bar"}
 
-        ctx.panel.state.labels = labels
-        ctx.panel.state.values = values
+        ctx.panel.data.histogram = histogram_data
 
-        histogram_data = [
-            {
-                "x": ctx.panel.state.labels,
-                "y": ctx.panel.state.values,
-                "type": "bar",
-                "marker": {"color": "orange"},
-            }
-        ]
-        layout = {
-            "width": 600,
-            "xaxis": {"title": "Label Name"},
-            "yaxis": {"title": "Count"},
-            "title": "A Fancy Plot",
-        }
+        # Launch this panel in a horizontal split view
+        ctx.ops.split_panel("interactive_histogram_example", layout="horizontal")
 
-        ctx.panel.state.histogram = histogram_data
-        ctx.panel.state.layout = layout
+    def on_change_view(self, ctx: ExecutionContext):
+        self.on_load(ctx)
 
-    def filter_data(self, ctx):
-        filter_label = ctx.params["data"]["label"]
-
+    def filter_data(self, ctx: ExecutionContext):
+        x = ctx.params.get("x")
         # create a view of the dataset that only includes samples with the filter label
-        filtered_view = ctx.dataset.filter_labels(
-            "ground_truth", F("label") == filter_label
-        )
+        view = self.get_view_for_category(ctx.panel.state.target_field, x, ctx.dataset)
+        
+        if view:
+            # display the filtered view in the app
+            ctx.ops.set_view(view)
 
-        # display the filtered view
-        ctx.trigger(
-            "set_view",
-            params=dict(
-                view=json.loads(json_util.dumps(filtered_view._serialize()))
-            ),
-        )
-
-    def reset(self, ctx):
-        # clear any saved views on operator
+    def reset(self, ctx: ExecutionContext):
         ctx.ops.clear_view()
         self.on_load(ctx)
 
-    def render(self, ctx):
+    def render(self, ctx: ExecutionContext):
         panel = types.Object()
 
         # Bar Chart - Histogram
         panel.plot(
             "histogram",
-            layout=ctx.panel.state.layout,
-            label="Interactive Histogram",
+            layout={
+                "title": {
+                    "text": "Interactive Histogram",
+                    "xanchor": "center",
+                    "yanchor": "top",
+                    "automargin": True,
+                },
+                "xaxis": {"title": "Labels"},
+                "yaxis": {"title": "Count"},
+            },
             on_click=self.filter_data,
+            width=100,
         )
 
-        # Buttons
-        panel.btn("reset", label="Reset Chart", on_click=self.reset)
+        # Button
+        panel.btn(
+            "reset", label="Reset Chart", on_click=self.reset, variant="contained"
+        )
 
         return types.Property(
             panel,
             view=types.GridView(
-                align_x="center", align_y="center", orientation="vertical"
+                align_x="center",
+                align_y="center",
+                orientation="vertical",
+                height=100,
+                width=100,
+                gap=2,
+                padding=0,
             ),
         )
+
+.. image:: /images/plugins/panels/interactive-plot-example-inline.gif
+    :align: center
 
 Creating walkthrough tutorials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2648,6 +2706,9 @@ Here is an example of how you would create a step-by-step tutorial style Panel:
                 ),
             )
 
+.. image:: /images/plugins/panels/walkthrough-example-inline.gif
+    :align: center
+
 Displaying multimedia
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -2671,8 +2732,7 @@ Here are some examples on how to create panels that render, manipulate, and load
                 name="example_image", label="Python Panel Example: Image"
             )
 
-        @staticmethod
-        def on_load(ctx: ExecutionContext):
+        def on_load(self, ctx: ExecutionContext):
             # filter 10 images from data set and set it to a state variable
 
             ctx.panel.state.single_image = "https://static6.depositphotos.com/1119834/620/i/450/depositphotos_6201075-stock-photo-african-elephant-smelling.jpg"
@@ -2736,8 +2796,7 @@ Here are some examples on how to create panels that render, manipulate, and load
                 label="Python Panel Example: Media Player",
             )
 
-        @staticmethod
-        def on_load(ctx: ExecutionContext):
+        def on_load(self, ctx: ExecutionContext):
             ctx.panel.state.media_player = {
                 "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
             }
@@ -2766,6 +2825,8 @@ Here are some examples on how to create panels that render, manipulate, and load
                 ),
             )
 
+.. image:: /images/plugins/panels/multimedia-example-inline.gif
+    :align: center
 
 
 Layering panels with dropdown menus
@@ -2847,17 +2908,26 @@ Here's an example of how to create a dropdown menu with selectable options that 
             # change panel visual state dependent on dropdown menu selection
             if ctx.panel.state.selection == "refresh":
                 panel.btn(
-                    "refresh", label="Refresh FiftyOne", on_click=self.refresh_page
+                    "refresh",
+                    label="Refresh FiftyOne",
+                    on_click=self.refresh_page,
+                    variant="contained",
                 )
             elif ctx.panel.state.selection == "reload_samples":
                 panel.btn(
                     "reload_samples",
                     label="Reload Samples",
                     on_click=self.reload_samples,
+                    variant="contained",
                 )
             elif ctx.panel.state.selection == "say_hi":
-                panel.btn("say_hi", label="Say Hi", on_click=self.say_hi)
-
+                panel.btn(
+                    "say_hi",
+                    label="Say Hi",
+                    on_click=self.say_hi,
+                    variant="contained",
+                )
+            
             return types.Property(
                 panel,
                 view=types.GridView(
@@ -2868,6 +2938,9 @@ Here's an example of how to create a dropdown menu with selectable options that 
                     orientation="vertical",
                 ),
             )
+
+.. image:: /images/plugins/panels/dropdown-example-inline.gif
+    :align: center
 
 Panel examples
 -----------------------------------
