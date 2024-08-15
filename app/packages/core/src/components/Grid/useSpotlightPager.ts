@@ -113,13 +113,22 @@ const useSpotlightPager = ({
   useEffect(() => {
     refresher;
     const current = records.current;
-    return () => {
+    const clear = () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
         for (const id of Array.from(current.keys())) {
           store.get(id)?.invalidateRecord();
         }
         current.clear();
       });
+    };
+
+    const unsubscribe = foq.subscribe(
+      ({ event }) => event === "fieldVisibility" && clear()
+    );
+
+    return () => {
+      clear();
+      unsubscribe();
     };
   }, [refresher]);
 
