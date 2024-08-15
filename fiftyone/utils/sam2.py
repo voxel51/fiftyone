@@ -1,17 +1,18 @@
 """
-`Segment Anything <https://github.com/facebookresearch/segment-anything-2>`_ wrapper for the FiftyOne
-Model Zoo.
+`Segment Anything 2 <https://github.com/facebookresearch/segment-anything-2>`_
+wrapper for the FiftyOne Model Zoo.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-import numpy as np
 import cv2
+import numpy as np
+
+import logging
 
 import eta.core.utils as etau
-import logging
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -23,11 +24,11 @@ import fiftyone.core.models as fom
 fou.ensure_torch()
 import torch
 
-sam2 = fou.lazy_import("sam2")
-smvid = fou.lazy_import("sam2.sam2_video_predictor")
-smutil = fou.lazy_import("sam2.utils.misc")
-smip = fou.lazy_import("sam2.sam2_image_predictor")
+sam2 = fou.lazy_import("sam2", callback=lambda: fou.ensure_import("sam2"))
 samg = fou.lazy_import("sam2.automatic_mask_generator")
+smip = fou.lazy_import("sam2.sam2_image_predictor")
+smutil = fou.lazy_import("sam2.utils.misc")
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 class SegmentAnything2ImageModelConfig(
     fout.TorchImageModelConfig, fozm.HasZooModel
 ):
-    """Configuration for running a :class:`SegmentAnything2Model`.
+    """Configuration for running a :class:`SegmentAnything2ImageModel`.
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
@@ -106,7 +107,6 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         dataset = foz.load_zoo_dataset("quickstart")
         dataset = dataset.filter_labels("ground_truth", F("label") == "person")
 
-
         # Generate some keypoints
         model = foz.load_zoo_model("keypoint-rcnn-resnet50-fpn-coco-torch")
         dataset.default_skeleton = model.skeleton
@@ -144,6 +144,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
     """
 
     def __init__(self, config):
+        dir(sam2)  # ensure package is installed
         super().__init__(config=config)
 
     def _load_model(self, config):
@@ -225,29 +226,32 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
 
 class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
-    """Wrapper for running `Segment Anything 2 <https://ai.meta.com/sam2/>`_
+    """Wrapper for running `Segment Anything 2 <https://ai.meta.com/sam2>`_
     inference on videos.
 
-    Example for running SAM2 model on a video with prompt:
+    Video prompt example::
+
         import fiftyone as fo
         import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
 
         dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
 
-        # Only retain detections on the first frame of each video
-        for sample in dataset:
-            for frame_idx, frame in sample.frames.items():
-                if frame_idx >= 2:
-                    frame.detections = None
-            sample.save()
+        # Only retain detections in the first frame
+        (
+            dataset
+            .match_frames(F("frame_number") > 1)
+            .set_field("frames.detections", None)
+            .save()
+        )
 
         model = foz.load_zoo_model("segment-anything-2-hiera-tiny-video-torch")
 
-        # Prompt with boxes
+        # Segment inside boxes and propagate to all frames
         dataset.apply_model(
             model,
             label_field="segmentations",
-            prompt_field="frames.detections", # You can also pass in a keypoint field here
+            prompt_field="frames.detections", # can contain Detections or Keypoints
         )
 
         session = fo.launch_app(dataset)
@@ -257,16 +261,16 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
     """
 
     def __init__(self, config):
-        self._fields = {}
+        dir(sam2)  # ensure package is installed
+
         self.config = config
         device = self.config.device
         if device is None:
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        # Device details
         self._device = torch.device(device)
 
         self._download_model(config)
+
         try:
             self.ctx = _load_video_frames_monkey_patch()
         except Exception as e:
@@ -274,6 +278,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 "Failed to monkey patch sam2.utils.misc.load_vide_frames: %s",
                 e,
             )
+
         self.model = self._load_model(config)
 
         self._curr_prompt_type = None

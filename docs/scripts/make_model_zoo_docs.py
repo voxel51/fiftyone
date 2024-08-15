@@ -90,6 +90,9 @@ _MODEL_TEMPLATE = """
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+{% if 'segment-anything' in name and 'video' in name %}
+    from fiftyone import ViewField as F
+{% endif %}
 
 {% if 'imagenet' in name %}
     dataset = foz.load_zoo_dataset(
@@ -98,15 +101,16 @@ _MODEL_TEMPLATE = """
         max_samples=50,
         shuffle=True,
     )
-{% elif 'segment-anything-2' in name and 'video' in name %}
+{% elif 'segment-anything' in name and 'video' in name %}
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
 
     # Only retain detections in the first frame
-    for sample in dataset:
-        for frame_idx, frame in sample.frames.items():
-            if frame_idx >= 2:
-                frame.detections = None
-        sample.save()
+    (
+        dataset
+        .match_frames(F("frame_number") > 1)
+        .set_field("frames.detections", None)
+        .save()
+    )
 {% else %}
     dataset = foz.load_zoo_dataset(
         "coco-2017",
@@ -134,7 +138,7 @@ _MODEL_TEMPLATE = """
 {% elif 'segment-anything' in tags and 'video' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
-    # Segment inside boxes
+    # Segment inside boxes and propagate to all frames
     dataset.apply_model(
         model,
         label_field="segmentations",
