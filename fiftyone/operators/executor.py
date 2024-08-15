@@ -384,15 +384,16 @@ async def resolve_type(registry, operator_uri, request_params):
 
 
 async def resolve_type_with_context(request_params, target: str = None):
-    """Resolves the "inputs" or "outputs" schema of an operator with the given context.
+    """Resolves the "inputs" or "outputs" schema of an operator with the given
+    context.
 
     Args:
         request_params: a dictionary of request parameters
         target (None): the target schema ("inputs" or "outputs")
 
     Returns:
-        the schema of "inputs" or "outputs" :class:`fiftyone.operators.types.Property` of
-        an operator, or None
+        the schema of "inputs" or "outputs"
+        :class:`fiftyone.operators.types.Property` of an operator, or None
     """
     computed_target = target or request_params.get("target", None)
     computed_request_params = {**request_params, "target": computed_target}
@@ -569,6 +570,13 @@ class ExecutionContext(object):
     def target_view(self, param_name="view_target"):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
+
+        Args:
+            param_name ("view_target"): the name of the enum parameter defining
+                the target view choice
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name, None)
         if target == "SELECTED_SAMPLES":
@@ -610,6 +618,11 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def extended_selection(self):
+        """The extended selection of the view (if any)."""
+        return self.request_params.get("extended_selection", None)
+
+    @property
     def current_sample(self):
         """The ID of the current sample being processed (if any).
 
@@ -617,6 +630,34 @@ class ExecutionContext(object):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def user_id(self):
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        # @todo: move panel_id to top level param
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        """The current panel state.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel_state
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel
 
     @property
     def delegated(self):
@@ -655,11 +696,6 @@ class ExecutionContext(object):
         """
         return self._ops
 
-    @property
-    def user_id(self) -> Optional[str]:
-        """The ID of the user executing the operation, if known."""
-        return self.user.id if self.user else None
-
     def prompt(
         self,
         operator_uri,
@@ -672,14 +708,14 @@ class ExecutionContext(object):
         Args:
             operator_uri: the URI of the operator
             params (None): a dictionary of parameters for the operator
-            on_success (None): a callback to invoke if the user successfully executes the operator
+            on_success (None): a callback to invoke if the user successfully
+                executes the operator
             on_error (None): a callback to invoke if the execution fails
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
             instructions for the FiftyOne App to prompt the user
         """
-
         return self.trigger(
             "prompt_user_for_operation",
             params=_convert_callables_to_operator_uris(
@@ -779,25 +815,20 @@ class ExecutionContext(object):
         """
         return self.trigger("console_log", {"message": message})
 
-    @property
-    def panel_id(self):
-        """The ID of the panel that invoked the operator, if any."""
-        #
-        # TODO: move panel_id to top level params
-        #
-        return self.params.get("panel_id", None)
+    def set_progress(self, progress=None, label=None):
+        """Sets the progress of the current operation.
 
-    @property
-    def panel_state(self):
-        return self._panel_state
-
-    @property
-    def panel(self):
-        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can use
-        to read and write the state and data of the corresponding panel.
-
-        Only available when the operator is invoked from a panel."""
-        return self._panel
+        Args:
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
+        """
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress} - {label}")
 
     def serialize(self):
         """Serializes the execution context.
@@ -816,26 +847,6 @@ class ExecutionContext(object):
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
-    def set_progress(self, progress=None, label=None):
-        """Sets the progress of the current operation.
-
-        Args:
-            progress (None): an optional float between 0 and 1 (0% to 100%)
-            label (None): an optional label to display
-        """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
-        else:
-            self.log(f"Progress: {progress} - {label}")
-
-    @property
-    def extended_selection(self):
-        """The extended selection of the view."""
-        return self.request_params.get("extended_selection", None)
-
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
@@ -847,7 +858,8 @@ class ExecutionResult(object):
         error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
-        outputs_schema (None): a JSON dict representing the output schema of the operator
+        outputs_schema (None): a JSON dict representing the output schema of
+            the operator
     """
 
     def __init__(
@@ -960,6 +972,7 @@ class ValidationContext(object):
         ctx: the :class:`ExecutionContext`
         inputs_property: the :class:`fiftyone.operators.types.Property` of the
             operator inputs
+        operator: the :class:`fiftyone.operators.operator.Operator`
     """
 
     def __init__(self, ctx, inputs_property, operator):
