@@ -63,7 +63,7 @@ def test_sam_points():
         batch_size=2,
         model_kwargs=dict(mask_index=1.05),
         apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
-        prompt_type = "keypoints",
+        prompt_type="keypoints",
     )
 
 
@@ -74,6 +74,7 @@ def test_sam_auto():
         max_samples=3,
         model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
     )
+
 
 def test_sam2_boxes():
     models = ["segment-anything-2-hiera-tiny-image-torch"]
@@ -93,7 +94,7 @@ def test_sam2_points():
         batch_size=2,
         model_kwargs=dict(mask_index=1.05),
         apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
-        prompt_type = "keypoints",
+        prompt_type="keypoints",
     )
 
 
@@ -103,6 +104,7 @@ def test_sam2_auto():
         models,
         max_samples=3,
     )
+
 
 def test_sam2_video():
     models = ["segment-anything-2-hiera-tiny-video-torch"]
@@ -189,7 +191,7 @@ def _apply_models(
     confidence_thresh=None,
     pass_confidence_thresh=False,
     max_samples=10,
-    prompt_type = None,
+    prompt_type=None,
     model_kwargs=None,
     apply_kwargs=None,
 ):
@@ -235,6 +237,7 @@ def _apply_models(
     session = fo.launch_app(dataset)
     session.wait()
 
+
 def _apply_video_models(
     model_names,
     batch_size=None,
@@ -258,14 +261,10 @@ def _apply_video_models(
         max_samples=max_samples,
     )
 
-    # Generate keypoints for segment-anything model
     if _SAM_PROMPT_FIELD in kwargs:
-        for sample in dataset:
-            for frame_idx in sample.frames:
-                frame = sample.frames[frame_idx]
-                if frame_idx >= 2:
-                    frame.detections = None
-                sample.save()
+        dataset.match_frames(F("frame_number" > 1)).set_field(
+            "frames.detections", None
+        ).save()
 
     for idx, model_name in enumerate(model_names, 1):
         print(
