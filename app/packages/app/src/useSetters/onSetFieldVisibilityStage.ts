@@ -1,9 +1,9 @@
 import {
   setFieldVisibilityStage,
-  type setFieldVisibilityStageMutation,
   subscribeBefore,
+  type setFieldVisibilityStageMutation,
 } from "@fiftyone/relay";
-import { type State, stateSubscription } from "@fiftyone/state";
+import { stateSubscription, type State } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -38,6 +38,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
       }),
       {
         ...router.get().state,
+        event: "fieldVisibility",
         fieldVisibility: stage,
       }
     );

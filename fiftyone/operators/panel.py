@@ -1,27 +1,39 @@
 """
-FiftyOne operators.
+FiftyOne panels.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import pydash
+
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
 
-import pydash
-
 
 class PanelConfig(OperatorConfig):
-    """A configuration for a panel operator."""
+    """Configuration for a panel.
+
+    Args:
+        name: the name of the panel
+        label: the display name for the panel
+        icon (None): the icon to show in the panel's tab
+        light_icon (None): the icon to show in the panel's tab when the App is
+            in light mode
+        dark_icon (None): the icon to show in the panel's tab when the App is
+            in dark mode
+        allow_multiple (False): whether to allow multiple instances of the
+            panel to be opened
+    """
 
     def __init__(
         self,
         name,
         label,
         icon=None,
-        dark_icon=None,
         light_icon=None,
+        dark_icon=None,
         allow_multiple=False,
         **kwargs
     ):
@@ -29,34 +41,40 @@ class PanelConfig(OperatorConfig):
         self.name = name
         self.label = label
         self.icon = icon
-        self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
-        d = super().to_json()
         return {
-            **d,
             "name": self.name,
             "label": self.label,
             "icon": self.icon,
-            "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
+            "on_startup": self.on_startup,
         }
 
 
-# Alias for backwards compatibility
-PanelOperatorConfig = PanelConfig
-
-
 class Panel(Operator):
-    """A panel operator."""
+    """A panel."""
 
     def render(self, ctx):
+        """Defines the panel's layout and events.
+
+        This method is called after every panel event is called (on load,
+        button callback, context change event, etc).
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Property`
+        """
         raise NotImplementedError("Subclasses must implement render()")
 
     def resolve_input(self, ctx):
@@ -118,39 +136,39 @@ class WriteOnlyError(Exception):
     """Error raised when trying to read a write-only property."""
 
 
-class PanelRefBase:
-    """
-    Base class for panel state and data.
+class PanelRefBase(object):
+    """Base class for panel state and data.
 
-    Attributes:
-        _data (dict): A dictionary to store the data or state.
-        _ctx: The context object containing the operations.
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
         self._data = {}
         self._ctx = ctx
 
-    def set(self, key, value):
-        """
-        Sets the value in the dictionary.
+    def set(self, key, value=None):
+        """Sets some value(s) in the dictionary.
 
         Args:
-            key (str): The key.
-            value (any): The value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        pydash.set_(self._data, key, value)
+        d = key if isinstance(key, dict) else {key: value}
+
+        for k, v in d.items():
+            pydash.set_(self._data, k, v)
 
     def get(self, key, default=None):
-        """
-        Gets the value from the dictionary.
+        """Gets a value from the dictionary.
 
         Args:
-            key (str): The key.
-            default (any): The default value if key is not found.
+            key: a key or ``"nested.key.path"``
+            default (None): a default value if the key is not found
 
         Returns:
-            The value.
+            the value
         """
         return pydash.get(self._data, key, default)
 
@@ -174,25 +192,31 @@ class PanelRefBase:
 
 
 class PanelRefState(PanelRefBase):
-    """
-    Class representing the state of a panel.
+    """Class representing the state of a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
         super().__init__(ctx)
         self._data = ctx.panel_state
 
-    def set(self, key, value):
-        """
-        Sets the state of the panel.
+    def set(self, key, value=None):
+        """Sets some panel state.
 
         Args:
-            key (str): A dot delimited path.
-            value (any): The state value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        super().set(key, value)
+        d = key if isinstance(key, dict) else {key: value}
+
         args = {}
-        pydash.set_(args, key, value)
+        for k, v in d.items():
+            super().set(k, v)
+            pydash.set_(args, k, v)
+
         self._ctx.ops.patch_panel_state(args)
 
     def clear(self):
@@ -211,23 +235,28 @@ class PanelRefState(PanelRefBase):
 
 
 class PanelRefData(PanelRefBase):
-    """
-    Class representing the data of a panel.
+    """Class representing the data of a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
-    def set(self, key, value, _exec_op=True):
-        """
-        Sets the data of the panel.
+    def set(self, key, value=None):
+        """Sets some panel data.
 
         Args:
-            key (str): The data key.
-            value (any): The data value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        super().set(key, value)
+        d = key if isinstance(key, dict) else {key: value}
+
         args = {}
-        pydash.set_(args, key, value)
-        if _exec_op:
-            self._ctx.ops.patch_panel_data(args)
+        for k, v in d.items():
+            super().set(k, v)
+            pydash.set_(args, k, v)
+
+        self._ctx.ops.patch_panel_data(args)
 
     def get(self, key, default=None):
         raise WriteOnlyError("Panel data is write-only")
@@ -238,9 +267,11 @@ class PanelRefData(PanelRefBase):
         self._ctx.ops.clear_panel_data()
 
 
-class PanelRef:
-    """
-    Represents a panel in the app.
+class PanelRef(object):
+    """Class representing a panel.
+
+    Args:
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
@@ -267,56 +298,43 @@ class PanelRef:
         """Closes the panel."""
         self._ctx.ops.close_panel(id=self.id)
 
-    def set_state(self, key, value):
-        """
-        Sets the state of the panel.
+    def set_state(self, key, value=None):
+        """Sets some panel state.
 
         Args:
-            key (str): A dot delimited path.
-            value (any): The state value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        self._state.set(key, value)
+        self._state.set(key, value=value)
 
     def get_state(self, key, default=None):
-        """
-        Gets the state of the panel.
+        """Gets some panel state.
 
         Args:
-            key (str): A dot delimited path.
-            default (any): The default value if key is not found.
+            key: the key or ``"nested.key.path"``
+            default (None): a default value if the key is not found
 
         Returns:
-            The state value.
+            the state value
         """
-        return self._state.get(key, default)
+        return self._state.get(key, default=default)
 
-    def set_data(self, key, value):
-        """
-        Sets the data of the panel.
-
-        Args:
-            path (str): The dot delimited path to set.
-            value (any): The data value.
-        """
-        self._data.set(key, value)
-
-    def batch_set_data(self, data):
-        """
-        Sets multiple data values by path.
+    def set_data(self, key, value=None):
+        """Sets some panel data.
 
         Args:
-            data (dict): A dictionary of key-value pairs. Where the key is the path and the value is the data value.
+            key: a key, ``"nested.key.path"``, or dict mapping multiple
+                possibly-nested keys to values
+            value (None): the value, if key is a string
         """
-        for key, value in data.items():
-            self._data.set(key, value, _exec_op=False)
-        self._ctx.ops.patch_panel_data(data)
+        self._data.set(key, value=value)
 
     def set_title(self, title):
-        """
-        Sets the title of the panel.
+        """Sets the title of the panel.
 
         Args:
-            title (str): The title.
+            title: a title string
         """
         if title is None:
             raise ValueError("title cannot be None")

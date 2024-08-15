@@ -10,6 +10,7 @@ import { executeOperator } from "./operators";
 import { useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
+import { useUnboundState } from "@fiftyone/state";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -77,6 +78,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
   const triggerPanelEvent = usePanelEvent();
+  const lazyState = useUnboundState({ panelState });
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
@@ -186,14 +188,16 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const handlePanelStatePathChange = useMemo(() => {
     return (path, value, schema, state) => {
       if (schema?.onChange) {
+        const { panelState } = lazyState;
+        const currentPanelState = merge({}, panelState?.state, state);
         triggerPanelEvent(panelId, {
           operator: schema.onChange,
           params: { path, value },
-          currentPanelState: state,
+          currentPanelState,
         });
       }
     };
-  }, [panelId, triggerPanelEvent]);
+  }, [panelId, triggerPanelEvent, lazyState]);
 
   const handlePanelStatePathChangeDebounced = useMemo(() => {
     return memoizedDebounce(
