@@ -17,7 +17,7 @@ const Group = () => {
   );
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
-    fos.dynamicGroupsViewMode
+    fos.dynamicGroupsViewMode(true)
   );
   const setIsMainLookerVisible = useSetRecoilState(
     fos.groupMediaIsMainVisibleSetting

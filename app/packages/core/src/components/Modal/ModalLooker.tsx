@@ -76,7 +76,7 @@ export const ModalLooker = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const shouldRenderImaVidLooker = useRecoilValue(
-      fos.shouldRenderImaVidLooker
+      fos.shouldRenderImaVidLooker(true)
     );
     const setModalLooker = useSetRecoilState(fos.modalLooker);
     const { subscribeToImaVidStateChanges } =
