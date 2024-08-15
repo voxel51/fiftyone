@@ -3,16 +3,24 @@ import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { gridAt, gridPage } from "./recoil";
+import { gridAt, gridOffset, gridPage } from "./recoil";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
-  const extendedStages = fos.stringifyObj(useRecoilValue(fos.extendedStages));
+  const extendedStagesUnsorted = fos.stringifyObj(
+    useRecoilValue(fos.extendedStagesUnsorted)
+  );
+  const fieldVisibilityStage = fos.stringifyObj(
+    useRecoilValue(fos.fieldVisibilityStage) || {}
+  );
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const refresher = useRecoilValue(fos.refresher);
+  const similarityParameters = fos.stringifyObj(
+    useRecoilValue(fos.similarityParameters) || {}
+  );
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false)
   );
@@ -21,26 +29,29 @@ export default function useRefreshers() {
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
     cropToContent;
+    fieldVisibilityStage;
     mediaField;
     refresher;
     return uuid();
-  }, [cropToContent, mediaField, refresher]);
+  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
     datasetName;
-    extendedStages;
+    extendedStagesUnsorted;
     filters;
     groupSlice;
     shouldRenderImaVidLooker;
+    similarityParameters;
     view;
     return uuid();
   }, [
     datasetName,
-    extendedStages,
+    extendedStagesUnsorted,
     filters,
     groupSlice,
     shouldRenderImaVidLooker,
+    similarityParameters,
     view,
   ]);
 
@@ -53,11 +64,17 @@ export default function useRefreshers() {
   useEffect(
     () =>
       subscribe(({ event }, { reset }, previous) => {
-        if (event === "modal" || previous?.event === "modal") return;
+        if (
+          event === "fieldVisibility" ||
+          event === "modal" ||
+          previous?.event === "modal"
+        )
+          return;
 
         // if not a modal page change, reset the grid location
-        reset(gridPage);
         reset(gridAt);
+        reset(gridPage);
+        reset(gridOffset);
       }),
     []
   );

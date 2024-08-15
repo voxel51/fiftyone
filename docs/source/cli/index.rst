@@ -843,17 +843,19 @@ List operators that you've downloaded or created locally.
 
 .. code-block:: text
 
-    fiftyone operators list [-h] [-e] [-d] [-n]
+    fiftyone operators list [-h] [-e] [-d] [-o] [-p] [-n]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help        show this help message and exit
-      -e, --enabled     only show enabled operators
-      -d, --disabled    only show disabled operators
-      -n, --names-only  only show names
+      -h, --help            show this help message and exit
+      -e, --enabled         only show enabled operators
+      -d, --disabled        only show disabled operators
+      -o, --operators-only  only show operators
+      -p, --panels-only     only show panels
+      -n, --names-only      only show names
 
 **Examples**
 
@@ -871,6 +873,11 @@ List operators that you've downloaded or created locally.
 
     # List disabled operators
     fiftyone operators list --disabled
+
+.. code-block:: shell
+
+    # Only list panels
+    fiftyone operators list --panels-only
 
 .. _cli-fiftyone-operators-info:
 
