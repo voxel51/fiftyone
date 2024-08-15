@@ -17,7 +17,7 @@ from .executor import (
     ExecutionOptions,
 )
 from .utils import ProgressHandler
-from .panel import Panel, PanelConfig, PanelOperatorConfig
+from .panel import Panel, PanelConfig
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]
