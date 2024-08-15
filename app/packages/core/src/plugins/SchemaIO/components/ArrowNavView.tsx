@@ -27,7 +27,9 @@ export default function ArrowNavView(props: ViewPropsType) {
         <Arrow
           style={positionBasedStyleBackward[position]}
           onClick={() => {
-            handleClick(panelId, { operator: on_backward });
+            if (on_backward) {
+              handleClick(panelId, { operator: on_backward });
+            }
           }}
         >
           <LookerArrowLeftIcon />
@@ -38,7 +40,9 @@ export default function ArrowNavView(props: ViewPropsType) {
           isRight
           style={positionBasedStyleForward[position]}
           onClick={() => {
-            handleClick(panelId, { operator: on_forward });
+            if (on_forward) {
+              handleClick(panelId, { operator: on_forward });
+            }
           }}
         >
           <LookerArrowRightIcon />

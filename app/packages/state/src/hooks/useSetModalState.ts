@@ -2,6 +2,7 @@ import type { CallbackInterface, RecoilState } from "recoil";
 
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback } from "recoil";
+import { dynamicGroupsViewMode } from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -58,6 +59,7 @@ export default () => {
 
         [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
         [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
+        [dynamicGroupsViewMode(true), dynamicGroupsViewMode(false)],
       ];
 
       const slice = await snapshot.getPromise(groupAtoms.groupSlice);
