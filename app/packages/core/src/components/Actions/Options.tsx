@@ -155,7 +155,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
-  const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode);
+  const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode(modal));
   const setIsCarouselVisible = useSetRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );

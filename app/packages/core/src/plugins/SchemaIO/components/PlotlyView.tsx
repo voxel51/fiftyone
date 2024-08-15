@@ -3,23 +3,28 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import Plot from "react-plotly.js";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
+import { ViewPropsType } from "../utils/types";
 
-export default function PlotlyView(props) {
-  const { data, schema, path } = props;
+export default function PlotlyView(props: ViewPropsType) {
+  const { data, schema, path, relativeLayout } = props;
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
   const panelId = usePanelId();
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
+  const [revision, setRevision] = React.useState(0);
+
   const handleEvent = (event?: string) => (e) => {
     const data = EventDataMappers[event]?.(e) || {};
     let xValue = null;
     let yValue = null;
+    let value;
+    let label;
     if (event === "onClick") {
       const values = e.points[0];
       let selected = [];
@@ -44,6 +49,9 @@ export default function PlotlyView(props) {
         } else if (type === "heatmap") {
           xValue = p.x;
           yValue = p.y;
+        } else if (type === "pie") {
+          value = p.v;
+          label = p.label;
         }
       }
       if (selected.length === 0) {
@@ -52,13 +60,14 @@ export default function PlotlyView(props) {
     }
 
     const eventHandlerOperator = view[snakeCase(event)];
-
     const defaultParams = {
       path: props.path,
       relative_path: props.relativePath,
       schema: props.schema,
       view,
       event,
+      value,
+      label,
     };
 
     if (eventHandlerOperator) {
@@ -152,6 +161,12 @@ export default function PlotlyView(props) {
     return mergeData(data || schema?.view?.data, dataDefaults);
   }, [data, dataDefaults, schema?.view?.data]);
 
+  useEffect(() => {
+    setTimeout(() => {
+      setRevision((r) => r + 1);
+    }, 500); // Delay to allow for layout to be animated
+  }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
+
   return (
     <Box
       {...getComponentProps(props, "container")}
@@ -160,6 +175,7 @@ export default function PlotlyView(props) {
     >
       <HeaderView {...props} nested />
       <Plot
+        revision={revision}
         data={mergedData}
         style={{ height: "100%", width: "100%", zIndex: 1 }}
         config={mergedConfig}
@@ -231,6 +247,9 @@ const EventDataMappers = {
       selected.push({
         idx: point.pointIndex,
         id: Array.isArray(ids) ? ids[point.pointIndex] : null,
+        x: Array.isArray(x) ? x[point.pointIndex] : null,
+        y: Array.isArray(y) ? y[point.pointIndex] : null,
+        z: Array.isArray(z) ? z[point.pointIndex] : null,
       });
     }
     return selected;

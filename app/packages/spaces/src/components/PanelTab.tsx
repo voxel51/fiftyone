@@ -1,11 +1,12 @@
 import { IconButton } from "@fiftyone/components";
 import { useTimeout } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
-import { Skeleton, Typography } from "@mui/material";
+import { CircularProgress, Skeleton, Typography } from "@mui/material";
 import { useCallback } from "react";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import {
   usePanelCloseEffect,
+  usePanelLoading,
   usePanelTitle,
   useReactivePanel,
   useSpaces,
@@ -20,6 +21,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const panelId = node.id;
   const panel = useReactivePanel(panelName);
   const [title] = usePanelTitle(panelId);
+  const [loading] = usePanelLoading(panelId);
   const closeEffect = usePanelCloseEffect(panelId);
   const pending = useTimeout(PANEL_LOADING_TIMEOUT);
 
@@ -46,7 +48,8 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
     >
       {!panel && pending && <Skeleton width={48} height={24} />}
       {!panel && !pending && <Typography>{panelName}</Typography>}
-      {panel && <PanelIcon name={panelName as string} />}
+      {panel && loading && <CircularProgress size={14} sx={{ mr: 0.85 }} />}
+      {panel && !loading && <PanelIcon name={panelName as string} />}
       {panel && <Typography>{title || panel.label || panel.name}</Typography>}
       {panel && TabIndicator && (
         <TabIndicatorContainer>

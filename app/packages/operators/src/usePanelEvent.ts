@@ -1,30 +1,43 @@
 import { usePanelStateByIdCallback } from "@fiftyone/spaces";
+import { useNotification } from "@fiftyone/state";
+import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
-import { useNotification } from "@fiftyone/state";
 
 type HandlerOptions = {
-  params: any;
+  params: { [name: string]: unknown };
   operator: string;
   prompt?: boolean;
   panelId: string;
   callback?: ExecutionCallback;
+  currentPanelState?: any; // most current panel state
 };
 
 export default function usePanelEvent() {
   const promptForOperator = usePromptOperatorInput();
   const notify = useNotification();
+  const { increment, decrement } = useActivePanelEventsCount("");
   return usePanelStateByIdCallback((panelId, panelState, args) => {
     const options = args[0] as HandlerOptions;
-    const { params, operator, prompt } = options;
+    const { params, operator, prompt, currentPanelState } = options;
+
+    if (!operator) {
+      notify({
+        msg: "No operator provided for panel event.",
+        variant: "error",
+      });
+      return console.error("No operator provided for panel event.");
+    }
+
     const actualParams = {
       ...params,
       panel_id: panelId,
-      panel_state: panelState?.state || {},
+      panel_state: currentPanelState ?? (panelState?.state || {}),
     };
 
     const eventCallback = (result) => {
+      decrement(panelId);
       const msg =
         result.errorMessage || result.error || "Failed to execute operation";
       const computedMsg = `${msg} (operation: ${operator})`;
@@ -38,6 +51,7 @@ export default function usePanelEvent() {
     if (prompt) {
       promptForOperator(operator, actualParams, { callback: eventCallback });
     } else {
+      increment(panelId);
       executeOperator(operator, actualParams, { callback: eventCallback });
     }
   });

@@ -1,16 +1,16 @@
-import { debounce, isEqual, merge } from "lodash";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { debounce, merge } from "lodash";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
-import * as fos from "@fiftyone/state";
-import { PANEL_STATE_CHANGE_DEBOUNCE } from "./constants";
-import { executeOperator } from "./operators";
 import {
-  panelsStateUpdatesCountAtom,
-  useGlobalExecutionContext,
-} from "./state";
+  PANEL_STATE_CHANGE_DEBOUNCE,
+  PANEL_STATE_PATH_CHANGE_DEBOUNCE,
+} from "./constants";
+import { executeOperator } from "./operators";
+import { useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { memoizedDebounce } from "./utils";
+import { useUnboundState } from "@fiftyone/state";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -41,7 +41,8 @@ export interface CustomPanelHooks {
   handlePanelStatePathChange: (
     path: string,
     value: unknown,
-    schema: unknown
+    schema: unknown,
+    state?: unknown
   ) => void;
   data: unknown;
   panelSchema: unknown;
@@ -72,16 +73,12 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     data: panelStateLocal?.data,
   });
   const panelSchema = panelStateLocal?.schema;
-  const panelsStateUpdatesCount = useRecoilValue(panelsStateUpdatesCountAtom);
-  const lastPanelLoadState = useRef({
-    count: panelsStateUpdatesCount,
-    state: panelState,
-  });
   const ctx = useGlobalExecutionContext();
   const isLoaded: boolean = useMemo(() => {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
   const triggerPanelEvent = usePanelEvent();
+  const lazyState = useUnboundState({ panelState });
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
@@ -157,27 +154,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Trigger panel "onLoad" operator when panel state changes externally
-  useEffect(() => {
-    if (
-      lastPanelLoadState.current?.count !== panelsStateUpdatesCount &&
-      !isEqual(lastPanelLoadState.current?.state, panelState)
-    ) {
-      setPanelStateLocal({});
-      onLoad();
-    }
-    lastPanelLoadState.current = {
-      count: panelsStateUpdatesCount,
-      state: panelState,
-    };
-  }, [
-    panelsStateUpdatesCount,
-    panelState,
-    panelId,
-    onLoad,
-    setPanelStateLocal,
-  ]);
-
   const handlePanelStateChangeOpDebounced = useMemo(() => {
     return debounce(
       (state, onChange, panelId) => {
@@ -188,7 +164,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
       PANEL_STATE_CHANGE_DEBOUNCE,
       { leading: true }
     );
-  }, []);
+  }, [triggerPanelEvent]);
 
   useEffect(() => {
     handlePanelStateChangeOpDebounced(
@@ -209,26 +185,31 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     });
   };
 
-  const handlePanelStatePathChange = useCallback(
-    (path, value, schema) => {
+  const handlePanelStatePathChange = useMemo(() => {
+    return (path, value, schema, state) => {
       if (schema?.onChange) {
-        // This timeout allows the change to be applied before executing the operator
-        // it might make sense to do this for all operator executions
-        setTimeout(() => {
-          triggerPanelEvent(panelId, {
-            operator: schema.onChange,
-            params: { path, value },
-          });
-        }, 0);
+        const { panelState } = lazyState;
+        const currentPanelState = merge({}, panelState?.state, state);
+        triggerPanelEvent(panelId, {
+          operator: schema.onChange,
+          params: { path, value },
+          currentPanelState,
+        });
       }
-    },
-    [triggerPanelEvent, panelId]
-  );
+    };
+  }, [panelId, triggerPanelEvent, lazyState]);
+
+  const handlePanelStatePathChangeDebounced = useMemo(() => {
+    return memoizedDebounce(
+      handlePanelStatePathChange,
+      PANEL_STATE_PATH_CHANGE_DEBOUNCE
+    );
+  }, [handlePanelStatePathChange]);
 
   return {
     loaded: isLoaded,
     handlePanelStateChange,
-    handlePanelStatePathChange,
+    handlePanelStatePathChange: handlePanelStatePathChangeDebounced,
     data,
     panelSchema,
     onLoadError: panelStateLocal?.onLoadError,

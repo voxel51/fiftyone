@@ -228,6 +228,15 @@ class PanelRefState(PanelRefBase):
         super().clear()
         self._ctx.ops.clear_panel_state()
 
+    def apply(self, path):
+        """
+        Applies the state to the panel.
+
+        Args:
+            path (str): The path to the state.
+        """
+        self._ctx.ops.apply_panel_state_path(path)
+
 
 class PanelRefData(PanelRefBase):
     """Class representing the data of a panel.

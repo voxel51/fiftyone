@@ -41,7 +41,7 @@ export const gridZoom = atom<number>({
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
-  default: [0, 10],
+  default: [-5, 10],
 });
 
 export const gridCropCallback = selector({

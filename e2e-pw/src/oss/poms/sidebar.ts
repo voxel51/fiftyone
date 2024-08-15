@@ -38,6 +38,10 @@ export class SidebarPom {
     );
   }
 
+  filter(fieldName: string, filterType: "categorical" | "numeric") {
+    return this.sidebar.getByTestId(`${filterType}-filter-${fieldName}`);
+  }
+
   sidebarEntryDraggableArea(fieldName: string) {
     return this.sidebar
       .getByTestId(`sidebar-entry-draggable-${fieldName}`)
@@ -218,6 +222,10 @@ class SidebarAsserter {
 
   async assertFieldNotInSidebar(fieldName: string) {
     await expect(this.sb.field(fieldName)).toBeHidden();
+  }
+
+  async assertFilterIsVisibile(fieldName: string, filterType: "categorical") {
+    await expect(this.sb.filter(fieldName, filterType)).toBeVisible();
   }
 
   async assertSidebarGroupIsVisibile(groupName: string) {

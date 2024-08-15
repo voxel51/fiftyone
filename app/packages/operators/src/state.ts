@@ -1,3 +1,4 @@
+import { useAnalyticsInfo } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,11 +29,9 @@ import {
   resolveExecutionOptions,
   resolveOperatorURI,
 } from "./operators";
-import { Places } from "./types";
+import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
-import { ExecutionCallback } from "./types-internal";
-import { useAnalyticsInfo } from "@fiftyone/analytics";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -72,7 +71,12 @@ export const usePromptOperatorInput = () => {
       return Array.from(update).slice(0, 5);
     });
 
-    setPromptingOperator({ operatorName, params, options });
+    setPromptingOperator({
+      operatorName,
+      params,
+      options,
+      initialParams: params,
+    });
   };
 
   return prompt;
@@ -198,8 +202,13 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
   return { isLoading, executionOptions, fetch };
 }
 
-const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
-  let options = [];
+const useOperatorPromptSubmitOptions = (
+  operatorURI,
+  execDetails,
+  execute,
+  promptView?: OperatorPromptType["promptView"]
+) => {
+  const options = [];
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
@@ -213,7 +222,10 @@ const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
     : false;
   if (executionOptions.allowImmediateExecution) {
     options.push({
-      label: "Execute",
+      label:
+        promptView?.submitButtonLabel ||
+        promptView?.submit_button_label ||
+        "Execute",
       id: "execute",
       default: defaultToExecute,
       description: "Run this operation now",
@@ -494,7 +506,8 @@ export const useOperatorPrompt = () => {
   const submitOptions = useOperatorPromptSubmitOptions(
     operator.uri,
     execDetails,
-    execute
+    execute,
+    promptView
   );
 
   const onSubmit = useCallback(
@@ -856,13 +869,6 @@ export function useOperatorBrowser() {
   };
 }
 
-type OperatorExecutorOptions = {
-  delegationTarget?: string;
-  requestDelegation?: boolean;
-  callback?: ExecutionCallback;
-  skipOutput?: boolean;
-};
-
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
@@ -1034,7 +1040,7 @@ export function useOperatorPlacements(place: Places) {
   return { placements };
 }
 
-export const panelsStateUpdatesCountAtom = atom({
-  key: "panelsStateUpdatesCountAtom",
-  default: 0,
+export const activePanelsEventCountAtom = atom({
+  key: "activePanelsEventCountAtom",
+  default: new Map<string, number>(),
 });

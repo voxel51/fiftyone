@@ -235,6 +235,18 @@ class Operations(object):
             },
         )
 
+    def apply_panel_state_path(self, path, panel_id=None):
+        """Force update the state for path in the specified panel in the App.
+
+        Args:
+
+            path (str): the path to force update
+        """
+        return self._ctx.trigger(
+            "apply_panel_state_path",
+            params={**self._create_panel_params(panel_id), "path": path},
+        )
+
     def show_panel_output(self, output, panel_id=None):
         """Show output in the specified panel in the App.
 
