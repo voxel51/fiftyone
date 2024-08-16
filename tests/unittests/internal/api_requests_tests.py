@@ -144,7 +144,7 @@ class TestResolveUser:
         assert user == {"id": "123", "_request_token": None}
 
         # Test exception is raised if user cannot be resolved when it is expected to be resolvable
-        os.environ["FIFTYONE_API_KEY"] = "test_key"
+        os.environ["FIFTYONE_INTERNAL_SERVICE"] = "true"
         mock_make_request.side_effect = Exception
         with pytest.raises(Exception) as e:
             await api_requests.resolve_operation_user(id="345")

@@ -21,9 +21,9 @@ from fiftyone.api import client as api_client
 from fiftyone.internal.constants import TTL_CACHE_LIFETIME_SECONDS
 from fiftyone.internal.util import (
     access_nested_element,
+    is_internal_service,
     get_api_url,
     has_encryption_key,
-    has_api_key,
 )
 from fiftyone.internal import context_vars as fo_context_vars
 from fiftyone.utils.decorators import async_ttl_cache
@@ -258,9 +258,9 @@ async def resolve_operation_user(
         if user:
             user.update({"_request_token": token})
         return user
-    except Exception:
-        if (token is not None) or has_api_key():
-            raise ValueError("Failed to resolve user for the operation")
+    except Exception as e:
+        if is_internal_service():
+            raise ValueError("Failed to resolve user for the operation") from e
         return None
 
 
