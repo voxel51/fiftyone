@@ -29,19 +29,13 @@ def get_resolved_asset_path(asset_path: str, root: str = None):
 
     # If asset file system is non-local, we always need a URL
     needs_url = True
-    if (
-        root is not None
-        and fos.get_file_system(asset_path) == fos.FileSystem.LOCAL
-    ):
+    if root is not None and fos.is_local(asset_path):
         # invariant from above - asset_path is relative and root is not None
         # If root fs is local then we don't need URL
-        root_file_system = fos.get_file_system(root)
-        if root_file_system == fos.FileSystem.LOCAL:
+        if fos.is_local(root):
             needs_url = False
         else:
-            asset_path = posixpath.normpath(
-                posixpath.join(root, asset_path)
-            ).replace(":/", "://")
+            asset_path = fos.normpath(fos.join(root, asset_path))
 
     if needs_url:
         asset_path = media_cache.get_url(asset_path, method="GET")

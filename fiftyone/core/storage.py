@@ -1524,20 +1524,7 @@ def abspath(path):
     if is_local(path):
         return os.path.abspath(path)
 
-    # Optimization: if path contains "../" then it also contains "./"
-    if "./" not in path:
-        return path
-
-    # Resolve "." and ".."
-    prefix, blob = path.split("://")
-    resolved_folders = []
-    for folder in blob.split("/"):
-        if folder == "..":
-            resolved_folders.pop()
-        elif folder != ".":
-            resolved_folders.append(folder)
-
-    return prefix + "://" + "/".join(resolved_folders)
+    return normpath(path)
 
 
 def normpath(path):
