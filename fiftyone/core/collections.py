@@ -24,6 +24,7 @@ from pymongo import InsertOne, UpdateOne, UpdateMany
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -9261,14 +9262,18 @@ class SampleCollection(object):
                 indexes
             safe_mode (True): whether to use safe mode when dropping the index
         """
-        if safe_mode:
+        if fo.config.database_safe_mode and safe_mode:
             agreement = None
-            while agreement not in {"y", "n", "yes", "no"}:
+            acceptable = {"y", "n", "yes", "no"}
+            while agreement not in acceptable:
                 agreement = input("Are you sure you want to drop the index? (y/n)?").lower()
+                if agreement not in acceptable:
+                    print("Invalid response. Please enter 'y' or 'n'.")
 
             if agreement in {"n", "no"}:
                 return
 
+        logging.info("Dropping index '%s'...", field_or_name)
         name, is_frame_index = self._handle_frame_field(field_or_name)
 
         if is_frame_index:

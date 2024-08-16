@@ -250,6 +250,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.database_safe_mode = self.parse_bool(
+            d,
+            "database_safe_mode",
+            env_var="FIFTYONE_DATABASE_SAFE_MODE",
+            default=True,
+        )
 
         self._init()
 
