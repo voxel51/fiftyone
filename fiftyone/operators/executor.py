@@ -21,6 +21,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.internal.api_requests import resolve_operation_user
 import fiftyone.internal.context_vars as ficv
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
@@ -30,7 +31,6 @@ from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
-from fiftyone.internal.api_requests import resolve_operation_user
 
 logger = logging.getLogger(__name__)
 
@@ -366,6 +366,24 @@ async def prepare_operator_executor(
     return operator, executor, ctx, inputs
 
 
+def _context_generator(ctx, generator):
+    # Note: Manually iterating through generator because for-in did not
+    #   play nicely with the context vars. The context would only be
+    #   set for the first element and none others.
+    while True:
+        with ctx:
+            try:
+                yield next(generator)
+            except StopIteration:
+                break
+
+
+async def _context_async_generator(ctx, generator):
+    with ctx:
+        async for item in generator:
+            yield item
+
+
 async def do_execute_operator(operator, ctx, exhaust=False):
     # User code
     with ctx:
@@ -375,18 +393,23 @@ async def do_execute_operator(operator, ctx, exhaust=False):
             else fou.run_sync_task(operator.execute, ctx)
         )
 
-        if not exhaust:
-            return result
-
         if inspect.isgenerator(result):
-            # Fastest way to exhaust sync generator, re: itertools consume()
-            #   https://docs.python.org/3/library/itertools.html
-            collections.deque(result, maxlen=0)
+            if exhaust:
+                # Fastest way to exhaust sync generator, re: itertools consume()
+                #   https://docs.python.org/3/library/itertools.html
+                collections.deque(result, maxlen=0)
+            else:
+                return _context_generator(ctx, result)
         elif inspect.isasyncgen(result):
-            async for _ in result:
-                pass
+            if exhaust:
+                async for _ in result:
+                    pass
+            else:
+                return _context_async_generator(ctx, result)
         else:
             return result
+
+        return None
 
 
 async def resolve_type(
@@ -861,15 +884,21 @@ class ExecutionContext(contextlib.AbstractContextManager):
         ]
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        (
-            running_uid_tok,
-            running_user_request_token,
-            singleton_token,
-        ) = self.__context_tokens
-        self.__context_tokens = None
-        ficv.running_user_id.reset(running_uid_tok)
-        ficv.running_user_request_token.reset(running_user_request_token)
-        ficv.no_singleton_cache.reset(singleton_token)
+        try:
+            (
+                running_uid_tok,
+                running_user_request_token,
+                singleton_token,
+            ) = self.__context_tokens
+            self.__context_tokens = None
+            ficv.running_user_id.reset(running_uid_tok)
+            ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.no_singleton_cache.reset(singleton_token)
+        except ValueError:
+            # In case of any error, swallow and just reset to defaults.
+            ficv.running_user_id.set(None)
+            ficv.running_user_request_token.set(None)
+            ficv.no_singleton_cache.set(False)
 
     def prompt(
         self,
