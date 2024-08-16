@@ -28,9 +28,7 @@ export function OperatorPlacementWithErrorBoundary(
   );
 }
 
-function OperatorPlacements(
-  props: OperatorPlacementsProps & { modal?: boolean }
-) {
+function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place, modal } = props;
   const { placements } = useOperatorPlacements(place);
 
@@ -129,6 +127,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
 type OperatorPlacementsProps = {
   place: Places;
+  modal?: boolean;
 };
 
 type OperatorPlacementProps = {
