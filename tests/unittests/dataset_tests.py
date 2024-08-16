@@ -500,7 +500,7 @@ class DatasetTests(unittest.TestCase):
         dataset.create_index("id", unique=True)  # already exists
         dataset.create_index("id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("id")  # can't drop default
+            dataset.drop_index("id", safe_mode=False)  # can't drop default
 
         dataset.create_index("filepath")  # already exists
 
@@ -509,26 +509,26 @@ class DatasetTests(unittest.TestCase):
             dataset.create_index("filepath", unique=True)
 
         with self.assertRaises(ValueError):
-            dataset.drop_index("filepath")  # can't drop default index
+            dataset.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         name = dataset.create_index("field")
         self.assertEqual(name, "field")
         self.assertIn("field", dataset.list_indexes())
 
-        dataset.drop_index("field")
+        dataset.drop_index("field", safe_mode=False)
         self.assertNotIn("field", dataset.list_indexes())
 
         name = dataset.create_index("cls.label")
         self.assertEqual(name, "cls.label")
         self.assertIn("cls.label", dataset.list_indexes())
 
-        dataset.drop_index("cls.label")
+        dataset.drop_index("cls.label", safe_mode=False)
         self.assertNotIn("cls.label", dataset.list_indexes())
 
         compound_index_name = dataset.create_index([("id", 1), ("field", 1)])
         self.assertIn(compound_index_name, dataset.list_indexes())
 
-        dataset.drop_index(compound_index_name)
+        dataset.drop_index(compound_index_name, safe_mode=False)
         self.assertNotIn(compound_index_name, dataset.list_indexes())
 
         with self.assertRaises(ValueError):

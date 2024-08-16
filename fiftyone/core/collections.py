@@ -9252,14 +9252,23 @@ class SampleCollection(object):
 
         return name
 
-    def drop_index(self, field_or_name):
+    def drop_index(self, field_or_name, safe_mode=True):
         """Drops the index for the given field or name.
 
         Args:
             field_or_name: a field name, ``embedded.field.name``, or compound
                 index name. Use :meth:`list_indexes` to see the available
                 indexes
+            safe_mode (True): whether to use safe mode when dropping the index
         """
+        if safe_mode:
+            agreement = None
+            while agreement not in {"y", "n", "yes", "no"}:
+                agreement = input("Are you sure you want to drop the index? (y/n)?").lower()
+
+            if agreement in {"n", "no"}:
+                return
+
         name, is_frame_index = self._handle_frame_field(field_or_name)
 
         if is_frame_index:

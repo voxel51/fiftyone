@@ -102,13 +102,13 @@ class PatchesTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
+            view.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
+            view.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
+            view.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(dataset.count("ground_truth.detections"), 6)
         self.assertEqual(view.count(), 6)
@@ -399,13 +399,13 @@ class PatchesTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
+            view.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
+            view.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
+            view.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(dataset.count("ground_truth.detections"), 3)
         self.assertEqual(dataset.count("predictions.detections"), 4)

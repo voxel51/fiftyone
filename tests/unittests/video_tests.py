@@ -143,20 +143,20 @@ class VideoTests(unittest.TestCase):
         dataset.create_index("frames.id", unique=True)  # already exists
         dataset.create_index("frames.id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("frames.id")  # can't drop default
+            dataset.drop_index("frames.id", safe_mode=False)  # can't drop default
 
         name = dataset.create_index("frames.field")
         self.assertEqual(name, "frames.field")
         self.assertIn("frames.field", dataset.list_indexes())
 
-        dataset.drop_index("frames.field")
+        dataset.drop_index("frames.field", safe_mode=False)
         self.assertNotIn("frames.field", dataset.list_indexes())
 
         name = dataset.create_index("frames.cls.label")
         self.assertEqual(name, "frames.cls.label")
         self.assertIn("frames.cls.label", dataset.list_indexes())
 
-        dataset.drop_index("frames.cls.label")
+        dataset.drop_index("frames.cls.label", safe_mode=False)
         self.assertNotIn("frames.cls.label", dataset.list_indexes())
 
         compound_index_name = dataset.create_index(
@@ -164,7 +164,7 @@ class VideoTests(unittest.TestCase):
         )
         self.assertIn(compound_index_name, dataset.list_indexes())
 
-        dataset.drop_index(compound_index_name)
+        dataset.drop_index(compound_index_name, safe_mode=False)
         self.assertNotIn(compound_index_name, dataset.list_indexes())
 
         with self.assertRaises(ValueError):
@@ -1513,13 +1513,13 @@ class VideoTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
+            view.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
+            view.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
+            view.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(len(view), 4)
 
@@ -1910,13 +1910,13 @@ class VideoTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
+            view.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
+            view.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
+            view.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(len(view), 6)
 
@@ -2387,13 +2387,13 @@ class VideoTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
+            view.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
+            view.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
+            view.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(len(view), 9)
 
@@ -2634,16 +2634,16 @@ class VideoTests(unittest.TestCase):
         self.assertSetEqual(set(indexes), default_indexes)
 
         with self.assertRaises(ValueError):
-            patches.drop_index("id")  # can't drop default index
+            patches.drop_index("id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            patches.drop_index("filepath")  # can't drop default index
+            patches.drop_index("filepath", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            patches.drop_index("sample_id")  # can't drop default index
+            patches.drop_index("sample_id", safe_mode=False)  # can't drop default index
 
         with self.assertRaises(ValueError):
-            patches.drop_index("frame_id")  # can't drop default index
+            patches.drop_index("frame_id", safe_mode=False)  # can't drop default index
 
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
         self.assertEqual(patches.count(), 4)
