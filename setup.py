@@ -121,7 +121,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.0.0rc12",
+    version="2.0.0rc13",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
