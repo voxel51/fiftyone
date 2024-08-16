@@ -51,6 +51,6 @@ export const Leva = () => {
       flat
       hidden={!isLevaPanelOn}
     />,
-    document.getElementById(LEVA_CONTAINER_ID)
+    document.getElementById(LEVA_CONTAINER_ID) ?? document.body
   );
 };
