@@ -480,7 +480,8 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
-    def test_indexes(self):
+    @patch("builtins.input")
+    def test_indexes(self, mocked_input):
         dataset = fo.Dataset()
 
         sample = fo.Sample(
@@ -533,6 +534,18 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dataset.create_index("non_existent_field")
+
+        # Test index removal with safe_mode=True
+        name = dataset.create_index("field")
+        self.assertIn("field", dataset.list_indexes())
+
+        mocked_input.side_effect = ["n"]
+        dataset.drop_index(name, safe_mode=True)
+        self.assertIn("field", dataset.list_indexes())
+
+        mocked_input.side_effect = ["y"]
+        dataset.drop_index(name, safe_mode=True)
+        self.assertNotIn("field", dataset.list_indexes())
 
     @drop_datasets
     def test_index_sizes(self):
