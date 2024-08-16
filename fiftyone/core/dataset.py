@@ -21,7 +21,15 @@ from bson import json_util, ObjectId, DBRef
 import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
-from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo import (
+    DeleteMany,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+    WriteConcern,
+)
+from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
@@ -322,6 +330,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._run_cache = cachetools.LRUCache(5)
 
         self._deleted = False
+        self._write_concern = None
 
         if not _virtual:
             self._update_last_loaded_at()
@@ -1172,14 +1181,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _sample_collstats(self):
         conn = foo.get_db_conn()
-        return conn.command("collstats", self._sample_collection_name)
+        return conn.command(
+            "collstats",
+            self._sample_collection_name,
+            write_concern=self._write_concern,
+        )
 
     def _frame_collstats(self):
         if self._frame_collection_name is None:
             return None
 
         conn = foo.get_db_conn()
-        return conn.command("collstats", self._frame_collection_name)
+        return conn.command(
+            "collstats",
+            self._frame_collection_name,
+            write_concern=self._write_concern,
+        )
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -7023,7 +7040,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection(self):
-        return foo.get_db_conn()[self._sample_collection_name]
+        return self._get_sample_collection(write_concern=self._write_concern)
+
+    def _get_sample_collection(self, write_concern=None) -> Collection:
+        return foo.get_db_conn().get_collection(
+            self._sample_collection_name, write_concern=write_concern
+        )
 
     @property
     def _frame_collection_name(self):
@@ -7031,10 +7053,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _frame_collection(self):
+        return self._get_frame_collection(write_concern=self._write_concern)
+
+    def _get_frame_collection(self, write_concern=None) -> Collection:
         if self._frame_collection_name is None:
             return None
 
-        return foo.get_db_conn()[self._frame_collection_name]
+        return foo.get_db_conn().get_collection(
+            self._frame_collection_name, write_concern=write_concern
+        )
 
     @property
     def _frame_indexes(self):

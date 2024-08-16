@@ -19,7 +19,7 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany
+from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -9126,7 +9126,9 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, **kwargs):
+    def create_index(
+        self, field_or_spec, unique=False, acknowledged=True, **kwargs
+    ):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -9160,6 +9162,8 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            acknowledged (True): whether to wait and acknowledge index
+                creation
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
 
@@ -9238,10 +9242,17 @@ class SampleCollection(object):
             # Satisfactory index already exists
             return index_name
 
+        # Setting `w=0` sets `acknowledged=False` in pymongo
+        write_concern = WriteConcern(w=0) if not acknowledged else None
+
         if is_frame_index:
-            coll = self._dataset._frame_collection
+            coll = self._dataset._get_frame_collection(
+                write_concern=write_concern
+            )
         else:
-            coll = self._dataset._sample_collection
+            coll = self._dataset._get_sample_collection(
+                write_concern=write_concern
+            )
 
         name = coll.create_index(index_spec, unique=unique, **kwargs)
 
