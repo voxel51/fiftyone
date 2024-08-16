@@ -405,7 +405,6 @@ export const MediaTypeFo3dComponent = () => {
 
   return (
     <>
-      <Leva />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         camera={canvasCameraProps}

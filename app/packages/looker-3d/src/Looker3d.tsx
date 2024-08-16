@@ -5,6 +5,7 @@ import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
+import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
 import {
@@ -154,6 +155,7 @@ export const Looker3d = () => {
 
   return (
     <Fo3dErrorBoundary boundaryName="fo3d">
+      <Leva />
       <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
         {component}
         <ActionBar
