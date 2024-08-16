@@ -143,10 +143,10 @@ export const getResolvedUrlForFo3dAsset = (
     assetUrl.startsWith("/") ||
     assetUrl.startsWith("data:")
   ) {
-    return paths.joinPaths(fo3dRoot, assetUrl);
+    return assetUrl;
   }
 
-  return fo3dRoot + assetUrl;
+  return paths.joinPaths(fo3dRoot, assetUrl);
 };
 
 export const getThreeMaterialFromFo3dMaterial = (
