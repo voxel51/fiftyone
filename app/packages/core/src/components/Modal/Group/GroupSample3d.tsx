@@ -10,6 +10,7 @@ import {
 import { SampleWrapper } from "../Sample";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
+import { GroupSuspense } from "./GroupSuspense";
 
 const Sample3dWrapper = () => {
   const sample = useRecoilValue(fos.pinned3DSample);
@@ -102,5 +103,9 @@ export default () => {
     return <Loading>Pixelating...</Loading>;
   }
 
-  return <Sample3dWrapper />;
+  return (
+    <GroupSuspense>
+      <Sample3dWrapper />
+    </GroupSuspense>
+  );
 };
