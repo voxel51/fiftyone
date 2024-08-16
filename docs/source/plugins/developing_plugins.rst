@@ -2991,15 +2991,13 @@ returns `true`:
 
 -   **Panel**: JS plugins can register panel components that can be opened by
     clicking the `+` next to any existing panel's tab
--   **Visualizer**: JS plugins can register a component that will override the
-    builtin :ref:`Sample visualizer <app-sample-view>`
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, visualizers, and components
+Panels and Components
 -----------------------------------
 
-Here's some examples of using panels, visualizers, and components to add your
+Here's some examples of using panels and components to add your
 own custom user interface and components to the FiftyOne App.
 
 Hello world panel
@@ -3024,48 +3022,9 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: jsx
     :linenos:
 
-    import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/state";
-
-    function PointCloud({ src }) {
-        // TODO: implement your visualizer using React
-    }
-
-    // this separate components shows where the FiftyOne plugin
-    // dependent code ends and the pure react code begins
-    function CustomVisualizer({ sample }) {
-        const src = fos.getSampleSrc(sample.filepath);
-
-        // now that we have all the data we need
-        // we can delegate to code that doesn't depend
-        // on the FiftyOne plugin API
-        return <PointCloud src={src} />;
-    }
-
-    function myActivator({ dataset }) {
-        return dataset.mediaType ??
-            dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-            undefined
-    }
-
-    fop.registerComponent({
-        // component to delegate to
-        component: CustomVisualizer,
-
-        // tell FiftyOne you want to provide a Visualizer
-        type: PluginComponentType.Visualizer,
-
-        // activate this plugin when the mediaType is PointCloud
-        activator: myActivator,
-    });
-
-Adding a custom panel
+Adding a custom Panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
