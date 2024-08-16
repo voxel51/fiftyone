@@ -1304,7 +1304,7 @@ class COCOObject(object):
             x, y, w, h = label.bounding_box
             bbox = [x * width, y * height, w * width, h * height]
 
-            if label.mask is not None:
+            if label.get_mask() is not None:
                 segmentation = _instance_to_coco_segmentation(
                     label, frame_size, iscrowd=iscrowd, tolerance=tolerance
                 )
@@ -2116,7 +2116,7 @@ def _coco_objects_to_detections(
         )
 
         if detection is not None and (
-            not load_segmentations or detection.mask is not None
+            not load_segmentations or detection.get_mask() is not None
         ):
             detections.append(detection)
 
