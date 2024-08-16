@@ -19,6 +19,7 @@ import type {
   FoScene,
   FoSceneNode,
 } from "../hooks";
+import * as paths from "../../../utilities/src/paths";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -142,7 +143,7 @@ export const getResolvedUrlForFo3dAsset = (
     assetUrl.startsWith("/") ||
     assetUrl.startsWith("data:")
   ) {
-    return assetUrl;
+    return paths.joinPaths(fo3dRoot, assetUrl);
   }
 
   return fo3dRoot + assetUrl;
