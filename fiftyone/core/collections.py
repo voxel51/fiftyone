@@ -9201,7 +9201,7 @@ class SampleCollection(object):
                     )
 
                 # We need to drop existing index and replace with a unique one
-                self.drop_index(field)
+                self.drop_index(field, safe_mode=False)
 
         is_frame_fields = []
         index_spec = []
