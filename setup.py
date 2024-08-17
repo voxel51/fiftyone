@@ -67,7 +67,7 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql==0.138.1",
+    "strawberry-graphql",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
