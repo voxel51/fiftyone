@@ -2213,6 +2213,67 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
+    @drop_datasets
+    def test_rename_delete_indexes(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        sample.frames[1] = fo.Frame(
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        dataset.create_index("field")
+        dataset.create_index([("id", 1), ("field", -1)])
+        dataset.create_index("predictions.detections.field")
+
+        dataset.create_index("frames.field")
+        dataset.create_index([("frames.id", 1), ("frames.field", -1)])
+        dataset.create_index("frames.predictions.detections.field")
+
+        index_info = dataset.get_index_information()
+
+        self.assertIn("field", index_info)
+        self.assertIn("_id_1_field_-1", index_info)
+        self.assertIn("predictions.detections.field", index_info)
+
+        self.assertIn("frames.field", index_info)
+        self.assertIn("frames._id_1_field_-1", index_info)
+        self.assertIn("frames.predictions.detections.field", index_info)
+
+        dataset.rename_sample_fields({"field": "f", "predictions": "p"})
+        dataset.rename_frame_fields({"field": "f", "predictions": "p"})
+
+        index_info = dataset.get_index_information()
+
+        self.assertIn("f", index_info)
+        self.assertIn("_id_1_f_-1", index_info)
+        self.assertIn("p.detections.field", index_info)
+
+        self.assertIn("frames.f", index_info)
+        self.assertIn("frames._id_1_f_-1", index_info)
+        self.assertIn("frames.p.detections.field", index_info)
+
+        dataset.delete_sample_fields(["f", "p"])
+        dataset.delete_frame_fields(["f", "p"])
+
+        indexes = dataset.list_indexes()
+
+        self.assertSetEqual(
+            set(indexes),
+            {
+                "id",
+                "filepath",
+                "frames.id",
+                "frames._sample_id_1_frame_number_1",
+            },
+        )
+
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_clone_fields(self):
