@@ -163,28 +163,33 @@ Listing operators
 -----------------
 
 You can use the :ref:`fiftyone operators list <cli-fiftyone-operators-list>`
-command to list the individual operators within the plugins that you've
-downloaded or created locally:
+command to list the individual operators and panels within the plugins that
+you've installed locally:
 
 .. code-block:: shell
 
-    # List all locally available operators
+    # List all available operators and panels
     fiftyone operators list
 
 .. code-block:: shell
 
-    # List enabled operators
+    # List enabled operators and panels
     fiftyone operators list --enabled
 
 .. code-block:: shell
 
-    # List disabled operators
+    # List disabled operators and panels
     fiftyone operators list --disabled
+
+.. code-block:: shell
+
+    # Only list panels
+    fiftyone operators list --panels-only
 
 .. code-block:: text
 
-    uri                                          enabled   builtin   unlisted
-    -------------------------------------------  --------  --------  ---------
+    uri                                          enabled   builtin   panel   unlisted
+    -------------------------------------------  --------  --------  ------  ---------
     @voxel51/annotation/request_annotations      ✓
     @voxel51/annotation/load_annotations         ✓
     @voxel51/annotation/get_annotation_info      ✓
@@ -215,8 +220,8 @@ downloaded or created locally:
     @voxel51/operators/rename_sample_field       ✓          ✓
     @voxel51/operators/delete_selected_samples   ✓          ✓
     @voxel51/operators/delete_sample_field       ✓          ✓
-    @voxel51/operators/print_stdout              ✓          ✓          ✓
-    @voxel51/operators/list_files                ✓          ✓          ✓
+    @voxel51/operators/print_stdout              ✓          ✓                 ✓
+    @voxel51/operators/list_files                ✓          ✓                 ✓
     @voxel51/utils/create_dataset                ✓
     @voxel51/utils/load_dataset                  ✓
     @voxel51/utils/edit_dataset_info             ✓
@@ -301,7 +306,8 @@ Getting operator info
 ---------------------
 
 You can use the :ref:`fiftyone operators info <cli-fiftyone-operators-info>` to
-view the available metadata about an individual operator within a plugin:
+view the available metadata about an individual operator or panel within a
+plugin:
 
 .. code-block:: shell
 
