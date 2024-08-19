@@ -14,6 +14,7 @@ from typing_extensions import Literal
 
 PANEL_SURFACE = Literal["grid", "modal", "grid modal"]
 
+
 class PanelConfig(OperatorConfig):
     """Configuration for a panel.
 

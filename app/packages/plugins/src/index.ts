@@ -281,10 +281,31 @@ export enum PluginComponentType {
 type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
+  /**
+   * Whether to allow multiple instances of the plugin
+   */
   allowDuplicates?: boolean;
-  pinned?: boolean;
-  TabIndicator?: React.ComponentType;
+
+  /**
+   * Priority of the panel as it shows up in panel selector dropdown.
+   * Panels are sorted by priority in ascending order.
+   */
   priority?: number;
+
+  /**
+   * Markdown help text for the plugin
+   */
+  helpMarkdown?: string;
+
+  /** Surfaces where plugin is made available.
+   * If this is not provided, the plugin will be available in grid only.
+   */
+  surfaces?: "grid" | "modal" | "grid modal";
+
+  /**
+   * Content displayed on the right side of the label in the panel title bar.
+   */
+  TabIndicator?: React.ComponentType;
 };
 
 type PluginComponentProps<T> = T & {
@@ -300,30 +321,34 @@ export interface PluginComponentRegistration<T extends {} = {}> {
    * The name of the plugin
    */
   name: string;
+
   /**
    * The optional label of the plugin to display to the user
    */
   label: string;
-  Icon?: React.ComponentType;
+
   /**
-   * The React component to render
+   * Primary icon for the plugin, also used in panel title bar
+   */
+  Icon?: React.ComponentType;
+
+  /**
+   * The React component to render for the plugin
    */
   component: FunctionComponent<PluginComponentProps<T>>;
+
   /** The plugin type */
   type: PluginComponentType;
+
   /**
    * A function that returns true if the plugin should be active
    */
   activator: PluginActivator;
-  panelOptions?: PanelOptions;
+
   /**
-   * Markdown help text for the plugin
+   * Options for the panel
    */
-  helpMarkdown?: string;
-  /** Surfaces where plugin is made available.
-   * If this is not provided, the plugin will be available in grid only.
-   */
-  surfaces?: "grid" | "modal" | "grid modal";
+  panelOptions?: PanelOptions;
 }
 
 const DEFAULT_ACTIVATOR = () => true;

@@ -8,9 +8,7 @@ export default function registerPanel(ctx: ExecutionContext) {
     type: PluginComponentType.Panel,
     name: ctx.params.panel_name,
     component: defineCustomPanel(ctx.params),
-    helpMarkdown: ctx.params.help_markdown,
     label: ctx.params.panel_label,
-    surfaces: ctx.params.surfaces,
     activator: () => true,
     Icon: () => {
       return (
@@ -24,6 +22,8 @@ export default function registerPanel(ctx: ExecutionContext) {
     },
     panelOptions: {
       allowDuplicates: ctx.params.allow_duplicates,
+      helpMarkdown: ctx.params.help_markdown,
+      surfaces: ctx.params.surfaces,
     },
   });
 }

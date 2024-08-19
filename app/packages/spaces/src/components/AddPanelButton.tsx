@@ -18,11 +18,13 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
         const isModalActive = snapshot
           .getLoadable(fos.isModalActive)
           .valueOrThrow();
+        const surface = panel.panelOptions?.surfaces;
+
         if (isModalActive) {
-          return panel.surfaces === "modal" || panel.surfaces === "grid modal";
+          return surface === "modal" || surface === "grid modal";
         }
 
-        if (panel.surfaces === "modal") return false;
+        if (surface === "modal") return false;
 
         return true;
       },
