@@ -44,9 +44,9 @@ export class ModalPom {
     this.looker3dControls = new Looker3DControlsPom(page, this);
   }
 
-  get title() {
+  get modalSamplePluginTitle() {
     return this.locator
-      .getByTestId("panel-tab-fo-sample-modal-plugins")
+      .getByTestId("panel-tab-fo-sample-modal-plugin")
       .textContent();
   }
 
@@ -293,11 +293,11 @@ class ModalAsserter {
     await expect(navigation).toBeVisible();
   }
 
-  async verifyTitle(
+  async verifyModalSamplePluginTitle(
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false }
   ) {
-    const actualTitle = await this.modalPom.title;
+    const actualTitle = await this.modalPom.modalSamplePluginTitle;
     const expectedTitle = pinned ? `📌 ${title}` : title;
     expect(actualTitle).toBe(expectedTitle);
   }
