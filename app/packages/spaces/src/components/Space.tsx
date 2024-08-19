@@ -47,10 +47,13 @@ export default function Space({ node, id, archetype }: SpaceProps) {
     previousSizesRef.current = sizes;
   }, [sizes]);
 
+  const isModalArchetype = useMemo(() => archetype === "modal", [archetype]);
+
   if (node.layout) {
     return (
       <SpaceContainer data-type="space-container">
-        {node.isRoot() && archetype !== "modal" && <Workspaces />}
+        {node.isRoot() && !isModalArchetype && <Workspaces />}
+
         <Allotment
           key={node.layout}
           vertical={node.layout === Layout.Vertical}
@@ -74,17 +77,20 @@ export default function Space({ node, id, archetype }: SpaceProps) {
         </Allotment>
       </SpaceContainer>
     );
-  } else if (node.isPanelContainer() && node.hasChildren()) {
+  }
+
+  if (node.isPanelContainer() && node.hasChildren()) {
     const canSpaceSplit = spaces.canSplitLayout(node);
     const activeChild = node.getActiveChild();
 
     return (
       <PanelContainer>
-        {node.isRoot() && archetype !== "modal" && <Workspaces />}
+        {node.isRoot() && !isModalArchetype && <Workspaces />}
+
         <PanelTabs
           data-type="panel-container"
           data-cy="panel-container"
-          isModal={archetype === "modal"}
+          isModal={isModalArchetype}
         >
           <ReactSortable
             group="panel-tabs"
@@ -135,27 +141,30 @@ export default function Space({ node, id, archetype }: SpaceProps) {
             </div>
           </ReactSortable>
         </PanelTabs>
-        {node.hasActiveChild() && activeChild ? (
+        {node.hasActiveChild() && activeChild && (
           <Panel
             node={activeChild as SpaceNode}
             spaceId={id}
-            isModalPanel={archetype === "modal"}
+            isModalPanel={isModalArchetype}
           />
-        ) : null}
+        )}
       </PanelContainer>
     );
-  } else if (node.isPanel() && node) {
-    return (
-      <Panel node={node} spaceId={id} isModalPanel={archetype === "modal"} />
-    );
-  } else if (node.isEmpty()) {
+  }
+
+  if (node.isPanel()) {
+    return <Panel node={node} spaceId={id} isModalPanel={isModalArchetype} />;
+  }
+
+  if (node.isEmpty()) {
     return (
       <PanelContainer data-type="panel-container">
-        <PanelTabs isModal={archetype === "modal"}>
+        <PanelTabs isModal={isModalArchetype}>
           <AddPanelButton node={node} spaceId={id} />
         </PanelTabs>
       </PanelContainer>
     );
   }
+
   return null;
 }
