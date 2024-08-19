@@ -472,8 +472,6 @@ class Object(BaseType):
         name,
         forward=None,
         backward=None,
-        on_forward=None,
-        on_backward=None,
         position=None,
         **kwargs,
     ):
@@ -493,8 +491,6 @@ class Object(BaseType):
         view = ArrowNavView(
             forward=forward,
             backward=backward,
-            on_forward=on_forward,
-            on_backward=on_backward,
             position=position,
             **kwargs,
         )
@@ -2339,8 +2335,6 @@ class ArrowNavView(View):
         super().__init__(**kwargs)
         self.forward = kwargs.get("forward", True)
         self.backward = kwargs.get("backward", True)
-        self.on_forward = kwargs.get("on_forward", None)
-        self.on_backward = kwargs.get("on_backward", None)
         self.position = kwargs.get("position", "center")
 
     def to_json(self):
@@ -2348,8 +2342,6 @@ class ArrowNavView(View):
             **super().to_json(),
             "forward": self.forward,
             "backward": self.backward,
-            "on_forward": self.on_forward,
-            "on_backward": self.on_backward,
             "position": self.position,
         }
 
