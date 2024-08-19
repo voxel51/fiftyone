@@ -815,7 +815,7 @@ FiftyOne deployments.
 FiftyOne operators
 ------------------
 
-Tools for working with FiftyOne operators.
+Tools for working with FiftyOne operators and panels.
 
 .. code-block:: text
 
@@ -831,15 +831,15 @@ Tools for working with FiftyOne operators.
 
     available commands:
       {list,info}
-        list       List operators that you've downloaded or created locally.
-        info       Prints information about operators that you've downloaded or created
+        list       List operators and panels that you've installed locally.
+        info       Prints information about operators and panels that you've installed locally.
 
 .. _cli-fiftyone-operators-list:
 
 List operators
 ~~~~~~~~~~~~~~
 
-List operators that you've downloaded or created locally.
+List operators and panels that you've installed locally.
 
 .. code-block:: text
 
@@ -851,8 +851,8 @@ List operators that you've downloaded or created locally.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -e, --enabled         only show enabled operators
-      -d, --disabled        only show disabled operators
+      -e, --enabled         only show enabled operators and panels
+      -d, --disabled        only show disabled operators and panels
       -o, --operators-only  only show operators
       -p, --panels-only     only show panels
       -n, --names-only      only show names
@@ -861,17 +861,17 @@ List operators that you've downloaded or created locally.
 
 .. code-block:: shell
 
-    # List all locally available operators
+    # List all available operators and panels
     fiftyone operators list
 
 .. code-block:: shell
 
-    # List enabled operators
+    # List enabled operators and panels
     fiftyone operators list --enabled
 
 .. code-block:: shell
 
-    # List disabled operators
+    # List disabled operators and panels
     fiftyone operators list --disabled
 
 .. code-block:: shell
@@ -884,7 +884,7 @@ List operators that you've downloaded or created locally.
 Operator info
 ~~~~~~~~~~~~~
 
-Prints information about operators that you've downloaded or created locally.
+Prints information about operators and panels that you've installed locally.
 
 .. code-block:: text
 
@@ -895,7 +895,7 @@ Prints information about operators that you've downloaded or created locally.
 .. code-block:: text
 
     positional arguments:
-      URI         the operator URI
+      URI         the operator or panel URI
 
     optional arguments:
       -h, --help  show this help message and exit
@@ -904,7 +904,7 @@ Prints information about operators that you've downloaded or created locally.
 
 .. code-block:: shell
 
-    # Prints information about an operator
+    # Prints information about an operator or panel
     fiftyone operators info <uri>
 
 .. _cli-fiftyone-delegated:

@@ -19,7 +19,7 @@ This page describes how to write your own FiftyOne plugins.
 Design overview
 _______________
 
-Plugins are composed of one or more Panels, Operators, and/or Components.
+Plugins are composed of one or more panels, operators, and components.
 
 Together these building blocks enable you to build full-featured interactive
 data applications that tailor FiftyOne to your specific use case and workflow.
@@ -39,10 +39,11 @@ FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
 of both.
 
 Python plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of Panels and Operators.
+own Python. They can consist of panels and operators.
 
 JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They can consist of Panels, Operators, and Components.
+and your own TypeScript. They can consist of panels, operators, and custom
+components.
 
 .. _plugins-design-panels:
 
@@ -50,7 +51,7 @@ Panels
 ------
 
 Panels are miniature full-featured data applications that you can open in
-:ref:`App Spaces <app-spaces>` and interactively manipulate to explore your
+:ref:`App spaces <app-spaces>` and interactively manipulate to explore your
 dataset and update/respond to updates from other spaces that are currently open
 in the App.
 
@@ -106,7 +107,7 @@ Components
 Components are responsible for rendering and event handling in plugins. They
 provide the necessary functionality to display and interact with your plugin in
 the FiftyOne App. Components also implement form inputs and output rendering
-for Operators, making it possible to customize the way an operator is rendered
+for operators, making it possible to customize the way an operator is rendered
 in the FiftyOne App.
 
 For example, FiftyOne comes with a wide variety of
@@ -204,9 +205,35 @@ following fields are available:
 -   `panels`: a list of panel names registred by the plugin
 -   `secrets`: a list of secret keys that may be used by the plugin
 
-Check out the
+For example, the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml>`_
-plugin's `fiftyone.yml` to see a practical example.
+plugin's `fiftyone.yml` looks like this:
+
+.. code-block:: yaml
+    :linenos:
+
+    name: "@voxel51/annotation"
+    description: Utilities for integrating FiftyOne with annotation tools
+    version: 1.0.0
+    fiftyone:
+      version: ">=0.22"
+    url: https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation
+    license: Apache 2.0
+    operators:
+      - request_annotations
+      - load_annotations
+      - get_annotation_info
+      - load_annotation_view
+      - rename_annotation_run
+      - delete_annotation_run
+    secrets:
+      - FIFTYONE_CVAT_URL
+      - FIFTYONE_CVAT_USERNAME
+      - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_LABELBOX_URL
+      - FIFTYONE_LABELBOX_API_KEY
+      - FIFTYONE_LABELSTUDIO_URL
+      - FIFTYONE_LABELSTUDIO_API_KEY
 
 .. note::
 
@@ -501,8 +528,13 @@ current dataset.
 
 .. note::
 
-    Remember that you must also include `simple_input` (the operator's name) in
-    the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+    Remember that you must also include the operator's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        operators:
+          - simple_input_example
 
 .. _example-python-panel:
 
@@ -510,7 +542,7 @@ Example Python panel
 --------------------
 
 Here's a simple :ref:`Python panel <developing-panels>` that renders a button
-that shows a "Hello world!" notification:
+that shows a "Hello world!" notification when clicked:
 
 .. code-block:: python
     :linenos:
@@ -552,8 +584,13 @@ that shows a "Hello world!" notification:
 
 .. note::
 
-    Remember that you must also include `hello_world_panel` (the panel's name)
-    in the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+    Remember that you must also include the panel's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        panels:
+          - hello_world_panel
 
 .. image:: /images/plugins/panels/hello-world-panel-inline.gif
     :align: center
@@ -828,8 +865,13 @@ subsequent sections.
 
 .. note::
 
-    Remember that you must also include `example_operator` (the operator's name)
-    in the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+    Remember that you must also include the operator's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        operators:
+          - example_operator
 
 .. _operator-config:
 
@@ -1481,7 +1523,7 @@ operator to render a progress bar tracking the progress of an operation:
     Check out the
     `VoxelGPT plugin <https://github.com/voxel51/voxelgpt/blob/dfe23093485081fb889dbe18685587f4358a4438/__init__.py#L133>`_
     for a more sophisticated example of using generator execution to stream an
-    LLM's response to a Panel.
+    LLM's response to a panel.
 
 .. _operator-secrets:
 
@@ -1700,14 +1742,14 @@ Developing panels
 _________________
 
 Panels are miniature full-featured data applications that you can open in
-:ref:`App Spaces <app-spaces>` and interactively manipulate to explore your
+:ref:`App spaces <app-spaces>` and interactively manipulate to explore your
 dataset and update/respond to updates from other spaces that are currently open
 in the App.
 
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
-Panels, like :ref:`Operators <developing-operators>`, can make use of the
+Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
 rich builtin type system that panel developers can use to implement the layout
@@ -2025,8 +2067,13 @@ subsequent sections.
 
 .. note::
 
-    Remember that you must also include `example_panel` (the panel's name)
-    in the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+    Remember that you must also include the panel's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        panels:
+          - example_panel
 
 .. _panel-config:
 
@@ -2070,7 +2117,7 @@ An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
 passed to each of the panel's methods at runtime. This `ctx` contains static
 information about the current state of the App (dataset, view, panel,
 selection, etc) as well as dynamic information about the panel's current
-:ref:`state and data <panel-state-and-data>`.
+state and data.
 
 See :ref:`this section <operator-execution-context>` for a full description
 of the execution context.
@@ -2099,9 +2146,10 @@ The example code below shows how to access and update panel state.
 
 .. note::
 
-    Since panel state and data are merged into a single object, it is important
-    to avoid naming conflicts between state and data keys. If a key is present
-    in both panel state and data, the value in *panel data* will be used.
+    Since panel state and panel data are merged into a single object, it is
+    important to avoid naming conflicts between state and data keys. If a key
+    is present in both panel state and data, the value in *panel data* will be
+    used.
 
 .. code-block:: python
     :linenos:
@@ -2174,18 +2222,14 @@ The example code below shows how to access and update panel state.
 Panel state
 ~~~~~~~~~~~
 
-Panel state is analogous to :ref:`operator parameters <operator-inputs>`:
+Panel state is included in every
+:meth:`render() <fiftyone.operators.panel.Panel.render>` call and event
+callback and is analogous to :ref:`operator parameters <operator-inputs>`:
 
 -   The values of any components defined in a panel's
     :meth:`render() <fiftyone.operators.panel.Panel.render>` method are
     available via corresponding state properties of the same name
 -   The current panel state is readable during a panel's execution
-
-.. note::
-
-    Panel state is included in every event handler request, so it is not
-    intended to store large values. Use :ref:`panel data <panel-data>` for this
-    instead.
 
 .. code-block:: python
     :linenos:
@@ -2304,7 +2348,7 @@ when the workspace is loaded later, all panels will "remember" their state.
 
 :ref:`Panel data <panel-data>` (which may be large), on the other hand, is
 *not* explicitly persisted. Instead it should be hydrated when the panel is
-loaded using the pattern :ref:`demonstrated above <panel-data>`.
+loaded using the pattern :ref:`demonstrated here <panel-data>`.
 
 .. _panel-accessing-secrets:
 
@@ -2339,7 +2383,7 @@ avoid roadblocks along the way.
 .. note::
 
     Check out the
-    `Panel examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_
+    `panel examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_
     plugin to see a collection of fully-functional panels that demonstrate
     the common patterns below.
 
@@ -2963,13 +3007,13 @@ returns `true`:
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, Visualizers, and Components
+Panels, visualizers, and components
 -----------------------------------
 
 Here's some examples of using panels, visualizers, and components to add your
 own custom user interface and components to the FiftyOne App.
 
-Hello world Panel
+Hello world panel
 ~~~~~~~~~~~~~~~~~
 
 A simple plugin that renders "Hello world" in a panel would look like this:
@@ -2991,8 +3035,8 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom FiftyOne Visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Adding a custom visualizer
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
     :linenos:
@@ -3032,7 +3076,7 @@ Adding a custom FiftyOne Visualizer
         activator: myActivator,
     });
 
-Adding a custom Panel
+Adding a custom panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
@@ -3076,7 +3120,7 @@ Adding a custom Panel
         // component to delegate to
         component: CustomPanel,
 
-        // tell FiftyOne you want to provide a custom Panel
+        // tell FiftyOne you want to provide a custom panel
         type: PluginComponentTypes.Panel,
 
         // used for the panel selector button
@@ -3086,7 +3130,7 @@ Adding a custom Panel
         activator: ({ dataset }) => dataset.sampleFields.location,
     });
 
-Custom operator view using Component plugin
+Custom operator view using component plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Creating and registering a custom view type:
