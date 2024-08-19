@@ -273,9 +273,14 @@ export function usePluginComponent(name: string, ctx?: unknown) {
  * - `Plot` - **deprecated** - A plot that can be added as a panel
  */
 export enum PluginComponentType {
-  Plot,
-  Panel,
-  Component,
+  Plot = 1,
+  Panel = 2,
+  Component = 3,
+
+  /**
+   * DO NOT CHANGE THE VALUES OF THESE ENUMS for backward compatibility.
+   * Changing these values WILL break existing plugins.
+   */
 }
 
 type PluginActivator = (props: any) => boolean;
