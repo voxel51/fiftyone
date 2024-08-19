@@ -2963,7 +2963,7 @@ you to reveal all of its available methods during development:
 .. code-block:: python
     :linenos:
 
-    from fiftyone.operators.executor import ExecutionContext
+    from fiftyone.operators import ExecutionContext
 
     def on_load(ctx: ExecutionContext):
         ctx.trigger()
