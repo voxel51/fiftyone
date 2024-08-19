@@ -90,7 +90,7 @@ export default function Space({ node, id, archetype }: SpaceProps) {
         <PanelTabs
           data-type="panel-container"
           data-cy="panel-container"
-          isModal={isModalArchetype}
+          $isModal={isModalArchetype}
         >
           <ReactSortable
             group="panel-tabs"
@@ -159,7 +159,7 @@ export default function Space({ node, id, archetype }: SpaceProps) {
   if (node.isEmpty()) {
     return (
       <PanelContainer data-type="panel-container">
-        <PanelTabs isModal={isModalArchetype}>
+        <PanelTabs $isModal={isModalArchetype}>
           <AddPanelButton node={node} spaceId={id} />
         </PanelTabs>
       </PanelContainer>

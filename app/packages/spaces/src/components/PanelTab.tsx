@@ -48,7 +48,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       onClick={() => {
         if (!active) spaces.setNodeActive(node);
       }}
-      active={active}
+      $active={active}
       data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
     >
       {!panel && pending && <Skeleton width={48} height={24} />}

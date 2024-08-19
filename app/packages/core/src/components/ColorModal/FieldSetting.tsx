@@ -212,7 +212,7 @@ const FieldSetting = ({ path }: { path: string }) => {
                   <PickerWrapper
                     id="twitter-color-container"
                     onBlur={hideFieldColorPicker}
-                    visible={showFieldPicker}
+                    $visible={showFieldPicker}
                     tabIndex={0}
                     ref={wrapperRef}
                   >

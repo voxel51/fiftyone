@@ -62,7 +62,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { ActionDiv } from "./utils";
+import { ActionDiv, getStringAndNumberProps } from "./utils";
 
 const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
 
@@ -113,7 +113,10 @@ const Patches = ({ adaptiveMenuItemProps }: ActionProps) => {
   const fields = useRecoilValue(patchesFields);
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         icon={loading ? <Loading /> : <FlipToBack />}
         open={open}
@@ -149,7 +152,10 @@ const Similarity = ({
   }, [showImageSimilarityIcon]);
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         key={"button"}
         icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
@@ -214,7 +220,10 @@ const Tag = ({
     : baseTitle;
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         tooltipPlacement={modal ? "bottom" : "top"}
         style={{
@@ -280,7 +289,10 @@ const Selected = ({
   }
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         icon={loading ? <Loading /> : <Check />}
         open={open}
@@ -320,7 +332,10 @@ const Options = ({
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         tooltipPlacement={modal ? "bottom" : "top"}
         icon={<Settings />}
@@ -360,7 +375,10 @@ const Colors = ({
   }, [Boolean(activeField)]);
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         data-cy="action-color-settings"
         highlight={open}
@@ -454,7 +472,7 @@ const SaveFilters = ({ adaptiveMenuItemProps }: ActionProps) => {
   );
 
   return shouldToggleBookMarkIconOn ? (
-    <ActionDiv {...(adaptiveMenuItemProps || {})}>
+    <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
         highlight={true}
@@ -515,7 +533,7 @@ const ToggleSidebar: React.FC<
       highlight={!visible}
       ref={ref}
       data-cy="action-toggle-sidebar"
-      {...(adaptiveMenuItemProps || {})}
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
     />
   );
 });
@@ -567,7 +585,7 @@ export const BrowseOperations = ({
 }: ActionProps & { modal?: boolean }) => {
   const browser = useOperatorBrowser();
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})}>
+    <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
         highlight={true}

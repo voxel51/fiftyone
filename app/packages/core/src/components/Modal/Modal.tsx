@@ -38,12 +38,15 @@ const ModalContainer = styled.div`
   z-index: 10001;
 `;
 
-const ModalNavigationContainer = styled.div<{ sidebarwidth: number }>`
+const ModalNavigationContainer = styled.div<{
+  $sidebarWidth: number;
+  $isSidebarVisible: boolean;
+}>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: ${({ sidebarwidth }) =>
-    sidebarwidth ? `calc(100% - ${sidebarwidth}px)` : "100%"};
+  width: ${({ $sidebarWidth, $isSidebarVisible }) =>
+    $isSidebarVisible ? `calc(100% - ${$sidebarWidth}px)` : "100%"};
   height: 100%;
   position: absolute;
   left: 0;
@@ -177,6 +180,7 @@ const Modal = () => {
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -227,7 +231,10 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigationContainer sidebarwidth={sidebarwidth}>
+          <ModalNavigationContainer
+            $isSidebarVisible={isSidebarVisible}
+            $sidebarWidth={sidebarwidth}
+          >
             <ModalNavigation onNavigate={onNavigate} />
           </ModalNavigationContainer>
           <SpacesContainer>

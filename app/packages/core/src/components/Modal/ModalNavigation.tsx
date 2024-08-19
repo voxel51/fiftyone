@@ -7,14 +7,14 @@ import React, { useCallback, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
-const Arrow = styled.span<{ isRight?: boolean }>`
+const Arrow = styled.span<{ $isRight?: boolean }>`
   cursor: pointer;
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
-  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
+  right: ${(props) => (props.$isRight ? "0.75rem" : "initial")};
+  left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
   bottom: 33vh;
@@ -102,7 +102,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         </Arrow>
       )}
       {showModalNavigationControls && modal.hasNext && (
-        <Arrow isRight>
+        <Arrow $isRight>
           <LookerArrowRightIcon
             data-cy="nav-right-button"
             onClick={navigateNext}

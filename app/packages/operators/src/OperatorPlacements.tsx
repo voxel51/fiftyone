@@ -18,6 +18,8 @@ import {
 } from "./state";
 import { Placement, Places } from "./types";
 
+import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
+
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps
 ) {
@@ -102,7 +104,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   ) {
     return (
       <PillButton
-        {...(adaptiveMenuItemProps || {})}
+        {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
         onClick={handleClick}
         icon={showIcon && IconComponent}
         text={!showIcon && title}
@@ -116,7 +118,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
   return (
     <SquareButton
-      {...(adaptiveMenuItemProps || {})}
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       to={handleClick}
       title={label}
     >

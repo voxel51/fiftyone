@@ -355,7 +355,7 @@ const ShowModalNav = () => {
 };
 
 type OptionsProps = {
-  modal: boolean;
+  modal?: boolean;
   anchorRef: RefObject<HTMLElement>;
 };
 
