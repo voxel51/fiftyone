@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.0.0
 --------------------
-*Released August 19, 2024*
+*Released August 20, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.0 <release-notes-v0.25.0>`, plus:
 
@@ -56,7 +56,7 @@ SDK
 
 FiftyOne 0.25.0
 ---------------
-*Released August 19, 2024*
+*Released August 20, 2024*
 
 What's New
 
