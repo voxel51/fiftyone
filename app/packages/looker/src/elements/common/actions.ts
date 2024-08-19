@@ -459,41 +459,55 @@ export const previousFrame: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const playPause: Control<VideoState> = {
+export const playPause: Control<VideoState | ImaVidState> = {
   title: "Play / pause",
   shortcut: "Space",
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update(
-      ({
-        frameNumber,
-        playing,
-        duration,
-        config: { frameRate, support, thumbnail },
-        lockedToSupport,
-      }) => {
-        if (thumbnail) {
-          return {};
-        }
-        const start = lockedToSupport ? support[0] : 1;
-        const end = lockedToSupport
-          ? support[1]
-          : getFrameNumber(duration, duration, frameRate);
+    update((state: ImaVidState | VideoState) => {
+      if (state.config.thumbnail) {
+        return {};
+      }
+      dispatchEvent("options", { showJSON: false });
 
-        dispatchEvent("options", { showJSON: false });
+      const isImaVid = (state as ImaVidState).currentFrameNumber;
+      if (isImaVid) {
+        const {
+          currentFrameNumber,
+          playing,
+          config: { frameStoreController },
+        } = state as ImaVidState;
+        const reachedEnd =
+          currentFrameNumber >= frameStoreController.totalFrameCount;
         return {
-          playing: !playing && start !== end,
-          frameNumber:
-            end === frameNumber
-              ? lockedToSupport
-                ? support[0]
-                : 1
-              : frameNumber,
+          currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
           options: { showJSON: false },
+          playing: !playing && !reachedEnd,
         };
       }
-    );
+
+      //seperate imavid from video state
+      const {
+        playing,
+        duration,
+        frameNumber,
+        lockedToSupport,
+        config: { support, frameRate },
+      } = state as VideoState;
+      const start = lockedToSupport ? support[0] : 1;
+      const end = lockedToSupport
+        ? support[1]
+        : getFrameNumber(duration, duration, frameRate);
+      const frame =
+        end === frameNumber ? (lockedToSupport ? support[0] : 1) : frameNumber;
+      return {
+        playing: !playing && start !== end,
+        frameNumber: frame,
+        currentFrameNumber: frame,
+        options: { showJSON: false },
+      };
+    });
   },
 };
 
