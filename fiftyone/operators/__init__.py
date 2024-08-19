@@ -14,6 +14,7 @@ from .registry import (
 )
 from .executor import (
     execute_operator,
+    ExecutionContext,
     ExecutionOptions,
 )
 from .utils import ProgressHandler
