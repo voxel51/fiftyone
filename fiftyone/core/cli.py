@@ -2829,7 +2829,7 @@ class ModelZooDeleteCommand(Command):
 
 
 class OperatorsCommand(Command):
-    """Tools for working with FiftyOne operators."""
+    """Tools for working with FiftyOne operators and panels."""
 
     @staticmethod
     def setup(parser):
@@ -2843,17 +2843,17 @@ class OperatorsCommand(Command):
 
 
 class OperatorsListCommand(Command):
-    """List operators that you've downloaded or created locally.
+    """List operators and panels that you've installed locally.
 
     Examples::
 
-        # List all locally available operators
+        # List all available operators and panels
         fiftyone operators list
 
-        # List enabled operators
+        # List enabled operators and panels
         fiftyone operators list --enabled
 
-        # List disabled operators
+        # List disabled operators and panels
         fiftyone operators list --disabled
 
         # Only list panels
@@ -2867,14 +2867,14 @@ class OperatorsListCommand(Command):
             "--enabled",
             action="store_true",
             default=None,
-            help="only show enabled operators",
+            help="only show enabled operators and panels",
         )
         parser.add_argument(
             "-d",
             "--disabled",
             action="store_true",
             default=None,
-            help="only show disabled operators",
+            help="only show disabled operators and panels",
         )
         parser.add_argument(
             "-o",
@@ -2954,18 +2954,19 @@ def _print_operators_list(enabled, type, names_only):
 
 
 class OperatorsInfoCommand(Command):
-    """Prints information about operators that you've downloaded or created
-    locally.
+    """Prints info about operators and panels that you've installed locally.
 
     Examples::
 
-        # Prints information about an operator
+        # Prints information about an operator or panel
         fiftyone operators info <uri>
     """
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("uri", metavar="URI", help="the operator URI")
+        parser.add_argument(
+            "uri", metavar="URI", help="the operator or panel URI"
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -3435,11 +3436,11 @@ class PluginsCommand(Command):
 
 
 class PluginsListCommand(Command):
-    """List plugins that you've downloaded or created locally.
+    """List plugins that you've installed locally.
 
     Examples::
 
-        # List all locally available plugins
+        # List all available plugins
         fiftyone plugins list
 
         # List enabled plugins
@@ -3514,8 +3515,7 @@ def _print_plugins_list(enabled, names_only):
 
 
 class PluginsInfoCommand(Command):
-    """Prints information about plugins that you've downloaded or created
-    locally.
+    """Prints info about plugins that you've installed locally.
 
     Examples::
 
