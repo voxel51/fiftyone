@@ -471,7 +471,8 @@ export const playPause: Control<VideoState | ImaVidState> = {
       }
       dispatchEvent("options", { showJSON: false });
 
-      const isImaVid = (state as ImaVidState).currentFrameNumber;
+      const isImaVid = (state.config as ImaVidConfig)
+        .frameStoreController as ImaVidFramesController;
       if (isImaVid) {
         const {
           currentFrameNumber,
