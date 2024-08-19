@@ -17,17 +17,13 @@ export const playPause: Control<ImaVidState> = {
         if (thumbnail) {
           return {};
         }
-
+        const reachedEnd =
+          currentFrameNumber >= frameStoreController.totalFrameCount;
         dispatchEvent("options", { showJSON: false });
-
-        // todo: figure out why setting frame number to 1 doesn't restart playback because of drawFrame
         return {
-          playing: !playing,
-          frameNumber:
-            currentFrameNumber === frameStoreController.totalFrameCount
-              ? 1
-              : currentFrameNumber,
+          currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
           options: { showJSON: false },
+          playing: !playing && !reachedEnd,
         };
       }
     );
