@@ -1884,7 +1884,7 @@ subsequent sections.
             ctx.panel.set_state("event", "on_load")
             ctx.panel.set_data("event_data", event)
 
-            # Get the list of brain keys to populate brain_key dropdown in render()
+            # Get the list of brain keys to populate `brain_key` dropdown
             visualization_keys = ctx.dataset.list_brain_runs("visualization")
             ctx.panel.set_state("brain_keys", visualization_keys)
 
@@ -1906,8 +1906,7 @@ subsequent sections.
             """Implement this method to set panel state/data when any aspect
             of the execution context (view, selected samples, filters, etc.) changes.
 
-            The current :class:`fiftyone.operators.ExecutionContext` will be
-            available via ``ctx`` param.
+            The current execution context will be available via ``ctx``.
             """
             event = {
                 "data": {
@@ -2014,14 +2013,8 @@ subsequent sections.
             results = ctx.dataset.load_brain_results(brain_key)
 
             # Format results for plotly
-            x_points = []
-            y_points = []
-            for point in results.points:
-                x_points.append(point[0])
-                y_points.append(point[1])
-            plot_data = [
-                {"x": x_points, "y": y_points, "type": "scatter", "mode": "markers"}
-            ]
+            x, y = zip(*results.points.tolist())
+            plot_data = [{"x": x, "y": y, "type": "scatter", "mode": "markers"}]
 
             # Store large content as panel data for efficiency
             ctx.panel.set_data("embeddings", plot_data)
@@ -2053,8 +2046,6 @@ subsequent sections.
         def on_change_show_start_button(self, ctx):
             # Get current state of the checkbox on change
             current_state = ctx.params.get("value", None)
-            print("Current state of checkbox:", current_state)
-
 
     def register(p):
         """Always implement this method and register() each panel that your
@@ -2176,11 +2167,11 @@ The example code below shows how to access and update panel state.
             panel = types.Object()
 
             # Define a vertical stack object with the name 'v_stack'
-            # path: 'v_stack'
+            # key: 'v_stack'
             v_stack = panel.v_stack("v_stack", align_x="center", gap=2)
 
             # Define a horizontal stack object with the name 'h_stack' on 'v_stack'
-            # path: 'v_stack.h_stack'
+            # key: 'v_stack.h_stack'
             h_stack = v_stack.h_stack("h_stack", align_y="center")
 
             # Get state
@@ -2189,11 +2180,11 @@ The example code below shows how to access and update panel state.
             count = h_stack_state["count"] if h_stack_state is not None else 0
 
             # Add a message to the horizontal stack object with the name 'count'
-            # path: 'v_stack.h_stack.count'
+            # key: 'v_stack.h_stack.count'
             h_stack.message("count", f"Count: {count}")
 
             # Add a button to the horizontal stack object with the name 'increment'
-            # path: 'v_stack.h_stack.increment'
+            # key: 'v_stack.h_stack.increment'
             h_stack.btn(
                 "increment",
                 label="Increment",
@@ -2203,7 +2194,7 @@ The example code below shows how to access and update panel state.
             )
 
             # Add a button to the horizontal stack object with the name 'decrement'
-            # path: 'v_stack.h_stack.count'
+            # key: 'v_stack.h_stack.count'
             h_stack.btn(
                 "decrement",
                 label="Decrement",
@@ -2519,7 +2510,7 @@ panel layout based on user input.
                 height="200px",
             )
 
-            # define a dropdown menu and add choices
+            # Define a dropdown menu and add choices
             dropdown = types.DropdownView()
             dropdown.add_choice(
                 "refresh",
@@ -2537,7 +2528,8 @@ panel layout based on user input.
                 description="Displays button that will say hi",
             )
 
-            # add dropdown menu to the panel as a view, and use the on_change callback method to trigger the alter_selection function
+            # Add dropdown menu to the panel as a view and use the `on_change`
+            # callback to trigger `alter_selection`
             panel.view(
                 "dropdown",
                 view=dropdown,
@@ -2545,7 +2537,7 @@ panel layout based on user input.
                 on_change=self.alter_selection,
             )
 
-            # change panel visual state dependent on dropdown menu selection
+            # Change panel visual state dependent on dropdown menu selection
             if ctx.panel.state.selection == "refresh":
                 panel.btn(
                     "refresh",
@@ -2776,8 +2768,6 @@ guided workflow.
                     name="markdown_screen_2",
                 )
                 table = types.TableView()
-
-                # set table columns
                 table.add_column("Dataset Name", label="Dataset Name")
                 table.add_column("Dataset Description", label="Description")
                 table.add_column("Number of Samples", label="Number of Samples")
@@ -2860,10 +2850,10 @@ forms of image and video data.
                 )
 
             def on_load(self, ctx):
-                # filter 10 images from data set and set it to a state variable
-
+                # Load image from static URL
                 ctx.panel.state.single_image = "https://static6.depositphotos.com/1119834/620/i/450/depositphotos_6201075-stock-photo-african-elephant-smelling.jpg"
 
+                # Load 10 images from dataset
                 samples = ctx.dataset.limit(10)
                 for index, sample in enumerate(samples):
                     image_path = (
@@ -2879,7 +2869,6 @@ forms of image and video data.
                     name="intro_message",
                 )
 
-                # loading a single image from an url
                 panel.md(
                     "## Single Image\n\nThis image was loaded from a url",
                     name="header_one",
