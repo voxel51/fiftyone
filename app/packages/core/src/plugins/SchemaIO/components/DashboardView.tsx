@@ -130,12 +130,12 @@ const LayoutPopover = ({
               color="primary"
             />
           }
-          label="Auto Layout"
+          label="Auto layout"
         />
         {isEditMode && !autoLayout && (
           <>
             <FormControl component="fieldset" sx={{ marginBottom: 2 }}>
-              <FormLabel component="legend">Layout Mode</FormLabel>
+              <FormLabel component="legend">Layout mode</FormLabel>
               <RadioGroup
                 row
                 aria-label="layout-mode"
@@ -227,13 +227,13 @@ const ControlContainer = ({
           {autoLayout && (
             <Typography>
               You can customize the layout of the items in this dashboard by
-              dragging to re-order.
+              dragging to re-order
             </Typography>
           )}
           {!autoLayout && (
             <Typography>
               You can customize the layout of the items in this dashboard by
-              resizing them and dragging to re-order.
+              resizing them and dragging to re-order
             </Typography>
           )}
         </Alert>
