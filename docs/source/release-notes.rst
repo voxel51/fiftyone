@@ -60,7 +60,7 @@ FiftyOne 0.25.0
 
 What's New
 
-- Introducing :ref:`Python panels <python-panels>`, a powerful framework for
+- Introducing :ref:`Python panels <developing-panels>`, a powerful framework for
   building custom App panels via a simple Python interface that includes a
   wealth of builtin components to convey information, create tutorials, show
   interactive graphs, trigger operations, and more
