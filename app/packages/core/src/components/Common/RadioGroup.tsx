@@ -50,7 +50,7 @@ const Radio = React.memo(
   }
 );
 type Props = {
-  horizontal: boolean;
+  $horizontal: boolean;
 };
 const RadioGroupContainer = styled.div<Props>`
   overflow: auto visible;
@@ -58,7 +58,7 @@ const RadioGroupContainer = styled.div<Props>`
   margin: 0 -0.5rem;
   scrollbar-width: none;
   display: flex;
-  flex-direction: ${(props) => (props.horizontal ? "row" : "column")};
+  flex-direction: ${(props) => (props.$horizontal ? "row" : "column")};
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -99,7 +99,7 @@ const RadioGroup = React.memo(
     }
 
     return (
-      <RadioGroupContainer horizontal={horizontal}>
+      <RadioGroupContainer $horizontal={horizontal}>
         {choices.map((choice) => (
           <Radio
             value={choice}

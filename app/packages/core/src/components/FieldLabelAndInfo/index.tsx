@@ -149,18 +149,18 @@ const FieldInfoExpandedContainer = styled.div`
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 `;
 
-const FieldInfoDesc = styled.div<{ collapsed: boolean }>`
-  text-overflow: ${({ collapsed }) => (collapsed ? "ellipsis" : "none")};
-  white-space: ${({ collapsed }) => (collapsed ? "nowrap" : "pre-line")};
-  height: ${({ collapsed }) => (collapsed ? "2.1rem" : "inherit")};
+const FieldInfoDesc = styled.div<{ $collapsed: boolean }>`
+  text-overflow: ${({ $collapsed }) => ($collapsed ? "ellipsis" : "none")};
+  white-space: ${({ $collapsed }) => ($collapsed ? "nowrap" : "pre-line")};
+  height: ${({ $collapsed }) => ($collapsed ? "2.1rem" : "inherit")};
   font-size: 1rem;
-  // margin: ${({ collapsed }) => (collapsed ? "0 0.25rem" : "0.25rem")};
+  // margin: ${({ $collapsed }) => ($collapsed ? "0 0.25rem" : "0.25rem")};
   margin-top: -5px;
   padding: 0.2rem 0;
   line-height: 1.5rem;
   max-height: calc(2.1rem * 6);
   overflow-x: hidden;
-  overflow-y: ${({ collapsed }) => (collapsed ? "hidden" : "auto")};
+  overflow-y: ${({ $collapsed }) => ($collapsed ? "hidden" : "auto")};
   color: ${({ theme }) => theme.text.primary};
   ::-webkit-scrollbar {
     width: 0.5rem; // manage scrollbar width here
@@ -388,7 +388,7 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
     <FieldInfoDesc
-      collapsed={collapsed}
+      $collapsed={collapsed}
       dangerouslySetInnerHTML={{ __html: description }}
     />
   );

@@ -19,7 +19,7 @@ function Panel(props: PanelProps) {
   const panelContentTestId = `panel-content-${panelName}`;
   if (!panel) {
     return (
-      <StyledPanel data-cy={panelContentTestId} isModalPanel={isModalPanel}>
+      <StyledPanel data-cy={panelContentTestId} $isModalPanel={isModalPanel}>
         <CenteredStack>
           {pending ? (
             <PanelSkeleton />
@@ -35,7 +35,7 @@ function Panel(props: PanelProps) {
 
   return (
     <StyledPanel
-      isModalPanel={isModalPanel}
+      $isModalPanel={isModalPanel}
       id={node.id}
       data-cy={panelContentTestId}
       className={scrollable}
