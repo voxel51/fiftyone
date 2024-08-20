@@ -27,7 +27,6 @@ from pymongo import (
     ReplaceOne,
     UpdateMany,
     UpdateOne,
-    WriteConcern,
 )
 from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
@@ -330,7 +329,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._run_cache = cachetools.LRUCache(5)
 
         self._deleted = False
-        self._write_concern = None
 
         if not _virtual:
             self._update_last_loaded_at()
@@ -1184,7 +1182,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return conn.command(
             "collstats",
             self._sample_collection_name,
-            write_concern=self._write_concern,
         )
 
     def _frame_collstats(self):
@@ -1195,7 +1192,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return conn.command(
             "collstats",
             self._frame_collection_name,
-            write_concern=self._write_concern,
         )
 
     def first(self):
@@ -7040,9 +7036,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection(self):
-        return self._get_sample_collection(write_concern=self._write_concern)
+        return self._get_sample_collection()
 
-    def _get_sample_collection(self, write_concern=None) -> Collection:
+    def _get_sample_collection(self, write_concern=None):
         return foo.get_db_conn().get_collection(
             self._sample_collection_name, write_concern=write_concern
         )
@@ -7053,9 +7049,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _frame_collection(self):
-        return self._get_frame_collection(write_concern=self._write_concern)
+        return self._get_frame_collection()
 
-    def _get_frame_collection(self, write_concern=None) -> Collection:
+    def _get_frame_collection(self, write_concern=None):
         if self._frame_collection_name is None:
             return None
 
