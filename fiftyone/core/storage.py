@@ -744,7 +744,9 @@ class LocalDir(object):
         if is_local(self._path):
             return self._path
 
-        self._tmpdir = make_temp_dir(basedir=self._basedir)
+        # Retain directory name in case caller depends on it (eg archiving)
+        name = os.path.basename(os.path.normpath(self._path))
+        self._tmpdir = os.path.join(make_temp_dir(basedir=self._basedir), name)
 
         if self._mode == "r":
             progress = _parse_progress(self._progress)
