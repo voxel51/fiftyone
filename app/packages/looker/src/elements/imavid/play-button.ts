@@ -23,7 +23,7 @@ export const playPause: Control<ImaVidState> = {
         return {
           currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
           options: { showJSON: false },
-          playing: !playing && !reachedEnd,
+          playing: !playing || reachedEnd,
         };
       }
     );

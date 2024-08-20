@@ -484,7 +484,7 @@ export const playPause: Control<VideoState | ImaVidState> = {
         return {
           currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
           options: { showJSON: false },
-          playing: !playing && !reachedEnd,
+          playing: !playing || reachedEnd,
         };
       }
 
@@ -609,6 +609,7 @@ const videoEscape: Control<VideoState> = {
         options: { showHelp, showJSON, selectedLabels },
         lockedToSupport,
       }) => {
+        console.log("closing window");
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
           return { showHelp: "close" };
@@ -639,7 +640,7 @@ const videoEscape: Control<VideoState> = {
 
         if (frameNumber !== 1) {
           return {
-            frameNumber: 1,
+            frameNumber: 1, //THIS IS WHERE THE ISSUE IS WITH CLOSING FRAME
             playing: false,
           };
         }

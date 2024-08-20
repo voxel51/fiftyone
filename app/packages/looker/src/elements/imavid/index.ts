@@ -194,6 +194,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
+          console.log("pausing");
           return { playing: false, disabled: false, disableOverlays: false };
         }
         return {};
@@ -208,9 +209,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   async drawFrame(frameNumberToDraw: number, animate = true) {
-    if (this.waitingToPause) {
+    if (this.waitingToPause && this.frameNumber > 1) {
       this.pause();
       return;
+    } else {
+      this.waitingToPause = false;
     }
 
     const skipAndTryAgain = () =>
