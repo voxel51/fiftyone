@@ -1,4 +1,4 @@
-import { currentSampleId } from "@fiftyone/state";
+import { modalSampleId } from "@fiftyone/state";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { fo3dAssetsParseStatusLog } from "../state";
@@ -6,7 +6,7 @@ import { fo3dAssetsParseStatusLog } from "../state";
 export const ALL_LOADING_COMPLETE = "All loading complete!";
 
 export const useTrackStatus = () => {
-  const currentSample = useRecoilValue(currentSampleId);
+  const currentSample = useRecoilValue(modalSampleId);
   const [logs, setLogs] = useRecoilState(
     fo3dAssetsParseStatusLog(currentSample)
   );

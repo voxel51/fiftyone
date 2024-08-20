@@ -6,7 +6,7 @@ import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
 
 export const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
-  key: "fo3d-assetsParseStatusLog",
+  key: "fo3d-assetsParseStatusLogs",
   default: [],
 });
 

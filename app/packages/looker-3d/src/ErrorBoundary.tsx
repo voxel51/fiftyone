@@ -1,5 +1,5 @@
 import { Loading } from "@fiftyone/components";
-import { currentSampleId } from "@fiftyone/state";
+import { modalSampleId } from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { fo3dAssetsParseStatusLog } from "./state";
@@ -15,7 +15,7 @@ const AddFo3dErrorLogs = ({
   error: Error;
   boundaryName?: string;
 }) => {
-  const thisSampleId = useRecoilValue(currentSampleId);
+  const thisSampleId = useRecoilValue(modalSampleId);
   const setLogs = useSetRecoilState(fo3dAssetsParseStatusLog(thisSampleId));
 
   useEffect(() => {

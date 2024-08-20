@@ -38,6 +38,8 @@ export const Looker3d = () => {
 
   const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
 
+  const thisSampleId = useRecoilValue(fos.modalSampleId);
+
   useEffect(() => {
     return () => {
       setFo3dHasBackground(false);
@@ -148,9 +150,9 @@ export const Looker3d = () => {
   }
 
   const component = shouldRenderFo3dComponent ? (
-    <MediaTypeFo3dComponent />
+    <MediaTypeFo3dComponent key={thisSampleId} />
   ) : (
-    <MediaTypePcdComponent />
+    <MediaTypePcdComponent key={thisSampleId} />
   );
 
   return (

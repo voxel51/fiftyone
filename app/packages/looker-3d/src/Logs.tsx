@@ -1,4 +1,4 @@
-import { currentSampleId } from "@fiftyone/state";
+import { modalSampleId } from "@fiftyone/state";
 import DoneIcon from "@mui/icons-material/Done";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import { CircularProgress, Typography } from "@mui/material";
@@ -18,7 +18,7 @@ const LogContainer = styled.div`
 `;
 
 export const Logs = () => {
-  const currentSample = useRecoilValue(currentSampleId);
+  const currentSample = useRecoilValue(modalSampleId);
   const logs = useRecoilValue(fo3dAssetsParseStatusLog(currentSample));
 
   const errorLogs = useMemo(() => {

@@ -1,4 +1,4 @@
-import { currentSampleId } from "@fiftyone/state";
+import { modalSampleId } from "@fiftyone/state";
 import { MeshWobbleMaterial } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
@@ -12,7 +12,7 @@ import { fo3dAssetsParseStatusLog } from "./state";
 export const SpinningCube = () => {
   const meshRef = useRef<Mesh>();
 
-  const thisSampleId = useRecoilValue(currentSampleId);
+  const thisSampleId = useRecoilValue(modalSampleId);
   const logs = useRecoilValue(fo3dAssetsParseStatusLog(thisSampleId));
 
   const errorsExist = useMemo(
