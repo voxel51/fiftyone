@@ -194,7 +194,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
-          console.log("pausing");
           return { playing: false, disabled: false, disableOverlays: false };
         }
         return {};
