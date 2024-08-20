@@ -2471,12 +2471,12 @@ panel layout based on user input.
 .. code-block:: python
     :linenos:
 
-    class DropdownMenuPanel(foo.Panel):
+    class DropdownMenuExample(foo.Panel):
         @property
         def config(self):
             return foo.PanelConfig(
                 name="example_dropdown_menu",
-                label="Python Panel Example: Dropdown Menu",
+                label="Examples: Dropdown Menu",
             )
 
         def on_load(self, ctx):
@@ -2492,7 +2492,7 @@ panel layout based on user input.
             ctx.ops.reload_samples()
 
         def say_hi(self, ctx):
-            ctx.ops.notify("Hi!")
+            ctx.ops.notify("Hi!", variant="success")
 
         def render(self, ctx):
             panel = types.Object()
@@ -2506,7 +2506,7 @@ panel layout based on user input.
 
             """,
                 name="header",
-                width="500px",
+                width=50,  # 50% of current panel width
                 height="200px",
             )
 
@@ -2594,18 +2594,20 @@ the App.
     import fiftyone.operators.types as types
     from fiftyone import ViewField as F
 
-    class InteractiveHistogram(foo.Panel):
+    class InteractivePlotExample(foo.Panel):
         @property
         def config(self):
             return foo.PanelConfig(
-                name="interactive_histogram_example",
-                label="Interactive Histogram Example",
+                name="example_interactive_plot",
+                label="Examples: Interactive Plot",
                 icon="bar_chart",
             )
 
         def on_load(self, ctx):
             # Get target field
-            target_field = ctx.panel.state.target_field or "ground_truth.detections.label"
+            target_field = (
+                ctx.panel.state.target_field or "ground_truth.detections.label"
+            )
             ctx.panel.state.target_field = target_field
 
             # Compute target histogram for current dataset
@@ -2616,7 +2618,7 @@ the App.
             ctx.panel.data.histogram = {"x": keys, "y": values, "type": "bar"}
 
             # Launch panel in a horizontal split view
-            ctx.ops.split_panel("interactive_histogram_example", layout="horizontal")
+            ctx.ops.split_panel("example_interactive_plot", layout="horizontal")
 
         def on_change_view(self, ctx):
             # Update histogram when current view changes
@@ -2628,10 +2630,11 @@ the App.
 
             # Create a view that matches the selected histogram bar
             field = ctx.panel.state.target_field
-            view = get_view(ctx.dataset, field, value)
+            view = _make_matching_view(ctx.dataset, field, value)
 
-            if view:
-                ctx.ops.set_view(view)
+            # Load view in App
+            if view is not None:
+                ctx.ops.set_view(view=view)
 
         def reset(self, ctx):
             ctx.ops.clear_view()
@@ -2657,7 +2660,10 @@ the App.
             )
 
             panel.btn(
-                "reset", label="Reset Chart", on_click=self.reset, variant="contained"
+                "reset",
+                label="Reset Chart",
+                on_click=self.reset,
+                variant="contained",
             )
 
             return types.Property(
@@ -2673,7 +2679,7 @@ the App.
                 ),
             )
 
-    def get_view(dataset, field, value):
+    def _make_matching_view(dataset, field, value):
         if field.endswith(".label"):
             root_field = field.split(".")[0]
             return dataset.filter_labels(root_field, F("label") == value)
@@ -2700,12 +2706,12 @@ guided workflow.
 .. code-block:: python
     :linenos:
 
-    class WalkthroughTutorialPanel(foo.Panel):
+    class WalkthroughExample(foo.Panel):
         @property
         def config(self):
             return foo.PanelConfig(
-                name="example_walkthrough_tutorial",
-                label="Python Panel Example: Walkthrough Tutorial",
+                name="example_walkthrough",
+                label="Examples: Walkthrough",
             )
 
         def on_load(self, ctx):
@@ -2739,7 +2745,9 @@ guided workflow.
             stack = panel.v_stack(
                 "welcome", gap=2, width=75, align_x="center", align_y="center"
             )
-            button_container = types.GridView(gap=2, align_x="left", align_y="center")
+            button_container = types.GridView(
+                gap=2, align_x="left", align_y="center"
+            )
 
             page = ctx.panel.state.get("page", 1)
 
@@ -2842,11 +2850,12 @@ forms of image and video data.
     .. code-block:: python
         :linenos:
 
-        class ImagePanel(foo.Panel):
+        class ImageExample(foo.Panel):
             @property
             def config(self):
                 return foo.PanelConfig(
-                    name="example_image", label="Python Panel Example: Image"
+                    name="example_image",
+                    label="Examples: Image",
                 )
 
             def on_load(self, ctx):
@@ -2903,12 +2912,12 @@ forms of image and video data.
     .. code-block:: python
         :linenos:
 
-        class MediaPlayerPanel(foo.Panel):
+        class MediaPlayerExample(foo.Panel):
             @property
             def config(self):
                 return foo.PanelConfig(
                     name="example_media_player",
-                    label="Python Panel Example: Media Player",
+                    label="Examples: Media Player",
                 )
 
             def on_load(self, ctx):
@@ -2963,7 +2972,7 @@ you to reveal all of its available methods during development:
 .. code-block:: python
     :linenos:
 
-    from fiftyone.operators.executor import ExecutionContext
+    from fiftyone.operators import ExecutionContext
 
     def on_load(ctx: ExecutionContext):
         ctx.trigger()
