@@ -604,17 +604,21 @@ class DatasetTests(unittest.TestCase):
 
         info = dataset.get_index_information(include_stats=True)
 
-        indexes = [
+        indexes = {
             "id",
             "filepath",
+            "created_at",
+            "last_modified_at",
             "gt.detections.label",
             "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
             "frames._sample_id_1_frame_number_1",
             "frames.gt.detections.label",
-        ]
+        }
 
-        self.assertListEqual(dataset.list_indexes(), indexes)
-        self.assertSetEqual(set(info.keys()), set(indexes))
+        self.assertSetEqual(set(dataset.list_indexes()), indexes)
+        self.assertSetEqual(set(info.keys()), indexes)
         for d in info.values():
             self.assertTrue(d.get("size") is not None)
 
@@ -2847,7 +2851,11 @@ class DatasetTests(unittest.TestCase):
             {
                 "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 "frames.id",
+                "frames.created_at",
+                "frames.last_modified_at",
                 "frames._sample_id_1_frame_number_1",
             },
         )
