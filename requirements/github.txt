@@ -1,6 +1,7 @@
 -r common.txt
 -r test.txt
 
+numpy<2
 pydicom>=2.2.0
 shapely>=1.7.1
 tensorflow

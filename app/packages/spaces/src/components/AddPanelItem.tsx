@@ -1,9 +1,10 @@
+import { useTrackEvent } from "@fiftyone/analytics";
+import { Stack, Typography } from "@mui/material";
 import { Layout } from "../enums";
 import { useSpaces } from "../hooks";
 import SpaceNode from "../SpaceNode";
 import { AddPanelItemProps } from "../types";
 import PanelIcon from "./PanelIcon";
-import { StyledPanelItem } from "./StyledElements";
 
 export default function AddPanelItem({
   node,
@@ -12,11 +13,14 @@ export default function AddPanelItem({
   onClick,
   spaceId,
 }: AddPanelItemProps) {
+  const trackEvent = useTrackEvent();
   const { spaces } = useSpaces(spaceId);
   return (
-    <StyledPanelItem
+    <Stack
+      direction="row"
       data-cy={`new-panel-option-${name}`}
       onClick={(e) => {
+        trackEvent("open_panel", { panel: name });
         const newNode = new SpaceNode();
         newNode.type = name;
         spaces.addNodeAfter(node, newNode);
@@ -27,9 +31,23 @@ export default function AddPanelItem({
         }
         if (onClick) onClick();
       }}
+      sx={{
+        cursor: "pointer",
+        padding: "4px 8px",
+        alignItems: "center",
+        "&:hover": { background: "var(--fo-palette-background-body)" },
+      }}
     >
       <PanelIcon name={name} />
-      {label || (name as string)}
-    </StyledPanelItem>
+      <Typography
+        sx={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {label || (name as string)}
+      </Typography>
+    </Stack>
   );
 }

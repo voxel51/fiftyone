@@ -5,8 +5,11 @@ FiftyOne operator registry.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .builtin import BUILTIN_OPERATORS
+
+from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
+
+from .builtin import BUILTIN_OPERATORS
 
 
 def get_operator(operator_uri, enabled=True):
@@ -31,18 +34,20 @@ def get_operator(operator_uri, enabled=True):
     return operator
 
 
-def list_operators(enabled=True):
+def list_operators(enabled=True, type=None):
     """Returns all available operators.
 
     Args:
         enabled (True): whether to include only enabled operators (True) or
             only disabled operators (False) or all operators ("all")
+        type (None): whether to include only ``"panel"`` or ``"operator"`` type
+            operators
 
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
     """
     registry = OperatorRegistry(enabled=enabled)
-    return registry.list_operators(include_builtin=enabled != False)
+    return registry.list_operators(include_builtin=enabled != False, type=type)
 
 
 def operator_exists(operator_uri, enabled=True):
@@ -70,11 +75,13 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
-    def list_operators(self, include_builtin=True):
+    def list_operators(self, include_builtin=True, type=None):
         """Lists the available FiftyOne operators.
 
         Args:
             include_builtin (True): whether to include builtin operators
+            type (None): whether to include only ``"panel"`` or ``"operator"``
+                type operators
 
         Returns:
             a list of :class:`fiftyone.operators.Operator` instances
@@ -85,6 +92,15 @@ class OperatorRegistry(object):
 
         if include_builtin:
             operators.extend(BUILTIN_OPERATORS)
+
+        if type == "panel":
+            operators = [op for op in operators if isinstance(op, Panel)]
+        elif type == "operator":
+            operators = [op for op in operators if not isinstance(op, Panel)]
+        elif type is not None:
+            raise ValueError(
+                f"Unsupported type='{type}'. The supported values are ('panel', 'operator')"
+            )
 
         return operators
 

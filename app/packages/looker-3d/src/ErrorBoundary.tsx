@@ -1,8 +1,40 @@
 import { Loading } from "@fiftyone/components";
-import React from "react";
+import { currentSampleId } from "@fiftyone/state";
+import React, { useEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { fo3dAssetsParseStatusLog } from "./state";
 
-export class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+/**
+ * This is to be used in conjunction with `Fo3dErrorBoundary` to add uncaught error logs to
+ * the fo3d error logs atom.
+ */
+const AddFo3dErrorLogs = ({
+  error,
+  boundaryName,
+}: {
+  error: Error;
+  boundaryName?: string;
+}) => {
+  const thisSampleId = useRecoilValue(currentSampleId);
+  const setLogs = useSetRecoilState(fo3dAssetsParseStatusLog(thisSampleId));
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const message = error.message || error.toString();
+    const fullMessage = boundaryName
+      ? `Error loading ${boundaryName}: ${message}`
+      : message;
+
+    setLogs((logs) => [...logs, { message: fullMessage, status: "error" }]);
+  }, [boundaryName, error, setLogs]);
+
+  return null;
+};
+export class Fo3dErrorBoundary extends React.Component<
+  { children: React.ReactNode; boundaryName?: string; ignoreError?: boolean },
   { error: Error | string | null }
 > {
   state = { error: null, hasError: false };
@@ -18,10 +50,21 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      // useLoader from @react-three/fiber throws a raw string for PCD 404
-      // not an error
+      if (this.props.ignoreError) {
+        return (
+          <AddFo3dErrorLogs
+            error={this.state.error}
+            boundaryName={this.props.boundaryName}
+          />
+        );
+      }
+
       return (
         <Loading dataCy={"looker3d"}>
+          <AddFo3dErrorLogs
+            error={this.state.error}
+            boundaryName={this.props.boundaryName}
+          />
           <div data-cy="looker-error-info">
             {this.state.error instanceof Error
               ? this.state.error.message

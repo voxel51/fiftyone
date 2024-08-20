@@ -63,6 +63,7 @@ def test_sam_points():
         batch_size=2,
         model_kwargs=dict(mask_index=1.05),
         apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+        prompt_type="keypoints",
     )
 
 
@@ -72,6 +73,45 @@ def test_sam_auto():
         models,
         max_samples=3,
         model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
+    )
+
+
+def test_sam2_boxes():
+    models = ["segment-anything-2-hiera-tiny-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam2_points():
+    models = ["segment-anything-2-hiera-tiny-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        model_kwargs=dict(mask_index=1.05),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+        prompt_type="keypoints",
+    )
+
+
+def test_sam2_auto():
+    models = ["segment-anything-2-hiera-tiny-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+    )
+
+
+def test_sam2_video():
+    models = ["segment-anything-2-hiera-tiny-video-torch"]
+    _apply_video_models(
+        models,
+        max_samples=2,
+        apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
     )
 
 
@@ -151,6 +191,7 @@ def _apply_models(
     confidence_thresh=None,
     pass_confidence_thresh=False,
     max_samples=10,
+    prompt_type=None,
     model_kwargs=None,
     apply_kwargs=None,
 ):
@@ -172,12 +213,58 @@ def _apply_models(
 
     # Generate keypoints for segment-anything model
     if _SAM_PROMPT_FIELD in kwargs:
-        field_name = kwargs[_SAM_PROMPT_FIELD]
-        kp_field_name = field_name + "_points"
-        detections = dataset.values(field_name + ".detections")
-        keypoints = [_detections_to_keypoints(d) for d in detections]
-        dataset.set_values(kp_field_name, keypoints)
-        kwargs[_SAM_PROMPT_FIELD] = kp_field_name
+        if prompt_type == "keypoints":
+            field_name = kwargs[_SAM_PROMPT_FIELD]
+            kp_field_name = field_name + "_points"
+            detections = dataset.values(field_name + ".detections")
+            keypoints = [_detections_to_keypoints(d) for d in detections]
+            dataset.set_values(kp_field_name, keypoints)
+            kwargs[_SAM_PROMPT_FIELD] = kp_field_name
+
+    for idx, model_name in enumerate(model_names, 1):
+        print(
+            "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
+        )
+
+        model = foz.load_zoo_model(model_name, **(model_kwargs or {}))
+
+        label_field = model_name.lower().replace("-", "_").replace(".", "_")
+
+        dataset.apply_model(
+            model, label_field=label_field, batch_size=batch_size, **kwargs
+        )
+
+    session = fo.launch_app(dataset)
+    session.wait()
+
+
+def _apply_video_models(
+    model_names,
+    batch_size=None,
+    confidence_thresh=None,
+    pass_confidence_thresh=False,
+    max_samples=10,
+    model_kwargs=None,
+    apply_kwargs=None,
+):
+    if pass_confidence_thresh:
+        kwargs = {"confidence_thresh": confidence_thresh}
+    else:
+        kwargs = {}
+
+    if apply_kwargs:
+        kwargs.update(apply_kwargs)
+
+    dataset = foz.load_zoo_dataset(
+        "quickstart-video",
+        dataset_name=fo.get_default_dataset_name(),
+        max_samples=max_samples,
+    )
+
+    if _SAM_PROMPT_FIELD in kwargs:
+        dataset.match_frames(F("frame_number" > 1)).set_field(
+            "frames.detections", None
+        ).save()
 
     for idx, model_name in enumerate(model_names, 1):
         print(

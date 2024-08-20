@@ -1,7 +1,7 @@
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
-import React from "react";
+import type React from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import Network from "./Network";

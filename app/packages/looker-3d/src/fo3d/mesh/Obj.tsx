@@ -1,10 +1,15 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import { Mesh, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import {
+  Mesh,
+  MeshStandardMaterial,
+  type Quaternion,
+  type Vector3,
+} from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import { ObjAsset } from "../../hooks";
+import type { ObjAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { getColorFromPoolBasedOnHash } from "../../utils";
 import { useFo3dContext } from "../context";

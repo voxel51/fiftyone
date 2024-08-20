@@ -33,6 +33,7 @@ from .core.collections import SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
+    DatasetNotFoundError,
     list_datasets,
     dataset_exists,
     load_dataset,
@@ -112,6 +113,7 @@ from .core.metadata import (
     Metadata,
     ImageMetadata,
     VideoMetadata,
+    SceneMetadata,
 )
 from .core.models import (
     apply_model,
@@ -120,7 +122,10 @@ from .core.models import (
     load_model,
     Model,
     ModelConfig,
+    LogitsMixin,
     EmbeddingsMixin,
+    PromptMixin,
+    SamplesMixin,
     TorchModelMixin,
     ModelManagerConfig,
     ModelManager,

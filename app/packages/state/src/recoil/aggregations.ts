@@ -55,6 +55,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
+
       if (!dataset) return null;
 
       const useSidebarSampleId = !root && modal && !get(groupId) && !mixed;
@@ -169,8 +170,7 @@ export const modalAggregationPaths = selectorFamily({
 
       paths = paths
         .sort()
-        .map((p) => get(schemaAtoms.modalFilterFields(p)))
-        .flat();
+        .flatMap((p) => get(schemaAtoms.modalFilterFields(p)));
 
       const numeric = get(schemaAtoms.isNumericField(params.path));
       if (params.mixed || get(groupId)) {

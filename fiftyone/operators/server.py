@@ -19,10 +19,17 @@ from .executor import (
     resolve_type,
     resolve_placement,
     resolve_execution_options,
-    ExecutionContext,
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
+from .utils import is_method_overridden
+from .operator import Operator
+
+
+def get_operators(registry: PermissionedOperatorRegistry):
+    operators = registry.list_operators(True, "operator")
+    panels = registry.list_operators(True, "panel")
+    return operators + panels
 
 
 class ListOperators(HTTPEndpoint):
@@ -34,9 +41,17 @@ class ListOperators(HTTPEndpoint):
             request, dataset_ids=dataset_ids
         )
         operators_as_json = []
-        for operator in registry.list_operators():
+        for operator in get_operators(registry):
             serialized_op = operator.to_json()
             config = serialized_op["config"]
+            skip_input = not is_method_overridden(
+                Operator, operator, "resolve_input"
+            )
+            skip_output = not is_method_overridden(
+                Operator, operator, "resolve_output"
+            )
+            config["skip_input"] = skip_input
+            config["skip_output"] = skip_output
             config["can_execute"] = registry.can_execute(serialized_op["uri"])
             operators_as_json.append(serialized_op)
 
@@ -55,7 +70,7 @@ class ResolvePlacements(HTTPEndpoint):
             request, dataset_ids=dataset_ids
         )
         placements = []
-        for operator in registry.list_operators():
+        for operator in get_operators(registry):
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append(

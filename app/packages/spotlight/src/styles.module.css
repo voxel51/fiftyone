@@ -1,0 +1,98 @@
+/**
+ * Copyright 2017-2024, Voxel51, Inc.
+ */
+
+.spotlight {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+
+  --scrollbar-color: var(--fo-palette-text-tertiary);
+}
+
+.spotlight::-webkit-scrollbar {
+  width: 0;
+}
+
+.spotlightContainer {
+  position: relative;
+  display: block;
+  width: 100%;
+  contain: size layout paint;
+}
+
+.spotlightContainer:focus {
+  border: none;
+  outline: none;
+}
+
+.spotlightLoaded {
+  background: var(--fo-palette-background-level2);
+}
+
+@-moz-document {
+  .spotlight {
+    scrollbar-width: none;
+  }
+}
+
+.spotlightSection {
+  position: absolute;
+  display: block;
+  padding-left: 14px;
+  width: 100%;
+}
+
+.spotlightRow {
+  display: block;
+  position: absolute;
+  contain: size layout paint;
+}
+
+.spotlightRow > div {
+  position: absolute;
+  contain: size layout paint;
+  background-color: var(--fo-palette-background-level1);
+  overflow: hidden;
+}
+
+.spotlightRow.spotlightRowHidden > div > div {
+  display: none;
+}
+
+
+/* SCROLLBAR */
+
+.scrollbar {
+  --scrollbar-color: var(--fo-palette-text-tertiary);
+}
+
+@-moz-document url-prefix() {
+  .scrollbar {
+    scrollbar-color: var(--scrollbar-color) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+.scrollbar::-webkit-scrollbar {
+  height: 14px;
+  width: 14px;
+}
+
+.scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 14px 14px transparent;
+  height: 14px;
+  width: 14px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  border: solid 3px transparent;
+  border-radius: 0;
+  box-shadow: inset 0 0 8px 8px var(--scrollbar-color);
+}

@@ -36,9 +36,9 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import {
+  active3dSlices,
+  active3dSlicesToSampleMap,
   activeModalSidebarSample,
-  activePcdSlices,
-  activePcdSlicesToSampleMap,
   pinned3DSampleSlice,
 } from "./groups";
 import { isLargeVideo } from "./options";
@@ -53,7 +53,12 @@ import {
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
+import {
+  datasetName,
+  disableFrameFiltering,
+  isVideoDataset,
+  stateSubscription,
+} from "./selectors";
 import { State } from "./types";
 import {
   fieldsMatcher,
@@ -621,12 +626,49 @@ export const sidebarEntries = selectorFamily<
   },
 });
 
-export const disabledPaths = selector<Set<string>>({
-  key: "disabledPaths",
+/**
+ * Returns a set of paths that have their checkbox disabled in the sidebar
+ */
+export const disabledCheckboxPaths = selector<Set<string>>({
+  key: "disabledCheckboxPaths",
+  get: ({ get }) => {
+    return new Set(get(fullyDisabledPaths));
+  },
+});
+
+/**
+ * Returns a set of paths that have their filter dropdown disabled in the sidebar
+ */
+export const disabledFilterPaths = selector<Set<string>>({
+  key: "disabledFilterPaths",
+  get: ({ get }) =>
+    new Set([...get(fullyDisabledPaths), ...get(disabledFrameFilterPaths)]),
+});
+
+export const disabledFrameFilterPaths = selector<Set<string>>({
+  key: "disabledFrameFilterPaths",
+  get: ({ get }) => {
+    const paths = new Set<string>();
+    const disableFrames = Boolean(get(disableFrameFiltering));
+    const frameFields = get(atoms.frameFields);
+    if (disableFrames) {
+      frameFields.forEach((frame) => {
+        paths.add(`frames.${frame.path}`);
+      });
+    }
+    return new Set(paths);
+  },
+});
+
+/**
+ * Returns a set of paths that should have both their checkbox and filter
+ * dropdown disabled in the sidebar
+ */
+export const fullyDisabledPaths = selector({
+  key: "fullyDisabledPaths",
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
     const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
-
     sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
@@ -650,7 +692,6 @@ export const disabledPaths = selector<Set<string>>({
     });
 
     const frameFields = get(atoms.frameFields);
-
     fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
       (path) => paths.add(path)
     );
@@ -674,16 +715,32 @@ export const disabledPaths = selector<Set<string>>({
       ).forEach((path) => paths.add(path));
     });
 
-    return new Set(paths);
+    return paths;
   },
 });
 
-export const isDisabledPath = selectorFamily<boolean, string>({
-  key: "isDisabledPath",
+export const isDisabledCheckboxPath = selectorFamily<boolean, string>({
+  key: "isDisabledCheckboxPath",
   get:
     (path) =>
     ({ get }) =>
-      get(disabledPaths).has(path),
+      get(disabledCheckboxPaths).has(path),
+});
+
+export const isDisabledFrameFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFrameFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFrameFilterPaths).has(path),
+});
+
+export const isDisabledFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFilterPaths).has(path),
 });
 
 const collapsedPaths = selector<Set<string>>({
@@ -858,10 +915,10 @@ export const hiddenNoneGroups = selector({
 
     const multipleSlices =
       Boolean(get(pinned3DSampleSlice)) &&
-      (get(activePcdSlices)?.length || 1) > 1;
+      (get(active3dSlices)?.length || 1) > 1;
     if (multipleSlices) {
-      samples = get(activePcdSlicesToSampleMap);
-      slices = Array.from(get(activePcdSlices) || []).sort();
+      samples = get(active3dSlicesToSampleMap);
+      slices = Array.from(get(active3dSlices) || []).sort();
     }
 
     const items = groups

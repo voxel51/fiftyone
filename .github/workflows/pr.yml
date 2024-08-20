@@ -16,11 +16,14 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
+  lint:
+    uses: ./.github/workflows/lint-app.yml
+
   teams:
     runs-on: ubuntu-latest
-    if: github.base_ref == 'develop'
+    if: false && github.base_ref == 'develop' # temporarily disabled
     steps:
-      - uses: convictional/trigger-workflow-and-wait@v1.6.1
+      - uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: voxel51
           repo: fiftyone-teams
@@ -29,7 +32,12 @@ jobs:
           workflow_file_name: merge-oss.yml
           ref: develop
           wait_interval: 20
-          client_payload: '{ "branch": "${{ github.head_ref || github.ref_name }}" }'
+          client_payload: |
+            {
+              "author": "${{ github.event.pull_request.user.login }}",
+              "branch": "${{ github.head_ref || github.ref_name }}",
+              "pr": ${{ github.event.pull_request.number }}
+            }
           propagate_failure: true
           trigger_workflow: true
           wait_workflow: true
@@ -39,7 +47,10 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [build, lint, test]
     if: always()
     steps:
-      - run: sh -c ${{ needs.build.result == 'success' && needs.test.result == 'success' }}
+      - run: sh -c ${{
+          needs.build.result == 'success' &&
+          needs.lint.result == 'success' &&
+          needs.test.result == 'success' }}

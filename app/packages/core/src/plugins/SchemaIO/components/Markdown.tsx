@@ -56,7 +56,8 @@ const CodeHeader = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
-const defaultSx: SxProps = { color: "inherit" };
+const defaultSx: SxProps = { color: "inherit", mb: 1 };
+const boldSx: SxProps = { ...defaultSx, fontWeight: "bold" };
 
 const componentsMap = {
   a({ children, ...props }) {
@@ -72,7 +73,7 @@ const componentsMap = {
     }
 
     return (
-      <Link sx={defaultSx} {...props}>
+      <Link sx={{ color: "inherit", textDecoration: "underline" }} {...props}>
         {children}
       </Link>
     );
@@ -126,35 +127,44 @@ const componentsMap = {
     );
   },
   p: ({ children, ...props }) => (
-    <Typography sx={defaultSx}>{children}</Typography>
+    <Typography
+      sx={{
+        color: "inherit",
+        "&:not(:first-of-type)": {
+          mt: 1,
+        },
+      }}
+    >
+      {children}
+    </Typography>
   ),
   h1: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h1" {...props}>
+    <Typography sx={boldSx} variant="h1" {...props}>
       {children}
     </Typography>
   ),
   h2: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h2" {...props}>
+    <Typography sx={boldSx} variant="h2" {...props}>
       {children}
     </Typography>
   ),
   h3: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h3" {...props}>
+    <Typography sx={boldSx} variant="h3" {...props}>
       {children}
     </Typography>
   ),
   h4: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h4" {...props}>
+    <Typography sx={boldSx} variant="h4" {...props}>
       {children}
     </Typography>
   ),
   h5: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h5" {...props}>
+    <Typography sx={boldSx} variant="h5" {...props}>
       {children}
     </Typography>
   ),
   h6: ({ children, ...props }) => (
-    <Typography sx={defaultSx} variant="h6" {...props}>
+    <Typography sx={boldSx} variant="h6" {...props}>
       {children}
     </Typography>
   ),

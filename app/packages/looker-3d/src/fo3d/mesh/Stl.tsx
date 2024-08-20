@@ -1,9 +1,9 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
-import { Mesh, Quaternion, Vector3 } from "three";
+import { Mesh, type Quaternion, type Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
-import { StlAsset } from "../../hooks";
+import type { StlAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";

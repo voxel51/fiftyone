@@ -122,6 +122,11 @@ learn how:
     :image_title: MongoDB
 
 .. customimagelink::
+    :image_link: integrations/elasticsearch.html
+    :image_src: https://voxel51.com/images/integrations/elasticsearch-128.png
+    :image_title: Elasticsearch
+
+.. customimagelink::
     :image_link: integrations/milvus.html
     :image_src: https://voxel51.com/images/integrations/milvus-128.png
     :image_title: Milvus
@@ -414,4 +419,5 @@ us at support@voxel51.com.
    CLI <cli/index>
    API Reference <api/fiftyone>
    Release Notes <release-notes>
+   Deprecation Notices <deprecation>
    FAQ <faq/index>

@@ -1,4 +1,4 @@
-import {
+import type {
   ACTION_SET_PCDS,
   ACTION_SET_POINT_SIZE,
   ACTION_SHADE_BY,
@@ -30,3 +30,8 @@ export type NodeName = string;
 export type VisibilityMap = Record<NodeName, boolean>;
 
 export type NodeUuid = string;
+
+export type AssetLoadingLog = {
+  message: string;
+  status: "info" | "success" | "error";
+};

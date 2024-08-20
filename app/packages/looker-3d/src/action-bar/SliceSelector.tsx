@@ -3,14 +3,14 @@ import { Checkbox } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { ACTION_SET_PCDS } from "../constants";
 import { ActionItem } from "../containers";
 import { currentActionAtom } from "../state";
 import { ActionPopOver } from "./shared";
-import { ACTION_SET_PCDS } from "../constants";
 
 export const SliceSelector = () => {
-  const activePcdSlices = useRecoilValue(fos.activePcdSlices);
-  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+  const activePcdSlices = useRecoilValue(fos.active3dSlices);
+  const allPcdSlices = useRecoilValue(fos.all3dSlices);
   const [currentAction, setAction] = useRecoilState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
@@ -58,9 +58,9 @@ export const SliceSelector = () => {
 
 const PcdsSelector = () => {
   const [activePcdSlices, setActivePcdSlices] = useRecoilState(
-    fos.activePcdSlices
+    fos.active3dSlices
   );
-  const allPcdSlices = Object.keys(useRecoilValue(fos.allPcdSlicesToSampleMap));
+  const allPcdSlices = Object.keys(useRecoilValue(fos.all3dSlicesToSampleMap));
 
   const ref = useRef<HTMLDivElement>(null);
 

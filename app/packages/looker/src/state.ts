@@ -200,6 +200,7 @@ export interface BaseConfig {
   src: string;
   sources: { [path: string]: string };
   sampleId: string;
+  symbol: symbol;
   fieldSchema: Schema;
   view: Stage[];
   dataset: string;

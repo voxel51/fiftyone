@@ -114,6 +114,9 @@ async def aggregate_resolver(
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
+    if not form.paths:
+        return []
+
     view = await _load_view(form, form.slices)
 
     slice_view = None

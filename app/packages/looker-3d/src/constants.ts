@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
-import { Gradients } from "./renderables/pcd/shaders";
-import { ShadeBy } from "./types";
+import type { Gradients } from "./renderables/pcd/shaders";
+import type { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
 export const ACTION_SHADE_BY = "shadeBy";
@@ -41,6 +41,7 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
 export const PANEL_ORDER_VISIBILITY = -1;
 export const PANEL_ORDER_ANIMATIONS = 1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
+export const PANEL_ORDER_LABELS = 998;
 export const PANEL_ORDER_LIGHTS = 999;
 export const PANEL_ORDER_SETTINGS = 1000;
 

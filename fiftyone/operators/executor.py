@@ -13,6 +13,8 @@ import logging
 import os
 import traceback
 
+from typing import Optional
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
@@ -21,6 +23,7 @@ import fiftyone.core.view as fov
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
@@ -219,7 +222,7 @@ async def execute_or_delegate_operator(
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
-        operator, executor, ctx = prepared
+        operator, executor, ctx, inputs = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
     if (
@@ -252,11 +255,21 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            metadata = {"inputs_schema": None, "outputs_schema": None}
+
+            try:
+                metadata["inputs_schema"] = inputs.to_json()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to resolve inputs schema for the operation: {str(e)}"
+                )
+
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
                 label=operator.name,
+                metadata=metadata,
             )
 
             execution = ExecutionResult(
@@ -268,16 +281,20 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
 
         return ExecutionResult(result=result, executor=executor)
@@ -312,7 +329,7 @@ async def prepare_operator_executor(
             error="Validation error", validation_ctx=validation_ctx
         )
 
-    return operator, executor, ctx
+    return operator, executor, ctx, inputs
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
@@ -364,6 +381,25 @@ async def resolve_type(registry, operator_uri, request_params):
         )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
+
+
+async def resolve_type_with_context(request_params, target: str = None):
+    """Resolves the "inputs" or "outputs" schema of an operator with the given
+    context.
+
+    Args:
+        request_params: a dictionary of request parameters
+        target (None): the target schema ("inputs" or "outputs")
+
+    Returns:
+        the schema of "inputs" or "outputs"
+        :class:`fiftyone.operators.types.Property` of an operator, or None
+    """
+    computed_target = target or request_params.get("target", None)
+    computed_request_params = {**request_params, "target": computed_target}
+    operator_uri = request_params.get("operator_uri", None)
+    registry = OperatorRegistry()
+    return await resolve_type(registry, operator_uri, computed_request_params)
 
 
 async def resolve_execution_options(registry, operator_uri, request_params):
@@ -448,6 +484,7 @@ class ExecutionContext(object):
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
+        self.user = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -460,6 +497,9 @@ class ExecutionContext(object):
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
             )
+        if self.panel_id:
+            self._panel_state = self.params.get("panel_state", {})
+            self._panel = PanelRef(self)
 
     @property
     def dataset(self):
@@ -530,6 +570,13 @@ class ExecutionContext(object):
     def target_view(self, param_name="view_target"):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
+
+        Args:
+            param_name ("view_target"): the name of the enum parameter defining
+                the target view choice
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name, None)
         if target == "SELECTED_SAMPLES":
@@ -571,6 +618,11 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def extended_selection(self):
+        """The extended selection of the view (if any)."""
+        return self.request_params.get("extended_selection", None)
+
+    @property
     def current_sample(self):
         """The ID of the current sample being processed (if any).
 
@@ -578,6 +630,34 @@ class ExecutionContext(object):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def user_id(self):
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        # @todo: move panel_id to top level param
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        """The current panel state.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel_state
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel
 
     @property
     def delegated(self):
@@ -615,6 +695,39 @@ class ExecutionContext(object):
         you can use to trigger builtin operations on the current context.
         """
         return self._ops
+
+    def prompt(
+        self,
+        operator_uri,
+        params=None,
+        on_success=None,
+        on_error=None,
+    ):
+        """Prompts the user to execute the operator with the given URI.
+
+        Args:
+            operator_uri: the URI of the operator
+            params (None): a dictionary of parameters for the operator
+            on_success (None): a callback to invoke if the user successfully
+                executes the operator
+            on_error (None): a callback to invoke if the execution fails
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to prompt the user
+        """
+        return self.trigger(
+            "prompt_user_for_operation",
+            params=_convert_callables_to_operator_uris(
+                {
+                    "operator_uri": operator_uri,
+                    "panel_id": self.panel_id,
+                    "params": params,
+                    "on_success": on_success,
+                    "on_error": on_error,
+                }
+            ),
+        )
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -702,6 +815,21 @@ class ExecutionContext(object):
         """
         return self.trigger("console_log", {"message": message})
 
+    def set_progress(self, progress=None, label=None):
+        """Sets the progress of the current operation.
+
+        Args:
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
+        """
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress} - {label}")
+
     def serialize(self):
         """Serializes the execution context.
 
@@ -719,21 +847,6 @@ class ExecutionContext(object):
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
-    def set_progress(self, progress=None, label=None):
-        """Sets the progress of the current operation.
-
-        Args:
-            progress (None): an optional float between 0 and 1 (0% to 100%)
-            label (None): an optional label to display
-        """
-        if self._set_progress:
-            self._set_progress(
-                self._delegated_operation_id,
-                ExecutionProgress(progress, label),
-            )
-        else:
-            self.log(f"Progress: {progress} - {label}")
-
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
@@ -741,9 +854,12 @@ class ExecutionResult(object):
     Args:
         result (None): the execution result
         executor (None): an :class:`Executor`
-        error (None): an error message
+        error (None): an error traceback, if an error occurred
+        error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
+        outputs_schema (None): a JSON dict representing the output schema of
+            the operator
     """
 
     def __init__(
@@ -751,14 +867,18 @@ class ExecutionResult(object):
         result=None,
         executor=None,
         error=None,
+        error_message=None,
         validation_ctx=None,
         delegated=False,
+        outputs_schema=None,
     ):
         self.result = result
         self.executor = executor
         self.error = error
+        self.error_message = error_message
         self.validation_ctx = validation_ctx
         self.delegated = delegated
+        self.outputs_schema = outputs_schema
 
     @property
     def is_generator(self):
@@ -803,10 +923,12 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "error_message": self.error_message,
             "delegated": self.delegated,
             "validation_ctx": (
                 self.validation_ctx.to_json() if self.validation_ctx else None
             ),
+            "outputs_schema": self.outputs_schema,
         }
 
 
@@ -850,6 +972,7 @@ class ValidationContext(object):
         ctx: the :class:`ExecutionContext`
         inputs_property: the :class:`fiftyone.operators.types.Property` of the
             operator inputs
+        operator: the :class:`fiftyone.operators.operator.Operator`
     """
 
     def __init__(self, ctx, inputs_property, operator):
@@ -1039,6 +1162,15 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+# TODO: move to utils
+def _convert_callables_to_operator_uris(d):
+    updated = {**d}
+    for key, value in updated.items():
+        if callable(value):
+            updated[key] = f"{value.__self__.uri}#{value.__name__}"
+    return updated
 
 
 class ExecutionOptions(object):

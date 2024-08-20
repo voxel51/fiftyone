@@ -5,6 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
@@ -13,6 +14,7 @@ import os
 import random
 import string
 import unittest
+from unittest.mock import patch
 
 from bson import ObjectId
 from mongoengine import ValidationError
@@ -85,6 +87,39 @@ class DatasetTests(unittest.TestCase):
 
         self.assertEqual(dataset.name, name)
         self.assertEqual(dataset.slug, slug)
+
+    @drop_datasets
+    def test_load_dataset(self):
+        new_dataset_name = "new-dataset-name"
+
+        # validate that the dataset does not exist
+        names = fo.list_datasets()
+        assert new_dataset_name not in names
+
+        # create the dataset by attempting to load it
+        dataset = fo.load_dataset(new_dataset_name, create_if_necessary=True)
+        assert dataset.name == new_dataset_name
+
+        dataset2 = fo.load_dataset(new_dataset_name)
+        self.assertIs(dataset, dataset2)
+
+        # validate that the new dataset is in the list of datasets
+        names = fo.list_datasets()
+        assert new_dataset_name in names
+
+        # validate that the dataset does not exist
+        new_dataset_name_2 = "new-dataset-name-2"
+        assert new_dataset_name_2 not in names
+
+        # validate that the correct exception is raised
+        with self.assertRaises(fo.DatasetNotFoundError):
+            fo.load_dataset(new_dataset_name_2)
+
+        # loading an existing dataset should work
+        assert len(names) > 0
+        for condition in [False, True]:
+            dataset = fo.load_dataset(names[0], create_if_necessary=condition)
+            assert dataset.name == names[0]
 
     @drop_datasets
     def test_delete_dataset(self):
@@ -498,6 +533,69 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dataset.create_index("non_existent_field")
+
+    @drop_datasets
+    def test_index_sizes(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("gt.detections.label")
+        dataset.create_index("frames.gt.detections.label")
+
+        info = dataset.get_index_information(include_stats=True)
+
+        indexes = [
+            "id",
+            "filepath",
+            "gt.detections.label",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+            "frames.gt.detections.label",
+        ]
+
+        self.assertListEqual(dataset.list_indexes(), indexes)
+        self.assertSetEqual(set(info.keys()), set(indexes))
+        for d in info.values():
+            self.assertTrue(d.get("size") is not None)
+
+    @drop_datasets
+    def test_index_in_progress(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        dataset.create_index("gt.detections.label")
+        dataset.create_index("frames.gt.detections.label")
+
+        sample_stats = dataset._sample_collstats()
+        sample_stats["indexBuilds"] = ["gt.detections.label_1"]
+
+        frame_stats = dataset._frame_collstats()
+        frame_stats["indexBuilds"] = ["gt.detections.label_1"]
+
+        with patch.object(
+            dataset, "_sample_collstats", return_value=sample_stats
+        ), patch.object(dataset, "_frame_collstats", return_value=frame_stats):
+            info = dataset.get_index_information(include_stats=True)
+            for key in [
+                "gt.detections.label",
+                "frames.gt.detections.label",
+            ]:
+                self.assertTrue(info[key].get("in_progress"))
+
+            stats = dataset.stats(include_indexes=True)
+            self.assertTrue("indexes_in_progress" in stats)
+            self.assertEqual(
+                set(stats["indexes_in_progress"]),
+                {"gt.detections.label", "frames.gt.detections.label"},
+            )
 
     @drop_datasets
     def test_iter_samples(self):
@@ -994,6 +1092,21 @@ class DatasetTests(unittest.TestCase):
             dataset.validate_field_type(
                 "spam", embedded_doc_type=fo.Detections
             )
+
+    @drop_datasets
+    def test_validate_sample_fields(self):
+        dataset = fo.Dataset()
+        dataset._doc.sample_fields.append(None)
+        with self.assertRaises(ValidationError):
+            dataset.save()
+
+    @drop_datasets
+    def test_validate_frame_fields(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset._doc.frame_fields.append(None)
+        with self.assertRaises(ValidationError):
+            dataset.save()
 
     @drop_datasets
     def test_frame_field_schemas(self):

@@ -47,13 +47,12 @@ class ClipView(fos.SampleView):
         return ObjectId(self._doc.sample_id)
 
     def _save(self, deferred=False):
-        if deferred:
-            raise NotImplementedError(
-                "Clips views do not support save contexts"
-            )
+        sample_ops, frame_ops = super()._save(deferred=deferred)
 
-        super()._save(deferred=deferred)
-        self._view._sync_source_sample(self)
+        if not deferred:
+            self._view._sync_source_sample(self)
+
+        return sample_ops, frame_ops
 
 
 class ClipsView(fov.DatasetView):
@@ -974,9 +973,12 @@ def _write_expr_clips(
         _, path = src_collection._get_label_field_path(expr)
         leaf, _ = src_collection._handle_frame_field(path)
         expr = F(leaf).length() > 0
-
-    if isinstance(expr, dict):
+    elif isinstance(expr, dict):
         expr = foe.ViewExpression(expr)
+    else:
+        # map() modifies the expression in-place and we don't want to cause
+        # side effects to the caller
+        expr = deepcopy(expr)
 
     frame_numbers, bools = src_collection.values(
         ["frames.frame_number", F("frames").map(expr)]

@@ -23,12 +23,18 @@ import {
   REGRESSION,
   Schema,
   STRING_FIELD,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 import { RegularLabel } from "../../overlays/base";
-import { Classification, Regression } from "../../overlays/classifications";
+import {
+  Classification,
+  Regression,
+  TemporalDetectionLabel,
+} from "../../overlays/classifications";
 import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
 import {
   BaseState,
@@ -40,8 +46,6 @@ import {
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
-
-import _ from "lodash";
 
 interface TagData {
   color: string;
@@ -90,7 +94,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     if (this.playing !== playing) {
       this.playing = playing;
       if (playing) {
-        this.element.innerHTML = "";
+        this.element.textContent = "";
         return this.element;
       }
     } else if (
@@ -280,6 +284,34 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       };
     };
 
+    const TEMPORAL_DETECTION_RENDERER = (
+      path,
+      param: TemporalDetectionLabel
+    ) => {
+      if (!param.label) {
+        return null;
+      }
+
+      const support = param.support?.length
+        ? ` [${param.support[0]}, ${param.support[1]}]`
+        : "";
+
+      return {
+        path,
+        value: `${param.label}${support}`,
+        title: `${path}: ${param.label}${support}`,
+        color: getAssignedColor({
+          coloring,
+          path,
+          param,
+          isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
+          labelTagColors,
+          customizeColorSetting,
+          isValidColor,
+        }),
+      };
+    };
+
     const LABEL_RENDERERS = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
@@ -299,6 +331,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           }),
         };
       },
+      [withPath(LABELS_PATH, TEMPORAL_DETECTION)]: TEMPORAL_DETECTION_RENDERER,
+      [withPath(LABELS_PATH, TEMPORAL_DETECTIONS)]: TEMPORAL_DETECTION_RENDERER,
     };
 
     for (let index = 0; index < activePaths.length; index++) {
@@ -425,7 +459,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.colorBy = coloring.by;
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
-    this.element.innerHTML = "";
+    this.element.textContent = "";
     this.customizedColors = customizeColorSetting;
     this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
@@ -440,24 +474,35 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     elements
       .filter((e) => Boolean(e))
       .forEach(({ path, value, color, title }) => {
-        const div = document.createElement("div");
-        const child = prettify(value);
-        child instanceof HTMLElement
-          ? div.appendChild(child)
-          : (div.innerHTML = child);
-        div.title = title;
-        div.style.backgroundColor = color;
-        const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
-        const attribute = ["tags", "_label_tags"].includes(path)
-          ? `tag-${path}-${tagValue}`
-          : `tag-${path}`;
-        div.setAttribute("data-cy", attribute);
-        this.element.appendChild(div);
+        this.element.appendChild(applyTagValue(color, path, title, value));
       });
 
     return this.element;
   }
 }
+
+export const applyTagValue = (
+  color: string,
+  path: string,
+  title: string,
+  value: string
+) => {
+  const div = document.createElement("div");
+  const child = prettify(value);
+  child instanceof HTMLElement
+    ? div.appendChild(child)
+    : (div.textContent = child);
+
+  div.title = title;
+  div.style.backgroundColor = color;
+
+  const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
+  const attribute = ["tags", "_label_tags"].includes(path)
+    ? `tag-${path}-${tagValue}`
+    : `tag-${path}`;
+  div.setAttribute("data-cy", attribute);
+  return div;
+};
 
 const arraysAreEqual = (a: any[], b: any[]): boolean => {
   if (a === b) return true;
@@ -572,6 +617,11 @@ export const getFieldAndValue = (
 
     if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
       values = values.map((value) => value?.["classifications"] || []).flat();
+      break;
+    }
+
+    if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
+      values = values.map((value) => value?.["detections"] || []).flat();
       break;
     }
 

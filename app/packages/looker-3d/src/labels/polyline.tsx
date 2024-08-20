@@ -1,8 +1,8 @@
 import { useCursor } from "@react-three/drei";
 import { useMemo, useState } from "react";
-import * as THREE from "three";
+import type * as THREE from "three";
 import { Line } from "./line";
-import { OverlayProps } from "./shared";
+import type { OverlayProps } from "./shared";
 
 export interface PolyLineProps extends OverlayProps {
   points3d: THREE.Vector3Tuple[][];

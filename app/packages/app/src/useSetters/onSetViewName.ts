@@ -1,15 +1,16 @@
-import { setView, setViewMutation } from "@fiftyone/relay";
+import { setView, type setViewMutation } from "@fiftyone/relay";
 import { datasetName, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetViewName: RegisteredSetter =
   ({ environment, router, sessionRef }) =>
-  ({ get, set }, slug: string | DefaultValue | null) => {
+  ({ get, set }, value: string | DefaultValue | null) => {
     set(pendingEntry, true);
+    let slug = value;
     if (slug instanceof DefaultValue) {
       slug = null;
     }

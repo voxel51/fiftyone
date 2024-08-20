@@ -1,8 +1,17 @@
-import { PillButton } from "@fiftyone/components";
+import {
+  AdaptiveMenuItemComponentPropsType,
+  PillButton,
+} from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import DynamicGroup from "./DynamicGroup";
@@ -10,7 +19,12 @@ import { ActionDiv } from "./utils";
 
 const DYNAMIC_GROUP_PILL_BUTTON_ID = "dynamic-group-pill-button";
 
-export const DynamicGroupAction = () => {
+export const DynamicGroupAction = ({
+  adaptiveMenuItemProps,
+}: {
+  adaptiveMenuItemProps: AdaptiveMenuItemComponentPropsType;
+}) => {
+  const { refresh } = adaptiveMenuItemProps;
   const [open, setOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -19,10 +33,16 @@ export const DynamicGroupAction = () => {
 
   const pillComponent = useMemo(() => {
     if (isProcessing) {
-      return <LoadingDots text="Loading groups" />;
+      return (
+        <LoadingDots text="Loading groups" style={{ whiteSpace: "nowrap" }} />
+      );
     }
     return <MergeIcon />;
   }, [isProcessing]);
+
+  useEffect(() => {
+    refresh?.();
+  }, [isProcessing, refresh]);
 
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
 
@@ -41,7 +61,7 @@ export const DynamicGroupAction = () => {
   }, []);
 
   return (
-    <ActionDiv ref={ref}>
+    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}

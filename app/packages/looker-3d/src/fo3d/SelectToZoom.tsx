@@ -1,5 +1,5 @@
 import { useBounds } from "@react-three/drei";
-import { ThreeEvent } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import { useCallback } from "react";
 
 export const SelectToZoom = ({ children }: { children: React.ReactNode }) => {

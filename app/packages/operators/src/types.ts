@@ -220,13 +220,14 @@ export class Property {
    * set to `true`.
    * view: view options for the property. Refer to {@link View}
    */
-  constructor(type: ANY_TYPE, options?) {
+  constructor(type: ANY_TYPE, options?: PropertyOptions) {
     this.type = type;
     this.defaultValue = options?.defaultValue || options?.default;
     this.required = options?.required;
     this.invalid = options?.invalid;
     this.errorMessage = options?.errorMessage;
     this.view = options?.view;
+    this.onChange = options?.on_change;
   }
   type: ANY_TYPE;
   description?: string;
@@ -235,6 +236,7 @@ export class Property {
   view?: View;
   invalid?: boolean;
   errorMessage?: string;
+  onChange?: string;
 
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: any) {
@@ -250,6 +252,7 @@ export class Property {
       view: this.view,
       invalid: this.invalid,
       errorMessage: this.errorMessage,
+      onChange: this.onChange,
     };
   }
 }
@@ -1047,6 +1050,16 @@ export class MarkdownView extends View {
   }
 }
 
+export class MediaPlayerView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "MediaPlayerView";
+  }
+  static fromJSON(json) {
+    return new MediaPlayerView(json);
+  }
+}
+
 /**
  * Operator class for interacting with files.
  */
@@ -1128,6 +1141,20 @@ export class LazyFieldView extends View {
 }
 
 /**
+ * Operator class for describing a IconButtonView {@link Button} for an
+ * operator type.
+ */
+export class IconButtonView extends Button {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "IconButtonView";
+  }
+  static fromJSON(json) {
+    return new IconButtonView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1190,6 +1217,7 @@ const VIEWS = {
   MapView,
   ProgressView,
   MarkdownView,
+  MediaPlayerView,
   PromptView,
   FieldView,
   TextFieldView,
@@ -1246,6 +1274,11 @@ type PropertyOptions = {
   label?: string;
   description?: string;
   view?: View;
+  required?: boolean;
+  defaultValue?: any;
+  default?: any;
+  invalid?: boolean;
+  errorMessage?: string;
 };
 type ObjectProperties = Map<string, Property>;
 

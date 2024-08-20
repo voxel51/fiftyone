@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<236d773230a4f3ec9249912bea38a3e9>>
+ * @generated SignedSource<<d0fca6b6dd0f57793fd954620e795d80>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type setGroupSliceMutation$variables = {
   session?: string | null;
-  slice: string;
+  slice?: string | null;
   subscription: string;
 };
 export type setGroupSliceMutation$data = {
@@ -89,16 +89,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "cd795af82a8ea3c244df156ed40c5953",
+    "cacheID": "a3abb5881d033e39d98ea503d6ad3655",
     "id": null,
     "metadata": {},
     "name": "setGroupSliceMutation",
     "operationKind": "mutation",
-    "text": "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $slice: String!\n) {\n  setGroupSlice(subscription: $subscription, session: $session, slice: $slice)\n}\n"
+    "text": "mutation setGroupSliceMutation(\n  $subscription: String!\n  $session: String\n  $slice: String\n) {\n  setGroupSlice(subscription: $subscription, session: $session, slice: $slice)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "24425c6e115fd99546cd78204599b91c";
+(node as any).hash = "7e249f4083da309f5bfa70e3a068e6aa";
 
 export default node;

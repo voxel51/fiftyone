@@ -86,7 +86,9 @@ class PluginDefinition(object):
     @property
     def operators(self):
         """The operators of the plugin."""
-        return self._metadata.get("operators", [])
+        return self._metadata.get("operators", []) + self._metadata.get(
+            "panels", []
+        )
 
     @property
     def package_json_path(self):
@@ -177,7 +179,8 @@ class PluginDefinition(object):
             "license": self.license,
             "description": self.description,
             "fiftyone_compatibility": self.fiftyone_compatibility,
-            "operators": self.operators,
+            "operators": self._metadata.get("operators", []),
+            "panels": self._metadata.get("panels", []),
             "js_bundle": self.js_bundle,
             "py_entry": self.py_entry,
             "js_bundle_exists": self.has_js,

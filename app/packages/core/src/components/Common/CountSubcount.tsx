@@ -1,6 +1,7 @@
 import { LoadingDots } from "@fiftyone/components";
-import React, { Suspense } from "react";
-import { RecoilValue, constSelector, useRecoilValue } from "recoil";
+import { Suspense } from "react";
+import type { RecoilValue } from "recoil";
+import { constSelector, useRecoilValue } from "recoil";
 
 const EntryCounts = ({
   countAtom = constSelector(null),
@@ -27,7 +28,7 @@ const EntryCounts = ({
   }
 
   if (count === subcount || count === 0) {
-    return <span data-cy="entry-count-all">{count!.toLocaleString()}</span>;
+    return <span data-cy="entry-count-all">{count.toLocaleString()}</span>;
   }
 
   return (

@@ -41,27 +41,25 @@ export const SampleWrapper = ({
   const hoveringRef = useRef(false);
   const sample = useRecoilValue(sampleAtom);
   const isGroup = useRecoilValue(isDynamicGroup);
-  const hover = useHoveredSample(sample.sample, {
+  const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
   });
 
-  if (isGroup) {
-    return <>{children}</>;
-  }
-
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
-      {...hover.handlers}
+      {...hoverEventHandlers}
     >
-      <SampleBar
-        sampleId={sample.sample._id}
-        lookerRef={lookerRef}
-        visible={hovering}
-        hoveringRef={hoveringRef}
-        actions={actions}
-      />
+      {!isGroup && (
+        <SampleBar
+          sampleId={sample.sample._id}
+          lookerRef={lookerRef}
+          visible={hovering}
+          hoveringRef={hoveringRef}
+          actions={actions}
+        />
+      )}
       {children}
     </div>
   );

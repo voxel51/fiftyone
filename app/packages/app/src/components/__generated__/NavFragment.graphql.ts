@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<85bc3d6372c6f08bcdf0a2533aae4d98>>
+ * @generated SignedSource<<46385c140146f2317005e105dd92f070>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type NavFragment$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"NavDatasets" | "NavGA">;
+  readonly " $fragmentSpreads": FragmentRefs<"Analytics" | "NavDatasets">;
   readonly " $fragmentType": "NavFragment";
 };
 export type NavFragment$key = {
@@ -28,18 +28,18 @@ const node: ReaderFragment = {
     {
       "args": null,
       "kind": "FragmentSpread",
-      "name": "NavDatasets"
+      "name": "Analytics"
     },
     {
       "args": null,
       "kind": "FragmentSpread",
-      "name": "NavGA"
+      "name": "NavDatasets"
     }
   ],
   "type": "Query",
   "abstractKey": null
 };
 
-(node as any).hash = "f8b963593ae22123acdf5393b9a8a274";
+(node as any).hash = "b4c1e5cfb810c869d7f48d036fc48cad";
 
 export default node;

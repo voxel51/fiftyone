@@ -1,5 +1,6 @@
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useSetRecoilState } from "recoil";
 
+import { useCallback } from "react";
 import * as fos from "../recoil";
 
 /**
@@ -19,12 +20,13 @@ import * as fos from "../recoil";
  */
 
 export default () => {
-  return useRecoilCallback(
+  const setModal = useSetRecoilState(fos.modalSelector);
+  const close = useRecoilCallback(
     ({ reset, set, snapshot }) =>
       async () => {
         const fullscreen = await snapshot.getPromise(fos.fullscreen);
         if (fullscreen) {
-          return;
+          return false;
         }
 
         const currentOptions = await snapshot.getPromise(
@@ -33,8 +35,13 @@ export default () => {
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.selectedLabels);
         reset(fos.hiddenLabels);
-        set(fos.currentModalSample, null);
+        return true;
       },
     []
   );
+
+  return useCallback(() => {
+    close();
+    setModal(null);
+  }, [close, setModal]);
 };

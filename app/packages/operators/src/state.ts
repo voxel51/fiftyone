@@ -1,3 +1,4 @@
+import { useAnalyticsInfo } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +10,7 @@ import {
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import {
@@ -25,8 +27,9 @@ import {
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
   resolveExecutionOptions,
+  resolveOperatorURI,
 } from "./operators";
-import { Places } from "./types";
+import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 
@@ -62,13 +65,18 @@ export const usePromptOperatorInput = () => {
   );
   const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
-  const prompt = (operatorName) => {
+  const prompt = (operatorName, params = {}, options = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
       const update = new Set([operatorName, ...recentlyUsedOperators]);
       return Array.from(update).slice(0, 5);
     });
 
-    setPromptingOperator({ operatorName, params: {} });
+    setPromptingOperator({
+      operatorName,
+      params,
+      options,
+      initialParams: params,
+    });
   };
 
   return prompt;
@@ -83,8 +91,8 @@ const globalContextSelector = selector({
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
-    const currentSample = get(fos.currentSampleId);
     const viewName = get(fos.viewName);
+    const extendedSelection = get(fos.extendedSelection);
 
     return {
       datasetName,
@@ -93,8 +101,8 @@ const globalContextSelector = selector({
       filters,
       selectedSamples,
       selectedLabels,
-      currentSample,
       viewName,
+      extendedSelection,
     };
   },
 });
@@ -113,8 +121,17 @@ const currentContextSelector = selectorFamily({
     },
 });
 
+export function useGlobalExecutionContext(): ExecutionContext {
+  const globalCtx = useRecoilValue(globalContextSelector);
+  const ctx = useMemo(() => {
+    return new ExecutionContext({}, globalCtx);
+  }, [globalCtx]);
+  return ctx;
+}
+
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
+  const currentSample = useCurrentSample();
   const {
     datasetName,
     view,
@@ -123,9 +140,10 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     params,
     selectedLabels,
-    currentSample,
     viewName,
+    extendedSelection,
   } = curCtx;
+  const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -138,6 +156,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedLabels,
         currentSample,
         viewName,
+        extendedSelection,
+        analyticsInfo,
       },
       hooks
     );
@@ -182,8 +202,13 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
   return { isLoading, executionOptions, fetch };
 }
 
-const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
-  let options = [];
+const useOperatorPromptSubmitOptions = (
+  operatorURI,
+  execDetails,
+  execute,
+  promptView?: OperatorPromptType["promptView"]
+) => {
+  const options = [];
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
@@ -197,7 +222,10 @@ const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
     : false;
   if (executionOptions.allowImmediateExecution) {
     options.push({
-      label: "Execute",
+      label:
+        promptView?.submitButtonLabel ||
+        promptView?.submit_button_label ||
+        "Execute",
       id: "execute",
       default: defaultToExecute,
       description: "Run this operation now",
@@ -416,14 +444,16 @@ export const useOperatorPrompt = () => {
       }
   );
   const execute = useCallback(
-    async (options = null) => {
+    async (options = {}) => {
       const resolved =
         cachedResolvedInput || (await operator.resolveInput(ctx));
       const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
-      executor.execute(promptingOperator.params, options);
+      executor.execute(promptingOperator.params, {
+        ...promptingOperator.options,
+      });
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
@@ -476,7 +506,8 @@ export const useOperatorPrompt = () => {
   const submitOptions = useOperatorPromptSubmitOptions(
     operator.uri,
     execDetails,
-    execute
+    execute,
+    promptView
   );
 
   const onSubmit = useCallback(
@@ -684,6 +715,12 @@ export const recentlyUsedOperatorsState = atom({
   ],
 });
 
+export function useCurrentSample() {
+  // 'currentSampleId' may suspend for group datasets, so we use a loadable
+  const currentSample = useRecoilValueLoadable(fos.currentSampleId);
+  return currentSample.state === "hasValue" ? currentSample.contents : null;
+}
+
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
@@ -833,9 +870,7 @@ export function useOperatorBrowser() {
 }
 
 export function useOperatorExecutor(uri, handlers: any = {}) {
-  if (!uri.includes("/")) {
-    uri = `@voxel51/operators/${uri}`;
-  }
+  uri = resolveOperatorURI(uri, { keepMethod: true });
 
   const { operator } = getLocalOrRemoteOperator(uri);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -846,8 +881,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
-  const ctx = useExecutionContext(uri);
-  const hooks = operator.useHooks(ctx);
+  const context = useExecutionContext(uri);
+  const currentSample = useCurrentSample();
+  const hooks = operator.useHooks(context);
   const notify = fos.useNotification();
 
   const clear = useCallback(() => {
@@ -869,7 +905,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
       const ctx = new ExecutionContext(
         paramOverrides || params,
-        currentContext,
+        { ...currentContext, currentSample },
         hooks
       );
       ctx.state = state;
@@ -891,19 +927,20 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
+        const msg = e.message || "Failed to execute an operation";
         if (!isAbortError) {
           setError(e);
           setResult(null);
           handlers.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
-          notify({ msg: e.message, variant: "error" });
+          notify({ msg, variant: "error" });
         }
       }
       setHasExecuted(true);
       setIsExecuting(false);
     },
-    [ctx]
+    [currentSample, context]
   );
   return {
     isExecuting,
@@ -1002,3 +1039,8 @@ export function useOperatorPlacements(place: Places) {
 
   return { placements };
 }
+
+export const activePanelsEventCountAtom = atom({
+  key: "activePanelsEventCountAtom",
+  default: new Map<string, number>(),
+});

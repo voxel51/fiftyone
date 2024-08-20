@@ -186,6 +186,269 @@
             "date_added": "2023-05-12 11:40:51"
         },
         {
+            "base_name": "segment-anything-2-hiera-tiny-image-torch",
+            "base_filename": "sam2_hiera_tiny_image.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-small-image-torch",
+            "base_filename": "sam2_hiera_small_image.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-base-plus-image-torch",
+            "base_filename": "sam2_hiera_base_plus_image.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_base_plus.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-large-image-torch",
+            "base_filename": "sam2_hiera_large_image.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-tiny-video-torch",
+            "base_filename": "sam2_hiera_tiny_video.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-small-video-torch",
+            "base_filename": "sam2_hiera_small_video.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-base-plus-video-torch",
+            "base_filename": "sam2_hiera_base_plus_video.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_base_plus.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
+            "base_name": "segment-anything-2-hiera-large-video-torch",
+            "base_filename": "sam2_hiera_large_video.pt",
+            "version": null,
+            "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
+            "source": "https://ai.meta.com/sam2/",
+            "size_bytes": 155906050,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
+                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segment-anything", "torch", "zero-shot", "video"],
+            "date_added": "2024-08-05 14:38:20"
+        },
+        {
             "base_name": "deeplabv3-resnet50-coco-torch",
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
@@ -2798,6 +3061,230 @@
             },
             "tags": ["segmentation", "coco", "torch", "yolo"],
             "date_added": "2024-04-02 19:22:51"
+        },
+        {
+            "base_name": "yolov10n-coco-torch",
+            "base_filename": "yolov10n-coco.pt",
+            "description": "YOLOv10-N model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 5860383,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10n.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10s-coco-torch",
+            "base_filename": "yolov10s-coco.pt",
+            "description": "YOLOv10-S model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 16623111,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10s.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10m-coco-torch",
+            "base_filename": "yolov10m-coco.pt",
+            "description": "YOLOv10-M model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 33643667,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10m.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10l-coco-torch",
+            "base_filename": "yolov10l-coco.pt",
+            "description": "YOLOv10-L model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 52425230,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10l.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "yolov10x-coco-torch",
+            "base_filename": "yolov10x-coco.pt",
+            "description": "YOLOv10-X model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/yolov10/",
+            "size_bytes": 64395854,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10x.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "rtdetr-l-coco-torch",
+            "base_filename": "rtdetr-l-coco.pt",
+            "description": "RT-DETR-l model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "size_bytes": 66511432,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/rtdetr-l.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformer"],
+            "date_added": "2024-07-01 19:22:51"
+        },
+        {
+            "base_name": "rtdetr-x-coco-torch",
+            "base_filename": "rtdetr-x-coco.pt",
+            "description": "RT-DETR-x model trained on COCO",
+            "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "size_bytes": 135755662,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/rtdetr-x.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.2.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "transformer"],
+            "date_added": "2024-07-01 19:22:51"
         },
         {
             "base_name": "yolov8s-world-torch",

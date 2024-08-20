@@ -26,7 +26,7 @@ export const InputDiv = styled.div`
   }
 `;
 
-export const FilterInputDiv = styled.div<{ modal: boolean }>`
+export const FilterInputDiv = styled.div`
   box-sizing: border-box;
   cursor: pointer;
   font-weight: bold;
@@ -35,7 +35,7 @@ export const FilterInputDiv = styled.div<{ modal: boolean }>`
   margin: 0 1rem 0.25rem 1rem;
 
   display: flex;
-  justify-content: ${({ modal }) => (modal ? "flex-start" : "space-between")};
+  justify-content: space-between;
 
   & > input {
     color: ${({ theme }) => theme.text.secondary};

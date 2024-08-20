@@ -1,14 +1,14 @@
 import {
   colorSchemeFragment,
-  colorSchemeFragment$key,
+  type colorSchemeFragment$key,
   readFragment,
   setColorScheme,
-  setColorSchemeMutation,
+  type setColorSchemeMutation,
 } from "@fiftyone/relay";
 import { ensureColorScheme, removeRgbProperty } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetColorScheme: RegisteredSetter =
   ({ environment, setter, subscription }) =>
@@ -31,7 +31,7 @@ const onSetColorScheme: RegisteredSetter =
           ensureColorScheme(
             readFragment<colorSchemeFragment$key>(
               colorSchemeFragment,
-              colorScheme["setColorScheme"]
+              colorScheme.setColorScheme
             )
           )
         );

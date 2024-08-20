@@ -1,8 +1,8 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
-import { AnimationMixer, Mesh, Quaternion, Vector3 } from "three";
-import { GltfAsset } from "../../hooks";
+import { AnimationMixer, Mesh, type Quaternion, type Vector3 } from "three";
+import type { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";

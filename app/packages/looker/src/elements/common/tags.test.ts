@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getFieldAndValue } from "./tags";
+import { applyTagValue, getFieldAndValue } from "./tags";
 
 const TEST_SAMPLE = {
   metadata: {
@@ -161,5 +161,13 @@ describe(`
       "test.str_list_field"
     );
     expect(resultField.name).toEqual("str_list_field");
+  });
+});
+
+describe("applyTagValue", () => {
+  it("prevents XSS", () => {
+    const xss = "<img src=# onerror=alert('XSS')>";
+    const div = applyTagValue("white", "path", "title", xss);
+    expect(div.textContent).toEqual(xss);
   });
 });

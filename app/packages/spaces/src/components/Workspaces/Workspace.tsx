@@ -1,4 +1,5 @@
 import { ColoredDot } from "@fiftyone/components";
+import { canEditWorkspaces } from "@fiftyone/state";
 import { Edit } from "@mui/icons-material";
 import {
   IconButton,
@@ -9,14 +10,15 @@ import {
   Stack,
 } from "@mui/material";
 import "allotment/dist/style.css";
-import { useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import { useWorkspacePermission } from "./hooks";
 
 export default function Workspace(props: WorkspacePropsType) {
   const { name, description, color, onClick, onEdit } = props;
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
-  const { canEdit, disabledInfo } = useWorkspacePermission();
+  const canEdit = useRecoilValue(canEditWorkspaces);
+  const disabled = canEdit.enabled !== true;
+  const disabledMsg = canEdit.message;
 
   return (
     <ListItem
@@ -44,15 +46,15 @@ export default function Workspace(props: WorkspacePropsType) {
           spacing={0}
           sx={{
             visibility: "hidden",
-            cursor: !canEdit ? "not-allowed" : undefined,
+            cursor: disabled ? "not-allowed" : undefined,
           }}
           className="workspace-actions-stack"
-          title={disabledInfo}
+          title={disabledMsg}
         >
           <IconButton
             size="small"
             onClick={(e) => {
-              if (!canEdit) return;
+              if (disabled) return;
               e.preventDefault();
               e.stopPropagation();
               setWorkspaceEditorState((state) => ({
@@ -66,10 +68,10 @@ export default function Workspace(props: WorkspacePropsType) {
               }));
               onEdit();
             }}
-            disabled={!canEdit}
+            disabled={disabled}
           >
             <Edit
-              color={canEdit ? "secondary" : "disabled"}
+              color={disabled ? "disabled" : "secondary"}
               sx={{ fontSize: 18 }}
             />
           </IconButton>

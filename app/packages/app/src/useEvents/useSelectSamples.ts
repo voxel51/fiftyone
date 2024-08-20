@@ -1,6 +1,6 @@
 import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
 const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();

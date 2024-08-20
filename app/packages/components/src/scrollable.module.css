@@ -1,36 +1,39 @@
 .scrollable {
-  scrollbar-color: var(--fo-palette-text-tertiary)
-    var(--fo-palette-background-body);
+  overflow: auto;
+  overscroll-behavior: contain;
 
-  scrollbar-gutter: auto;
+  --scrollbar-color: var(--fo-palette-text-tertiary);
+}
 
-  scrollbar-width: auto;
+@-moz-document url-prefix() {
+  .scrollable {
+    scrollbar-color: var(--scrollbar-color) transparent;
+    scrollbar-width: thin;
+  }
 }
 
 .scrollable::-webkit-scrollbar {
-  width: 16px;
-}
-
-.scrollableSm::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-.scrollable::-webkit-scrollbar-track {
-  border: solid 4px transparent var(--fo-palette-text-tertiary);
-}
-
-.scrollable::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px transparent;
-  border: solid 4px transparent;
-  border-radius: 16px;
-  transition: box-shadow linear 0.5s;
+  height: 14px;
+  width: 14px;
 }
 
 .scrollable::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-.scrollable:hover::-webkit-scrollbar-thumb {
-  box-shadow: inset 0 0 10px 10px var(--fo-palette-text-tertiary);
+.scrollable::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 14px 14px transparent;
+  height: 14px;
+  width: 14px;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+  border: solid 3px transparent;
+  border-radius: 0;
+  box-shadow: inset 0 0 8px 8px var(--scrollbar-color);
+}
+
+.scrollableSm::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
 }

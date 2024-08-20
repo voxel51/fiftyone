@@ -54,6 +54,14 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
+class DatasetNotFoundError(ValueError):
+    """Exception raised when a dataset is not found."""
+
+    def __init__(self, name):
+        self._dataset_name = name
+        super().__init__(f"Dataset {name} not found")
+
+
 def list_datasets(glob_patt=None, tags=None, info=False):
     """Lists the available FiftyOne datasets.
 
@@ -123,7 +131,7 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name):
+def load_dataset(name, create_if_necessary=False):
     """Loads the FiftyOne dataset with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
@@ -136,11 +144,22 @@ def load_dataset(name):
 
     Args:
         name: the name of the dataset
+        create_if_necessary (False): if no dataset exists, create an empty one
+
+    Raises:
+        DatasetNotFoundError: if the dataset does not exist and
+            `create_if_necessary` is False
 
     Returns:
         a :class:`Dataset`
     """
-    return Dataset(name, _create=False)
+    try:
+        return Dataset(name, _create=False)
+    except DatasetNotFoundError as ex:
+        if create_if_necessary:
+            return Dataset(name, _create=True)
+        else:
+            raise ex
 
 
 def get_default_dataset_name():
@@ -1062,17 +1081,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return "\n".join(lines)
 
-    def stats(self, include_media=False, compressed=False):
+    def stats(
+        self,
+        include_media=False,
+        include_indexes=False,
+        compressed=False,
+    ):
         """Returns stats about the dataset on disk.
 
         The ``samples`` keys refer to the sample documents stored in the
         database.
 
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
         The ``media`` keys refer to the raw media associated with each sample
         on disk.
 
-        For video datasets, the ``frames`` keys refer to the frame documents
-        stored in the database.
+        The ``index[es]`` keys refer to the indexes associated with the
+        dataset.
 
         Note that dataset-level metadata such as annotation runs are not
         included in this computation.
@@ -1080,6 +1107,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the dataset
+            include_indexes (False): whether to include stats on the dataset's
+                indexes
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False)
@@ -1091,9 +1120,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         stats = {}
 
-        conn = foo.get_db_conn()
-
-        cs = conn.command("collstats", self._sample_collection_name)
+        cs = self._sample_collstats()
         samples_bytes = cs["storageSize"] if compressed else cs["size"]
         stats["samples_count"] = cs["count"]
         stats["samples_bytes"] = samples_bytes
@@ -1101,7 +1128,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         total_bytes = samples_bytes
 
         if contains_videos:
-            cs = conn.command("collstats", self._frame_collection_name)
+            cs = self._frame_collstats()
             frames_bytes = cs["storageSize"] if compressed else cs["size"]
             stats["frames_count"] = cs["count"]
             stats["frames_bytes"] = frames_bytes
@@ -1120,10 +1147,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
 
+        if include_indexes:
+            ii = self.get_index_information(include_stats=True)
+            index_bytes = {k: v["size"] for k, v in ii.items()}
+            indexes_bytes = sum(index_bytes.values())
+            indexes_in_progress = [
+                k for k, v in ii.items() if v.get("in_progress", False)
+            ]
+
+            stats["indexes_count"] = len(index_bytes)
+            stats["indexes_bytes"] = indexes_bytes
+            stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            stats["indexes_in_progress"] = indexes_in_progress
+            stats["index_bytes"] = index_bytes
+            stats["index_sizes"] = {
+                k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
+            }
+            total_bytes += indexes_bytes
+
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
 
         return stats
+
+    def _sample_collstats(self):
+        conn = foo.get_db_conn()
+        return conn.command("collstats", self._sample_collection_name)
+
+    def _frame_collstats(self):
+        if self._frame_collection_name is None:
+            return None
+
+        conn = foo.get_db_conn()
+        return conn.command("collstats", self._frame_collection_name)
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -7591,7 +7647,7 @@ def _do_load_dataset(obj, name):
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name})
     if not res:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
 
     sample_collection_name = dataset_doc.sample_collection_name

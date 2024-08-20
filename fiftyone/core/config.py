@@ -8,12 +8,7 @@ FiftyOne config.
 
 import logging
 import os
-
-try:
-    from importlib import metadata as importlib_metadata  # Python 3.8
-except ImportError:
-    import importlib_metadata  # Python < 3.8
-
+from importlib import metadata
 import pytz
 
 import eta
@@ -375,6 +370,12 @@ class AppConfig(EnvConfig):
             d,
             "media_fallback",
             env_var="FIFTYONE_APP_MEDIA_FALLBACK",
+            default=False,
+        )
+        self.disable_frame_filtering = self.parse_bool(
+            d,
+            "disable_frame_filtering",
+            env_var="FIFTYONE_APP_DISABLE_FRAME_FILTERING",
             default=False,
         )
         self.multicolor_keypoints = self.parse_bool(
@@ -940,9 +941,7 @@ def _parse_env_value(value):
 
 def _get_installed_packages():
     try:
-        return set(
-            d.metadata["Name"] for d in importlib_metadata.distributions()
-        )
+        return set(d.metadata["Name"] for d in metadata.distributions())
     except:
         logger.debug("Failed to get installed packages")
         return set()

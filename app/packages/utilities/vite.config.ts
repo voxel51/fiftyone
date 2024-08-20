@@ -1,7 +1,7 @@
 import { UserConfig } from "vite";
 
 export default <UserConfig>{
-  esbuild: true,
+  esbuild: {},
   base: "/",
   build: {
     lib: {

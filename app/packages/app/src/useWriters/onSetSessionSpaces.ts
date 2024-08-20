@@ -1,8 +1,8 @@
-import { setSpaces, setSpacesMutation } from "@fiftyone/relay";
+import { setSpaces, type setSpacesMutation } from "@fiftyone/relay";
 import { commitMutation } from "relay-runtime";
-import { LocationState } from "../routing";
+import type { LocationState } from "../routing";
 import { resolveURL } from "../utils";
-import { RegisteredWriter } from "./registerWriter";
+import type { RegisteredWriter } from "./registerWriter";
 
 const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
   ({ environment, router, subscription }) =>

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { Material, Mesh, Object3D } from "three";
-import { useMeshMaterialControls } from "./use-mesh-material-controls";
+import type { Material, Mesh, Object3D } from "three";
+import type { useMeshMaterialControls } from "./use-mesh-material-controls";
 
 const setOpacity = (
   mtl: Material,

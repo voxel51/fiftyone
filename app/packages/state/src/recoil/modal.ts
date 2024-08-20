@@ -8,8 +8,8 @@ import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
-import { Nullable } from "vitest";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
+import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
 import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
@@ -36,7 +36,7 @@ export const modalLooker = atom<AbstractLooker<BaseState> | null>({
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
-    if (get(shouldRenderImaVidLooker)) {
+    if (get(shouldRenderImaVidLooker(true))) {
       const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
       const isPlaying = get(imaVidLookerState("playing"));
       const isSeeking = get(imaVidLookerState("seeking"));
@@ -98,46 +98,30 @@ type ModalSampleResponse = ResponseFrom<mainSampleQuery> & {
   sample: ModalSample;
 };
 
-type ModalSelector = {
-  id: string;
-  index: number;
-};
-
-export const currentModalSample = atom<ModalSelector | null>({
-  key: "currentModalSample",
+export const modalSelector = sessionAtom({
+  key: "modalSelector",
   default: null,
 });
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
-  get: ({ get }) => Boolean(get(currentModalSample)),
+  get: ({ get }) => Boolean(get(modalSelector)),
 });
 
-export type ModalNavigation = (
-  index: number
-) => Promise<{ id: string; groupId?: string; groupByFieldValue?: string }>;
+export type ModalNavigation = {
+  next: () => Promise<ModalSelector>;
+  previous: () => Promise<ModalSelector>;
+};
 
-export const currentModalNavigation = atom<Nullable<ModalNavigation>>({
-  key: "currentModalNavigation",
+export const modalNavigation = atom<ModalNavigation>({
+  key: "modalNavigation",
   default: null,
-});
-
-export const modalSampleIndex = selector<number>({
-  key: "modalSampleIndex",
-  get: ({ get }) => {
-    const current = get(currentModalSample);
-    if (!current) {
-      throw new Error("modal sample is not defined");
-    }
-
-    return current.index;
-  },
 });
 
 export const modalSampleId = selector<string>({
   key: "modalSampleId",
   get: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (!current) {
       throw new Error("modal sample is not defined");
@@ -150,7 +134,7 @@ export const modalSampleId = selector<string>({
 export const nullableModalSampleId = selector<string>({
   key: "nullableModalSampleId",
   get: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (!current) {
       return null;
@@ -183,7 +167,7 @@ export const modalSample = graphQLSelector<
     return mapSampleResponse(data.sample) as ModalSample;
   },
   variables: ({ get }) => {
-    const current = get(currentModalSample);
+    const current = get(modalSelector);
 
     if (current === null) return null;
 

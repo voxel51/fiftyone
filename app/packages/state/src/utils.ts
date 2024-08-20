@@ -1,12 +1,12 @@
 import { savedViewsFragment$key } from "@fiftyone/relay";
 import {
-  clone,
   Field,
-  getFetchFunction,
   GQLError,
   GraphQLError,
   Schema,
   StrictField,
+  clone,
+  getFetchFunction,
 } from "@fiftyone/utilities";
 import React, { MutableRefObject, useCallback, useRef } from "react";
 import {
@@ -38,6 +38,9 @@ export const useDeferrer = () => {
 
   const init = useCallback(() => {
     initialized.current = true;
+    return () => {
+      initialized.current = false;
+    };
   }, []);
 
   return { init, deferred };
@@ -193,7 +196,9 @@ const fetchRelay: FetchFunction = async (
 export const getEnvironment = () =>
   new Environment({
     network: Network.create(fetchRelay),
-    store: new Store(new RecordSource()),
+    store: new Store(new RecordSource(), {
+      gcReleaseBufferSize: 0,
+    }),
   });
 
 let currentEnvironment: Environment = getEnvironment();

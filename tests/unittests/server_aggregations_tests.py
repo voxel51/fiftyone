@@ -35,6 +35,46 @@ schema = gql.Schema(
 
 class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset
+    async def test_empty(self, dataset: fo.Dataset):
+        query = """
+            query Query($form: AggregationForm!) {
+                aggregations(form: $form) {
+                    ... on StringAggregation {
+                        path
+                    }
+                }
+            }
+        """
+
+        result = await execute(
+            schema,
+            query,
+            {
+                "form": {
+                    "dataset": dataset.name,
+                    "extended_stages": {},
+                    "filters": {},
+                    "group_id": None,
+                    "hidden_labels": [],
+                    "index": 0,
+                    "mixed": False,
+                    "paths": [],
+                    "sample_ids": [],
+                    "slice": None,
+                    "slices": None,
+                    "view": [],
+                }
+            },
+        )
+
+        self.assertEqual(
+            result.data,
+            {
+                "aggregations": [],
+            },
+        )
+
+    @drop_async_dataset
     async def test_group_mode_sidebar_counts(self, dataset: fo.Dataset):
         _add_samples(dataset)
 

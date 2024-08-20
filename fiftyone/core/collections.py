@@ -113,9 +113,11 @@ class SaveContext(object):
         self._dataset = sample_collection._dataset
         self._sample_coll = sample_collection._dataset._sample_collection
         self._frame_coll = sample_collection._dataset._frame_collection
+        self._is_generated = sample_collection._is_generated
 
         self._sample_ops = []
         self._frame_ops = []
+        self._batch_ids = []
         self._reload_parents = []
 
         self._batching_strategy = batching_strategy
@@ -158,6 +160,9 @@ class SaveContext(object):
         if frame_ops:
             self._frame_ops.extend(frame_ops)
 
+        if updated and self._is_generated:
+            self._batch_ids.append(sample.id)
+
         if updated and isinstance(sample, fosa.SampleView):
             self._reload_parents.append(sample)
 
@@ -193,6 +198,10 @@ class SaveContext(object):
         if self._frame_ops:
             foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
             self._frame_ops.clear()
+
+        if self._batch_ids and self._is_generated:
+            self.sample_collection._sync_source(ids=self._batch_ids)
+            self._batch_ids.clear()
 
         if self._reload_parents:
             for sample in self._reload_parents:
@@ -567,17 +576,25 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
-    def stats(self, include_media=False, compressed=False):
+    def stats(
+        self,
+        include_media=False,
+        include_indexes=False,
+        compressed=False,
+    ):
         """Returns stats about the collection on disk.
 
         The ``samples`` keys refer to the sample documents stored in the
         database.
 
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
         The ``media`` keys refer to the raw media associated with each sample
         on disk.
 
-        For video datasets, the ``frames`` keys refer to the frame documents
-        stored in the database.
+        The ``index[es]`` keys refer to the indexes associated with the
+        dataset.
 
         Note that dataset-level metadata such as annotation runs are not
         included in this computation.
@@ -585,6 +602,8 @@ class SampleCollection(object):
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the collection
+            include_indexes (False): whether to include stats on the dataset's
+                indexes
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False). This option is
@@ -629,6 +648,24 @@ class SampleCollection(object):
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
+
+        if include_indexes:
+            ii = self.get_index_information(include_stats=True)
+            index_bytes = {k: v["size"] for k, v in ii.items()}
+            indexes_bytes = sum(index_bytes.values())
+            indexes_in_progress = [
+                k for k, v in ii.items() if v.get("in_progress", False)
+            ]
+
+            stats["indexes_count"] = len(index_bytes)
+            stats["indexes_bytes"] = indexes_bytes
+            stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            stats["indexes_in_progress"] = indexes_in_progress
+            stats["index_bytes"] = index_bytes
+            stats["index_sizes"] = {
+                k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
+            }
+            total_bytes += indexes_bytes
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
@@ -9028,12 +9065,16 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self):
+    def get_index_information(self, include_stats=False):
         """Returns a dictionary of information about the indexes on this
         collection.
 
         See :meth:`pymongo:pymongo.collection.Collection.index_information` for
         details on the structure of this dictionary.
+
+        Args:
+            include_stats (False): whether to include the size and build status
+                of each index
 
         Returns:
             a dict mapping index names to info dicts
@@ -9043,6 +9084,17 @@ class SampleCollection(object):
         # Sample-level indexes
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
+
+        if include_stats:
+            cs = self._dataset._sample_collstats()
+            for key, size in cs["indexSizes"].items():
+                if key in sample_info:
+                    sample_info[key]["size"] = size
+
+            for key in cs["indexBuilds"]:
+                if key in sample_info:
+                    sample_info[key]["in_progress"] = True
+
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
                 field = info["key"][0][0]
@@ -9054,6 +9106,17 @@ class SampleCollection(object):
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
+
+            if include_stats:
+                cs = self._dataset._frame_collstats()
+                for key, size in cs["indexSizes"].items():
+                    if key in frame_info:
+                        frame_info[key]["size"] = size
+
+                for key in cs["indexBuilds"]:
+                    if key in frame_info:
+                        frame_info[key]["in_progress"] = True
+
             for key, info in frame_info.items():
                 if len(info["key"]) == 1:
                     field = info["key"][0][0]

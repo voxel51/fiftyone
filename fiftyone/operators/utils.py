@@ -5,7 +5,9 @@ FiftyOne operator utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
+from .operator import Operator
 
 
 class ProgressHandler(logging.Handler):
@@ -47,3 +49,20 @@ class ProgressHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         self.ctx.set_progress(label=msg)
+
+
+def is_method_overridden(base_class, sub_class_instance, method_name):
+    """Returns whether a method is overridden in a subclass.
+
+    Args:
+        base_class: the base class
+        sub_class_instance: an instance of the subclass
+        method_name: the name of the method
+
+    Returns:
+        True/False
+    """
+
+    base_method = getattr(base_class, method_name, None)
+    sub_method = getattr(type(sub_class_instance), method_name, None)
+    return base_method != sub_method

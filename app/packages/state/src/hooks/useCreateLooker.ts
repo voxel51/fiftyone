@@ -13,6 +13,7 @@ import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
+  getFieldInfo,
   getMimeType,
   isNullish,
 } from "@fiftyone/utilities";
@@ -21,17 +22,13 @@ import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import {
-  ModalSample,
-  dynamicGroupsElementCount,
-  selectedMediaField,
-} from "../recoil";
+import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
-import { getSampleSrc, getSanitizedGroupByExpression } from "../recoil/utils";
+import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
 
@@ -60,7 +57,7 @@ export default <T extends AbstractLooker<BaseState>>(
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(
-    dynamicGroupAtoms.shouldRenderImaVidLooker
+    dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
   // callback to get the latest promise inside another recoil callback
@@ -72,13 +69,8 @@ export default <T extends AbstractLooker<BaseState>>(
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
-      ({
-        frameNumber,
-        frameRate,
-        sample,
-        urls: rawUrls,
-      }: ModalSample["sample"]): T => {
-        let constructor:
+      ({ frameNumber, frameRate, sample, urls: rawUrls, symbol }): T => {
+        let create:
           | typeof FrameLooker
           | typeof ImageLooker
           | typeof ImaVidLooker
@@ -97,23 +89,23 @@ export default <T extends AbstractLooker<BaseState>>(
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
         if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          constructor = ThreeDLooker;
+          create = ThreeDLooker;
         } else if (mimeType !== null) {
           const isVideo = mimeType.startsWith("video/");
 
           if (isVideo && (isFrame || isPatch)) {
-            constructor = FrameLooker;
+            create = FrameLooker;
           }
 
           if (isVideo) {
-            constructor = VideoLooker;
+            create = VideoLooker;
           }
 
           if (!isVideo && shouldRenderImaVidLooker) {
-            constructor = ImaVidLooker;
+            create = ImaVidLooker;
           }
         } else {
-          constructor = ImageLooker;
+          create = ImageLooker;
         }
 
         let config: ConstructorParameters<T>[1] = {
@@ -129,10 +121,10 @@ export default <T extends AbstractLooker<BaseState>>(
             },
           },
           sources: urls,
-          frameNumber: constructor === FrameLooker ? frameNumber : undefined,
+          frameNumber: create === FrameLooker ? frameNumber : undefined,
           frameRate,
           sampleId: sample._id,
-          support: isClip ? sample["support"] : undefined,
+          support: isClip ? sample.support : undefined,
           dataset,
           mediaField,
           thumbnail,
@@ -141,10 +133,10 @@ export default <T extends AbstractLooker<BaseState>>(
 
         let sampleMediaFilePath = urls[mediaField];
         if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
-          sampleMediaFilePath = urls["filepath"];
+          sampleMediaFilePath = urls.filepath;
         }
 
-        if (constructor === ThreeDLooker) {
+        if (create === ThreeDLooker) {
           config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");
 
           const orthographicProjectionField = Object.entries(sample)
@@ -172,13 +164,14 @@ export default <T extends AbstractLooker<BaseState>>(
           };
         }
 
-        if (constructor === ImaVidLooker) {
+        if (create === ImaVidLooker) {
           const { groupBy } = snapshot
             .getLoadable(dynamicGroupAtoms.dynamicGroupParameters)
             .valueMaybe();
+          const groupByKeyFieldInfo = getFieldInfo(groupBy, fieldSchema);
           const groupByFieldValue = get(
             sample,
-            getSanitizedGroupByExpression(groupBy)
+            groupByKeyFieldInfo.pathWithDbField
           );
           const groupByFieldValueTransformed =
             groupByFieldValue !== null ? String(groupByFieldValue) : null;
@@ -188,9 +181,10 @@ export default <T extends AbstractLooker<BaseState>>(
           );
           const page = snapshot
             .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector(
-                groupByFieldValueTransformed
-              )
+              dynamicGroupAtoms.dynamicGroupPageSelector({
+                value: groupByFieldValueTransformed,
+                modal: isModal,
+              })
             )
             .valueMaybe();
 
@@ -237,11 +231,15 @@ export default <T extends AbstractLooker<BaseState>>(
           } as ImaVidConfig;
         }
 
-        const looker = new constructor(sample, config, {
-          ...options,
-          selected: selected.has(sample._id),
-          highlight: highlight && highlight(sample),
-        });
+        const looker = new create(
+          sample,
+          { ...config, symbol },
+          {
+            ...options,
+            selected: selected.has(sample._id),
+            highlight: highlight?.(sample),
+          }
+        );
 
         looker.addEventListener("error", (event) => {
           handleError(event.error);
@@ -257,6 +255,7 @@ export default <T extends AbstractLooker<BaseState>>(
       highlight,
       isClip,
       isFrame,
+      isModal,
       shouldRenderImaVidLooker,
       isPatch,
       mediaField,

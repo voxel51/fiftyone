@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { useHotkey } from "../hooks";
@@ -29,9 +30,9 @@ export const ActionBar = ({
     () => isFo3dSlice || mediaType === "three_d",
     [isFo3dSlice, mediaType]
   );
-  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiplePcdSlices);
+  const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiple3dSlices);
 
-  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+  const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
   const sample = useRecoilValue(fos.fo3dSample);
 
   const sampleForJsonView = useMemo(() => {
@@ -118,6 +119,7 @@ export const ActionBar = ({
       onMouseLeave={onMouseLeave}
     >
       {hasMultiplePcdSlices && <SliceSelector />}
+      <Logs />
       <ActionsBar>
         {componentsToRender}
         <FullScreenToggler />

@@ -1,4 +1,3 @@
-import { scrollbarStyles } from "@fiftyone/utilities";
 import styled from "styled-components";
 
 export const SpaceContainer = styled.div`
@@ -24,21 +23,11 @@ export const StyledPanel = styled.div`
   height: calc(100% - 28px);
   overflow: auto;
   background: var(--fo-palette-background-mediaSpace);
-  ${scrollbarStyles}
 `;
 
 export const AddPanelButtonContainer = styled.div`
   position: relative;
   margin-left: 4px;
-`;
-
-export const StyledPanelItem = styled.div`
-  cursor: pointer;
-  padding: 4px 8px;
-
-  &:hover {
-    background: var(--fo-palette-background-body);
-  }
 `;
 
 export const StyledTab = styled.button<{ active?: boolean }>`

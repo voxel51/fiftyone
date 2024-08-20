@@ -12,7 +12,7 @@ export class FrameCountElement extends BaseElement<ImaVidState> {
   }
 
   renderSelf({ currentFrameNumber, config }: Readonly<ImaVidState>) {
-    this.element.innerHTML = `${currentFrameNumber} / ${
+    this.element.textContent = `${currentFrameNumber} / ${
       config.frameStoreController.totalFrameCount || 1
     }`;
     return this.element;

@@ -54,7 +54,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     modal,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      savedView: "dynamic-group",
+      searchParams: new URLSearchParams({ view: "dynamic-group" }),
     });
 
     await grid.assert.isEntryCountTextEqualTo("10 groups");
@@ -74,7 +74,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     modal,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      savedView: "dynamic-group",
+      searchParams: new URLSearchParams({ view: "dynamic-group" }),
     });
     await grid.openFirstSample();
 

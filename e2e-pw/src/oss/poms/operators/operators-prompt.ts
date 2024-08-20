@@ -57,7 +57,7 @@ class OperatorsPromptAsserter {
     await expect(this.panelPom.locator).toBeVisible();
   }
   async isClosed() {
-    await expect(this.panelPom.locator).not.toBeVisible();
+    await expect(this.panelPom.locator).toBeHidden();
   }
   async isExecuting() {
     await expect(this.panelPom.locator).toContainText("Executing...");
