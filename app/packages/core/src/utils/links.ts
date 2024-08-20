@@ -10,6 +10,9 @@ export const EVALUATION_PATCHES =
 export const FIELD_METADATA =
   "https://docs.voxel51.com/user_guide/using_datasets.html#storing-field-metadata";
 
+export const FRAME_FILTERING_DISABLED =
+  "https://docs.voxel51.com/user_guide/using_datasets.html#disable-frame-filtering";
+
 export const LIGHTNING_MODE =
   "https://docs.voxel51.com/user_guide/app.html#lightning-mode";
 

@@ -1,8 +1,8 @@
 import { pluginsLoaderAtom } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
@@ -10,6 +10,7 @@ import {
   resolveLocalPlacements,
 } from "./operators";
 import {
+  activePanelsEventCountAtom,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
@@ -108,4 +109,40 @@ export function useOperatorPlacementsResolver() {
   ]);
 
   return { resolving, initialized };
+}
+
+export function useActivePanelEventsCount(id: string) {
+  const [activePanelEventsCount, setActivePanelEventsCount] = useRecoilState(
+    activePanelsEventCountAtom
+  );
+  const count = useMemo(() => {
+    return activePanelEventsCount.get(id) || 0;
+  }, [activePanelEventsCount, id]);
+
+  const increment = useCallback(
+    (panelId?: string) => {
+      const computedId = panelId ?? id;
+      setActivePanelEventsCount((counts) => {
+        const updatedCount = (counts.get(computedId) || 0) + 1;
+        return new Map(counts).set(computedId, updatedCount);
+      });
+    },
+    [id, setActivePanelEventsCount]
+  );
+
+  const decrement = useCallback(
+    (panelId?: string) => {
+      const computedId = panelId ?? id;
+      setActivePanelEventsCount((counts) => {
+        const updatedCount = (counts.get(computedId) || 0) - 1;
+        if (updatedCount < 0) {
+          return counts;
+        }
+        return new Map(counts).set(computedId, updatedCount);
+      });
+    },
+    [id, setActivePanelEventsCount]
+  );
+
+  return { count, increment, decrement };
 }

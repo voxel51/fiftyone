@@ -11,10 +11,7 @@ import os
 
 from packaging.version import Version
 
-try:
-    from importlib.metadata import metadata  # Python 3.8
-except ImportError:
-    from importlib_metadata import metadata  # Python < 3.8
+from importlib.metadata import metadata
 
 
 CLIENT_TYPE = "fiftyone-teams"
@@ -48,18 +45,18 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<0.25"
+COMPATIBLE_VERSIONS = ">=0.19,<0.26"
 
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.24.0"  # open source compatibility version
+VERSION = "0.25.0"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
-URL = _META["home-page"]
-LICENSE = _META["license"]
+URL = _META.get("home-page", "https://github.com/voxel51/fiftyone")
+LICENSE = _META.get("license", "Apache")
 VERSION_LONG = "FiftyOne Teams v%s, %s" % (TEAMS_VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 

@@ -6,12 +6,7 @@ Utilities for working with `YouTube <https://youtube.com>`.
 |
 """
 import importlib
-
-try:
-    from importlib import metadata
-except ImportError:
-    import importlib_metadata as metadata
-
+from importlib import metadata
 import itertools
 import logging
 import multiprocessing.dummy

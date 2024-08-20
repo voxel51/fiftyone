@@ -47,18 +47,22 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   if (countLoadable.state === "hasValue") {
     count.current = countLoadable.contents;
   }
-  const index = useRecoilValue(fos.modalSampleIndex);
+
   const setModal = fos.useSetExpandedSample();
+  const modal = useRecoilValue(fos.modalSelector);
+  const navigation = useRecoilValue(fos.modalNavigation);
 
-  const navigateNext = useCallback(() => {
+  const navigateNext = useCallback(async () => {
     onNavigate();
-    setModal((i) => i + 1);
-  }, [onNavigate, setModal]);
+    const result = await navigation?.next();
+    setModal(result);
+  }, [navigation, onNavigate, setModal]);
 
-  const navigatePrevious = useCallback(() => {
+  const navigatePrevious = useCallback(async () => {
     onNavigate();
-    setModal((i) => i - 1);
-  }, [onNavigate, setModal]);
+    const result = await navigation?.previous();
+    setModal(result);
+  }, [onNavigate, navigation, setModal]);
 
   const keyboardHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -75,9 +79,9 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         }
 
         if (e.key === "x") {
-          const current = await snapshot.getPromise(fos.currentModalSample);
+          const current = await snapshot.getPromise(fos.modalSelector);
           set(fos.selectedSamples, (selected) => {
-            const newSelected = new Set([...selected]);
+            const newSelected = new Set([...Array.from(selected)]);
             if (current) {
               if (newSelected.has(current.id)) {
                 newSelected.delete(current.id);
@@ -100,11 +104,11 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     [navigateNext, navigatePrevious]
   );
 
-  fos.useEventHandler(document, "keydown", keyboardHandler);
+  fos.useEventHandler(document, "keyup", keyboardHandler);
 
   return (
     <>
-      {!isNavigationHidden && index > 0 && (
+      {!isNavigationHidden && modal.hasPrevious && (
         <Arrow>
           <LookerArrowLeftIcon
             data-cy="nav-left-button"
@@ -112,7 +116,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           />
         </Arrow>
       )}
-      {!isNavigationHidden && count.current && index < count.current - 1 && (
+      {!isNavigationHidden && modal.hasNext && (
         <Arrow isRight>
           <LookerArrowRightIcon
             data-cy="nav-right-button"

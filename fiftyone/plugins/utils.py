@@ -67,7 +67,7 @@ def list_zoo_plugins(info=False):
     return _get_all_plugin_info(tasks)
 
 
-def find_plugins(gh_repo, info=False):
+def find_plugins(gh_repo, path=None, info=False):
     """Returns the paths to the fiftyone YAML files for all plugins found in
     the given GitHub repository.
 
@@ -79,25 +79,31 @@ def find_plugins(gh_repo, info=False):
         plugins = fopu.find_plugins("https://github.com/voxel51/fiftyone-plugins")
         print(plugins)
 
-        # Search a specific tree
-        plugins = fopu.find_plugins("https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation")
+        # Search a specific branch + subdirectory
+        plugins = fopu.find_plugins(
+            "https://github.com/voxel51/fiftyone-plugins/tree/main",
+            path="plugins/annotation",
+        )
         print(plugins)
 
     Args:
-        gh_repo: a GitHub repository, identifier, or tree root. See
-            :class:`GitHubRepository <fiftyone.utils.github.GitHubRepository>`
-            for details
+        gh_repo: the GitHub repository or identifier, which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+        path (None): an optional subdirectory of the repository to which to
+            restrict the search
         info (False): whether to retrieve full plugin info for each plugin
             (True) or just return paths to the fiftyone YAML files (False)
 
     Returns:
         a list of paths to fiftyone YAML files or plugin info dicts
     """
-    try:
-        root = GitHubRepository.parse_url(gh_repo).get("path", None)
-    except:
-        root = None
-
+    root = path
     repo = GitHubRepository(gh_repo)
 
     paths = []
@@ -123,29 +129,51 @@ def get_plugin_info(gh_repo, path=None):
 
         import fiftyone.plugins.utils as fopu
 
-        # Directly link to a repository with a top-level`fiftyone YAML
+        # A repository with a top-level fiftyone YAML file
         info = fopu.get_plugin_info("https://github.com/voxel51/voxelgpt")
         print(info)
 
-        # Provide repository and path separately
+        # A plugin that lives in a subdirectory
+        # Manually specify the branch to use
+        info = fopu.get_plugin_info(
+            "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation"
+        )
+        print(info)
+
+        # Directly link to a fiftyone YAML file
+        info = fopu.get_plugin_info(
+            "https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml"
+        )
+        print(info)
+
+        # Provide subdirectory separately
         info = fopu.get_plugin_info(
             "voxel51/fiftyone-plugins",
             path="plugins/annotation",
         )
         print(info)
 
-        # Directly link to a plugin directory
-        info = fopu.get_plugin_info("https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation")
-        print(info)
-
-        # Directly link to a fiftyone YAML file
-        info = fopu.get_plugin_info("https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml")
+        # Provide fiftyone YAML file path separately
+        info = fopu.get_plugin_info(
+            "voxel51/fiftyone-plugins",
+            path="plugins/annotation/fiftyone.yml",
+        )
         print(info)
 
     Args:
-        gh_repo: a GitHub repository, identifier, tree root, or blob. See
-            :class:`GitHubRepository <fiftyone.utils.github.GitHubRepository>`
-            for details
+        gh_repo: the GitHub repository, identifier, tree path, or blob path,
+            which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a GitHub tree path like
+                ``https://github.com/<user>/<repo>/tree/<branch>/<path>``
+            -   a GitHub blob path like
+                ``https://github.com/<user>/<repo>/blob/<branch>/<path>``
+
         path (None): the path to a fiftyone YAML file or the directory that
             contains it. This is only necessary if the fiftyone YAML file is
             not at the root of the repository and you have not implicitly
@@ -154,14 +182,9 @@ def get_plugin_info(gh_repo, path=None):
     Returns:
         a dict or list of dicts of plugin info
     """
-    if path is None:
-        try:
-            path = GitHubRepository.parse_url(gh_repo).get("path", None)
-        except:
-            pass
+    if gh_repo.endswith(PLUGIN_METADATA_FILENAMES):
+        gh_repo, path = gh_repo.rsplit("/", 1)
 
-    # If the user didn't directly provide a blob path, we must try all possible
-    # `PLUGIN_METADATA_FILENAMES` values
     paths = []
     if path is None:
         paths.extend(PLUGIN_METADATA_FILENAMES)
@@ -170,6 +193,9 @@ def get_plugin_info(gh_repo, path=None):
     else:
         paths = [path]
 
+    # Here `gh_repo` may contain a subdirectory or blob path, which is not
+    # allowed by `GitHubRepository` in general, but it's okay here because we
+    # only need to call `get_file()`
     repo = GitHubRepository(gh_repo)
 
     content = None

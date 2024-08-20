@@ -1,7 +1,7 @@
 """
 Remote media caching.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -451,7 +451,10 @@ class MediaCache(object):
     def get_url(self, remote_path, method="GET", hours=None):
         """Retrieves a URL for accessing the given remote file.
 
-        Note that GCS and S3 URLs are signed URLs that will expire.
+        Note that GCS, S3 and Azure URLs are signed URLs that will expire.
+
+        For more information on signed URLs, check ``storage.get_url``
+
 
         Args:
             remote_path: the remote path

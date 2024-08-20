@@ -1,6 +1,6 @@
 import {
   setDataset,
-  setDatasetMutation,
+  type setDatasetMutation,
   subscribeBefore,
 } from "@fiftyone/relay";
 import {
@@ -10,9 +10,9 @@ import {
 } from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
-import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { resolveURL } from "../utils";
-import { RegisteredSetter } from "./registerSetter";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetDataset: RegisteredSetter =
   ({ environment, router, sessionRef }) =>
@@ -47,6 +47,9 @@ const onSetDataset: RegisteredSetter =
         currentSearch: router.history.location.search,
         nextDataset: datasetName || null,
         extra: {
+          groupId: null,
+          id: null,
+          slice: null,
           workspace: null,
         },
       }),

@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
+import type { useJSONPanel } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useJSONPanel } from "@fiftyone/state";
 import { AccountTree } from "@mui/icons-material";
 import { useCallback, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -25,8 +25,8 @@ export const ViewFo3d = (props: {
     (e?) => {
       setIsJsonPanelOpen((prev) => !prev);
       jsonPanel.toggle(fo3d);
-      e && e.stopPropagation();
-      e && e.preventDefault();
+      e?.stopPropagation();
+      e?.preventDefault();
       return false;
     },
     [jsonPanel, fo3d]

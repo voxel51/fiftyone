@@ -218,8 +218,9 @@ export abstract class AbstractLooker<
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(eventType, {
           shiftKey: detail,
-          sampleId: this.sample.id,
+          id: this.sample.id,
           sample: this.sample,
+          symbol: this.state.config.symbol,
         });
         return;
       }

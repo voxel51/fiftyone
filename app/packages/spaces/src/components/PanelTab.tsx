@@ -1,32 +1,35 @@
-import { useCallback } from "react";
 import { IconButton } from "@fiftyone/components";
+import { useTimeout } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
+import { CircularProgress, Skeleton, Typography } from "@mui/material";
+import { useCallback } from "react";
+import { PANEL_LOADING_TIMEOUT } from "../constants";
 import {
-  usePanel,
   usePanelCloseEffect,
+  usePanelLoading,
   usePanelTitle,
+  useReactivePanel,
   useSpaces,
 } from "../hooks";
 import { PanelTabProps } from "../types";
-import { warnPanelNotFound } from "../utils";
 import PanelIcon from "./PanelIcon";
 import { StyledTab, TabIndicatorContainer } from "./StyledElements";
 
 export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   const { spaces } = useSpaces(spaceId);
-  const panelName = node.type;
+  const panelName = node.type as string;
   const panelId = node.id;
-  const panel = usePanel(panelName);
+  const panel = useReactivePanel(panelName);
   const [title] = usePanelTitle(panelId);
+  const [loading] = usePanelLoading(panelId);
   const closeEffect = usePanelCloseEffect(panelId);
+  const pending = useTimeout(PANEL_LOADING_TIMEOUT);
 
   const handleClose = useCallback(() => {
     if (node.pinned) return;
     closeEffect();
     spaces.removeNode(node);
   }, [node, closeEffect, spaces]);
-
-  if (!panel) return warnPanelNotFound(panelName);
 
   const TabIndicator = panel?.panelOptions?.TabIndicator;
 
@@ -43,9 +46,12 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       active={active}
       data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
     >
-      <PanelIcon name={panelName as string} />
-      {title || panel.label || panel.name}
-      {TabIndicator && (
+      {!panel && pending && <Skeleton width={48} height={24} />}
+      {!panel && !pending && <Typography>{panelName}</Typography>}
+      {panel && loading && <CircularProgress size={14} sx={{ mr: 0.85 }} />}
+      {panel && !loading && <PanelIcon name={panelName as string} />}
+      {panel && <Typography>{title || panel.label || panel.name}</Typography>}
+      {panel && TabIndicator && (
         <TabIndicatorContainer>
           <TabIndicator />
         </TabIndicatorContainer>

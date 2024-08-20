@@ -1,3 +1,7 @@
 logFilters:
+    - code: "YN0002"
+      level: "discard"
     - code: "YN0013"
+      level: "discard"
+    - code: "YN0060"
       level: "discard"

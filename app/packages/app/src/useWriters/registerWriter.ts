@@ -1,12 +1,17 @@
-import { Session } from "@fiftyone/state";
-import { MutableRefObject } from "react";
-import { Environment } from "react-relay";
-import { Queries } from "../makeRoutes";
-import { RoutingContext } from "../routing";
+import type { Session } from "@fiftyone/state";
+import type { MutableRefObject } from "react";
+import type { Environment } from "react-relay";
+import type { Queries } from "../makeRoutes";
+import type { RoutingContext } from "../routing";
 
 type WriterKeys = keyof Omit<
   Session,
-  "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+  | "canModifySidebarGroup"
+  | "canCreateNewField"
+  | "canTagSamplesOrLabels"
+  | "canEditCustomColors"
+  | "canEditSavedViews"
+  | "readOnly"
 >;
 
 type WriterContext = {

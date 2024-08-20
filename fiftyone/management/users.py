@@ -1,7 +1,7 @@
 """
 User management.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -174,7 +174,7 @@ def delete_user(user: Union[str, User]) -> None:
     Args:
         user: a user ID, email string, or :class:`User` instance
     """
-    user_id = _resolve_user_id(user)
+    user_id = resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
@@ -296,7 +296,7 @@ def list_pending_invitations() -> List[Invitation]:
     ]
 
 
-def list_users() -> List[User]:
+def list_users(verbose=True) -> Union[List[User], List[str]]:
     """Returns a list of all users.
 
     .. note::
@@ -309,6 +309,10 @@ def list_users() -> List[User]:
 
         fom.list_users()
 
+    Args:
+        verbose (True): if True, return a list of :class:`User` instances;
+            if False, return a list of user emails
+
     Returns:
         a list of :class:`User` instances
     """
@@ -316,7 +320,10 @@ def list_users() -> List[User]:
     users = client.post_graphql_connectioned_request(
         _LIST_USERS_QUERY, "usersConnection"
     )
-    return [User(**user) for user in users]
+    if verbose:
+        return [User(**user) for user in users]
+    else:
+        return [user["email"] for user in users]
 
 
 def send_user_invitation(email: str, role: UserRole) -> str:
@@ -381,7 +388,7 @@ def set_user_role(user: Union[str, User], role: UserRole) -> None:
         role: the :class:`UserRole` to set
     """
     role_str = _validate_user_role(role)
-    user_id = _resolve_user_id(user)
+    user_id = resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
@@ -415,7 +422,7 @@ _ROUGH_EMAIL_REGEX = re.compile(
 )
 
 
-def _resolve_user_id(
+def resolve_user_id(
     user_or_id_or_email: Union[str, User, None],
     nullable: bool = False,
     pass_unknown_email: bool = False,

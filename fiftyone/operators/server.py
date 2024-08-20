@@ -6,6 +6,7 @@ FiftyOne operator server.
 |
 """
 
+import os
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -19,19 +20,25 @@ from .executor import (
     resolve_type,
     resolve_placement,
     resolve_execution_options,
-    ExecutionContext,
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
 from .registry import OperatorRegistry
 from fiftyone.plugins.permissions import get_token_from_request
+from .utils import is_method_overridden
+from .operator import Operator
 
 
 async def _get_operator_registry_for_route(
     RouteClass, request: Request, dataset_ids=None, is_list=False
 ):
-    requires_authentication = route_requires_auth(RouteClass)
+    SKIP_OPERATOR_PERMISSION_CHECK = (
+        os.getenv("SKIP_OPERATOR_PERMISSION_CHECK", "false").lower() == "true"
+    )
+    requires_authentication = (
+        route_requires_auth(RouteClass) and not SKIP_OPERATOR_PERMISSION_CHECK
+    )
     if requires_authentication:
         if is_list:
             registry = await PermissionedOperatorRegistry.from_list_request(
@@ -72,6 +79,14 @@ class ListOperators(HTTPEndpoint):
             if role_scoped_registry.can_execute(operator.uri):
                 serialized_op = operator.to_json()
                 config = serialized_op["config"]
+                skip_input = not is_method_overridden(
+                    Operator, operator, "resolve_input"
+                )
+                skip_output = not is_method_overridden(
+                    Operator, operator, "resolve_output"
+                )
+                config["skip_input"] = skip_input
+                config["skip_output"] = skip_output
                 config["can_execute"] = registry.can_execute(
                     serialized_op["uri"]
                 )
@@ -96,12 +111,17 @@ class ResolvePlacements(HTTPEndpoint):
         )
         placements = []
 
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
         for operator in registry.list_operators():
             # teams-only
             if not registry.can_execute(operator.uri):
                 continue
 
-            placement = resolve_placement(operator, data)
+            placement = await resolve_placement(
+                operator, data, request_token=request_token
+            )
             if placement is not None:
                 placements.append(
                     {
@@ -116,7 +136,6 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -136,13 +155,14 @@ class ExecuteOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        # request token is teams-only
         request_token = get_token_from_request(request)
 
         result = await execute_or_delegate_operator(
             operator_uri,
             data,
             request_token=request_token,
-            user=(user.sub if user else None),
         )
         return result.to_json()
 
@@ -172,7 +192,6 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -198,7 +217,6 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             operator_uri,
             data,
             request_token=request_token,
-            user=(user.sub if user else None),
         )
         if execution_result.is_generator:
             result = execution_result.result

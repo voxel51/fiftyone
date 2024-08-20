@@ -2,7 +2,7 @@
 # https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
 # Then `TORCH_IMAGE_NAME` should already be set, just reuse it here...
 ARG TORCH_IMAGE_NAME
-ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.11
 
 FROM python:${PYTHON_VERSION} as wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple

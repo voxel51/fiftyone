@@ -32,9 +32,9 @@ class OperatorConfig(object):
             validation should be disabled
         icon (None): icon to show for the operator in the Operator Browser
         light_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the light mode
+            when the App is in the light mode
         dark_icon (None): icon to show for the operator in the Operator Browser
-            when app is in the dark mode
+            when the App is in the dark mode
         allow_immediate_execution (True): whether the operator should allow
             immediate execution
         allow_delegated_execution (False): whether the operator should allow
@@ -78,8 +78,8 @@ class OperatorConfig(object):
         self.disable_schema_validation = disable_schema_validation
         self.delegation_target = delegation_target
         self.icon = icon
-        self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.dark_icon = dark_icon
         self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
@@ -104,8 +104,8 @@ class OperatorConfig(object):
             "disable_schema_validation": self.disable_schema_validation,
             "delegation_target": self.delegation_target,
             "icon": self.icon,
-            "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "dark_icon": self.dark_icon,
             "allow_immediate_execution": self.allow_immediate_execution,
             "allow_delegated_execution": self.allow_delegated_execution,
             "default_choice_to_delegated": self.default_choice_to_delegated,
@@ -286,6 +286,17 @@ class Operator(object):
             a :class:`fiftyone.operators.types.Placement`, or None
         """
         return None
+
+    def method_to_uri(self, method_name):
+        """Converts a method name to a URI.
+
+        Args:
+            method_name: the method name
+
+        Returns:
+            a URI
+        """
+        return "%s#%s" % (self.uri, method_name)
 
     def to_json(self):
         """Returns a JSON representation of the operator.

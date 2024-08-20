@@ -1,24 +1,46 @@
-import { PanelContext } from "../contexts";
-import { usePanel, useSpaces } from "../hooks";
-import { PanelProps } from "../types";
-import { warnPanelNotFound } from "../utils";
-import { StyledPanel } from "./StyledElements";
-import React from "react";
+import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import React from "react";
+import { PANEL_LOADING_TIMEOUT } from "../constants";
+import { PanelContext } from "../contexts";
+import { useReactivePanel } from "../hooks";
+import { PanelProps } from "../types";
+import PanelNotFound from "./PanelNotFound";
+import PanelSkeleton from "./PanelSkeleton";
+import { StyledPanel } from "./StyledElements";
 
-function Panel({ node, spaceId }: PanelProps) {
-  const { spaces } = useSpaces(spaceId);
-  const panelName = node.type;
-  const panel = usePanel(panelName);
+function Panel(props: PanelProps) {
+  const { node } = props;
+  const panelName = node.type as string;
+  const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
+  const pending = fos.useTimeout(PANEL_LOADING_TIMEOUT);
+
+  const panelContentTestId = `panel-content-${panelName}`;
+
   if (!panel) {
-    spaces.removeNode(node);
-    return warnPanelNotFound(panelName);
+    return (
+      <StyledPanel data-cy={panelContentTestId}>
+        <CenteredStack>
+          {pending ? (
+            <PanelSkeleton />
+          ) : (
+            <PanelNotFound panelName={panelName} {...props} />
+          )}
+        </CenteredStack>
+      </StyledPanel>
+    );
   }
+
   const { component: Component } = panel;
 
   return (
-    <StyledPanel id={node.id} ref={dimensions.ref}>
+    <StyledPanel
+      id={node.id}
+      data-cy={panelContentTestId}
+      className={scrollable}
+      ref={dimensions.ref}
+    >
       <PanelContext.Provider value={{ node }}>
         <Component panelNode={node} dimensions={dimensions} />
       </PanelContext.Provider>

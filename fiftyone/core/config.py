@@ -9,11 +9,7 @@ FiftyOne config.
 import logging
 import multiprocessing
 import os
-
-try:
-    from importlib import metadata as importlib_metadata  # Python 3.8
-except ImportError:
-    import importlib_metadata  # Python < 3.8
+from importlib import metadata
 
 import pytz
 
@@ -235,6 +231,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.disable_websocket_info_logs = self.parse_bool(
+            d,
+            "disable_websocket_info_logs",
+            env_var="FIFTYONE_DISABLE_WEBSOCKET_INFO_LOGS",
+            default=True,
+        )
         self.do_not_track = self.parse_bool(
             d,
             "do_not_track",
@@ -262,11 +264,17 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.signed_url_cache_size = self.parse_int(
+            d,
+            "signed_url_cache_size",
+            env_var="FIFTYONE_SIGNED_URL_CACHE_SIZE",
+            default=1000,
+        )
         self.signed_url_expiration = self.parse_int(
             d,
             "signed_url_expiration",
             env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
-            default=24
+            default=24,
         )
 
         self._init()
@@ -388,6 +396,12 @@ class AppConfig(EnvConfig):
             d,
             "media_fallback",
             env_var="FIFTYONE_APP_MEDIA_FALLBACK",
+            default=False,
+        )
+        self.disable_frame_filtering = self.parse_bool(
+            d,
+            "disable_frame_filtering",
+            env_var="FIFTYONE_APP_DISABLE_FRAME_FILTERING",
             default=False,
         )
         self.multicolor_keypoints = self.parse_bool(
@@ -1112,9 +1126,7 @@ def _parse_env_value(value):
 
 def _get_installed_packages():
     try:
-        return set(
-            d.metadata["Name"] for d in importlib_metadata.distributions()
-        )
+        return set(d.metadata["Name"] for d in metadata.distributions())
     except:
         logger.debug("Failed to get installed packages")
         return set()

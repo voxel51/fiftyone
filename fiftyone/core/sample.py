@@ -18,7 +18,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-from fiftyone.core.readonly import mutates_data
+from fiftyone.internal.dataset_permissions import requires_can_edit
 from fiftyone.core.singletons import SampleSingleton
 
 
@@ -162,7 +162,7 @@ class _SampleMixin(object):
 
         return super().get_field(field_name)
 
-    @mutates_data
+    @requires_can_edit
     def set_field(
         self,
         field_name,
@@ -190,7 +190,7 @@ class _SampleMixin(object):
             dynamic=dynamic,
         )
 
-    @mutates_data
+    @requires_can_edit
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
@@ -211,7 +211,7 @@ class _SampleMixin(object):
             self, overwrite=overwrite, skip_failures=skip_failures
         )
 
-    @mutates_data
+    @requires_can_edit
     def add_labels(
         self,
         labels,
@@ -354,7 +354,7 @@ class _SampleMixin(object):
                 dynamic=dynamic,
             )
 
-    @mutates_data
+    @requires_can_edit
     def merge(
         self,
         sample,
@@ -608,7 +608,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         super().reload(hard=hard)
 
-    @mutates_data
+    @requires_can_edit
     def save(self):
         """Saves the sample to the database."""
         super().save()
@@ -797,7 +797,7 @@ class SampleView(_SampleMixin, DocumentView):
 
         return d
 
-    @mutates_data
+    @requires_can_edit
     def save(self):
         """Saves the sample view to the database.
 

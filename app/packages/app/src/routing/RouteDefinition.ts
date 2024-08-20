@@ -1,6 +1,10 @@
-import { Resource } from "@fiftyone/utilities";
-import { ConcreteRequest, OperationType, VariablesOf } from "relay-runtime";
-import { LocationState, Route } from ".";
+import type { Resource } from "@fiftyone/utilities";
+import type {
+  ConcreteRequest,
+  OperationType,
+  VariablesOf,
+} from "relay-runtime";
+import type { LocationState, Route } from ".";
 
 export interface RouteDefinition<T extends OperationType> {
   component: Resource<Route<T>>;

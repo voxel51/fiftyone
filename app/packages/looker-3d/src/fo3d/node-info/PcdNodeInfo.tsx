@@ -2,7 +2,7 @@ import { IconButton } from "@fiftyone/components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Typography } from "@mui/material";
 import { useSetRecoilState } from "recoil";
-import { FoSceneNode } from "../../hooks";
+import type { FoSceneNode } from "../../hooks";
 import { activeNodeAtom } from "../../state";
 import {
   NodeInfoBody,

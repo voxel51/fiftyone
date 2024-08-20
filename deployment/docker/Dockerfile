@@ -26,7 +26,7 @@
 #    -t "${INTERNAL_IMAGE_NAME}" --target internalrelease .
 
 
-ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.11
 ARG GPT_PLUGIN_IMAGE_NAME=fiftyone-app-gpt:local
 
 FROM python:${PYTHON_VERSION} as builder
@@ -36,7 +36,7 @@ COPY ./*.whl .
 COPY ./yarnrc.yml ~/.yarnrc.yml
 
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip wheel --wheel-dir=/tmp/wheels ./*.whl
+    && pip wheel --wheel-dir=/tmp/wheels ./*.whl umap-learn
 
 ### Internal Plugins Image
 FROM builder as internal-wheelhouse
@@ -48,7 +48,7 @@ RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
     && pip wheel --wheel-dir=/tmp/wheels \
     albumentations \
     darwin-fiftyone \
-    fiftyone=="${SDK_VERSION}" \
+    /tmp/wheels/fiftyone-*-py3-none-any.whl \
     pyperclip \
     sentence_transformers
 
@@ -90,7 +90,10 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
     pip --no-cache-dir install -q -U pip setuptools wheel \
-    && pip --no-cache-dir install -q --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    && pip --no-cache-dir install -q --pre --no-index \
+    --find-links=/builder/tmp/wheels \
+    fiftyone-teams-app \
+    umap-learn \
     && mkdir -p /opt/plugins \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /opt
 

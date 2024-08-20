@@ -4,21 +4,20 @@ import * as fos from "../..";
 
 export default function useHoveredSample(
   sample: Sample,
-  auxHandlers: any = {}
+  args?: { update?: () => void; clear?: () => void }
 ) {
   const setSample = useSetRecoilState(fos.hoveredSample);
-  const { update, clear } = auxHandlers;
   function onMouseEnter() {
     setSample(sample);
-    update && update();
+    args?.update?.();
   }
   function onMouseLeave() {
     setSample(null);
-    clear && clear();
+    args?.clear?.();
   }
   function onMouseMove() {
     setSample(sample);
-    update && update();
+    args?.update?.();
   }
 
   return { handlers: { onMouseEnter, onMouseLeave, onMouseMove } };

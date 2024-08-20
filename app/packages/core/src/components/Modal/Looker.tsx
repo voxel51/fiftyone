@@ -99,7 +99,9 @@ const Looker = ({
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
-  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const shouldRenderImaVidLooker = useRecoilValue(
+    fos.shouldRenderImaVidLooker(true)
+  );
   const setModalLooker = useSetRecoilState(fos.modalLooker);
   const { subscribeToImaVidStateChanges } = useInitializeImaVidSubscriptions();
 

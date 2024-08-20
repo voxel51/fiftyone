@@ -38,11 +38,15 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+
+from fiftyone.internal.dataset_permissions import (
+    requires_can_edit,
+    requires_can_tag,
+)
 
 fo = fou.lazy_import("fiftyone")
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -356,7 +360,7 @@ class SaveContext(object):
             By default, ``fo.config.default_batcher`` is used
     """
 
-    @mutates_data(data_obj_param="sample_collection")
+    @requires_can_edit(data_obj_param="sample_collection")
     def __init__(
         self,
         sample_collection,
@@ -373,9 +377,11 @@ class SaveContext(object):
         self._dataset = sample_collection._dataset
         self._sample_coll = sample_collection._dataset._sample_collection
         self._frame_coll = sample_collection._dataset._frame_collection
+        self._is_generated = sample_collection._is_generated
 
         self._sample_ops = []
         self._frame_ops = []
+        self._batch_ids = []
         self._reload_parents = []
 
         self._batching_strategy = batching_strategy
@@ -418,6 +424,9 @@ class SaveContext(object):
         if frame_ops:
             self._frame_ops.extend(frame_ops)
 
+        if updated and self._is_generated:
+            self._batch_ids.append(sample.id)
+
         if updated and isinstance(sample, fosa.SampleView):
             self._reload_parents.append(sample)
 
@@ -453,6 +462,10 @@ class SaveContext(object):
         if self._frame_ops:
             foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
             self._frame_ops.clear()
+
+        if self._batch_ids and self._is_generated:
+            self.sample_collection._sync_source(ids=self._batch_ids)
+            self._batch_ids.clear()
 
         if self._reload_parents:
             for sample in self._reload_parents:
@@ -520,6 +533,11 @@ class SampleCollection(object):
     def _readonly(self):
         """Whether this collection is read-only."""
         return self._dataset._readonly
+
+    @property
+    def _permission(self):
+        """Permission concern to be enforced for this collection"""
+        return self._dataset._permission
 
     @property
     def _is_generated(self):
@@ -854,17 +872,25 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
-    def stats(self, include_media=False, compressed=False):
+    def stats(
+        self,
+        include_media=False,
+        include_indexes=False,
+        compressed=False,
+    ):
         """Returns stats about the collection on disk.
 
         The ``samples`` keys refer to the sample documents stored in the
         database.
 
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
         The ``media`` keys refer to the raw media associated with each sample
         on disk.
 
-        For video datasets, the ``frames`` keys refer to the frame documents
-        stored in the database.
+        The ``index[es]`` keys refer to the indexes associated with the
+        dataset.
 
         Note that dataset-level metadata such as annotation runs are not
         included in this computation.
@@ -872,6 +898,8 @@ class SampleCollection(object):
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the collection
+            include_indexes (False): whether to include stats on the dataset's
+                indexes
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False). This option is
@@ -916,6 +944,24 @@ class SampleCollection(object):
             stats["media_bytes"] = media_bytes
             stats["media_size"] = etau.to_human_bytes_str(media_bytes)
             total_bytes += media_bytes
+
+        if include_indexes:
+            ii = self.get_index_information(include_stats=True)
+            index_bytes = {k: v["size"] for k, v in ii.items()}
+            indexes_bytes = sum(index_bytes.values())
+            indexes_in_progress = [
+                k for k, v in ii.items() if v.get("in_progress", False)
+            ]
+
+            stats["indexes_count"] = len(index_bytes)
+            stats["indexes_bytes"] = indexes_bytes
+            stats["indexes_size"] = etau.to_human_bytes_str(indexes_bytes)
+            stats["indexes_in_progress"] = indexes_in_progress
+            stats["index_bytes"] = index_bytes
+            stats["index_sizes"] = {
+                k: etau.to_human_bytes_str(v) for k, v in index_bytes.items()
+            }
+            total_bytes += indexes_bytes
 
         stats["total_bytes"] = total_bytes
         stats["total_size"] = etau.to_human_bytes_str(total_bytes)
@@ -1333,7 +1379,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    @mutates_data
+    @requires_can_edit
     def save_context(self, batch_size=None, batching_strategy=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
@@ -1982,7 +2028,7 @@ class SampleCollection(object):
                 "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
 
-    @mutates_data
+    @requires_can_tag
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
@@ -2018,7 +2064,7 @@ class SampleCollection(object):
             else:
                 raise e
 
-    @mutates_data
+    @requires_can_tag
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
@@ -2056,7 +2102,7 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
-    @mutates_data
+    @requires_can_tag
     def tag_labels(self, tags, label_fields=None):
         """Adds the tag(s) to all labels in the specified label field(s) of
         this collection, if necessary.
@@ -2113,7 +2159,7 @@ class SampleCollection(object):
             else:
                 raise e
 
-    @mutates_data
+    @requires_can_tag
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
@@ -2325,7 +2371,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
-    @mutates_data
+    @requires_can_edit
     def split_labels(self, in_field, out_field, filter=None):
         """Splits the labels from the given input field into the given output
         field of the collection.
@@ -2354,7 +2400,7 @@ class SampleCollection(object):
 
         move_view.merge_labels(in_field, out_field)
 
-    @mutates_data
+    @requires_can_edit
     def merge_labels(self, in_field, out_field):
         """Merges the labels from the given input field into the given output
         field of the collection.
@@ -2394,7 +2440,7 @@ class SampleCollection(object):
         else:
             dataset.delete_labels(ids=del_ids, fields=in_field)
 
-    @mutates_data
+    @requires_can_edit
     def set_values(
         self,
         field_name,
@@ -2707,7 +2753,7 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset.save()
 
-    @mutates_data
+    @requires_can_edit
     def set_label_values(
         self,
         field_name,
@@ -3599,7 +3645,7 @@ class SampleCollection(object):
 
                 sample_paths.extend(asset_paths)
 
-    @mutates_data
+    @requires_can_edit
     def apply_model(
         self,
         model,
@@ -3675,7 +3721,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data(condition_param="embeddings_field")
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_embeddings(
         self,
         model,
@@ -3754,7 +3800,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data(condition_param="embeddings_field")
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_patch_embeddings(
         self,
         model,
@@ -3856,7 +3902,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_regressions(
         self,
         pred_field,
@@ -3924,7 +3970,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_classifications(
         self,
         pred_field,
@@ -4003,7 +4049,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_detections(
         self,
         pred_field,
@@ -4137,7 +4183,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def evaluate_segmentations(
         self,
         pred_field,
@@ -4259,7 +4305,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
 
@@ -4317,7 +4363,7 @@ class SampleCollection(object):
             self, eval_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_evaluation(self, eval_key):
         """Deletes the evaluation results associated with the given evaluation
         key from this collection.
@@ -4327,7 +4373,7 @@ class SampleCollection(object):
         """
         foev.EvaluationMethod.delete_run(self, eval_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
@@ -4370,7 +4416,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
 
@@ -4430,7 +4476,7 @@ class SampleCollection(object):
             self, brain_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_brain_run(self, brain_key):
         """Deletes the brain method run with the given key from this
         collection.
@@ -4440,7 +4486,7 @@ class SampleCollection(object):
         """
         fob.BrainMethod.delete_run(self, brain_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
@@ -7331,7 +7377,7 @@ class SampleCollection(object):
             )
         )
 
-    @mutates_data(condition_param="dist_field")
+    @requires_can_edit(condition_param="dist_field")
     @view_stage
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
@@ -7736,7 +7782,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
-    @mutates_data(condition_param="sample_frames")
+    @requires_can_edit(condition_param="sample_frames")
     @view_stage
     def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
@@ -9367,7 +9413,7 @@ class SampleCollection(object):
             if tmp_dir is not None:
                 etau.delete_dir(tmp_dir)
 
-    @mutates_data
+    @requires_can_edit
     def annotate(
         self,
         anno_key,
@@ -9557,7 +9603,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
-    @mutates_data
+    @requires_can_edit
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
 
@@ -9623,7 +9669,7 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
-    @mutates_data
+    @requires_can_edit
     def load_annotations(
         self,
         anno_key,
@@ -9679,7 +9725,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    @mutates_data
+    @requires_can_edit
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
 
@@ -9696,7 +9742,7 @@ class SampleCollection(object):
         """
         foan.AnnotationMethod.delete_run(self, anno_key)
 
-    @mutates_data
+    @requires_can_edit
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
 
@@ -9723,12 +9769,16 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self):
+    def get_index_information(self, include_stats=False):
         """Returns a dictionary of information about the indexes on this
         collection.
 
         See :meth:`pymongo:pymongo.collection.Collection.index_information` for
         details on the structure of this dictionary.
+
+        Args:
+            include_stats (False): whether to include the size and build status
+                of each index
 
         Returns:
             a dict mapping index names to info dicts
@@ -9738,6 +9788,17 @@ class SampleCollection(object):
         # Sample-level indexes
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
+
+        if include_stats:
+            cs = self._dataset._sample_collstats()
+            for key, size in cs["indexSizes"].items():
+                if key in sample_info:
+                    sample_info[key]["size"] = size
+
+            for key in cs["indexBuilds"]:
+                if key in sample_info:
+                    sample_info[key]["in_progress"] = True
+
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
                 field = info["key"][0][0]
@@ -9749,6 +9810,17 @@ class SampleCollection(object):
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
+
+            if include_stats:
+                cs = self._dataset._frame_collstats()
+                for key, size in cs["indexSizes"].items():
+                    if key in frame_info:
+                        frame_info[key]["size"] = size
+
+                for key in cs["indexBuilds"]:
+                    if key in frame_info:
+                        frame_info[key]["in_progress"] = True
+
             for key, info in frame_info.items():
                 if len(info["key"]) == 1:
                     field = info["key"][0][0]
@@ -9759,6 +9831,8 @@ class SampleCollection(object):
         return index_info
 
     # Indexes don't count as mutation because they only exist in-memory
+    #   But non-editors shouldn't be allowed to create.
+    @requires_can_edit(enforce_readonly=False)
     def create_index(self, field_or_spec, unique=False, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
@@ -9885,7 +9959,9 @@ class SampleCollection(object):
 
         return name
 
-    # Indexes don't count as mutation because they only exist in-memory
+    # Indexes don't count as mutation because they only exist in-memory.
+    #   But non-editors shouldn't be allowed to drop.
+    @requires_can_edit(enforce_readonly=False)
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name.
 

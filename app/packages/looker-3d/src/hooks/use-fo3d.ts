@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import { Quaternion, Vector3 } from "three";
 import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
-import {
+import type {
   FiftyoneSceneRawJson,
   FoSceneBackground,
   FoSceneRawNode,

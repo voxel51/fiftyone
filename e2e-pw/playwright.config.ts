@@ -9,7 +9,9 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
-  timeout: Duration.Seconds(60),
+  timeout: process.env.USE_DEV_BUILD
+    ? Duration.Minutes(10)
+    : Duration.Seconds(60),
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

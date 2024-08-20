@@ -37,3 +37,11 @@ repos:
       - id: prettier
         exclude: ^docs/theme/
         language_version: system
+  - repo: local
+    hooks:
+      - id: frontend-check
+        name: biome check
+        entry: npx biome check --apply --files-ignore-unknown=true --no-errors-on-unmatched
+        language: system
+        types: [text]
+        files: "^app\\/packages\\/(app|spotlight)\\/.*\\.(css|html|json|md|ts)$"

@@ -7,7 +7,7 @@ import {
   useTheme,
 } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
-import { isElectron, scrollbarStyles } from "@fiftyone/utilities";
+import { isElectron, styles } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -40,16 +40,16 @@ const Code = styled.pre`
   border-radius: 3px;
   overflow: auto;
 
-  ${scrollbarStyles}
+  ${styles.scrollbarStyles}
 `;
 
 const port = (() => {
   if (isElectron()) {
-    return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+    return Number.parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
   }
 
   if (typeof window !== "undefined" && window.location.port !== undefined) {
-    return parseInt(window.location.port);
+    return Number.parseInt(window.location.port);
   }
 
   return "";
@@ -129,7 +129,7 @@ const SetupWrapper = styled.div`
   background: ${({ theme }) => theme.background.level2};
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 
-  ${scrollbarStyles};
+  ${styles.scrollbarStyles}
 `;
 
 const SetupContainer = styled.div`

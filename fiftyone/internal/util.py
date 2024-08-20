@@ -1,17 +1,16 @@
 """
 FiftyOne internal utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 import os
 
-from fiftyone.internal.constants import (
-    API_URL_ENV_VAR,
-    ENCRYPTION_KEY_ENV_VAR,
-)
+import fiftyone.core.config as foc
+
+from fiftyone.internal.constants import API_URL_ENV_VAR, ENCRYPTION_KEY_ENV_VAR
 
 
 def is_internal_service():
@@ -80,3 +79,21 @@ def get_session_cookie_name():
         else "next-auth.session-token"
     )
     return COOKIE_NAME
+
+
+def has_api_key():
+    config = foc.load_config()
+    return config.api_key is not None
+
+
+def access_nested_element(root, nested_attrs):
+    node = root
+    # Traverse nested attributes if any, get()ing or getattr()ing along the way.
+    for attr in nested_attrs:
+        if node is None:
+            break
+        elif isinstance(node, dict):
+            node = node.get(attr, None)
+        else:
+            node = getattr(node, attr, None)
+    return node

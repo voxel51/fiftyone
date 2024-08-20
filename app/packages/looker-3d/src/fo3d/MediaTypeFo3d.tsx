@@ -1,10 +1,9 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
-import { Canvas, RootState } from "@react-three/fiber";
+import { Canvas, type RootState } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
 import {
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -13,9 +12,9 @@ import {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import * as THREE from "three";
-import { PerspectiveCamera, Vector3 } from "three";
-import { Looker3dPluginSettings } from "../Looker3dPlugin";
+import type * as THREE from "three";
+import { type PerspectiveCamera, Vector3 } from "three";
+import type { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
@@ -24,10 +23,14 @@ import {
   SET_TOP_VIEW_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
-import { useFo3d, useHotkey } from "../hooks";
+import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
-import { activeNodeAtom, isFo3dBackgroundOnAtom } from "../state";
+import {
+  activeNodeAtom,
+  cameraPositionAtom,
+  isFo3dBackgroundOnAtom,
+} from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import Leva from "./Leva";
@@ -145,7 +148,10 @@ export const MediaTypeFo3dComponent = () => {
   const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
 
   const topCameraPosition = useMemo(() => {
-    if (!sceneBoundingBox || Math.abs(sceneBoundingBox.max.x) === Infinity) {
+    if (
+      !sceneBoundingBox ||
+      Math.abs(sceneBoundingBox.max.x) === Number.POSITIVE_INFINITY
+    ) {
       return DEFAULT_CAMERA_POSITION();
     }
 
@@ -173,11 +179,14 @@ export const MediaTypeFo3dComponent = () => {
     }
   }, [sceneBoundingBox, upVector]);
 
+  const overridenCameraPosition = useRecoilValue(cameraPositionAtom);
+
   const defaultCameraPositionComputed = useMemo(() => {
     /**
      * (todo: we should discard (2) since per-dataset camera position no longer makes sense)
      *
      * This is the order of precedence for the camera position:
+     * 0. If the user has set a camera position via operator by writing to `cameraPositionAtom`, use that
      * 1. If the user has set a default camera position in the scene itself, use that
      * 2. If the user has set a default camera position in the plugin settings, use that
      * 3. Compute a default camera position based on the bounding box of the scene
@@ -186,6 +195,14 @@ export const MediaTypeFo3dComponent = () => {
 
     if (isParsingFo3d) {
       return DEFAULT_CAMERA_POSITION();
+    }
+
+    if (overridenCameraPosition?.length === 3) {
+      return new Vector3(
+        overridenCameraPosition[0],
+        overridenCameraPosition[1],
+        overridenCameraPosition[2]
+      );
     }
 
     const defaultCameraPosition = foScene?.cameraProps.position;
@@ -206,7 +223,10 @@ export const MediaTypeFo3dComponent = () => {
       );
     }
 
-    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
+    if (
+      sceneBoundingBox &&
+      Math.abs(sceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
+    ) {
       const center = sceneBoundingBox.getCenter(new Vector3());
       const size = sceneBoundingBox.getSize(new Vector3());
 
@@ -233,7 +253,14 @@ export const MediaTypeFo3dComponent = () => {
     }
 
     return DEFAULT_CAMERA_POSITION();
-  }, [settings, isParsingFo3d, foScene, sceneBoundingBox, upVector]);
+  }, [
+    settings,
+    overridenCameraPosition,
+    isParsingFo3d,
+    foScene,
+    sceneBoundingBox,
+    upVector,
+  ]);
 
   const onCanvasCreated = useCallback((state: RootState) => {
     cameraRef.current = state.camera as PerspectiveCamera;
@@ -366,6 +393,8 @@ export const MediaTypeFo3dComponent = () => {
     }
   }, [foScene, onChangeView]);
 
+  useTrackStatus();
+
   if (isParsingFo3d) {
     return (
       <Canvas>
@@ -392,23 +421,21 @@ export const MediaTypeFo3dComponent = () => {
             pluginSettings: settings,
           }}
         >
-          <Suspense fallback={<SpinningCube />}>
-            <AdaptiveDpr pixelated />
-            <AdaptiveEvents />
-            <CameraControls ref={cameraControlsRef} makeDefault />
-            <Lights lights={foScene?.lights} />
-            <Gizmos />
+          <AdaptiveDpr pixelated />
+          <AdaptiveEvents />
+          <CameraControls ref={cameraControlsRef} makeDefault />
+          <Lights lights={foScene?.lights} />
+          <Gizmos />
 
-            {!isSceneInitialized && <SpinningCube />}
+          {!isSceneInitialized && <SpinningCube />}
 
-            <group ref={assetsGroupRef} visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
-            </group>
+          <group ref={assetsGroupRef} visible={isSceneInitialized}>
+            <FoSceneComponent scene={foScene} />
+          </group>
 
-            <StatusTunnel.Out />
+          <StatusTunnel.Out />
 
-            <ThreeDLabels sampleMap={{ fo3d: sample }} />
-          </Suspense>
+          <ThreeDLabels sampleMap={{ fo3d: sample }} />
         </Fo3dSceneContext.Provider>
       </Canvas>
       <StatusBarRootContainer>

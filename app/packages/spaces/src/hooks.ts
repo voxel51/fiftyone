@@ -1,6 +1,17 @@
-import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import {
+  PluginComponentType,
+  subscribeToRegistry,
+  useActivePlugins,
+} from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
   useRecoilCallback,
@@ -15,6 +26,7 @@ import {
   panelStateSelector,
   panelTitlesState,
   panelsCloseEffect,
+  panelsLoadingStateAtom,
   panelsStateAtom,
   previousTabsGroupAtom,
   spaceSelector,
@@ -103,6 +115,17 @@ export function usePanel(name: SpaceNodeType) {
   return panels.find((panel) => panel.name === name);
 }
 
+export function useReactivePanel(name: SpaceNodeType) {
+  const [_, setCount] = useState(0);
+  useEffect(() => {
+    return subscribeToRegistry(() => {
+      setCount((count) => count + 1); // trigger re-resolution of panels
+    });
+  }, []);
+  const panels = usePanels();
+  return panels.find((panel) => panel.name === name);
+}
+
 /**
  * Get and set title of a panel
  *
@@ -115,12 +138,42 @@ export function usePanelTitle(id?: string): [string, (title: string) => void] {
   const panelId = id || panelContext?.node?.id;
   const panelTitle = panelTitles.get(panelId);
 
-  function setPanelTitle(title: string) {
+  function setPanelTitle(title: string, id?: string) {
     const updatedPanelTitles = new Map(panelTitles);
-    updatedPanelTitles.set(panelId, title);
+    updatedPanelTitles.set(id || panelId, title);
     setPanelTitles(updatedPanelTitles);
   }
   return [panelTitle, setPanelTitle];
+}
+
+/**
+ * Get and set loading state of a panel
+ *
+ * Note: `id` is optional if hook is used within the component of a panel.
+ */
+export function usePanelLoading(
+  id?: string
+): [boolean, (loading: boolean, id?: string) => void] {
+  const panelContext = useContext(PanelContext);
+  const [panelsLoadingState, setPanelsLoadingState] = useRecoilState(
+    panelsLoadingStateAtom
+  );
+
+  const panelId = (id || panelContext?.node?.id) as string;
+  const panelLoading = Boolean(panelsLoadingState.get(panelId));
+
+  const setPanelLoading = useCallback(
+    (loading: boolean, id?: string) => {
+      setPanelsLoadingState((panelsLoading) => {
+        const updatedPanelsLoading = new Map(panelsLoading);
+        updatedPanelsLoading.set(id || panelId, loading);
+        return updatedPanelsLoading;
+      });
+    },
+    [panelId, setPanelsLoadingState]
+  );
+
+  return [panelLoading, setPanelLoading];
 }
 
 export function usePanelContext() {
@@ -147,6 +200,37 @@ export function usePanelState<T>(
   return [computedState, setState];
 }
 
+export function useSetPanelStateById<T>(local?: boolean) {
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (panelId: string, fn: (state: any) => any) => {
+        const panelState = await snapshot.getPromise(
+          panelStateSelector({ panelId, local })
+        );
+        const updatedValue = fn(panelState);
+        set(panelStateSelector({ panelId, local }), updatedValue);
+      },
+    []
+  );
+}
+
+export function usePanelId() {
+  const panelContext = usePanelContext();
+  const panelId = panelContext?.node?.id as string;
+  return panelId;
+}
+
+export function useSetCustomPanelState<T>(local?: boolean) {
+  const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
+  return (fn: (state: T) => T) => {
+    setPanelState((panelState) => {
+      const customPanelState = fn(panelState?.state || {});
+      const state = fn(customPanelState);
+      return { ...panelState, state };
+    });
+  };
+}
+
 /**
  * Can only be used within a panel component
  */
@@ -163,6 +247,22 @@ export function usePanelStateCallback<T>(
           panelStateSelector({ panelId, local })
         );
         callback(panelState);
+      },
+    []
+  );
+}
+
+export function usePanelStateByIdCallback<T>(
+  callback: (panelId: string, panelState: T, args: any[]) => void,
+  local?: boolean
+) {
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      async (panelId: string, ...args) => {
+        const panelState = await snapshot.getPromise(
+          panelStateSelector({ panelId, local })
+        );
+        callback(panelId, panelState, args as any[]);
       },
     []
   );

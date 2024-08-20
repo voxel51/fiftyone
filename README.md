@@ -132,11 +132,12 @@ to make adjustments. If you are working in Google Colab,
 
 You will need:
 
--   [Python](https://www.python.org) (3.7 or newer)
+-   [Python](https://www.python.org) (3.8 - 3.11)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
-    Yarn via `npm install -g yarn`
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
+    [enable Yarn](https://yarnpkg.com/getting-started/install) via
+    `corepack enable`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
     `libcurl3` instead of `libcurl`, depending on the age of your distribution.
@@ -154,27 +155,30 @@ sudo dnf install libcurl openssl
 
 We strongly recommend that you install FiftyOne in a
 [virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace. The install script is only supported in
-POSIX-based systems (e.g. Mac and Linux).
+to maintain a clean workspace.
 
 First, clone the repository:
 
 ```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
+git clone https://github.com/voxel51/fiftyone-teams
+cd fiftyone-teams
 ```
 
 Then run the install script:
 
 ```shell
+# Mac or Linux
 bash install.bash
+
+# Windows
+.\install.bat
 ```
 
 **NOTE:** If you run into issues importing FiftyOne, you may need to add the
 path to the cloned repository to your `PYTHONPATH`:
 
 ```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone-teams
 ```
 
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
@@ -203,7 +207,11 @@ you should perform a developer installation using the `-d` flag of the install
 script:
 
 ```shell
+# Mac or Linux
 bash install.bash -d
+
+# Windows
+.\install.bat -d
 ```
 
 Although not required, developers typically prefer to configure their FiftyOne
@@ -220,9 +228,15 @@ cell and then **restarting the runtime**:
 ```shell
 %%shell
 
-git clone --depth 1 https://github.com/voxel51/fiftyone.git
-cd fiftyone
+git clone --depth 1 https://github.com/voxel51/fiftyone-teams.git
+cd fiftyone-teams
+
+
+# Mac or Linux
 bash install.bash
+
+# Windows
+.\install.bat
 ```
 
 ### Docker installs
@@ -283,3 +297,5 @@ if you love it 😊):
   year={2020}
 }
 ```
+
+<!-- bump -->

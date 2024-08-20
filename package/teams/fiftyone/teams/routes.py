@@ -1,7 +1,7 @@
 """
 FiftyOne Teams Server routes.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,9 +17,11 @@ from fiftyone.server.routes import (
 )
 from fiftyone.operators.server import OperatorRoutes
 
+NEEDS_TAG = {
+    Tag: lambda _: True,
+}
 
 NEEDS_EDIT = {
-    Tag: lambda _: True,
     Sort: lambda v: v["extended"].get("dist_field", None) is not None,
 }
 

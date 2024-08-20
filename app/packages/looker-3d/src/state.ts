@@ -1,9 +1,19 @@
-import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
+import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { atom } from "recoil";
+import { atom, atomFamily } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
-import { FoSceneNode } from "./hooks";
-import { Actions, ShadeBy } from "./types";
+import type { FoSceneNode } from "./hooks";
+import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
+
+export const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
+  key: "fo3d-assetsParseStatusLog",
+  default: [],
+});
+
+export const cameraPositionAtom = atom<[number, number, number] | null>({
+  key: "fo3d-cameraPosition",
+  default: null,
+});
 
 export const shadeByAtom = atom<ShadeBy>({
   key: "fo3d-shadeBy",
@@ -116,4 +126,24 @@ export const isStatusBarOnAtom = atom<boolean>({
 export const activeNodeAtom = atom<FoSceneNode>({
   key: "fo3d-activeNode",
   default: null,
+});
+
+export const cuboidLabelLineWidthAtom = atom({
+  key: "fo3d-cuboidLabelLineWidth",
+  default: 3,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-cuboidLabelLineWidth", {
+      valueClass: "number",
+    }),
+  ],
+});
+
+export const polylineLabelLineWidthAtom = atom({
+  key: "fo3d-polylineLabelLineWidth",
+  default: 3,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-polylineLabelLineWidth", {
+      valueClass: "number",
+    }),
+  ],
 });

@@ -1,13 +1,13 @@
 import {
-  BufferAttribute,
-  InterleavedBufferAttribute,
+  type BufferAttribute,
+  type InterleavedBufferAttribute,
   Quaternion,
   Vector3,
-  Vector3Tuple,
-  Vector4Tuple,
+  type Vector3Tuple,
+  type Vector4Tuple,
 } from "three";
 import { COLOR_POOL } from "./constants";
-import { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
+import type { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
 
 export type FoSceneRawNode = {
   _type: string;
@@ -107,11 +107,11 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   let unknownCount = 0;
 
   for (const child of scene.children) {
-    if (child["_type"].endsWith("Mesh")) {
+    if (child._type.endsWith("Mesh")) {
       meshCount += 1;
-    } else if (child["_type"].endsWith("PointCloud")) {
+    } else if (child._type.endsWith("PointCloud")) {
       pointcloudCount += 1;
-    } else if (child["_type"].endsWith("Geometry")) {
+    } else if (child._type.endsWith("Geometry")) {
       shapeCount += 1;
     } else {
       unknownCount += 1;

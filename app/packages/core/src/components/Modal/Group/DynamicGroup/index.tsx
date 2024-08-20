@@ -3,16 +3,13 @@ import React, { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
-import { useDynamicGroupSamples } from "./useDynamicGroupSamples";
 
 export const DynamicGroup = () => {
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
-  const { queryRef } = useDynamicGroupSamples();
-
-  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
-    fos.dynamicGroupsViewMode
+    fos.dynamicGroupsViewMode(true)
   );
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
 
@@ -37,15 +34,7 @@ export const DynamicGroup = () => {
     if (dynamicGroupsViewMode === "video" && !isOrderedDynamicGroup) {
       setDynamicGroupsViewMode("pagination");
     }
-  }, [dynamicGroupsViewMode, isOrderedDynamicGroup]);
+  }, [dynamicGroupsViewMode, isOrderedDynamicGroup, setDynamicGroupsViewMode]);
 
-  return (
-    <>
-      {hasGroupSlices ? (
-        <NestedGroup queryRef={queryRef} />
-      ) : (
-        <NonNestedDynamicGroup queryRef={queryRef} />
-      )}
-    </>
-  );
+  return hasGroupSlices ? <NestedGroup /> : <NonNestedDynamicGroup />;
 };

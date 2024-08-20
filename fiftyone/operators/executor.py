@@ -8,24 +8,29 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
+import contextlib
 import inspect
 import logging
 import os
 import traceback
+
+from typing import Optional
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.internal.api_requests import resolve_operation_user
+import fiftyone.internal.context_vars as ficv
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
+from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
-
 
 logger = logging.getLogger(__name__)
 
@@ -201,33 +206,39 @@ def _parse_ctx(ctx=None, **kwargs):
     return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
-# request token and user are teams-only
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
-    operator_uri, request_params, request_token=None, user=None, exhaust=False
+    operator_uri,
+    request_params,
+    exhaust=False,
+    request_token=None,  # teams-only
 ):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
-        request_token (None): the authentication token from the request
-        user (None): the user executing the operator
         exhaust (False): whether to immediately exhaust generator operators
+        request_token (None): the authentication token from the request
 
     Returns:
         an :class:`ExecutionResult`
     """
     prepared = await prepare_operator_executor(
-        operator_uri, request_params, request_token=request_token, user=user
+        operator_uri,
+        request_params,
+        request_token=request_token,  # teams-only
     )
 
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
-        operator, executor, ctx = prepared
+        operator, executor, ctx, inputs = prepared
 
-    execution_options = operator.resolve_execution_options(ctx)
+    # User code
+    with ctx:
+        execution_options = operator.resolve_execution_options(ctx)
+
     if (
         not execution_options.allow_immediate_execution
         and not execution_options.allow_delegated_execution
@@ -236,9 +247,13 @@ async def execute_or_delegate_operator(
             "This operation does not support immediate OR delegated execution"
         )
 
-    should_delegate = (
-        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
-    )
+    # User code
+    with ctx:
+        should_delegate = (
+            operator.resolve_delegation(ctx)
+            or ctx.requesting_delegated_execution
+        )
+
     if should_delegate:
         if not execution_options.allow_delegated_execution:
             logger.warning(
@@ -258,11 +273,21 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            metadata = {"inputs_schema": None, "outputs_schema": None}
+
+            try:
+                metadata["inputs_schema"] = inputs.to_json()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to resolve inputs schema for the operation: {str(e)}"
+                )
+
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=ctx.delegation_target,
                 label=operator.name,
+                metadata=metadata,
             )
 
             execution = ExecutionResult(
@@ -274,16 +299,20 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except:
+        except Exception as error:
             return ExecutionResult(
-                executor=executor, error=traceback.format_exc()
+                executor=executor,
+                error=traceback.format_exc(),
+                error_message=str(error),
             )
 
         return ExecutionResult(result=result, executor=executor)
@@ -294,8 +323,8 @@ async def prepare_operator_executor(
     request_params,
     set_progress=None,
     delegated_operation_id=None,
-    request_token=None,
-    user=None,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -303,6 +332,13 @@ async def prepare_operator_executor(
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params=request_params,
         executor=executor,
@@ -310,45 +346,78 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
-        user=user,
+        user=execution_context_user,  # teams-only
     )
 
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
     )
-    inputs = operator.resolve_input(ctx)
+
+    # User code
+    with ctx:
+        inputs = operator.resolve_input(ctx)
+
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
             error="Validation error", validation_ctx=validation_ctx
         )
 
-    return operator, executor, ctx
+    return operator, executor, ctx, inputs
+
+
+def _context_generator(ctx, generator):
+    # Note: Manually iterating through generator because for-in did not
+    #   play nicely with the context vars. The context would only be
+    #   set for the first element and none others.
+    while True:
+        with ctx:
+            try:
+                yield next(generator)
+            except StopIteration:
+                break
+
+
+async def _context_async_generator(ctx, generator):
+    with ctx:
+        async for item in generator:
+            yield item
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
-    result = await (
-        operator.execute(ctx)
-        if asyncio.iscoroutinefunction(operator.execute)
-        else fou.run_sync_task(operator.execute, ctx)
-    )
+    # User code
+    with ctx:
+        result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else fou.run_sync_task(operator.execute, ctx)
+        )
 
-    if not exhaust:
-        return result
+        if inspect.isgenerator(result):
+            if exhaust:
+                # Fastest way to exhaust sync generator, re: itertools consume()
+                #   https://docs.python.org/3/library/itertools.html
+                collections.deque(result, maxlen=0)
+            else:
+                return _context_generator(ctx, result)
+        elif inspect.isasyncgen(result):
+            if exhaust:
+                async for _ in result:
+                    pass
+            else:
+                return _context_async_generator(ctx, result)
+        else:
+            return result
 
-    if inspect.isgenerator(result):
-        # Fastest way to exhaust sync generator, re: itertools consume()
-        #   https://docs.python.org/3/library/itertools.html
-        collections.deque(result, maxlen=0)
-    elif inspect.isasyncgen(result):
-        async for _ in result:
-            pass
-    else:
-        return result
+        return None
 
 
 async def resolve_type(
-    registry, operator_uri, request_params, request_token=None
+    registry,
+    operator_uri,
+    request_params,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
 ):
     """Resolves the inputs property type of the operator with the given name.
 
@@ -365,24 +434,53 @@ async def resolve_type(
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,  # teams-only
     )
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
     )
     try:
-        return operator.resolve_type(
-            ctx, request_params.get("target", "inputs")
-        )
+        # User code
+        with ctx:
+            return operator.resolve_type(
+                ctx, request_params.get("target", "inputs")
+            )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
 
+async def resolve_type_with_context(request_params, target: str = None):
+    """Resolves the "inputs" or "outputs" schema of an operator with the given
+    context.
+
+    Args:
+        request_params: a dictionary of request parameters
+        target (None): the target schema ("inputs" or "outputs")
+
+    Returns:
+        the schema of "inputs" or "outputs"
+        :class:`fiftyone.operators.types.Property` of an operator, or None
+    """
+    computed_target = target or request_params.get("target", None)
+    computed_request_params = {**request_params, "target": computed_target}
+    operator_uri = request_params.get("operator_uri", None)
+    registry = OperatorRegistry()
+    return await resolve_type(registry, operator_uri, computed_request_params)
+
+
 async def resolve_execution_options(
-    registry, operator_uri, request_params, request_token=None
+    registry, operator_uri, request_params, request_token=None, user=None
 ):
     """Resolves the execution options of the operator with the given name.
 
@@ -400,10 +498,18 @@ async def resolve_execution_options(
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
@@ -414,7 +520,11 @@ async def resolve_execution_options(
         search_params = {}
         search_params[operator.uri] = ["available_operators"]
         matching_orcs = orc_svc.list(search=search_params)
-        execution_options = operator.resolve_execution_options(ctx)
+
+        # User code
+        with ctx:
+            execution_options = operator.resolve_execution_options(ctx)
+
         execution_options.update(available_orchestrators=matching_orcs)
         return execution_options
 
@@ -422,7 +532,9 @@ async def resolve_execution_options(
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_placement(operator, request_params):
+async def resolve_placement(
+    operator, request_params, request_token=None, user=None
+):
     """Resolves the placement of the operator with the given name.
 
     Args:
@@ -432,18 +544,80 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator.uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
     try:
-        return operator.resolve_placement(ctx)
+        # User code
+        with ctx:
+            return operator.resolve_placement(ctx)
     except Exception as e:
         return ExecutionResult(error=str(e))
 
 
-class ExecutionContext(object):
+class ExecutionContextUser(object):
+    """Represents the user executing the operator.
+
+    Args:
+        name (None): the user name
+        id (None): the user ID
+        email (None): the user email
+        role (None): the user role
+        dataset_permission (None): the dataset permission
+    """
+
+    def __init__(
+        self,
+        email=None,
+        id=None,
+        name=None,
+        role=None,
+        dataset_permission=None,
+        _request_token=None,
+    ):
+        self.email = email
+        self.id = id
+        self.name = name
+        self.role = role
+        self.dataset_permission = dataset_permission
+        self._request_token = _request_token
+
+    @classmethod
+    def from_dict(self, user):
+        return ExecutionContextUser(
+            email=user.get("email", None),
+            id=user.get("id", None),
+            name=user.get("name", None),
+            role=user.get("role", None),
+            dataset_permission=user.get("dataset_permission", None),
+            _request_token=user.get("_request_token"),
+        )
+
+    def to_dict(self):
+        return {
+            "email": self.email,
+            "id": self.id,
+            "name": self.name,
+            "role": self.role,
+            "dataset_permission": self.dataset_permission,
+            # Do not serialize _request_token field
+        }
+
+    def serialize(self):
+        return self.to_dict()
+
+
+class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
 
     Operators can use the execution context to access the view, dataset, and
@@ -467,18 +641,18 @@ class ExecutionContext(object):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
-        user=None,
+        user: ExecutionContextUser = None,
         operator_uri=None,
         required_secrets=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self.user = user
 
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
-        self.user = user
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -491,6 +665,11 @@ class ExecutionContext(object):
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
             )
+        if self.panel_id:
+            self._panel_state = self.params.get("panel_state", {})
+            self._panel = PanelRef(self)
+
+        self.__context_tokens = None
 
     @property
     def dataset(self):
@@ -561,6 +740,13 @@ class ExecutionContext(object):
     def target_view(self, param_name="view_target"):
         """The target :class:`fiftyone.core.view.DatasetView` for the operator
         being executed.
+
+        Args:
+            param_name ("view_target"): the name of the enum parameter defining
+                the target view choice
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name, None)
         if target == "SELECTED_SAMPLES":
@@ -602,6 +788,11 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def extended_selection(self):
+        """The extended selection of the view (if any)."""
+        return self.request_params.get("extended_selection", None)
+
+    @property
     def current_sample(self):
         """The ID of the current sample being processed (if any).
 
@@ -609,6 +800,34 @@ class ExecutionContext(object):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def user_id(self):
+        """The ID of the user executing the operation, if known."""
+        return self.user.id if self.user else None
+
+    @property
+    def panel_id(self):
+        """The ID of the panel that invoked the operator, if any."""
+        # @todo: move panel_id to top level param
+        return self.params.get("panel_id", None)
+
+    @property
+    def panel_state(self):
+        """The current panel state.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel_state
+
+    @property
+    def panel(self):
+        """A :class:`fiftyone.operators.panel.PanelRef` instance that you can
+        use to read and write the state and data of the current panel.
+
+        Only available when the operator is invoked from a panel.
+        """
+        return self._panel
 
     @property
     def delegated(self):
@@ -646,6 +865,73 @@ class ExecutionContext(object):
         you can use to trigger builtin operations on the current context.
         """
         return self._ops
+
+    @property
+    def user_request_token(self) -> Optional[str]:
+        """The request token authenticating the user executing the operation."""
+        return self.user._request_token if self.user else None
+
+    def __enter__(self):
+        if self.__context_tokens:
+            raise RuntimeError(
+                "ExecutionContext can't run with nested with expressions"
+            )
+
+        self.__context_tokens = [
+            ficv.running_user_id.set(self.user_id),
+            ficv.running_user_request_token.set(self.user_request_token),
+            ficv.no_singleton_cache.set(True),
+        ]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            (
+                running_uid_tok,
+                running_user_request_token,
+                singleton_token,
+            ) = self.__context_tokens
+            self.__context_tokens = None
+            ficv.running_user_id.reset(running_uid_tok)
+            ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.no_singleton_cache.reset(singleton_token)
+        except ValueError:
+            # In case of any error, swallow and just reset to defaults.
+            ficv.running_user_id.set(None)
+            ficv.running_user_request_token.set(None)
+            ficv.no_singleton_cache.set(False)
+
+    def prompt(
+        self,
+        operator_uri,
+        params=None,
+        on_success=None,
+        on_error=None,
+    ):
+        """Prompts the user to execute the operator with the given URI.
+
+        Args:
+            operator_uri: the URI of the operator
+            params (None): a dictionary of parameters for the operator
+            on_success (None): a callback to invoke if the user successfully
+                executes the operator
+            on_error (None): a callback to invoke if the execution fails
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to prompt the user
+        """
+        return self.trigger(
+            "prompt_user_for_operation",
+            params=_convert_callables_to_operator_uris(
+                {
+                    "operator_uri": operator_uri,
+                    "panel_id": self.panel_id,
+                    "params": params,
+                    "on_success": on_success,
+                    "on_error": on_error,
+                }
+            ),
+        )
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -733,24 +1019,6 @@ class ExecutionContext(object):
         """
         return self.trigger("console_log", {"message": message})
 
-    def serialize(self):
-        """Serializes the execution context.
-
-        Returns:
-            a JSON dict
-        """
-        return {
-            "request_params": self.request_params,
-            "params": self.params,
-            "user": self.user,
-        }
-
-    def to_dict(self):
-        """Returns the properties of the execution context as a dict."""
-        return {
-            k: v for k, v in self.__dict__.items() if not k.startswith("_")
-        }
-
     def set_progress(self, progress=None, label=None):
         """Sets the progress of the current operation.
 
@@ -766,6 +1034,24 @@ class ExecutionContext(object):
         else:
             self.log(f"Progress: {progress} - {label}")
 
+    def serialize(self):
+        """Serializes the execution context.
+
+        Returns:
+            a JSON dict
+        """
+        return {
+            "request_params": self.request_params,
+            "params": self.params,
+            "user": self.user_id,
+        }
+
+    def to_dict(self):
+        """Returns the properties of the execution context as a dict."""
+        return {
+            k: v for k, v in self.__dict__.items() if not k.startswith("_")
+        }
+
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
@@ -773,9 +1059,12 @@ class ExecutionResult(object):
     Args:
         result (None): the execution result
         executor (None): an :class:`Executor`
-        error (None): an error message
+        error (None): an error traceback, if an error occurred
+        error_message (None): an error message, if an error occurred
         validation_ctx (None): a :class:`ValidationContext`
         delegated (False): whether execution was delegated
+        outputs_schema (None): a JSON dict representing the output schema of
+            the operator
     """
 
     def __init__(
@@ -783,14 +1072,18 @@ class ExecutionResult(object):
         result=None,
         executor=None,
         error=None,
+        error_message=None,
         validation_ctx=None,
         delegated=False,
+        outputs_schema=None,
     ):
         self.result = result
         self.executor = executor
         self.error = error
+        self.error_message = error_message
         self.validation_ctx = validation_ctx
         self.delegated = delegated
+        self.outputs_schema = outputs_schema
 
     @property
     def is_generator(self):
@@ -835,10 +1128,12 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "error_message": self.error_message,
             "delegated": self.delegated,
             "validation_ctx": (
                 self.validation_ctx.to_json() if self.validation_ctx else None
             ),
+            "outputs_schema": self.outputs_schema,
         }
 
 
@@ -882,6 +1177,7 @@ class ValidationContext(object):
         ctx: the :class:`ExecutionContext`
         inputs_property: the :class:`fiftyone.operators.types.Property` of the
             operator inputs
+        operator: the :class:`fiftyone.operators.operator.Operator`
     """
 
     def __init__(self, ctx, inputs_property, operator):
@@ -1071,6 +1367,15 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+# TODO: move to utils
+def _convert_callables_to_operator_uris(d):
+    updated = {**d}
+    for key, value in updated.items():
+        if callable(value):
+            updated[key] = f"{value.__self__.uri}#{value.__name__}"
+    return updated
 
 
 class ExecutionOptions(object):

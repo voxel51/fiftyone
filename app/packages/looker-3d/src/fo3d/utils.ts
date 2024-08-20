@@ -1,4 +1,4 @@
-import { ModalSample } from "@fiftyone/state";
+import type { ModalSample } from "@fiftyone/state";
 import { PathType, determinePathType } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
@@ -10,9 +10,9 @@ import {
   MeshStandardMaterial,
   PointsMaterial,
   Vector3,
-  Vector3Tuple,
+  type Vector3Tuple,
 } from "three";
-import {
+import type {
   FoMeshBasicMaterialProps,
   FoMeshLambertMaterialProps,
   FoMeshPhongMaterialProps,
@@ -153,7 +153,7 @@ export const getFo3dRoot = (fo3dUrl: string) => {
   }
 
   // remove filename and the last slash to get the root
-  const root = filepath.replace(/\/[^\/]*\.fo3d$/, "/");
+  const root = filepath.replace(/(\/[^/]*\.fo3d$|\\[^\\]*\.fo3d$)/, "/");
 
   return root;
 };

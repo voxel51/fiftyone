@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Mesh, PlaneGeometry, Quaternion, Vector3 } from "three";
-import { PlaneGeometryAsset } from "../../hooks";
+import { Mesh, PlaneGeometry, type Quaternion, type Vector3 } from "three";
+import type { PlaneGeometryAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 
 const DEFAULT_SEGMENTS = 3;

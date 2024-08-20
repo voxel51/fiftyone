@@ -706,6 +706,8 @@ class COCODetectionDatasetExporter(
             -   ``True``: export all extra attributes found
             -   ``False``: do not export extra attributes
             -   a name or list of names of specific attributes to export
+        coco_id (None): the name of a sample field containing the COCO IDs of
+            each image
         annotation_id (None): the name of a label field containing the COCO
             annotation ID of each label
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
@@ -731,6 +733,7 @@ class COCODetectionDatasetExporter(
         categories=None,
         info=None,
         extra_attrs=True,
+        coco_id=None,
         annotation_id=None,
         iscrowd="iscrowd",
         num_decimals=None,
@@ -761,12 +764,14 @@ class COCODetectionDatasetExporter(
         self.categories = categories
         self.info = info
         self.extra_attrs = extra_attrs
+        self.coco_id = coco_id
         self.annotation_id = annotation_id
         self.iscrowd = iscrowd
         self.num_decimals = num_decimals
         self.tolerance = tolerance
 
         self._image_id = None
+        self._image_id_map = None
         self._anno_id = None
         self._images = None
         self._annotations = None
@@ -805,6 +810,11 @@ class COCODetectionDatasetExporter(
         if self.info is None:
             self.info = sample_collection.info
 
+        if self.coco_id is not None:
+            self._image_id_map = dict(
+                zip(*sample_collection.values(["filepath", self.coco_id]))
+            )
+
     def export_sample(self, image_or_path, label, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
 
@@ -816,12 +826,24 @@ class COCODetectionDatasetExporter(
         else:
             file_name = uuid
 
-        # @todo would be nice to support using existing COCO ID here
-        self._image_id += 1
+        if self._image_id_map is not None:
+            image_id = self._image_id_map.get(image_or_path, None)
+            if image_id is None:
+                msg = (
+                    "Ignoring sample with filepath '%s' that has no image ID"
+                    % image_or_path
+                )
+                warnings.warn(msg)
+                return
+
+            image_id = int(image_id)
+        else:
+            self._image_id += 1
+            image_id = self._image_id
 
         self._images.append(
             {
-                "id": self._image_id,
+                "id": image_id,
                 "file_name": file_name,
                 "height": metadata.height,
                 "width": metadata.width,
@@ -869,7 +891,7 @@ class COCODetectionDatasetExporter(
             obj = COCOObject.from_label(
                 label,
                 metadata,
-                image_id=self._image_id,
+                image_id=image_id,
                 category_id=category_id,
                 extra_attrs=self.extra_attrs,
                 id_attr=self.annotation_id,

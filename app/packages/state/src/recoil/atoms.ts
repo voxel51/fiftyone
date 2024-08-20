@@ -288,12 +288,12 @@ export const lookerPanels = atom({
   },
 });
 
-export const onlyPcd = selector<boolean>({
-  key: "onlyPcd",
+export const only3d = selector<boolean>({
+  key: "only3d",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return set.size === 1 && hasPcd;
+    const has3d = set.has("point_cloud") || set.has("three_d");
+    return set.size === 1 && has3d;
   },
 });
 
@@ -305,17 +305,32 @@ export const theme = atom<"dark" | "light">({
 
 export const canEditSavedViews = sessionAtom({
   key: "canEditSavedViews",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canEditWorkspaces = sessionAtom({
   key: "canEditWorkspaces",
-  default: true,
+  default: { enabled: true, message: null },
 });
 
 export const canEditCustomColors = sessionAtom({
   key: "canEditCustomColors",
-  default: true,
+  default: { enabled: true, message: null },
+});
+
+export const canCreateNewField = sessionAtom({
+  key: "canCreateNewField",
+  default: { enabled: true, message: null },
+});
+
+export const canModifySidebarGroup = sessionAtom({
+  key: "canModifySidebarGroup",
+  default: { enabled: true, message: null },
+});
+
+export const canTagSamplesOrLabels = sessionAtom({
+  key: "canTagSamplesOrLabels",
+  default: { enabled: true, message: null },
 });
 
 export const readOnly = sessionAtom({
@@ -351,4 +366,9 @@ export const hideNoneValuedFields = atom<boolean>({
 export const noneValuedPaths = atom<Record<string, Set<string>>>({
   key: "noneValuedPaths",
   default: {},
+});
+
+export const escapeKeyHandlerIdsAtom = atom<Set<string>>({
+  key: "escapeKeyHandlerIdsAtom",
+  default: new Set(),
 });

@@ -532,8 +532,8 @@ describe("hiddenNoneGroups selector", () => {
 
     // test null
     setMockAtoms({
-      activePcdSlices: ["one", "two"],
-      activePcdSlicesToSampleMap: {
+      active3dSlices: ["one", "two"],
+      active3dSlicesToSampleMap: {
         one: {
           sample: {},
         },
@@ -548,8 +548,8 @@ describe("hiddenNoneGroups selector", () => {
 
     // test null and present
     setMockAtoms({
-      activePcdSlices: ["one", "two"],
-      activePcdSlicesToSampleMap: {
+      active3dSlices: ["one", "two"],
+      active3dSlicesToSampleMap: {
         one: {
           sample: {},
         },

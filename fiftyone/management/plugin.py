@@ -1,7 +1,7 @@
 """
 Plugin management.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -502,21 +502,21 @@ def set_plugin_operator_permissions(
         operator_name = "special-operator"
 
         # Set minimum role permission only
-        fom.set_plugin_operator_enabled(
+        fom.set_plugin_operator_permissions(
             plugin_name,
             operator_name,
             minimum_role=fom.MEMBER
             )
 
         # Set minimum dataset permission only
-        fom.set_plugin_operator_enabled(
+        fom.set_plugin_operator_permissions(
             plugin_name,
             operator_name,
             minimum_dataset_permission=fom.EDIT
         )
 
         # Set both minimum role and minimum dataset permissions
-        fom.set_plugin_operator_enabled(
+        fom.set_plugin_operator_permissions(
             plugin_name,
             operator_name,
             minimum_role=fom.EDIT,

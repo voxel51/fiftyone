@@ -19,6 +19,7 @@ rather than a local directory by passing the extra ``--basedir`` argument::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import argparse
 import os
 import pathlib

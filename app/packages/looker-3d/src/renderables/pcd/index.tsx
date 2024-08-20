@@ -1,6 +1,6 @@
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
-import * as THREE from "three";
+import type * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import {
   PCD_SHADING_GRADIENTS,
@@ -9,11 +9,10 @@ import {
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
 } from "../../constants";
-import { ShadeBy } from "../../types";
+import type { ShadeBy } from "../../types";
 import { computeMinMaxForColorBufferAttribute } from "../../utils";
 import {
   CustomColorShader,
-  Gradients,
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
@@ -64,6 +63,7 @@ export const PointCloudMesh = ({
   }, [pointsGeometry]);
 
   useEffect(() => {
+    points;
     if (!boundingBox) {
       return;
     }

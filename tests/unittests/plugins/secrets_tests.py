@@ -1,14 +1,22 @@
+"""
+FiftyOne plugin secrets tests.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import os
+import pytest
 import unittest
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 import fiftyone.plugins as fop
 from fiftyone.internal import secrets as fois
 from fiftyone.internal.secrets import UnencryptedSecret
 from fiftyone.operators import Operator
 from fiftyone.operators.executor import ExecutionContext
+
 
 SECRET_KEY = "MY_SECRET_KEY"
 SECRET_KEY2 = "MY_SECRET_KEY2"

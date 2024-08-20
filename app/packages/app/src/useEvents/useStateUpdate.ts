@@ -1,8 +1,10 @@
+import type { EventHandlerHook } from "./registerEvent";
+
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { getDatasetName, getParam, resolveURL } from "../utils";
-import { AppReadyState, EventHandlerHook } from "./registerEvent";
+import { AppReadyState } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -13,7 +15,7 @@ const useStateUpdate: EventHandlerHook = ({
   const setReadyState = useSetRecoilState(appReadyState);
 
   return useCallback(
-    (payload: any) => {
+    (payload: { state: { [key: string]: unknown } }) => {
       const state = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
@@ -21,12 +23,18 @@ const useStateUpdate: EventHandlerHook = ({
         currentSearch: router.history.location.search,
         nextDataset: stateless
           ? getDatasetName()
-          : payload.state.dataset ?? null,
-        nextView: stateless ? getParam("view") : payload.state.saved_view_slug,
+          : (payload.state.dataset as string) ?? null,
+        nextView: stateless
+          ? getParam("view") || undefined
+          : (payload.state.saved_view_slug as string),
         extra: {
+          groupId: state.modalSelector?.groupId || null,
+          id: state.modalSelector?.id || null,
+          slice: stateless ? getParam("slice") : state.groupSlice || null,
           workspace: state.workspace?._name || null,
         },
       });
+
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));

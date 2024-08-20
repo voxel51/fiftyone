@@ -18,10 +18,11 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
+
+from fiftyone.internal.dataset_permissions import requires_can_edit
 
 
 _PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
@@ -37,14 +38,21 @@ class _PatchView(fos.SampleView):
     def _frame_id(self):
         return ObjectId(self._doc.frame_id)
 
-    def _save(self, deferred=False):
-        if deferred:
-            raise NotImplementedError(
-                "Patches views do not support save contexts"
-            )
+    @property
+    def _readonly(self):
+        return self._collection._readonly
 
-        super()._save(deferred=deferred)
-        self._view._sync_source_sample(self)
+    @property
+    def _permission(self):
+        return self._collection._permission
+
+    def _save(self, deferred=False):
+        sample_ops, frame_ops = super()._save(deferred=deferred)
+
+        if not deferred:
+            self._view._sync_source_sample(self)
+
+        return sample_ops, frame_ops
 
 
 class PatchView(_PatchView):
@@ -128,6 +136,14 @@ class _PatchesView(fov.DatasetView):
     @property
     def _dataset(self):
         return self._patches_dataset
+
+    @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
 
     @property
     def _root_dataset(self):
@@ -225,7 +241,7 @@ class _PatchesView(fov.DatasetView):
 
         return zip(*id_map.items())
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -233,7 +249,7 @@ class _PatchesView(fov.DatasetView):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
         if must_sync and self._stages:
-            ids = self.values("_id")
+            ids = self.values("id")
         else:
             ids = None
 
@@ -242,7 +258,7 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_field(field, ids=ids)
         self._sync_source_field_schema(field_name)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -258,7 +274,7 @@ class _PatchesView(fov.DatasetView):
                 _field_name, *args, **kwargs
             )
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
 
@@ -288,9 +304,9 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in fields if l in self._label_fields]
 
-        self._sync_source_root(fields)
+        self._sync_source(fields=fields)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep(self):
         """Deletes all patches that are **not** in this view from the
         underlying dataset.
@@ -304,11 +320,11 @@ class _PatchesView(fov.DatasetView):
 
         # The `keep()` operation below will delete patches, so we must sync
         # deletions to the source dataset first
-        self._sync_source_root(self._label_fields, update=False, delete=True)
+        self._sync_source(update=False, delete=True)
 
         super().keep()
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep_fields(self):
         """Deletes all patch field(s) that have been excluded from this view
         from the underlying dataset.
@@ -360,24 +376,47 @@ class _PatchesView(fov.DatasetView):
 
         self._source_collection._set_labels(field, [sample_id], [doc])
 
-    def _sync_source_field(self, field, ids=None):
+    def _sync_source(self, fields=None, ids=None, update=True, delete=False):
+        if fields is not None:
+            fields = [f for f in fields if f in self._label_fields]
+            if not fields:
+                return
+        else:
+            fields = self._label_fields
+
+        for field in fields:
+            self._sync_source_field(
+                field, ids=ids, update=update, delete=delete
+            )
+
+    def _sync_source_field(self, field, ids=None, update=True, delete=False):
         if field not in self._label_fields:
             return
 
         _, label_path = self._get_label_field_path(field)
 
         if ids is not None:
-            view = self._patches_dataset.mongo(
-                [{"$match": {"_id": {"$in": ids}}}]
-            )
+            view = self._patches_dataset.select(ids)
         else:
             view = self._patches_dataset
 
-        sample_ids, docs = view.aggregate(
-            [foa.Values(self._id_field), foa.Values(label_path, _raw=True)]
-        )
+        if update:
+            sample_ids, docs = view.aggregate(
+                [foa.Values(self._id_field), foa.Values(label_path, _raw=True)]
+            )
 
-        self._source_collection._set_labels(field, sample_ids, docs)
+            self._source_collection._set_labels(field, sample_ids, docs)
+
+        if delete:
+            label_id_path = label_path + ".id"
+            all_ids = self._patches_dataset.values(label_id_path, unwind=True)
+            self_ids = self.values(label_id_path, unwind=True)
+            del_ids = set(all_ids) - set(self_ids)
+
+            if del_ids:
+                self._source_collection._delete_labels(
+                    ids=del_ids, fields=field
+                )
 
     def _sync_source_field_schema(self, path):
         root = path.split(".", 1)[0]
@@ -399,37 +438,6 @@ class _PatchesView(fov.DatasetView):
 
         if self._source_collection._is_generated:
             self._source_collection._sync_source_field_schema(dst_path)
-
-    def _sync_source_root(self, fields, update=True, delete=False):
-        for field in fields:
-            self._sync_source_root_field(field, update=update, delete=delete)
-
-    def _sync_source_root_field(self, field, update=True, delete=False):
-        if field not in self._label_fields:
-            return
-
-        _, label_id_path = self._get_label_field_path(field, "id")
-        label_path = label_id_path.rsplit(".", 1)[0]
-
-        if update:
-            sample_ids, docs = self._patches_dataset.aggregate(
-                [
-                    foa.Values(self._id_field),
-                    foa.Values(label_path, _raw=True),
-                ]
-            )
-
-            self._source_collection._set_labels(field, sample_ids, docs)
-
-        if delete:
-            all_ids = self._patches_dataset.values(label_id_path, unwind=True)
-            self_ids = self.values(label_id_path, unwind=True)
-            del_ids = set(all_ids) - set(self_ids)
-
-            if del_ids:
-                self._source_collection._delete_labels(
-                    ids=del_ids, fields=field
-                )
 
     def _sync_source_keep_fields(self):
         src_schema = self.get_field_schema()

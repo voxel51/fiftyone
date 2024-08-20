@@ -1,9 +1,10 @@
 """
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
+import logging
+import posixpath
 import queue
 import threading
 from typing import Optional, Union
@@ -30,6 +31,7 @@ class Socket:
         url_path: str,
         headers: Union[list, dict],
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        disable_websocket_info_logs: bool = True,
     ):
         self._timeout = timeout
         self._sent = []
@@ -38,8 +40,12 @@ class Socket:
         self._queue = queue.Queue()
         self._err = None
 
+        # Disable chatty websocket logger if told to
+        if disable_websocket_info_logs:
+            logger = logging.getLogger("websocket")
+            logger.level = logging.WARNING
         self._ws = websocket.WebSocketApp(
-            os.path.join(base_url.replace("http", "ws"), url_path),
+            posixpath.join(base_url.replace("http", "ws"), url_path),
             header=headers,
             on_open=self.__on_open,
             on_message=self.__on_message,

@@ -1,0 +1,30 @@
+{
+    "name": "@fiftyone/spotlight",
+    "version": "0.1.0",
+    "author": "Voxel51, Inc.",
+    "description": "A cursor-based justified-layout virtualized grid",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/spotlight",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone"
+    },
+    "scripts": {
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts"
+    },
+    "main": "./src/index.ts",
+    "private": true,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "devDependencies": {
+        "@biomejs/biome": "^1.7.1",
+        "typescript": "^5.4.5",
+        "typescript-plugin-css-modules": "^5.1.0",
+        "vite": "^5.2.8"
+    },
+    "type": "module",
+    "dependencies": {
+        "@af-utils/scrollend-polyfill": "^0.0.13"
+    }
+}

@@ -3,6 +3,192 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.0.0
+--------------------
+*Released August 20, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.25.0 <release-notes-v0.25.0>`, plus:
+
+What's New
+
+- Added a :ref:`Can tag <teams-can-tag>` permission to allow users to tag
+  samples/labels but not otherwise perform edits
+- Added support for authorized user credentials and external account
+  credentials when configuring :ref:`GCP credentials <teams-google-cloud>`
+- All :ref:`plugin execution <teams-plugins>` is now user-aware and will
+  respect the executing user’s role and dataset permissions
+- All deployments now include a LICENSE file that enforces user quotas
+- Guests can no longer access operators/panels in custom plugins
+
+App
+
+- Added a caching layer to optimize media serving in the App
+- Cloning an entire dataset via the `Clone` button now includes saved views,
+  saved workspaces, and runs
+- Optimized the performance and UX of the `Settings > Users` page
+- The users table on the `Settings > Users` page is now sortable
+- Fixed a bug when updating the user role of a pending invitation
+- Fixed a bug that prevented the Recent views widget from showing all recently
+  loaded views as intended
+
+CAS
+
+- Added an `Audit` page to the :ref:`Super Admin UI <super-admin-ui>` that
+  shows current license utilization and RBAC settings
+- Super admins can now disable manual group management in the App. This is
+  useful, for example, if groups are defined via hooks
+- Legacy mode deployments now have access to the relevant pages of the Super
+  Admin UI
+
+SDK
+
+- Added a :mod:`user_groups <fiftyone.management.user_groups>` module to the
+  Management SDK for programmatically managing user groups
+- The `fiftyone delegated` CLI command is now available to Teams users
+- Upgraded the :ref:`upload_media() <teams-cloud-media-python>` function to
+  gracefully support fields with missing media paths
+- Added an `overwrite` parameter to
+  :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
+  to control whether existing cloud credentials with the same prefix for a
+  provider are overwritten
+
+.. _release-notes-v0.25.0:
+
+FiftyOne 0.25.0
+---------------
+*Released August 20, 2024*
+
+What's New
+
+- Introducing :ref:`Python panels <developing-panels>`, a powerful framework for
+  building custom App panels via a simple Python interface that includes a
+  wealth of builtin components to convey information, create tutorials, show
+  interactive graphs, trigger operations, and more
+- Released a
+  `Dashboard panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/dashboard>`_
+  that allows users to build custom no-code dashboards that display statistics
+  of interest about the current dataset (and beyond)
+- Added `Segment Anything 2 <https://ai.meta.com/sam2>`_ to the
+  :ref:`model zoo <segment-anything-2-hiera-small-video-torch>`!
+  `#4671 <https://github.com/voxel51/fiftyone/pull/4671>`_
+- Added an :ref:`Elasticsearch integration <elasticsearch-integration>` for
+  native text and image searches on FiftyOne datasets!
+- Added an :ref:`image representativeness <brain-image-representativeness>`
+  method to the Brain that can be used to find the most common/uncommon types
+  of images in your datasets
+
+App
+
+- You can now
+  :ref:`link directly to a sample or group <loading-a-sample-or-group>`
+  in the App by copy + pasting URLs into your browser bar or programmatically
+  via your App `session`
+  `#4281 <https://github.com/voxel51/fiftyone/pull/4281>`_
+- Added a config option to
+  :ref:`disable frame filtering <dataset-app-config-disable-frame-filtering>`
+  in the App globally or on specific datasets
+  `#4604 <https://github.com/voxel51/fiftyone/pull/4604>`_
+- Added support for dynamically adjusting 3D label linewidths
+  `#4590 <https://github.com/voxel51/fiftyone/pull/4590>`_
+- Added a status bar when loading large 3D assets in the modal
+  `#4546 <https://github.com/voxel51/fiftyone/pull/4546>`_
+- Added support for visualizing :ref:`heatmaps <heatmaps>` in `.jpg` format
+  `#4531 <https://github.com/voxel51/fiftyone/pull/4531>`_
+- Exposed camera position as a recoil atom
+  `#4535 <https://github.com/voxel51/fiftyone/pull/4535>`_
+- Added anonymous analytics collection on an opt-in basis
+  `#4559 <https://github.com/voxel51/fiftyone/pull/4559>`_
+- Fixed a bug when viewing :ref:`dynamic groups <app-dynamic-groups>` of 3D
+  scenes in the modal
+  `#4527 <https://github.com/voxel51/fiftyone/pull/4527>`_
+- Fixed a bug when rendering scenes with relative 3D asset paths on Windows
+  `#4579 <https://github.com/voxel51/fiftyone/pull/4579>`_
+- Fixed keyboard shortcuts when viewing dynamic groups in the modal
+  `#4510 <https://github.com/voxel51/fiftyone/pull/4510>`_
+
+Annotation
+
+- Added support for annotating :ref:`frame views <frame-views>`
+  `#4477 <https://github.com/voxel51/fiftyone/pull/4477>`_
+- Added support for annotating :ref:`clip views <clip-views>`
+  `#4511 <https://github.com/voxel51/fiftyone/pull/4511>`_
+- Added support for preserving existing COCO IDs when exporting in
+  :ref:`COCO format <COCODetectionDataset-export>`
+  `#4530 <https://github.com/voxel51/fiftyone/pull/4530>`_
+
+Core
+
+- Added support for :ref:`save contexts <efficient-batch-edits>` to generated
+  views (patches, frames, and clips)
+  `#4636 <https://github.com/voxel51/fiftyone/pull/4636>`_
+- Added support for downloading plugins from branches that contain slashes `/`
+  `#4614 <https://github.com/voxel51/fiftyone/pull/4614>`_
+- Added support for including index statistics in
+  :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
+  `#4653 <https://github.com/voxel51/fiftyone/pull/4653>`_
+- Added a source install script for Windows
+  `#4582 <https://github.com/voxel51/fiftyone/pull/4582>`_
+- Ubuntu 24.04 users no longer have to manually install MongoDB
+  `#4533 <https://github.com/voxel51/fiftyone/pull/4533>`_
+- Removed Python 3.7 support and marked Python 3.8 as
+  :ref:`deprecated <deprecation-notices>`
+  `#4538 <https://github.com/voxel51/fiftyone/pull/4538>`_
+- Fixed a bug that could cause side effects when creating clip views defined
+  by expressions
+  `#4492 <https://github.com/voxel51/fiftyone/pull/4492>`_
+- Fixed a concatenation bug when downloading videos from
+  :ref:`CVAT <cvat-integration>`
+  `#4674 <https://github.com/voxel51/fiftyone/pull/4674>`_
+
+Plugins
+
+- The actions row now automatically overflows into a `More items` menu as
+  necessary when there is insufficient horizontal space
+  `#4595 <https://github.com/voxel51/fiftyone/pull/4595>`_
+- Added a
+  :meth:`set_active_fields() <fiftyone.operators.operations.Operations.set_active_fields>`
+  operator for programmatically controlling the selected fields in the sidebar
+  `#4482 <https://github.com/voxel51/fiftyone/pull/4482>`_
+- Added a
+  :meth:`notify() <fiftyone.operators.operations.Operations.notify>`
+  operator for programmatically showing notifications in the App
+  `#4344 <https://github.com/voxel51/fiftyone/pull/4344>`_
+- Added
+  :meth:`ctx.extended_selection <fiftyone.operators.executor.ExecutionContext.extended_selection>`
+  to retrieve the current extended selection
+  `#4413 <https://github.com/voxel51/fiftyone/pull/4413>`_
+- Added a
+  :meth:`set_extended_selection() <fiftyone.operators.operations.Operations.set_extended_selection>`
+  operator for programmatically setting the extended selection
+  `#4409 <https://github.com/voxel51/fiftyone/pull/4409>`_
+- Added a
+  :meth:`track_event() <fiftyone.operators.operations.Operations.track_event>`
+  operator for logging plugin events in the App
+  `#4489 <https://github.com/voxel51/fiftyone/pull/4489>`_
+
+Zoo
+
+- Added :ref:`YOLOv10 and RT-DETR models <ultralytics-object-detection>`
+  to the zoo
+  `#4544 <https://github.com/voxel51/fiftyone/pull/4544>`_
+- Added :ref:`YOLOv8 classification models <ultralytics-image-classification>`
+  to the zoo
+  `#4549 <https://github.com/voxel51/fiftyone/pull/4549>`_
+- Added support for storing object track IDs if present when running
+  :ref:`Ultralytics models <ultralytics-integration>` from the zoo
+  `#4569 <https://github.com/voxel51/fiftyone/pull/4569>`_
+- Added support for GPU inference when running
+  :ref:`Hugging Face Transformers <huggingface-transformers>` models from the
+  zoo
+  `#4587 <https://github.com/voxel51/fiftyone/pull/4587>`_
+- Extended support for group datasets, masks, heatmaps, and thumbnails when
+  uploading FiftyOne datasets to :ref:`Hugging Face Hub <huggingface-hub>`
+  `#4566 <https://github.com/voxel51/fiftyone/pull/4566>`_
+- Allow `ragged_batches` to be configured when using Torch models with custom
+  transforms
+  `#4509 <https://github.com/voxel51/fiftyone/pull/4509>`_,
+  `#4512 <https://github.com/voxel51/fiftyone/pull/4512>`_
+
 FiftyOne Teams 1.7.1
 --------------------
 *Released June 11, 2024*

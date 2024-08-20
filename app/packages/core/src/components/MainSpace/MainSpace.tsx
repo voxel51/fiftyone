@@ -26,7 +26,7 @@ function MainSpace() {
   }, [sessionSpaces]);
 
   useEffect(() => {
-    if (size(sessionPanelsState)) {
+    if (size(sessionPanelsState) && !isEqual(sessionPanelsState, panelsState)) {
       setPanelsState(sessionPanelsState);
     }
   }, [sessionPanelsState]);

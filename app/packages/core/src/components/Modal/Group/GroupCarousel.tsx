@@ -49,7 +49,7 @@ const pageParams = selector({
         },
       },
     };
-    return (page: number, pageSize: number) => {
+    return async (page: number, pageSize: number) => {
       return {
         ...params,
         after: page ? String(page * pageSize - 1) : null,
@@ -111,7 +111,7 @@ const Column: React.FC = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail.sampleId);
+              selectSample.current(detail.id);
             }
           );
 

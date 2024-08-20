@@ -1,6 +1,6 @@
-import * as fos from "@fiftyone/looker/src/state";
-import { SampleData } from "@fiftyone/state";
-import { getCls, LABEL_LIST, Schema } from "@fiftyone/utilities";
+import type * as fos from "@fiftyone/looker/src/state";
+import type { SampleData } from "@fiftyone/state";
+import { LABEL_LIST, type Schema, getCls } from "@fiftyone/utilities";
 
 const RENDERABLE = ["Detection", "Polyline"];
 const RENDERABLE_LIST = ["Detections", "Polylines"];

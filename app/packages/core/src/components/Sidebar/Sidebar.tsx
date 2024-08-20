@@ -1,7 +1,7 @@
-import { useTheme, Resizable } from "@fiftyone/components";
+import { Resizable, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
-import { move, scrollbarStyles } from "@fiftyone/utilities";
+import { move, styles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { default as React, useCallback, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
+import style from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
 const MARGIN = 3;
@@ -372,16 +373,15 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  scrollbar-color: ${({ theme }) => theme.text.tertiary}
-    ${({ theme }) => theme.background.body};
   background: ${({ theme }) => theme.background.sidebar};
-  ${scrollbarStyles}
+
+  ${styles.scrollbarStyles}
 `;
 
 const Container = animated(styled.div`
   position: relative;
   min-height: 100%;
-  margin: 0 1rem;
+  scrollbar-width: none;
 
   & > div {
     position: absolute;
@@ -424,7 +424,7 @@ const InteractiveSidebar = ({
   const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
   const shown = useRecoilValue(fos.sidebarVisible(modal));
   const [entries, setEntries] = fos.useEntries(modal);
-  const disabled = useRecoilValue(fos.disabledPaths);
+  const disabled = useRecoilValue(fos.disabledFilterPaths);
   const cb = useRef<() => void>();
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
@@ -721,7 +721,7 @@ const InteractiveSidebar = ({
           <ViewSelection id="saved-views" />
         </Box>
       )}
-      <Filter modal={modal} />
+      {!modal && <Filter />}
       <SidebarColumn
         ref={container}
         data-cy="sidebar-column"
@@ -734,7 +734,10 @@ const InteractiveSidebar = ({
           down.current && animate(last.current);
         }}
       >
-        <Container style={containerController.springs}>
+        <Container
+          className={style.sidebar}
+          style={containerController.springs}
+        >
           {order.current.map((key) => {
             const entry = items.current[key].entry;
             if (entry.kind === fos.EntryKind.GROUP) {

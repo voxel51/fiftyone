@@ -1,8 +1,5 @@
 {% extends "!layout.html" %} {% block extrahead %}
-<meta
-  property="og:image"
-  content="{{og_image}}"
-/>
+<meta property="og:image" content="{{og_image}}" />
 
 <link
   href="https://fonts.googleapis.com/css?family=Palanquin:400,600,700,800"
@@ -12,9 +9,9 @@
   href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
   rel="stylesheet"
 />
+<script src="https://tag.clearbitscripts.com/v1/pk_b9ed71c8234edd4f77326bcbfab5a4ca/tags.js"></script>
 {% endblock %} {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
-
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
       <a href="{{link_home}}">
@@ -39,16 +36,15 @@
     </div>
 
     <div id="nav__main__items">
-
       <div class="nav__item nav__dropdown">
         <div class="nav__dropdown__trigger">Products</div>
         <div class="nav__item nav__dropdown__menu has-arrows">
           <div class="arrow-up--light-primary arrow-left20"></div>
           <ul>
-            <li><a href="{{link_fiftyone}}">Open Source</a>
-            <li><a href="{{link_fiftyone_teams}}">FiftyOne Teams</a>
-            <li><a href="{{link_usecases}}">Use Cases</a>
-            <li><a href="{{link_success_stories}}">Success Stories</a>
+            <li><a href="{{link_fiftyone}}">Open Source</a></li>
+            <li><a href="{{link_fiftyone_teams}}">FiftyOne Teams</a></li>
+            <li><a href="{{link_usecases}}">Use Cases</a></li>
+            <li><a href="{{link_success_stories}}">Success Stories</a></li>
           </ul>
         </div>
       </div>
@@ -58,9 +54,9 @@
         <div class="nav__item nav__dropdown__menu has-arrows">
           <div class="arrow-up--light-primary arrow-left20"></div>
           <ul>
-            <li><a href="{{link_voxel51_slack}}">Community Slack</a>
-            <li><a href="{{link_voxel51_blog}}">Blog</a>
-            <li><a href="{{link_events}}">Events</a>
+            <li><a href="{{link_voxel51_slack}}">Community Slack</a></li>
+            <li><a href="{{link_voxel51_blog}}">Blog</a></li>
+            <li><a href="{{link_events}}">Events</a></li>
           </ul>
         </div>
       </div>
@@ -74,9 +70,9 @@
         <div class="nav__item nav__dropdown__menu has-arrows">
           <div class="arrow-up--light-primary arrow-left20"></div>
           <ul>
-            <li><a href="{{link_ourstory}}">About Us</a>
-            <li><a href="{{link_voxel51_jobs}}">Careers</a>
-            <li><a href="{{link_talk_to_sales}}">Talk to Sales</a>
+            <li><a href="{{link_ourstory}}">About Us</a></li>
+            <li><a href="{{link_voxel51_jobs}}">Careers</a></li>
+            <li><a href="{{link_talk_to_sales}}">Talk to Sales</a></li>
           </ul>
         </div>
       </div>
@@ -94,18 +90,15 @@
           data-size="large"
           data-show-count="true"
           aria-label="Star voxel51/fiftyone on GitHub"
-        >Star</a>
-      </div>
-
-      <div class="nav__item full_nav_only">
-        <a
-          class="button-primary"
-          href="{{link_workshop}}"
-          target="_blank"
-          >Schedule a workshop</a
+          >Star</a
         >
       </div>
 
+      <div class="nav__item full_nav_only">
+        <a class="button-primary" href="{{link_workshop}}" target="_blank"
+          >Schedule a workshop</a
+        >
+      </div>
     </div>
   </nav>
 </div>
@@ -196,13 +189,15 @@ endblock %} {% block custom_footer %}
 </footer>
 
 <!-- https://buttons.github.io -->
-<script async defer src="https://buttons.github.io/buttons.js"></script>
+<script async defer src="https://buttons.github.io/buttons.js" ></script>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XD15NFRY3M"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XD15NFRY3M" ></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag() {dataLayer.push(arguments);}
+  function gtag() {
+    dataLayer.push(arguments);
+  }
   gtag("js", new Date());
   gtag("config", "G-XD15NFRY3M");
 </script>

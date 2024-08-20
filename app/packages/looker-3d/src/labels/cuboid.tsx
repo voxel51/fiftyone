@@ -1,7 +1,15 @@
-import React, { useMemo, useState } from "react";
-import * as THREE from "three";
-import { OverlayProps } from "./shared";
 import { useCursor } from "@react-three/drei";
+import { extend } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import * as THREE from "three";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { cuboidLabelLineWidthAtom } from "../state";
+import type { OverlayProps } from "./shared";
+
+extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
@@ -22,6 +30,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
+  const lineWidth = useRecoilValue(cuboidLabelLineWidthAtom);
   const geo = useMemo(
     () => dimensions && new THREE.BoxGeometry(...dimensions),
     [dimensions]
@@ -49,8 +58,27 @@ export const Cuboid = ({
   );
 
   const [isCuboidHovered, setIsCuboidHovered] = useState(false);
-
   useCursor(isCuboidHovered);
+
+  const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
+  const geometry = useMemo(
+    () =>
+      new LineSegmentsGeometry().fromLineSegments(
+        new THREE.LineSegments(edgesGeo)
+      ),
+    [edgesGeo]
+  );
+
+  const material = useMemo(
+    () =>
+      new LineMaterial({
+        opacity: opacity,
+        transparent: false,
+        color: selected ? "orange" : color,
+        linewidth: lineWidth,
+      }),
+    [selected, lineWidth, color, opacity]
+  );
 
   if (!location || !dimensions) return null;
 
@@ -62,14 +90,7 @@ export const Cuboid = ({
       }}
     >
       <mesh position={loc} rotation={actualRotation}>
-        <lineSegments>
-          <edgesGeometry args={[geo]} attach="geometry" />
-          <lineBasicMaterial
-            attach="material"
-            linewidth={8}
-            color={selected ? "orange" : color}
-          />
-        </lineSegments>
+        <lineSegments2 geometry={geometry} material={material} />
       </mesh>
       <mesh
         onClick={onClick}

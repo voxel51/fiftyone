@@ -1,7 +1,7 @@
 """
 API key management.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -82,7 +82,7 @@ def delete_api_key(
             :class:`~fiftyone.management.users.User` instance. Defaults to
             the current user.
     """
-    user_id = users._resolve_user_id(user, nullable=True)
+    user_id = users.resolve_user_id(user, nullable=True)
 
     client = connection.APIClientConnection().client
     client.post_graphql_request(
@@ -131,7 +131,7 @@ def generate_api_key(
     Returns:
         the API key string
     """
-    user_id = users._resolve_user_id(user, nullable=True)
+    user_id = users.resolve_user_id(user, nullable=True)
 
     client = connection.APIClientConnection().client
     data = client.post_graphql_request(
@@ -178,7 +178,7 @@ def list_api_keys(user: Optional[Union[str, users.User]] = None):
     """
     if user is None:
         user = users.whoami()
-    user_id = users._resolve_user_id(user)
+    user_id = users.resolve_user_id(user)
 
     client = connection.APIClientConnection().client
     data = client.post_graphql_request(

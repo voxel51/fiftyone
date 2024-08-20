@@ -38,6 +38,10 @@ export class SidebarPom {
     );
   }
 
+  filter(fieldName: string, filterType: "categorical" | "numeric") {
+    return this.sidebar.getByTestId(`${filterType}-filter-${fieldName}`);
+  }
+
   sidebarEntryDraggableArea(fieldName: string) {
     return this.sidebar
       .getByTestId(`sidebar-entry-draggable-${fieldName}`)
@@ -88,9 +92,9 @@ export class SidebarPom {
   }
 
   async changeSliderStartValue(field: string, textA: string, textB: string) {
-    const sliderPointA = this.getSliderIndicator(field, textA);
-    const sliderPointB = this.getSliderIndicator(field, textB, true);
-    await sliderPointA.dragTo(sliderPointB, { timeout: 1000 });
+    const sliderStart = this.getSliderIndicator(field, textA);
+    const sliderMidPoint = this.getSliderIndicator(field, textB, true);
+    await sliderStart.dragTo(sliderMidPoint, { timeout: 1000 });
   }
 
   async getActiveMode() {
@@ -151,12 +155,41 @@ export class SidebarPom {
 class SidebarAsserter {
   constructor(private readonly sb: SidebarPom) {}
 
+  async assertCheckboxEnabled(fieldName: string) {
+    await expect(
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+    ).toBeVisible();
+  }
+
+  async assertCheckboxDisabled(fieldName: string) {
+    await expect(
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+    ).toHaveCount(0);
+  }
+
+  async assertCheckboxesEnabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertCheckboxEnabled(fieldNames[i]);
+    }
+  }
+
+  async assertCheckboxesDisabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertCheckboxDisabled(fieldNames[i]);
+    }
+  }
+
   async assertFieldInSidebar(fieldName: string) {
     await expect(this.sb.field(fieldName)).toBeVisible();
   }
 
   async assertFieldDisabled(fieldName: string) {
     await expect(this.sb.fieldArrow(fieldName, false)).toBeVisible();
+  }
+
+  async assertFieldArrowRemoved(fieldName: string) {
+    await expect(this.sb.fieldArrow(fieldName, false)).toHaveCount(0);
+    await expect(this.sb.fieldArrow(fieldName, true)).toHaveCount(0);
   }
 
   async assertFieldsDisabled(fieldNames: string[]) {
@@ -189,6 +222,10 @@ class SidebarAsserter {
 
   async assertFieldNotInSidebar(fieldName: string) {
     await expect(this.sb.field(fieldName)).toBeHidden();
+  }
+
+  async assertFilterIsVisibile(fieldName: string, filterType: "categorical") {
+    await expect(this.sb.filter(fieldName, filterType)).toBeVisible();
   }
 
   async assertSidebarGroupIsVisibile(groupName: string) {

@@ -7,19 +7,41 @@ export const defaultGridZoom = selector<number>({
   get: ({ get }) => get(fos.config)?.gridZoom,
 });
 
+export const gridPage = atom({
+  key: "gridPage",
+  default: 0,
+});
+
+export const gridAt = atom<string | null>({
+  key: "gridAt",
+  default: null,
+});
+
+export const gridOffset = atom({
+  key: "gridOffset",
+  default: 0,
+  effects: [],
+});
+
+export const gridSpacing = atom({
+  key: "gridSpacing",
+  default: 3,
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridSpacing", { valueClass: "number" }),
+  ],
+});
+
 export const gridZoom = atom<number>({
   key: "gridZoom",
   default: defaultGridZoom,
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
+  ],
 });
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
-  default: [0, 10],
-});
-
-export const rowAspectRatioThreshold = selector<number>({
-  key: "rowAspectRatioThreshold",
-  get: ({ get }) => 11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
+  default: [-5, 10],
 });
 
 export const gridCropCallback = selector({
@@ -34,12 +56,24 @@ export const gridCropCallback = selector({
   },
 });
 
+export const gridCrop = selector({
+  key: "gridCrop",
+  get: ({ get }) => {
+    return get(fos.isPatchesView) && get(fos.cropToContent(false));
+  },
+});
+
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
     const slice = get(fos.groupSlice);
+    const dataset = get(fos.datasetName);
+
+    if (!dataset) {
+      throw new Error("dataset is not defined");
+    }
     const params = {
-      dataset: get(fos.datasetName),
+      dataset,
       view: get(fos.view),
       filters: get(fos.filters),
       filter: {
@@ -61,3 +95,5 @@ export const pageParameters = selector({
     };
   },
 });
+
+export const showGridPixels = atom({ key: "showGridPixels", default: false });

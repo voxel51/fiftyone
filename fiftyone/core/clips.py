@@ -19,11 +19,12 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
+
+from fiftyone.internal.dataset_permissions import requires_can_edit
 
 
 class ClipView(fos.SampleView):
@@ -47,14 +48,21 @@ class ClipView(fos.SampleView):
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
 
-    def _save(self, deferred=False):
-        if deferred:
-            raise NotImplementedError(
-                "Clips views do not support save contexts"
-            )
+    @property
+    def _readonly(self):
+        return self._collection._readonly
 
-        super()._save(deferred=deferred)
-        self._view._sync_source_sample(self)
+    @property
+    def _permission(self):
+        return self._collection._permission
+
+    def _save(self, deferred=False):
+        sample_ops, frame_ops = super()._save(deferred=deferred)
+
+        if not deferred:
+            self._view._sync_source_sample(self)
+
+        return sample_ops, frame_ops
 
 
 class ClipsView(fov.DatasetView):
@@ -131,6 +139,14 @@ class ClipsView(fov.DatasetView):
     @property
     def _dataset(self):
         return self._clips_dataset
+
+    @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
 
     @property
     def _root_dataset(self):
@@ -221,7 +237,7 @@ class ClipsView(fov.DatasetView):
 
         return zip(*id_map.items())
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field == self._classification_field
@@ -238,7 +254,7 @@ class ClipsView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
         self._sync_source_field_schema(field_name)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field == self._classification_field
@@ -254,7 +270,7 @@ class ClipsView(fov.DatasetView):
                 _field_name, *args, **kwargs
             )
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def save(self, fields=None):
         """Saves the clips in this view to the underlying dataset.
 
@@ -280,7 +296,7 @@ class ClipsView(fov.DatasetView):
 
         super().save(fields=fields)
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep(self):
         """Deletes all clips that are **not** in this view from the underlying
         dataset.
@@ -295,7 +311,7 @@ class ClipsView(fov.DatasetView):
 
         super().keep()
 
-    @mutates_data(data_obj_param="self._source_collection")
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep_fields(self):
         """Deletes any frame fields that have been excluded in this view from
         the frames of the underlying dataset.
@@ -979,9 +995,12 @@ def _write_expr_clips(
         _, path = src_collection._get_label_field_path(expr)
         leaf, _ = src_collection._handle_frame_field(path)
         expr = F(leaf).length() > 0
-
-    if isinstance(expr, dict):
+    elif isinstance(expr, dict):
         expr = foe.ViewExpression(expr)
+    else:
+        # map() modifies the expression in-place and we don't want to cause
+        # side effects to the caller
+        expr = deepcopy(expr)
 
     frame_numbers, bools = src_collection.values(
         ["frames.frame_number", F("frames").map(expr)]

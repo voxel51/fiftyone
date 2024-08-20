@@ -1,10 +1,13 @@
 """
-FiftyOne Server JIT metadata utilities.
+FiftyOne Server metadata utilities.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from cachetools import LRUCache, TLRUCache
+from datetime import datetime, timedelta
 from enum import Enum
 import logging
 import requests
@@ -23,17 +26,18 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-from fiftyone.core.collections import SampleCollection
-from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
+import fiftyone as fo
 import fiftyone.core.cache as foc
+import fiftyone.core.fields as fof
+from fiftyone.core.collections import SampleCollection
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
 from fiftyone.core.config import HTTPRetryConfig
+from fiftyone.utils.utils3d import OrthographicProjectionMetadata
+from fiftyone.server.cache import create_tlru_cache
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,21 @@ _ADDITIONAL_MEDIA_FIELDS = {
     OrthographicProjectionMetadata: "filepath",
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
+
+
+_get_url = create_tlru_cache(
+    lambda path: foc.media_cache.get_url(path),
+    TLRUCache(
+        fo.config.signed_url_cache_size,
+        lambda _, __, now: now
+        + timedelta(hours=fo.config.signed_url_expiration)
+        - timedelta(minutes=5),
+        datetime.now,
+    ),
+)
+_metadata_cache = LRUCache(
+    fo.config.signed_url_cache_size,
+)
 
 
 @gql.enum
@@ -131,15 +150,24 @@ async def get_metadata(
 
 async def read_metadata(session, filepath, filepath_url, local_only, is_video):
     try:
+        result = _metadata_cache.get(filepath, None)
+        if result is not None:
+            return result
+
         if local_only or foc.media_cache.is_local_or_cached(filepath):
             # Retrieve media metadata from local disk
             local_path = await foc.media_cache._async_get_local_path(
                 filepath, session, download=True
             )
-            return await read_local_metadata(local_path, is_video)
+            result = await read_local_metadata(local_path, is_video)
         else:
             # Retrieve metadata from remote source
-            return await read_url_metadata(session, filepath_url, is_video)
+            result = await read_url_metadata(session, filepath_url, is_video)
+            _metadata_cache[filepath] = result
+
+        _metadata_cache[filepath] = result
+        return result
+
     except Exception as exc:
         # Immediately fail so the user knows they should install FFmpeg
         if isinstance(exc, FFmpegNotFoundException):
@@ -552,7 +580,7 @@ async def _create_media_urls(
             else:
                 # Get a URL to use to retrieve metadata (if necessary) and for
                 # the App to use to serve the media
-                url = foc.media_cache.get_url(path, method="GET")
+                url = _get_url(path)
         except:
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors

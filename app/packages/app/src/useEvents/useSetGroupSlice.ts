@@ -1,15 +1,23 @@
-import { useSessionSetter } from "@fiftyone/state";
+import { subscribeBefore } from "@fiftyone/relay";
 import { useCallback } from "react";
-import { EventHandlerHook } from "./registerEvent";
+import type { EventHandlerHook } from "./registerEvent";
 
-const useSetGroupSlice: EventHandlerHook = () => {
-  const setter = useSessionSetter();
-
+const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
   return useCallback(
-    (payload) => {
-      setter("sessionGroupSlice", payload.slice);
+    ({ slice }) => {
+      const search = new URLSearchParams(router.history.location.search);
+      slice ? search.set("slice", slice) : search.delete("slice");
+
+      const string = `?${search.toString()}`;
+
+      const pathname = router.history.location.pathname + string;
+      subscribeBefore(() => {
+        session.current.sessionGroupSlice = slice;
+      });
+
+      router.push(pathname, { ...router.location.state, groupSlice: slice });
     },
-    [setter]
+    [router, session]
   );
 };
 

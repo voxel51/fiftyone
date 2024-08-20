@@ -1,17 +1,11 @@
 """
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import functools
-import os
-
-try:
-    from importlib import metadata
-except ImportError:
-    # for Python 3.7
-    import importlib_metadata as metadata
-
+import posixpath
+from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
 
 import backoff
@@ -45,12 +39,16 @@ class Client:
     def __init__(
         self,
         base_url: str,
-        key: str,
+        key: str = None,
+        token: str = None,
         timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        disable_websocket_info_logs: bool = True,
     ):
         self.__base_url = base_url
         self.__key = key
+        self.__token = token
         self._timeout = timeout
+        self.__disable_websocket_info_logs = disable_websocket_info_logs
 
         self._session = requests.Session()
         try:
@@ -58,9 +56,17 @@ class Client:
         except metadata.PackageNotFoundError:
             version = ""
         self._extra_headers = {
-            "X-API-Key": self.__key,
             "User-Agent": f"FiftyOne Teams client/{version}",
         }
+        if self.__key:
+            self._extra_headers["X-API-Key"] = self.__key
+        elif self.__token:
+            self._extra_headers["Authorization"] = self.__token
+        else:
+            raise ValueError(
+                "Client requires either key or token to authenticate"
+            )
+
         self._session.headers.update(self._extra_headers)
 
     def __eq__(self, other: Any) -> bool:
@@ -153,6 +159,7 @@ class Client:
             url_path,
             self._extra_headers,
             self._timeout,
+            self.__disable_websocket_info_logs,
         )
 
     def close(self) -> None:
@@ -254,7 +261,7 @@ class Client:
         **request_kwargs,
     ):
         timeout = timeout or self._timeout
-        url = os.path.join(self.__base_url, url_path)
+        url = posixpath.join(self.__base_url, url_path)
 
         # Use data generator factory to get a data generator.
         #   Need this so that we get a fresh generator if we retry via backoff.

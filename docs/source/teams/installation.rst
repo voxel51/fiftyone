@@ -168,7 +168,7 @@ credentials for use by all app users <teams-cloud-storage-page>`.
 
 .. _teams-cors:
 
-Cross-Origin Resource Sharing (CORS)
+Cross-origin resource sharing (CORS)
 ____________________________________
 
 If your datasets include cloud-backed
@@ -176,6 +176,14 @@ If your datasets include cloud-backed
 :ref:`segmentation maps <semantic-segmentation>`, you may need to configure
 cross-origin resource sharing (CORS) for your cloud buckets. Details are
 provided below for each cloud platform.
+
+Browser caching
+_______________
+
+If your datasets include cloud-backed media, we strongly recommend configuring your data
+sources to allow for built in browser caching. This will cache signed URL responses
+so you don't need to reload assets from your cloud storage between sessions.
+Details are provided below for each cloud platform.
 
 .. _teams-amazon-s3:
 
@@ -263,21 +271,25 @@ here is an example configuration:
         }
     ]
 
+If you would like to take advantage of browser caching you can
+`specify cache-control headers on S3 objects <https://docs.aws.amazon.com/whitepapers/latest/build-static-websites-aws/controlling-how-long-amazon-s3-content-is-cached-by-amazon-cloudfront.html#specify-cache-control-headers>`_.
+By default S3 does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
+
 .. _teams-google-cloud:
 
 Google Cloud Storage
 ____________________
 
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
-you simply need to provide
-`service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
+you simply need to provide `credentials <https://cloud.google.com/docs/authentication>`_
 to your Teams client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
-1. Configure/provide
+1. Configure
 `application default credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`_
-in another manner supported by Google Cloud, such as:
+in a manner supported by Google Cloud, such as:
 
 - `Using the gcloud CLI <https://cloud.google.com/docs/authentication/application-default-credentials#personal>`_
 - `Attaching a service account to your Google Cloud resource <https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa>`_
@@ -287,7 +299,7 @@ environment variables to point to your GCS credentials on disk:
 
 .. code-block:: shell
 
-    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-service-account.json"
+    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-credentials.json"
 
 3. Permanently register GCS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <teams-media-cache-config>`:
@@ -295,12 +307,13 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
 .. code-block:: json
 
     {
-        "google_application_credentials": "/path/to/gcp-service-account.json"
+        "google_application_credentials": "/path/to/gcp-credentials.json"
     }
 
-In the above, the credentials `.json` file can be a service account key, a
-configuration file for workforce identity federation, or a configuration file
-for workload identity federation.
+In the above, the credentials file can contain any format supported by
+`google.auth.load_credentials_from_file() <https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file>`_,
+which includes a service account key, stored authorized user credentials, or
+external account credentials.
 
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
@@ -327,6 +340,10 @@ here is an example configuration:
             "MaxAgeSeconds": 3000
         }
     ]
+
+If you would like to take advantage of browser caching you can
+`specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
+By default GCP sets the max-age=0 seconds meaning no caching will occur.
 
 .. _teams-azure:
 
@@ -439,6 +456,11 @@ alias:
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
 
+If you would like to take advantage of browser caching you can
+`specify cache-control headers on Azure blobs <https://learn.microsoft.com/en-us/azure/cdn/cdn-manage-expiration-of-blob-content#setting-cache-control-headers-by-using-azure-powershell>`_.
+By default Azure does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
+
 .. _teams-minio:
 
 MinIO
@@ -510,6 +532,11 @@ alias:
     # For example
     filepath = "minio://test-bucket/image.jpg"
 
+If you would like to take advantage of browser caching you can
+`specify cache-control headers on MinIO content using the metadata field of the put_object API <https://min.io/docs/minio/linux/developers/python/API.html>`_.
+By default Minio does not provide cache-control headers so it will be up to your browser's
+heuristics engine to determine how long to cache the object.
+
 .. _teams-extra-kwargs:
 
 Extra client arguments
@@ -545,7 +572,7 @@ Provider names and the class that extra kwargs are passed to:
 .. _teams-cloud-storage-page:
 
 Cloud storage page
-__________________
+------------------
 
 Admins can also configure cloud credentials via the Settings > Cloud storage
 page.

@@ -1,11 +1,22 @@
+"""
+FiftyOne plugin core tests.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import json
 import os
+import pytest
+from unittest import mock
+
+import yaml
 
 import fiftyone as fo
-import pytest
-import json
-import yaml
-from unittest import mock
 import fiftyone.plugins as fop
+import fiftyone.utils.github as foug
+
 
 _DEFAULT_TEST_PLUGINS = ["test-plugin1", "test-plugin2"]
 _DEFAULT_APP_CONFIG = {}
@@ -141,3 +152,25 @@ def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
 
     with pytest.raises(ValueError):
         _ = fop.find_plugin("test-plugin1-name")
+
+
+def test_github_repository_parse_url():
+    url = "https://github.com/USER/REPO/REF"
+    expected = {"user": "USER", "repo": "REPO", "ref": "REF"}
+    params = foug.GitHubRepository.parse_url(url)
+    assert params == expected
+
+    url = "https://github.com/USER/REPO/tree/BRANCH"
+    expected = {"user": "USER", "repo": "REPO", "ref": "BRANCH"}
+    params = foug.GitHubRepository.parse_url(url)
+    assert params == expected
+
+    url = "https://github.com/USER/REPO/tree/BRANCH/WITH/SLASHES"
+    expected = {"user": "USER", "repo": "REPO", "ref": "BRANCH/WITH/SLASHES"}
+    params = foug.GitHubRepository.parse_url(url)
+    assert params == expected
+
+    url = "https://github.com/USER/REPO/commit/COMMIT"
+    expected = {"user": "USER", "repo": "REPO", "ref": "COMMIT"}
+    params = foug.GitHubRepository.parse_url(url)
+    assert params == expected

@@ -4,13 +4,13 @@ import { folder, useControls } from "leva";
 import { useCallback, useMemo, useState } from "react";
 import {
   DirectionalLightHelper,
-  Light,
+  type Light,
   PointLightHelper,
   SpotLightHelper,
 } from "three";
 import { PANEL_ORDER_LIGHTS } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
-import { FoScene } from "./use-fo3d";
+import type { FoScene } from "./use-fo3d";
 
 export const getIntensityKey = (lightName: string) => `${lightName}Intensity`;
 export const getColorKey = (lightName: string) => `${lightName}Color`;

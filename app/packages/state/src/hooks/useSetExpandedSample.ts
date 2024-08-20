@@ -1,64 +1,52 @@
-import { useRef } from "react";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import {
-  currentModalNavigation,
-  currentModalSample,
-  dynamicGroupCurrentElementIndex,
-} from "../recoil";
+import type { ModalSelector } from "../session";
+
+import { useCallback } from "react";
+import { useRecoilCallback } from "recoil";
+import { modalSelector } from "../recoil";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
 
+const THREE_D = new Set(["point_cloud", "three_d"]);
+
 export default () => {
-  const types = useRecoilValue(groupAtoms.groupMediaTypes);
-  const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
-  const groupSlice = useRecoilValue(groupAtoms.groupSlice);
-  const r = useRef(groupSlice);
-  r.current = groupSlice;
-  const setter = useRecoilTransaction_UNSTABLE(
-    ({ reset, set }) =>
-      (
-        id: string,
-        index: number,
-        groupId?: string,
-        groupByFieldValue?: string
-      ) => {
-        set(groupAtoms.groupId, groupId || null);
-        set(currentModalSample, { id, index });
-
+  const setter = useRecoilCallback(
+    ({ reset, set, snapshot }) =>
+      async () => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
-        reset(dynamicGroupCurrentElementIndex);
-        groupByFieldValue !== undefined &&
-          set(dynamicGroupAtoms.groupByFieldValue, groupByFieldValue);
+        reset(dynamicGroupAtoms.dynamicGroupCurrentElementIndex);
+        let fallback = snapshot.getLoadable(groupAtoms.groupSlice).getValue();
+        const map = snapshot
+          .getLoadable(groupAtoms.groupMediaTypesMap)
+          .getValue();
+        const types = snapshot
+          .getLoadable(groupAtoms.groupMediaTypes)
+          .getValue();
 
-        let fallback = r.current;
-        if (map[fallback] === "point_cloud") {
+        if (THREE_D.has(map[fallback])) {
           fallback = types
-            .filter(({ mediaType }) => mediaType !== "point_cloud")
+            .filter(({ mediaType }) => !THREE_D.has(mediaType))
             .map(({ name }) => name)
             .sort()[0];
         }
+
         set(groupAtoms.modalGroupSlice, fallback);
       },
-    [r, map, types]
+    []
   );
 
-  return useRecoilCallback(
-    ({ snapshot }) =>
-      async (index: number | ((current: number) => number)) => {
-        const current = await snapshot.getPromise(currentModalSample);
-        if (index instanceof Function) {
-          index = index(current.index);
-        }
-        const { id, groupId, groupByFieldValue } = await (
-          await snapshot.getPromise(currentModalNavigation)
-        )(index);
-
-        setter(id, index, groupId, groupByFieldValue);
+  const commit = useRecoilCallback(
+    ({ set }) =>
+      async (selector: ModalSelector) => {
+        set(modalSelector, selector);
       },
-    [setter]
+    []
+  );
+
+  return useCallback(
+    async (selector?: ModalSelector) => {
+      await setter();
+      selector && commit(selector);
+    },
+    [commit, setter]
   );
 };

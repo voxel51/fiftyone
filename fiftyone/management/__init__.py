@@ -1,7 +1,7 @@
 """
 FiftyOne Management SDK.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ from fiftyone.management.organization import *
 from fiftyone.management.plugin import *
 from fiftyone.management.snapshot import *
 from fiftyone.management.users import *
+from fiftyone.management.user_groups import *
 
 globals().update(DatasetPermission.__members__)
 globals().update(UserRole.__members__)

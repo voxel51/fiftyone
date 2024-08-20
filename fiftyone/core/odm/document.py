@@ -589,6 +589,7 @@ class Document(BaseDocument, mongoengine.Document):
         Args:
             *fields: an optional args list of specific fields to reload
         """
+        ensure_connection()
         super().reload(*fields, **kwargs)
 
     def save(
