@@ -609,7 +609,6 @@ const videoEscape: Control<VideoState> = {
         options: { showHelp, showJSON, selectedLabels },
         lockedToSupport,
       }) => {
-        console.log("closing window");
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
           return { showHelp: "close" };
@@ -640,7 +639,7 @@ const videoEscape: Control<VideoState> = {
 
         if (frameNumber !== 1) {
           return {
-            frameNumber: 1, //THIS IS WHERE THE ISSUE IS WITH CLOSING FRAME
+            frameNumber: 1,
             playing: false,
           };
         }
