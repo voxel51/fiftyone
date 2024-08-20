@@ -158,7 +158,7 @@ export const Looker3d = () => {
   return (
     <Fo3dErrorBoundary boundaryName="fo3d">
       <Leva />
-      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
+      <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
         {component}
         <ActionBar
           onMouseEnter={() => {
