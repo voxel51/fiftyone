@@ -2995,7 +2995,7 @@ returns `true`:
     to render operator input and output
 
 Panels and Components
------------------------------------
+---------------------
 
 Here's some examples of using panels and components to add your
 own custom user interface and components to the FiftyOne App.
