@@ -69,18 +69,17 @@ class ResolvePlacements(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
-        placements = []
+        placements = {}
         for operator in get_operators(registry):
             placement = resolve_placement(operator, data)
             if placement is not None:
-                placements.append(
-                    {
-                        "operator_uri": operator.uri,
-                        "placement": placement.to_json(),
-                    }
-                )
+                placements[operator.uri] = placement.to_json()
+                placements[operator.uri] = {
+                    "operator_uri": operator.uri,
+                    "placement": placement.to_json(),
+                }
 
-        return {"placements": placements}
+        return {"placements": list(placements.values())}
 
 
 class ExecuteOperator(HTTPEndpoint):
