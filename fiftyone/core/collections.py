@@ -583,7 +583,7 @@ class SampleCollection(object):
         Updates the :attr:`last_modified_at` property of the dataset if
         necessary to incorporate any modification timestamps to its samples.
 
-        If ``include_frames==True``, the the ``last_modified_at`` property of
+        If ``include_frames==True``, the ``last_modified_at`` property of
         each video sample is first updated if necessary to incorporate any
         modification timestamps to its frames.
 
