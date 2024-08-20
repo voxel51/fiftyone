@@ -41,6 +41,8 @@ these plugins available in the
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           | 🧠 Utilities for working with the FiftyOne Brain                                                                          |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_   | 📊 Create your own custom dashboards from within the App                                                                  |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ | ✅ Utilities for evaluating models with FiftyOne                                                                          |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_                 | 📁 A collection of import/export utilities                                                                                |
@@ -79,6 +81,13 @@ Need to compute embedding for your dataset? Kick off the task with the
 plugin and proceed with other work while the execution happens in the background:
 
 .. image:: /images/plugins/operators/examples/embeddings.gif
+
+Want to create a custom dashboard that displays statistics of interest about
+the current dataset? Just install the
+`@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_
+plugin and build away:
+
+.. image:: /images/plugins/panels/dashboard-panel.gif
 
 .. note::
 
