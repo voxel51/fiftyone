@@ -93,6 +93,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvasFrameNumber: number;
   private isPlaying: boolean;
   private isSeeking: boolean;
+  private isLoop: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
 
@@ -229,7 +230,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // if abs(frameNumberToDraw, currentFrameNumber) > 1, then skip
     // this is to avoid drawing frames that are too far apart
     // this can happen when user is scrubbing through the video
-    if (Math.abs(frameNumberToDraw - this.frameNumber) > 1) {
+    if (Math.abs(frameNumberToDraw - this.frameNumber) > 1 && !this.isLoop) {
       skipAndTryAgain();
       return;
     }
@@ -301,7 +302,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
               });
               return;
             }
-
             this.drawFrame(next);
           });
         }, this.setTimeoutDelay);
@@ -389,7 +389,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   renderSelf(state: Readonly<ImaVidState>) {
     const {
-      options: { playbackRate },
+      options: { playbackRate, loop },
       config: { thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
@@ -407,7 +407,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (!loaded) {
       return;
     }
-
+    this.isLoop = loop;
     this.isPlaying = playing;
     this.isSeeking = seeking;
     this.frameNumber = currentFrameNumber;
