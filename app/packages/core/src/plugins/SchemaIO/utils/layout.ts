@@ -1,4 +1,6 @@
+import { SxProps } from "@mui/material";
 import { SchemaViewType, ViewPropsType } from "./types";
+import { g } from "vitest/dist/chunks/suite.CcK46U-P.js";
 
 const CSS_UNIT_PATTERN =
   /(\d+)(cm|mm|in|px|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax|%)$/;
@@ -26,12 +28,14 @@ export function getLayoutProps(props: ViewPropsType) {
   const { view = {} } = schema;
   const { height, width } = layout || {};
   return {
-    height: parseSize(view.height, height),
-    width: parseSize(view.width, width),
-    minHeight: parseSize(view.minHeight || view.min_height, height),
-    minWidth: parseSize(view.minWidth || view.min_width, width),
-    maxHeight: parseSize(view.maxHeight || view.max_height, height),
-    maxWidth: parseSize(view.maxWidth || view.min_width, width),
+    sx: {
+      height: parseSize(view.height, height),
+      width: parseSize(view.width, width),
+      minHeight: parseSize(view.minHeight || view.min_height, height),
+      minWidth: parseSize(view.minWidth || view.min_width, width),
+      maxHeight: parseSize(view.maxHeight || view.max_height, height),
+      maxWidth: parseSize(view.maxWidth || view.min_width, width),
+    },
   };
 }
 
@@ -57,6 +61,30 @@ export function getMarginSx(view: SchemaViewType = {}): PaddingSxType {
     mb: view.margin_b || view.mb || view.marginB,
     ml: view.margin_l || view.ml || view.marginL,
   };
+}
+
+export function getGridSx(view: SchemaViewType = {}): SxProps {
+  const { columns, orientation, rows } = view;
+  const direction = orientation === "vertical" ? "row" : "column";
+  const sx: SxProps = { ...getPaddingSx(view), ...getMarginSx(view) };
+  /**
+   *  todo: template - auto compute width (height?)
+   * [
+   *  [1, 2, 3], row 1
+   *  [4, 5, 6], row 2
+   *  [7, 8, 9], row 3
+   * ]ß
+   */
+
+  if (typeof columns === "number") {
+    sx.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  } else if (typeof rows === "number") {
+    sx.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    sx.gridAutoFlow = direction;
+  } else {
+    sx.gridAutoFlow = direction;
+  }
+  return sx;
 }
 
 export const overlayToSx = {

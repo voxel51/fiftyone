@@ -3,8 +3,7 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
-import React from "react";
-import { getComponentProps, getColorByCode } from "../utils";
+import { getColorByCode, getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import Button from "./Button";
 import TooltipProvider from "./TooltipProvider";
@@ -39,7 +38,7 @@ export default function ButtonView(props: ViewPropsType) {
     <Box {...getComponentProps(props, "container")}>
       <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
         <Button
-          variant={variant}
+          variant={variant} // todo
           href={href}
           onClick={(e) => {
             if (operator) {
