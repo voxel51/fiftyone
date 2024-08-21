@@ -49,7 +49,7 @@ export function getProps<P>(
   id: string,
   baseProps?: P
 ): P {
-  return merge(getLayoutProps(props), getComponentProps(props, id, baseProps));
+  return merge(baseProps, getLayoutProps(props), getComponentProps(props, id));
 }
 
 // add map,tuple,oneof support
