@@ -471,6 +471,8 @@ export const playPause: Control<VideoState | ImaVidState> = {
       }
       dispatchEvent("options", { showJSON: false });
 
+      // separate handling for imavid vs video state
+
       const isImaVid = (state.config as ImaVidConfig)
         .frameStoreController as ImaVidFramesController;
       if (isImaVid) {
@@ -488,7 +490,6 @@ export const playPause: Control<VideoState | ImaVidState> = {
         };
       }
 
-      //seperate imavid from video state
       const {
         playing,
         duration,
