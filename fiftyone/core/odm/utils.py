@@ -338,6 +338,7 @@ def get_field_kwargs(field):
 
 
 def _parse_field_str(field_str):
+    # eg: "fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)"
     chunks = field_str.strip().split("(", 1)
     ftype = etau.get_class(chunks[0])
     kwargs = {"ftype": ftype}
