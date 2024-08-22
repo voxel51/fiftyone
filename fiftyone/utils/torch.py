@@ -1763,8 +1763,8 @@ class TorchImagePatchesDataset(Dataset):
             before extracting them, in ``[-1, inf)``. If provided, the length
             and width of the box are expanded (or contracted, when
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
-            ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
-            to contract the boxes by 10%
+            ``alpha = 0.1`` to expand the boxes by 10%, and set
+            ``alpha = -0.1`` to contract the boxes by 10%
         skip_failures (False): whether to return an ``Exception`` object rather
             than raising it if an error occurs while loading a sample
     """
