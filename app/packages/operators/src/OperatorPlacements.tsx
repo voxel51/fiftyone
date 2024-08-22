@@ -24,7 +24,11 @@ export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps
 ) {
   return (
-    <ErrorBoundary Fallback={() => null}>
+    <ErrorBoundary
+      Fallback={(errorProps) => {
+        return <PlacementError {...props} {...errorProps} />;
+      }}
+    >
       <OperatorPlacement {...props} />
     </ErrorBoundary>
   );
@@ -42,6 +46,28 @@ function OperatorPlacements(props: OperatorPlacementsProps) {
       {...placement}
     />
   ));
+}
+
+function PlacementError(props) {
+  const { adaptiveMenuItemProps, error, operator } = props;
+  console.error(error);
+  const operatorURI = operator?.uri;
+  const postfix = operatorURI ? ` for ${operatorURI}` : "";
+  return (
+    <PillButton
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      icon={
+        <OperatorIcon
+          icon="error"
+          iconProps={{ sx: { color: (theme) => theme.palette.error.main } }}
+        />
+      }
+      title={error?.message || `Failed to load placement${postfix}`}
+      onClick={() => {
+        // do nothing
+      }}
+    />
+  );
 }
 
 export default withSuspense(OperatorPlacements, () => null);
