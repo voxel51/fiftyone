@@ -84,7 +84,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     config: ImaVidState["config"],
     options: ImaVidState["options"]
   ): ImaVidState {
-    const firstFrame = config.firstFrameNumber ?? 1;
+    const firstFrame = 1;
 
     return {
       ...this.getInitialBaseState(),
