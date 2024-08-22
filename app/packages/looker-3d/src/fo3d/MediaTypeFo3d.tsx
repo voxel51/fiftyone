@@ -1,3 +1,4 @@
+import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
@@ -33,7 +34,6 @@ import {
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { Leva } from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
 import {
@@ -396,11 +396,7 @@ export const MediaTypeFo3dComponent = () => {
   useTrackStatus();
 
   if (isParsingFo3d) {
-    return (
-      <Canvas>
-        <SpinningCube />
-      </Canvas>
-    );
+    return <LoadingDots />;
   }
 
   return (
@@ -434,7 +430,7 @@ export const MediaTypeFo3dComponent = () => {
 
           <StatusTunnel.Out />
 
-          <ThreeDLabels sampleMap={{ fo3d: sample }} />
+          {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
         </Fo3dSceneContext.Provider>
       </Canvas>
       <StatusBarRootContainer>
