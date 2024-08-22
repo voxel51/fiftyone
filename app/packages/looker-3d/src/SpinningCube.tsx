@@ -1,10 +1,9 @@
-import { modalSampleId } from "@fiftyone/state";
 import { MeshWobbleMaterial } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { Color, type Mesh } from "three";
-import { fo3dAssetsParseStatusLog } from "./state";
+import { fo3dAssetsParseStatusThisSample } from "./state";
 
 /**
  * This spinning cube is to be used as a loading indicator.
@@ -12,8 +11,7 @@ import { fo3dAssetsParseStatusLog } from "./state";
 export const SpinningCube = () => {
   const meshRef = useRef<Mesh>();
 
-  const thisSampleId = useRecoilValue(modalSampleId);
-  const logs = useRecoilValue(fo3dAssetsParseStatusLog(thisSampleId));
+  const logs = useRecoilValue(fo3dAssetsParseStatusThisSample);
 
   const errorsExist = useMemo(
     () => logs.some((log) => log.status === "error"),

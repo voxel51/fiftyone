@@ -1,15 +1,11 @@
-import { modalSampleId } from "@fiftyone/state";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import * as THREE from "three";
-import { fo3dAssetsParseStatusLog } from "../state";
+import { fo3dAssetsParseStatusThisSample } from "../state";
 
 export const ALL_LOADING_COMPLETE = "All loading complete!";
 
 export const useTrackStatus = () => {
-  const currentSample = useRecoilValue(modalSampleId);
-  const [logs, setLogs] = useRecoilState(
-    fo3dAssetsParseStatusLog(currentSample)
-  );
+  const [logs, setLogs] = useRecoilState(fo3dAssetsParseStatusThisSample);
 
   THREE.DefaultLoadingManager.onStart = (url) => {
     const log = "Started loading file: " + url;

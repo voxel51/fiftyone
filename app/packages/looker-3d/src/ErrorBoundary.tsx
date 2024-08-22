@@ -1,8 +1,7 @@
 import { Loading } from "@fiftyone/components";
-import { modalSampleId } from "@fiftyone/state";
 import React, { useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { fo3dAssetsParseStatusLog } from "./state";
+import { useSetRecoilState } from "recoil";
+import { fo3dAssetsParseStatusThisSample } from "./state";
 
 /**
  * This is to be used in conjunction with `Fo3dErrorBoundary` to add uncaught error logs to
@@ -15,8 +14,7 @@ const AddFo3dErrorLogs = ({
   error: Error;
   boundaryName?: string;
 }) => {
-  const thisSampleId = useRecoilValue(modalSampleId);
-  const setLogs = useSetRecoilState(fo3dAssetsParseStatusLog(thisSampleId));
+  const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
 
   useEffect(() => {
     if (!error) {
