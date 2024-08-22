@@ -10,7 +10,10 @@ import {
 } from "../../state";
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
-import { DEFAULT_PLAYBACK_RATE } from "./constants";
+import {
+  DEFAULT_PLAYBACK_RATE,
+  IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
+} from "./constants";
 
 /**
  * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
@@ -117,10 +120,20 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   getDefaultOptions(): ImaVidOptions {
+    let defaultPlaybackRate = DEFAULT_PLAYBACK_RATE;
+
+    const mayBePlayBackRateFromLocalStorage = localStorage.getItem(
+      IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY
+    );
+
+    if (mayBePlayBackRateFromLocalStorage) {
+      defaultPlaybackRate = parseFloat(mayBePlayBackRateFromLocalStorage);
+    }
+
     return {
       ...DEFAULT_BASE_OPTIONS,
       loop: false,
-      playbackRate: DEFAULT_PLAYBACK_RATE,
+      playbackRate: defaultPlaybackRate,
     } as ImaVidOptions;
   }
 

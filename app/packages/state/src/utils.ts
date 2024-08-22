@@ -102,17 +102,19 @@ export const collapseFields = (paths): StrictField[] => {
 };
 
 export const getStandardizedUrls = (
-  urls: Array<{ field: string; url: string }> | { [field: string]: string }
+  urls:
+    | readonly { readonly field: string; readonly url: string }[]
+    | { [field: string]: string }
 ) => {
-  let standardizedUrls: { [field: string]: string } = {};
   if (Array.isArray(urls)) {
+    let standardizedUrls: { [field: string]: string } = {};
+
     for (const { field, url } of urls) {
       standardizedUrls[field] = url;
     }
-  } else {
-    standardizedUrls = urls;
+    return standardizedUrls;
   }
-  return standardizedUrls;
+  return urls;
 };
 
 const convertTargets = (
