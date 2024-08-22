@@ -208,6 +208,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.ctx?.drawImage(this.element, 0, 0);
   }
 
+  paintImageOnCanvas(image: HTMLImageElement) {
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.ctx.drawImage(image, 0, 0);
+  }
+
   async drawFrame(frameNumberToDraw: number, animate = true) {
     if (this.waitingToPause && this.frameNumber > 1) {
       this.pause();
@@ -254,12 +262,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
       if (this.isPlaying || this.isSeeking) {
-        this.ctx.drawImage(image, 0, 0);
+        this.paintImageOnCanvas(image);
       }
 
       // this is when frame number changed through methods like keyboard navigation
       if (!this.isPlaying && !this.isSeeking && !animate) {
-        this.ctx.drawImage(image, 0, 0);
+        this.paintImageOnCanvas(image);
         this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
       }
 
