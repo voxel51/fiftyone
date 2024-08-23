@@ -1,22 +1,27 @@
 import * as foq from "@fiftyone/relay";
 import { BufferManager } from "@fiftyone/utilities";
-import { Environment, Subscription, fetchQuery } from "relay-runtime";
+import { Environment, fetchQuery, Subscription } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
-import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
+import {
+  ImaVidFrameSamples,
+  ModalSampleExtendedWithImage,
+} from "./ima-vid-frame-samples";
 import { ImaVidStore } from "./store";
 
 const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
-  public fetchBufferManager = new BufferManager();
   private frameRate = DEFAULT_FRAME_RATE;
-
-  public totalFrameCount: number;
+  private mediaField = "filepath";
+  private subscription: Subscription;
   private timeoutId: number;
+
+  public fetchBufferManager = new BufferManager();
   public isFetching = false;
   public storeBufferManager: BufferManager;
-  private subscription: Subscription;
+  public totalFrameCount: number;
+
   private updateImaVidState: StateUpdate<ImaVidState>;
 
   constructor(
@@ -183,6 +188,10 @@ export class ImaVidFramesController {
     this.frameRate = newFrameRate;
   }
 
+  public setMediaField(mediaField: string) {
+    this.mediaField = mediaField;
+  }
+
   public async fetchMore(cursor: number, count: number) {
     const variables = this.page(cursor, count);
 
@@ -209,18 +218,28 @@ export class ImaVidFramesController {
                 continue;
               }
 
-              if (node.__typename !== "ImageSample") {
+              const sample = {
+                ...node,
+                image: null,
+              } as ModalSampleExtendedWithImage;
+              const sampleId = sample.sample["_id"] as string;
+
+              if (sample.__typename !== "ImageSample") {
                 throw new Error("only image samples supported");
               }
 
-              const nodeSampleId = node.sample["_id"] as string;
+              // offset by one because cursor is zero based and frame index is one based
+              const frameIndex = Number(cursor) + 1;
 
-              this.store.samples.set(node.sample["_id"], node);
-              this.store.frameIndex.set(Number(cursor) + 1, nodeSampleId);
-              this.store.reverseFrameIndex.set(
-                nodeSampleId,
-                Number(cursor) + 1
+              this.store.samples.set(sampleId, sample);
+              this.store.fetchImageForSample(
+                sampleId,
+                sample["urls"],
+                this.mediaField
               );
+
+              this.store.frameIndex.set(frameIndex, sampleId);
+              this.store.reverseFrameIndex.set(sampleId, frameIndex);
             }
 
             this.storeBufferManager.addNewRange([
