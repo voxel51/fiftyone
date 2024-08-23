@@ -69,11 +69,7 @@ class Tag(HTTPEndpoint):
         view = await fost.get_tag_view(
             dataset,
             stages=stages,
-            filters=filters,
-            extended_stages=extended,
-            labels=labels,
-            hidden_labels=hidden_labels,
-            sample_ids=sample_ids,
+            filters={},
             sample_filter=SampleFilter(
                 group=(
                     GroupElementFilter(id=group_id, slices=slices)
