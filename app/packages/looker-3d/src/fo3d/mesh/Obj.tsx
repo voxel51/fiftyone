@@ -24,13 +24,15 @@ const ObjMeshDefaultMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objPath } = obj;
+  const { objPath, preTransformedObjPath } = obj;
 
   const { fo3dRoot } = useFo3dContext();
 
   const objUrl = useMemo(
-    () => getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
-    [objPath, fo3dRoot]
+    () =>
+      preTransformedObjPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(objPath, fo3dRoot)),
+    [objPath, preTransformedObjPath, fo3dRoot]
   );
 
   const mesh = useLoader(OBJLoader, objUrl);
