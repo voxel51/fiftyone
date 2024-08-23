@@ -10,7 +10,7 @@ import { executeOperator } from "./operators";
 import { useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
-import { useUnboundState } from "@fiftyone/state";
+import { DimensionsType, useUnboundState } from "@fiftyone/state";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -25,13 +25,7 @@ export interface CustomPanelProps {
   onChangeSelected?: string;
   onChangeSelectedLabels?: string;
   onChangeExtendedSelection?: string;
-  dimensions: {
-    bounds: {
-      height?: number;
-      width?: number;
-    };
-    widthRef: React.MutableRefObject<HTMLDivElement | null>;
-  } | null;
+  dimensions: DimensionsType | null;
   panelName?: string;
   panelLabel?: string;
 }
