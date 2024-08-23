@@ -7617,9 +7617,10 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            doc_cls._declare_field(dataset, field_name, field)
         else:
-            field._set_dataset(dataset, field_name)
+            field = field.copy()
+            doc_cls._declare_field(dataset, field_name, field)
+        doc_cls._declare_field(dataset, field_name, field)
 
     if field_docs is not None:
         for field_doc in field_docs:
