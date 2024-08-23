@@ -7619,7 +7619,7 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
         else:
             field = field.copy()
-            doc_cls._declare_field(dataset, field_name, field)
+
         doc_cls._declare_field(dataset, field_name, field)
 
     if field_docs is not None:
