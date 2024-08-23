@@ -5,6 +5,7 @@ import {
   modalSample,
   modalSampleId,
   useHoveredSample,
+  useKeyDown,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
@@ -24,6 +25,9 @@ export const SampleWrapper = ({
   const [hovering, setHovering] = useState(false);
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
+
+  useKeyDown("c", () => setHovering((cur) => !cur));
+
   const clear = useCallback(() => {
     if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
@@ -49,6 +53,7 @@ export const SampleWrapper = ({
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
+      data-cy={"looker-hover"}
       {...hoverEventHandlers}
     >
       {!isGroup && (

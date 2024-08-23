@@ -44,10 +44,10 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
 
   return (
     <>
-      {entries.map((data, i) => (
+      {entries.map(({ dataCy, ...data }, i) => (
         <PillButton
           {...data}
-          data-cy={data.dataCy}
+          data-cy={dataCy}
           highlight={false}
           key={i}
           open={false}

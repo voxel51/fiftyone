@@ -27,7 +27,7 @@ export class ModalSidebarPom {
   }
 
   async clearGroupFilters(name: string) {
-    return this.locator.getByTestId(`clear-filters-${name}}`).click();
+    return this.locator.getByTestId(`clear-filters-${name}`).click();
   }
 
   async clickFieldDropdown(field: string) {

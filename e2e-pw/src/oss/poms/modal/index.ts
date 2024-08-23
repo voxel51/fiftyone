@@ -63,6 +63,10 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
+  async lookerMouseLeave() {
+    await this.locator.getByTestId("looker-hover").dispatchEvent("mouseleave");
+  }
+
   getLookerAttachedEvent() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",

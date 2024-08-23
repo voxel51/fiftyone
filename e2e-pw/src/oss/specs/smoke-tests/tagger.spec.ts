@@ -107,12 +107,9 @@ test.describe("tag", () => {
   }) => {
     await grid.openFirstSample();
 
-    await modal.looker.focus();
-    await page.keyboard.press("c");
-
+    await modal.sidebar.toggleLabelCheckbox("ground_truth");
     await expect(modal.looker).toHaveScreenshot("labels.png");
 
-    await modal.sidebar.toggleLabelCheckbox("ground_truth");
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
@@ -121,11 +118,13 @@ test.describe("tag", () => {
     await entryExpandPromise;
     await modal.sidebar.applyFilter("bird");
 
+    await modal.looker.hover();
+
     await modal.tagger.toggleOpen();
     await modal.tagger.addLabelTag("correct");
 
     await modal.sidebar.clearGroupFilters("labels");
-
+    await page.keyboard.press("c");
     await expect(modal.looker).toHaveScreenshot("labels.png");
   });
 });
