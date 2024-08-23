@@ -2135,6 +2135,49 @@ class GridView(View):
         }
 
 
+class FlexView(View):
+    """Displays properties of an object as a flow of components in horizontal
+        or vertical orientation.
+    Ø
+        .. note::
+
+            Must be used with :class:`Object` properties.
+
+        Args:
+            orientation ("horizontal"): the orientation of the stack. Can be either
+                ``"horizontal"`` or ``"vertical"``
+            gap (1): the gap between the components
+            align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
+                or ``"right"``
+            align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
+                or ``"bottom"``
+            variant (None): the variant of the grid. Can be either ``"paper"`` or ``"outline"``
+            elevation (None): the elevation of the grid. Only applicable when ``variant="paper"``
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = kwargs.get("orientation", "horizontal")
+        self.gap = kwargs.get("gap", 1)
+        self.align_x = kwargs.get("align_x", "left")
+        self.align_y = kwargs.get("align_y", "top")
+        variant = kwargs.get("variant", None)
+        elevation = kwargs.get("elevation", None)
+        if variant == "paper":
+            self.container = PaperContainer(elevation=elevation)
+        elif variant == "outline":
+            self.container = OutlinedContainer()
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "orientation": self.orientation,
+            "gap": self.gap,
+            "align_x": self.align_x,
+            "align_y": self.align_y,
+        }
+
+
 class DashboardView(View):
     """Defines a Dashboard view.
 
