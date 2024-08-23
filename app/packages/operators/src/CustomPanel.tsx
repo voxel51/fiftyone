@@ -76,7 +76,6 @@ export function CustomPanel(props: CustomPanelProps) {
         overflow: "auto",
       }}
     >
-      {/* todo: heightRef */}
       <Box ref={dimensions.widthRef}>
         <DimensionRefresher dimensions={dimensions}>
           <OperatorIO

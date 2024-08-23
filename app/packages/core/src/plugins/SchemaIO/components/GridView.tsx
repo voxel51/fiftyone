@@ -2,13 +2,15 @@ import { Box, BoxProps } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
 import {
+  getAdjustedLayoutWidth,
   getComponentProps,
   getGridSx,
   getPath,
   getProps,
+  parseGap,
   spaceToHeight,
 } from "../utils";
-import { ObjectSchemaType, PropertyType, ViewPropsType } from "../utils/types";
+import { ObjectSchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 
 export default function GridView(props: ViewPropsType) {
@@ -16,12 +18,9 @@ export default function GridView(props: ViewPropsType) {
   const { properties, view = {} } = schema as ObjectSchemaType;
   const { alignX, alignY, align_x, align_y, gap = 1, orientation } = view;
 
-  const propertiesAsArray: PropertyType[] = [];
-
-  for (const property in properties) {
-    propertiesAsArray.push({ id: property, ...properties[property] });
-  }
-
+  const propertiesAsArray = Object.entries(properties).map(([id, property]) => {
+    return { id, ...property };
+  });
   const height = props?.layout?.height as number;
   const parsedGap = parseGap(gap);
   const width = getAdjustedLayoutWidth(
@@ -86,26 +85,4 @@ export default function GridView(props: ViewPropsType) {
       </Box>
     </Box>
   );
-}
-
-function parseGap(gap: number | string) {
-  if (typeof gap === "string") {
-    const gapStr = gap.trim().replace("px", "");
-    if (isNaN(gapStr)) {
-      console.warn("Ignored invalid gap value " + gap);
-      return 0;
-    }
-    const gapInt = parseInt(gapStr);
-    return gap.includes("px") ? gapInt / 8 : gapInt;
-  } else if (typeof gap === "number") {
-    return gap;
-  }
-  return 0;
-}
-
-function getAdjustedLayoutWidth(layoutWidth?: number, gap?: number) {
-  if (typeof gap === "number" && typeof layoutWidth === "number") {
-    return layoutWidth - gap * 8;
-  }
-  return layoutWidth;
 }

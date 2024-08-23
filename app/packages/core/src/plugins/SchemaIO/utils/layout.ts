@@ -67,12 +67,12 @@ export function getGridSx(view: SchemaViewType = {}): SxProps {
   const direction = orientation === "vertical" ? "row" : "column";
   const sx: SxProps = { ...getPaddingSx(view), ...getMarginSx(view) };
   /**
-   *  todo: template - auto compute width (height?)
+   *  todo@im: template - auto compute width (height?)
    * [
    *  [1, 2, 3], row 1
    *  [4, 5, 6], row 2
    *  [7, 8, 9], row 3
-   * ]ß
+   * ]
    */
 
   if (typeof columns === "number") {

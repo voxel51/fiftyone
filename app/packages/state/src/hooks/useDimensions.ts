@@ -46,3 +46,5 @@ export default function useDimensions() {
 
   return { bounds, ref, heightRef, widthRef, update, refresh };
 }
+
+export type DimensionsType = ReturnType<typeof useDimensions>;
