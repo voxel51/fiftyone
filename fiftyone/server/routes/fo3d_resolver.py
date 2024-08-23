@@ -39,8 +39,9 @@ def get_resolved_asset_path(asset_path: str, root: str = None):
         if root_file_system == fos.FileSystem.LOCAL:
             needs_url = False
         else:
-            #   We need URL, and we'll join relative asset path to non-local root
-            asset_path = posixpath.join(root, asset_path)
+            asset_path = posixpath.normpath(
+                posixpath.join(root, asset_path)
+            ).replace(":/", "://")
 
     if needs_url:
         asset_path = media_cache.get_url(asset_path, method="GET")

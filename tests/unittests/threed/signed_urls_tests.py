@@ -63,6 +63,35 @@ class TestSignedUrlsFo3d(unittest.TestCase):
                     get_url_mock.return_value,
                 )
 
+    def test_relative_cloud_paths_with_traversal(self):
+        # Test that relative paths are modified
+        scene = Scene()
+        scene.add(GltfMesh("gltf", "../path/to/gltf.gltf"))
+
+        with mock.patch.object(
+            fo3d_resolver.fos, "get_file_system"
+        ) as get_file_system_mock:
+            with mock.patch.object(
+                fo3d_resolver.media_cache, "get_url"
+            ) as get_url_mock:
+                get_file_system_mock.side_effect = [
+                    fo3d_resolver.fos.FileSystem.LOCAL,
+                    fo3d_resolver.fos.FileSystem.S3,
+                ]
+
+                fo3d_resolver.resolve_urls_for_scene(
+                    scene, root="s3://bucket/root/test"
+                )
+                get_url_mock.assert_called_with(
+                    "s3://bucket/root/path/to/gltf.gltf",
+                    method="GET",
+                )
+
+                self.assertEqual(
+                    scene.children[0]._pre_transformed_gltf_path,
+                    get_url_mock.return_value,
+                )
+
     def test_absolute_cloud_paths_with_root(self):
         # Test that absolute cloud paths with root are resolved
         scene = Scene()
