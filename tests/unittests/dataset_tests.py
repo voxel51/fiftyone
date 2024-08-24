@@ -413,6 +413,27 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.info, {"foo2": "bar2"})
 
     @drop_datasets
+    def test_dataset_shared_field_metadata(self):
+        """Test field metadata for default/shared fields"""
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        f = dataset1.get_field("filepath")
+        self.assertIsNot(f, dataset2.get_field("filepath"))
+
+        # Save metadata on dataset1 field, should not show up in dataset2
+        f.info = {"foo": "bar"}
+        f.save()
+
+        dataset2.reload()
+        self.assertIsNone(dataset2.get_field("filepath").info)
+
+        # Really fresh reload
+        fo.Dataset._instances.clear()
+        dataset2b = fo.load_dataset(dataset2.name)
+        self.assertIsNone(dataset2b.get_field("filepath").info)
+
+    @drop_datasets
     def test_dataset_app_config(self):
         dataset_name = self.test_dataset_app_config.__name__
 
