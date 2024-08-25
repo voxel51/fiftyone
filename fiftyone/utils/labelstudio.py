@@ -100,6 +100,7 @@ class LabelStudioBackend(foua.AnnotationBackend):
     def supported_label_types(self):
         return [
             "classification",
+            "classifications",
             "detection",
             "detections",
             "instance",
@@ -416,7 +417,14 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             # add to dict
             sample_id = task_map[t["id"]]
             # we save and pass both id and the name of the label field
-            results[sample_id] = {l.id: (ln, l) for (ln, l) in labels}
+            results[sample_id] = {}
+            for ln, l in labels:
+                if isinstance(l, fol.Classifications):
+                    for classification_obj in l.classifications:
+                        label_id = classification_obj.id
+                        results[sample_id][label_id] = (ln, classification_obj)
+                else:
+                    results[sample_id][l.id] = (ln, l)
 
         return results
 
@@ -891,7 +899,9 @@ def _from_choices(result):
         return fol.Classification(label=label_values[0])
 
     # multi-label classification
-    return [fol.Classification(label=l) for l in label_values]
+    return fol.Classifications(
+        classifications=[fol.Classification(label=l) for l in label_values]
+    )
 
 
 def _from_rectanglelabels(result):

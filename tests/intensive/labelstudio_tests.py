@@ -265,10 +265,12 @@ def label_mappings():
                 "from_name": "choice",
                 "type": "choices",
             },
-            "fiftyone": [
-                fo.Classification(label="Airbus"),
-                fo.Classification(label="Boeing"),
-            ],
+            "fiftyone": fo.Classifications(
+                classifications=[
+                    fo.Classification(label="Airbus"),
+                    fo.Classification(label="Boeing"),
+                ]
+            ),
         },
         {
             "labelstudio": {
@@ -477,7 +479,6 @@ def test_import_labels(label_mappings):
     for case in label_mappings:
         label = fouls.import_label_studio_annotation(case["labelstudio"])[1]
         expected = case["fiftyone"]
-
         if isinstance(expected, (list, tuple)):
             for pair in zip(label, expected):
                 _assert_labels_equal(*pair)
@@ -673,6 +674,8 @@ def _assert_labels_equal(converted, expected):
             _assert_labels_equal(*pair)
     elif expected._cls == "Regression":
         assert expected.value == converted.value
+    elif expected._cls == "Classifications":
+        assert all(cls_obj.label for cls_obj in expected.classifications)
     else:
         raise NotImplementedError()
 
