@@ -26,7 +26,10 @@ export const SampleWrapper = ({
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
 
-  useKeyDown("c", () => setHovering((cur) => !cur));
+  useKeyDown("c", () => {
+    !(document.activeElement instanceof HTMLInputElement) &&
+      setHovering((cur) => !cur);
+  });
 
   const clear = useCallback(() => {
     if (hoveringRef.current) return;
