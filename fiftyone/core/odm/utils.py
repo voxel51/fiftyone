@@ -185,6 +185,7 @@ def create_field(
     description=None,
     info=None,
     read_only=False,
+    created_at=None,
     **kwargs,
 ):
     """Creates the field defined by the given specification.
@@ -217,6 +218,7 @@ def create_field(
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field should be read-only
+        created_at (None): datetime when this field was added to dataset
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -233,6 +235,7 @@ def create_field(
         description=description,
         info=info,
         read_only=read_only,
+        created_at=created_at,
     )
     field_kwargs.update(kwargs)
 
@@ -281,20 +284,21 @@ def create_field(
     return field
 
 
-def create_implied_field(path, value, dynamic=False):
+def create_implied_field(path, value, dynamic=False, created_at=None):
     """Creates the field for the given value.
 
     Args:
         path: the field name or path
         value: a value
         dynamic (False): whether to declare dynamic embedded document fields
+        created_at (None): datetime the field was created
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
     """
     field_name = path.rsplit(".", 1)[-1]
     kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
-    return create_field(field_name, **kwargs)
+    return create_field(field_name, created_at=created_at, **kwargs)
 
 
 def get_field_kwargs(field):
@@ -319,6 +323,7 @@ def get_field_kwargs(field):
         "description": field.description,
         "info": field.info,
         "read_only": field.read_only,
+        "created_at": field.created_at,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -436,6 +441,7 @@ def _get_field_kwargs(value, field, dynamic):
         "description": field.description,
         "info": field.info,
         "read_only": field.read_only,
+        "created_at": field.created_at,
     }
 
     if isinstance(field, (fof.ListField, fof.DictField)):

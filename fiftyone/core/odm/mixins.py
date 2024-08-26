@@ -338,6 +338,7 @@ class DatasetMixin(object):
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         expand_schema=True,
         recursive=True,
         validate=True,
@@ -364,6 +365,7 @@ class DatasetMixin(object):
             description (None): an optional description
             info (None): an optional info dict
             read_only (False): whether the field should be read-only
+            created_at (None): datetime when this field was added to dataset
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
@@ -389,6 +391,7 @@ class DatasetMixin(object):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=created_at,
             **kwargs,
         )
 
@@ -433,7 +436,9 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field = create_implied_field(path, value, dynamic=dynamic)
+        field = create_implied_field(
+            path, value, dynamic=dynamic, created_at=datetime.utcnow()
+        )
 
         return cls.merge_field_schema(
             {path: field},
@@ -453,6 +458,7 @@ class DatasetMixin(object):
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         **kwargs,
     ):
         field_name = path.rsplit(".", 1)[-1]
@@ -465,6 +471,7 @@ class DatasetMixin(object):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=created_at,
             **kwargs,
         )
 
@@ -1236,6 +1243,7 @@ class DatasetMixin(object):
     def _clone_field_schema(cls, path, new_path):
         field_name, doc, _, _ = cls._parse_path(path)
         field = doc._fields[field_name]
+        field._created_at = datetime.utcnow()
 
         cls._add_field_schema(new_path, field)
 

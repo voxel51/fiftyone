@@ -261,6 +261,8 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_dataset_field_metadata(self):
         dataset = fo.Dataset()
+        dataset.reload()
+        check_time = dataset.created_at
         dataset.media_type = "video"
 
         dataset.add_sample_field("field1", fo.StringField)
@@ -268,12 +270,16 @@ class DatasetTests(unittest.TestCase):
         field = dataset.get_field("field1")
         self.assertIsNone(field.description)
         self.assertIsNone(field.info)
+        self.assertGreater(field.created_at, check_time)
+        check_time = field.created_at
 
         dataset.add_frame_field("field1", fo.StringField)
 
         field = dataset.get_field("frames.field1")
         self.assertIsNone(field.description)
         self.assertIsNone(field.info)
+        self.assertGreater(field.created_at, check_time)
+        check_time = field.created_at
 
         dataset.add_sample_field(
             "field2", fo.StringField, description="test", info={"foo": "bar"}
@@ -282,6 +288,8 @@ class DatasetTests(unittest.TestCase):
         field = dataset.get_field("field2")
         self.assertEqual(field.description, "test")
         self.assertEqual(field.info, {"foo": "bar"})
+        self.assertGreater(field.created_at, check_time)
+        check_time = field.created_at
 
         dataset.add_frame_field(
             "field2",
@@ -293,6 +301,8 @@ class DatasetTests(unittest.TestCase):
         field = dataset.get_field("frames.field2")
         self.assertEqual(field.description, "test2")
         self.assertEqual(field.info, {"foo2": "bar2"})
+        self.assertGreater(field.created_at, check_time)
+        check_time = field.created_at
 
         sample = fo.Sample(
             filepath="video.mp4",
@@ -312,6 +322,17 @@ class DatasetTests(unittest.TestCase):
 
         dataset.add_sample(sample)
 
+        # Implied field gets new created_at
+        field = dataset.get_field("ground_truth")
+        self.assertGreater(field.created_at, check_time)
+        before_save_time = field.created_at
+
+        # Save field, created_at shouldn't change
+        field.description = "test"
+        field.save()
+        dataset.reload()
+        self.assertEqual(field.created_at, before_save_time)
+
         field = dataset.get_field("ground_truth.detections.label")
         self.assertIsNone(field.description)
         self.assertIsNone(field.info)
@@ -325,6 +346,17 @@ class DatasetTests(unittest.TestCase):
         field = dataset.get_field("ground_truth.detections.label")
         self.assertEqual(field.description, "test")
         self.assertEqual(field.info, {"foo": "bar"})
+
+        # Implied frame field gets new created_at
+        field = dataset.get_field("frames.ground_truth")
+        self.assertGreater(field.created_at, check_time)
+        before_save_time = field.created_at
+
+        # Save field, created_at shouldn't change
+        field.description = "test"
+        field.save()
+        dataset.reload()
+        self.assertEqual(field.created_at, before_save_time)
 
         field = dataset.get_field("frames.ground_truth.detections.label")
         self.assertIsNone(field.description)
@@ -1417,6 +1449,7 @@ class DatasetTests(unittest.TestCase):
 
         created_at1 = dataset.values("created_at")[0]
         last_modified_at1 = dataset.values("last_modified_at")[0]
+        s1_created = dataset.get_field("tags").created_at
 
         dataset.merge_sample(s2)
         dataset.merge_sample(s3)
@@ -1429,6 +1462,8 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(s1["spam"], "eggs")
         self.assertEqual(created_at1, created_at2)
         self.assertTrue(last_modified_at1 < last_modified_at2)
+        self.assertEqual(dataset.get_field("tags").created_at, s1_created)
+        self.assertGreater(dataset.get_field("spam").created_at, s1_created)
 
         # List merging variations
 
@@ -1654,6 +1689,7 @@ class DatasetTests(unittest.TestCase):
         sample2.field = None
         sample2.save()
 
+        field_created_at = dataset1.get_field("field").created_at
         created_at1 = dataset1.values("created_at")
         last_modified_at1 = dataset1.values("last_modified_at")
         dataset1.merge_samples(dataset2.select_fields("field"))
@@ -1668,6 +1704,9 @@ class DatasetTests(unittest.TestCase):
             sample11.new_field
         with self.assertRaises(AttributeError):
             sample12.new_gt
+        self.assertEqual(
+            dataset1.get_field("field").created_at, field_created_at
+        )
         self.assertTrue(
             all(c1 == c2 for c1, c2 in zip(created_at1, created_at2))
         )
@@ -1677,6 +1716,7 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+        field_created_at = dataset2.get_field("new_gt").created_at
         dataset1.merge_samples(dataset2)
 
         self.assertEqual(sample11.field, 2)
@@ -1687,6 +1727,9 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNone(sample11.new_gt)
         self.assertIsNotNone(sample12.gt)
         self.assertIsNotNone(sample12.new_gt)
+        self.assertEqual(
+            dataset1.get_field("new_gt").created_at, field_created_at
+        )
 
     @drop_datasets
     def test_merge_samples_and_labels(self):
@@ -2757,7 +2800,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(sample)
 
+        created_at = dataset.get_field("field").created_at
         dataset.rename_sample_field("field", "new_field")
+        self.assertEqual(dataset.get_field("new_field").created_at, created_at)
         self.assertFalse("field" in dataset.get_field_schema())
         self.assertTrue("new_field" in dataset.get_field_schema())
         self.assertEqual(sample["new_field"], 1)
@@ -2868,6 +2913,7 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(sample)
 
+        created_at = dataset.get_field("field").created_at
         lma1a = sample.last_modified_at
         lma1b = dataset.values("last_modified_at")[0]
         dataset.clone_sample_field("field", "field_copy")
@@ -2876,6 +2922,9 @@ class DatasetTests(unittest.TestCase):
         lma2b = dataset.values("last_modified_at")[0]
         self.assertIn("field", schema)
         self.assertIn("field_copy", schema)
+        self.assertGreater(
+            dataset.get_field("field_copy").created_at, created_at
+        )
         self.assertIsNotNone(sample.field)
         self.assertIsNotNone(sample.field_copy)
         self.assertEqual(sample.field, 1)
@@ -4414,7 +4463,12 @@ class DatasetIdTests(unittest.TestCase):
 
         # Empty dataset
 
+        time.sleep(1)
         dataset2 = dataset.clone()
+        self.assertGreater(
+            dataset2.get_field("filepath").created_at,
+            dataset.get_field("filepath").created_at,
+        )
 
         self.assertSetEqual(
             set(dataset.list_indexes()),
@@ -4478,6 +4532,10 @@ class DatasetIdTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
+        self.assertGreater(
+            dataset2.get_field("frames.frame_number").created_at,
+            dataset.get_field("frames.frame_number").created_at,
+        )
         self.assertSetEqual(
             set(dataset.list_indexes()),
             set(dataset2.list_indexes()),
@@ -4543,6 +4601,9 @@ class DatasetIdTests(unittest.TestCase):
     def test_clone_group(self):
         dataset = fo.Dataset()
         dataset.add_group_field("group")
+        self.assertGreater(
+            dataset.get_field("group").created_at, dataset.created_at
+        )
 
         self.assertEqual(dataset.media_type, "group")
 
@@ -6676,10 +6737,17 @@ class CustomEmbeddedDocumentTests(unittest.TestCase):
         )
 
         dataset = fo.Dataset()
+        created_at = dataset.created_at
         dataset.add_sample(sample)
 
         self.assertIsInstance(sample.camera_info, _CameraInfo)
         self.assertIsInstance(sample.weather.metadata, _LabelMetadata)
+        self.assertTrue("camera_info" in dataset.get_field_schema())
+        self.assertGreater(
+            dataset.get_field("camera_info").created_at, created_at
+        )
+        self.assertTrue("weather" in dataset.get_field_schema())
+        self.assertGreater(dataset.get_field("weather").created_at, created_at)
 
         view = dataset.limit(1)
         sample_view = view.first()

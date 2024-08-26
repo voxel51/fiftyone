@@ -487,6 +487,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "metadata",
                 fof.EmbeddedDocumentField,
                 embedded_doc_type=doc_type,
+                created_at=datetime.utcnow(),
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
@@ -1464,6 +1465,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
+                created_at=datetime.utcnow(),
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1475,6 +1477,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
+                created_at=datetime.utcnow(),
                 **kwargs,
             )
 
@@ -1618,6 +1621,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=datetime.utcnow(),
             **kwargs,
         )
 
@@ -1740,6 +1744,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=datetime.utcnow(),
         )
 
         if expanded:
@@ -7774,14 +7779,17 @@ def _create_frame_document_cls(
 
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
+    now = datetime.utcnow()
     for field_name in tuple(doc_cls._fields.keys()):
         field = doc_cls._fields[field_name]
+        field._created_at = now
 
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            doc_cls._declare_field(dataset, field_name, field)
         else:
-            field._set_dataset(dataset, field_name)
+            field = field.copy()
+
+        doc_cls._declare_field(dataset, field_name, field)
 
     if field_docs is not None:
         for field_doc in field_docs:
@@ -7934,8 +7942,13 @@ def _clone_collection(sample_collection, name, persistent):
 
     dataset._reload()
 
-    _id = ObjectId()
+    #
+    # Clone dataset document
+    #
     now = datetime.utcnow()
+
+    dataset_doc = dataset._doc.copy_with_new_id()
+    _id = dataset_doc.id
 
     sample_collection_name = _make_sample_collection_name(_id)
 
@@ -7946,13 +7959,6 @@ def _clone_collection(sample_collection, name, persistent):
     else:
         frame_collection_name = None
 
-    #
-    # Clone dataset document
-    #
-
-    dataset_doc = dataset._doc.copy()
-
-    dataset_doc.id = _id
     dataset_doc.name = name
     dataset_doc.slug = slug
     dataset_doc.created_at = now
@@ -7966,6 +7972,12 @@ def _clone_collection(sample_collection, name, persistent):
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
+
+    for field in dataset_doc.sample_fields:
+        field.created_at = now
+
+    for field in dataset_doc.frame_fields:
+        field.created_at = now
 
     # Runs/views get special treatment at the end
     dataset_doc.workspaces.clear()

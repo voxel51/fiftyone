@@ -409,11 +409,19 @@ class Field(mongoengine.fields.BaseField):
         read_only (False): whether the field is read-only
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
         self.__dataset = None
         self.__path = None
@@ -527,6 +535,11 @@ class Field(mongoengine.fields.BaseField):
     @read_only.setter
     def read_only(self, read_only):
         self._read_only = read_only
+
+    @property
+    def created_at(self):
+        """The datetime when the field was created or added to dataset."""
+        return self._created_at
 
     def copy(self):
         """Returns a copy of the field.
@@ -1436,6 +1449,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): datetime field was created
     """
 
     def __init__(
@@ -1444,6 +1458,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         **kwargs,
     ):
         super().__init__(document_type, **kwargs)
@@ -1451,6 +1466,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
         self._selected_fields = None
         self._excluded_fields = None
         self.__fields = None
