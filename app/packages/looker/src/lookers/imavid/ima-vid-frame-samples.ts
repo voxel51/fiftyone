@@ -56,33 +56,49 @@ export class ImaVidFrameSamples {
   }
 
   async fetchImageForSample(
-    id: string,
+    sampleId: string,
     urls: ModalSample["urls"],
     mediaField: string
-  ): Promise<void> {
+  ): Promise<string> {
     const standardizedUrls = getStandardizedUrls(urls);
     const image = new Image();
     const source = getSampleSrc(standardizedUrls[mediaField]);
 
-    image.addEventListener("load", () => {
-      const sample = this.samples.get(id);
-      sample.image = image;
+    return new Promise((resolve) => {
+      image.addEventListener("load", () => {
+        const sample = this.samples.get(sampleId);
+
+        if (!sample) {
+          // sample was removed from the cache, this shouldn't happen...
+          // but if it does, it might be because the cache was cleared
+          // todo: handle this case better
+          console.error(
+            "Sample was removed from cache before image loaded",
+            sampleId
+          );
+          image.src = BASE64_BLACK_IMAGE;
+          return;
+        }
+
+        sample.image = image;
+        resolve(sampleId);
+      });
+
+      image.addEventListener("error", () => {
+        console.error(
+          "Failed to load image for sample with id",
+          sampleId,
+          "at url",
+          source
+        );
+
+        // use a placeholder blank black image to not block animation
+        // setting src should trigger the load event
+        image.src = BASE64_BLACK_IMAGE;
+      });
+
+      image.src = source;
     });
-
-    image.addEventListener("error", () => {
-      console.error(
-        "Failed to load image for sample with id",
-        id,
-        "at url",
-        source
-      );
-
-      // use a placeholder blank black image to not block animation
-      // setting src should trigger the load event
-      image.src = BASE64_BLACK_IMAGE;
-    });
-
-    image.src = source;
   }
 
   /**

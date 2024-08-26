@@ -212,6 +212,13 @@ export class ImaVidFramesController {
       ).subscribe({
         next: (data) => {
           if (data?.samples?.edges?.length) {
+            // map of frame index to sample id resolved by image fetching promise
+            // (insertion order preserved)
+            const imageFetchPromisesMap: Map<
+              number,
+              Promise<string>
+            > = new Map();
+
             // update store
             for (const { cursor, node } of data.samples.edges) {
               if (!node) {
@@ -232,23 +239,38 @@ export class ImaVidFramesController {
               const frameIndex = Number(cursor) + 1;
 
               this.store.samples.set(sampleId, sample);
-              this.store.fetchImageForSample(
-                sampleId,
-                sample["urls"],
-                this.mediaField
-              );
 
-              this.store.frameIndex.set(frameIndex, sampleId);
-              this.store.reverseFrameIndex.set(sampleId, frameIndex);
+              imageFetchPromisesMap.set(
+                frameIndex,
+                this.store.fetchImageForSample(
+                  sampleId,
+                  sample["urls"],
+                  this.mediaField
+                )
+              );
             }
 
-            this.storeBufferManager.addNewRange([
-              Number(data.samples.edges[0].cursor) + 1,
-              Number(data.samples.edges[data.samples.edges.length - 1].cursor) +
-                1,
-            ]);
+            const frameIndices = imageFetchPromisesMap.keys();
+            const imageFetchPromises = imageFetchPromisesMap.values();
+
+            Promise.all(imageFetchPromises).then((sampleIds) => {
+              for (let i = 0; i < sampleIds.length; i++) {
+                const frameIndex = frameIndices.next().value;
+                const sampleId = sampleIds[i];
+                this.store.frameIndex.set(frameIndex, sampleId);
+                this.store.reverseFrameIndex.set(sampleId, frameIndex);
+
+                this.storeBufferManager.addNewRange([
+                  Number(data.samples.edges[0].cursor) + 1,
+                  Number(
+                    data.samples.edges[data.samples.edges.length - 1].cursor
+                  ) + 1,
+                ]);
+
+                resolve();
+              }
+            });
           }
-          resolve();
         },
       });
       // todo: see if environment.retain() is applicable here,
