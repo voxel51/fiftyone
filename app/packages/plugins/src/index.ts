@@ -80,6 +80,7 @@ class PluginDefinition {
   pyEntry: string | null;
   jsBundleExists: boolean;
   jsBundleServerPath: string | null;
+  jsBundleHash: string | null;
   serverPath: string;
   hasPy: boolean;
   hasJS: boolean;
@@ -97,6 +98,7 @@ class PluginDefinition {
 
     this.jsBundleExists = json.js_bundle_exists;
     this.jsBundleServerPath = `${serverPathPrefix}${json.js_bundle_server_path}`;
+    this.jsBundleHash = json.js_bundle_hash;
     this.hasPy = json.has_py;
     this.hasJS = json.has_js;
     this.serverPath = `${serverPathPrefix}${json.server_path}`;
@@ -111,12 +113,13 @@ export async function loadPlugins() {
     if (plugin.hasJS) {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
+      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : '';
       if (usingRegistry().hasScript(name)) {
         console.debug(`Plugin "${name}": already loaded`);
         continue;
       }
       try {
-        await loadScript(name, pathPrefix + scriptPath);
+        await loadScript(name, pathPrefix + scriptPath + cacheKey);
       } catch (e) {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
