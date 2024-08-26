@@ -9,6 +9,7 @@ Base classes for documents that back dataset contents.
 from copy import deepcopy
 import json
 
+import bson
 from bson import json_util, ObjectId
 import mongoengine
 from pymongo import InsertOne, UpdateOne
@@ -582,6 +583,20 @@ class Document(BaseDocument, mongoengine.Document):
     @classmethod
     def _doc_name(cls):
         return "Document"
+
+    def copy_with_new_id(self):
+        """Returns a copy of this document with a new ID"""
+        doc_copy = self.copy()
+        new_id = bson.ObjectId()
+
+        # pylint: disable=no-member
+        id_field = self._meta.get("id_field", "id")
+        doc_copy.set_field(id_field, new_id)
+
+        # Setting _created explicitly as True because we know this is a new
+        #   document
+        doc_copy._created = True
+        return doc_copy
 
     def reload(self, *fields, **kwargs):
         """Reloads the document from the database.
