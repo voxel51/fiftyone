@@ -281,14 +281,18 @@ class Object(BaseType):
             name: the name of the property
             label: the label of the button
             icon (None): the name of the icon to display
-            icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
-            variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
-                ``"round"`` or ``"square"``
-            on_click (None): the name of the operator to execute when the button is clicked
-            prompt (False): whether to prompt the user before executing the operator
+            icon_position ("left"): the position of the icon. Can be ``"left"``
+                or ``"right"``
+            variant (None): the variant of the button. Can be ``"contained"``,
+                ``"outlined"``, ``"round"`` or ``"square"``
+            on_click (None): the name of the operator to execute when the
+                button is clicked
+            prompt (False): whether to prompt the user before executing the
+                operator
             params (None): the parameters to pass to the operator
-            space (None): An int specifying how much vertical/horizontal space to allocate out
-                of ``12`` depending on the orientation of the parent container
+            space (None): An int specifying how much vertical/horizontal space
+                to allocate out of ``12`` depending on the orientation of the
+                parent container
             href (None): the URL to navigate to when the button is clicked
         """
         btn = Button(
@@ -393,19 +397,23 @@ class Object(BaseType):
         """Defined an :class:`Object` property that is displayed as a menu.
 
         .. note::
-            Can be used for an :class:`Button` type with properties whose views are one of
-            :class:`Button`, :class:`Dropdown`, :class:`DropdownView`, and :class;`Choices`. The variant
-            and color of the items can be set using the `variant` and `color` parameters.
+            Can be used for an :class:`Button` type with properties whose views
+            are one of :class:`Button`, :class:`Dropdown`,
+            :class:`DropdownView`, and :class;`Choices`. The variant and color
+            of the items can be set using the `variant` and `color` parameters.
 
         Args:
             name: the name of the property
-            variant (None): the variant for the items of the menu. Can be ``"contained"``,
-                ``"outlined"``, ``"round"`` or ``"square"``
+            variant (None): the variant for the items of the menu. Can be
+                ``"contained"``, ``"outlined"``, ``"round"`` or ``"square"``
             color (None): the color for the items of the menu.
-            overlay (None): whether to display the menu as an overlay. Can be ``"top-left"``,
-            ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
-            ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
-            another content (for example, menu for full-panel-width plot)
+            overlay (None): whether to display the menu as an overlay. Can be
+                ``"top-left"``, ``"top-center"``, ``"top-right"``,
+                ``"bottom-left"``, `"bottom-center"``, or ``"bottom-right"``.
+                Overlay is useful when you want to display a floating menu on
+                top of another content (for example, menu for full-panel-width
+                plot)
+
         Returns:
             a :class:`Object`
         """
@@ -449,13 +457,17 @@ class Object(BaseType):
             on_start (None): the operator to execute when the media starts
             on_play (None): the operator to execute when the media is played
             on_pause (None): the operator to execute when the media is paused
-            on_buffer (None): the operator to execute when the media is buffering
-            on_buffer_end (None): the operator to execute when the media stops buffering
+            on_buffer (None): the operator to execute when the media is
+                buffering
+            on_buffer_end (None): the operator to execute when the media stops
+                buffering
             on_ended (None): the operator to execute when the media ends
             on_error (None): the operator to execute when the media errors
-            on_duration (None): the operator to execute when the media duration is loaded
+            on_duration (None): the operator to execute when the media duration
+                is loaded
             on_seek (None): the operator to execute when the media is seeked
-            on_progress (None): the operator to execute when the media progresses
+            on_progress (None): the operator to execute when the media
+                progresses
 
         Returns:
             a :class:`Object`
@@ -480,10 +492,13 @@ class Object(BaseType):
         Args:
             forward (True): Whether to display the forward arrow
             backward (True): Whether to display the backward arrow
-            on_forward (None): The operator to execute when the forward arrow is clicked
-            on_backward (None): The operator to execute when the backward arrow is clicked
-            position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
-                ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+            on_forward (None): The operator to execute when the forward arrow
+                is clicked
+            on_backward (None): The operator to execute when the backward arrow
+                is clicked
+            position ("center"): The position of the arrows. Can be either
+                ``"top"``, ``center``, ``"bottom"``, ``"left"``, ``middle`
+                (center horizontally), or ``"right"``
 
         Returns:
             a :class:`Property`
@@ -931,14 +946,16 @@ class View(object):
         label (None): a label for the view
         description (None): a description for the view
         caption (None): a caption for the view
-        space (12): An int specifying how much vertical/horizontal space to allocate out
-            of ``12`` depending on the orientation of the parent container
+        space (12): An int specifying how much vertical/horizontal space to
+            allocate out of ``12`` depending on the orientation of the parent
+            container
         placeholder (None): string to display placeholder text
         read_only (False): whether the view is read-only
         component (None): specifying custom component to use as the view
         componentsProps (None): dict for providing props to components rendered
             by a view
-        container (None): the container (instance of :class:`BaseType`) of the view
+        container (None): the container (instance of :class:`BaseType`) of the
+            view
     """
 
     def __init__(self, container=None, **kwargs):
@@ -1694,8 +1711,9 @@ class AlertView(View):
 
             -   ``'label'`` (None): props to pass to the label subcomponents
             -   ``'description'`` (None): props to pass to the description
-                subcomponents
-            -   ``'caption'`` (None): props to pass to the caption subcomponents
+                    subcomponents
+            -   ``'caption'`` (None): props to pass to the caption
+                    subcomponents
     """
 
     def __init__(self, **kwargs):
@@ -1839,8 +1857,8 @@ class LabelValueView(View):
     .. note::
 
         Must be used with :class:`String`, :class:`Number`, or :class:`Boolean`
-        properties, or lists of such properties. Also this view is not supported
-        for input properties.
+        properties, or lists of such properties. Also this view is not
+        supported for input properties.
     """
 
     def __init__(self, **kwargs):
@@ -1916,10 +1934,12 @@ class MediaPlayerView(View):
         on_play (None): the operator to execute when the media is played
         on_pause (None): the operator to execute when the media is paused
         on_buffer (None): the operator to execute when the media is buffering
-        on_buffer_end (None): the operator to execute when the media stops buffering
+        on_buffer_end (None): the operator to execute when the media stops
+            buffering
         on_ended (None): the operator to execute when the media ends
         on_error (None): the operator to execute when the media errors
-        on_duration (None): the operator to execute when the media duration is loaded
+        on_duration (None): the operator to execute when the media duration is
+            loaded
         on_seek (None): the operator to execute when the media is seeked
         on_progress (None): the operator to execute when the media progresses
     """
@@ -2104,12 +2124,14 @@ class GridView(View):
         orientation ("horizontal"): the orientation of the stack. Can be either
             ``"horizontal"`` or ``"vertical"``
         gap (1): the gap between the components
-        align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
-            or ``"right"``
-        align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
-            or ``"bottom"``
-        variant (None): the variant of the grid. Can be either ``"paper"`` or ``"outline"``
-        elevation (None): the elevation of the grid. Only applicable when ``variant="paper"``
+        align_x ("left"): the alignment of the components. Can be either
+            ``"left"``, ``"center"``, or ``"right"``
+        align_y ("top"): the alignment of the components. Can be either
+            ``"top"``, ``"center"``, or ``"bottom"``
+        variant (None): the variant of the grid. Can be either ``"paper"`` or
+            ``"outline"``
+        elevation (None): the elevation of the grid. Only applicable when
+            ``variant="paper"``
     """
 
     def __init__(self, **kwargs):
@@ -2137,22 +2159,24 @@ class GridView(View):
 
 class FlexView(View):
     """Displays properties of an object as a flow of components in horizontal
-        or vertical orientation.
-    Ø
-        .. note::
+    or vertical orientation.
 
-            Must be used with :class:`Object` properties.
+    .. note::
 
-        Args:
-            orientation ("horizontal"): the orientation of the stack. Can be either
-                ``"horizontal"`` or ``"vertical"``
-            gap (1): the gap between the components
-            align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
-                or ``"right"``
-            align_y ("top"): the alignment of the components. Can be either ``"top"``, ``"center"``,
-                or ``"bottom"``
-            variant (None): the variant of the grid. Can be either ``"paper"`` or ``"outline"``
-            elevation (None): the elevation of the grid. Only applicable when ``variant="paper"``
+        Must be used with :class:`Object` properties.
+
+    Args:
+        orientation ("horizontal"): the orientation of the stack. Can be
+            either ``"horizontal"`` or ``"vertical"``
+        gap (1): the gap between the components
+        align_x ("left"): the alignment of the components. Can be either
+            ``"left"``, ``"center"``, or ``"right"``
+        align_y ("top"): the alignment of the components. Can be either
+            ``"top"``, ``"center"``, or ``"bottom"``
+        variant (None): the variant of the grid. Can be either ``"paper"``
+            or ``"outline"``
+        elevation (None): the elevation of the grid. Only applicable when
+            ``variant="paper"``
     """
 
     def __init__(self, **kwargs):
@@ -2273,9 +2297,10 @@ class IconButtonView(Button):
         inputs.view("icon_btn", iconButtonView)
 
     Args:
-        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
-        variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
-            ``"outlined"``, or ``"contained"``.
+        icon (None): a icon for the button. See
+            https://marella.me/material-icons/demo/
+        variant (None): the optional variant of the icon button. Can be
+            ``"round"``, ``"square"``, ``"outlined"``, or ``"contained"``.
         label (None): a label for the button
         description (None): a description for the button
         caption (None): a caption for the button
@@ -2338,19 +2363,22 @@ class MenuView(GridView):
     """Displays a menu of options in a vertical stack.
 
     .. note::
-        Can be used for an :class:`Button` type with properties whose views are one of
-        :class:`Button`, :class:`Dropdown`, :class:`DropdownView`, and :class;`Choices`. The variant
-        and color of the items can be set using the `variant` and `color` parameters.
+        Can be used for an :class:`Button` type with properties whose views are
+        one of :class:`Button`, :class:`Dropdown`, :class:`DropdownView`, and
+        :class;`Choices`. The variant and color of the items can be set using
+        the `variant` and `color` parameters.
 
     Args:
         name: the name of the property
-        variant (None): the variant for the items of the menu. Can be ``"contained"``,
-            ``"outlined"``, ``"round"`` or ``"square"``
+        variant (None): the variant for the items of the menu. Can be
+            ``"contained"``, ``"outlined"``, ``"round"`` or ``"square"``
         color (None): the color for the items of the menu.
-        overlay (None): whether to display the menu as an overlay. Can be ``"top-left"``,
-        ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
-        ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
-        another content (for example, menu for full-panel-width plot)
+        overlay (None): whether to display the menu as an overlay. Can be
+            ``"top-left"``, ``"top-center"``, ``"top-right"``,
+            ``"bottom-left"``, ``"bottom-center"``, or ``"bottom-right"``.
+            Overlay is useful when you want to display a floating menu on top
+            of another content (for example, menu for full-panel-width plot)
+
     Returns:
         a :class:`Object`
     """
@@ -2368,10 +2396,13 @@ class ArrowNavView(View):
     Args:
         forward (True): Whether to display the forward arrow
         backward (True): Whether to display the backward arrow
-        on_forward (None): The operator to execute when the forward arrow is clicked
-        on_backward (None): The operator to execute when the backward arrow is clicked
-        position ("center"): The position of the arrows. Can be either ``"top"``, ``center``,
-            ``"bottom"``, ``"left"``, ``middle` (center horizontally), or ``"right"``
+        on_forward (None): The operator to execute when the forward arrow is
+            clicked
+        on_backward (None): The operator to execute when the backward arrow is
+            clicked
+        position ("center"): The position of the arrows. Can be either
+            ``"top"``, ``center``, ``"bottom"``, ``"left"``, ``middle`
+            (center horizontally), or ``"right"``
     """
 
     def __init__(self, **kwargs):
@@ -2403,8 +2434,10 @@ class PaperContainer(Container):
     """Represents an elevated block for a view.
 
     Args:
-        elevation (1): the elevation of the container. Can be a value between 0 and 24
-        rounded (True): whether to display the paper container with rounded corners
+        elevation (1): the elevation of the container. Can be a value between 0
+            and 24
+        rounded (True): whether to display the paper container with rounded
+            corners
     """
 
     def __init__(self, elevation=1, rounded=True, **kwargs):
@@ -2424,7 +2457,8 @@ class OutlinedContainer(Container):
     """Represents an elevated block for a view.
 
     Args:
-        rounded (True): whether to display the outlined container with rounded corners
+        rounded (True): whether to display the outlined container with rounded
+            corners
     """
 
     def __init__(self, rounded=True, **kwargs):
