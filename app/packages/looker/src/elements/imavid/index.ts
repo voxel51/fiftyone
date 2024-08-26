@@ -83,7 +83,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
-  private mediaField: string;
   private thumbnailSrc: string;
   /**
    * This frame number is the authoritaive frame number that is drawn on the canvas.
@@ -151,7 +150,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       }) => {
         this.framesController = framesController;
         this.framesController.setImaVidStateUpdater(this.update);
-        this.mediaField = mediaField;
 
         this.framesController.setFrameRate(frameRate);
         this.framesController.setMediaField(mediaField);

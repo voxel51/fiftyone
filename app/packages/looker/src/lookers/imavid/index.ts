@@ -99,7 +99,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       seeking: false,
       playing: false,
       currentFrameNumber: firstFrame,
-      isCurrentFrameNumberAuthoritative: false,
       totalFrames: config.frameStoreController.totalFrameCount ?? 1,
       buffering: false,
       bufferManager: new BufferManager([[firstFrame, firstFrame]]),

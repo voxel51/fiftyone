@@ -153,6 +153,10 @@ export class ImaVidFramesController {
     return this.frameRate;
   }
 
+  public get isStoreBufferManagerEmpty() {
+    return this.storeBufferManager.totalFramesInBuffer === 0;
+  }
+
   private get environment() {
     return this.config.environment;
   }

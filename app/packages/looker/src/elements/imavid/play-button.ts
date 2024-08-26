@@ -14,7 +14,7 @@ export const playPause: Control<ImaVidState> = {
         playing,
         config: { frameStoreController, thumbnail },
       }) => {
-        if (thumbnail) {
+        if (thumbnail || frameStoreController.isStoreBufferManagerEmpty) {
           return {};
         }
         const reachedEnd =
@@ -109,14 +109,21 @@ export class PlayButtonElement extends BaseElement<
     return element;
   }
 
-  renderSelf({ playing, buffering, loaded }: Readonly<ImaVidState>) {
+  renderSelf({
+    playing,
+    buffering,
+    loaded,
+    config: {
+      frameStoreController: { isStoreBufferManagerEmpty },
+    },
+  }: Readonly<ImaVidState>) {
     if (
       playing !== this.isPlaying ||
       this.isBuffering !== buffering ||
       !loaded
     ) {
       this.element.textContent = "";
-      if (!loaded) {
+      if (!loaded || isStoreBufferManagerEmpty) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading";
         this.element.style.cursor = "default";
