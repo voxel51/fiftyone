@@ -77,6 +77,7 @@ class Tag(HTTPEndpoint):
                     else None
                 )
             ),
+            sample_ids=sample_ids,
             target_labels=False,
         )
 
