@@ -2802,6 +2802,8 @@ class DatasetTests(unittest.TestCase):
 
         created_at = dataset.get_field("field").created_at
         dataset.rename_sample_field("field", "new_field")
+
+        # Renaming doesn't cause created_at to update
         self.assertEqual(dataset.get_field("new_field").created_at, created_at)
         self.assertFalse("field" in dataset.get_field_schema())
         self.assertTrue("new_field" in dataset.get_field_schema())

@@ -3294,9 +3294,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         created_at2 = dataset2.values("created_at")
         last_modified_at2 = dataset2.values("last_modified_at")
 
-        print(field_created_at1)
-        print(field_created_at2)
-        assert 0
         self.assertTrue(
             all(
                 f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
