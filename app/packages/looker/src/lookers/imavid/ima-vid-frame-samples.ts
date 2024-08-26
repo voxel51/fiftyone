@@ -9,7 +9,7 @@ import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
 import { SampleId } from "./types";
 
 const BASE64_BLACK_IMAGE =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAABNJREFUCB1jZGBg+A/EDEwgAgQADigBA//q6GsAAAAASUVORK5CYII=";
 
 export type ModalSampleExtendedWithImage = ModalSample & {
   image: HTMLImageElement;
