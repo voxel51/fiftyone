@@ -1,5 +1,4 @@
-import { IconButton } from "@fiftyone/components";
-import { HelpTooltip } from "@fiftyone/core/src/plugins/SchemaIO/components";
+import { HelpTooltip, IconButton } from "@fiftyone/components";
 import { useTimeout } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
 import { CircularProgress, Skeleton, Typography } from "@mui/material";
