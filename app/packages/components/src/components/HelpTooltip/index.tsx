@@ -5,7 +5,7 @@ import {
   Typography,
 } from "@mui/material";
 import React from "react";
-import Markdown from "./Markdown";
+import Markdown from "../Markdown";
 
 const MarkdownHelpTooltipTitle = ({
   titleMarkdown,

@@ -1,9 +1,9 @@
+import { HelpTooltip } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import HeaderView from "./HeaderView";
-import HelpTooltip from "./HelpTooltip";
-import RoundedTabs from "./RoundedTabs";
 import { getComponentProps } from "../utils";
+import HeaderView from "./HeaderView";
+import RoundedTabs from "./RoundedTabs";
 
 export default function TabsView(props) {
   const { onChange, path, schema, data } = props;
