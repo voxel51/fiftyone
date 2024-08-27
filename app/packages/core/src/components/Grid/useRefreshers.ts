@@ -4,8 +4,9 @@ import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
+import type { Records } from "./useSelectSample";
 
-export default function useRefreshers() {
+export default function useRefreshers(records: Records) {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
@@ -37,6 +38,7 @@ export default function useRefreshers() {
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
+    records.current.clear();
     datasetName;
     extendedStagesUnsorted;
     filters;
@@ -50,6 +52,7 @@ export default function useRefreshers() {
     extendedStagesUnsorted,
     filters,
     groupSlice,
+    records,
     shouldRenderImaVidLooker,
     similarityParameters,
     view,

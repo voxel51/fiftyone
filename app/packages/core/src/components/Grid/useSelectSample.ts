@@ -1,12 +1,11 @@
-import { ID } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
-
 import {
   selectedSampleObjects,
   selectedSamples,
   useSetSelected,
 } from "@fiftyone/state";
-import { MutableRefObject } from "react";
+import type { MutableRefObject } from "react";
 import { useRecoilCallback } from "recoil";
 
 export interface SelectThumbnailData {
@@ -16,7 +15,7 @@ export interface SelectThumbnailData {
   symbol: ID;
 }
 
-type Records = MutableRefObject<Map<string, number>>;
+export type Records = MutableRefObject<Map<string, number>>;
 
 const argFact = (compareFn) => (array) =>
   array.map((el, idx) => [el, idx]).reduce(compareFn)[1];

@@ -31,14 +31,13 @@ function Grid() {
 
   const spacing = useRecoilValue(gridSpacing);
 
-  const { pageReset, reset } = useRefreshers();
-  const { get, set } = useAt(pageReset);
-  const threshold = useThreshold();
-
   const { page, records, store } = useSpotlightPager({
     pageSelector: pageParameters,
     zoomSelector: gridCrop,
   });
+  const { pageReset, reset } = useRefreshers(records);
+  const { get, set } = useAt(pageReset);
+  const threshold = useThreshold();
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
