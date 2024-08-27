@@ -12,7 +12,7 @@ type ElementEvent<State extends BaseState, E extends Event> = (args: {
 
 export type Events<
   State extends BaseState,
-  CustomEvents extends Record<string, Event> = {}
+  CustomEvents extends Record<string, Event> = Record<string, never>
 > = {
   [K in keyof (HTMLElementEventMap & CustomEvents)]?: ElementEvent<
     State,
