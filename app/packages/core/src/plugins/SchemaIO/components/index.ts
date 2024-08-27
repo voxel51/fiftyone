@@ -17,7 +17,6 @@ export { default as FileDrop } from "./FileDrop";
 export { default as FileView } from "./FileView";
 export { default as Header } from "./Header";
 export { default as HeaderView } from "./HeaderView";
-export { default as HelpTooltip } from "./HelpTooltip";
 export { default as HiddenView } from "./HiddenView";
 export { default as ImageView } from "./ImageView";
 export { default as InferredView } from "./InferredView";
