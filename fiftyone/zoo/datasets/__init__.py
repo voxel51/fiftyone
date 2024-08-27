@@ -9,22 +9,30 @@ download via FiftyOne.
 |
 """
 from collections import OrderedDict
+import importlib
+import inspect
 import logging
 import os
 
+import yaml
+
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+from fiftyone.utils.github import GitHubRepository
 
+
+DATASET_METADATA_FILENAMES = ("fiftyone-dataset.yml", "fiftyone-dataset.yaml")
 
 logger = logging.getLogger(__name__)
 
 
 def list_zoo_datasets(tags=None, source=None):
-    """Returns the list of available datasets in the FiftyOne Dataset Zoo.
+    """Lists the available zoo datasets.
 
     Example usage::
 
@@ -61,20 +69,27 @@ def list_zoo_datasets(tags=None, source=None):
     Returns:
         a sorted list of dataset names
     """
+    datasets = _list_zoo_datasets(tags=tags, source=source)
+    return sorted(datasets.keys())
+
+
+def _list_zoo_datasets(tags=None, source=None):
+    all_datasets, all_sources, _ = _get_zoo_datasets()
+
     if etau.is_str(source):
         sources = [source]
     elif source is not None:
         sources = list(sources)
     else:
-        sources, _ = _get_zoo_dataset_sources()
-
-    all_datasets = _get_zoo_datasets()
+        sources = all_sources
 
     datasets = {}
+
     for source in sources:
-        for name, zoo_dataset_cls in all_datasets.get(source, {}).items():
+        source_datasets = all_datasets.get(source, {})
+        for name, zoo_dataset in source_datasets.items():
             if name not in datasets:
-                datasets[name] = zoo_dataset_cls
+                datasets[name] = zoo_dataset
 
     if tags is not None:
         if etau.is_str(tags):
@@ -83,63 +98,88 @@ def list_zoo_datasets(tags=None, source=None):
             tags = set(tags)
 
         datasets = {
-            name: zoo_dataset_cls
-            for name, zoo_dataset_cls in datasets.items()
-            if tags.issubset(zoo_dataset_cls().tags)
+            name: zoo_dataset
+            for name, zoo_dataset in datasets.items()
+            if tags.issubset(zoo_dataset.tags)
         }
 
-    return sorted(datasets.keys())
+    return datasets
 
 
-def list_downloaded_zoo_datasets(base_dir=None):
-    """Returns information about the zoo datasets that have been downloaded.
-
-    Args:
-        base_dir (None): the base directory to search for downloaded datasets.
-            By default, ``fo.config.dataset_zoo_dir`` is used
+def list_zoo_dataset_sources():
+    """Returns the list of available zoo dataset sources.
 
     Returns:
-        a dict mapping dataset names to (dataset dir, :class:`ZooDatasetInfo`)
-        tuples
+        a list of sources
     """
-    if base_dir is None:
-        base_dir = fo.config.dataset_zoo_dir
+    _, all_sources, _ = _get_zoo_datasets()
+    return all_sources
 
-    try:
-        sub_dirs = etau.list_subdirs(base_dir)
-    except OSError:
-        sub_dirs = []
 
+def list_downloaded_zoo_datasets():
+    """Returns information about the zoo datasets that have been downloaded.
+
+    Returns:
+        a dict mapping dataset names to
+        (``dataset_dir``, :class:`ZooDatasetInfo`) tuples
+    """
     downloaded_datasets = {}
-    for sub_dir in sub_dirs:
-        try:
-            dataset_dir = os.path.join(base_dir, sub_dir)
-            info = ZooDataset.load_info(dataset_dir)
-            if sub_dir == info.name:
+
+    root_dir = fo.config.dataset_zoo_dir
+    if not root_dir or not os.path.isdir(root_dir):
+        return
+
+    for dataset_dir, dirs, _ in os.walk(root_dir, followlinks=True):
+        if dataset_dir == root_dir:
+            continue
+
+        if ZooDataset.has_info(dataset_dir):
+            try:
+                info = ZooDataset.load_info(dataset_dir)
                 downloaded_datasets[info.name] = (dataset_dir, info)
-        except:
-            pass
+            except Exception as e:
+                logger.debug(
+                    "Failed to load info for '%s': %s", dataset_dir, e
+                )
+
+            # Stop traversing once we find a dataset info file
+            dirs[:] = []
+        else:
+            # Ignore hidden directories
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
 
     return downloaded_datasets
 
 
 def download_zoo_dataset(
-    name,
+    name_or_url,
     split=None,
     splits=None,
-    dataset_dir=None,
     overwrite=False,
     cleanup=True,
     **kwargs,
 ):
-    """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
+    """Downloads given dataset from the FiftyOne Dataset Zoo.
 
-    Any dataset splits that already exist in the specified directory are not
-    re-downloaded, unless ``overwrite == True`` is specified.
+    Any dataset splits that have already been downloaded are not re-downloaded,
+    unless ``overwrite == True`` is specified.
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
     Args:
-        name: the name of the zoo dataset to download. Call
-            :func:`list_zoo_datasets` to see the available datasets
+        name_or_url: the name of the zoo dataset to download, or the location
+            to download it from, which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
         split (None) a split to download, if applicable. Typical values are
             ``("train", "validation", "test")``. If neither ``split`` nor
             ``splits`` are provided, all available splits are downloaded.
@@ -150,39 +190,37 @@ def download_zoo_dataset(
             ``split`` nor ``splits`` are provided, all available splits are
             downloaded. Consult the documentation for the :class:`ZooDataset`
             you specified to see the supported splits
-        dataset_dir (None): the directory into which to download the dataset.
-            By default, it is downloaded to a subdirectory of
-            ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
+            or the remote dataset's ``download_and_prepare()` method
 
     Returns:
-        tuple of
+        a tuple of
 
         -   info: the :class:`ZooDatasetInfo` for the dataset
         -   dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(
-        name, dataset_dir, **kwargs
+        name_or_url, overwrite=overwrite, **kwargs
     )
-    return zoo_dataset.download_and_prepare(
-        dataset_dir=dataset_dir,
+    info = zoo_dataset.download_and_prepare(
+        dataset_dir,
         split=split,
         splits=splits,
         overwrite=overwrite,
         cleanup=cleanup,
     )
+    return info, dataset_dir
 
 
 def load_zoo_dataset(
-    name,
+    name_or_url,
     split=None,
     splits=None,
     label_field=None,
     dataset_name=None,
-    dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
     persistent=False,
@@ -191,19 +229,30 @@ def load_zoo_dataset(
     progress=None,
     **kwargs,
 ):
-    """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
-    a :class:`fiftyone.core.dataset.Dataset`.
+    """Loads the given dataset from the FiftyOne Dataset Zoo.
 
-    By default, the dataset will be downloaded if it does not already exist in
-    the specified directory.
+    By default, the dataset will be downloaded if necessary.
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
     If you do not specify a custom ``dataset_name`` and you have previously
     loaded the same zoo dataset and split(s) into FiftyOne, the existing
-    :class:`fiftyone.core.dataset.Dataset` will be returned.
+    dataset will be returned.
 
     Args:
-        name: the name of the zoo dataset to load. Call
-            :func:`list_zoo_datasets` to see the available datasets
+        name_or_url: the name of the zoo dataset to load, or the location to
+            load it from, which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
         split (None) a split to load, if applicable. Typical values are
             ``("train", "validation", "test")``. If neither ``split`` nor
             ``splits`` are provided, all available splits are loaded. Consult
@@ -223,9 +272,6 @@ def load_zoo_dataset(
         dataset_name (None): an optional name to give the returned
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
-        dataset_dir (None): the directory in which the dataset is stored or
-            will be downloaded. By default, the dataset will be located in
-            ``fiftyone.config.dataset_zoo_dir``
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
@@ -240,9 +286,10 @@ def load_zoo_dataset(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
         **kwargs: optional arguments to pass to the
-            :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
-            If ``download_if_necessary == True``, then ``kwargs`` can also
-            contain arguments for :func:`download_zoo_dataset`
+            :class:`fiftyone.utils.data.importers.DatasetImporter` constructor
+            or the remote dataset's ``load_dataset()` method. If
+            ``download_if_necessary == True``, then ``kwargs`` can also contain
+            arguments for :func:`download_zoo_dataset`
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -250,15 +297,17 @@ def load_zoo_dataset(
     splits = _parse_splits(split, splits)
 
     if download_if_necessary:
-        zoo_dataset_cls = _get_zoo_dataset_cls(name)
-        download_kwargs, _ = fou.extract_kwargs_for_class(
-            zoo_dataset_cls, kwargs
-        )
+        zoo_dataset_cls = _parse_dataset_identifier(name_or_url)[0]
+        if issubclass(zoo_dataset_cls, RemoteZooDataset):
+            download_kwargs = kwargs
+        else:
+            download_kwargs, _ = fou.extract_kwargs_for_class(
+                zoo_dataset_cls, kwargs
+            )
 
         info, dataset_dir = download_zoo_dataset(
-            name,
+            name_or_url,
             splits=splits,
-            dataset_dir=dataset_dir,
             overwrite=overwrite,
             cleanup=cleanup,
             **download_kwargs,
@@ -266,45 +315,51 @@ def load_zoo_dataset(
         zoo_dataset = info.get_zoo_dataset()
     else:
         download_kwargs = {}
-        zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
+        zoo_dataset, dataset_dir = _parse_dataset_details(
+            name_or_url, overwrite=overwrite, **kwargs
+        )
         info = zoo_dataset.load_info(dataset_dir, warn_deprecated=True)
 
     dataset_type = info.get_dataset_type()
-    dataset_importer_cls = dataset_type.get_dataset_importer_cls()
+    if dataset_type is not None:
+        dataset_importer_cls = dataset_type.get_dataset_importer_cls()
 
-    #
-    # For unlabeled (e.g., test) splits, some importers need to be explicitly
-    # told to generate samples for media with no corresponding labels entry.
-    #
-    # By convention, all such importers use `include_all_data` for this flag.
-    # If a new zoo dataset is added that requires a different customized
-    # parameter, we'd need to improve this logic here
-    #
-    kwargs["include_all_data"] = True
+        #
+        # For unlabeled (e.g., test) splits, some importers need to be
+        # explicitly told to generate samples for media with no corresponding
+        # labels entry.
+        #
+        # By convention, all such importers use `include_all_data` for this
+        # flag. If a new zoo dataset is added that requires a different
+        # customized parameter, we'd need to improve this logic here
+        #
+        kwargs["include_all_data"] = True
 
-    importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
-        dataset_importer_cls, kwargs
-    )
-
-    # Inject default importer kwargs, if any
-    if zoo_dataset.importer_kwargs:
-        for key, value in zoo_dataset.importer_kwargs.items():
-            if key not in importer_kwargs:
-                importer_kwargs[key] = value
-
-    for key, value in unused_kwargs.items():
-        if (
-            key in download_kwargs
-            or key == "include_all_data"
-            or value is None
-        ):
-            continue
-
-        logger.warning(
-            "Ignoring unsupported parameter '%s' for importer type %s",
-            key,
-            dataset_importer_cls,
+        importer_kwargs, unused_kwargs = fou.extract_kwargs_for_class(
+            dataset_importer_cls, kwargs
         )
+
+        # Inject default importer kwargs, if any
+        if zoo_dataset.importer_kwargs:
+            for key, value in zoo_dataset.importer_kwargs.items():
+                if key not in importer_kwargs:
+                    importer_kwargs[key] = value
+
+        for key, value in unused_kwargs.items():
+            if (
+                key in download_kwargs
+                or key == "include_all_data"
+                or value is None
+            ):
+                continue
+
+            logger.warning(
+                "Ignoring unsupported parameter '%s' for importer type %s",
+                key,
+                dataset_importer_cls,
+            )
+    else:
+        importer_kwargs = kwargs
 
     if dataset_name is None:
         dataset_name = zoo_dataset.name
@@ -327,10 +382,10 @@ def load_zoo_dataset(
         logger.info("Deleting existing dataset '%s'", dataset_name)
         fo.delete_dataset(dataset_name)
 
+    dataset = fo.Dataset(dataset_name, persistent=persistent)
+
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
-
-    dataset = fo.Dataset(dataset_name, persistent=persistent)
 
     if splits:
         for split in splits:
@@ -343,25 +398,32 @@ def load_zoo_dataset(
         for split in splits:
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
+            if dataset_type is not None:
+                dataset_importer, _ = foud.build_dataset_importer(
+                    dataset_type, dataset_dir=split_dir, **importer_kwargs
+                )
+                dataset.add_importer(
+                    dataset_importer,
+                    label_field=label_field,
+                    tags=[split],
+                    progress=progress,
+                )
+            else:
+                zoo_dataset._load_dataset(dataset, split_dir, split=split)
+    else:
+        logger.info("Loading '%s'", zoo_dataset.name)
+
+        if dataset_type is not None:
             dataset_importer, _ = foud.build_dataset_importer(
-                dataset_type, dataset_dir=split_dir, **importer_kwargs
+                dataset_type, dataset_dir=dataset_dir, **importer_kwargs
             )
             dataset.add_importer(
                 dataset_importer,
                 label_field=label_field,
-                tags=[split],
                 progress=progress,
             )
-    else:
-        logger.info("Loading '%s'", zoo_dataset.name)
-        dataset_importer, _ = foud.build_dataset_importer(
-            dataset_type, dataset_dir=dataset_dir, **importer_kwargs
-        )
-        dataset.add_importer(
-            dataset_importer,
-            label_field=label_field,
-            progress=progress,
-        )
+        else:
+            zoo_dataset._load_dataset(dataset, dataset_dir)
 
     if info.classes is not None and not dataset.default_classes:
         dataset.default_classes = info.classes
@@ -371,7 +433,7 @@ def load_zoo_dataset(
     return dataset
 
 
-def find_zoo_dataset(name, split=None):
+def find_zoo_dataset(name_or_url, split=None):
     """Returns the directory containing the given zoo dataset.
 
     If a ``split`` is provided, the path to the dataset split is returned;
@@ -381,30 +443,41 @@ def find_zoo_dataset(name, split=None):
     download datasets.
 
     Args:
-        name: the name of the zoo dataset
-        split (None) a dataset split to locate
+        name_or_url: the name of the zoo dataset or its remote source, which
+            can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
+        split (None): a specific split to locate
 
     Returns:
-        the directory containing the dataset
+        the directory containing the dataset or split
 
     Raises:
         ValueError: if the dataset or split does not exist or has not been
             downloaded
     """
-    zoo_dataset, dataset_dir = _parse_dataset_details(name, None)
+    zoo_dataset, dataset_dir = _parse_dataset_details(name_or_url)
     try:
         zoo_dataset.load_info(dataset_dir)
     except OSError:
-        raise ValueError("Dataset '%s' is not downloaded" % name)
+        raise ValueError("Dataset '%s' is not downloaded" % name_or_url)
 
     if split:
         if not zoo_dataset.has_split(split):
-            raise ValueError("Dataset '%s' has no split '%s'" % (name, split))
+            raise ValueError(
+                "Dataset '%s' has no split '%s'" % (name_or_url, split)
+            )
 
         info = zoo_dataset.load_info(dataset_dir)
         if not info.is_split_downloaded(split):
             raise ValueError(
-                "Dataset '%s' split '%s' is not downloaded" % (name, split)
+                "Dataset '%s' split '%s' is not downloaded"
+                % (name_or_url, split)
             )
 
         return zoo_dataset.get_split_dir(dataset_dir, split)
@@ -412,17 +485,22 @@ def find_zoo_dataset(name, split=None):
     return dataset_dir
 
 
-def load_zoo_dataset_info(name, dataset_dir=None):
+def load_zoo_dataset_info(name_or_url):
     """Loads the :class:`ZooDatasetInfo` for the specified zoo dataset.
 
     The dataset must be downloaded. Use :func:`download_zoo_dataset` to
     download datasets.
 
     Args:
-        name: the name of the zoo dataset
-        dataset_dir (None): the directory in which the dataset is stored. By
-            default, the dataset is located in
-            ``fiftyone.config.dataset_zoo_dir``
+        name_or_url: the name of the zoo dataset or its remote source, which
+            can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
 
     Returns:
         the :class:`ZooDatasetInfo` for the dataset
@@ -430,80 +508,98 @@ def load_zoo_dataset_info(name, dataset_dir=None):
     Raises:
         ValueError: if the dataset has not been downloaded
     """
-    zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
+    zoo_dataset, dataset_dir = _parse_dataset_details(name_or_url)
     try:
         return zoo_dataset.load_info(dataset_dir)
     except OSError:
-        raise ValueError("Dataset '%s' is not downloaded" % name)
+        raise ValueError("Dataset '%s' is not downloaded" % name_or_url)
 
 
-def get_zoo_dataset(name, **kwargs):
-    """Returns the :class:`ZooDataset` instance for the dataset with the given
-    name.
+def get_zoo_dataset(name_or_url, overwrite=False, **kwargs):
+    """Returns the :class:`ZooDataset` instance for the given dataset.
 
     If the dataset is available from multiple sources, the default source is
     used.
 
     Args:
-        name: the name of the zoo dataset
+        name_or_url: the name of the zoo dataset, or its remote location, which
+            can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
+        overwrite (False): whether to overwrite an existing zoo dataset of the
+            same name if one exists. Only applicable when ``name_or_url`` is a
+            remote location
         **kwargs: optional arguments for :class:`ZooDataset`
 
     Returns:
         the :class:`ZooDataset` instance
     """
-    zoo_dataset_cls = _get_zoo_dataset_cls(name)
+    zoo_dataset_cls, dataset_dir, url, is_local = _parse_dataset_identifier(
+        name_or_url
+    )
 
+    if not is_local:
+        dataset_dir = _download_dataset_metadata(
+            name_or_url, overwrite=overwrite
+        )
+        url = name_or_url
+
+    # Remote datasets
     try:
-        zoo_dataset = zoo_dataset_cls(**kwargs)
+        if issubclass(zoo_dataset_cls, RemoteZooDataset):
+            return zoo_dataset_cls(dataset_dir, url=url, **kwargs)
     except Exception as e:
-        zoo_dataset_name = zoo_dataset_cls.__name__
-        kwargs_str = ", ".join("%s=%s" % (k, v) for k, v in kwargs.items())
+        raise ValueError(
+            "Failed to construct zoo dataset instance for '%s'. "
+            "The dataset's YAML file may be malformed or missing" % name_or_url
+        ) from e
+
+    # Builtin datasets
+    try:
+        return zoo_dataset_cls(**kwargs)
+    except Exception as e:
         raise ValueError(
             "Failed to construct zoo dataset instance using syntax "
-            "%s(%s); you may need to supply mandatory arguments "
-            "to the constructor via `kwargs`. Please consult the "
-            "documentation of `%s` to learn more"
+            "%s(%s); you may need to supply mandatory arguments via kwargs. "
+            "Please consult the documentation of %s to learn more"
             % (
-                zoo_dataset_name,
-                kwargs_str,
+                zoo_dataset_cls.__name__,
+                ", ".join("%s=%s" % (k, v) for k, v in kwargs.items()),
                 etau.get_class_name(zoo_dataset_cls),
             )
         ) from e
 
-    return zoo_dataset
 
-
-def _get_zoo_dataset_cls(name):
-    all_datasets = _get_zoo_datasets()
-    all_sources, _ = _get_zoo_dataset_sources()
-    for source in all_sources:
-        if source not in all_datasets:
-            continue
-
-        datasets = all_datasets[source]
-        if name in datasets:
-            return datasets[name]
-
-    raise ValueError("Dataset '%s' not found in the zoo" % name)
-
-
-def delete_zoo_dataset(name, split=None):
+def delete_zoo_dataset(name_or_url, split=None):
     """Deletes the zoo dataset from local disk, if necessary.
 
     If a ``split`` is provided, only that split is deleted.
 
     Args:
-        name: the name of the zoo dataset
-        split (None) a valid dataset split
+        name_or_url: the name of the zoo dataset, or its remote location, which
+            can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
+        split (None) a specific split to delete
     """
     if split is None:
         # Delete root dataset directory
-        dataset_dir = find_zoo_dataset(name)
+        dataset_dir = find_zoo_dataset(name_or_url)
         etau.delete_dir(dataset_dir)
         return
 
     # Delete split directory
-    split_dir = find_zoo_dataset(name, split=split)
+    split_dir = find_zoo_dataset(name_or_url, split=split)
     etau.delete_dir(split_dir)
 
     # Remove split from ZooDatasetInfo
@@ -538,14 +634,39 @@ def _get_zoo_datasets():
     from .tf import AVAILABLE_DATASETS as TF_DATASETS
 
     zoo_datasets = OrderedDict()
-    zoo_datasets["base"] = BASE_DATASETS
-    zoo_datasets["torch"] = TORCH_DATASETS
-    zoo_datasets["tensorflow"] = TF_DATASETS
+    zoo_datasets["base"] = _init_zoo_datasets(BASE_DATASETS)
+    zoo_datasets["torch"] = _init_zoo_datasets(TORCH_DATASETS)
+    zoo_datasets["tensorflow"] = _init_zoo_datasets(TF_DATASETS)
 
     if fo.config.dataset_zoo_manifest_paths:
         for manifest_path in fo.config.dataset_zoo_manifest_paths:
             manifest = _load_zoo_dataset_manifest(manifest_path)
-            zoo_datasets.update(manifest)
+            for source, datasets in manifest.items():
+                zoo_datasets[source] = _init_zoo_datasets(datasets)
+
+    downloaded_datasets = list_downloaded_zoo_datasets()
+
+    remote_datasets = {}
+    for name, (_, info) in downloaded_datasets.items():
+        zoo_dataset = info.get_zoo_dataset()
+        if zoo_dataset.is_remote:
+            remote_datasets[name] = zoo_dataset
+
+    if remote_datasets:
+        zoo_datasets["remote"] = remote_datasets
+
+    sources, default_source = _get_zoo_dataset_sources(zoo_datasets)
+
+    return zoo_datasets, sources, default_source
+
+
+def _init_zoo_datasets(datasets):
+    zoo_datasets = {}
+    for name, zoo_dataset_cls in datasets.items():
+        try:
+            zoo_datasets[name] = zoo_dataset_cls()
+        except Exception as e:
+            logger.debug("Failed to initialize '%s': %s", name, e)
 
     return zoo_datasets
 
@@ -563,9 +684,8 @@ def _load_zoo_dataset_manifest(manifest_path):
     return manifest
 
 
-def _get_zoo_dataset_sources():
-    all_datasets = _get_zoo_datasets()
-    all_sources = list(all_datasets.keys())
+def _get_zoo_dataset_sources(zoo_datasets):
+    all_sources = list(zoo_datasets.keys())
     default_source = fo.config.default_ml_backend
 
     sources = []
@@ -590,17 +710,41 @@ def _get_zoo_dataset_sources():
     return sources, default_source
 
 
-def _parse_dataset_details(name, dataset_dir, **kwargs):
-    zoo_dataset = get_zoo_dataset(name, **kwargs)
-
-    if dataset_dir is None:
-        dataset_dir = _get_zoo_dataset_dir(zoo_dataset.name)
+def _parse_dataset_details(name_or_url, overwrite=False, **kwargs):
+    zoo_dataset = get_zoo_dataset(name_or_url, overwrite=overwrite, **kwargs)
+    dataset_dir = _get_zoo_dataset_dir(zoo_dataset.name)
 
     return zoo_dataset, dataset_dir
 
 
+def _parse_dataset_identifier(name_or_url):
+    if "/" in name_or_url:
+        name = name_or_url
+        url = _normalize_ref(name_or_url)
+    else:
+        name = name_or_url
+        url = None
+
+    all_datasets, all_sources, _ = _get_zoo_datasets()
+    for source in all_sources:
+        datasets = all_datasets.get(source, {})
+        for _name, zoo_dataset in datasets.items():
+            if name == _name or (
+                zoo_dataset.is_remote and zoo_dataset.url == url
+            ):
+                zoo_dataset_cls = type(zoo_dataset)
+                dataset_dir = _get_zoo_dataset_dir(zoo_dataset.name)
+                url = zoo_dataset.url if zoo_dataset.is_remote else None
+                return zoo_dataset_cls, dataset_dir, url, True
+
+    if "/" in name_or_url:
+        return RemoteZooDataset, None, name_or_url, False
+
+    raise ValueError("Dataset '%s' not found in the zoo" % name_or_url)
+
+
 def _get_zoo_dataset_dir(name):
-    return os.path.join(fo.config.dataset_zoo_dir, name)
+    return os.path.join(fo.config.dataset_zoo_dir, *name.split("/"))
 
 
 class ZooDatasetInfo(etas.Serializable):
@@ -630,6 +774,9 @@ class ZooDatasetInfo(etas.Serializable):
         if zoo_dataset.has_splits and downloaded_splits is None:
             downloaded_splits = {}
 
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
         if parameters is None:
             parameters = zoo_dataset.parameters
 
@@ -655,8 +802,11 @@ class ZooDatasetInfo(etas.Serializable):
     @property
     def dataset_type(self):
         """The fully-qualified class string of the
-        :class:`fiftyone.types.Dataset` type.
+        :class:`fiftyone.types.Dataset` type, if any.
         """
+        if self._dataset_type is None:
+            return None
+
         return etau.get_class_name(self._dataset_type)
 
     @property
@@ -665,6 +815,14 @@ class ZooDatasetInfo(etas.Serializable):
         does not have splits.
         """
         return self._zoo_dataset.supported_splits
+
+    @property
+    def url(self):
+        """The dataset's URL, or None if it is not remotely-sourced."""
+        if not self._zoo_dataset.is_remote:
+            return None
+
+        return self._zoo_dataset.url
 
     def get_zoo_dataset(self):
         """Returns the :class:`ZooDataset` instance for the dataset.
@@ -722,6 +880,8 @@ class ZooDatasetInfo(etas.Serializable):
             a list of class attributes
         """
         _attrs = ["name", "zoo_dataset", "dataset_type", "num_samples"]
+        if self.url is not None:
+            _attrs.append("url")
         if self.downloaded_splits is not None:
             _attrs.append("downloaded_splits")
         if self.parameters is not None:
@@ -745,11 +905,18 @@ class ZooDatasetInfo(etas.Serializable):
         return info
 
     @classmethod
-    def from_json(cls, json_path, upgrade=False, warn_deprecated=False):
+    def from_json(
+        cls,
+        json_path,
+        zoo_dataset=None,
+        upgrade=False,
+        warn_deprecated=False,
+    ):
         """Loads a :class:`ZooDatasetInfo` from a JSON file on disk.
 
         Args:
             json_path: path to JSON file
+            zoo_dataset (None): an existing :class:`ZooDataset` instance
             upgrade (False): whether to upgrade the JSON file on disk if any
                 migrations were necessary
             warn_deprecated (False): whether to issue a warning if the dataset
@@ -758,18 +925,27 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a :class:`ZooDatasetInfo`
         """
+        dataset_dir = os.path.dirname(json_path)
         d = etas.read_json(json_path)
-        info, migrated = cls._from_dict(d)
 
+        # Handle remote zoo datasets
+        if zoo_dataset is None:
+            zoo_dataset_cls = etau.get_class(d["zoo_dataset"])
+            if issubclass(zoo_dataset_cls, RemoteZooDataset):
+                url = d.get("url")
+                zoo_dataset = zoo_dataset_cls(dataset_dir, url=url)
+
+        info, migrated = cls._from_dict(d, zoo_dataset=zoo_dataset)
+
+        # Handle migrated zoo datasets
         if upgrade and migrated:
             logger.info("Migrating ZooDatasetInfo at '%s'", json_path)
             etau.move_file(json_path, json_path + ".bak")
             info.write_json(json_path, pretty_print=True)
 
+        # Handle deprecated zoo datasets
         if warn_deprecated:
-            zoo_dataset_cls = etau.get_class(info.zoo_dataset)
-            if issubclass(zoo_dataset_cls, DeprecatedZooDataset):
-                dataset_dir = os.path.dirname(json_path)
+            if isinstance(info.get_zoo_dataset(), DeprecatedZooDataset):
                 logger.warning(
                     "You are loading a previously downloaded zoo dataset that "
                     "has been upgraded in this version of FiftyOne. We "
@@ -783,16 +959,18 @@ class ZooDatasetInfo(etas.Serializable):
         return info
 
     @classmethod
-    def _from_dict(cls, d):
+    def _from_dict(cls, d, zoo_dataset=None):
         # Handle any migrations from old `ZooDatasetInfo` instances
         d, migrated = _migrate_zoo_dataset_info(d)
 
         parameters = d.get("parameters", None)
+        if zoo_dataset is None:
+            kwargs = parameters or {}
+            zoo_dataset = etau.get_class(d["zoo_dataset"])(**kwargs)
 
-        kwargs = parameters or {}
-        zoo_dataset = etau.get_class(d["zoo_dataset"])(**kwargs)
-
-        dataset_type = etau.get_class(d["dataset_type"])()
+        dataset_type = d["dataset_type"]
+        if dataset_type is not None:
+            dataset_type = etau.get_class(dataset_type)
 
         downloaded_splits = d.get("downloaded_splits", None)
         if downloaded_splits is not None:
@@ -859,6 +1037,11 @@ class ZooDataset(object):
     def name(self):
         """The name of the dataset."""
         raise NotImplementedError("subclasses must implement name")
+
+    @property
+    def is_remote(self):
+        """Whether the dataset is remotely sourced."""
+        return False
 
     @property
     def tags(self):
@@ -958,6 +1141,19 @@ class ZooDataset(object):
         return os.path.join(dataset_dir, split)
 
     @staticmethod
+    def has_info(dataset_dir):
+        """Determines whether the directory contains :class:`ZooDatasetInfo`.
+
+        Args:
+            dataset_dir: the dataset directory
+
+        Returns:
+            True/False
+        """
+        info_path = ZooDataset.get_info_path(dataset_dir)
+        return os.path.isfile(info_path)
+
+    @staticmethod
     def load_info(dataset_dir, upgrade=True, warn_deprecated=False):
         """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
 
@@ -990,7 +1186,7 @@ class ZooDataset(object):
 
     def download_and_prepare(
         self,
-        dataset_dir=None,
+        dataset_dir,
         split=None,
         splits=None,
         overwrite=False,
@@ -1002,9 +1198,7 @@ class ZooDataset(object):
         re-downloaded unless ``overwrite`` is True.
 
         Args:
-            dataset_dir (None): the directory in which to construct the
-                dataset. By default, it is written to a subdirectory of
-                ``fiftyone.config.dataset_zoo_dir``
+            dataset_dir: the directory in which to construct the dataset
             split (None) a split to download, if applicable. If neither
                 ``split`` nor ``splits`` are provided, the full dataset is
                 downloaded
@@ -1016,13 +1210,8 @@ class ZooDataset(object):
                 during download
 
         Returns:
-            tuple of
-
-            -   info: the :class:`ZooDatasetInfo` for the dataset
-            -   dataset_dir: the directory containing the dataset
+            the :class:`ZooDatasetInfo` for the dataset
         """
-        if dataset_dir is None:
-            dataset_dir = _get_zoo_dataset_dir(self.name)
 
         # Parse splits
         splits = _parse_splits(split, splits)
@@ -1040,7 +1229,10 @@ class ZooDataset(object):
         info_path = self.get_info_path(dataset_dir)
         if os.path.isfile(info_path):
             info = ZooDatasetInfo.from_json(
-                info_path, upgrade=True, warn_deprecated=True
+                info_path,
+                zoo_dataset=self,
+                upgrade=True,
+                warn_deprecated=True,
             )
         else:
             info = None
@@ -1086,7 +1278,9 @@ class ZooDataset(object):
                     dataset_type,
                     num_samples,
                     classes,
-                ) = self._download_and_prepare(split_dir, scratch_dir, split)
+                ) = self._download_and_prepare(
+                    split_dir, scratch_dir, split=split
+                )
 
                 # Add split to ZooDatasetInfo
                 if info is None:
@@ -1129,7 +1323,7 @@ class ZooDataset(object):
                     dataset_type,
                     num_samples,
                     classes,
-                ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
+                ) = self._download_and_prepare(dataset_dir, scratch_dir)
 
                 if self.supports_partial_downloads and num_samples is None:
                     logger.info("Existing download is sufficient")
@@ -1147,18 +1341,18 @@ class ZooDataset(object):
         if cleanup:
             etau.delete_dir(scratch_dir)
 
-        return info, dataset_dir
+        return info
 
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split=None):
         """Internal implementation of downloading the dataset and preparing it
         for use in the given directory.
 
         Args:
-            dataset_dir: the directory in which to construct the dataset
+            dataset_dir: the directory in which to construct the dataset. If
+                a ``split`` is provided, this is the directory for the split
             scratch_dir: a scratch directory to use to download and prepare
                 any required intermediate files
-            split: the split to download, or None if the dataset does not have
-                splits
+            split (None): the split to download, if applicable
 
         Returns:
             tuple of
@@ -1252,6 +1446,264 @@ class ZooDataset(object):
         return True
 
 
+class RemoteZooDataset(ZooDataset):
+    """Base class for remotely-sourced datasets that are compatible with the
+    FiftyOne Dataset Zoo.
+
+    Example dataset YAML file::
+
+        name: brimoor/coco-2017
+        description: The COCO-2017 dataset
+        version: 1.0.0
+        fiftyone:
+          version: "*"
+        url: https://github.com/brimoor/coco-2017
+        supports_partial_downloads: true
+        tags:
+         - image
+         - detection
+         - segmentation
+        splits:
+         - train
+         - validation
+         - test
+        size_samples:
+         - train: 118287
+         - test: 40670
+         - validation: 5000
+        size_bytes:
+         - train: null
+         - test: null
+         - validation: null
+
+    Args:
+        dataset_dir: the dataset's local directory, which must contain a valid
+            dataset YAML file
+        url (None): the location the dataset was downloaded from, which can be:
+
+            -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+            -   a GitHub ref like
+                ``https://github.com/<user>/<repo>/tree/<branch>`` or
+                ``https://github.com/<user>/<repo>/commit/<commit>``
+            -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a publicly accessible URL of an archive (eg zip or tar) file
+
+            This is explicitly provided rather than relying on the YAML file's
+            ``url`` property in case the caller has specified a particular
+            branch or commit
+        **kwargs: optional keyword arguments for the dataset's
+            `download_and_prepare()` and/or `load_dataset()` methods
+    """
+
+    def __init__(self, dataset_dir, url=None, **kwargs):
+        d = _load_dataset_metadata(dataset_dir)
+
+        if url is not None:
+            url = _normalize_ref(url)
+        else:
+            url = d.get("url")
+
+        self._dataset_dir = dataset_dir
+        self._url = url
+        self._kwargs = kwargs
+
+        self._name = d["name"]
+        self._description = d.get("description")
+        self._version = d.get("version")
+        self._fiftyone_version = d.get("fiftyone", {}).get("version", None)
+        self._supports_partial_downloads = d.get(
+            "supports_partial_downloads", False
+        )
+        self._tags = self._parse_tuple(d, "tags")
+        self._splits = self._parse_tuple(d, "splits")
+        self._size_samples = d.get("size_samples")
+        self._size_bytes = d.get("size_bytes")
+
+    @staticmethod
+    def _parse_tuple(d, key):
+        value = d.get(key)
+        if value is None:
+            return None
+
+        if not etau.is_container(value):
+            return (value,)
+
+        return tuple(value)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def url(self):
+        return self._url
+
+    @property
+    def is_remote(self):
+        return True
+
+    @property
+    def description(self):
+        return self._description
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def fiftyone_version(self):
+        return self._fiftyone_version
+
+    @property
+    def tags(self):
+        return self._tags
+
+    @property
+    def supported_splits(self):
+        return self._splits
+
+    @property
+    def supports_partial_downloads(self):
+        return self._supports_partial_downloads
+
+    @property
+    def size_samples(self):
+        return self._size_samples
+
+    @property
+    def size_bytes(self):
+        return self._size_bytes
+
+    def _download_and_prepare(self, dataset_dir, _, split=None):
+        if split is not None:
+            dataset_dir = os.path.dirname(dataset_dir)
+
+        module = self._import_module(dataset_dir)
+
+        kwargs, _ = fou.extract_kwargs_for_function(
+            module.download_and_prepare, self._kwargs
+        )
+        if split is not None:
+            kwargs["split"] = split
+
+        return module.download_and_prepare(dataset_dir, **kwargs)
+
+    def _load_dataset(self, dataset, dataset_dir, split=None):
+        if split is not None:
+            dataset_dir = os.path.dirname(dataset_dir)
+
+        module = self._import_module(dataset_dir)
+
+        kwargs, _ = fou.extract_kwargs_for_function(
+            module.load_dataset, self._kwargs
+        )
+        if split is not None:
+            kwargs["split"] = split
+
+        return module.load_dataset(dataset, dataset_dir, **kwargs)
+
+    def _import_module(self, dataset_dir):
+        module_path = os.path.join(dataset_dir, "__init__.py")
+        module_name = os.path.relpath(
+            dataset_dir, fo.config.dataset_zoo_dir
+        ).replace("/", ".")
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        # sys.modules[module.__name__] = module
+        spec.loader.exec_module(module)
+        return module
+
+
+def _normalize_ref(url_or_gh_repo):
+    if etaw.is_url(url_or_gh_repo):
+        return url_or_gh_repo
+
+    return "https://github.com/" + url_or_gh_repo
+
+
+def _load_dataset_metadata(dataset_dir):
+    yaml_path = None
+
+    for filename in DATASET_METADATA_FILENAMES:
+        metadata_path = os.path.join(dataset_dir, filename)
+        if os.path.isfile(metadata_path):
+            yaml_path = metadata_path
+
+    if yaml_path is None:
+        raise ValueError(
+            "Directory '%s' does not contain a dataset YAML file" % dataset_dir
+        )
+
+    with open(yaml_path, "r") as f:
+        return yaml.safe_load(f)
+
+
+def _download_dataset_metadata(url_or_gh_repo, overwrite=False):
+    url = None
+    repo = None
+    if etaw.is_url(url_or_gh_repo):
+        if "github" in url_or_gh_repo:
+            repo = GitHubRepository(url_or_gh_repo)
+        else:
+            url = url_or_gh_repo
+    else:
+        repo = GitHubRepository(url_or_gh_repo)
+
+    with etau.TempDir() as tmpdir:
+        logger.info(f"Downloading {url_or_gh_repo}...")
+        if repo is not None:
+            repo.download(tmpdir)
+        else:
+            _download_archive(url, tmpdir)
+
+        yaml_path = _find_dataset_metadata(tmpdir)
+
+        if yaml_path is None:
+            raise ValueError(
+                "'%s' does not contain a dataset YAML file" % url_or_gh_repo
+            )
+
+        with open(yaml_path, "r") as f:
+            d = yaml.safe_load(f)
+
+        name = d["name"]
+        from_dir = os.path.dirname(yaml_path)
+        dataset_dir = _get_zoo_dataset_dir(name)
+
+        if ZooDataset.has_info(dataset_dir) and not overwrite:
+            raise ValueError(
+                f"A dataset with name '{name}' already exists. Pass "
+                "'overwrite=True' if you wish to overwrite it"
+            )
+
+        etau.copy_dir(from_dir, dataset_dir)
+
+        return dataset_dir
+
+
+def _find_dataset_metadata(root_dir):
+    if not root_dir or not os.path.isdir(root_dir):
+        return
+
+    for root, dirs, files in os.walk(root_dir, followlinks=True):
+        # Ignore hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+
+        for file in files:
+            if os.path.basename(file) in DATASET_METADATA_FILENAMES:
+                return os.path.join(root, file)
+
+
+def _download_archive(url, outdir):
+    archive_name = os.path.basename(url)
+    if not os.path.splitext(archive_name)[1]:
+        raise ValueError(f"Cannot infer appropriate archive type for '{url}'")
+
+    archive_path = os.path.join(outdir, archive_name)
+    etaw.download_file(url, path=archive_path)
+    etau.extract_archive(archive_path)
+
+
 class DeprecatedZooDataset(ZooDataset):
     """Class representing a zoo dataset that no longer exists in the FiftyOne
     Dataset Zoo.
@@ -1286,7 +1738,7 @@ def _migrate_zoo_dataset_info(d):
         migrated = True
 
     zoo_dataset = d["zoo_dataset"]
-    dataset_type = d["dataset_type"]
+    dataset_type = d.get("dataset_type", None)
 
     # @legacy pre-model zoo package namespaces
     old_pkg = "fiftyone.zoo."
@@ -1303,14 +1755,15 @@ def _migrate_zoo_dataset_info(d):
         migrated = True
 
     # @legacy dataset type names
-    _dt = "fiftyone.types"
-    if dataset_type.endswith(".ImageClassificationDataset"):
-        dataset_type = _dt + ".FiftyOneImageClassificationDataset"
-        migrated = True
+    if dataset_type is not None:
+        _dt = "fiftyone.types"
+        if dataset_type.endswith(".ImageClassificationDataset"):
+            dataset_type = _dt + ".FiftyOneImageClassificationDataset"
+            migrated = True
 
-    if dataset_type.endswith(".ImageDetectionDataset"):
-        dataset_type = _dt + ".FiftyOneImageDetectionDataset"
-        migrated = True
+        if dataset_type.endswith(".ImageDetectionDataset"):
+            dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+            migrated = True
 
     # @legacy dataset implementations
     if zoo_dataset.endswith(

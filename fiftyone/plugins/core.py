@@ -251,7 +251,7 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
 def _download_archive(url, outdir):
     archive_name = os.path.basename(url)
     if not os.path.splitext(archive_name)[1]:
-        raise ValueError("Cannot infer appropriate archive type for '{url}'")
+        raise ValueError(f"Cannot infer appropriate archive type for '{url}'")
 
     archive_path = os.path.join(outdir, archive_name)
     etaw.download_file(url, path=archive_path)

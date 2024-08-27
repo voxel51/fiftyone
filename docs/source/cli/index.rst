@@ -2248,7 +2248,6 @@ List datasets in the FiftyOne Dataset Zoo.
 .. code-block:: text
 
     fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS]
-                               [-b BASE_DIR]
 
 **Arguments**
 
@@ -2262,9 +2261,6 @@ List datasets in the FiftyOne Dataset Zoo.
       -s SOURCE, --source SOURCE
                             only show datasets available from the specified source
       -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
-      -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for
-                            downloaded datasets
 
 **Examples**
 
@@ -2275,7 +2271,7 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: shell
 
-    # List available datasets (names only)
+    # List available dataset names
     fiftyone zoo datasets list --names-only
 
 .. code-block:: shell
@@ -2298,18 +2294,18 @@ List datasets in the FiftyOne Dataset Zoo.
 Find zoo datasets on disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Locate the downloaded zoo dataset on disk.
+Locate a downloaded zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo datasets find [-h] [-s SPLIT] NAME
+    fiftyone zoo datasets find [-h] [-s SPLIT] NAME_OR_URL
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the name of the dataset
+      NAME_OR_URL           the name or remote location of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -2319,12 +2315,18 @@ Locate the downloaded zoo dataset on disk.
 
 .. code-block:: shell
 
-    # Print the location of the downloaded zoo dataset on disk
+    # Print the location of a downloaded zoo dataset on disk
     fiftyone zoo datasets find <name>
 
 .. code-block:: shell
 
-    # Print the location of a specific split of the dataset
+    # Print the location of a remotely-sourced zoo dataset on disk
+    fiftyone zoo datasets info https://github.com/<user>/<repo>
+    fiftyone zoo datasets info <url>
+
+.. code-block:: shell
+
+    # Print the location of a specific split of a dataset
     fiftyone zoo datasets find <name> --split <split>
 
 .. _cli-fiftyone-zoo-datasets-info:
@@ -2336,20 +2338,17 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo datasets info [-h] [-b BASE_DIR] NAME
+    fiftyone zoo datasets info [-h] NAME_OR_URL
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset
+      NAME_OR_URL           the name or remote location of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
-      -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for
-                            downloaded datasets
 
 **Examples**
 
@@ -2358,34 +2357,52 @@ Print information about datasets in the FiftyOne Dataset Zoo.
     # Print information about a zoo dataset
     fiftyone zoo datasets info <name>
 
+.. code-block:: shell
+
+    # Print information about a remote zoo dataset
+    fiftyone zoo datasets info https://github.com/<user>/<repo>
+    fiftyone zoo datasets info <url>
+
 .. _cli-fiftyone-zoo-datasets-download:
 
 Download zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~
 
-Download datasets from the FiftyOne Dataset Zoo.
+Download zoo datasets.
+
+When downloading remotely-sourced zoo datasets, you can provide any of the
+following formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
 
 .. code-block:: text
 
     fiftyone zoo datasets download [-h] [-s SPLITS [SPLITS ...]]
-                                   [-d DATASET_DIR]
                                    [-k KEY=VAL [KEY=VAL ...]]
-                                   NAME
+                                   NAME_OR_URL
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset
+      NAME_OR_URL           the name or remote location of the dataset
 
     optional arguments:
 
       -h, --help            show this help message and exit
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to download
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            a custom directory to which to download the dataset
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             optional dataset-specific keyword arguments for
                             `fiftyone.zoo.download_zoo_dataset()`
@@ -2394,18 +2411,19 @@ Download datasets from the FiftyOne Dataset Zoo.
 
 .. code-block:: shell
 
-    # Download the entire zoo dataset
+    # Download a zoo dataset
     fiftyone zoo datasets download <name>
 
 .. code-block:: shell
 
-    # Download the specified split(s) of the zoo dataset
-    fiftyone zoo datasets download <name> --splits <split1> ...
+    # Download a remotely-sourced zoo dataset
+    fiftyone zoo datasets download https://github.com/<user>/<repo>
+    fiftyone zoo datasets download <url>
 
 .. code-block:: shell
 
-    # Download the zoo dataset to a custom directory
-    fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
+    # Download the specified split(s) of a zoo dataset
+    fiftyone zoo datasets download <name> --splits <split1> ...
 
 .. code-block:: shell
 
@@ -2420,19 +2438,33 @@ Load zoo datasets
 
 Load zoo datasets as persistent FiftyOne datasets.
 
+When loading remotely-sourced zoo datasets, you can provide any of the
+following formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
+
 .. code-block:: text
 
     fiftyone zoo datasets load [-h] [-s SPLITS [SPLITS ...]]
-                               [-n DATASET_NAME] [-d DATASET_DIR]
-                               [-k KEY=VAL [KEY=VAL ...]]
-                               NAME
+                               [-n DATASET_NAME] [-k KEY=VAL [KEY=VAL ...]]
+                               NAME_OR_URL
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset
+      NAME_OR_URL           the name or remote location of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -2440,8 +2472,6 @@ Load zoo datasets as persistent FiftyOne datasets.
                             the dataset splits to load
       -n DATASET_NAME, --dataset-name DATASET_NAME
                             a custom name to give the FiftyOne dataset
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            a custom directory in which the dataset is downloaded
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             additional dataset-specific keyword arguments for
                             `fiftyone.zoo.load_zoo_dataset()`
@@ -2455,18 +2485,19 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. code-block:: shell
 
-    # Load the specified split(s) of the zoo dataset
+    # Load a remotely-sourced zoo dataset
+    fiftyone zoo datasets load https://github.com/<user>/<repo>
+    fiftyone zoo datasets load <url>
+
+.. code-block:: shell
+
+    # Load the specified split(s) of a zoo dataset
     fiftyone zoo datasets load <name> --splits <split1> ...
 
 .. code-block:: shell
 
-    # Load the zoo dataset with a custom name
+    # Load a zoo dataset with a custom name
     fiftyone zoo datasets load <name> --dataset-name <dataset-name>
-
-.. code-block:: shell
-
-    # Load the zoo dataset from a custom directory
-    fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
 .. code-block:: shell
 
