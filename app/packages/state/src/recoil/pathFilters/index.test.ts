@@ -16,14 +16,6 @@ describe("path filter handling", () => {
     expect(keypoints({ test: [] })).toBe(true);
   });
 
-  it("overrides keypoint array filters", () => {
-    const keypoint = keypointFilter("test", KEYPOINT_FIELD, () => false);
-    expect(keypoint({ test: [] })).toBe(true);
-
-    const keypoints = keypointFilter("test", KEYPOINTS_FIELD, () => false);
-    expect(keypoints({ test: [] })).toBe(true);
-  });
-
   it("does not override other label fields", () => {
     const keypoint = keypointFilter("test", DETECTION_FIELD, () => false);
     expect(keypoint({ test: [] })).toBe(false);
