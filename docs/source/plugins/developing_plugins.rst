@@ -1837,10 +1837,14 @@ subsequent sections.
 
             # Define components that appear in the panel's main body
             panel.str("event", label="The last event", view=types.LabelValueView())
-            panel.obj("event_data", label="The last event data", view=types.JSONView())
+            panel.obj(
+                "event_data", label="The last event data", view=types.JSONView()
+            )
 
             # Display a checkbox to toggle between plot and compute visualization button
-            show_compute_visualization_btn = ctx.panel.get_state("show_start_button", True)
+            show_compute_visualization_btn = ctx.panel.get_state(
+                "show_start_button", True
+            )
             panel.bool(
                 "show_start_button",
                 label="Show compute visualization button",
@@ -1867,7 +1871,9 @@ subsequent sections.
                     height="400px",
                 )
 
-            return types.Property(panel, view=types.GridView(orientation="vertical"))
+            return types.Property(
+                panel, view=types.GridView(orientation="vertical")
+            )
 
         #######################################################################
         # Builtin events
@@ -2014,7 +2020,11 @@ subsequent sections.
 
             # Format results for plotly
             x, y = zip(*results.points.tolist())
-            plot_data = [{"x": x, "y": y, "type": "scatter", "mode": "markers"}]
+            ids = results.sample_ids
+
+            plot_data = [
+                {"x": x, "y": y, "ids": ids, "type": "scatter", "mode": "markers"}
+            ]
 
             # Store large content as panel data for efficiency
             ctx.panel.set_data("embeddings", plot_data)
@@ -2035,8 +2045,8 @@ subsequent sections.
             ctx.ops.notify(f"Check out {url} for more information")
 
         def on_selected_embeddings(self, ctx):
-            # Retrieve data from plot
-            selected_points = ctx.panel.state.embeddings.get("data", [])
+            # Get selected points from event params
+            selected_points = ctx.params.get("data", [])
             selected_sample_ids = [d.get("id", None) for d in selected_points]
 
             # Conditionally trigger a builtin operation via `ctx.ops`
