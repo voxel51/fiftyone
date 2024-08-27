@@ -106,15 +106,11 @@ export const getStandardizedUrls = (
     | readonly { readonly field: string; readonly url: string }[]
     | { [field: string]: string }
 ) => {
-  if (Array.isArray(urls)) {
-    let standardizedUrls: { [field: string]: string } = {};
-
-    for (const { field, url } of urls) {
-      standardizedUrls[field] = url;
-    }
-    return standardizedUrls;
+  if (!Array.isArray(urls)) {
+    return urls;
   }
-  return urls;
+
+  return Object.fromEntries(urls.map(({ field, url }) => [field, url]));
 };
 
 const convertTargets = (
