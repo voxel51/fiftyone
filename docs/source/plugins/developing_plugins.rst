@@ -1891,7 +1891,7 @@ subsequent sections.
             ctx.panel.set_data("event_data", event)
 
             # Get the list of brain keys to populate `brain_key` dropdown
-            visualization_keys = ctx.dataset.list_brain_runs()
+            visualization_keys = ctx.dataset.list_brain_runs("visualization")
             ctx.panel.set_state("brain_keys", visualization_keys)
 
             # Show compute visualization button by default
