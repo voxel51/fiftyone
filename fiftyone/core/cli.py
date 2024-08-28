@@ -1901,8 +1901,8 @@ class DatasetZooFindCommand(Command):
         fiftyone zoo datasets find <name>
 
         # Print the location of a remotely-sourced zoo dataset on disk
-        fiftyone zoo datasets info https://github.com/<user>/<repo>
-        fiftyone zoo datasets info <url>
+        fiftyone zoo datasets find https://github.com/<user>/<repo>
+        fiftyone zoo datasets find <url>
 
         # Print the location of a specific split of a dataset
         fiftyone zoo datasets find <name> --split <split>

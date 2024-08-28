@@ -2231,12 +2231,13 @@ Tools for working with the FiftyOne Dataset Zoo.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,find,info,download,load}
+      {list,find,info,download,load,delete}
         list                List datasets in the FiftyOne Dataset Zoo.
-        find                Locate the downloaded zoo dataset on disk.
-        info                Print information about downloaded zoo datasets.
+        find                Locate a downloaded zoo dataset on disk.
+        info                Print information about datasets in the FiftyOne Dataset Zoo.
         download            Download zoo datasets.
         load                Load zoo datasets as persistent FiftyOne datasets.
+        delete              Deletes the local copy of the zoo dataset on disk.
 
 .. _cli-fiftyone-zoo-datasets-list:
 
@@ -2321,8 +2322,8 @@ Locate a downloaded zoo dataset on disk.
 .. code-block:: shell
 
     # Print the location of a remotely-sourced zoo dataset on disk
-    fiftyone zoo datasets info https://github.com/<user>/<repo>
-    fiftyone zoo datasets info <url>
+    fiftyone zoo datasets find https://github.com/<user>/<repo>
+    fiftyone zoo datasets find <url>
 
 .. code-block:: shell
 

@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 def list_zoo_datasets(tags=None, source=None):
-    """Lists the available zoo datasets.
+    """Lists the available datasets in the FiftyOne Dataset Zoo.
+
+    Also includes any remotely-sourced zoo datasets that you've downloaded.
 
     Example usage::
 
@@ -159,7 +161,7 @@ def download_zoo_dataset(
     cleanup=True,
     **kwargs,
 ):
-    """Downloads given dataset from the FiftyOne Dataset Zoo.
+    """Downloads the specified dataset from the FiftyOne Dataset Zoo.
 
     Any dataset splits that have already been downloaded are not re-downloaded,
     unless ``overwrite == True`` is specified.
@@ -171,8 +173,8 @@ def download_zoo_dataset(
         ``GITHUB_TOKEN`` environment variable.
 
     Args:
-        name_or_url: the name of the zoo dataset to download, or the location
-            to download it from, which can be:
+        name_or_url: the name of the zoo dataset to download, or the remote
+            source to download it from, which can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
             -   a GitHub ref like
@@ -229,7 +231,7 @@ def load_zoo_dataset(
     progress=None,
     **kwargs,
 ):
-    """Loads the given dataset from the FiftyOne Dataset Zoo.
+    """Loads the specified dataset from the FiftyOne Dataset Zoo.
 
     By default, the dataset will be downloaded if necessary.
 
@@ -244,8 +246,8 @@ def load_zoo_dataset(
     dataset will be returned.
 
     Args:
-        name_or_url: the name of the zoo dataset to load, or the location to
-            load it from, which can be:
+        name_or_url: the name of the zoo dataset to load, or the remote source
+            to load it from, which can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
             -   a GitHub ref like
@@ -382,10 +384,10 @@ def load_zoo_dataset(
         logger.info("Deleting existing dataset '%s'", dataset_name)
         fo.delete_dataset(dataset_name)
 
-    dataset = fo.Dataset(dataset_name, persistent=persistent)
-
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
+
+    dataset = fo.Dataset(dataset_name, persistent=persistent)
 
     if splits:
         for split in splits:
@@ -522,7 +524,7 @@ def get_zoo_dataset(name_or_url, overwrite=False, **kwargs):
     used.
 
     Args:
-        name_or_url: the name of the zoo dataset, or its remote location, which
+        name_or_url: the name of the zoo dataset, or its remote source, which
             can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
@@ -533,7 +535,7 @@ def get_zoo_dataset(name_or_url, overwrite=False, **kwargs):
             -   a publicly accessible URL of an archive (eg zip or tar) file
         overwrite (False): whether to overwrite an existing zoo dataset of the
             same name if one exists. Only applicable when ``name_or_url`` is a
-            remote location
+            remote source
         **kwargs: optional arguments for :class:`ZooDataset`
 
     Returns:
@@ -581,7 +583,7 @@ def delete_zoo_dataset(name_or_url, split=None):
     If a ``split`` is provided, only that split is deleted.
 
     Args:
-        name_or_url: the name of the zoo dataset, or its remote location, which
+        name_or_url: the name of the zoo dataset, or its remote source, which
             can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
@@ -1040,7 +1042,7 @@ class ZooDataset(object):
 
     @property
     def is_remote(self):
-        """Whether the dataset is remotely sourced."""
+        """Whether the dataset is remotely-sourced."""
         return False
 
     @property
@@ -1479,7 +1481,7 @@ class RemoteZooDataset(ZooDataset):
     Args:
         dataset_dir: the dataset's local directory, which must contain a valid
             dataset YAML file
-        url (None): the location the dataset was downloaded from, which can be:
+        url (None): the dataset's remote source, which can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
             -   a GitHub ref like
