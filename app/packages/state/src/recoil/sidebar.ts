@@ -214,7 +214,7 @@ export const resolveGroups = (
   }, {});
 
   groups = groups.map((group) => {
-    return expanded[group.name] !== undefined
+    return typeof expanded[group.name] === "boolean"
       ? { ...group, expanded: expanded[group.name] }
       : { ...group };
   });
@@ -329,7 +329,6 @@ export const sidebarGroupsDefinition = (() => {
       keys: ["dataset"],
       sync: (modal) => !modal,
       read: (data, prev) => {
-        alert("e");
         configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
           ...group,
           paths: [...group.paths],
@@ -343,7 +342,7 @@ export const sidebarGroupsDefinition = (() => {
             readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
               .frameFields
           ),
-          data.name === prev?.name ? current : [],
+          data?.datasetId === prev?.datasetId ? current : [],
           configGroups
         );
 
