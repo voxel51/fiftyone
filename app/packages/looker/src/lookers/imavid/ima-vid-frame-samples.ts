@@ -1,11 +1,22 @@
-import { ModalSample } from "@fiftyone/state";
+import {
+  getSampleSrc,
+  getStandardizedUrls,
+  ModalSample,
+} from "@fiftyone/state";
 import { BufferManager } from "@fiftyone/utilities";
 import LRUCache from "lru-cache";
 import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
 import { SampleId } from "./types";
 
+const BASE64_BLACK_IMAGE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAABNJREFUCB1jZGBg+A/EDEwgAgQADigBA//q6GsAAAAASUVORK5CYII=";
+
+export type ModalSampleExtendedWithImage = ModalSample & {
+  image: HTMLImageElement;
+};
 export class ImaVidFrameSamples {
-  public readonly samples: LRUCache<SampleId, ModalSample>;
+  public readonly samples: LRUCache<SampleId, ModalSampleExtendedWithImage>;
+
   public readonly frameIndex: Map<number, SampleId>;
   public readonly reverseFrameIndex: Map<SampleId, number>;
 
@@ -14,7 +25,7 @@ export class ImaVidFrameSamples {
   constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
 
-    this.samples = new LRUCache<SampleId, ModalSample>({
+    this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       max: MAX_FRAME_SAMPLES_CACHE_SIZE,
       dispose: (sampleId) => {
         // remove it from the frame index
@@ -44,11 +55,68 @@ export class ImaVidFrameSamples {
     return this.samples.get(sampleId);
   }
 
-  updateSample(id: string, newSample: ModalSample) {
+  async fetchImageForSample(
+    sampleId: string,
+    urls: ModalSample["urls"],
+    mediaField: string
+  ): Promise<string> {
+    const standardizedUrls = getStandardizedUrls(urls);
+    const image = new Image();
+    const source = getSampleSrc(standardizedUrls[mediaField]);
+
+    return new Promise((resolve) => {
+      image.addEventListener("load", () => {
+        const sample = this.samples.get(sampleId);
+
+        if (!sample) {
+          // sample was removed from the cache, this shouldn't happen...
+          // but if it does, it might be because the cache was cleared
+          // todo: handle this case better
+          console.error(
+            "Sample was removed from cache before image loaded",
+            sampleId
+          );
+          image.src = BASE64_BLACK_IMAGE;
+          return;
+        }
+
+        sample.image = image;
+        resolve(sampleId);
+      });
+
+      image.addEventListener("error", () => {
+        console.error(
+          "Failed to load image for sample with id",
+          sampleId,
+          "at url",
+          source
+        );
+
+        // use a placeholder blank black image to not block animation
+        // setting src should trigger the load event
+        image.src = BASE64_BLACK_IMAGE;
+      });
+
+      image.src = source;
+    });
+  }
+
+  /**
+   * Update sample metadata in the store.
+   * This doesn't update the media associated with the sample.
+   * Useful for tagging, etc.
+   */
+  updateSample(id: string, newSample: ModalSampleExtendedWithImage["sample"]) {
     const oldSample = this.samples.get(id);
-    if (oldSample) {
-      this.samples.set(id, { ...oldSample, sample: newSample });
+
+    if (!oldSample) {
+      return;
     }
+
+    this.samples.set(id, {
+      ...oldSample,
+      sample: { ...newSample },
+    });
   }
 
   reset() {

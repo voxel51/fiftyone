@@ -2,7 +2,6 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import {
   BUFFERING_PAUSE_TIMEOUT,
   DEFAULT_FRAME_RATE,
@@ -84,7 +83,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
-  private mediaField: string;
   private thumbnailSrc: string;
   /**
    * This frame number is the authoritaive frame number that is drawn on the canvas.
@@ -152,9 +150,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       }) => {
         this.framesController = framesController;
         this.framesController.setImaVidStateUpdater(this.update);
-        this.mediaField = mediaField;
 
         this.framesController.setFrameRate(frameRate);
+        this.framesController.setMediaField(mediaField);
 
         return {};
       }
@@ -171,7 +169,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return this.element;
   }
 
-  private getCurrentFrameSample(currentFrameNumber: number) {
+  private getCurrentFrameImage(currentFrameNumber: number) {
     const sample =
       this.framesController.store.getSampleAtFrame(currentFrameNumber);
 
@@ -179,11 +177,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return null;
     }
 
-    if (sample.__typename !== "ImageSample") {
-      throw new Error("expected an image sample");
-    }
-
-    return sample;
+    return sample.image ?? null;
   }
 
   resetWaitingFlags() {
@@ -206,6 +200,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   async resetCanvas() {
     this.ctx?.drawImage(this.element, 0, 0);
+  }
+
+  paintImageOnCanvas(image: HTMLImageElement) {
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.ctx.drawImage(image, 0, 0);
   }
 
   async drawFrame(frameNumberToDraw: number, animate = true) {
@@ -235,9 +237,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return;
     }
 
-    const currentFrameSample = this.getCurrentFrameSample(frameNumberToDraw);
+    this.canvasFrameNumber = frameNumberToDraw;
 
-    if (!currentFrameSample) {
+    const currentFrameImage = this.getCurrentFrameImage(frameNumberToDraw);
+    if (!currentFrameImage) {
       if (frameNumberToDraw < this.framesController.totalFrameCount) {
         skipAndTryAgain();
         return;
@@ -246,68 +249,60 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         return;
       }
     }
+    const image = currentFrameImage;
+    if (this.isPlaying || this.isSeeking) {
+      this.paintImageOnCanvas(image);
+    }
 
-    const urls = getStandardizedUrls(currentFrameSample.urls);
-    const src = getSampleSrc(urls[this.mediaField]);
-    const image = new Image();
+    // this is when frame number changed through methods like keyboard navigation
+    if (!this.isPlaying && !this.isSeeking && !animate) {
+      this.paintImageOnCanvas(image);
+      this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
+    }
 
-    this.canvasFrameNumber = frameNumberToDraw;
-    image.addEventListener("load", () => {
-      if (this.isPlaying || this.isSeeking) {
-        this.ctx.drawImage(image, 0, 0);
+    if (animate && !this.waitingToPause) {
+      if (frameNumberToDraw <= this.framesController.totalFrameCount) {
+        this.update(({ playing }) => {
+          if (playing) {
+            return {
+              currentFrameNumber: Math.min(
+                frameNumberToDraw,
+                this.framesController.totalFrameCount
+              ),
+            };
+          }
+
+          return {};
+        });
       }
 
-      // this is when frame number changed through methods like keyboard navigation
-      if (!this.isPlaying && !this.isSeeking && !animate) {
-        this.ctx.drawImage(image, 0, 0);
-        this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
-      }
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          const next = frameNumberToDraw + 1;
 
-      if (animate && !this.waitingToPause) {
-        if (frameNumberToDraw <= this.framesController.totalFrameCount) {
-          this.update(({ playing }) => {
-            if (playing) {
-              return {
-                currentFrameNumber: Math.min(
-                  frameNumberToDraw,
-                  this.framesController.totalFrameCount
-                ),
-              };
-            }
-
-            return {};
-          });
-        }
-
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            const next = frameNumberToDraw + 1;
-
-            if (next > this.framesController.totalFrameCount) {
-              this.update(({ options: { loop } }) => {
-                if (loop) {
-                  this.drawFrame(1);
-                  return {
-                    playing: true,
-                    disableOverlays: true,
-                    currentFrameNumber: 1,
-                  };
-                }
-
+          if (next > this.framesController.totalFrameCount) {
+            this.update(({ options: { loop } }) => {
+              if (loop) {
+                this.drawFrame(1);
                 return {
-                  playing: false,
-                  disableOverlays: false,
-                  currentFrameNumber: this.framesController.totalFrameCount,
+                  playing: true,
+                  disableOverlays: true,
+                  currentFrameNumber: 1,
                 };
-              });
-              return;
-            }
-            this.drawFrame(next);
-          });
-        }, this.setTimeoutDelay);
-      }
-    });
-    image.src = src;
+              }
+
+              return {
+                playing: false,
+                disableOverlays: false,
+                currentFrameNumber: this.framesController.totalFrameCount,
+              };
+            });
+            return;
+          }
+          this.drawFrame(next);
+        });
+      }, this.setTimeoutDelay);
+    }
   }
 
   async play() {
