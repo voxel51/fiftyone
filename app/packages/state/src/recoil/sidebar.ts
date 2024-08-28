@@ -316,51 +316,55 @@ const groupUpdater = (
   };
 };
 
-export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
+export const sidebarGroupsDefinition = (() => {
   let configGroups: State.SidebarGroup[] = [];
   let current: State.SidebarGroup[] = [];
-  return [
-    (sampleFields: StrictField[], frameFields: StrictField[]) => {
-      return resolveGroups(sampleFields, frameFields, current, configGroups);
-    },
-    graphQLSyncFragmentAtomFamily<
-      sidebarGroupsFragment$key,
-      State.SidebarGroup[],
-      boolean
-    >(
-      {
-        fragments: [datasetFragment, sidebarGroupsFragment],
-        keys: ["dataset"],
-        sync: (modal) => !modal,
-        read: (data, prev) => {
-          configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
-            ...group,
-            paths: [...group.paths],
-          }));
-          current = resolveGroups(
-            collapseFields(
-              readFragment(
-                sampleFieldsFragment,
-                data as sampleFieldsFragment$key
-              ).sampleFields
-            ),
-            collapseFields(
-              readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
-                .frameFields
-            ),
-            data.name === prev?.name ? current : [],
-            configGroups
-          );
+  return graphQLSyncFragmentAtomFamily<
+    sidebarGroupsFragment$key,
+    State.SidebarGroup[],
+    boolean
+  >(
+    {
+      fragments: [datasetFragment, sidebarGroupsFragment],
+      keys: ["dataset"],
+      sync: (modal) => !modal,
+      read: (data, prev) => {
+        alert("e");
+        configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
+          ...group,
+          paths: [...group.paths],
+        }));
+        current = resolveGroups(
+          collapseFields(
+            readFragment(sampleFieldsFragment, data as sampleFieldsFragment$key)
+              .sampleFields
+          ),
+          collapseFields(
+            readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
+              .frameFields
+          ),
+          data.name === prev?.name ? current : [],
+          configGroups
+        );
 
-          return current;
-        },
-        default: [],
+        return current;
       },
-      {
-        key: "sidebarGroupsDefinition",
-      }
-    ),
-  ];
+      default: [],
+    },
+    {
+      effects: (modal) =>
+        modal
+          ? []
+          : [
+              ({ onSet }) => {
+                onSet((next) => {
+                  current = next;
+                });
+              },
+            ],
+      key: "sidebarGroupsDefinition",
+    }
+  );
 })();
 
 export const sidebarGroups = selectorFamily<
