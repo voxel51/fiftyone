@@ -58,14 +58,14 @@ const PillButton = React.forwardRef<
 });
 
 type PillButtonProps = {
-  onClick: (event: Event) => void;
-  id?: string;
-  open?: boolean;
-  highlight?: boolean;
-  text?: string;
-  icon?: JSX.Element;
   arrow?: boolean;
+  highlight?: boolean;
+  icon?: JSX.Element;
+  id?: string;
+  onClick: (event: Event) => void;
+  open?: boolean;
   style?: React.CSSProperties;
+  text?: string;
   title: string;
 };
 
