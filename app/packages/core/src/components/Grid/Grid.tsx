@@ -1,9 +1,9 @@
 import styles from "./Grid.module.css";
 
-import type { Lookers } from "@fiftyone/state";
-
 import { freeVideos } from "@fiftyone/looker";
-import Spotlight, { type ID } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
+import Spotlight from "@fiftyone/spotlight";
+import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -17,6 +17,7 @@ import { v4 as uuid } from "uuid";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
+import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
 import useSelectSample from "./useSelectSample";
@@ -26,18 +27,22 @@ import useThreshold from "./useThreshold";
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
-  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const [resizing, setResizing] = useState(false);
-
   const spacing = useRecoilValue(gridSpacing);
 
-  const { page, records, store } = useSpotlightPager({
-    pageSelector: pageParameters,
-    zoomSelector: gridCrop,
-  });
-  const { pageReset, reset } = useRefreshers(records);
-  const { get, set } = useAt(pageReset);
+  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
+  const { pageReset, reset } = useRefreshers();
+  const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
+
+  const records = useRecords(pageReset);
+  const { page, store } = useSpotlightPager(
+    {
+      pageSelector: pageParameters,
+      zoomSelector: gridCrop,
+    },
+    records
+  );
+  const { get, set } = useAt(pageReset);
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);

@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import {
@@ -14,6 +14,7 @@ import {
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
+import { Records } from "./useRecords";
 
 export const PAGE_SIZE = 20;
 
@@ -45,15 +46,18 @@ const processSamplePageData = (
   });
 };
 
-const useSpotlightPager = ({
-  pageSelector,
-  zoomSelector,
-}: {
-  pageSelector: RecoilValueReadOnly<
-    (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
-  >;
-  zoomSelector: RecoilValueReadOnly<boolean>;
-}) => {
+const useSpotlightPager = (
+  {
+    pageSelector,
+    zoomSelector,
+  }: {
+    pageSelector: RecoilValueReadOnly<
+      (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
+    >;
+    zoomSelector: RecoilValueReadOnly<boolean>;
+  },
+  records: Records
+) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
@@ -62,7 +66,6 @@ const useSpotlightPager = ({
     () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
     []
   );
-  const records = useRef(new Map<string, number>());
 
   const page = useRecoilCallback(
     ({ snapshot }) => {

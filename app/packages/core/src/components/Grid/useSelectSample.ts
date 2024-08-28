@@ -5,8 +5,8 @@ import {
   selectedSamples,
   useSetSelected,
 } from "@fiftyone/state";
-import type { MutableRefObject } from "react";
 import { useRecoilCallback } from "recoil";
+import type { Records } from "./useRecords";
 
 export interface SelectThumbnailData {
   shiftKey: boolean;
@@ -15,23 +15,14 @@ export interface SelectThumbnailData {
   symbol: ID;
 }
 
-export type Records = MutableRefObject<Map<string, number>>;
-
-const argFact = (compareFn) => (array) =>
-  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
-
-const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
-
 const addRange = (index: number, items: string[], records: Records) => {
   const reverse = Object.fromEntries(
     Array.from(records.current.entries()).map(([k, v]) => [v, k])
   );
 
-  const min = argMin(
-    items.map((id) => Math.abs(records.current.get(id) - index))
-  );
+  const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
-  const close = records.current.get(items[min]);
+  const close = get(records, items[min]);
 
   const [start, end] = index < close ? [index, close] : [close, index];
 
@@ -40,6 +31,20 @@ const addRange = (index: number, items: string[], records: Records) => {
     .map((_, i) => reverse[i + start]);
 
   return new Set([...items, ...added]);
+};
+
+const argFact = (compareFn) => (array) =>
+  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
+
+const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
+
+const get = (records: Records, id: string) => {
+  const index = records.current.get(id);
+  if (index !== undefined) {
+    return index;
+  }
+
+  throw new Error(`record '${id}' not found`);
 };
 
 const removeRange = (
@@ -74,7 +79,7 @@ const removeRange = (
 
   return new Set(
     Array.from(selected).filter(
-      (s) => records.current.get(s) < start || records.current.get(s) > end
+      (s) => get(records, s) < start || get(records, s) > end
     )
   );
 };
@@ -94,7 +99,7 @@ export default () => {
         );
 
         const items = Array.from(selected);
-        const index = records.current.get(symbol.description);
+        const index = get(records, symbol.description);
         if (shiftKey && !selected.has(sampleId)) {
           selected = addRange(index, items, records);
         } else if (shiftKey) {
