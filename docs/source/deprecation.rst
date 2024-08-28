@@ -5,6 +5,13 @@ FiftyOne Deprecation Notices
 
 .. default-role:: code
 
+FiftyOne Desktop
+----------------
+*Support ended with 0.25.0*
+
+A compatible `fiftyone-desktop https://pypi.org/project/fiftyone-desktop/`_
+package is no longer published with `fiftyone>=0.25.0` releases
+
 Python 3.8
 ----------
 *Support Ends October 2024*

@@ -16,7 +16,6 @@
         "doc": "./gen-docs.sh",
         "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
         "start": "yarn workspace @fiftyone/app start",
-        "start-desktop": "yarn workspace FiftyOne start-desktop",
         "test": "yarn vitest run",
         "test-ui": "yarn vitest --ui --coverage",
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
