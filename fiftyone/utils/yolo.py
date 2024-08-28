@@ -509,13 +509,13 @@ class YOLOv5DatasetImporter(
         split_info = d[self.split]
         if isinstance(split_info, str):
             split_info = [split_info]
-        data = [
+        data_paths = [
             fos.normpath(os.path.join(dataset_path, si)) for si in split_info
         ]
         classes = _parse_yolo_classes(d.get("names", None))
 
         image_paths = []
-        for data_path in data:
+        for data_path in data_paths:
             if etau.is_str(data_path) and data_path.endswith(".txt"):
                 txt_path = _parse_yolo_v5_path(data_path, self.yaml_path)
                 image_paths.extend(
