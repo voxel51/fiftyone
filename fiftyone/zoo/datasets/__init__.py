@@ -26,7 +26,7 @@ import fiftyone.utils.data as foud
 from fiftyone.utils.github import GitHubRepository
 
 
-DATASET_METADATA_FILENAMES = ("fiftyone-dataset.yml", "fiftyone-dataset.yaml")
+DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
 logger = logging.getLogger(__name__)
 
@@ -1452,32 +1452,6 @@ class RemoteZooDataset(ZooDataset):
     """Base class for remotely-sourced datasets that are compatible with the
     FiftyOne Dataset Zoo.
 
-    Example dataset YAML file::
-
-        name: brimoor/coco-2017
-        description: The COCO-2017 dataset
-        version: 1.0.0
-        fiftyone:
-          version: "*"
-        url: https://github.com/brimoor/coco-2017
-        supports_partial_downloads: true
-        tags:
-         - image
-         - detection
-         - segmentation
-        splits:
-         - train
-         - validation
-         - test
-        size_samples:
-         - train: 118287
-         - test: 40670
-         - validation: 5000
-        size_bytes:
-         - train: null
-         - test: null
-         - validation: null
-
     Args:
         dataset_dir: the dataset's local directory, which must contain a valid
             dataset YAML file
@@ -1510,8 +1484,11 @@ class RemoteZooDataset(ZooDataset):
         self._kwargs = kwargs
 
         self._name = d["name"]
-        self._description = d.get("description")
+        self._author = d.get("author")
         self._version = d.get("version")
+        self._source = d.get("source")
+        self._license = d.get("license")
+        self._description = d.get("description")
         self._fiftyone_version = d.get("fiftyone", {}).get("version", None)
         self._supports_partial_downloads = d.get(
             "supports_partial_downloads", False
@@ -1519,7 +1496,6 @@ class RemoteZooDataset(ZooDataset):
         self._tags = self._parse_tuple(d, "tags")
         self._splits = self._parse_tuple(d, "splits")
         self._size_samples = d.get("size_samples")
-        self._size_bytes = d.get("size_bytes")
 
     @staticmethod
     def _parse_tuple(d, key):
@@ -1545,12 +1521,24 @@ class RemoteZooDataset(ZooDataset):
         return True
 
     @property
-    def description(self):
-        return self._description
+    def author(self):
+        return self._author
 
     @property
     def version(self):
         return self._version
+
+    @property
+    def source(self):
+        return self._source
+
+    @property
+    def license(self):
+        return self._license
+
+    @property
+    def description(self):
+        return self._description
 
     @property
     def fiftyone_version(self):
@@ -1572,15 +1560,15 @@ class RemoteZooDataset(ZooDataset):
     def size_samples(self):
         return self._size_samples
 
-    @property
-    def size_bytes(self):
-        return self._size_bytes
-
     def _download_and_prepare(self, dataset_dir, _, split=None):
         if split is not None:
             dataset_dir = os.path.dirname(dataset_dir)
 
         module = self._import_module(dataset_dir)
+        if not hasattr(module, "download_and_prepare"):
+            raise ValueError(
+                f"Module {dataset_dir} has no 'download_and_prepare()' method"
+            )
 
         kwargs, _ = fou.extract_kwargs_for_function(
             module.download_and_prepare, self._kwargs
@@ -1595,6 +1583,10 @@ class RemoteZooDataset(ZooDataset):
             dataset_dir = os.path.dirname(dataset_dir)
 
         module = self._import_module(dataset_dir)
+        if not hasattr(module, "load_dataset"):
+            raise ValueError(
+                f"Module {dataset_dir} has no 'load_dataset()' method"
+            )
 
         kwargs, _ = fou.extract_kwargs_for_function(
             module.load_dataset, self._kwargs
@@ -1637,7 +1629,16 @@ def _load_dataset_metadata(dataset_dir):
         )
 
     with open(yaml_path, "r") as f:
-        return yaml.safe_load(f)
+        d = yaml.safe_load(f)
+
+    type = d.get("type")
+    if type is not None and type != "dataset":
+        raise ValueError(
+            "Expected type='dataset' but found type='%s' in YAML file '%s'"
+            % (type, yaml_path)
+        )
+
+    return d
 
 
 def _download_dataset_metadata(url_or_gh_repo, overwrite=False):
@@ -1661,9 +1662,7 @@ def _download_dataset_metadata(url_or_gh_repo, overwrite=False):
         yaml_path = _find_dataset_metadata(tmpdir)
 
         if yaml_path is None:
-            raise ValueError(
-                "'%s' does not contain a dataset YAML file" % url_or_gh_repo
-            )
+            raise ValueError(f"No dataset YAML file found in {url_or_gh_repo}")
 
         with open(yaml_path, "r") as f:
             d = yaml.safe_load(f)
@@ -1687,13 +1686,30 @@ def _find_dataset_metadata(root_dir):
     if not root_dir or not os.path.isdir(root_dir):
         return
 
+    yaml_path = None
     for root, dirs, files in os.walk(root_dir, followlinks=True):
         # Ignore hidden directories
         dirs[:] = [d for d in dirs if not d.startswith(".")]
 
         for file in files:
             if os.path.basename(file) in DATASET_METADATA_FILENAMES:
-                return os.path.join(root, file)
+                _yaml_path = os.path.join(root, file)
+
+                try:
+                    with open(_yaml_path, "r") as f:
+                        type = yaml.safe_load(f).get("type")
+                except:
+                    logger.warning(f"Failed to parse '{_yaml_path}'")
+                    continue
+
+                if type == "dataset":
+                    return _yaml_path
+                elif type is None:
+                    # We found a YAML file with no type. If we don't find
+                    # anything better, we'll use it
+                    yaml_path = _yaml_path
+
+    return yaml_path
 
 
 def _download_archive(url, outdir):
