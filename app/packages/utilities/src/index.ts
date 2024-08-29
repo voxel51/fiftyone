@@ -5,7 +5,6 @@ import { Field } from "./schema";
 
 export * from "./buffer-manager";
 export * from "./color";
-export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
