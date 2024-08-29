@@ -564,10 +564,7 @@ def _open_images_evaluation_setup(
 
         # Compute ``num_preds x num_gts`` IoUs
         ious = foui.compute_ious(preds, gts, **iou_kwargs)
-
-        gt_ids = [g.id for g in gts]
-        for pred, gt_ious in zip(preds, ious):
-            pred_ious[pred.id] = list(zip(gt_ids, gt_ious))
+        pred_ious.update(ious)
 
     return cats, pred_ious, iscrowd
 
