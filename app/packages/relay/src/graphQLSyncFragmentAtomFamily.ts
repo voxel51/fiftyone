@@ -56,8 +56,8 @@ export function graphQLSyncFragmentAtomFamily<
         !fragmentOptions.sync || fragmentOptions.sync(params)
           ? [
               ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
-                // recoil state should be initialized via RecoilRoot's initializeState
-                // during tests
+                // recoil state should be initialized via RecoilRoot's
+                // initializeState during tests
                 if (isTest) return;
 
                 if (trigger === "set") {
@@ -94,7 +94,7 @@ export function graphQLSyncFragmentAtomFamily<
                   try {
                     for (let i = 0; i < fragmentOptions.fragments.length; i++) {
                       const fragment = fragmentOptions.fragments[i];
-                      if (fragmentOptions.keys && fragmentOptions.keys[i]) {
+                      if (fragmentOptions?.keys[i]) {
                         // @ts-ignore
                         data = data[fragmentOptions.keys[i]];
                       }
