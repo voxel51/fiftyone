@@ -204,6 +204,9 @@ def download_zoo_dataset(
         -   info: the :class:`ZooDatasetInfo` for the dataset
         -   dataset_dir: the directory containing the dataset
     """
+    if overwrite:
+        _overwrite_download(name_or_url, split=split, splits=splits)
+
     zoo_dataset, dataset_dir = _parse_dataset_details(
         name_or_url, overwrite=overwrite, **kwargs
     )
@@ -211,10 +214,30 @@ def download_zoo_dataset(
         dataset_dir,
         split=split,
         splits=splits,
-        overwrite=overwrite,
         cleanup=cleanup,
     )
     return info, dataset_dir
+
+
+def _overwrite_download(name_or_url, split=None, splits=None):
+    try:
+        dataset_dir = _parse_dataset_identifier(name_or_url)[1]
+        assert dataset_dir is not None
+    except:
+        return
+
+    splits = _parse_splits(split, splits)
+
+    if splits:
+        for split in splits:
+            split_dir = os.path.join(dataset_dir, split)
+            if os.path.isdir(split_dir):
+                logger.info("Overwriting existing directory '%s'", split_dir)
+                etau.delete_dir(split_dir)
+    else:
+        if os.path.isdir(dataset_dir):
+            logger.info("Overwriting existing directory '%s'", dataset_dir)
+            etau.delete_dir(dataset_dir)
 
 
 def load_zoo_dataset(
@@ -318,7 +341,7 @@ def load_zoo_dataset(
     else:
         download_kwargs = {}
         zoo_dataset, dataset_dir = _parse_dataset_details(
-            name_or_url, overwrite=overwrite, **kwargs
+            name_or_url, **kwargs
         )
         info = zoo_dataset.load_info(dataset_dir, warn_deprecated=True)
 
@@ -533,8 +556,8 @@ def get_zoo_dataset(name_or_url, overwrite=False, **kwargs):
                 ``https://github.com/<user>/<repo>/commit/<commit>``
             -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
             -   a publicly accessible URL of an archive (eg zip or tar) file
-        overwrite (False): whether to overwrite an existing zoo dataset of the
-            same name if one exists. Only applicable when ``name_or_url`` is a
+        overwrite (False): whether to overwrite existing metadata if it has
+            already been downloaded. Only applicable when ``name_or_url`` is a
             remote source
         **kwargs: optional arguments for :class:`ZooDataset`
 
@@ -1191,13 +1214,12 @@ class ZooDataset(object):
         dataset_dir,
         split=None,
         splits=None,
-        overwrite=False,
         cleanup=True,
     ):
         """Downloads the dataset and prepares it for use.
 
         If the requested splits have already been downloaded, they are not
-        re-downloaded unless ``overwrite`` is True.
+        re-downloaded.
 
         Args:
             dataset_dir: the directory in which to construct the dataset
@@ -1207,7 +1229,6 @@ class ZooDataset(object):
             splits (None): a list of splits to download, if applicable. If
                 neither ``split`` nor ``splits`` are provided, the full dataset
                 is  downloaded
-            overwrite (False): whether to overwrite any existing files
             cleanup (True): whether to cleanup any temporary files generated
                 during download
 
@@ -1244,10 +1265,10 @@ class ZooDataset(object):
 
         # Download dataset, if necessary
         if splits:
-            # Handle overwrites/already downloaded splits
+            # Handle already downloaded splits
             if info is not None:
                 download_splits = self._get_splits_to_download(
-                    splits, dataset_dir, info, overwrite=overwrite
+                    splits, dataset_dir, info
                 )
             else:
                 download_splits = splits
@@ -1303,10 +1324,8 @@ class ZooDataset(object):
                     info.add_split(split_info)
                     write_info = True
         else:
-            # Handle overwrites/already downloaded datasets
-            if not self._is_dataset_ready(
-                dataset_dir, info, overwrite=overwrite
-            ):
+            # Handle already downloaded datasets
+            if not self._is_dataset_ready(dataset_dir, info):
                 if self.supports_partial_downloads:
                     suffix = " if necessary"
                 else:
@@ -1383,27 +1402,18 @@ class ZooDataset(object):
             "subclasses must implement _patch_if_necessary()"
         )
 
-    def _get_splits_to_download(
-        self, splits, dataset_dir, info, overwrite=False
-    ):
+    def _get_splits_to_download(self, splits, dataset_dir, info):
         download_splits = []
         for split in splits:
-            if not self._is_split_ready(
-                dataset_dir, split, info, overwrite=overwrite
-            ):
+            if not self._is_split_ready(dataset_dir, split, info):
                 download_splits.append(split)
 
         return download_splits
 
-    def _is_split_ready(self, dataset_dir, split, info, overwrite=False):
+    def _is_split_ready(self, dataset_dir, split, info):
         split_dir = self.get_split_dir(dataset_dir, split)
 
         if not os.path.isdir(split_dir):
-            return False
-
-        if overwrite:
-            logger.info("Overwriting existing directory '%s'", split_dir)
-            etau.delete_dir(split_dir)
             return False
 
         if split not in info.downloaded_splits:
@@ -1422,13 +1432,8 @@ class ZooDataset(object):
 
         return True
 
-    def _is_dataset_ready(self, dataset_dir, info, overwrite=False):
+    def _is_dataset_ready(self, dataset_dir, info):
         if not os.path.isdir(dataset_dir):
-            return False
-
-        if overwrite:
-            logger.info("Overwriting existing directory '%s'", dataset_dir)
-            etau.delete_dir(dataset_dir)
             return False
 
         if info is None:
