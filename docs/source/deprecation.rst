@@ -10,7 +10,7 @@ FiftyOne Desktop
 *Support ended with 0.25.0*
 
 A compatible `fiftyone-desktop https://pypi.org/project/fiftyone-desktop/`_
-package is no longer published with `fiftyone>=0.25.0` releases
+package is no longer as of `fiftyone==0.25.0`
 
 Python 3.8
 ----------
