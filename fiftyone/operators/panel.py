@@ -213,12 +213,10 @@ class PanelRefState(PanelRefBase):
         """
         d = key if isinstance(key, dict) else {key: value}
 
-        args = {}
         for k, v in d.items():
             super().set(k, v)
-            pydash.set_(args, k, v)
 
-        self._ctx.ops.patch_panel_state(args)
+        self._ctx.ops.patch_panel_state(d)
 
     def clear(self):
         """Clears the panel state."""
@@ -252,12 +250,10 @@ class PanelRefData(PanelRefBase):
         """
         d = key if isinstance(key, dict) else {key: value}
 
-        args = {}
         for k, v in d.items():
             super().set(k, v)
-            pydash.set_(args, k, v)
 
-        self._ctx.ops.patch_panel_data(args)
+        self._ctx.ops.patch_panel_data(d)
 
     def get(self, key, default=None):
         raise WriteOnlyError("Panel data is write-only")
