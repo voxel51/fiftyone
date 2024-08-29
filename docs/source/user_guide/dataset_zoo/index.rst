@@ -8,7 +8,7 @@ FiftyOne Dataset Zoo
 The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
 and loading them into FiftyOne.
 
-It provides native access to dozens of popular benchmark datasets, and it even
+It provides native access to dozens of popular benchmark datasets, and it also
 supports downloading arbitrary public or private datasets whose
 download/preparation methods are provided via GitHub.
 
@@ -16,8 +16,7 @@ Built-in datasets
 -----------------
 
 The Dataset Zoo provides built-in access to dozens of datasets that you can
-load into FiftyOne with a single command. Click the link below to see all of
-the datasets in the zoo!
+load into FiftyOne with a single command.
 
 .. custombutton::
     :button_text: Explore the datasets in the zoo
@@ -27,7 +26,7 @@ Remotely-sourced datasets
 -------------------------
 
 The Dataset Zoo also supports loading datasets whose download/preparation
-methods are provided via GitHub repositories or URLs!
+methods are provided via GitHub repositories or URLs.
 
 .. custombutton::
     :button_text: Learn how to download remote datasets

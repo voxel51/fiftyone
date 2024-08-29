@@ -55,8 +55,8 @@ Here's the basic recipe for working with remotely-sourced zoo datasets:
 
     Once you've downloaded all or part of a remotely-sourced zoo dataset, it
     will subsequently appear as an available zoo dataset under the name in the
-    dataset's :ref:`YAML file <dataset-zoo-remote-publishing>` when you call
-    :meth:`list_zoo_datasets() <fiftyone.zoo.datasets.list_zoo_datasets>`:
+    dataset's :ref:`fiftyone.yml <zoo-dataset-remote-fiftyone-yml>` when you
+    call :meth:`list_zoo_datasets() <fiftyone.zoo.datasets.list_zoo_datasets>`:
 
     .. code-block:: python
         :linenos:
@@ -113,8 +113,8 @@ Here's the basic recipe for working with remotely-sourced zoo datasets:
 
     Once you've downloaded all or part of a remotely-sourced zoo dataset, it
     will subsequently appear as an available zoo dataset under the name in the
-    dataset's :ref:`YAML file <dataset-zoo-remote-publishing>` when you call
-    :ref:`fiftyone zoo datasets list <cli-fiftyone-zoo-datasets-list>`:
+    dataset's :ref:`fiftyone.yml <zoo-dataset-remote-fiftyone-yml>` when you
+    call :ref:`fiftyone zoo datasets list <cli-fiftyone-zoo-datasets-list>`:
 
     .. code-block:: shell
 
@@ -171,7 +171,7 @@ Each component is described in detail below.
 
 .. note::
 
-    By convention, many datasets also contain an optional `README.md` file that
+    By convention, datasets also contain an optional `README.md` file that
     provides additional information about the dataset and example syntaxes for
     downloading and working with it.
 
@@ -217,13 +217,14 @@ about the dataset:
     |                              |           | downloaded/loaded by providing `kwargs` to                                  |
     |                              |           | :meth:`download_zoo_dataset() <fiftyone.zoo.datasets.download_zoo_dataset>` |
     |                              |           | or :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` as   |
-    |                              |           | described below. If omitted, this is assumed to be `false`                  |
+    |                              |           | :ref:`described here <dataset-zoo-remote-partial-downloads>`. If omitted,   |
+    |                              |           | this is assumed to be `false`                                               |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `tags`                       |           | A list of tags for the dataset. Useful in conjunction with                  |
     |                              |           | :meth:`list_zoo_datasets() <fiftyone.zoo.datasets.list_zoo_datasets>`       |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
-    | `splits`                     |           | A list of the dataset's splits. This should be omitted if the dataset does  |
-    |                              |           | not contain splits                                                          |
+    | `splits`                     |           | A list of the dataset's supported splits. This should be omitted if the     |
+    |                              |           | dataset does not contain splits                                             |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `size_samples`               |           | The totaal number of samples in the dataset, or a list of per-split sizes   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -411,8 +412,8 @@ variety of reasons, including:
 -   The dataset may be very large and the user only wants to download a small
     subset of the samples to get familiar with the dataset
 
-Datasets that support partial downloads should declare this in their dataset
-YAML file:
+Datasets that support partial downloads should declare this in their
+:ref:`fiftyone.yml <zoo-dataset-remote-fiftyone-yml>`:
 
 .. code-block:: yaml
 
