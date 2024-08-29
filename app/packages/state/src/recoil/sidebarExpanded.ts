@@ -5,7 +5,7 @@ export const sidebarExpandedStore = atomFamily<
   { [key: string]: boolean },
   boolean
 >({
-  key: "sidebarExpanded",
+  key: "sidebarExpandedStore",
   default: {},
   effects: [
     ({ node }) =>
@@ -19,7 +19,7 @@ export const sidebarExpanded = selectorFamily<
   boolean,
   { path: string; modal: boolean }
 >({
-  key: "granularSidebarExpanded",
+  key: "sidebarExpanded",
   get:
     (params) =>
     ({ get }) =>

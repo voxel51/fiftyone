@@ -32,10 +32,11 @@ import styled from "styled-components";
 import Draggable from "./Draggable";
 
 type PillEntry = {
+  dataCy?: string;
+  icon?: React.ReactNode;
   onClick: () => void;
   text: string;
   title: string;
-  icon?: React.ReactNode;
 };
 
 const Pills = ({ entries }: { entries: PillEntry[] }) => {
@@ -43,10 +44,12 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
 
   return (
     <>
-      {entries.map((data, i) => (
+      {entries.map(({ dataCy, ...data }, i) => (
         <PillButton
           {...data}
+          data-cy={dataCy}
           highlight={false}
+          key={i}
           open={false}
           style={{
             height: "1.5rem",
@@ -56,7 +59,6 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
             padding: "0.25rem 0.5rem",
             margin: "0 0.25rem",
           }}
-          key={i}
         />
       ))}
     </>
@@ -306,24 +308,28 @@ export const PathGroupEntry = React.memo(
                 count: useRecoilValue(
                   numGroupFieldsFiltered({ modal, group: name })
                 ),
-                onClick: useClearFiltered(modal, name),
+                dataCy: `clear-filters-${name}`,
                 icon: <FilterList />,
+                onClick: useClearFiltered(modal, name),
+
                 title: `Clear ${name} filters`,
               },
               {
                 count: useRecoilValue(
                   numGroupFieldsVisible({ modal, group: name })
                 ),
-                onClick: useClearVisibility(modal, name),
+                dataCy: `clear-visibility-${name}`,
                 icon: <VisibilityIcon />,
-                title: `Clear ${name} filters`,
+                onClick: useClearVisibility(modal, name),
+                title: `Clear ${name} visibility`,
               },
               {
                 count: useRecoilValue(
                   numGroupFieldsActive({ modal, group: name })
                 ),
-                onClick: useClearActive(modal, name),
+                dataCy: `clear-shown-${name}`,
                 icon: <Check />,
+                onClick: useClearActive(modal, name),
                 title: `Clear shown ${name}`,
               },
             ]
