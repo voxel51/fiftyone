@@ -1485,6 +1485,7 @@ class RemoteZooDataset(ZooDataset):
             url = d.get("url")
 
         self._dataset_dir = dataset_dir
+        self._metadata = d
         self._url = url
         self._kwargs = kwargs
 
@@ -1512,6 +1513,10 @@ class RemoteZooDataset(ZooDataset):
             return (value,)
 
         return tuple(value)
+
+    @property
+    def metadata(self):
+        return self._metadata.copy()
 
     @property
     def name(self):
@@ -1659,10 +1664,15 @@ def _download_dataset_metadata(url_or_gh_repo, overwrite=False):
 
     with etau.TempDir() as tmpdir:
         logger.info(f"Downloading {url_or_gh_repo}...")
-        if repo is not None:
-            repo.download(tmpdir)
-        else:
-            _download_archive(url, tmpdir)
+        try:
+            if repo is not None:
+                repo.download(tmpdir)
+            else:
+                _download_archive(url, tmpdir)
+        except Exception as e:
+            raise ValueError(
+                f"Failed to retrieve dataset metadata from '{url_or_gh_repo}'"
+            ) from e
 
         yaml_path = _find_dataset_metadata(tmpdir)
 

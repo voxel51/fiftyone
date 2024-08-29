@@ -1957,41 +1957,33 @@ class DatasetZooInfoCommand(Command):
         name_or_url = args.name_or_url
 
         zoo_dataset = fozd.get_zoo_dataset(name_or_url)
-        downloaded_datasets = fozd.list_downloaded_zoo_datasets()
+
+        try:
+            dataset_dir = fozd.find_zoo_dataset(name_or_url)
+        except:
+            dataset_dir = None
 
         if zoo_dataset.is_remote:
-            description = zoo_dataset.description
-            if description:
-                print("***** Dataset description *****\n%s\n" % description)
-
-            version = zoo_dataset.version
-            if version:
-                print("***** Dataset version *****\n%s\n" % version)
-
-            url = zoo_dataset.url
-            if url:
-                print("***** Dataset source *****\n%s\n" % url)
+            _print_dict_as_table(zoo_dataset.metadata)
+            print("")
         else:
             description = textwrap.dedent("    " + zoo_dataset.__doc__)
             if description:
-                print("***** Dataset description *****\n%s\n" % description)
+                print("***** Dataset description *****\n%s" % description)
 
-        if zoo_dataset.has_tags:
-            print("***** Tags *****")
-            print("%s\n" % ", ".join(zoo_dataset.tags))
+            if zoo_dataset.has_tags:
+                print("***** Tags *****")
+                print("%s\n" % ", ".join(zoo_dataset.tags))
 
-        if zoo_dataset.has_splits:
-            print("***** Supported splits *****")
-            print("%s\n" % ", ".join(zoo_dataset.supported_splits))
+            if zoo_dataset.has_splits:
+                print("***** Supported splits *****")
+                print("%s\n" % ", ".join(zoo_dataset.supported_splits))
 
         print("***** Dataset location *****")
-        if zoo_dataset.name not in downloaded_datasets:
-            print("Dataset '%s' is not downloaded" % name_or_url)
-        else:
-            dataset_dir, info = downloaded_datasets[zoo_dataset.name]
+        if dataset_dir is not None:
             print(dataset_dir)
-            print("\n***** Dataset info *****")
-            print(info)
+        else:
+            print("Dataset '%s' is not downloaded" % name_or_url)
 
 
 class DatasetZooDownloadCommand(Command):

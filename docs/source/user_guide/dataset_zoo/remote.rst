@@ -385,7 +385,7 @@ Datasets that don't use a built-in importer must also define a
             split (None): a split to load. The supported values are
                 ``("train", "validation", "test")``
             **kwargs: optional keyword arguments that your dataset can define to
-                configure what/how the download is performed
+                configure what/how the load is performed
         """
 
         # Load data into samples
