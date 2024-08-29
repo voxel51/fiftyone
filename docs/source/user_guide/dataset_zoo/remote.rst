@@ -266,18 +266,21 @@ Here are two example dataset YAML files:
     .. code-block:: yaml
         :linenos:
 
-        name: voxel51/dr-wright-drives
+        name: voxel51/caltech101
         type: dataset
-        description: The Dr Wright Drives dataset
+        author: Fei-Fei1 Li, Marco Andreeto, Marc'Aurelio Ranzato, Pietro Perona
         version: 1.0.0
+        url: https://github.com/voxel51/caltech101
+        source: https://data.caltech.edu/records/mzrjq-6wc02
+        license: Creative Commons Attribution 4.0 International
+        description: The Caltech 101 dataset
         fiftyone:
-          version: ">=0.25"
-        url: https://github.com/voxel51/dr-wright-drives
+          version: "*"
         supports_partial_downloads: false
         tags:
-         - video
-         - automotive
-        size_samples: 1500
+         - image
+         - classification
+        size_samples: 9145
 
 Download and prepare
 ~~~~~~~~~~~~~~~~~~~~
@@ -439,5 +442,5 @@ is called, any `kwargs` declared by ``download_and_prepare()`` and
 
 .. note::
 
-    Check out `this repository <https://github.com/voxel51/coco-2017>`_ for an
-    example of a remotely-sourced dataset that supports partial downloads.
+    Check out `voxel51/coco-2017 <https://github.com/voxel51/coco-2017>`_ for
+    an example of a remotely-sourced dataset that supports partial downloads.
