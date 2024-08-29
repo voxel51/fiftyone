@@ -1,16 +1,26 @@
 .. _dataset-zoo-datasets:
 
-Available Zoo Datasets
-======================
+Built-In Zoo Datasets
+=====================
 
 .. default-role:: code
 
-This page lists all of the datasets available in the Dataset Zoo.
+This page lists all of all natively available datasets in the FiftyOne Dataset
+Zoo.
+
+Check out the :ref:`API reference <dataset-zoo-api>` for complete instructions
+for using the Dataset Zoo.
 
 .. note::
 
-    Check out the :ref:`API reference <dataset-zoo-api>` for complete
-    instructions for using the Dataset Zoo.
+    Some datasets are loaded via the
+    `TorchVision Datasets <https://pytorch.org/vision/stable/datasets.html>`_
+    or `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ packages
+    under the hood.
+
+    If you do not have a :ref:`suitable package <dataset-zoo-ml-backend>`
+    installed when attempting to download a zoo dataset, you'll see an error
+    message that will help you install one.
 
 .. table::
     :widths: 40 60
