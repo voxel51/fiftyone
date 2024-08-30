@@ -189,6 +189,40 @@ def test_panel_ref_set_state(mock_ctx):
     )
 
 
+def test_panel_ref_set_state_dict(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_state({"test_key": "test_value"})
+    assert panel_ref._state._data["test_key"] == "test_value"
+    mock_ctx.ops.patch_panel_state.assert_called_with(
+        {"test_key": "test_value"}
+    )
+
+
+def test_panel_ref_set_state_deep_path(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_state("nested.key.path", "test_value")
+    assert panel_ref._state._data["nested"]["key"]["path"] == "test_value"
+    mock_ctx.ops.patch_panel_state.assert_called_with(
+        {"nested.key.path": "test_value"}
+    )
+
+
+def test_panel_ref_set_state_deep_path_dict(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_state({"nested": {"key": {"path": "test_value"}}})
+    assert panel_ref._state._data["nested"]["key"]["path"] == "test_value"
+    mock_ctx.ops.patch_panel_state.assert_called_with(
+        {"nested.key.path": "test_value"}
+    )
+
+
+def test_panel_ref_get_state_raises_write_only_error(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    with pytest.raises(WriteOnlyError):
+        # pylint: disable=no-member
+        _ = panel_ref.test_key
+
+
 def test_panel_ref_get_state(mock_ctx):
     panel_ref = PanelRef(mock_ctx)
     panel_ref.set_state("test_key", "test_value")
@@ -201,4 +235,31 @@ def test_panel_ref_set_data(mock_ctx):
     assert panel_ref._data._data["test_key"] == "test_value"
     mock_ctx.ops.patch_panel_data.assert_called_with(
         {"test_key": "test_value"}
+    )
+
+
+def test_panel_ref_set_data_dict(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_data({"test_key": "test_value"})
+    assert panel_ref._data._data["test_key"] == "test_value"
+    mock_ctx.ops.patch_panel_data.assert_called_with(
+        {"test_key": "test_value"}
+    )
+
+
+def test_panel_ref_set_data_deep_path(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_data("nested.key.path", "test_value")
+    assert panel_ref._data._data["nested"]["key"]["path"] == "test_value"
+    mock_ctx.ops.patch_panel_data.assert_called_with(
+        {"nested.key.path": "test_value"}
+    )
+
+
+def test_panel_ref_set_data_deep_path_dict(mock_ctx):
+    panel_ref = PanelRef(mock_ctx)
+    panel_ref.set_data({"nested": {"key": {"path": "test_value"}}})
+    assert panel_ref._data._data["nested"]["key"]["path"] == "test_value"
+    mock_ctx.ops.patch_panel_data.assert_called_with(
+        {"nested.key.path": "test_value"}
     )
