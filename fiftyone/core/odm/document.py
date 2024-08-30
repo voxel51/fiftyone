@@ -584,18 +584,25 @@ class Document(BaseDocument, mongoengine.Document):
     def _doc_name(cls):
         return "Document"
 
-    def copy_with_new_id(self):
-        """Returns a copy of this document with a new ID"""
-        doc_copy = self.copy()
-        new_id = bson.ObjectId()
+    def copy(self, new_id=False):
+        """Returns a deep copy of the document.
 
-        # pylint: disable=no-member
-        id_field = self._meta.get("id_field", "id")
-        doc_copy.set_field(id_field, new_id)
+        Args:
+            new_id (False): Whether to generate a new ID for the copied
+                document locally. By default, ID is set to None which causes
+                ID generation to be done on the server.
+        """
+        doc_copy = super().copy()
+        if new_id:
+            new_id = bson.ObjectId()
 
-        # Setting _created explicitly as True because we know this is a new
-        #   document
-        doc_copy._created = True
+            # pylint: disable=no-member
+            id_field = self._meta.get("id_field", "id")
+            doc_copy.set_field(id_field, new_id)
+
+            # Setting _created explicitly as True because we know this is a new
+            #   document
+            doc_copy._created = True
         return doc_copy
 
     def reload(self, *fields, **kwargs):

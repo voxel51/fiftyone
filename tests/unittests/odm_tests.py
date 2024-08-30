@@ -40,17 +40,20 @@ class DocumentTests(unittest.TestCase):
             sample_collection_name="samples.unique",
             version="51.51",
         )
-        dataset_doc.save()
 
-        # Copy with new ID -- ID should be new, _created should be True
-        doc_copy = dataset_doc.copy_with_new_id()
-        self.assertNotEqual(
-            dataset_doc.get_field("id"), doc_copy.get_field("id")
-        )
-        self.assertTrue(doc_copy._created)
+        try:
+            dataset_doc.save()
 
-        # Now if we set ID to be same, the doc should be the same
-        doc_copy.set_field("id", dataset_doc.get_field("id"))
-        self.assertEqual(doc_copy, dataset_doc)
+            # Copy with new ID -- ID should be new, _created should be True
+            doc_copy = dataset_doc.copy(new_id=True)
+            self.assertNotEqual(
+                dataset_doc.get_field("id"), doc_copy.get_field("id")
+            )
+            self.assertTrue(doc_copy._created)
 
-        dataset_doc.delete()
+            # Now if we set ID to be same, the doc should be the same
+            doc_copy.set_field("id", dataset_doc.get_field("id"))
+            self.assertEqual(doc_copy, dataset_doc)
+
+        finally:
+            dataset_doc.delete()
