@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import {
@@ -67,6 +67,8 @@ const useSpotlightPager = (
     []
   );
 
+  const keys = useRef(new Set<string>());
+
   const page = useRecoilCallback(
     ({ snapshot }) => {
       return async (pageNumber: number) => {
@@ -94,6 +96,7 @@ const useSpotlightPager = (
                 zoom,
                 records
               );
+              for (const item of items) keys.current.add(item.id.description);
 
               resolve({
                 items,
@@ -113,14 +116,16 @@ const useSpotlightPager = (
   );
 
   const refresher = useRecoilValue(fos.refresher);
+
   useEffect(() => {
     refresher;
     const clear = () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(records.keys())) {
+        for (const id of keys.current) {
           store.get(id)?.invalidateRecord();
         }
       });
+      keys.current.clear();
     };
 
     const unsubscribe = foq.subscribe(
@@ -131,7 +136,7 @@ const useSpotlightPager = (
       clear();
       unsubscribe();
     };
-  }, [records, refresher]);
+  }, [refresher]);
 
   return { page, records, store };
 };
