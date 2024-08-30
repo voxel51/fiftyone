@@ -487,6 +487,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "metadata",
                 fof.EmbeddedDocumentField,
                 embedded_doc_type=doc_type,
+                created_at=datetime.utcnow(),
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
@@ -1464,6 +1465,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
+                created_at=datetime.utcnow(),
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1475,6 +1477,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
+                created_at=datetime.utcnow(),
                 **kwargs,
             )
 
@@ -1618,6 +1621,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=datetime.utcnow(),
             **kwargs,
         )
 
@@ -1740,6 +1744,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
+            created_at=datetime.utcnow(),
         )
 
         if expanded:
@@ -7811,8 +7816,10 @@ def _create_frame_document_cls(
 
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
+    now = datetime.utcnow()
     for field_name in tuple(doc_cls._fields.keys()):
         field = doc_cls._fields[field_name]
+        field._created_at = now
 
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
@@ -8003,6 +8010,12 @@ def _clone_collection(sample_collection, name, persistent):
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
+
+    for field in dataset_doc.sample_fields:
+        field.created_at = now
+
+    for field in dataset_doc.frame_fields:
+        field.created_at = now
 
     # Runs/views get special treatment at the end
     dataset_doc.workspaces.clear()

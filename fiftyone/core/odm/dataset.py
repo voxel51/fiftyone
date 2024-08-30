@@ -68,6 +68,7 @@ class SampleFieldDocument(EmbeddedDocument):
     description = StringField(null=True)
     info = DictField(null=True)
     read_only = BooleanField(default=False)
+    created_at = DateTimeField(null=True, default=None)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -100,6 +101,7 @@ class SampleFieldDocument(EmbeddedDocument):
             description=self.description,
             info=self.info,
             read_only=self.read_only,
+            created_at=self.created_at,
         )
 
     @classmethod
@@ -128,6 +130,7 @@ class SampleFieldDocument(EmbeddedDocument):
             description=field.description,
             info=field.info,
             read_only=field.read_only,
+            created_at=field.created_at,
         )
 
     @staticmethod

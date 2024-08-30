@@ -10,6 +10,7 @@ from copy import deepcopy
 from datetime import datetime
 import json
 
+import bson
 from bson import json_util, ObjectId
 import mongoengine
 from pymongo import InsertOne, UpdateOne
@@ -590,6 +591,10 @@ class Document(BaseDocument, mongoengine.Document):
 
     meta = {"abstract": True}
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._changed_fields = []
+
     @classmethod
     def _doc_name(cls):
         return "Document"
@@ -658,6 +663,13 @@ class Document(BaseDocument, mongoengine.Document):
             raise
 
         return self
+
+    def copy_with_new_id(self):
+        _copy = self.copy()
+        _id = bson.ObjectId()
+        _copy.id = _id
+        _copy._created = True
+        return _copy
 
     def _save(
         self,

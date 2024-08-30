@@ -1861,6 +1861,14 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 tags.extend([t for t in new_tags if t not in tags])
                 keep_fields["tags"] = tags
 
+            # Set field created_at times to now, since we are directly setting
+            #   the dataset doc
+            created_at = dataset.created_at
+            for field in dataset_dict["sample_fields"]:
+                field["created_at"] = created_at
+            for field in dataset_dict["frame_fields"]:
+                field["created_at"] = created_at
+
             dataset_dict.update(keep_fields)
 
             conn = foo.get_db_conn()

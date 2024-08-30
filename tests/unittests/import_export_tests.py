@@ -2894,6 +2894,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
     @drop_datasets
     def test_fiftyone_dataset(self):
         dataset = self._make_dataset()
+        dataset.reload()
 
         # Standard format
 
@@ -3281,12 +3282,23 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
+        field_created_at1 = [
+            f.created_at for f in dataset.get_field_schema().values()
+        ]
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
 
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_field_schema().values()
+        ]
         created_at2 = dataset2.values("created_at")
         last_modified_at2 = dataset2.values("last_modified_at")
 
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
         self.assertTrue(
             all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
         )
@@ -3633,11 +3645,23 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.LegacyFiftyOneDataset,
         )
 
+        field_created_at1 = [
+            f.created_at for f in dataset.get_field_schema().values()
+        ]
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
 
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_field_schema().values()
+        ]
         created_at2 = dataset2.values("created_at")
         last_modified_at2 = dataset2.values("last_modified_at")
+
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
 
         self.assertTrue(
             all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
@@ -4690,6 +4714,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
 
         export_dir = self._new_dir()
 
+        dataset.reload()
         dataset.export(
             export_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,
@@ -4700,14 +4725,25 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
+        field_created_at1 = [
+            f.created_at for f in dataset.get_frame_field_schema().values()
+        ]
         created_at1 = dataset.values("frames.created_at", unwind=True)
         last_modified_at1 = dataset.values("last_modified_at", unwind=True)
 
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_frame_field_schema().values()
+        ]
         created_at2 = dataset2.values("frames.created_at", unwind=True)
         last_modified_at2 = dataset2.values(
             "frames.last_modified_at", unwind=True
         )
 
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
         self.assertTrue(
             all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
         )
@@ -4735,14 +4771,25 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
             dataset_type=fo.types.LegacyFiftyOneDataset,
         )
 
+        field_created_at1 = [
+            f.created_at for f in dataset.get_frame_field_schema().values()
+        ]
         created_at1 = dataset.values("frames.created_at", unwind=True)
         last_modified_at1 = dataset.values("last_modified_at", unwind=True)
 
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_frame_field_schema().values()
+        ]
         created_at2 = dataset2.values("frames.created_at", unwind=True)
         last_modified_at2 = dataset2.values(
             "frames.last_modified_at", unwind=True
         )
 
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
         self.assertTrue(
             all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
         )
