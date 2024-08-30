@@ -1301,9 +1301,7 @@ class ZooDataset(object):
                     dataset_type,
                     num_samples,
                     classes,
-                ) = self._download_and_prepare(
-                    split_dir, scratch_dir, split=split
-                )
+                ) = self._download_and_prepare(split_dir, scratch_dir, split)
 
                 # Add split to ZooDatasetInfo
                 if info is None:
@@ -1344,7 +1342,7 @@ class ZooDataset(object):
                     dataset_type,
                     num_samples,
                     classes,
-                ) = self._download_and_prepare(dataset_dir, scratch_dir)
+                ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
 
                 if self.supports_partial_downloads and num_samples is None:
                     logger.info("Existing download is sufficient")
@@ -1364,7 +1362,7 @@ class ZooDataset(object):
 
         return info
 
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split=None):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         """Internal implementation of downloading the dataset and preparing it
         for use in the given directory.
 
@@ -1373,7 +1371,8 @@ class ZooDataset(object):
                 a ``split`` is provided, this is the directory for the split
             scratch_dir: a scratch directory to use to download and prepare
                 any required intermediate files
-            split (None): the split to download, if applicable
+            split: the split to download, or None if the dataset does not have
+                splits
 
         Returns:
             tuple of
@@ -1570,7 +1569,7 @@ class RemoteZooDataset(ZooDataset):
     def size_samples(self):
         return self._size_samples
 
-    def _download_and_prepare(self, dataset_dir, _, split=None):
+    def _download_and_prepare(self, dataset_dir, _, split):
         if split is not None:
             dataset_dir = os.path.dirname(dataset_dir)
 
