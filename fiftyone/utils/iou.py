@@ -663,7 +663,7 @@ def _compute_polygon_ious(
 def _compute_polyline_similarities(preds, gts, classwise=False):
     sims = {}
     for pred in preds:
-        sims[pred.id] == []
+        sims[pred.id] = []
         for gt in gts:
             if classwise and pred.label != gt.label:
                 continue
