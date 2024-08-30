@@ -196,7 +196,7 @@ def download_zoo_dataset(
         cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional arguments for the :class:`ZooDataset` constructor
-            or the remote dataset's ``download_and_prepare()` method
+            or the remote dataset's ``download_and_prepare()`` method
 
     Returns:
         a tuple of
