@@ -14,7 +14,7 @@ import {
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
-import { Records } from "./useRecords";
+import type { Records } from "./useRecords";
 
 export const PAGE_SIZE = 20;
 
@@ -92,7 +92,7 @@ const useSpotlightPager = (
                 data,
                 schema,
                 zoom,
-                records.current
+                records
               );
 
               resolve({
@@ -115,13 +115,11 @@ const useSpotlightPager = (
   const refresher = useRecoilValue(fos.refresher);
   useEffect(() => {
     refresher;
-    const current = records.current;
     const clear = () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(current.keys())) {
+        for (const id of Array.from(records.keys())) {
           store.get(id)?.invalidateRecord();
         }
-        current.clear();
       });
     };
 
@@ -133,7 +131,7 @@ const useSpotlightPager = (
       clear();
       unsubscribe();
     };
-  }, [refresher]);
+  }, [records, refresher]);
 
   return { page, records, store };
 };

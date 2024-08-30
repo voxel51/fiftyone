@@ -17,7 +17,7 @@ export interface SelectThumbnailData {
 
 const addRange = (index: number, items: string[], records: Records) => {
   const reverse = Object.fromEntries(
-    Array.from(records.current.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k])
   );
 
   const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
@@ -39,7 +39,7 @@ const argFact = (compareFn) => (array) =>
 const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 
 const get = (records: Records, id: string) => {
-  const index = records.current.get(id);
+  const index = records.get(id);
   if (index !== undefined) {
     return index;
   }
@@ -53,7 +53,7 @@ const removeRange = (
   records: Records
 ) => {
   const reverse = Object.fromEntries(
-    Array.from(records.current.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k])
   );
 
   let before = index;

@@ -1,15 +1,10 @@
-import type { MutableRefObject } from "react";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 
-export type Records = MutableRefObject<Map<string, number>>;
+export type Records = Map<string, number>;
 
 export default (clear: string) => {
-  const records = useRef(new Map<string, number>());
-
-  useMemo(() => {
+  return useMemo(() => {
     clear;
-    records.current.clear();
+    return new Map<string, number>();
   }, [clear]);
-
-  return records;
 };
