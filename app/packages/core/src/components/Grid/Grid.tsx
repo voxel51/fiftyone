@@ -75,7 +75,7 @@ function Grid() {
 
         const init = (l) => {
           l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current?.(records, detail);
+            selectSample.current?.(detail);
           });
           lookerStore.set(id, l);
           l.attach(element, dimensions);
@@ -101,7 +101,7 @@ function Grid() {
     store,
     threshold,
   ]);
-  selectSample.current = useSelectSample();
+  selectSample.current = useSelectSample(records);
   useSelect(lookerOptions, lookerStore, spotlight);
 
   useLayoutEffect(() => {

@@ -19,7 +19,6 @@ const addRange = (index: number, items: string[], records: Records) => {
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k])
   );
-
   const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
   const close = get(records, items[min]);
@@ -84,16 +83,19 @@ const removeRange = (
   );
 };
 
-export default () => {
+export default (records: Records) => {
   const setSelected = useSetSelected();
 
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (
-        records: Records,
-        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
-      ) => {
-        let selected = new Set(await snapshot.getPromise(selectedSamples));
+      async ({
+        shiftKey,
+        id: sampleId,
+        sample,
+        symbol,
+      }: SelectThumbnailData) => {
+        const current = new Set(await snapshot.getPromise(selectedSamples));
+        let selected = new Set(current);
         const selectedObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
@@ -101,9 +103,28 @@ export default () => {
         const items = Array.from(selected);
         const index = get(records, symbol.description);
         if (shiftKey && !selected.has(sampleId)) {
-          selected = addRange(index, items, records);
+          selected = new Set([
+            ...selected,
+            ...addRange(
+              index,
+              // filter items without an index record
+              items.filter((i) => records.has(i)),
+              records
+            ),
+          ]);
         } else if (shiftKey) {
-          selected = removeRange(index, selected, records);
+          selected = removeRange(
+            index,
+            // filter items without an index record
+            new Set(items.filter((i) => records.has(i))),
+            records
+          );
+          // add back selections without an index record
+          for (const other of current) {
+            if (!records.has(other)) {
+              selected.add(other);
+            }
+          }
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)
@@ -120,6 +141,6 @@ export default () => {
         set(selectedSampleObjects, selectedObjects);
         setSelected(new Set(selected));
       },
-    [setSelected]
+    [records, setSelected]
   );
 };
