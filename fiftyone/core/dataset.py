@@ -1457,6 +1457,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ValueError: if a field of the same name already exists and it is
                 not compliant with the specified values
         """
+        created_at = kwargs.pop("created_at", datetime.utcnow())
         if embedded_doc_type is not None and issubclass(
             embedded_doc_type, fog.Group
         ):
@@ -1465,7 +1466,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
-                created_at=datetime.utcnow(),
+                created_at=created_at,
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1477,7 +1478,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
-                created_at=datetime.utcnow(),
+                created_at=created_at,
                 **kwargs,
             )
 
@@ -1612,6 +1613,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Only datasets that contain videos may have frame fields"
             )
 
+        created_at = kwargs.pop("created_at", datetime.utcnow())
         expanded = self._frame_doc_cls.add_field(
             field_name,
             ftype,
@@ -1621,7 +1623,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
-            created_at=datetime.utcnow(),
+            created_at=created_at,
             **kwargs,
         )
 
