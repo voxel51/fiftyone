@@ -212,10 +212,7 @@ class PanelRefState(PanelRefBase):
             value (None): the value, if key is a string
         """
         d = key if isinstance(key, dict) else {key: value}
-
-        for k, v in d.items():
-            super().set(k, v)
-
+        super().set(d)
         self._ctx.ops.patch_panel_state(d)
 
     def clear(self):
@@ -249,10 +246,7 @@ class PanelRefData(PanelRefBase):
             value (None): the value, if key is a string
         """
         d = key if isinstance(key, dict) else {key: value}
-
-        for k, v in d.items():
-            super().set(k, v)
-
+        super().set(d)
         self._ctx.ops.patch_panel_data(d)
 
     def get(self, key, default=None):
