@@ -20,7 +20,7 @@ export const addRange = (
   selected: Set<string>,
   records: Records
 ) => {
-  // filter selections with an index record
+  // filter selections without an index record
   const items = [...selected].filter((i) => records.has(i));
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k])
@@ -57,7 +57,7 @@ export const removeRange = (
   selected: Set<string>,
   records: Records
 ) => {
-  // filter selections with an index record
+  // filter selections without an index record
   const items = new Set([...selected].filter((i) => records.has(i)));
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k])
