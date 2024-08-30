@@ -3426,7 +3426,7 @@ class GroupBy(ViewStage):
         )
 
         if match_expr is not None:
-            pipeline.append({"$match": match_expr})
+            pipeline.append({"$match": {"$expr": match_expr}})
 
         if sort_expr is not None:
             order = -1 if self._reverse else 1
