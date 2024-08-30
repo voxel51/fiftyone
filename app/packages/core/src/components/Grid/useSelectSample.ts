@@ -15,7 +15,13 @@ export interface SelectThumbnailData {
   symbol: ID;
 }
 
-const addRange = (index: number, items: string[], records: Records) => {
+export const addRange = (
+  index: number,
+  selected: Set<string>,
+  records: Records
+) => {
+  // filter selections with an index record
+  const items = [...selected].filter((i) => records.has(i));
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k])
   );
@@ -29,7 +35,7 @@ const addRange = (index: number, items: string[], records: Records) => {
     .fill(0)
     .map((_, i) => reverse[i + start]);
 
-  return new Set([...items, ...added]);
+  return new Set([...selected, ...added]);
 };
 
 const argFact = (compareFn) => (array) =>
@@ -46,23 +52,25 @@ const get = (records: Records, id: string) => {
   throw new Error(`record '${id}' not found`);
 };
 
-const removeRange = (
+export const removeRange = (
   index: number,
   selected: Set<string>,
   records: Records
 ) => {
+  // filter selections with an index record
+  const items = new Set([...selected].filter((i) => records.has(i)));
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k])
   );
 
   let before = index;
-  while (selected.has(reverse[before])) {
+  while (items.has(reverse[before])) {
     before--;
   }
   before += 1;
 
   let after = index;
-  while (selected.has(reverse[after])) {
+  while (items.has(reverse[after])) {
     after++;
   }
   after -= 1;
@@ -76,11 +84,19 @@ const removeRange = (
       ? [before, index]
       : [index, after];
 
-  return new Set(
-    Array.from(selected).filter(
+  const next = new Set(
+    Array.from(items).filter(
       (s) => get(records, s) < start || get(records, s) > end
     )
   );
+
+  for (const id of selected) {
+    if (records.has(id)) continue;
+    // not in index records so it was not removed, add it back
+    next.add(id);
+  }
+
+  return next;
 };
 
 export default (records: Records) => {
@@ -100,31 +116,14 @@ export default (records: Records) => {
           await snapshot.getPromise(selectedSampleObjects)
         );
 
-        const items = Array.from(selected);
         const index = get(records, symbol.description);
         if (shiftKey && !selected.has(sampleId)) {
           selected = new Set([
             ...selected,
-            ...addRange(
-              index,
-              // filter items without an index record
-              items.filter((i) => records.has(i)),
-              records
-            ),
+            ...addRange(index, selected, records),
           ]);
         } else if (shiftKey) {
-          selected = removeRange(
-            index,
-            // filter items without an index record
-            new Set(items.filter((i) => records.has(i))),
-            records
-          );
-          // add back selections without an index record
-          for (const other of current) {
-            if (!records.has(other)) {
-              selected.add(other);
-            }
-          }
+          selected = removeRange(index, selected, records);
         } else {
           selected.has(sampleId)
             ? selected.delete(sampleId)
