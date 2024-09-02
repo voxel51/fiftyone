@@ -470,49 +470,6 @@ class Detection(_HasAttributesDict, _HasID, Label):
                 self.mask = None
                 self.mask_path = outpath
 
-    def transform_mask(self, targets_map, outpath=None, update=False):
-        """Transforms this instance's mask according to the provided targets
-        map.
-
-        This method can be used to transform between grayscale and RGB masks,
-        or it can be used to edit the pixel values or colors of a mask without
-        changing the number of channels.
-
-        Note that any pixel values not in ``targets_map`` will be zero in the
-        transformed mask.
-
-        Args:
-            targets_map: a dict mapping existing pixel values (2D masks) or RGB
-                hex strings (3D masks) to new pixel values or RGB hex strings.
-                You may convert between grayscale and RGB using this argument
-            outpath (None): an optional path to write the transformed mask on
-                disk
-            update (False): whether to save the transformed mask on this
-                instance
-
-        Returns:
-            the transformed mask
-        """
-        mask = self.get_mask()
-        if mask is None:
-            return
-
-        mask = _transform_mask(mask, targets_map)
-
-        if outpath is not None:
-            _write_mask(mask, outpath)
-
-            if update:
-                self.mask = None
-                self.mask_path = outpath
-        elif update:
-            if self.mask_path is not None:
-                _write_mask(mask, self.mask_path)
-            else:
-                self.mask = mask
-
-        return mask
-
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
 
