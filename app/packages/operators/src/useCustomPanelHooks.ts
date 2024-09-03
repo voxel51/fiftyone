@@ -2,7 +2,7 @@ import { debounce, merge } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
-import { useUnboundState } from "@fiftyone/state";
+import { DimensionsType, useUnboundState } from "@fiftyone/state";
 import {
   PANEL_STATE_CHANGE_DEBOUNCE,
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
@@ -25,13 +25,7 @@ export interface CustomPanelProps {
   onChangeSelected?: string;
   onChangeSelectedLabels?: string;
   onChangeExtendedSelection?: string;
-  dimensions: {
-    bounds: {
-      height?: number;
-      width?: number;
-    };
-    widthRef: React.MutableRefObject<HTMLDivElement | null>;
-  } | null;
+  dimensions: DimensionsType | null;
   panelName?: string;
   panelLabel?: string;
 }

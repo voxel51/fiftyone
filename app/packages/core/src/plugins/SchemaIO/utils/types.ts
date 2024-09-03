@@ -26,6 +26,8 @@ export type SchemaType =
   | ObjectSchemaType
   | NumberSchemaType;
 
+export type PropertyType = SchemaType & { id: string };
+
 export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   root_id?: string;
   schema: Schema;

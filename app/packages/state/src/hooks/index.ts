@@ -49,3 +49,6 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useUnboundState } from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
+
+// types
+export * from "./types";
