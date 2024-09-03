@@ -3938,6 +3938,9 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count("events.detections.foo"), 3)
         self.assertEqual(dataset.count("frames.foo"), 5)
 
+    def test_frame_field_rollup(self):
+        ...
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

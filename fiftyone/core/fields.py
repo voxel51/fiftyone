@@ -23,7 +23,13 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
-def validate_constraints(ftype=None, embedded_doc_type=None, read_only=None):
+def validate_constraints(
+    ftype=None,
+    embedded_doc_type=None,
+    read_only=None,
+    info_keys=None,
+    created_after=None,
+):
     """Validates the given field constraints.
 
     Args:
@@ -34,6 +40,12 @@ def validate_constraints(ftype=None, embedded_doc_type=None, read_only=None):
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
         read_only (None): whether to optionally enforce that the field is
             read-only (True) or not read-only (False)
+        info_keys (None): an optional key or list of keys that must be in
+            a field's ``info`` dict in order for it to be included in the
+            returned schema. If ``None``, no filtering is performed.
+        created_after (None): an optional ``datetime`` to filter the
+            returned schema by, such that the field was `created_at` after
+            this time. If ``None``, no filtering is performed.
 
     Returns:
         True/False whether any constraints were provided
@@ -86,11 +98,26 @@ def validate_constraints(ftype=None, embedded_doc_type=None, read_only=None):
         if not isinstance(read_only, bool):
             raise ValueError("read_only must be a boolean")
 
+    if info_keys is not None:
+        has_contraints = True
+        if not isinstance(info_keys, (list, str)):
+            raise ValueError("info_keys must be a single or a list of str's")
+
+    if created_after is not None:
+        has_contraints = True
+        if not isinstance(created_after, datetime):
+            raise ValueError("created_after must be a datetime")
+
     return has_contraints
 
 
 def matches_constraints(
-    field, ftype=None, embedded_doc_type=None, read_only=None
+    field,
+    ftype=None,
+    embedded_doc_type=None,
+    read_only=None,
+    info_keys=None,
+    created_after=None,
 ):
     """Determines whether the field matches the given constraints.
 
@@ -103,6 +130,12 @@ def matches_constraints(
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
         read_only (None): whether to optionally enforce that the field is
             read-only (True) or not read-only (False)
+        info_keys (None): an optional key or list of keys that must be in
+            a field's ``info`` dict in order for it to be included in the
+            returned schema. If ``None``, no filtering is performed.
+        created_after (None): an optional ``datetime`` to filter the
+            returned schema by, such that the field was `created_at` after
+            this time. If ``None``, no filtering is performed.
 
     Returns:
         True/False
@@ -123,8 +156,20 @@ def matches_constraints(
         ):
             return False
 
-    if read_only is not None:
-        return read_only == field.read_only
+    if read_only is not None and read_only != field.read_only:
+        return False
+
+    if info_keys is not None:
+        key_set = {info_keys} if isinstance(info_keys, str) else set(info_keys)
+        if field.info is None or not set(field.info.keys()).issubset(key_set):
+            return False
+
+    if (
+        created_after is not None
+        and field.created_at is not None
+        and field.created_at > created_after
+    ):
+        return False
 
     return True
 
@@ -226,6 +271,8 @@ def filter_schema(
     ftype=None,
     embedded_doc_type=None,
     read_only=None,
+    info_keys=None,
+    created_after=None,
     include_private=False,
     flat=False,
     mode=None,
@@ -243,6 +290,12 @@ def filter_schema(
             :class:`fiftyone.core.odm.BaseEmbeddedDocument`
         read_only (None): whether to restrict to (True) or exclude (False)
             read-only fields. By default, all fields are included
+        info_keys (None): an optional key or list of keys that must be in
+            a field's ``info`` dict in order for it to be included in the
+            returned schema. If ``None``, no filtering is performed.
+        created_after (None): an optional ``datetime`` to filter the
+            returned schema by, such that the field was `created_at` after
+            this time. If ``None``, no filtering is performed.
         include_private (False): whether to include fields that start with
             ``_`` in the returned schema
         flat (False): whether to return a flattened schema where all
@@ -259,6 +312,8 @@ def filter_schema(
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
         read_only=read_only,
+        info_keys=info_keys,
+        created_after=created_after,
     )
 
     if has_contraints:
@@ -266,6 +321,8 @@ def filter_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
         )
     else:
         kwargs = {}
@@ -314,6 +371,8 @@ def flatten_schema(
     ftype=None,
     embedded_doc_type=None,
     read_only=None,
+    info_keys=None,
+    created_after=None,
     include_private=False,
 ):
     """Returns a flat version of the given schema where all embedded document
@@ -329,6 +388,12 @@ def flatten_schema(
             subclass(es) of :class:`fiftyone.core.odm.BaseEmbeddedDocument`
         read_only (None): whether to restrict to (True) or exclude (False)
             read-only fields. By default, all fields are included
+        info_keys (None): an optional key or list of keys that must be in
+            a field's ``info`` dict in order for it to be included in the
+            returned schema. If ``None``, no filtering is performed.
+        created_after (None): an optional ``datetime`` to filter the
+            returned schema by, such that the field was `created_at` after
+            this time. If ``None``, no filtering is performed.
         include_private (False): whether to include fields that start with
             ``_`` in the returned schema
 
@@ -339,6 +404,8 @@ def flatten_schema(
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
         read_only=read_only,
+        info_keys=info_keys,
+        created_after=created_after,
     )
 
     _schema = {}
@@ -351,6 +418,8 @@ def flatten_schema(
             ftype,
             embedded_doc_type,
             read_only,
+            info_keys,
+            created_after,
             include_private,
         )
 
@@ -365,6 +434,8 @@ def _flatten(
     ftype,
     embedded_doc_type,
     read_only,
+    info_keys,
+    created_after,
     include_private,
 ):
     if not include_private and name.startswith("_"):
@@ -380,6 +451,8 @@ def _flatten(
         ftype=ftype,
         embedded_doc_type=embedded_doc_type,
         read_only=read_only,
+        info_keys=info_keys,
+        created_after=created_after,
     ):
         schema[prefix] = field
 
@@ -396,6 +469,8 @@ def _flatten(
                 ftype,
                 embedded_doc_type,
                 read_only,
+                info_keys,
+                created_after,
                 include_private,
             )
 

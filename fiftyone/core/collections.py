@@ -1403,6 +1403,8 @@ class SampleCollection(object):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1418,10 +1420,16 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            include_private (False): whether to include fields that start with
-                ``_`` in the returned schema
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                a field's ``info`` dict in order for it to be included in the
+                returned schema. If ``None``, no filtering is performed.
+            created_after (None): an optional ``datetime`` to filter the
+                returned schema by, such that the field was `created_at` after
+                this time. If ``None``, no filtering is performed.
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
             mode (None): whether to apply the above constraints before and/or
@@ -1440,6 +1448,8 @@ class SampleCollection(object):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1458,6 +1468,12 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                a field's ``info`` dict in order for it to be included in the
+                returned schema. If ``None``, no filtering is performed.
+            created_after (None): an optional ``datetime`` to filter the
+                returned schema by, such that the field was `created_at` after
+                this time. If ``None``, no filtering is performed.
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
