@@ -142,6 +142,13 @@ export class BufferManager {
   }
 
   /**
+   * Checks if the given value is in the buffer.
+   */
+  public isValueInBuffer(value: number) {
+    return this.getRangeIndexForFrame(value) !== -1;
+  }
+
+  /**
    * Removes buffer range at given index.
    */
   public removeRangeAtIndex(index: number) {
