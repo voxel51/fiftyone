@@ -1063,6 +1063,16 @@ You can also programmatically configure a session's color scheme by creating
     Refer to the |ColorScheme| class for documentation of the available
     customization options.
 
+.. note::
+
+    For maskTargetsColors, intTarget must be an integer between 1 and 255. 
+    Do not set color for intTarget 0, as it is reserved. 
+
+.. note::
+
+    For colorscales, the list of colors must be sorted by value in ascending
+    order between 0 and 1. Color must be in the rgb(r,g,b) format. 
+
 You can launch the App with a custom color scheme by passing the optional
 `color_scheme` parameter to
 :func:`launch_app() <fiftyone.core.session.launch_app>`:

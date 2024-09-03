@@ -188,7 +188,7 @@ class ColorScheme(EmbeddedDocument):
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
-            color_by="field",
+            color_by="value",
             color_pool=[
                 "#ff0000",
                 "#00ff00",
@@ -203,6 +203,7 @@ class ColorScheme(EmbeddedDocument):
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                     "maskTargetsColors": [
+                        # do not define intTarget 0
                         {"intTarget": 2, "color": "#ff0000"},
                         {"intTarget": 12, "color": "#99ff00"},
                     ],
@@ -219,6 +220,8 @@ class ColorScheme(EmbeddedDocument):
                 {
                     "path": "heatmap1",
                     "list": [
+                        # color value should be in rgb format
+                        # list must be in ascending order from 0 to 1
                         {"value": 0, "color": "rgb(0, 0, 255)"},
                         {"value": 1, "color": "rgb(0, 255, 255)"},
                     ],
@@ -232,6 +235,7 @@ class ColorScheme(EmbeddedDocument):
             opacity=0.5,
             show_skeletons=True,
             default_mask_targets_colors=[
+                # do not define intTarget 0
                 {"intTarget": 1, "color": "#FEC0AA"},
                 {"intTarget": 2, "color": "#EC4E20"},
             ],
@@ -262,13 +266,13 @@ class ColorScheme(EmbeddedDocument):
             -   ``valueColors`` (optional): a list of dicts specifying colors
                 to use for individual values of this field
             -   ``maskTargetsColors`` (optional): a list of dicts specifying
-                index and color for 2D masks
+                index and color for 2D masks.
         default_mask_targets_colors (None): a list of dicts with the following
             keys specifying index and color for 2D masks of the dataset. If a
             field does not have field specific mask targets colors, this list
             will be used:
 
-            -   ``intTarget``: integer target value
+            -   ``intTarget``: integer target value from 1 to 255
             -   ``color``: a color string
         default_colorscale (None): dataset default colorscale dict with the
             following keys:
@@ -288,7 +292,7 @@ class ColorScheme(EmbeddedDocument):
                 default colorscale for dataset
             -   ``name`` (optional): a named colorscale plotly recognizes
             -   ``list`` (optional): a list of dicts of colorscale values with
-                the following keys:
+                the following keys in ascending order of value:
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1

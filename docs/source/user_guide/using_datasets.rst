@@ -388,6 +388,7 @@ that should be used by default whenever the dataset is loaded in the App:
     # Store a custom color scheme
     dataset.app_config.color_scheme = fo.ColorScheme(
         color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
+        color_by="value",
         fields=[
             {
                 "path": "ground_truth",
