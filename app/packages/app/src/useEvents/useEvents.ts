@@ -27,7 +27,7 @@ const useEvents = (
   return {
     subscriptions,
     handler: useCallback((event: string, payload: string) => {
-      if (event === "ping") {
+      if (event === "ping" || event === "") {
         return;
       }
 
