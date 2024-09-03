@@ -414,8 +414,6 @@ that should be used by default whenever the dataset is loaded in the App:
     # to be loaded
     session.color_scheme = None
 
-In the above example, you can see TP/FP/FN colors in the App by clicking on the
-`Color palette` icon and switching `Color annotations by` to `value`.
 
 .. note::
 
