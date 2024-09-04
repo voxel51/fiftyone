@@ -65,6 +65,9 @@ Plugins
   :meth:`set_data() <fiftyone.operators.panel.PanelRef.set_data>` to patch
   state/data would inadvertently clobber other existing values
   `#4753 <https://github.com/voxel51/fiftyone/pull/4753>`_
+- Fixed a spurious warning that would appear for delegated operations that
+  don't return outputs
+  `#4715 <https://github.com/voxel51/fiftyone/pull/4715>`_
 
 FiftyOne Teams 2.0.0
 --------------------
