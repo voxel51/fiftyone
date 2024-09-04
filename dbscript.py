@@ -70,6 +70,9 @@ def retrieve_db_info(output_file="db_result.json", max_dataset_count=10000):
 
     with open(output_file, "w") as f:
         json.dump(result, f, indent=4, default=custom_serializer)
+        print(
+            f"Finished exporting information to {output_file}, {len(sizes)}/{len(datasets)} datasets processed successfully!"
+        )
 
 
 if __name__ == "__main__":
