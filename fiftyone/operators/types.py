@@ -1483,6 +1483,18 @@ class PlotlyView(View):
         See https://github.com/plotly/react-plotly.js/#basic-props for
         documentation.
 
+    All event handlers have the following default params:
+
+    - ``id``: the corresponding data.ids[idx]
+    - ``path``: the path of the property
+    - ``relative_path``: the relative path of the property
+    - ``schema``: the schema of the property
+    - ``view``: the value of the PlotlyView
+    - ``event``: the event name (eg. onClick, onSelected, onDoubleClick)
+    - ``value``: the value of the clicked point (only pie chart-like plots)
+    - ``label``: the label of the clicked point (only pie chart-like plots)
+    - ``shift_pressed``: whether the shift key was pressed
+
     Examples::
 
         def render(self, ctx):
