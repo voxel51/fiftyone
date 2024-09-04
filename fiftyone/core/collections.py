@@ -4492,6 +4492,7 @@ class SampleCollection(object):
         """
         return fors.RunConfig(**kwargs)
 
+    @requires_can_edit
     def register_run(
         self,
         run_key,
@@ -4536,6 +4537,7 @@ class SampleCollection(object):
                 self, run_key, results, overwrite=overwrite, cache=cache
             )
 
+    @requires_can_edit
     def rename_run(self, run_key, new_run_key):
         """Replaces the key for the given run with a new key.
 
@@ -4557,6 +4559,7 @@ class SampleCollection(object):
         """
         return fors.Run.get_run_info(self, run_key)
 
+    @requires_can_edit
     def update_run_config(self, run_key, config):
         """Updates the run config for the run with the given key.
 
@@ -4585,6 +4588,7 @@ class SampleCollection(object):
         info = fors.Run.get_run_info(self, run_key)
         return fors.RunResults(self, info.config, run_key, **kwargs)
 
+    @requires_can_edit
     def save_run_results(self, run_key, results, overwrite=True, cache=True):
         """Saves run results for the run with the given key.
 
@@ -4639,6 +4643,7 @@ class SampleCollection(object):
             self, run_key, select_fields=select_fields
         )
 
+    @requires_can_edit
     def delete_run(self, run_key):
         """Deletes the run with the given key from this collection.
 
@@ -4647,6 +4652,7 @@ class SampleCollection(object):
         """
         fors.Run.delete_run(self, run_key)
 
+    @requires_can_edit
     def delete_runs(self):
         """Deletes all runs from this collection."""
         fors.Run.delete_runs(self)
