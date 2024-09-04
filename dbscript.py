@@ -7,7 +7,7 @@ import fiftyone.core.odm as foo
 import eta.core.utils as etau
 
 
-def retrieve_db_info(max_dataset_count=10000):
+def retrieve_db_info(output_file="db_result.json", max_dataset_count=10000):
     result = {}
 
     # getting database information
@@ -43,6 +43,7 @@ def retrieve_db_info(max_dataset_count=10000):
             except Exception as e:
                 print(f"Error processing dataset '{dataset_name}': {e}")
 
+    print("Number of datasets:", len(datasets))
     print("Min sample count:", min(sample_counts))
     print("Max sample count:", max(sample_counts))
     print("Min dataset size:", etau.to_human_bytes_str(min(sizes)))
@@ -52,6 +53,7 @@ def retrieve_db_info(max_dataset_count=10000):
     result["samle_counts"] = sample_counts
     result["min_sample_count"] = min(sample_counts)
     result["max_sample_count"] = max(sample_counts)
+    result["num_datasets"] = len(datasets)
     result["sizes"] = sizes
     result["min_size"] = min(sizes)
     result["max_size"] = max(sizes)
@@ -66,7 +68,7 @@ def retrieve_db_info(max_dataset_count=10000):
             )  # Convert bytes to base64-encoded string
         raise TypeError(f"Type {type(obj)} is not serializable")
 
-    with open("db_info.json", "w") as f:
+    with open(output_file, "w") as f:
         json.dump(result, f, indent=4, default=custom_serializer)
 
 
