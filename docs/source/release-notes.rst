@@ -3,6 +3,69 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.0.1
+--------------------
+*Released September 6, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.25.1 <release-notes-v0.25.1>`, plus:
+
+- Optimized the `Manage > Access` page for datasets
+- Added support for configuring a deployment to allow Guests to run custom
+  plugins
+- Fixed a bug where dataset permissions assigned to
+  :ref:`groups <teams-groups>` were not correctly applied to users that do not
+  otherwise have access to the dataset
+- Fixed a bug where a deployment's default user role as configured on the
+  `Security > Config` page would not be respected
+- Fixed a bug that could cause 3D scenes stored in Azure to fail to load
+- Fixed a bug that erroneously caused the currently selected samples to be
+  cleared when navigating between samples or closing the sample modal
+
+.. _release-notes-v0.25.1:
+
+FiftyOne 0.25.1
+---------------
+*Released September 6, 2024*
+
+App
+
+- Fixed an issue with sidebar state persistence when opening and closing the
+  sample modal
+  `#4745 <https://github.com/voxel51/fiftyone/pull/4745>`_
+- Fixed a bug with sample selection in the :ref:`Map panel <app-map-panel>`
+  when the grid is reset
+  `#4739 <https://github.com/voxel51/fiftyone/pull/4739>`_
+- Fixed a bug when filtering |Keypoint| fields using the App sidebar
+  `#4735 <https://github.com/voxel51/fiftyone/pull/4735>`_
+- Fixed a bug when tagging in the sample modal with active sidebar filters
+  `#4723 <https://github.com/voxel51/fiftyone/pull/4723>`_
+- Disabled ``fiftyone-desktop`` builds until package size can be optimized
+  `#4746 <https://github.com/voxel51/fiftyone/pull/4746>`_
+
+SDK
+
+- Added support for loading lists of TXT files in
+  :ref:`YOLOv5 format <YOLOv5Dataset-import>`
+  `#4742 <https://github.com/voxel51/fiftyone/pull/4742>`_
+- Fixed a bug with the ``match_expr`` argument of
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`
+  `#4754 <https://github.com/voxel51/fiftyone/pull/4754>`_
+- Fixed a regression when running inference with
+  :ref:`Ultralytics models <ultralytics-integration>` that don't support track
+  IDs
+  `#4720 <https://github.com/voxel51/fiftyone/pull/4720>`_
+
+Plugins
+
+- Fixed a bug that caused :class:`TabsView <fiftyone.operators.types.TabsView>`
+  components to erroneously reset to their default state
+  `#4732 <https://github.com/voxel51/fiftyone/pull/4732>`_
+- Fixed a bug where calling
+  :meth:`set_state() <fiftyone.operators.panel.PanelRef.set_state>` and
+  :meth:`set_data() <fiftyone.operators.panel.PanelRef.set_data>` to patch
+  state/data would inadvertently clobber other existing values
+  `#4753 <https://github.com/voxel51/fiftyone/pull/4753>`_
+
 FiftyOne Teams 2.0.0
 --------------------
 *Released August 20, 2024*
