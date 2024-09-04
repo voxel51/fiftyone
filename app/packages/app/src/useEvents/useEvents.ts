@@ -27,13 +27,15 @@ const useEvents = (
   return {
     subscriptions,
     handler: useCallback((event: string, payload: string) => {
-      if (event === "ping") {
+      if (event === "" || event === "ping") {
         return;
       }
 
       if (!HANDLERS[event]) {
-        throw new Error(`event "${event}" is not registered`);
+        console.warn(`event "${event}" is not registered`);
+        return;
       }
+
       HANDLERS[event](JSON.parse(payload));
     }, []),
   };
