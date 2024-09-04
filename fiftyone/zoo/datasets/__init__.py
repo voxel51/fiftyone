@@ -1453,8 +1453,8 @@ class ZooDataset(object):
 
 
 class RemoteZooDataset(ZooDataset):
-    """Base class for remotely-sourced datasets that are compatible with the
-    FiftyOne Dataset Zoo.
+    """Class for working with remotely-sourced datasets that are compatible
+    with the FiftyOne Dataset Zoo.
 
     Args:
         dataset_dir: the dataset's local directory, which must contain a valid
