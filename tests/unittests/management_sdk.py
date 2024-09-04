@@ -131,13 +131,10 @@ class ManagementSdkTests(unittest.TestCase):
     def test_test_api_connection(self, print_mock):
         self.assertRaises(Exception, fom.test_api_connection)
 
-        self.client.get.return_value.json.return_value = {"status": "failed"}
+        self.client.get.return_value.status_code = 500
         self.assertRaises(Exception, fom.test_api_connection)
-        self.client.get.assert_called_with("health")
         self.client.reset_mock()
-        self.client.get.return_value.json.return_value = {
-            "status": "available"
-        }
+        self.client.get.return_value.status_code.return_value = 200
 
         self.client.post_graphql_request.return_value = {}
         self.assertRaises(Exception, fom.test_api_connection)
