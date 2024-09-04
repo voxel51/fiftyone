@@ -405,7 +405,8 @@ class DelegatedOperationService(object):
             outputs = await resolve_type_with_context(
                 request_params, "outputs"
             )
-            outputs_schema = outputs.to_json()
+            if outputs is not None:
+                outputs_schema = outputs.to_json()
         except (AttributeError, Exception):
             logger.warning(
                 "Failed to resolve output schema for the operation."
