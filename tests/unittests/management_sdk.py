@@ -134,7 +134,7 @@ class ManagementSdkTests(unittest.TestCase):
         self.client.get.return_value.status_code = 500
         self.assertRaises(Exception, fom.test_api_connection)
         self.client.reset_mock()
-        self.client.get.return_value.status_code.return_value = 200
+        self.client.get.return_value.status_code = 200
 
         self.client.post_graphql_request.return_value = {}
         self.assertRaises(Exception, fom.test_api_connection)
