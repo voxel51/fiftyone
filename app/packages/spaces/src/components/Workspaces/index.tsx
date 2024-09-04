@@ -25,8 +25,13 @@ import { useWorkspaces } from "./hooks";
 export default function Workspaces() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { workspaces, loadWorkspace, initialized, listWorkspace } =
-    useWorkspaces();
+  const {
+    workspaces,
+    loadWorkspace,
+    initialized,
+    listWorkspace,
+    canInitialize,
+  } = useWorkspaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const canEditWorkSpace = useRecoilValue(canEditWorkspaces);
   const disabled = canEditWorkSpace.enabled !== true;
@@ -45,10 +50,12 @@ export default function Workspaces() {
   }, [workspaces, searchTerm]);
 
   useEffect(() => {
-    if (!initialized) {
+    if (!initialized && canInitialize) {
       listWorkspace();
     }
-  }, [open, initialized, listWorkspace]);
+  }, [open, initialized, listWorkspace, canInitialize]);
+
+  if (!canInitialize) return null;
 
   return (
     <Box>
