@@ -327,9 +327,127 @@ class ColorScheme(EmbeddedDocument):
     def _id(self):
         return ObjectId(self.id)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.clean()
+
     @_id.setter
     def _id(self, value):
         self.id = str(value)
+
+    def clean(self):
+        self._validate_color_by()
+        self._validate_opacity()
+        self._validate_fields()
+        self._validate_default_mask_targets_colors()
+        self._validate_default_colorscale()
+        self._validate_colorscales()
+
+    def _validate_color_by(self):
+        if self.color_by not in [None, "field", "value", "instance"]:
+            raise ValueError(
+                "color_by must be one of [None, 'field', 'value', 'instance']"
+            )
+
+    def _validate_opacity(self):
+        if self.opacity is not None and not 0 <= self.opacity <= 1:
+            raise ValueError("opacity must be between 0 and 1")
+
+    def _validate_default_mask_targets_colors(self):
+        if self.default_mask_targets_colors:
+            self._validate_mask_targets(
+                self.default_mask_targets_colors, "default mask targets colors"
+            )
+
+    def _validate_fields(self):
+        if self.fields:
+            for field in self.fields:
+                path = field.get("path")
+                if not path:
+                    raise ValueError(
+                        "path is required for each field in fields"
+                    )
+
+                mask_targets_colors = field.get("maskTargetsColors")
+                if mask_targets_colors:
+                    self._validate_mask_targets(
+                        mask_targets_colors, "mask target colors"
+                    )
+
+    def _validate_mask_targets(self, mask_targets, context):
+        for entry in mask_targets:
+            int_target_value = entry.get("intTarget")
+
+            if (
+                not isinstance(entry, dict)
+                or int_target_value is None
+                or not isinstance(int_target_value, int)
+                or int_target_value <= 0
+            ):
+
+                raise ValueError(
+                    f"Invalid intTarget in {context}."
+                    "intTarget must be a positive integer."
+                    f"Invalid entry: {entry}"
+                )
+
+    def _validate_colorscales(self):
+        if self.colorscales is None:
+            return
+
+        if not isinstance(self.colorscales, list):
+            raise ValueError("colorscales must be a list or None")
+
+        for scale in self.colorscales:
+            self._validate_single_colorscale(scale)
+
+    def _validate_default_colorscale(self):
+        if self.default_colorscale is None:
+            return
+
+        self._validate_single_colorscale(self.default_colorscale)
+
+    def _validate_single_colorscale(self, scale):
+        if not isinstance(scale, dict):
+            raise ValueError(
+                f"Each colorscale entry must be a dict. Invalid entry: {scale}"
+            )
+
+        name = scale.get("name")
+        color_list = scale.get("list")
+
+        if name is None and color_list is None:
+            raise ValueError(
+                "Each colorscale entry must have either a 'name' or a 'list'."
+                f"Invalid entry: {scale}"
+            )
+
+        if name is not None and not isinstance(name, str):
+            raise ValueError(
+                "Invalid colorscale name."
+                "See https://plotly.com/python/colorscales for possible options."
+                f"Invalid name: {name}"
+            )
+
+        if color_list is not None:
+            if not isinstance(color_list, list):
+                raise ValueError(
+                    "The 'list' field in colorscales must be a list."
+                    f"Invalid entry: {color_list}"
+                )
+
+            for entry in color_list:
+                value = entry.get("value")
+
+                if (
+                    value is None
+                    or not isinstance(value, (int, float))
+                    or not (0 <= value <= 1)
+                ):
+                    raise ValueError(
+                        "Each entry in the 'list' must have a 'value'"
+                        f"between 0 and 1. Invalid entry: {entry}"
+                    )
 
 
 class KeypointSkeleton(EmbeddedDocument):
