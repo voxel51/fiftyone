@@ -1,11 +1,8 @@
-import { useAtomValue } from "jotai";
+import { useSetAtom } from "jotai";
 import React from "react";
 import { GLOBAL_TIMELINE_ID } from "./constants";
-import {
-  getFrameNumberAtom,
-  getTimelineConfigAtom,
-  TimelineName,
-} from "./state";
+import { setFrameNumberAtom, TimelineName } from "./state";
+import { useTimeline } from "./use-timeline";
 
 /**
  * This hook provides access to some utilties that could be used
@@ -18,8 +15,8 @@ import {
 export const useTimelineVizUtils = (
   name: TimelineName = GLOBAL_TIMELINE_ID
 ) => {
-  const config = useAtomValue(getTimelineConfigAtom(name));
-  const frameNumber = useAtomValue(getFrameNumberAtom(name));
+  const { config, frameNumber, pause } = useTimeline(name);
+  const setFrameNumber = useSetAtom(setFrameNumberAtom);
 
   const getSeekValue = React.useCallback(() => {
     // offset by -1 since frame indexing is 1-based
@@ -28,7 +25,14 @@ export const useTimelineVizUtils = (
     return (numerator / denominator) * 100;
   }, [frameNumber]);
 
+  const seekTo = React.useCallback((newSeekValue: number) => {
+    pause();
+    const newFrameNumber = Math.ceil((newSeekValue / 100) * config.totalFrames);
+    setFrameNumber({ name, newFrameNumber });
+  }, []);
+
   return {
     getSeekValue,
+    seekTo,
   };
 };
