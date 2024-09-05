@@ -220,8 +220,7 @@ class ColorScheme(EmbeddedDocument):
                 {
                     "path": "heatmap1",
                     "list": [
-                        # color value should be in rgb format
-                        # list must be in ascending order from 0 to 1
+                        # value should be between 0 and 1
                         {"value": 0, "color": "rgb(0, 0, 255)"},
                         {"value": 1, "color": "rgb(0, 255, 255)"},
                     ],
@@ -272,13 +271,13 @@ class ColorScheme(EmbeddedDocument):
             field does not have field specific mask targets colors, this list
             will be used:
 
-            -   ``intTarget``: integer target value from 1 to 255
+            -   ``intTarget``: a positive integer target value
             -   ``color``: a color string
         default_colorscale (None): dataset default colorscale dict with the
             following keys:
 
             -   ``name`` (optional): a named plotly colorscale, e.g. ``"hsv"``.
-                See https://plotly.com/python/builtin-colorscales
+                See https://plotly.com/python/builtin-colorscales"
             -   ``list`` (optional): a list of dicts of colorscale values
 
                 -   ``value``: a float number between 0 and 1. A valid list
@@ -292,7 +291,7 @@ class ColorScheme(EmbeddedDocument):
                 default colorscale for dataset
             -   ``name`` (optional): a named colorscale plotly recognizes
             -   ``list`` (optional): a list of dicts of colorscale values with
-                the following keys in ascending order of value:
+                the following keys:
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1
