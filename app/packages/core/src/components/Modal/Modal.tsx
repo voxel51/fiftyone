@@ -93,9 +93,6 @@ const Modal = () => {
 
   const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
 
-  const hoveringSample = useRecoilValue(fos.hoveredSample);
-  const currentModalSampleId = useRecoilValue(fos.modalSampleId);
-
   const select = fos.useSelectSample();
 
   const modalCloseHandler = useRecoilCallback(

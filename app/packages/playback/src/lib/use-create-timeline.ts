@@ -1,4 +1,4 @@
-import { Optional, useEventListener } from "@fiftyone/state";
+import { Optional, useEventHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -246,8 +246,8 @@ export const useCreateTimeline = (
     isAnimationActiveRef.current = false;
   }, []);
 
-  useEventListener("play", onPlayEvent);
-  useEventListener("pause", onPauseEvent);
+  useEventHandler(window, "play", onPlayEvent);
+  useEventHandler(window, "pause", onPauseEvent);
 
   return { isTimelineInitialized, subscribe: addSubscriber };
 };
