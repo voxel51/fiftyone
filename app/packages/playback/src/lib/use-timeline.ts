@@ -21,7 +21,8 @@ import {
  * scoped to the current modal.
  */
 export const useTimeline = (name: TimelineName = GLOBAL_TIMELINE_ID) => {
-  const config = useAtomValue(getTimelineConfigAtom(name));
+  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
+    useAtomValue(getTimelineConfigAtom(name));
   const playHeadState = useAtomValue(getPlayheadStateAtom(name));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const frameNumber = useAtomValue(getFrameNumberAtom(name));
@@ -42,6 +43,7 @@ export const useTimeline = (name: TimelineName = GLOBAL_TIMELINE_ID) => {
   return {
     config,
     frameNumber,
+    isTimelineInitialized,
     playHeadState,
     play,
     pause,
