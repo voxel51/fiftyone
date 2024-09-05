@@ -1,4 +1,4 @@
-export type BufferRange = [number, number];
+export type BufferRange = Readonly<[number, number]>;
 export type Buffers = Readonly<BufferRange>[];
 
 /**
