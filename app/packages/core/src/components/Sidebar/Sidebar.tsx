@@ -733,6 +733,7 @@ const InteractiveSidebar = ({
           scroll.current = target.scrollTop;
           down.current && animate(last.current);
         }}
+        style={modal ? { maxHeight: "calc(100% - 28px)" } : {}}
       >
         <Container
           className={style.sidebar}
