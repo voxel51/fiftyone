@@ -201,6 +201,10 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._is_clips
 
     @property
+    def _is_materialized(self):
+        return self._dataset._is_materialized
+
+    @property
     def _is_dynamic_groups(self):
         return self._outputs_dynamic_groups()
 

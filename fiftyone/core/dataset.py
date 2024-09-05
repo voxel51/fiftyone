@@ -437,7 +437,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _is_generated(self):
-        return self._is_patches or self._is_frames or self._is_clips
+        return (
+            self._is_patches
+            or self._is_frames
+            or self._is_clips
+            or self._is_materialized
+        )
 
     @property
     def _is_patches(self):
@@ -452,6 +457,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_clips(self):
         return self._sample_collection_name.startswith("clips.")
+
+    @property
+    def _is_materialized(self):
+        return self._sample_collection_name.startswith("materialized.")
 
     @property
     def _is_dynamic_groups(self):
@@ -5111,6 +5120,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         persistent=False,
         view=None,
         include_indexes=True,
+        materialized=False,
     ):
         if name is None:
             name = get_default_dataset_name()
@@ -5125,6 +5135,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name,
             persistent=persistent,
             include_indexes=include_indexes,
+            materialized=materialized,
         )
 
     def clear(self):
@@ -8931,7 +8942,7 @@ def _clone_collection_indexes(
 
 
 def _make_sample_collection_name(
-    dataset_id, patches=False, frames=False, clips=False
+    dataset_id, patches=False, frames=False, clips=False, materialized=False
 ):
     if patches and frames:
         prefix = "patches.frames"
@@ -8941,6 +8952,8 @@ def _make_sample_collection_name(
         prefix = "frames"
     elif clips:
         prefix = "clips"
+    elif materialized:
+        prefix = "materialized"
     else:
         prefix = "samples"
 
@@ -9146,6 +9159,7 @@ def _clone_collection(
     name,
     persistent=False,
     include_indexes=True,
+    materialized=False,
 ):
     slug = _validate_dataset_name(name)
 
@@ -9175,7 +9189,9 @@ def _clone_collection(
     _id = dataset_doc.id
     now = datetime.utcnow()
 
-    sample_collection_name = _make_sample_collection_name(_id)
+    sample_collection_name = _make_sample_collection_name(
+        _id, materialized=materialized
+    )
 
     if contains_videos:
         frame_collection_name = _make_frame_collection_name(
