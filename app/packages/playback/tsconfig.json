@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "target": "ESNext",
+        "moduleResolution": "Node",
+        "esModuleInterop": false,
+        "module": "ESNext",
+        "skipLibCheck": true,
+        "noImplicitAny": true,
+        "lib": ["ESNext", "dom", "dom.iterable"],
+        "types": ["vite/client"],
+        "isolatedModules": true,
+        "jsx": "react-jsx",
+        "strict": true,
+        "sourceMap": true,
+        "noEmit": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": ["src"]
+}
