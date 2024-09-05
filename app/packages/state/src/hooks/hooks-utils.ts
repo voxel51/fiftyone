@@ -6,6 +6,9 @@ interface EventTarget {
   removeEventListener: HTMLElement["removeEventListener"];
 }
 
+/**
+ * @deprecated use useEventListener instead
+ */
 export const useEventHandler = (
   target: EventTarget,
   eventType: string,
