@@ -554,18 +554,6 @@ const ModalActionsRowContainer = styled.div`
     opacity: 1;
     transition: opacity 0.1s ease-out;
   }
-
-  svg {
-    font-size: 14px;
-  }
-
-  > div {
-    max-height: 21px;
-
-    > div:first-child {
-      max-height: 21px;
-    }
-  }
 }`;
 
 const DraggableHandleIconContainer = styled.div`
@@ -750,7 +738,7 @@ export const ModalActionsRow = () => {
       handle={`.${MODAL_ACTION_BAR_HANDLE_CLASS}`}
       axis="x"
       defaultPosition={{ x: defaultXCoord ?? 0, y: 0 }}
-      onDrag={(_e, { x, y }) => {
+      onDrag={(_e, { x }) => {
         setDefaultXCoord(x);
       }}
     >

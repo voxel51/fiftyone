@@ -9,7 +9,6 @@ import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
 import { useLookerHelpers } from "./hooks";
 import { modalContext } from "./modal-context";
-import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
@@ -44,6 +43,7 @@ const SpacesContainer = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  z-index: 1501;
 `;
 
 const SidebarPanelBlendInDiv = styled.div`
@@ -77,7 +77,7 @@ const Modal = () => {
 
   const renderEntry = useModalSidebarRenderEntry();
 
-  const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
+  const { jsonPanel, helpPanel } = useLookerHelpers();
 
   const select = fos.useSelectSample();
 
@@ -166,7 +166,7 @@ const Modal = () => {
   const screenParams = useMemo(() => {
     return isFullScreen
       ? { width: "100%", height: "100%" }
-      : { width: "95%", height: "90%", borderRadius: "3px" };
+      : { width: "95%", height: "calc(100% - 70px)", borderRadius: "8px" };
   }, [isFullScreen]);
 
   const activeLookerRef = useRef<fos.Lookers>();
