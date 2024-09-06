@@ -1,5 +1,5 @@
 import type Spotlight from "@fiftyone/spotlight";
-import { ID } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
