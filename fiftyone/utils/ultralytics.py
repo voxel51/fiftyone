@@ -58,7 +58,7 @@ def _extract_track_ids(result):
     return (
         result.boxes.id.detach().cpu().numpy().astype(int)
         if result.boxes.is_track
-        else [None] * len(result.boxes.conf.size(0))
+        else [None] * result.boxes.conf.size(0)
     )
 
 

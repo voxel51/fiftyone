@@ -85,4 +85,11 @@ test.describe("quickstart", () => {
     await gridRefresh;
     await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
   });
+
+  test("sidebar persistence", async ({ grid, modal, sidebar }) => {
+    await sidebar.toggleSidebarGroup("PRIMITIVES");
+    await grid.openFirstSample();
+    await modal.close();
+    await sidebar.asserter.assertSidebarGroupIsHidden("PRIMITIVES");
+  });
 });

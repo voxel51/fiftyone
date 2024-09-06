@@ -13,6 +13,29 @@ export class ModalSidebarPom {
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
 
+  async applyFilter(label: string) {
+    const selectionDiv = this.locator
+      .getByTestId("checkbox-" + label)
+      .getByTitle(label);
+    await selectionDiv.click({ force: true });
+  }
+
+  async applySearch(field: string, search: string) {
+    const input = this.locator.getByTestId(`selector-sidebar-search-${field}`);
+    await input.fill(search);
+    await input.press("Enter");
+  }
+
+  async clearGroupFilters(name: string) {
+    return this.locator.getByTestId(`clear-filters-${name}`).click();
+  }
+
+  async clickFieldDropdown(field: string) {
+    return this.locator
+      .getByTestId(`sidebar-field-arrow-enabled-${field}`)
+      .click();
+  }
+
   getSidebarEntry(key: string) {
     return this.locator.getByTestId(`sidebar-entry-${key}`);
   }
@@ -46,6 +69,10 @@ export class ModalSidebarPom {
     }
 
     return absPath;
+  }
+
+  async toggleLabelCheckbox(field: string) {
+    await this.locator.getByTestId(`checkbox-${field}`).click();
   }
 
   async toggleSidebarGroup(name: string) {

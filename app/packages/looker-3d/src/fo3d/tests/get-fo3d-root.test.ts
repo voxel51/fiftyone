@@ -19,4 +19,16 @@ describe("getFo3dRoot", () => {
     const expectedRoot = "c:\\Users\\johndoe\\fiftyone\\store\\assets/";
     expect(getFo3dRoot(url)).toBe(expectedRoot);
   });
+
+  it("should work with http urls with single forward slash", () => {
+    const url = "https:/some-website.com/path/to/file/file.fo3d";
+    const expectedRoot = "https://some-website.com/path/to/file/";
+    expect(getFo3dRoot(url)).toBe(expectedRoot);
+  });
+
+  it("should work with http urls with double forward slash", () => {
+    const url = "https://some-website.com/path/to/file/file.fo3d";
+    const expectedRoot = "https://some-website.com/path/to/file/";
+    expect(getFo3dRoot(url)).toBe(expectedRoot);
+  });
 });
