@@ -435,6 +435,13 @@ class ColorScheme(EmbeddedDocument):
                     f"Invalid entry: {color_list}"
                 )
 
+            if len(color_list) == 0:
+                return
+
+            # the list must have colors defined for 0 and 1
+            has_value_0 = False
+            has_value_1 = False
+
             for entry in color_list:
                 value = entry.get("value")
 
@@ -447,6 +454,17 @@ class ColorScheme(EmbeddedDocument):
                         "Each entry in the 'list' must have a 'value'"
                         f"between 0 and 1. Invalid entry: {entry}"
                     )
+
+                if value == 0:
+                    has_value_0 = True
+                elif value == 1:
+                    has_value_1 = True
+
+            if not has_value_0 or not has_value_1:
+                raise ValueError(
+                    "The colorscale 'list' must have colors defined for 0 and 1."
+                    f"Invalid list: {color_list}"
+                )
 
 
 class KeypointSkeleton(EmbeddedDocument):
