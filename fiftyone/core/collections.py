@@ -9091,7 +9091,7 @@ class SampleCollection(object):
                 if key in sample_info:
                     sample_info[key]["size"] = size
 
-            for key in cs["indexBuilds"]:
+            for key in cs.get("indexBuilds", []):
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
 
@@ -9113,7 +9113,7 @@ class SampleCollection(object):
                     if key in frame_info:
                         frame_info[key]["size"] = size
 
-                for key in cs["indexBuilds"]:
+                for key in cs.get("indexBuilds", []):
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
 
