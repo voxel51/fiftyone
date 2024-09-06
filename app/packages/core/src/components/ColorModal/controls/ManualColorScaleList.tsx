@@ -148,6 +148,10 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
     [input, values, onSyncUpdate]
   );
 
+  const onValidateNumber = useCallback((value: number | string) => {
+    return Number(value) >= 0 && Number(value) <= 1;
+  }, []);
+
   // on changing tabs, sync local state with new session values
   useEffect(() => {
     setInput(values ?? []);
@@ -168,15 +172,16 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
       {input?.map((v, index) => (
         <RowContainer key={index}>
           <NumberInput
-            placeholder="float (0 to 1)"
+            placeholder="float"
             value={input[index].value}
-            setter={(v) =>
+            validator={onValidateNumber}
+            setter={(v) => {
               setInput((p) => {
                 const copy = cloneDeep(p);
                 copy[index].value = v;
                 return copy;
-              })
-            }
+              });
+            }}
             onBlur={() => {
               if (input[index].value !== undefined) {
                 onSyncIdx(input[index].value!, index);

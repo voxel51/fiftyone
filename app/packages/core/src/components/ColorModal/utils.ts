@@ -202,8 +202,8 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
 export const getRandomColorFromPool = (pool: readonly string[]): string =>
   pool[Math.floor(Math.random() * pool.length)];
 
-export const validateIntMask = (value: number) => {
-  if (!value || !Number.isInteger(value) || !inRange(value, 1, 255)) {
+export const validateIntMask = (value: number | string | undefined) => {
+  if (!value || !Number.isInteger(Number(value)) || Number(value) <= 0) {
     return false;
   }
   return true;

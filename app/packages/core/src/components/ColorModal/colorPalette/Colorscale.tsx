@@ -9,6 +9,7 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
+import { NAME_COLORSCALE } from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
@@ -24,7 +25,6 @@ import {
   isValidFloatInput,
   namedColorScales,
 } from "../utils";
-import { NAME_COLORSCALE } from "../../../utils/links";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -115,10 +115,16 @@ const Colorscale: React.FC = () => {
       : null
   );
 
-  const defaultValue = {
-    value: 0,
-    color: getRGBColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = [
+    {
+      value: 0,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+    {
+      value: 1,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+  ];
 
   const onBlurName = useCallback(
     (value: string) => {
@@ -176,7 +182,7 @@ const Colorscale: React.FC = () => {
       setSetting((prev) => ({
         ...prev,
         name: null,
-        list: prev?.list?.length ? prev.list : [defaultValue],
+        list: prev?.list?.length ? prev.list : defaultValue,
       }));
     }
     if (tab === "name") {
@@ -209,7 +215,7 @@ const Colorscale: React.FC = () => {
               setSetting({
                 ...colorscaleValues,
                 name: null,
-                list: [defaultValue],
+                list: defaultValue,
               });
             }
           } else {
@@ -258,15 +264,18 @@ const Colorscale: React.FC = () => {
           )}
           {tab === "list" && (
             <div>
-              Define a custom colorscale (range between 0 and 1):
+              Define a custom colorscale (range between 0 and 1): * must include
+              0 and 1
               <ManualColorScaleList
                 initialValue={
                   setting?.list && setting?.list.length > 0
                     ? setting.list
-                    : ([defaultValue] as ColorscaleListInput[])
+                    : (defaultValue as ColorscaleListInput[])
                 }
                 values={setting?.list as ColorscaleListInput[]}
                 style={FieldCHILD_STYLE}
+                min={0}
+                max={1}
                 onValidate={validateFloat}
                 onSyncUpdate={onSyncUpdate}
                 shouldShowAddButton={shouldShowAddButton}
@@ -284,5 +293,5 @@ export default Colorscale;
 
 const validateFloat = (n: number) => {
   // 1 and 1.0 should both pass
-  return Number.isFinite(n);
+  return Number.isFinite(n) && n >= 0 && n <= 1;
 };
