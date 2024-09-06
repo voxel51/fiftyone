@@ -15,7 +15,7 @@ FROM ${TORCH_IMAGE_NAME} as zefrplugins
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
     --find-links=/wheelhouse/tmp/wheels qdrant-client open-clip-torch
-    
+
 
 # run as the voxel51 user
 USER 1000:1000
