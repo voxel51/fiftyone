@@ -55,7 +55,7 @@ def retrieve_db_info(output_file="db_result.json", max_dataset_count=10000):
     
     print("Field distribution:", field_types)
 
-    result["samle_counts"] = sample_counts
+    result["sample_counts"] = sample_counts
     result["min_sample_count"] = min(sample_counts)
     result["max_sample_count"] = max(sample_counts)
     result["num_datasets"] = len(datasets)
