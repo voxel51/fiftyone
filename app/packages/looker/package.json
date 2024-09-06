@@ -24,7 +24,7 @@
         "fast-png": "^6.1.0",
         "immutable": "^4.0.0-rc.12",
         "lodash": "^4.17.21",
-        "lru-cache": "^6.0.0",
+        "lru-cache": "^11.0.1",
         "mime": "^2.5.2",
         "monotone-convex-hull-2d": "^1.0.1",
         "uuid": "^8.3.2"
@@ -32,7 +32,7 @@
     "devDependencies": {
         "@rollup/plugin-inject": "^5.0.2",
         "@types/color-string": "^1.5.0",
-        "@types/lru-cache": "^5.1.0",
+        "@types/lru-cache": "^7.10.10",
         "@types/uuid": "^8.3.0",
         "buffer": "^6.0.3",
         "prettier": "^2.7.1",

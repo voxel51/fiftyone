@@ -2043,7 +2043,7 @@ __metadata:
     framer-motion: ^6.2.8
     history: ^5.3.0
     lodash: ^4.17.21
-    lru-cache: ^6.0.0
+    lru-cache: ^11.0.1
     numeral: ^2.0.6
     prettier: 2.2.1
     re-resizable: ^6.9.17
@@ -2190,7 +2190,7 @@ __metadata:
   dependencies:
     "@rollup/plugin-inject": ^5.0.2
     "@types/color-string": ^1.5.0
-    "@types/lru-cache": ^5.1.0
+    "@types/lru-cache": ^7.10.10
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
     "@xmldom/xmldom": ^0.8.6
@@ -2199,7 +2199,7 @@ __metadata:
     fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
-    lru-cache: ^6.0.0
+    lru-cache: ^11.0.1
     mime: ^2.5.2
     monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
@@ -5177,10 +5177,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lru-cache@npm:^5.1.0":
-  version: 5.1.1
-  resolution: "@types/lru-cache@npm:5.1.1"
-  checksum: e1d6c0085f61b16ec5b3073ec76ad1be4844ea036561c3f145fc19f71f084b58a6eb600b14128aa95809d057d28f1d147c910186ae51219f58366ffd2ff2e118
+"@types/lru-cache@npm:^7.10.10":
+  version: 7.10.10
+  resolution: "@types/lru-cache@npm:7.10.10"
+  dependencies:
+    lru-cache: "*"
+  checksum: bf0c9a99b3b954adfd1a63621aeea2c7f9412340ac43fad82f2b1ec257df09efa454e6cc7943518659e112b9d650de0e64c5252de9e449576eeb28449e068a1e
   languageName: node
   linkType: hard
 
@@ -12525,6 +12527,13 @@ __metadata:
     fault: ^1.0.0
     highlight.js: ~10.7.0
   checksum: 14a1815d6bae202ddee313fc60f06d46e5235c02fa483a77950b401d85b4c1e12290145ccd17a716b07f9328bd5864aa2d402b6a819ff3be7c833d9748ff8ba7
+  languageName: node
+  linkType: hard
+
+"lru-cache@npm:*, lru-cache@npm:^11.0.1":
+  version: 11.0.1
+  resolution: "lru-cache@npm:11.0.1"
+  checksum: 6056230a99fb399234e82368b99586bd4740079e80649102f681b19337b7d8c6bc8dd7f8b8c59377c31d26deb89f548b717ae932e139b4b795879d920fccf820
   languageName: node
   linkType: hard
 
