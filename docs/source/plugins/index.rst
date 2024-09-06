@@ -10,7 +10,7 @@ customizing the functionality of the tool to suit your specific needs.
 
 With plugins, you can add new functionality to the FiftyOne App, create
 integrations with other tools and APIs, render custom panels, and add custom
-buttons to menus. You can even schedule long running tasks from within the App
+actions to menus. You can even schedule long running tasks from within the App
 that execute on a connected workflow orchestration tool like Apache Airflow.
 
 Get started with plugins by installing some
@@ -40,6 +40,8 @@ these plugins available in the
     | `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_ | ✏️ Utilities for integrating FiftyOne with annotation tools                                                               |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           | 🧠 Utilities for working with the FiftyOne Brain                                                                          |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_   | 📊 Create your own custom dashboards from within the App                                                                  |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
     | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ | ✅ Utilities for evaluating models with FiftyOne                                                                          |
     +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -79,6 +81,13 @@ Need to compute embedding for your dataset? Kick off the task with the
 plugin and proceed with other work while the execution happens in the background:
 
 .. image:: /images/plugins/operators/examples/embeddings.gif
+
+Want to create a custom dashboard that displays statistics of interest about
+the current dataset? Just install the
+`@voxel51/dashboard <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/dashboard/README.md>`_
+plugin and build away:
+
+.. image:: /images/plugins/panels/dashboard-panel.gif
 
 .. note::
 

@@ -35,7 +35,7 @@ export default function SliderView(props) {
         valueLabelDisplay="auto"
         defaultValue={data}
         onChange={(e, value: string) => {
-          onChange(path, type === "number" ? parseFloat(value) : value);
+          onChange(path, type === "number" ? parseFloat(value) : value, schema);
           setUserChanged();
         }}
         ref={sliderRef}

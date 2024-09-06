@@ -11,29 +11,43 @@ import { ViewPropsType } from "../utils/types";
 export default function ArrowNavView(props: ViewPropsType) {
   const { schema } = props;
   const { view = {} } = schema;
-  const { on_backward, on_forward, position = "center" } = view;
+  const {
+    on_backward,
+    on_forward,
+    position = "center",
+    forward = true,
+    backward = true,
+  } = view;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
 
   return (
     <>
-      <Arrow
-        style={positionBasedStyleBackward[position]}
-        onClick={() => {
-          handleClick(panelId, { operator: on_backward });
-        }}
-      >
-        <LookerArrowLeftIcon />
-      </Arrow>
-      <Arrow
-        isRight
-        style={positionBasedStyleForward[position]}
-        onClick={() => {
-          handleClick(panelId, { operator: on_forward });
-        }}
-      >
-        <LookerArrowRightIcon />
-      </Arrow>
+      {backward && (
+        <Arrow
+          style={positionBasedStyleBackward[position]}
+          onClick={() => {
+            if (on_backward) {
+              handleClick(panelId, { operator: on_backward });
+            }
+          }}
+        >
+          <LookerArrowLeftIcon />
+        </Arrow>
+      )}
+      {forward && (
+        <Arrow
+          isRight
+          style={positionBasedStyleForward[position]}
+          onClick={() => {
+            if (on_forward) {
+              handleClick(panelId, { operator: on_forward });
+            }
+          }}
+        >
+          <LookerArrowRightIcon />
+        </Arrow>
+      )}
     </>
   );
 }

@@ -150,7 +150,7 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "clear_panel_state", params=self._create_panel_params(panel_id)
@@ -161,18 +161,19 @@ class Operations(object):
 
         Args:
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "clear_panel_data", params=self._create_panel_params(panel_id)
         )
 
     def set_panel_state(self, state, panel_id=None):
-        """Set the state of the specified panel in the App.
+        """Set the entire state of the specified panel in the App.
 
         Args:
+            state: the state to set
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "set_panel_state",
@@ -180,11 +181,12 @@ class Operations(object):
         )
 
     def set_panel_data(self, data, panel_id=None):
-        """Set the data of the specified panel in the App.
+        """Set the entire data of the specified panel in the App.
 
         Args:
+            data: the data to set
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "set_panel_data",
@@ -195,8 +197,9 @@ class Operations(object):
         """Patch the state of the specified panel in the App.
 
         Args:
+            state: the state to set
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "patch_panel_state",
@@ -207,8 +210,9 @@ class Operations(object):
         """Patch the state of the specified panel in the App.
 
         Args:
+            data: the data to set
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "patch_panel_data",
@@ -219,8 +223,9 @@ class Operations(object):
         """Reduce the state of the specified panel in the App.
 
         Args:
+            reducer: the reducer to apply
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         return self._ctx.trigger(
             "reduce_panel_state",
@@ -230,13 +235,25 @@ class Operations(object):
             },
         )
 
+    def apply_panel_state_path(self, path, panel_id=None):
+        """Force update the state for path in the specified panel in the App.
+
+        Args:
+
+            path (str): the path to force update
+        """
+        return self._ctx.trigger(
+            "apply_panel_state_path",
+            params={**self._create_panel_params(panel_id), "path": path},
+        )
+
     def show_panel_output(self, output, panel_id=None):
         """Show output in the specified panel in the App.
 
         Args:
             output: the output to show
             panel_id (None): the optional ID of the panel to clear.
-                If not provided, the ctx.current_panel.id will be used.
+                If not provided, the ``ctx.panel_id`` will be used
         """
         params = self._create_panel_params(panel_id)
         return self._ctx.trigger(
@@ -262,10 +279,11 @@ class Operations(object):
             is_active (True): whether to activate the panel immediately
             layout (None): the layout orientation
                 ``("horizontal", "vertical")``, if applicable
-            force (False): whether to force open the panel. Skips the check to see if a panel with
-                the same name exists or not. Note: this also skips allowDuplicates check
-            force_duplicate (False): whether to force open the panel even if it is already open.
-                Only applicable if force is ``True``
+            force (False): whether to force open the panel. Skips the check to
+                see if a panel with the same name exists or whether the panel
+                declares ``allow_multiple=False``
+            force_duplicate (False): whether to force open the panel even if it
+                is already open. Only applicable if force is ``True``
         """
         params = {
             "name": name,
@@ -283,8 +301,8 @@ class Operations(object):
         name,
         label,
         icon=None,
-        dark_icon=None,
         light_icon=None,
+        dark_icon=None,
         on_load=None,
         on_unload=None,
         on_change=None,
@@ -297,28 +315,46 @@ class Operations(object):
         on_change_extended_selection=None,
         allow_duplicates=False,
     ):
-        """Register a panel with the given name and lifecycle callbacks.
+        """Registers a panel with the given name and lifecycle callbacks.
 
         Args:
-            name: the name of the panel to register
-            icon (None): the icon to display in the panel tab
-            dark_icon (None): the icon to display in the panel tab in dark mode of app
-            light_icon (None): the icon to display in the panel tab in light mode of app
+            name: the name of the panel
+            label: the display name of the panel
+            icon (None): the icon to show in the panel's tab
+            light_icon (None): the icon to show in the panel's tab when the App
+                is in light mode
+            dark_icon (None): the icon to show in the panel's tab when the App
+                is in dark mode
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
-            on_change (None): an operator to invoke when the panel state changes
-            allow_duplicates (False): whether to allow multiple instances of the panel
+            on_change (None): an operator to invoke when the panel state
+                changes
+            on_change_ctx (None): an operator to invoke when the panel
+                execution context changes
+            on_change_view (None): an operator to invoke when the current view
+                changes
+            on_change_dataset (None): an operator to invoke when the current
+                dataset changes
+            on_change_current_sample (None): an operator to invoke when the
+                current sample changes
+            on_change_selected (None): an operator to invoke when the current
+                selected samples changes
+            on_change_selected_labels (None): an operator to invoke when the
+                current selected labels changes
+            on_change_extended_selection (None): an operator to invoke when the
+                current extended selection changes
+            allow_duplicates (False): whether to allow multiple instances of
+                the panel to the opened
         """
         params = {
             "panel_name": name,
             "panel_label": label,
             "icon": icon,
-            "dark_icon": dark_icon,
             "light_icon": light_icon,
+            "dark_icon": dark_icon,
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
-            "allow_duplicates": allow_duplicates,
             "on_change_ctx": on_change_ctx,
             "on_change_view": on_change_view,
             "on_change_dataset": on_change_dataset,
@@ -326,6 +362,7 @@ class Operations(object):
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,
             "on_change_extended_selection": on_change_extended_selection,
+            "allow_duplicates": allow_duplicates,
         }
         return self._ctx.trigger("register_panel", params=params)
 
@@ -334,11 +371,11 @@ class Operations(object):
         return self._ctx.trigger("open_all_panel")
 
     def close_panel(self, name=None, id=None):
-        """Close the panel with the given name in the App.
+        """Close the given panel in the App.
 
         Args:
-            name: the name of the panel to close
-            id: the id of the panel to close
+            name (None): the name of the panel to close
+            id (None): the ID of the panel to close
         """
         return self._ctx.trigger(
             "close_panel", params={"name": name, "id": id}
@@ -515,13 +552,13 @@ class Operations(object):
     def set_extended_selection(
         self, selection=None, scope=None, clear=False, reset=False
     ):
-        """Set the extended selection in the App.
+        """Sets the extended selection in the App.
 
         Args:
-            selection: the selection to set
-            scope: the scope of the selection
-            clear: whether to clear the selection
-            reset: whether to reset the selection
+            selection (None): the selection to set
+            scope (None): the scope of the selection
+            clear (None): whether to clear the selection
+            reset (None): whether to reset the selection
         """
         return self._ctx.trigger(
             "set_extended_selection",
@@ -534,11 +571,11 @@ class Operations(object):
         )
 
     def set_spaces(self, spaces=None, name=None):
-        """Set space in the App by name or :class:`fiftyone.core.odm.workspace.Space`.
+        """Sets the current spaces in the App.
 
         Args:
-            spaces: the spaces (:class:`fiftyone.core.odm.workspace.Space`) to load
-            name: the name of the workspace to load
+            spaces (None): a :class:`fiftyone.core.odm.workspace.Space` to load
+            name (None): the name of the workspace to load
         """
         params = {}
         if spaces is not None:
@@ -548,12 +585,16 @@ class Operations(object):
 
         return self._ctx.trigger("set_spaces", params=params)
 
-    def set_active_fields(self, fields=[]):
+    def set_active_fields(self, fields=None):
         """Set the active fields in the App.
 
         Args:
-            fields: the fields to set such as "ground_truth", "metadata.width", etc.
+            fields (None): the possibly-empty list of fields or
+                ``embedded.fields`` to set
         """
+        if fields is None:
+            fields = []
+
         return self._ctx.trigger(
             "set_active_fields", params={"fields": fields}
         )
@@ -573,8 +614,8 @@ class Operations(object):
         """Set the title of the specified panel in the App.
 
         Args:
-            id: the ID of the panel to set the title
-            title: the title to set
+            id (None): the ID of the panel to set the title
+            title (None): the title to set
         """
         return self._ctx.trigger(
             "set_panel_title", params={"id": id, "title": title}

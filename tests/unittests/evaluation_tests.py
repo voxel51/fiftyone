@@ -15,7 +15,7 @@ rather than a local directory by passing the extra ``--basedir`` argument::
         ClassName.method_name \
         --basedir $BASEDIR
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

@@ -1,8 +1,9 @@
 import styles from "./Grid.module.css";
 
+import { freeVideos } from "@fiftyone/looker";
+import type { ID } from "@fiftyone/spotlight";
+import Spotlight from "@fiftyone/spotlight";
 import type { Lookers } from "@fiftyone/state";
-
-import Spotlight, { type ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -16,6 +17,7 @@ import { v4 as uuid } from "uuid";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
+import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
 import useSelectSample from "./useSelectSample";
@@ -25,19 +27,22 @@ import useThreshold from "./useThreshold";
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
-  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const [resizing, setResizing] = useState(false);
-
   const spacing = useRecoilValue(gridSpacing);
 
+  const selectSample = useRef<ReturnType<typeof useSelectSample>>();
   const { pageReset, reset } = useRefreshers();
-  const { get, set } = useAt(pageReset);
+  const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
-  const { page, records, store } = useSpotlightPager({
-    pageSelector: pageParameters,
-    zoomSelector: gridCrop,
-  });
+  const records = useRecords(pageReset);
+  const { page, store } = useSpotlightPager(
+    {
+      pageSelector: pageParameters,
+      zoomSelector: gridCrop,
+    },
+    records
+  );
+  const { get, set } = useAt(pageReset);
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
@@ -70,7 +75,7 @@ function Grid() {
 
         const init = (l) => {
           l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current?.(records, detail);
+            selectSample.current?.(detail);
           });
           lookerStore.set(id, l);
           l.attach(element, dimensions);
@@ -96,7 +101,7 @@ function Grid() {
     store,
     threshold,
   ]);
-  selectSample.current = useSelectSample();
+  selectSample.current = useSelectSample(records);
   useSelect(lookerOptions, lookerStore, spotlight);
 
   useLayoutEffect(() => {
@@ -114,6 +119,7 @@ function Grid() {
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      freeVideos();
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
@@ -159,7 +165,7 @@ function Grid() {
 
   useEscape();
 
-  return <div id={id} className={styles.spotlightLooker} data-cy="fo-grid" />;
+  return <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />;
 }
 
 export default React.memo(Grid);

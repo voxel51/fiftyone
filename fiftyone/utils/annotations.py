@@ -191,13 +191,6 @@ def annotate(
     Returns:
         an :class:`AnnotationResults`
     """
-    # @todo support this?
-    if samples._dataset._is_frames:
-        raise ValueError("Annotating frames views is not supported")
-
-    # @todo support this?
-    if samples._dataset._is_clips:
-        raise ValueError("Annotating clips views is not supported")
 
     # Convert to equivalent regular view containing the same labels
     if samples._dataset._is_patches:
@@ -227,6 +220,12 @@ def annotate(
             % (anno_backend.config.name, samples.media_type)
         )
 
+    if samples._is_clips and not anno_backend.supports_clips_views:
+        raise ValueError(
+            "Backend '%s' does not support annotating clips views"
+            % anno_backend.config.name
+        )
+
     label_schema, samples = _build_label_schema(
         samples,
         anno_backend,
@@ -252,6 +251,8 @@ def annotate(
     results = anno_backend.upload_annotations(
         samples, anno_key, launch_editor=launch_editor
     )
+
+    results._finalize_id_map()
 
     anno_backend.save_run_results(samples, anno_key, results)
 
@@ -1038,6 +1039,8 @@ def load_annotations(
     results = dataset.load_annotation_results(anno_key, **kwargs)
     annotations = results.backend.download_annotations(results)
     label_schema = results.config.label_schema
+    is_clips_view = results._is_clips
+    is_frames_view = results._is_frames
 
     unexpected_annos = defaultdict(dict)
 
@@ -1061,6 +1064,9 @@ def load_annotations(
                 )
         elif dest_field is not None:
             label_field = dest_field.get(label_field, label_field)
+
+        if is_frames_view:
+            label_field, _ = dataset._handle_frame_field(label_field)
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
@@ -1095,7 +1101,11 @@ def load_annotations(
                     new_field = None
                 elif unexpected == "prompt":
                     new_field = _prompt_field(
-                        dataset, anno_type, label_field, label_schema
+                        dataset,
+                        anno_type,
+                        label_field,
+                        label_schema,
+                        is_frames_view,
                     )
                 elif unexpected == "return":
                     new_field = None
@@ -1144,7 +1154,15 @@ def load_annotations(
                         logger.info("Skipping labels of type '%s'", anno_type)
 
                     if unexpected == "return":
-                        unexpected_annos[label_field][anno_type] = annos
+                        if is_clips_view:
+                            _annos = results._to_sample_annos(annos)
+                            unexpected_annos[label_field][anno_type] = _annos
+                        elif is_frames_view:
+                            _label_field = dataset._FRAMES_PREFIX + label_field
+                            _annos = results._to_sample_annos(annos)
+                            unexpected_annos[_label_field][anno_type] = _annos
+                        else:
+                            unexpected_annos[label_field][anno_type] = annos
 
     results.backend.save_run_results(dataset, anno_key, results)
 
@@ -1192,7 +1210,12 @@ def _get_writeable_attributes(attributes):
     return [k for k, v in attributes.items() if not v.get("read_only", False)]
 
 
-def _prompt_field(dataset, label_type, label_field, label_schema):
+def _prompt_field(
+    dataset, label_type, label_field, label_schema, is_frames_view
+):
+    if label_field and is_frames_view:
+        label_field = dataset._FRAMES_PREFIX + label_field
+
     if label_field:
         new_field = input(
             "Found unexpected labels of type '%s' when loading annotations "
@@ -1213,7 +1236,7 @@ def _prompt_field(dataset, label_type, label_field, label_schema):
     if label_type != "scalar":
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
-    if label_field is not None:
+    if label_field:
         _, is_frame_field = dataset._handle_frame_field(label_field)
     else:
         _, is_frame_field = dataset._handle_frame_field(new_field)
@@ -1224,13 +1247,18 @@ def _prompt_field(dataset, label_type, label_field, label_schema):
         schema = dataset.get_field_schema()
 
     while True:
-        is_good_field = new_field not in label_schema
+        if is_frame_field and not dataset._is_frame_field(new_field):
+            new_field = dataset._FRAMES_PREFIX + new_field
+
+        if is_frames_view:
+            _new_field, _ = dataset._handle_frame_field(new_field)
+        else:
+            _new_field = new_field
+
+        is_good_field = _new_field not in label_schema
 
         if is_good_field:
             if is_frame_field:
-                if not dataset._is_frame_field(new_field):
-                    new_field = dataset._FRAMES_PREFIX + new_field
-
                 field, _ = dataset._handle_frame_field(new_field)
             else:
                 field = new_field
@@ -1273,6 +1301,9 @@ def _prompt_field(dataset, label_type, label_field, label_schema):
         if not new_field:
             break
 
+    if is_frames_view:
+        new_field, _ = dataset._handle_frame_field(new_field)
+
     return new_field
 
 
@@ -1285,12 +1316,27 @@ def _merge_scalars(
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
 
-    is_frame_field = dataset._is_frame_field(label_field)
-
-    # Retrieve a view that contains all samples involved in the annotation run
     id_map = results.id_map.get(label_field, {})
     uploaded_ids = set(k for k, v in id_map.items() if v is not None)
     sample_ids = list(uploaded_ids | set(anno_dict.keys()))
+
+    is_clips_view = results._is_clips
+    if is_clips_view:
+        _sample_ids_to_clip_ids = results._sample_ids_to_clip_ids()
+
+        # Map clip IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+
+    is_frames_view = results._is_frames
+    if is_frames_view:
+        _label_field = dataset._FRAMES_PREFIX + label_field
+
+        # Map frame IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+    else:
+        _label_field = label_field
+
+    is_frame_field = dataset._is_frame_field(_label_field)
 
     if dataset.media_type == fomm.GROUP:
         view = dataset.select_group_slices(_allow_mixed=True)
@@ -1300,20 +1346,32 @@ def _merge_scalars(
     view = dataset.select(sample_ids)
 
     if is_frame_field:
-        field, _ = view._handle_frame_field(label_field)
+        field, _ = view._handle_frame_field(_label_field)
         if view.has_frame_field(field):
-            view = view.select_fields(label_field)
+            view = view.select_fields(_label_field)
     else:
-        field = label_field
+        field = _label_field
         if view.has_sample_field(field):
-            view = view.select_fields(label_field)
+            view = view.select_fields(_label_field)
 
     num_additions = 0
     num_deletions = 0
 
-    logger.info("Loading scalars for field '%s'...", label_field)
+    logger.info("Loading scalars for field '%s'...", _label_field)
     for sample in view.iter_samples(progress=progress, autosave=True):
-        sample_annos = anno_dict.get(sample.id, None)
+        if is_clips_view:
+            _clip_ids = _sample_ids_to_clip_ids.get(sample.id, None)
+            if _clip_ids:
+                sample_annos = {}
+                for _clip_id, _annos in anno_dict.items():
+                    if _clip_id in _clip_ids:
+                        sample_annos.update(_annos)
+            else:
+                sample_annos = None
+        elif is_frames_view:
+            sample_annos = anno_dict
+        else:
+            sample_annos = anno_dict.get(sample.id, None)
 
         if is_frame_field:
             images = sample.frames.values()
@@ -1388,6 +1446,25 @@ def _merge_labels(
     allow_index_edits = label_info.get("allow_index_edits", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
+    sample_ids = list(anno_dict.keys())
+
+    is_clips_view = results._is_clips
+    if is_clips_view:
+        _sample_ids_to_clip_ids = results._sample_ids_to_clip_ids()
+        _frame_ids_to_clip_ids = {}  # will populate below
+
+        # Map clip IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+
+    is_frames_view = results._is_frames
+    if is_frames_view:
+        _label_field = dataset._FRAMES_PREFIX + label_field
+
+        # Map frame IDs to sample IDs
+        sample_ids = results._to_sample_ids(sample_ids)
+    else:
+        _label_field = label_field
+
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._HasLabelList):
         is_list = True
@@ -1395,11 +1472,15 @@ def _merge_labels(
     else:
         is_list = False
 
-    _ensure_label_field(dataset, label_field, fo_label_type)
+    _ensure_label_field(dataset, _label_field, fo_label_type)
 
-    is_frame_field = dataset._is_frame_field(label_field)
+    is_frame_field = dataset._is_frame_field(_label_field)
 
-    if is_frame_field and label_type in _TRACKABLE_TYPES:
+    if (
+        is_frame_field
+        and not is_frames_view
+        and label_type in _TRACKABLE_TYPES
+    ):
         if not existing_field:
             # Always include keyframe info when importing new video tracks
             only_keyframes = True
@@ -1408,7 +1489,7 @@ def _merge_labels(
 
     id_map = results.id_map.get(label_field, {})
 
-    if is_frame_field:
+    if is_frame_field and not is_frames_view:
         field, _ = dataset._handle_frame_field(label_field)
         added_id_map = defaultdict(lambda: defaultdict(list))
     else:
@@ -1418,7 +1499,11 @@ def _merge_labels(
     # Record existing label IDs
     existing_ids = set()
     for sample_id, sample_labels in id_map.items():
-        if is_frame_field:
+        if is_clips_view:
+            for frame_id in sample_labels.keys():
+                _frame_ids_to_clip_ids[frame_id] = sample_id
+
+        if is_frame_field and not is_frames_view:
             for frame_id, frame_labels in sample_labels.items():
                 for label_id in _to_list(frame_labels):
                     existing_ids.add((sample_id, frame_id, label_id))
@@ -1430,7 +1515,11 @@ def _merge_labels(
     anno_ids = set()
     anno_id_counts = defaultdict(int)
     for sample_id, sample_labels in anno_dict.items():
-        if is_frame_field:
+        if is_clips_view:
+            for frame_id in sample_labels.keys():
+                _frame_ids_to_clip_ids[frame_id] = sample_id
+
+        if is_frame_field and not is_frames_view:
             for frame_id, frame_labels in sample_labels.items():
                 for label_id in frame_labels.keys():
                     anno_ids.add((sample_id, frame_id, label_id))
@@ -1455,7 +1544,7 @@ def _merge_labels(
     #
     dup_ids = set(_id for _id, count in anno_id_counts.items() if count > 1)
     if dup_ids:
-        if is_frame_field:
+        if is_frame_field and not is_frames_view:
             for sample_id, frame_id, label_id in list(new_ids):
                 if label_id in dup_ids:
                     # Regenerate duplicate label ID
@@ -1478,12 +1567,12 @@ def _merge_labels(
                     new_ids.discard((sample_id, label_id))
                     new_ids.add((sample_id, new_label_id))
 
-    logger.info("Loading labels for field '%s'...", label_field)
+    logger.info("Loading labels for field '%s'...", _label_field)
 
     # Delete labels that were deleted in the annotation task
     if delete_ids and allow_deletions:
         _del_ids = [key[-1] for key in delete_ids]
-        dataset.delete_labels(ids=_del_ids, fields=label_field)
+        dataset.delete_labels(ids=_del_ids, fields=_label_field)
 
     if dataset.media_type == fomm.GROUP:
         view = dataset.select_group_slices(_allow_mixed=True)
@@ -1491,11 +1580,23 @@ def _merge_labels(
         view = dataset.view()
 
     # Add/merge labels from the annotation task
-    sample_ids = list(anno_dict.keys())
-    view = view.select(sample_ids).select_fields(label_field)
+    view = view.select(sample_ids).select_fields(_label_field)
     for sample in view.iter_samples(progress=progress, autosave=True):
         sample_id = sample.id
-        sample_annos = anno_dict[sample_id]
+
+        if is_clips_view:
+            _clip_ids = _sample_ids_to_clip_ids.get(sample_id, None)
+            if _clip_ids:
+                sample_annos = {}
+                for _clip_id, _annos in anno_dict.items():
+                    if _clip_id in _clip_ids:
+                        sample_annos.update(_annos)
+            else:
+                sample_annos = None
+        elif is_frames_view:
+            sample_annos = anno_dict
+        else:
+            sample_annos = anno_dict[sample_id]
 
         if is_frame_field:
             images = sample.frames.values()
@@ -1511,6 +1612,9 @@ def _merge_labels(
             else:
                 image_annos = sample_annos
 
+            if is_clips_view:
+                clip_id = _frame_ids_to_clip_ids.get(frame_id, None)
+
             image_label = image[field]
 
             if image_label is None and allow_additions:
@@ -1521,7 +1625,11 @@ def _merge_labels(
                         **{list_field: list(image_annos.values())}
                     )
 
-                    if is_frame_field:
+                    if is_clips_view:
+                        added_id_map[clip_id][frame_id].extend(label_ids)
+                    elif is_frames_view:
+                        added_id_map[frame_id].extend(label_ids)
+                    elif is_frame_field:
                         added_id_map[sample_id][frame_id].extend(label_ids)
                     else:
                         added_id_map[sample_id].extend(label_ids)
@@ -1529,7 +1637,11 @@ def _merge_labels(
                     label_id, anno_label = next(iter(image_annos.items()))
                     image[field] = anno_label
 
-                    if is_frame_field:
+                    if is_clips_view:
+                        added_id_map[clip_id][frame_id] = label_id
+                    elif is_frames_view:
+                        added_id_map[frame_id] = label_id
+                    elif is_frame_field:
                         added_id_map[sample_id][frame_id] = label_id
                     else:
                         added_id_map[sample_id] = label_id
@@ -1542,7 +1654,11 @@ def _merge_labels(
                 # Merge labels that existed before and after annotation
                 for label in labels:
                     label_id = label.id
-                    if is_frame_field:
+                    if is_clips_view:
+                        key = (clip_id, frame_id, label_id)
+                    elif is_frames_view:
+                        key = (frame_id, label_id)
+                    elif is_frame_field:
                         key = (sample_id, frame_id, label_id)
                     else:
                         key = (sample_id, label_id)
@@ -1564,7 +1680,11 @@ def _merge_labels(
                 # Add new labels to label list fields
                 if is_list and allow_additions:
                     for label_id, anno_label in image_annos.items():
-                        if is_frame_field:
+                        if is_clips_view:
+                            key = (clip_id, frame_id, label_id)
+                        elif is_frames_view:
+                            key = (frame_id, label_id)
+                        elif is_frame_field:
                             key = (sample_id, frame_id, label_id)
                         else:
                             key = (sample_id, label_id)
@@ -1573,8 +1693,11 @@ def _merge_labels(
                             continue
 
                         labels.append(anno_label)
-
-                        if is_frame_field:
+                        if is_clips_view:
+                            added_id_map[clip_id][frame_id].append(label_id)
+                        elif is_frames_view:
+                            added_id_map[frame_id].append(label_id)
+                        elif is_frame_field:
                             added_id_map[sample_id][frame_id].append(label_id)
                         else:
                             added_id_map[sample_id].append(label_id)
@@ -1584,7 +1707,7 @@ def _merge_labels(
             "Ignored %d added labels in field '%s' because "
             "`allow_additions=False`",
             len(new_ids),
-            label_field,
+            _label_field,
         )
 
     if delete_ids and not allow_deletions:
@@ -1592,7 +1715,7 @@ def _merge_labels(
             "Ignored %d deleted labels in field '%s' because "
             "`allow_deletions=False`",
             len(delete_ids),
-            label_field,
+            _label_field,
         )
 
     # Record newly added IDs so that re-imports of this run will be properly
@@ -1913,6 +2036,11 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
+    def supports_clips_views(self):
+        """Whether this backend supports annotating clips views."""
+        return False
+
+    @property
     def supports_keyframes(self):
         """Whether this backend supports uploading only keyframes when editing
         existing video track annotations.
@@ -2172,6 +2300,28 @@ class AnnotationResults(foa.AnnotationResults):
         """Deletes all information for this run from the annotation backend."""
         raise NotImplementedError("subclass must implement cleanup()")
 
+    @property
+    def _is_clips(self):
+        """Whether this annotation run was perfromed on a clips view."""
+        return "_clips" in self.id_map
+
+    @property
+    def _is_frames(self):
+        """Whether this annotation run was perfromed on a frames view."""
+        return "_frames" in self.id_map
+
+    def _finalize_id_map(self):
+        """Internal method that is (only) called prior to saving annotation
+        results for the first time.
+        """
+        if self.samples._is_clips:
+            id_map = dict(zip(*self.samples.values(["id", "sample_id"])))
+            self.id_map["_clips"] = id_map
+
+        if self.samples._is_frames:
+            id_map = dict(zip(*self.samples.values(["id", "sample_id"])))
+            self.id_map["_frames"] = id_map
+
     def _update_id_map(self, label_field, new_id_map):
         """Adds the given label IDs into this object's :attr:`id_map`.
 
@@ -2218,6 +2368,49 @@ class AnnotationResults(foa.AnnotationResults):
                 id_map[sample_id] = self._format_label_ids(
                     id_map.get(sample_id, None), label_ids
                 )
+
+    def _to_sample_ids(self, ids):
+        if self._is_clips:
+            id_map = self.id_map["_clips"]
+            sample_ids = set(id_map.get(id, None) for id in ids)
+            sample_ids.discard(None)
+            return list(sample_ids)
+
+        if self._is_frames:
+            id_map = self.id_map["_frames"]
+            sample_ids = set(id_map.get(id, None) for id in ids)
+            sample_ids.discard(None)
+            return list(sample_ids)
+
+        return ids
+
+    def _sample_ids_to_clip_ids(self):
+        id_map = defaultdict(set)
+        for _clip_id, _sample_id in self.id_map["_clips"].items():
+            id_map[_sample_id].add(_clip_id)
+
+        return id_map
+
+    def _to_sample_annos(self, annos):
+        if self._is_clips:
+            id_map = self.id_map["_clips"]
+            _annos = defaultdict(dict)
+            for clip_id, clip_annos in annos.items():
+                sample_id = id_map[clip_id]
+                _annos[sample_id].update(clip_annos)
+
+            return dict(_annos)
+
+        if self._is_frames:
+            id_map = self.id_map["_frames"]
+            _annos = defaultdict(dict)
+            for frame_id, label_ids in annos.items():
+                sample_id = id_map[frame_id]
+                _annos[sample_id][frame_id] = label_ids
+
+            return dict(_annos)
+
+        return annos
 
     def _format_label_ids(self, ids1, ids2):
         return _unwrap(_to_list(ids1) + _to_list(ids2))

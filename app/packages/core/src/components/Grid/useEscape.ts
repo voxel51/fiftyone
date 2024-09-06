@@ -10,7 +10,10 @@ const useEscape = () => {
     useRecoilCallback(
       ({ reset, snapshot }) =>
         async (event: KeyboardEvent) => {
-          if (event.key !== "Escape") {
+          const escapeKeyHandlerIds = await snapshot.getPromise(
+            fos.escapeKeyHandlerIdsAtom
+          );
+          if (event.key !== "Escape" || escapeKeyHandlerIds.size > 0) {
             return;
           }
 

@@ -118,6 +118,7 @@ from .core.metadata import (
     Metadata,
     ImageMetadata,
     VideoMetadata,
+    SceneMetadata,
 )
 from .core.models import (
     apply_model,
@@ -126,7 +127,10 @@ from .core.models import (
     load_model,
     Model,
     ModelConfig,
+    LogitsMixin,
     EmbeddingsMixin,
+    PromptMixin,
+    SamplesMixin,
     TorchModelMixin,
     ModelManagerConfig,
     ModelManager,

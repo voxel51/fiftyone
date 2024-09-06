@@ -63,6 +63,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  disableFrameFiltering: Boolean!
   mediaFallback: Boolean!
 }
 
@@ -247,14 +248,15 @@ type Dataset {
 
 type DatasetAppConfig {
   colorScheme: ColorScheme
+  disableFrameFiltering: Boolean
+  gridMediaField: String!
   mediaFields: [String!]
+  modalMediaField: String!
+  mediaFallback: Boolean!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode
   spaces: JSON
-  gridMediaField: String!
-  modalMediaField: String!
-  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {

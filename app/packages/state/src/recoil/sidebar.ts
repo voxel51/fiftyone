@@ -53,7 +53,12 @@ import {
   pathIsShown,
 } from "./schema";
 import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
-import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
+import {
+  datasetName,
+  disableFrameFiltering,
+  isVideoDataset,
+  stateSubscription,
+} from "./selectors";
 import { State } from "./types";
 import {
   fieldsMatcher,
@@ -209,7 +214,7 @@ export const resolveGroups = (
   }, {});
 
   groups = groups.map((group) => {
-    return expanded[group.name] !== undefined
+    return typeof expanded[group.name] === "boolean"
       ? { ...group, expanded: expanded[group.name] }
       : { ...group };
   });
@@ -311,51 +316,54 @@ const groupUpdater = (
   };
 };
 
-export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
+export const sidebarGroupsDefinition = (() => {
   let configGroups: State.SidebarGroup[] = [];
   let current: State.SidebarGroup[] = [];
-  return [
-    (sampleFields: StrictField[], frameFields: StrictField[]) => {
-      return resolveGroups(sampleFields, frameFields, current, configGroups);
-    },
-    graphQLSyncFragmentAtomFamily<
-      sidebarGroupsFragment$key,
-      State.SidebarGroup[],
-      boolean
-    >(
-      {
-        fragments: [datasetFragment, sidebarGroupsFragment],
-        keys: ["dataset"],
-        sync: (modal) => !modal,
-        read: (data, prev) => {
-          configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
-            ...group,
-            paths: [...group.paths],
-          }));
-          current = resolveGroups(
-            collapseFields(
-              readFragment(
-                sampleFieldsFragment,
-                data as sampleFieldsFragment$key
-              ).sampleFields
-            ),
-            collapseFields(
-              readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
-                .frameFields
-            ),
-            data.name === prev?.name ? current : [],
-            configGroups
-          );
+  return graphQLSyncFragmentAtomFamily<
+    sidebarGroupsFragment$key,
+    State.SidebarGroup[],
+    boolean
+  >(
+    {
+      fragments: [datasetFragment, sidebarGroupsFragment],
+      keys: ["dataset"],
+      sync: (modal) => !modal,
+      read: (data, prev) => {
+        configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
+          ...group,
+          paths: [...group.paths],
+        }));
+        current = resolveGroups(
+          collapseFields(
+            readFragment(sampleFieldsFragment, data as sampleFieldsFragment$key)
+              .sampleFields
+          ),
+          collapseFields(
+            readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
+              .frameFields
+          ),
+          data?.datasetId === prev?.datasetId ? current : [],
+          configGroups
+        );
 
-          return current;
-        },
-        default: [],
+        return current;
       },
-      {
-        key: "sidebarGroupsDefinition",
-      }
-    ),
-  ];
+      default: [],
+    },
+    {
+      effects: (modal) =>
+        modal
+          ? []
+          : [
+              ({ onSet }) => {
+                onSet((next) => {
+                  current = next;
+                });
+              },
+            ],
+      key: "sidebarGroupsDefinition",
+    }
+  );
 })();
 
 export const sidebarGroups = selectorFamily<
@@ -621,12 +629,49 @@ export const sidebarEntries = selectorFamily<
   },
 });
 
-export const disabledPaths = selector<Set<string>>({
-  key: "disabledPaths",
+/**
+ * Returns a set of paths that have their checkbox disabled in the sidebar
+ */
+export const disabledCheckboxPaths = selector<Set<string>>({
+  key: "disabledCheckboxPaths",
+  get: ({ get }) => {
+    return new Set(get(fullyDisabledPaths));
+  },
+});
+
+/**
+ * Returns a set of paths that have their filter dropdown disabled in the sidebar
+ */
+export const disabledFilterPaths = selector<Set<string>>({
+  key: "disabledFilterPaths",
+  get: ({ get }) =>
+    new Set([...get(fullyDisabledPaths), ...get(disabledFrameFilterPaths)]),
+});
+
+export const disabledFrameFilterPaths = selector<Set<string>>({
+  key: "disabledFrameFilterPaths",
+  get: ({ get }) => {
+    const paths = new Set<string>();
+    const disableFrames = Boolean(get(disableFrameFiltering));
+    const frameFields = get(atoms.frameFields);
+    if (disableFrames) {
+      frameFields.forEach((frame) => {
+        paths.add(`frames.${frame.path}`);
+      });
+    }
+    return new Set(paths);
+  },
+});
+
+/**
+ * Returns a set of paths that should have both their checkbox and filter
+ * dropdown disabled in the sidebar
+ */
+export const fullyDisabledPaths = selector({
+  key: "fullyDisabledPaths",
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
     const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
-
     sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
@@ -650,7 +695,6 @@ export const disabledPaths = selector<Set<string>>({
     });
 
     const frameFields = get(atoms.frameFields);
-
     fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
       (path) => paths.add(path)
     );
@@ -674,16 +718,32 @@ export const disabledPaths = selector<Set<string>>({
       ).forEach((path) => paths.add(path));
     });
 
-    return new Set(paths);
+    return paths;
   },
 });
 
-export const isDisabledPath = selectorFamily<boolean, string>({
-  key: "isDisabledPath",
+export const isDisabledCheckboxPath = selectorFamily<boolean, string>({
+  key: "isDisabledCheckboxPath",
   get:
     (path) =>
     ({ get }) =>
-      get(disabledPaths).has(path),
+      get(disabledCheckboxPaths).has(path),
+});
+
+export const isDisabledFrameFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFrameFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFrameFilterPaths).has(path),
+});
+
+export const isDisabledFilterPath = selectorFamily<boolean, string>({
+  key: "isDisabledFilterPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledFilterPaths).has(path),
 });
 
 const collapsedPaths = selector<Set<string>>({

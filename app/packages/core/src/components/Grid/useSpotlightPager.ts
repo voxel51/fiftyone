@@ -14,6 +14,7 @@ import {
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
+import type { Records } from "./useRecords";
 
 export const PAGE_SIZE = 20;
 
@@ -45,15 +46,18 @@ const processSamplePageData = (
   });
 };
 
-const useSpotlightPager = ({
-  pageSelector,
-  zoomSelector,
-}: {
-  pageSelector: RecoilValueReadOnly<
-    (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
-  >;
-  zoomSelector: RecoilValueReadOnly<boolean>;
-}) => {
+const useSpotlightPager = (
+  {
+    pageSelector,
+    zoomSelector,
+  }: {
+    pageSelector: RecoilValueReadOnly<
+      (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
+    >;
+    zoomSelector: RecoilValueReadOnly<boolean>;
+  },
+  records: Records
+) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
@@ -62,7 +66,8 @@ const useSpotlightPager = ({
     () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
     []
   );
-  const records = useRef(new Map<string, number>());
+
+  const keys = useRef(new Set<string>());
 
   const page = useRecoilCallback(
     ({ snapshot }) => {
@@ -89,8 +94,9 @@ const useSpotlightPager = ({
                 data,
                 schema,
                 zoom,
-                records.current
+                records
               );
+              for (const item of items) keys.current.add(item.id.description);
 
               resolve({
                 items,
@@ -110,16 +116,25 @@ const useSpotlightPager = ({
   );
 
   const refresher = useRecoilValue(fos.refresher);
+
   useEffect(() => {
     refresher;
-    const current = records.current;
-    return () => {
+    const clear = () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
-        for (const id of Array.from(current.keys())) {
+        for (const id of keys.current) {
           store.get(id)?.invalidateRecord();
         }
-        current.clear();
       });
+      keys.current.clear();
+    };
+
+    const unsubscribe = foq.subscribe(
+      ({ event }) => event === "fieldVisibility" && clear()
+    );
+
+    return () => {
+      clear();
+      unsubscribe();
     };
   }, [refresher]);
 

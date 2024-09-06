@@ -2,6 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import "@af-utils/scrollend-polyfill";
+
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
@@ -16,11 +18,11 @@ import {
   SCROLLBAR_WIDTH,
   TWO,
   ZERO,
-  ZOOMING_COEFFICIENT,
+  ZOOMING_COEFFICIENT
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import { Load, RowChange } from "./events";
-import { Section } from "./section";
+import Section from "./section";
 import { create } from "./utilities";
 
 export { Load, RowChange } from "./events";
@@ -92,9 +94,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const observer = new ResizeObserver(() => {
       this.#rect = this.#element.getBoundingClientRect();
-      requestAnimationFrame(() =>
-        this.#forward ? this.#render({}) : this.#fill()
-      );
+      this.attached &&
+        requestAnimationFrame(() =>
+          this.#forward ? this.#render({}) : this.#fill()
+        );
     });
     observer.observe(this.#element);
   }
@@ -174,7 +177,8 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    return await this.#forward.next(
+    let section = this.#forward;
+    return await section.next(
       forward,
       (runner) => {
         if (!render) {
@@ -182,23 +186,41 @@ export default class Spotlight<K, V> extends EventTarget {
           return;
         }
 
-        requestAnimationFrame(() => {
-          const { section } = runner();
-          const before = this.#containerHeight;
-          let offset: false | number = false;
-          if (section) {
-            const backward = this.#forward;
-            this.#forward = section;
-            this.#forward.attach(this.#element);
-            this.#backward.remove();
-            this.#backward = backward;
-            offset = before - this.#containerHeight + this.#config.spacing;
-          }
+        const run = () =>
+          requestAnimationFrame(() => {
+            if (
+              this.#element.scrollTop > this.#containerHeight ||
+              this.#scrollReader.zooming()
+            ) {
+              requestAnimationFrame(run);
+              return;
+            }
 
-          this.#render({ zooming: false, offset, go: false });
-        });
+            const { section } = runner();
+            const before = this.#containerHeight;
+            let offset: false | number = false;
+            if (section) {
+              const backward = this.#forward;
+              this.#forward = section;
+              this.#forward.attach(this.#element);
+              this.#backward.remove();
+              this.#backward = backward;
+              offset = before - this.#containerHeight + this.#config.spacing;
+            }
+
+            this.#render({ zooming: false, offset, go: false });
+          });
+
+        run();
       },
-      () => this.#backward
+      (apply) => {
+        const result =
+          section === this.#forward ? this.#backward : this.#forward;
+        if (apply) {
+          section = result;
+        }
+        return result;
+      }
     );
   }
 
@@ -223,7 +245,8 @@ export default class Spotlight<K, V> extends EventTarget {
       };
     };
 
-    return await this.#backward.next(
+    let section = this.#backward;
+    return await section.next(
       backward,
       (runner) => {
         if (!render) {
@@ -234,10 +257,8 @@ export default class Spotlight<K, V> extends EventTarget {
         const run = () =>
           requestAnimationFrame(() => {
             if (
-              this.#element.scrollTop > this.#containerHeight ||
               this.#element.scrollTop < ZERO ||
-              this.#scrollReader.zooming() ||
-              (this.#scrollReader.guard() && this.#element.scrollTop === ZERO)
+              this.#scrollReader.zooming()
             ) {
               requestAnimationFrame(run);
               return;
@@ -263,7 +284,14 @@ export default class Spotlight<K, V> extends EventTarget {
 
         run();
       },
-      () => this.#forward
+      (apply) => {
+        const result =
+          section === this.#forward ? this.#backward : this.#forward;
+        if (apply) {
+          section = result;
+        }
+        return result;
+      }
     );
   }
 
@@ -279,10 +307,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#next(false);
 
-    while (
-      this.#containerHeight < this.#height + this.#padding * TWO &&
-      !this.#forward.finished
-    ) {
+    while (this.#containerHeight < this.#height && !this.#forward.finished) {
       await this.#next(false);
     }
 

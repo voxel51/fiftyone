@@ -1,7 +1,9 @@
 import { FilterAndSelectionIndicator } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import AppsIcon from "@mui/icons-material/Apps";
+import React from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid/Grid";
@@ -28,7 +30,7 @@ registerComponent({
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
-  panelOptions: { TabIndicator },
+  panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
 });
 
 function TabIndicator() {

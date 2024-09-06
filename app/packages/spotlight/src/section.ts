@@ -24,18 +24,21 @@ import {
   LAST,
   ONE,
   SECTION_ROW_LIMIT,
+  SLOW_DOWN,
   TOP,
   ZERO,
 } from "./constants";
+import Iter from "./iter";
 import Row from "./row";
 import tile from "./tile";
 import { create } from "./utilities";
 
-type Renderer<K, V> = (
+export type Renderer<K, V> = (
   run: () => { section: Section<K, V>; offset: number }
 ) => void;
+export type Sibling<K, V> = (apply: boolean) => Section<K, V>;
 
-export class Section<K, V> {
+export default class Section<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #container = create(DIV);
   readonly #section = create(DIV);
@@ -73,6 +76,10 @@ export class Section<K, V> {
     this.#section.classList.add(styles.spotlightSection);
     this.#section.classList.add(direction);
     this.#section.append(...[create(DIV), this.#container, create(DIV)]);
+  }
+
+  get direction() {
+    return this.#direction;
   }
 
   get finished() {
@@ -223,7 +230,7 @@ export class Section<K, V> {
   async first(
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>
+    sibling: Sibling<K, V>
   ) {
     if (!this.#rows.length) {
       await this.next(request, renderer, sibling);
@@ -238,17 +245,64 @@ export class Section<K, V> {
       : this.#rows[ZERO].first;
   }
 
+  async iterNext(
+    id: ID,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: Sibling<K, V>
+  ) {
+    const next = this.#nextMap.get(id);
+    if (next) {
+      return next;
+    }
+
+    if (this.#direction === DIRECTION.FORWARD) {
+      await this.next(request, renderer, sibling);
+      if (this.#direction === DIRECTION.FORWARD) {
+        return this.#nextMap.get(id);
+      }
+    }
+
+    throw await sibling(false);
+  }
+
+  async iterPrevious(
+    id: ID,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: Sibling<K, V>
+  ) {
+    const previous = this.#previousMap.get(id);
+    if (previous) {
+      return previous;
+    }
+
+    if (this.#direction === DIRECTION.BACKWARD) {
+      await this.next(request, renderer, sibling);
+      if (this.#direction === DIRECTION.BACKWARD) {
+        return this.#previousMap.get(id);
+      }
+    }
+
+    throw await sibling(false);
+  }
+
   async next(
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>
+    sibling: Sibling<K, V>
   ) {
-    if (this.#end?.key === null && !this.#end.remainder?.length) {
-      return Boolean(this.#end?.key === null);
-    }
     const end = this.#end;
-    this.#end = undefined;
+    if (!end) {
+      // already requested, give up
+      throw SLOW_DOWN;
+    }
 
+    if (end?.key === null && !end.remainder?.length) {
+      return Boolean(end?.key === null);
+    }
+
+    this.#end = undefined;
     const data = await request(end.key);
 
     renderer(() => {
@@ -315,48 +369,6 @@ export class Section<K, V> {
     return row.from + row.height;
   }
 
-  async #next(
-    id: ID,
-    request: Request<K, V>,
-    renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>
-  ) {
-    const next = this.#nextMap.get(id);
-    if (next) {
-      return next;
-    }
-
-    if (this.#direction === DIRECTION.FORWARD) {
-      const result = await this.next(request, renderer, sibling);
-      if (result) return this.#nextMap.get(id);
-    } else {
-      return await sibling().first(request, renderer, sibling);
-    }
-
-    return undefined;
-  }
-  async #previous(
-    id: ID,
-    request: Request<K, V>,
-    renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>
-  ) {
-    const previous = this.#previousMap.get(id);
-    if (previous) {
-      return previous;
-    }
-
-    if (this.#direction === DIRECTION.BACKWARD) {
-      const result = await this.next(request, renderer, sibling);
-
-      if (result) return this.#previousMap.get(id);
-    } else {
-      return await sibling().first(request, renderer, sibling);
-    }
-
-    return undefined;
-  }
-
   #reverse() {
     this.#rows.reverse();
     const old = this.#direction;
@@ -384,7 +396,7 @@ export class Section<K, V> {
     focus: (id?: ID) => ID,
     request: Request<K, V>,
     renderer: Renderer<K, V>,
-    sibling: () => Section<K, V>,
+    sibling: Sibling<K, V>,
     finished: boolean
   ): { rows: Row<K, V>[]; remainder: ItemData<K, V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
@@ -400,12 +412,11 @@ export class Section<K, V> {
     const rows: Row<K, V>[] = [];
 
     const chain = (
-      first: ID,
+      first: ID | undefined,
       next: WeakMap<ID, ID>,
       previous: WeakMap<ID, ID>
     ) => {
       let last = first;
-
       return (id: ID) => {
         if (last) {
           previous.set(id, last);
@@ -440,27 +451,6 @@ export class Section<K, V> {
         rowItems.reverse();
       }
 
-      const next = async (from: number, soft?: boolean) => {
-        let answer = focus();
-        const iter =
-          from >= ZERO
-            ? (id) => this.#next(id, request, renderer, sibling)
-            : (id) => this.#previous(id, request, renderer, sibling);
-        let current = Math.abs(from);
-        while (current !== ZERO) {
-          const result = await iter(answer);
-          if (!result) {
-            answer = undefined;
-            break;
-          }
-          answer = result;
-          current--;
-        }
-
-        !soft && answer && focus(answer);
-        return answer;
-      };
-
       const row = new Row({
         config: this.#config,
         dangle:
@@ -469,7 +459,7 @@ export class Section<K, V> {
           index === breakpoints.length - ONE,
         focus,
         from: from + offset,
-        next,
+        iter: new Iter(focus, request, renderer, this, sibling),
         items: rowItems,
         width: this.#width,
       });

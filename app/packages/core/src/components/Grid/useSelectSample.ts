@@ -1,13 +1,12 @@
-import { ID } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
-
 import {
   selectedSampleObjects,
   selectedSamples,
   useSetSelected,
 } from "@fiftyone/state";
-import { MutableRefObject } from "react";
 import { useRecoilCallback } from "recoil";
+import type { Records } from "./useRecords";
 
 export interface SelectThumbnailData {
   shiftKey: boolean;
@@ -16,23 +15,19 @@ export interface SelectThumbnailData {
   symbol: ID;
 }
 
-type Records = MutableRefObject<Map<string, number>>;
-
-const argFact = (compareFn) => (array) =>
-  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
-
-const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
-
-const addRange = (index: number, items: string[], records: Records) => {
+export const addRange = (
+  index: number,
+  selected: Set<string>,
+  records: Records
+) => {
+  // filter selections without an index record
+  const items = [...selected].filter((i) => records.has(i));
   const reverse = Object.fromEntries(
-    Array.from(records.current.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k])
   );
+  const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
-  const min = argMin(
-    items.map((id) => Math.abs(records.current.get(id) - index))
-  );
-
-  const close = records.current.get(items[min]);
+  const close = get(records, items[min]);
 
   const [start, end] = index < close ? [index, close] : [close, index];
 
@@ -40,26 +35,42 @@ const addRange = (index: number, items: string[], records: Records) => {
     .fill(0)
     .map((_, i) => reverse[i + start]);
 
-  return new Set([...items, ...added]);
+  return new Set([...selected, ...added]);
 };
 
-const removeRange = (
+const argFact = (compareFn) => (array) =>
+  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
+
+const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
+
+const get = (records: Records, id: string) => {
+  const index = records.get(id);
+  if (index !== undefined) {
+    return index;
+  }
+
+  throw new Error(`record '${id}' not found`);
+};
+
+export const removeRange = (
   index: number,
   selected: Set<string>,
   records: Records
 ) => {
+  // filter selections without an index record
+  const items = new Set([...selected].filter((i) => records.has(i)));
   const reverse = Object.fromEntries(
-    Array.from(records.current.entries()).map(([k, v]) => [v, k])
+    Array.from(records.entries()).map(([k, v]) => [v, k])
   );
 
   let before = index;
-  while (selected.has(reverse[before])) {
+  while (items.has(reverse[before])) {
     before--;
   }
   before += 1;
 
   let after = index;
-  while (selected.has(reverse[after])) {
+  while (items.has(reverse[after])) {
     after++;
   }
   after -= 1;
@@ -73,31 +84,44 @@ const removeRange = (
       ? [before, index]
       : [index, after];
 
-  return new Set(
-    Array.from(selected).filter(
-      (s) => records.current.get(s) < start || records.current.get(s) > end
+  const next = new Set(
+    Array.from(items).filter(
+      (s) => get(records, s) < start || get(records, s) > end
     )
   );
+
+  for (const id of selected) {
+    if (records.has(id)) continue;
+    // not in index records so it was not removed, add it back
+    next.add(id);
+  }
+
+  return next;
 };
 
-export default () => {
+export default (records: Records) => {
   const setSelected = useSetSelected();
 
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (
-        records: Records,
-        { shiftKey, id: sampleId, sample, symbol }: SelectThumbnailData
-      ) => {
-        let selected = new Set(await snapshot.getPromise(selectedSamples));
+      async ({
+        shiftKey,
+        id: sampleId,
+        sample,
+        symbol,
+      }: SelectThumbnailData) => {
+        const current = new Set(await snapshot.getPromise(selectedSamples));
+        let selected = new Set(current);
         const selectedObjects = new Map(
           await snapshot.getPromise(selectedSampleObjects)
         );
 
-        const items = Array.from(selected);
-        const index = records.current.get(symbol.description);
+        const index = get(records, symbol.description);
         if (shiftKey && !selected.has(sampleId)) {
-          selected = addRange(index, items, records);
+          selected = new Set([
+            ...selected,
+            ...addRange(index, selected, records),
+          ]);
         } else if (shiftKey) {
           selected = removeRange(index, selected, records);
         } else {
@@ -116,6 +140,6 @@ export default () => {
         set(selectedSampleObjects, selectedObjects);
         setSelected(new Set(selected));
       },
-    [setSelected]
+    [records, setSelected]
   );
 };
