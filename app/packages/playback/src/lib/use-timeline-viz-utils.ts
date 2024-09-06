@@ -1,7 +1,7 @@
 import { useSetAtom } from "jotai";
 import React from "react";
-import { GLOBAL_TIMELINE_ID } from "./constants";
 import { setFrameNumberAtom, TimelineName } from "./state";
+import { useDefaultTimelineName } from "./use-default-timeline-name";
 import { useTimeline } from "./use-timeline";
 
 /**
@@ -12,10 +12,12 @@ import { useTimeline } from "./use-timeline";
  * @param name - The name of the timeline to access. Defaults to the global timeline
  * scoped to the current modal.
  */
-export const useTimelineVizUtils = (
-  name: TimelineName = GLOBAL_TIMELINE_ID
-) => {
-  const { config, frameNumber, pause } = useTimeline(name);
+export const useTimelineVizUtils = (name?: TimelineName) => {
+  const { getName } = useDefaultTimelineName();
+
+  const timelineName = React.useMemo(() => name ?? getName(), [name, getName]);
+
+  const { config, frameNumber, pause } = useTimeline(timelineName);
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
 
   const getSeekValue = React.useCallback(() => {
@@ -28,7 +30,7 @@ export const useTimelineVizUtils = (
   const seekTo = React.useCallback((newSeekValue: number) => {
     pause();
     const newFrameNumber = Math.ceil((newSeekValue / 100) * config.totalFrames);
-    setFrameNumber({ name, newFrameNumber });
+    setFrameNumber({ name: timelineName, newFrameNumber });
   }, []);
 
   return {

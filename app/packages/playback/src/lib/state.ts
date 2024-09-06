@@ -1,7 +1,9 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import { LRUCache } from "lru-cache";
 import { BufferManager, BufferRange } from "../../../utilities/src";
 import {
+  ATOM_FAMILY_CONFIGS_LRU_CACHE_SIZE,
   DEFAULT_FRAME_NUMBER,
   DEFAULT_LOOP,
   DEFAULT_SPEED,
@@ -146,14 +148,37 @@ const _playHeadStates = atomFamily((_timelineName: TimelineName) =>
   atom<PlayheadState>("paused")
 );
 
+// persist timline configs using LRU cache to prevent memory leaks
+export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
+  max: ATOM_FAMILY_CONFIGS_LRU_CACHE_SIZE,
+  dispose: (timelineName: string) => {
+    // remove param from all "families"
+    // make sure this is done for all atom families
+    _dataLoadedBuffers.remove(timelineName);
+    _frameNumbers.remove(timelineName);
+    _playHeadStates.remove(timelineName);
+    _subscribers.remove(timelineName);
+    _timelineConfigs.remove(timelineName);
+
+    getFrameNumberAtom.remove(timelineName);
+    getPlayheadStateAtom.remove(timelineName);
+    getTimelineConfigAtom.remove(timelineName);
+    getTimelineUpdateFreqAtom.remove(timelineName);
+  },
+});
+
 /**
  * MUTATORS
  */
 
 export const addTimelineAtom = atom(
   null,
-  (_get, set, timeline: CreateFoTimeline) => {
+  (get, set, timeline: CreateFoTimeline) => {
     const timelineName = timeline.name;
+
+    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+      return;
+    }
 
     const configWithImputedValues: Required<FoTimelineConfig> = {
       totalFrames: timeline.config.totalFrames,
@@ -188,6 +213,9 @@ export const addTimelineAtom = atom(
     set(_timelineConfigs(timelineName), configWithImputedValues);
     set(_dataLoadedBuffers(timelineName), new BufferManager());
     set(_playHeadStates(timelineName), "paused");
+
+    // 'true' is a placeholder value, since we're just using the cache for disposing
+    _INTERNAL_timelineConfigsLruCache.set(timelineName, timelineName);
   }
 );
 
@@ -309,7 +337,17 @@ export const updatePlayheadStateAtom = atom(
  */
 
 export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
-  atom((get) => get(_frameNumbers(_timelineName)))
+  atom((get) => {
+    // // update age of timeline config in cache by calling `.has`
+    // _timelineConfigsLruCache.has(_timelineName);
+    // console.log(
+    //   ">>>has",
+    //   _timelineName,
+    //   "in cache",
+    //   _timelineConfigsLruCache.has(_timelineName)
+    // );
+    return get(_frameNumbers(_timelineName));
+  })
 );
 
 export const getPlayheadStateAtom = atomFamily((_timelineName: TimelineName) =>
@@ -332,28 +370,6 @@ export const getTimelineUpdateFreqAtom = atomFamily(
 );
 
 /**
- * CLEANUP
- */
-
-export const cleanUpTimelineAtom = atom(
-  null,
-  (_get, _set, timelineName: TimelineName) => {
-    // remove param from all "families"
-    // make sure this is done for all atom families
-    _dataLoadedBuffers.remove(timelineName);
-    _frameNumbers.remove(timelineName);
-    _playHeadStates.remove(timelineName);
-    _subscribers.remove(timelineName);
-    _timelineConfigs.remove(timelineName);
-
-    getFrameNumberAtom.remove(timelineName);
-    getPlayheadStateAtom.remove(timelineName);
-    getTimelineConfigAtom.remove(timelineName);
-    getTimelineUpdateFreqAtom.remove(timelineName);
-  }
-);
-
-/**
  * UTILS
  */
 const getLoadRangeForFrameNumber = (
@@ -361,7 +377,7 @@ const getLoadRangeForFrameNumber = (
   totalFrames: number
 ) => {
   // frame number cannot be lower than 1
-  const min = Math.min(1, frameNumber - LOAD_RANGE_SIZE);
+  const min = Math.max(1, frameNumber - LOAD_RANGE_SIZE);
   // frame number cannot be higher than total frames
   const max = Math.min(totalFrames, frameNumber + LOAD_RANGE_SIZE);
   return [min, max] as const;

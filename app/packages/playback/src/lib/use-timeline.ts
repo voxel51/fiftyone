@@ -1,15 +1,17 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import React from "react";
-import { GLOBAL_TIMELINE_ID } from "../lib/constants";
+import { useCallback, useEffect, useMemo } from "react";
 import {
+  _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
   PlayheadState,
+  SequenceTimelineSubscription,
   TimelineName,
   updatePlayheadStateAtom,
 } from "../lib/state";
+import { useDefaultTimelineName } from "./use-default-timeline-name";
 
 /**
  * This hook provides access to the timeline with the given name.
@@ -20,25 +22,45 @@ import {
  * @param name - The name of the timeline to access. Defaults to the global timeline
  * scoped to the current modal.
  */
-export const useTimeline = (name: TimelineName = GLOBAL_TIMELINE_ID) => {
-  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
-    useAtomValue(getTimelineConfigAtom(name));
-  const playHeadState = useAtomValue(getPlayheadStateAtom(name));
-  const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
-  const frameNumber = useAtomValue(getFrameNumberAtom(name));
-  const subscribe = useSetAtom(addSubscriberAtom);
+export const useTimeline = (name?: TimelineName) => {
+  const { getName } = useDefaultTimelineName();
 
-  const setPlayHeadState = React.useCallback((newState: PlayheadState) => {
-    setPlayheadStateWrapper({ name, state: newState });
+  const timelineName = useMemo(() => name ?? getName(), [name, getName]);
+
+  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
+    useAtomValue(getTimelineConfigAtom(timelineName));
+  const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
+  const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
+  const frameNumber = useAtomValue(getFrameNumberAtom(timelineName));
+  const subscribeImpl = useSetAtom(addSubscriberAtom);
+
+  useEffect(() => {
+    // this is so that this timeline is brought to the front of the cache
+    _INTERNAL_timelineConfigsLruCache.get(timelineName);
   }, []);
 
-  const play = React.useCallback(() => {
-    dispatchEvent(new CustomEvent("play", { detail: { timelineName: name } }));
-  }, [name]);
+  const setPlayHeadState = useCallback((newState: PlayheadState) => {
+    setPlayheadStateWrapper({ name: timelineName, state: newState });
+  }, []);
 
-  const pause = React.useCallback(() => {
-    dispatchEvent(new CustomEvent("pause", { detail: { timelineName: name } }));
-  }, [name]);
+  const play = useCallback(() => {
+    dispatchEvent(
+      new CustomEvent("play", { detail: { timelineName: timelineName } })
+    );
+  }, [timelineName]);
+
+  const pause = useCallback(() => {
+    dispatchEvent(
+      new CustomEvent("pause", { detail: { timelineName: timelineName } })
+    );
+  }, [timelineName]);
+
+  const subscribe = useCallback(
+    (subscription: SequenceTimelineSubscription) => {
+      subscribeImpl({ name: timelineName, subscription });
+    },
+    [subscribeImpl, timelineName]
+  );
 
   return {
     config,

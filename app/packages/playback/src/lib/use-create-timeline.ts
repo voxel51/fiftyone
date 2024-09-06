@@ -1,19 +1,21 @@
 import { Optional, useEventHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
   addTimelineAtom,
-  cleanUpTimelineAtom,
   CreateFoTimeline,
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
   getTimelineUpdateFreqAtom,
+  SequenceTimelineSubscription,
   setFrameNumberAtom,
   updatePlayheadStateAtom,
 } from "../lib/state";
-import { DEFAULT_FRAME_NUMBER, GLOBAL_TIMELINE_ID } from "./constants";
+import { DEFAULT_FRAME_NUMBER } from "./constants";
+import { useDefaultTimelineName } from "./use-default-timeline-name";
 
 /**
  * This hook creates a new timeline with the given configuration.
@@ -28,8 +30,13 @@ import { DEFAULT_FRAME_NUMBER, GLOBAL_TIMELINE_ID } from "./constants";
 export const useCreateTimeline = (
   newTimelineConfig: Optional<CreateFoTimeline, "name">
 ) => {
+  const { getName } = useDefaultTimelineName();
   const { name: mayBeTimelineName } = newTimelineConfig;
-  const timelineName = mayBeTimelineName ?? GLOBAL_TIMELINE_ID;
+
+  const timelineName = useMemo(
+    () => mayBeTimelineName ?? getName(),
+    [mayBeTimelineName, getName]
+  );
 
   const [isTimelineInitialized, setIsTimelineInitialized] = useState(false);
 
@@ -40,7 +47,6 @@ export const useCreateTimeline = (
 
   const addSubscriber = useSetAtom(addSubscriberAtom);
   const addTimeline = useSetAtom(addTimelineAtom);
-  const disposeTimeline = useSetAtom(cleanUpTimelineAtom);
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
   const setPlayHeadState = useSetAtom(updatePlayheadStateAtom);
 
@@ -52,6 +58,9 @@ export const useCreateTimeline = (
 
     setIsTimelineInitialized(true);
 
+    // this is so that this timeline is brought to the front of the cache
+    _INTERNAL_timelineConfigsLruCache.get(timelineName);
+
     return () => {
       cancelAnimation();
     };
@@ -60,17 +69,6 @@ export const useCreateTimeline = (
     // that would require caller to memoize the passed config object.
     // using just the timelineName as a dependency is fine.
   }, [addTimeline, timelineName]);
-
-  /**
-   * this is a cleanup effect that disposes the timeline
-   * and runs when the component unmounts
-   */
-  useEffect(() => {
-    return () => {
-      cancelAnimation();
-      disposeTimeline(timelineName);
-    };
-  }, []);
 
   /**
    * this effect starts or stops the animation
@@ -249,5 +247,12 @@ export const useCreateTimeline = (
   useEventHandler(window, "play", onPlayEvent);
   useEventHandler(window, "pause", onPauseEvent);
 
-  return { isTimelineInitialized, subscribe: addSubscriber };
+  const subscribe = useCallback(
+    (subscription: SequenceTimelineSubscription) => {
+      addSubscriber({ name: timelineName, subscription });
+    },
+    [addSubscriber, timelineName]
+  );
+
+  return { isTimelineInitialized, subscribe };
 };
