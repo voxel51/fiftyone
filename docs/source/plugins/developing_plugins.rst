@@ -189,9 +189,9 @@ fiftyone.yml
 ------------
 
 All plugins must contain a `fiftyone.yml` or `fiftyone.yaml` file, which is
-used to define the plugin's metadata, declare any operators that it exposes,
-and declare any :ref:`secrets <plugins-secrets>` that it may require. The
-following fields are available:
+used to define the plugin's metadata, declare any operators and panels that it
+exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
+The following fields are available:
 
 -   `name` **(required)**: the name of the plugin
 -   `author`: the author of the plugin
