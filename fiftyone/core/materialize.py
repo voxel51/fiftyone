@@ -289,7 +289,7 @@ class MaterializedView(fov.DatasetView):
         if update:
             self._sync_source_schema(fields=fields)
 
-            if fields is None or sample_fields is not None:
+            if fields is None or sample_fields:
                 pipeline = []
 
                 if ids is not None:
@@ -319,9 +319,7 @@ class MaterializedView(fov.DatasetView):
 
                 self._materialized_dataset._aggregate(pipeline=pipeline)
 
-            if has_frame_fields and (
-                fields is None or frame_fields is not None
-            ):
+            if has_frame_fields and (fields is None or frame_fields):
                 pipeline = []
                 post_pipeline = []
 
