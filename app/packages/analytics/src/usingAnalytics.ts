@@ -6,13 +6,15 @@ export type AnalyticsInfo = {
   userGroup: string;
   doNotTrack?: boolean;
   debug: boolean;
+  eventRateLimit?: number; // Max events per session
+  debounceInterval?: number; // Min time (ms) between event logs
 };
 
 let _analytics: Analytics = null;
 
 export default function usingAnalytics(info: AnalyticsInfo): Analytics {
   if (!_analytics) {
-    _analytics = new Analytics();
+    _analytics = new Analytics(info);
   }
   if (info) {
     _analytics.load(info);
@@ -23,6 +25,20 @@ export default function usingAnalytics(info: AnalyticsInfo): Analytics {
 export class Analytics {
   private _segment?: AnalyticsBrowser;
   private _debug = false;
+  private _eventCount = 0; // Tracks number of events per session
+  private _lastEventTimestamps: Record<string, number> = {}; // Tracks last event times
+  private _rateLimit = 500; // Default max events per session
+  private _debounceInterval = 5000; // Default debounce interval in milliseconds (5 seconds)
+
+  constructor(info?: AnalyticsInfo) {
+    if (info?.eventRateLimit) {
+      this._rateLimit = info.eventRateLimit;
+    }
+    if (info?.debounceInterval) {
+      this._debounceInterval = info.debounceInterval;
+    }
+  }
+
   load(info: AnalyticsInfo) {
     if (this._segment) return;
     this._debug = info?.debug;
@@ -62,15 +78,35 @@ export class Analytics {
   }
 
   track(name: string, properties?: {}) {
+    if (this._eventCount >= this._rateLimit) {
+      if (this._debug) {
+        console.log("Event rate limit reached, not tracking:", name);
+      }
+      return;
+    }
+
+    const now = Date.now();
+    const lastTimestamp = this._lastEventTimestamps[name] || 0;
+
+    if (now - lastTimestamp < this._debounceInterval) {
+      if (this._debug) {
+        console.log("Debounced event:", name);
+      }
+      return;
+    }
+
+    this._lastEventTimestamps[name] = now;
+    this._eventCount += 1;
+
     if (this._debug) {
       console.log("track", name, properties);
     }
+
     if (!this._segment) return;
     this._segment.track(name, properties);
   }
 
   trackEvent(name: string, properties?: {}) {
-    if (!this._segment) return;
     this.track(name, properties);
   }
 
