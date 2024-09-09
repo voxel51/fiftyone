@@ -5,7 +5,7 @@ Built-In Zoo Datasets
 
 .. default-role:: code
 
-This page lists all of all natively available datasets in the FiftyOne Dataset
+This page lists all of the natively available datasets in the FiftyOne Dataset
 Zoo.
 
 Check out the :ref:`API reference <dataset-zoo-api>` for complete instructions
