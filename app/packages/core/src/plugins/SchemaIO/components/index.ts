@@ -48,3 +48,4 @@ export { default as TagsView } from "./TagsView";
 export { default as TextFieldView } from "./TextFieldView";
 export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";
+export { default as FrameLoaderView } from "./FrameLoaderView";
