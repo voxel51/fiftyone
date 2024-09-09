@@ -10,7 +10,7 @@ and loading them into FiftyOne.
 
 It provides native access to dozens of popular benchmark datasets, and it also
 supports downloading arbitrary public or private datasets whose
-download/preparation methods are provided via GitHub.
+download/preparation methods are provided via GitHub repositories or URLs.
 
 Built-in datasets
 -----------------
@@ -35,7 +35,7 @@ methods are provided via GitHub repositories or URLs.
 API reference
 -------------
 
-The Dataset Zoo can be accessed via Python library and the CLI. Consult the
+The Dataset Zoo can be accessed via the Python library and the CLI. Consult the
 API reference below to see how to download, load, and manage zoo datasets.
 
 .. custombutton::

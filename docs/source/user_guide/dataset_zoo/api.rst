@@ -11,9 +11,7 @@ You can interact with the Dataset Zoo either via the Python library or the CLI:
 
   .. group-tab:: Python
 
-    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo.datasets` package,
-    whose public methods are imported into the ``fiftyone.zoo`` namespace, for
-    convenience.
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
