@@ -48,7 +48,7 @@ const onSetDataset: RegisteredSetter =
         nextDataset: datasetName || null,
         extra: {
           groupId: null,
-          sampleId: null,
+          id: null,
           slice: null,
           workspace: null,
         },

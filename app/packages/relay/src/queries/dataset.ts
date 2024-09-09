@@ -19,6 +19,7 @@ export default graphql`
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
+      headName
       viewName
       savedViewSlug
       appConfig {

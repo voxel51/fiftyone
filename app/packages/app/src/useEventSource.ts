@@ -58,7 +58,7 @@ const useEventSource = (
           dataset: getDatasetName(),
           group_id: getParam("groupId"),
           group_slice: getParam("slice"),
-          sample_id: getParam("sampleId"),
+          sample_id: getParam("id"),
           view: getParam("view"),
           workspace: getParam("workspace"),
         },

@@ -6,14 +6,14 @@ export default () => {
   const zoom = useRecoilValue(gridZoom);
   return useCallback(
     (width: number) => {
-      let min = 7;
+      let min = 1;
 
       if (width >= 1200) {
-        min = 0;
+        min = -5;
       } else if (width >= 1000) {
-        min = 2;
+        min = -3;
       } else if (width >= 800) {
-        min = 4;
+        min = -1;
       }
 
       return 11 - Math.max(min, zoom);

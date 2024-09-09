@@ -5,6 +5,7 @@ Utilities for working with datasets in YOLO format.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import os
@@ -525,25 +526,25 @@ class YOLOv5DatasetImporter(
             )
 
         dataset_path = d.get("path", "")
-        data = fos.normpath(fos.join(dataset_path, d[self.split]))
+        split_info = d[self.split]
+        if isinstance(split_info, str):
+            split_info = [split_info]
+        data_paths = [
+            fos.normpath(fos.join(dataset_path, si)) for si in split_info
+        ]
         classes = _parse_yolo_classes(d.get("names", None))
 
-        if etau.is_str(data) and data.endswith(".txt"):
-            txt_path = _parse_yolo_v5_path(data, self.yaml_path)
-            image_paths = [
-                _parse_yolo_v5_path(fos.normpath(p), txt_path)
-                for p in _read_file_lines(txt_path)
-            ]
-        else:
-            if etau.is_str(data):
-                data_dirs = [data]
+        image_paths = []
+        for data_path in data_paths:
+            if etau.is_str(data_path) and data_path.endswith(".txt"):
+                txt_path = _parse_yolo_v5_path(data_path, self.yaml_path)
+                image_paths.extend(
+                    _parse_yolo_v5_path(fos.normpath(p), txt_path)
+                    for p in _read_file_lines(txt_path)
+                )
             else:
-                data_dirs = data
-
-            image_paths = []
-            for data_dir in data_dirs:
                 data_dir = fos.normpath(
-                    _parse_yolo_v5_path(data_dir, self.yaml_path)
+                    _parse_yolo_v5_path(data_path, self.yaml_path)
                 )
                 image_paths.extend(
                     fos.list_files(data_dir, abs_paths=True, recursive=True)

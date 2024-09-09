@@ -19,7 +19,7 @@ This page describes how to write your own FiftyOne plugins.
 Design overview
 _______________
 
-Plugins are composed of one or more Panels, Operators, and/or Components.
+Plugins are composed of one or more panels, operators, and components.
 
 Together these building blocks enable you to build full-featured interactive
 data applications that tailor FiftyOne to your specific use case and workflow.
@@ -35,13 +35,15 @@ and models.
 Plugin types
 ------------
 
-FiftyOne plugins can be written in JS or Python, or a combination of both.
+FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
+of both.
 
-JS Plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They can consist of Panels, Operators, and Components.
+Python plugins are built using the `fiftyone` package, pip packages, and your
+own Python. They can consist of panels and operators.
 
-Python Plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can currently only define Operators.
+JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
+and your own TypeScript. They can consist of panels, operators, and custom
+components.
 
 .. _plugins-design-panels:
 
@@ -49,7 +51,7 @@ Panels
 ------
 
 Panels are miniature full-featured data applications that you can open in
-:ref:`App Spaces <app-spaces>` and interactively manipulate to explore your
+:ref:`App spaces <app-spaces>` and interactively manipulate to explore your
 dataset and update/respond to updates from other spaces that are currently open
 in the App.
 
@@ -69,8 +71,8 @@ FiftyOne natively includes the following Panels:
 
 .. note::
 
-    Jump to :ref:`this section <developing-js-plugins>` for more information
-    about developing panels.
+    Jump to :ref:`this section <developing-panels>` for more information about
+    developing panels.
 
 .. _plugins-design-operators:
 
@@ -105,7 +107,7 @@ Components
 Components are responsible for rendering and event handling in plugins. They
 provide the necessary functionality to display and interact with your plugin in
 the FiftyOne App. Components also implement form inputs and output rendering
-for Operators, making it possible to customize the way an operator is rendered
+for operators, making it possible to customize the way an operator is rendered
 in the FiftyOne App.
 
 For example, FiftyOne comes with a wide variety of
@@ -187,9 +189,9 @@ fiftyone.yml
 ------------
 
 All plugins must contain a `fiftyone.yml` or `fiftyone.yaml` file, which is
-used to define the plugin's metadata, declare any operators that it exposes,
-and declare any :ref:`secrets <plugins-secrets>` that it may require. The
-following fields are available:
+used to define the plugin's metadata, declare any operators and panels that it
+exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
+The following fields are available:
 
 -   `name` **(required)**: the name of the plugin
 -   `author`: the author of the plugin
@@ -200,11 +202,38 @@ following fields are available:
 -   `fiftyone.version`: a semver version specifier (or `*`) describing the
     required FiftyOne version for the plugin to work properly
 -   `operators`: a list of operator names registered by the plugin
+-   `panels`: a list of panel names registred by the plugin
 -   `secrets`: a list of secret keys that may be used by the plugin
 
-Check out the
+For example, the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml>`_
-plugin's `fiftyone.yml` to see a practical example.
+plugin's `fiftyone.yml` looks like this:
+
+.. code-block:: yaml
+    :linenos:
+
+    name: "@voxel51/annotation"
+    description: Utilities for integrating FiftyOne with annotation tools
+    version: 1.0.0
+    fiftyone:
+      version: ">=0.22"
+    url: https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation
+    license: Apache 2.0
+    operators:
+      - request_annotations
+      - load_annotations
+      - get_annotation_info
+      - load_annotation_view
+      - rename_annotation_run
+      - delete_annotation_run
+    secrets:
+      - FIFTYONE_CVAT_URL
+      - FIFTYONE_CVAT_USERNAME
+      - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_LABELBOX_URL
+      - FIFTYONE_LABELBOX_API_KEY
+      - FIFTYONE_LABELSTUDIO_URL
+      - FIFTYONE_LABELSTUDIO_API_KEY
 
 .. note::
 
@@ -217,7 +246,7 @@ Python plugins
 Python plugins should define the following files:
 
 -   `__init__.py` **(required)**: entrypoint that defines the Python operators
-    that the plugin defines
+    and panels that the plugin defines
 -   `requirements.txt`: specifies the Python package requirements to run the
     plugin
 
@@ -274,8 +303,8 @@ Any users with access to the plugin's hosted location can easily
 Quick examples
 ______________
 
-This section contains a few quick examples of plugins and operators before we
-dive into the full details of the plugin system.
+This section contains a few quick examples of plugins before we dive into the
+full details of the plugin system.
 
 .. note::
 
@@ -499,8 +528,72 @@ current dataset.
 
 .. note::
 
-    Remember that you must also include `simple_input` (the operator's name) in
-    the plugin's `fiftyone.yml`.
+    Remember that you must also include the operator's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        operators:
+          - simple_input_example
+
+.. _example-python-panel:
+
+Example Python panel
+--------------------
+
+Here's a simple :ref:`Python panel <developing-panels>` that renders a button
+that shows a "Hello world!" notification when clicked:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HelloWorldPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="hello_world_panel",
+                label="Hello World Panel"
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.hello_message = "Hello world!"
+
+        def say_hello(self, ctx):
+            ctx.ops.notify(ctx.panel.state.hello_message)
+
+        def render(self, ctx):
+            panel = types.Object()
+            panel.btn(
+                "hello_btn",
+                label="Say Hello",
+                icon="emoji_people",
+                on_click=self.say_hello,
+                variant="contained",
+            )
+
+            panel_view = types.GridView(
+                width=100, height=100, align_x="center", align_y="center"
+            )
+            return types.Property(panel, view=panel_view)
+
+    def register(p):
+        p.register(HelloWorldPanel)
+
+.. note::
+
+    Remember that you must also include the panel's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        panels:
+          - hello_world_panel
+
+.. image:: /images/plugins/panels/hello-world-panel-inline.gif
+    :align: center
 
 .. _example-js-operator:
 
@@ -627,6 +720,8 @@ subsequent sections.
                 on_dataset_open=True/False,  # default False
 
                 # Custom icons to use
+                # Can be a URL, a local path in the plugin directory, or the
+                # name of a MUI icon: https://marella.me/material-icons/demo
                 icon="/assets/icon.svg",
                 light_icon="/assets/icon-light.svg",  # light theme only
                 dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -770,8 +865,13 @@ subsequent sections.
 
 .. note::
 
-    Remember that you must also include `example_operator` (the operator's name)
-    in the plugin's :ref:`fiftyone.yml <plugin-fiftyone-yml>`.
+    Remember that you must also include the operator's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        operators:
+          - example_operator
 
 .. _operator-config:
 
@@ -818,6 +918,8 @@ execution:
             on_dataset_open=True/False,  # default False
 
             # Custom icons to use
+            # Can be a URL, a local path in the plugin directory, or the
+            # name of a MUI icon: https://marella.me/material-icons/demo
             icon="/assets/icon.svg",
             light_icon="/assets/icon-light.svg",  # light theme only
             dark_icon="/assets/icon-dark.svg",  # dark theme only
@@ -836,8 +938,9 @@ Execution context
 
 An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
 passed to each of the operator's methods at runtime. This `ctx` contains static
-information about the current state of the App (dataset, view, selection, etc)
-as well as dynamic information about the current parameters and results.
+information about the current state of the App (dataset, view, panel,
+selection, etc) as well as dynamic information about the current parameters and
+results.
 
 An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
 contains the following properties:
@@ -851,6 +954,13 @@ contains the following properties:
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
+-   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.user_id` - the ID of the user that invoked the operator, if known
+-   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
+-   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
+    instance that you can use to read and write the :ref:`state <panel-state>`
+    and :ref:`data <panel-data>` of the current panel, if the operator was
+    invoked from a panel
 -   `ctx.delegated` - whether delegated execution has been forced for the
     operation
 -   `ctx.requesting_delegated_execution` - whether delegated execution has been
@@ -1344,7 +1454,7 @@ involve updating the current state of the App:
         ctx.ops.close_panel("Embeddings")
 
 The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
-property is a lower-level funtion that allows you to invoke arbitrary
+property is a lower-level function that allows you to invoke arbitrary
 operations by providing their URI and parameters, including all builtin
 operations as well as any operations installed via custom plugins. For example,
 here's how to trigger the same App-related operations from above:
@@ -1413,7 +1523,7 @@ operator to render a progress bar tracking the progress of an operation:
     Check out the
     `VoxelGPT plugin <https://github.com/voxel51/voxelgpt/blob/dfe23093485081fb889dbe18685587f4358a4438/__init__.py#L133>`_
     for a more sophisticated example of using generator execution to stream an
-    LLM's response to a Panel.
+    LLM's response to a panel.
 
 .. _operator-secrets:
 
@@ -1454,7 +1564,7 @@ plugin, you would set:
 
 At runtime, the plugin's :ref:`execution context <operator-execution-context>`
 is automatically hydrated with any available secrets that are declared by the
-plugin. Operators access these secrets via the `ctx.secrets` dict:
+plugin. Operators can access these secrets via the `ctx.secrets` dict:
 
 .. code-block:: python
    :linenos:
@@ -1626,6 +1736,1253 @@ method as demonstrated below:
 
         registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME);
 
+.. _developing-panels:
+
+Developing panels
+_________________
+
+Panels are miniature full-featured data applications that you can open in
+:ref:`App spaces <app-spaces>` and interactively manipulate to explore your
+dataset and update/respond to updates from other spaces that are currently open
+in the App.
+
+Panels can be defined in either Python or JS, and FiftyOne comes with a
+number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
+
+Panels, like :ref:`operators <developing-operators>`, can make use of the
+:mod:`fiftyone.operators.types` module and the
+:js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
+rich builtin type system that panel developers can use to implement the layout
+and associated events that define the panel.
+
+Panels can trigger both Python and JS operators, either programmatically or
+by interactively launching a prompt that users can fill out to provide the
+necessary parameters for the operator's execution. This powerful composability
+allows panels to define interactive workflows that guide the user through
+executing workflows on their data and then interactively exploring and
+analyzing the results of the computation.
+
+Panels can also interact with other components of the App, such as responding
+to changes in (or programmatically updating) the current dataset, view, current
+selection, or active sample in the modal.
+
+.. _panel-interface:
+
+Panel interface
+---------------
+
+The code block below describes the Python interface for defining panels.
+We'll dive into each component of the interface in more detail in the
+subsequent sections.
+
+.. note::
+
+    See :ref:`this section <developing-js-plugins>` for more information on
+    developing panels in JS.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ExamplePanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                # The panel's URI: f"{plugin_name}/{name}"
+                name="example_panel",  # required
+
+                # The display name of the panel in the "+" menu
+                label="Example panel",  # required
+
+                # Custom icons to use in the "+"" menu
+                # Can be a URL, a local path in the plugin directory, or the
+                # name of a MUI icon: https://marella.me/material-icons/demo
+                icon="/assets/icon.svg",
+                light_icon="developer_mode",  # light theme only
+                dark_icon="developer_mode",  # dark theme only
+
+                # Whether to allow multiple instances of the panel to be opened
+                allow_multiple=False,
+            )
+
+        def render(self, ctx):
+            """Implement this method to define your panel's layout and events.
+
+            This method is called after every panel event is executed (panel
+            load, button callback, context change event, etc).
+
+            Returns:
+                a `types.Property` defining the panel's components
+            """
+            panel = types.Object()
+
+            brain_keys = ctx.panel.get_state("brain_keys", [])
+
+            # Define a menu of actions for the panel
+            menu = panel.menu("menu", variant="square", color="51")
+            menu.enum(
+                "brain_key",
+                label="Choose a brain key",  # placeholder text
+                values=brain_keys,
+                on_change=self.on_change_brain_key,  # custom event callback
+            )
+            menu.btn(
+                "learn_more",
+                label="Learn more",  # tooltip text
+                icon="help",  # material UI icon
+                on_click=self.on_click_learn_more,  # custom event callback
+            )
+
+            # Define components that appear in the panel's main body
+            panel.str("event", label="The last event", view=types.LabelValueView())
+            panel.obj("event_data", label="The last event data", view=types.JSONView())
+
+            # Display a checkbox to toggle between plot and compute visualization button
+            show_compute_visualization_btn = ctx.panel.get_state("show_start_button", True)
+            panel.bool(
+                "show_start_button",
+                label="Show compute visualization button",
+                on_change=self.on_change_show_start_button,
+            )
+
+            # You can use conditional logic to dynamically change the layout
+            # based on the current panel state
+            if show_compute_visualization_btn:
+                # Define a button with a custom on click event
+                panel.btn(
+                    "start",
+                    label="Compute visualization",  # button text
+                    on_click=self.on_click_start,  # custom event callback
+                    variant="contained",  # button style
+                )
+            else:
+                # Define an interactive plot with custom callbacks
+                panel.plot(
+                    "embeddings",
+                    config={},  # plotly config
+                    layout={},  # plotly layout config
+                    on_selected=self.on_selected_embeddings,  # custom event callback
+                    height="400px",
+                )
+
+            return types.Property(panel, view=types.GridView(orientation="vertical"))
+
+        #######################################################################
+        # Builtin events
+        #######################################################################
+
+        def on_load(self, ctx):
+            """Implement this method to set panel state/data when the panel
+            initially loads.
+            """
+            event = {
+                "data": None,
+                "description": "the panel is loaded",
+            }
+            ctx.panel.set_state("event", "on_load")
+            ctx.panel.set_data("event_data", event)
+
+            # Get the list of brain keys to populate `brain_key` dropdown
+            visualization_keys = ctx.dataset.list_brain_runs("visualization")
+            ctx.panel.set_state("brain_keys", visualization_keys)
+
+            # Show compute visualization button by default
+            ctx.panel.set_state("show_start_button", True)
+
+        def on_unload(self, ctx):
+            """Implement this method to set panel state/data when the panel is
+            being closed.
+            """
+            event = {
+                "data": None,
+                "description": "the panel is unloaded",
+            }
+            ctx.panel.set_state("event", "on_unload")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_ctx(self, ctx):
+            """Implement this method to set panel state/data when any aspect
+            of the execution context (view, selected samples, filters, etc.) changes.
+
+            The current execution context will be available via ``ctx``.
+            """
+            event = {
+                "data": {
+                    "view": ctx.view._serialize(),
+                    "selected": ctx.selected,
+                    "has_custom_view": ctx.has_custom_view,
+                },
+                "description": "the current ExecutionContext",
+            }
+            ctx.panel.set_state("event", "on_change_ctx")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_dataset(self, ctx):
+            """Implement this method to set panel state/data when the current
+            dataset is changed.
+
+            The new dataset will be available via ``ctx.dataset``.
+            """
+            event = {
+                "data": ctx.dataset.name,
+                "description": "the current dataset name",
+            }
+            ctx.panel.set_state("event", "on_change_dataset")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_view(self, ctx):
+            """Implement this method to set panel state/data when the current
+            view is changed.
+
+            The new view will be available via ``ctx.view``.
+            """
+            event = {
+                "data": ctx.view._serialize(),
+                "description": "the current view",
+            }
+            ctx.panel.set_state("event", "on_change_view")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_current_sample(self, ctx):
+            """Implement this method to set panel state/data when a new sample
+            is loaded in the Sample modal.
+
+            The ID of the new sample will be available via
+            ``ctx.current_sample``.
+            """
+            event = {
+                "data": ctx.current_sample,
+                "description": "the current sample",
+            }
+            ctx.panel.set_state("event", "on_change_current_sample")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_selected(self, ctx):
+            """Implement this method to set panel state/data when the current
+            selection changes (eg in the Samples panel).
+
+            The IDs of the current selected samples will be available via
+            ``ctx.selected``.
+            """
+            event = {
+                "data": ctx.selected,
+                "description": "the current selection",
+            }
+            ctx.panel.set_state("event", "on_change_selected")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_selected_labels(self, ctx):
+            """Implement this method to set panel state/data when the current
+            selected labels change (eg in the Sample modal).
+
+            Information about the current selected labels will be available
+            via ``ctx.selected_labels``.
+            """
+            event = {
+                "data": ctx.selected_labels,
+                "description": "the current selected labels",
+            }
+            ctx.panel.set_state("event", "on_change_selected_labels")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_extended_selection(self, ctx):
+            """Implement this method to set panel state/data when the current
+            extended selection changes.
+
+            The IDs of the current extended selection will be available via
+            ``ctx.extended_selection``.
+            """
+            event = {
+                "data": ctx.extended_selection,
+                "description": "the current extended selection",
+            }
+            ctx.panel.set_state("event", "on_change_extended_selection")
+            ctx.panel.set_data("event_data", event)
+
+        #######################################################################
+        # Custom events
+        # These events are defined by user code above and, just like builtin
+        # events, take `ctx` as input and are followed by a call to render()
+        #######################################################################
+
+        def on_change_brain_key(self, ctx):
+            # Load expensive content based on current `brain_key`
+            brain_key = ctx.panel.get_state("menu.brain_key")
+            results = ctx.dataset.load_brain_results(brain_key)
+
+            # Format results for plotly
+            x, y = zip(*results.points.tolist())
+            plot_data = [{"x": x, "y": y, "type": "scatter", "mode": "markers"}]
+
+            # Store large content as panel data for efficiency
+            ctx.panel.set_data("embeddings", plot_data)
+
+            # Show plot with embeddings data instead of the compute visualization button
+            ctx.panel.set_state("show_start_button", False)
+
+        def on_click_start(self, ctx):
+            # Launch an interactive prompt for user to execute an operator
+            ctx.prompt("@voxel51/brain/compute_visualization")
+
+            # Lightweight state update
+            ctx.panel.set_state("show_start_button", False)
+
+        def on_click_learn_more(self, ctx):
+            # Trigger a builtin operation via `ctx.ops`
+            url = "https://docs.voxel51.com/plugins/developing_plugins.html"
+            ctx.ops.notify(f"Check out {url} for more information")
+
+        def on_selected_embeddings(self, ctx):
+            # Retrieve data from plot
+            selected_points = ctx.panel.state.embeddings.get("data", [])
+            selected_sample_ids = [d.get("id", None) for d in selected_points]
+
+            # Conditionally trigger a builtin operation via `ctx.ops`
+            if len(selected_sample_ids) > 0:
+                ctx.ops.set_extended_selection(selected_sample_ids)
+
+        def on_change_show_start_button(self, ctx):
+            # Get current state of the checkbox on change
+            current_state = ctx.params.get("value", None)
+
+    def register(p):
+        """Always implement this method and register() each panel that your
+        plugin defines.
+        """
+        p.register(ExamplePanel)
+
+.. image:: /images/plugins/panels/example-panel-inline.gif
+    :align: center
+
+.. note::
+
+    Remember that you must also include the panel's name in the plugin's
+    :ref:`fiftyone.yml <plugin-fiftyone-yml>`:
+
+    .. code-block:: yaml
+
+        panels:
+          - example_panel
+
+.. _panel-config:
+
+Panel config
+------------
+
+Every panel must define a
+:meth:`config <fiftyone.operators.panel.Panel.config>` property that
+defines its name, display name, and other optional metadata about its
+behavior:
+
+.. code-block:: python
+    :linenos:
+
+    @property
+    def config(self):
+        return foo.PanelConfig(
+            # The panel's URI: f"{plugin_name}/{name}"
+            name="example_panel",  # required
+
+            # The display name of the panel in the "+" menu
+            label="Example panel",  # required
+
+            # Custom icons to use in the "+"" menu
+            # Can be a URL, a local path in the plugin directory, or the
+            # name of a MUI icon: https://marella.me/material-icons/demo
+            icon="/assets/icon.svg",
+            light_icon="/assets/icon-light.svg",  # light theme only
+            dark_icon="/assets/icon-dark.svg",  # dark theme only
+
+            # Whether to allow multiple instances of the panel to be opened
+            allow_multiple=False,
+        )
+
+.. _panel-execution-context:
+
+Execution context
+-----------------
+
+An :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` is
+passed to each of the panel's methods at runtime. This `ctx` contains static
+information about the current state of the App (dataset, view, panel,
+selection, etc) as well as dynamic information about the panel's current
+state and data.
+
+See :ref:`this section <operator-execution-context>` for a full description
+of the execution context.
+
+.. _panel-state-and-data:
+
+Panel state and data
+--------------------
+
+Panels provide two mechanisms for persisting information:
+:ref:`panel state <panel-state>` and :ref:`panel data <panel-data>`.
+
+.. _panel-basic-structure:
+
+Basic structure
+~~~~~~~~~~~~~~~
+
+Panel state can be accessed and updated via `ctx.panel.state`, and panel data
+can be updated (but not accessed) via `ctx.panel.data`.
+
+Under the hood, panel state and data is merged into a single nested object that
+maps 1-1 to the structure and naming of the properties defined by the panel's
+:meth:`render() <fiftyone.operators.panel.Panel.render>` method.
+
+The example code below shows how to access and update panel state.
+
+.. note::
+
+    Since panel state and panel data are merged into a single object, it is
+    important to avoid naming conflicts between state and data keys. If a key
+    is present in both panel state and data, the value in *panel data* will be
+    used.
+
+.. code-block:: python
+    :linenos:
+
+    class CounterPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="counter_panel", label="Counter Panel", icon="123"
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.v_stack = {"h_stack": {"count": 3}}
+
+        def increment(self, ctx):
+            count = ctx.panel.state.get("v_stack.h_stack.count", 0)
+            ctx.panel.state.set("v_stack.h_stack.count", count + 1)
+
+        def decrement(self, ctx):
+            count = ctx.panel.get_state("v_stack.h_stack.count", 0)
+            ctx.panel.set_state("v_stack.h_stack.count", count + 1)
+
+        def render(self, ctx):
+            panel = types.Object()
+
+            # Define a vertical stack object with the name 'v_stack'
+            # key: 'v_stack'
+            v_stack = panel.v_stack("v_stack", align_x="center", gap=2)
+
+            # Define a horizontal stack object with the name 'h_stack' on 'v_stack'
+            # key: 'v_stack.h_stack'
+            h_stack = v_stack.h_stack("h_stack", align_y="center")
+
+            # Get state
+            v_stack_state = ctx.panel.state.v_stack
+            h_stack_state = v_stack_state["h_stack"] if v_stack_state is not None else None
+            count = h_stack_state["count"] if h_stack_state is not None else 0
+
+            # Add a message to the horizontal stack object with the name 'count'
+            # key: 'v_stack.h_stack.count'
+            h_stack.message("count", f"Count: {count}")
+
+            # Add a button to the horizontal stack object with the name 'increment'
+            # key: 'v_stack.h_stack.increment'
+            h_stack.btn(
+                "increment",
+                label="Increment",
+                icon="add",
+                on_click=self.increment,
+                variant="contained",
+            )
+
+            # Add a button to the horizontal stack object with the name 'decrement'
+            # key: 'v_stack.h_stack.count'
+            h_stack.btn(
+                "decrement",
+                label="Decrement",
+                icon="remove",
+                on_click=self.decrement,
+                variant="contained",
+            )
+
+            return types.Property(panel)
+
+.. image:: /images/plugins/panels/counter-panel-inline.gif
+    :align: center
+
+.. _panel-state:
+
+Panel state
+~~~~~~~~~~~
+
+Panel state is included in every
+:meth:`render() <fiftyone.operators.panel.Panel.render>` call and event
+callback and is analogous to :ref:`operator parameters <operator-inputs>`:
+
+-   The values of any components defined in a panel's
+    :meth:`render() <fiftyone.operators.panel.Panel.render>` method are
+    available via corresponding state properties of the same name
+-   The current panel state is readable during a panel's execution
+
+.. code-block:: python
+    :linenos:
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        menu = panel.menu("menu", ...)
+        actions = menu.btn_group("actions")
+        actions.enum(
+            "mode",
+            values=["foo", "bar"],
+            on_change=self.on_change_mode,
+            ...
+        )
+
+        panel.str("user_input", default="spam")
+
+    def on_change_mode(self, ctx):
+        # Object-based interface
+        mode = ctx.panel.state.menu.actions.mode
+        user_input = ctx.panel.state.user_input
+
+        # Functional interface
+        mode = ctx.panel.get_state("menu.actions.mode")
+        user_input = ctx.panel.get_state("user_input")
+
+Panel state can be programmatically updated in panel methods via the two
+syntaxes shown below:
+
+.. code-block:: python
+    :linenos:
+
+    def on_change_view(self, ctx):
+        # Top-level state attributes can be modified by setting properties
+        ctx.panel.state.foo = "bar"
+
+        # Use set_state() to efficiently apply nested updates
+        ctx.panel.set_state("foo.bar", {"spam": "eggs"})
+
+.. warning::
+
+    Don't directly modify panel state in
+    :meth:`render() <fiftyone.operators.panel.Panel.render>`, just like how
+    `setState()` should not be called in
+    React's
+    `render() <https://legacy.reactjs.org/docs/react-component.html#render>`_.
+
+    Instead set panel state in event callbacks as demonstrated above.
+
+.. _panel-data:
+
+Panel data
+~~~~~~~~~~
+
+Panel data is designed to store larger content such as plot data that is
+loaded once and henceforward stored *only* clientside to avoid
+unnecessary/expensive reloads and serverside serialization during the lifecycle
+of the panel.
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        self.update_plot_data(ctx)
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        menu = panel.menu("menu", ...)
+        actions = menu.btn_group("actions")
+        actions.enum(
+            "brain_key",
+            label="Brain key",
+            values=["foo", "bar"],
+            default=None,
+            on_change=self.update_plot_data,
+        )
+
+        panel.plot("embeddings", config=..., layout=...)
+
+        return types.Property(panel)
+
+    def update_plot_data(self, ctx):
+        brain_key = ctx.panel.state.menu.actions.brain_key
+        if brain_key is None:
+            return
+
+        # Load expensive content based on current `brain_key`
+        results = ctx.dataset.load_brain_results(brain_key)
+
+        # Store large content as panel data for efficiency
+        data = {"points": results.points, ...}
+        ctx.panel.set_data("embeddings", data)
+
+Note how the panel's `on_load()` hook is implemented so that panel data can be
+hydrated when the panel is initially loaded, and then subsequently plot data is
+loaded only when the `brain_key` property is modified.
+
+.. note::
+
+    Panel data is never readable in Python; it is only implicitly used by
+    the types you define when they are rendered clientside.
+
+.. _panel-saved-workspaces
+
+Saved workspaces
+----------------
+
+:ref:`Saved workspaces <app-workspaces>` may contain any number of Python
+panels!
+
+When a workspace is saved, the current :ref:`panel state <panel-state>` of any
+panels in the layout is persisted as part of the workspace's definition. Thus
+when the workspace is loaded later, all panels will "remember" their state.
+
+:ref:`Panel data <panel-data>` (which may be large), on the other hand, is
+*not* explicitly persisted. Instead it should be hydrated when the panel is
+loaded using the pattern :ref:`demonstrated here <panel-data>`.
+
+.. _panel-accessing-secrets:
+
+Accessing secrets
+-----------------
+
+Panels can :ref:`access secrets <operator-secrets>` defined by their plugin.
+
+At runtime, the panel's :ref:`execution context <operator-execution-context>`
+is automatically hydrated with any available secrets that are declared by the
+plugin. Panels can access these secrets via the `ctx.secrets` dict:
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        url = ctx.secrets["FIFTYONE_CVAT_URL"]
+        username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+        password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+
+.. _panel-common-patterns:
+
+Common patterns
+---------------
+
+Most panels make use of common patterns like callbacks, menus, interactive
+plots, and walkthrough layouts.
+
+Learning the patterns described below will help you build panels faster and
+avoid roadblocks along the way.
+
+.. note::
+
+    Check out the
+    `panel examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/panel-examples>`_
+    plugin to see a collection of fully-functional panels that demonstrate
+    the common patterns below.
+
+.. _panel-callbacks:
+
+Callbacks
+~~~~~~~~~
+
+Most panel components support callback methods like `on_click` and `on_change`
+that you can implement to perform operations and trigger state updates when
+users interact with the components.
+
+For example, the code below shows how clicking a button or changing the state
+of a slider can initiate callbacks that trigger operators, open other panels,
+and programmatically modify the current state.
+
+.. note::
+
+    All callback functions have access to the current
+    :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
+    via their `ctx` argument and can use it to get/update panel state and
+    trigger other operations.
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(self, ctx):
+        # Set initial slider state
+        ctx.panel.state.slider_value = 5
+
+    def open_compute(self, ctx):
+        # Launch an interactive prompt for user to execute an operator
+        ctx.prompt("@voxel51/brain/compute_visualization")
+
+    def open_embeddings(self, ctx):
+        # Open embeddings panel
+        ctx.trigger("open_panel", params=dict(name="Embeddings"))
+
+    def change_value(self, ctx):
+        # Grab current slider value from `ctx.params`
+        ctx.panel.state.slider_value = (
+            ctx.params["value"] or ctx.params["panel_state"]["slider_value"]
+        )
+
+    def render(self, ctx):
+        panel = types.Object()
+
+        # Define buttons that work with on_click callbacks
+        panel.btn(
+            "button_1",
+            label="Compute visualization",
+            on_click=self.open_compute,
+        )
+        panel.btn(
+            "button_2",
+            label="Open embeddings panel",
+            on_click=self.open_embeddings,
+        )
+
+        # Define a slider with an `on_change` callback
+        slider = types.SliderView(
+            data=ctx.panel.state.slider_value, label="Example Slider"
+        )
+        schema = {"min": 0, "max": 10, "multipleOf": 1}
+        panel.int(
+            "slider_value", view=slider, on_change=self.change_value, **schema
+        )
+
+.. note::
+
+    Did you know? You can use `ctx.params` in a callback to access the state
+    of the property that triggered the action.
+
+.. _panel-dropdown-menus:
+
+Dropdown menus
+~~~~~~~~~~~~~~
+
+Dropdown menus can be a useful tool to build panels whose layout/content
+dynamically changes based on the current state of the menu.
+
+Here's an example of a dropdown menu with selectable options that alters the
+panel layout based on user input.
+
+.. note::
+
+    Panels also support a `menu()` property that provides a convenient syntax
+    for defining a group of dropdowns, buttons, etc that can be anchored
+    to a particular position in your panel (e.g., top-left).
+
+    Check out :ref:`this section <panel-interface>` for an example panel that
+    makes use of `menu()`.
+
+.. code-block:: python
+    :linenos:
+
+    class DropdownMenuExample(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="example_dropdown_menu",
+                label="Examples: Dropdown Menu",
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.selection = None
+
+        def alter_selection(self, ctx):
+            ctx.panel.state.selection = ctx.params["value"]
+
+        def refresh_page(self, ctx):
+            ctx.ops.reload_dataset()
+
+        def reload_samples(self, ctx):
+            ctx.ops.reload_samples()
+
+        def say_hi(self, ctx):
+            ctx.ops.notify("Hi!", variant="success")
+
+        def render(self, ctx):
+            panel = types.Object()
+
+            panel.md(
+                """
+                ### Welcome to the Python Panel Dropdown Menu Example
+                Use the menu below to select what you would like to do next!
+
+                ---
+
+            """,
+                name="header",
+                width=50,  # 50% of current panel width
+                height="200px",
+            )
+
+            # Define a dropdown menu and add choices
+            dropdown = types.DropdownView()
+            dropdown.add_choice(
+                "refresh",
+                label="Display Refresh Button",
+                description="Displays button that will refresh the FiftyOne App",
+            )
+            dropdown.add_choice(
+                "reload_samples",
+                label="Display Reload Samples Button",
+                description="Displays button that will reload the samples view",
+            )
+            dropdown.add_choice(
+                "say_hi",
+                label="Display Hi Button",
+                description="Displays button that will say hi",
+            )
+
+            # Add dropdown menu to the panel as a view and use the `on_change`
+            # callback to trigger `alter_selection`
+            panel.view(
+                "dropdown",
+                view=dropdown,
+                label="Dropdown Menu",
+                on_change=self.alter_selection,
+            )
+
+            # Change panel visual state dependent on dropdown menu selection
+            if ctx.panel.state.selection == "refresh":
+                panel.btn(
+                    "refresh",
+                    label="Refresh FiftyOne",
+                    on_click=self.refresh_page,
+                    variant="contained",
+                )
+            elif ctx.panel.state.selection == "reload_samples":
+                panel.btn(
+                    "reload_samples",
+                    label="Reload Samples",
+                    on_click=self.reload_samples,
+                    variant="contained",
+                )
+            elif ctx.panel.state.selection == "say_hi":
+                panel.btn(
+                    "say_hi",
+                    label="Say Hi",
+                    on_click=self.say_hi,
+                    variant="contained",
+                )
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    height=100,
+                    width=100,
+                    align_x="center",
+                    align_y="center",
+                    orientation="vertical",
+                ),
+            )
+
+.. image:: /images/plugins/panels/dropdown-example-inline.gif
+    :align: center
+
+.. _panel-interactive-plots:
+
+Interactive plots
+~~~~~~~~~~~~~~~~~
+
+Panels provide native support for defining interactive plots that can render
+data from the current dataset and dynamically update or trigger actions as
+users interact with the plots.
+
+For example, here's a panel that displays a histogram of a specified field of
+the current dataset where clicking a bar loads the corresponding samples in
+the App.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+    from fiftyone import ViewField as F
+
+    class InteractivePlotExample(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="example_interactive_plot",
+                label="Examples: Interactive Plot",
+                icon="bar_chart",
+            )
+
+        def on_load(self, ctx):
+            # Get target field
+            target_field = (
+                ctx.panel.state.target_field or "ground_truth.detections.label"
+            )
+            ctx.panel.state.target_field = target_field
+
+            # Compute target histogram for current dataset
+            counts = ctx.dataset.count_values(target_field)
+            keys, values = zip(*sorted(counts.items(), key=lambda x: x[0]))
+
+            # Store as panel data for efficiency
+            ctx.panel.data.histogram = {"x": keys, "y": values, "type": "bar"}
+
+            # Launch panel in a horizontal split view
+            ctx.ops.split_panel("example_interactive_plot", layout="horizontal")
+
+        def on_change_view(self, ctx):
+            # Update histogram when current view changes
+            self.on_load(ctx)
+
+        def on_histogram_click(self, ctx):
+            # The histogram bar that the user clicked
+            value = ctx.params.get("x")
+
+            # Create a view that matches the selected histogram bar
+            field = ctx.panel.state.target_field
+            view = _make_matching_view(ctx.dataset, field, value)
+
+            # Load view in App
+            if view is not None:
+                ctx.ops.set_view(view=view)
+
+        def reset(self, ctx):
+            ctx.ops.clear_view()
+            self.on_load(ctx)
+
+        def render(self, ctx):
+            panel = types.Object()
+
+            panel.plot(
+                "histogram",
+                layout={
+                    "title": {
+                        "text": "Interactive Histogram",
+                        "xanchor": "center",
+                        "yanchor": "top",
+                        "automargin": True,
+                    },
+                    "xaxis": {"title": "Labels"},
+                    "yaxis": {"title": "Count"},
+                },
+                on_click=self.on_histogram_click,
+                width=100,
+            )
+
+            panel.btn(
+                "reset",
+                label="Reset Chart",
+                on_click=self.reset,
+                variant="contained",
+            )
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    align_x="center",
+                    align_y="center",
+                    orientation="vertical",
+                    height=100,
+                    width=100,
+                    gap=2,
+                    padding=0,
+                ),
+            )
+
+    def _make_matching_view(dataset, field, value):
+        if field.endswith(".label"):
+            root_field = field.split(".")[0]
+            return dataset.filter_labels(root_field, F("label") == value)
+        elif field == "tags":
+            return dataset.match_tags(value)
+        else:
+            return dataset.match(F(field) == value)
+
+.. image:: /images/plugins/panels/interactive-plot-example-inline.gif
+    :align: center
+
+.. _panel-walkthroughs:
+
+Walkthroughs
+~~~~~~~~~~~~
+
+You can use a combination of panel objects like markdown, buttons, arrow
+navigation, and layout containers to create guided walkthroughs similar to the
+ones at `try.fiftyone.ai <https://try.fiftyone.ai/datasets/example/samples>`_.
+
+Here's an example of a panel that leads the user through multiple steps of a
+guided workflow.
+
+.. code-block:: python
+    :linenos:
+
+    class WalkthroughExample(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="example_walkthrough",
+                label="Examples: Walkthrough",
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.state.page = 1
+            info_table = [
+                {
+                    "Dataset Name": f"{ctx.dataset.name}",
+                    "Dataset Description": "FiftyOne Quick Start Zoo Dataset",
+                    "Number of Samples": f"{ctx.dataset.count()}",
+                },
+            ]
+
+        ctx.panel.state.info_table = info_table
+
+        def go_to_next_page(self, ctx):
+            ctx.panel.state.page = ctx.panel.state.page + 1
+
+        def go_to_previous_page(self, ctx):
+            ctx.panel.state.page = ctx.panel.state.page - 1
+
+        def reset_page(self, ctx):
+            ctx.panel.state.page = 1
+
+        def open_operator_io(self, ctx):
+            ctx.ops.open_panel("OperatorIO")
+
+        def render(self, ctx):
+            panel = types.Object()
+
+            # Define a vertical stack to live inside your panel
+            stack = panel.v_stack(
+                "welcome", gap=2, width=75, align_x="center", align_y="center"
+            )
+            button_container = types.GridView(
+                gap=2, align_x="left", align_y="center"
+            )
+
+            page = ctx.panel.state.get("page", 1)
+
+            if page == 1:
+                stack.md(
+                    """
+                    ### A Tutorial Walkthrough
+
+                    Welcome to the FiftyOne App! Here is a great example of what it looks like to create a tutorial style walkthrough via a Python Panel.
+                """,
+                    name="markdown_screen_1",
+                )
+                stack.media_player(
+                    "video",
+                    "https://youtu.be/ad79nYk2keg",
+                    align_x="center",
+                    align_y="center",
+                )
+            elif page == 2:
+                stack.md(
+                    """
+                    ### Information About Your Dataset
+
+                    Perhaps you would like to know some more information about your dataset?
+                """,
+                    name="markdown_screen_2",
+                )
+                table = types.TableView()
+                table.add_column("Dataset Name", label="Dataset Name")
+                table.add_column("Dataset Description", label="Description")
+                table.add_column("Number of Samples", label="Number of Samples")
+
+                panel.obj(
+                    name="info_table",
+                    view=table,
+                    label="Cool Info About Your Data",
+                )
+            elif page == 3:
+                if ctx.panel.state.operator_status != "opened":
+                    stack.md(
+                        """
+                        ### One Last Trick
+
+                        If you want to do something cool, click the button below.
+                    """,
+                        name="markdown_screen_3",
+                    )
+                    btns = stack.obj("top_btns", view=button_container)
+                    btns.type.btn(
+                        "open_operator_io",
+                        label="Do Something Cool",
+                        on_click=self.open_operator_io,
+                        variant="contained"
+                    )
+            else:
+                stack.md(
+                    """
+                    #### How did you get here?
+                    Looks like you found the end of the walkthrough. Or have you gotten a little lost in the grid? No worries, let's get you back to the walkthrough!
+                """
+                )
+                btns = stack.obj("btns", view=button_container)
+                btns.type.btn("reset", label="Go Home", on_click=self.reset_page)
+
+            # Arrow navigation to go to next or previous page
+            panel.arrow_nav(
+                "arrow_nav",
+                forward=page != 3,  # hidden for the last page
+                backward=page != 1,  # hidden for the first page
+                on_forward=self.go_to_next_page,
+                on_backward=self.go_to_previous_page,
+            )
+
+            return types.Property(
+                panel,
+                view=types.GridView(
+                    height=100, width=100, align_x="center", align_y="center"
+                ),
+            )
+
+.. image:: /images/plugins/panels/walkthrough-example-inline.gif
+    :align: center
+
+.. _panel-displaying-multimedia:
+
+Displaying multimedia
+~~~~~~~~~~~~~~~~~~~~~
+
+Displaying images, videos, and other forms of multimedia is straightforward in
+panels. You can embed third-party resources like URLs or load multimedia stored
+in local directories.
+
+Here are some examples of panels that load, render, and manipulate various
+forms of image and video data.
+
+.. tabs::
+
+  .. group-tab:: Images
+
+    .. code-block:: python
+        :linenos:
+
+        class ImageExample(foo.Panel):
+            @property
+            def config(self):
+                return foo.PanelConfig(
+                    name="example_image",
+                    label="Examples: Image",
+                )
+
+            def on_load(self, ctx):
+                # Load image from static URL
+                ctx.panel.state.single_image = "https://static6.depositphotos.com/1119834/620/i/450/depositphotos_6201075-stock-photo-african-elephant-smelling.jpg"
+
+                # Load 10 images from dataset
+                samples = ctx.dataset.limit(10)
+                for index, sample in enumerate(samples):
+                    image_path = (
+                        f"http://localhost:5151/media?filepath={sample.filepath}"
+                    )
+                    ctx.panel.set_state(f"image{index}", image_path)
+
+            def render(self, ctx):
+                panel = types.Object()
+
+                panel.md(
+                    "# Image Collection\n\n_Here's a collage of images that can be loaded a few different ways_",
+                    name="intro_message",
+                )
+
+                panel.md(
+                    "## Single Image\n\nThis image was loaded from a url",
+                    name="header_one",
+                )
+                image_holder = types.ImageView()
+
+                panel.view(
+                    "single_image", view=image_holder, caption="A picture of a canyon"
+                )
+
+                panel.md("---", name="divider")
+                panel.md(
+                    "## Multiple Images\n\n_All these images were loaded from our current dataset_",
+                    name="header_two",
+                )
+
+                for index in range(10):
+                    image_holder = types.ImageView()
+                    panel.view(
+                        f"image{index}", view=image_holder, caption=f"Image {index}"
+                    )
+
+                return types.Property(
+                    panel,
+                    view=types.GridView(
+                        align_x="center", align_y="center", orientation="vertical"
+                    ),
+                )
+
+  .. group-tab:: Videos
+
+    .. code-block:: python
+        :linenos:
+
+        class MediaPlayerExample(foo.Panel):
+            @property
+            def config(self):
+                return foo.PanelConfig(
+                    name="example_media_player",
+                    label="Examples: Media Player",
+                )
+
+            def on_load(self, ctx):
+                ctx.panel.state.media_player = {
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                }
+
+            def render(self, ctx):
+                panel = types.Object()
+
+                panel.md(
+                    "# Media View Player Example\n\nHere's a fun video to check out",
+                    name="intro_message",
+                )
+
+                media_player = types.MediaPlayerView()
+
+                panel.obj(
+                    "media_player",
+                    view=media_player,
+                    label="Media Player Example",
+                    default={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+                )
+
+                return types.Property(
+                    panel,
+                    view=types.GridView(
+                        align_x="center", align_y="center", orientation="vertical"
+                    ),
+                )
+
+.. image:: /images/plugins/panels/multimedia-example-inline.gif
+    :align: center
+
+.. _panel-type-hints:
+
+Type hints
+~~~~~~~~~~
+
+Defining the types of your panel's function arguments allows you to inspect the
+methods available to an object and will dramatically help you increase your
+speed of development.
+
+With type hints, your IDE can preview helpful docstrings, trace `fiftyone`
+source code, and see what methods exist on your object during the development
+process.
+
+For example, declaring that the `ctx` variable has type
+:class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>` allows
+you to reveal all of its available methods during development:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators import ExecutionContext
+
+    def on_load(ctx: ExecutionContext):
+        ctx.trigger()
+        ctx.ops()
+        ctx.secrets()
+
+        # Reveals the remaining methods available to ctx
+        ctx.
+        ...
+
 .. _developing-js-plugins:
 
 Developing JS plugins
@@ -1648,13 +3005,13 @@ returns `true`:
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, Visualizers, and Components
+Panels, visualizers, and components
 -----------------------------------
 
 Here's some examples of using panels, visualizers, and components to add your
 own custom user interface and components to the FiftyOne App.
 
-Hello world Panel
+Hello world panel
 ~~~~~~~~~~~~~~~~~
 
 A simple plugin that renders "Hello world" in a panel would look like this:
@@ -1676,8 +3033,8 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom FiftyOne Visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Adding a custom visualizer
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
     :linenos:
@@ -1717,7 +3074,7 @@ Adding a custom FiftyOne Visualizer
         activator: myActivator,
     });
 
-Adding a custom Panel
+Adding a custom panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
@@ -1761,7 +3118,7 @@ Adding a custom Panel
         // component to delegate to
         component: CustomPanel,
 
-        // tell FiftyOne you want to provide a custom Panel
+        // tell FiftyOne you want to provide a custom panel
         type: PluginComponentTypes.Panel,
 
         // used for the panel selector button
@@ -1771,7 +3128,7 @@ Adding a custom Panel
         activator: ({ dataset }) => dataset.sampleFields.location,
     });
 
-Custom operator view using Component plugin
+Custom operator view using component plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Creating and registering a custom view type:

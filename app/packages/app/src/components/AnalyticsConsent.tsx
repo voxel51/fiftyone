@@ -1,6 +1,5 @@
 import { DEFAULT_WRITE_KEYS, useAnalyticsInfo } from "@fiftyone/analytics";
-import { Button } from "@fiftyone/components";
-import { Box, Grid, Link, Typography } from "@mui/material";
+import { Box, Grid, Link, Typography, Button } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
 import type { NavGA$data } from "./__generated__/NavGA.graphql";
 
@@ -96,9 +95,7 @@ export default function AnalyticsConsent({
               </Link>
             </Grid>
             <Grid item>
-              <Button variant="contained" onClick={handleEnable}>
-                Enable
-              </Button>
+              <Button variant="contained" onClick={handleEnable}>Enable</Button>
             </Grid>
           </Grid>
         </Grid>

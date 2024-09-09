@@ -1979,6 +1979,15 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertListEqual(view.values("frame_number"), [1, 1])
 
     @drop_datasets
+    def test_match_expr(self):
+        dataset = _make_group_by_dataset()
+
+        view = dataset.group_by(
+            "frame_number", flat=True, match_expr=(F().length() > 1)
+        )
+        self.assertDictEqual(view.count_values("frame_number"), {1: 2, 2: 2})
+
+    @drop_datasets
     def test_group_by_group_dataset(self):
         dataset = _make_group_by_group_dataset()
 

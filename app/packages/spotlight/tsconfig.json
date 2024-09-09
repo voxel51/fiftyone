@@ -6,6 +6,6 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "target": "ES2022"
   },
-  "include": ["./src/**/*"],
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.json",
+  "include": ["./src/**/*"]
 }

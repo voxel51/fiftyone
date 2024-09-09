@@ -1,7 +1,7 @@
 """
 FiftyOne Teams authorization.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,7 +17,7 @@ from strawberry.field import StrawberryField as Field
 import strawberry.permission as gqlp
 
 from fiftyone.core.utils import to_slug
-from fiftyone.internal.requests import make_request
+from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_token_from_request
 from fiftyone.server.data import Info
 from fiftyone.server.decorators import load_variables

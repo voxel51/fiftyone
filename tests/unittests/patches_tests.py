@@ -718,6 +718,42 @@ class PatchesTests(unittest.TestCase):
         )
         self.assertEqual(len(patches_dataset), len(patches_view))
 
+    @drop_datasets
+    def test_patches_save_context(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.png")
+
+        sample3 = fo.Sample(
+            filepath="image3.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="squirrel"),
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.to_patches("ground_truth")
+
+        for sample in view.iter_samples(autosave=True):
+            sample.ground_truth.foo = "bar"
+
+        self.assertEqual(view.count("ground_truth.foo"), 4)
+        self.assertEqual(dataset.count("ground_truth.detections.foo"), 4)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

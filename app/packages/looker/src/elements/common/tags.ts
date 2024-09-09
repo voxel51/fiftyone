@@ -23,12 +23,18 @@ import {
   REGRESSION,
   Schema,
   STRING_FIELD,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 import { RegularLabel } from "../../overlays/base";
-import { Classification, Regression } from "../../overlays/classifications";
+import {
+  Classification,
+  Regression,
+  TemporalDetectionLabel,
+} from "../../overlays/classifications";
 import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
 import {
   BaseState,
@@ -278,6 +284,34 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       };
     };
 
+    const TEMPORAL_DETECTION_RENDERER = (
+      path,
+      param: TemporalDetectionLabel
+    ) => {
+      if (!param.label) {
+        return null;
+      }
+
+      const support = param.support?.length
+        ? ` [${param.support[0]}, ${param.support[1]}]`
+        : "";
+
+      return {
+        path,
+        value: `${param.label}${support}`,
+        title: `${path}: ${param.label}${support}`,
+        color: getAssignedColor({
+          coloring,
+          path,
+          param,
+          isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
+          labelTagColors,
+          customizeColorSetting,
+          isValidColor,
+        }),
+      };
+    };
+
     const LABEL_RENDERERS = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
@@ -297,6 +331,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           }),
         };
       },
+      [withPath(LABELS_PATH, TEMPORAL_DETECTION)]: TEMPORAL_DETECTION_RENDERER,
+      [withPath(LABELS_PATH, TEMPORAL_DETECTIONS)]: TEMPORAL_DETECTION_RENDERER,
     };
 
     for (let index = 0; index < activePaths.length; index++) {
@@ -581,6 +617,11 @@ export const getFieldAndValue = (
 
     if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
       values = values.map((value) => value?.["classifications"] || []).flat();
+      break;
+    }
+
+    if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
+      values = values.map((value) => value?.["detections"] || []).flat();
       break;
     }
 

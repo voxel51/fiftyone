@@ -55,14 +55,21 @@ class FrameView(fos.SampleView):
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
 
-    def _save(self, deferred=False):
-        if deferred:
-            raise NotImplementedError(
-                "Frames views do not support save contexts"
-            )
+    @property
+    def _readonly(self):
+        return self._collection._readonly
 
-        super()._save(deferred=deferred)
-        self._view._sync_source_sample(self)
+    @property
+    def _permission(self):
+        return self._collection._permission
+
+    def _save(self, deferred=False):
+        sample_ops, frame_ops = super()._save(deferred=deferred)
+
+        if not deferred:
+            self._view._sync_source_sample(self)
+
+        return sample_ops, frame_ops
 
 
 class FramesView(fov.DatasetView):
@@ -125,6 +132,14 @@ class FramesView(fov.DatasetView):
     @property
     def _dataset(self):
         return self._frames_dataset
+
+    @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
 
     @property
     def _root_dataset(self):

@@ -23,7 +23,7 @@ export type ItemClick<K, V> = (
 export interface ItemClickInterface<K, V> {
   event: MouseEvent;
   item: ItemData<K, V>;
-  next: (from: number, soft?: boolean) => Promise<ID | undefined>;
+  iter: { next: (from: number, soft?: boolean) => Promise<ID | undefined> };
 }
 
 export type ID = { description: string };

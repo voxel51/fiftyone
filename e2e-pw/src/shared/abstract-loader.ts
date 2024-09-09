@@ -8,9 +8,9 @@ export type WaitUntilGridVisibleOptions = {
   isEmptyDataset?: boolean;
 
   /**
-   * Name of the saved view to be loaded.
+   * Search parameters to include
    */
-  savedView?: string;
+  searchParams?: URLSearchParams;
 
   /**
    * Whether to wait for the grid to be visible.

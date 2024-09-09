@@ -6,6 +6,8 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  KEYPOINT_FIELD,
+  KEYPOINTS_FIELD,
   LABELS,
   LIST_FIELD,
   OBJECT_ID_FIELD,
@@ -29,6 +31,8 @@ export * from "./boolean";
 export * from "./numeric";
 export * from "./string";
 export * from "./utils";
+
+const KEYPOINT_TYPES = new Set([KEYPOINT_FIELD, KEYPOINTS_FIELD]);
 
 const primitiveFilter = selectorFamily<
   (value: any) => boolean,
@@ -104,7 +108,6 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
         if (path.startsWith("_")) return f;
 
         const field = get(schemaAtoms.field(path));
-        const isKeypoints = path.includes("keypoints");
 
         if (field && LABELS.includes(field.embeddedDocType)) {
           const expandedPath = get(schemaAtoms.expandPath(path));
@@ -114,23 +117,19 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               ftype: VALID_PRIMITIVE_TYPES,
             })
           );
+          const docType = get(schemaAtoms.field(expandedPath)).embeddedDocType;
 
           const fs = labelFields.map(({ name, dbField }) => {
             const filter = get(
               primitiveFilter({ modal, path: `${expandedPath}.${name}` })
             );
 
-            return (value: unknown) => {
-              if (isKeypoints && typeof value[name] === "object") {
-                // keypoints ListFields
-                return () => true;
-              }
-
+            return keypointFilter(name, docType, (value: unknown) => {
               const correctedValue = value[0] ? value[0] : value;
               return filter(
                 correctedValue[name === "id" ? "id" : dbField || name]
               );
-            };
+            });
           });
 
           f[path] = (value: unknown) => {
@@ -169,6 +168,24 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
     eviction: "most-recent",
   },
 });
+
+export const keypointFilter = (
+  name: string,
+  embeddedDocType: string,
+  filter: (value: unknown) => boolean
+) => {
+  const isKeypoints = KEYPOINT_TYPES.has(embeddedDocType);
+
+  if (!isKeypoints) {
+    return filter;
+  }
+
+  return (value: unknown) => {
+    if (Array.isArray(value[name])) return true;
+
+    return filter(value);
+  };
+};
 
 const matchesLabelTags = (
   value: {

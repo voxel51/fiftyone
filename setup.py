@@ -58,6 +58,7 @@ INSTALL_REQUIRES = [
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
+    "pydash",
     # teams specific
     "aiohttp",
     "azure-identity",
@@ -72,9 +73,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.16.0,<0.17",
+    "fiftyone-brain>=0.17.0,<0.18",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.12.6,<0.13",
+    "voxel51-eta>=0.12.7,<0.13",
 ]
 
 

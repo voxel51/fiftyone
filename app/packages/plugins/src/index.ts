@@ -260,6 +260,7 @@ type PluginActivator = (props: any) => boolean;
 type PanelOptions = {
   allowDuplicates?: boolean;
   TabIndicator?: React.ComponentType;
+  priority?: number;
 };
 
 type PluginComponentProps<T> = T & {

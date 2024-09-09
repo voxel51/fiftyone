@@ -1,5 +1,9 @@
 import type { ModalSample } from "@fiftyone/state";
-import { PathType, determinePathType } from "@fiftyone/utilities";
+import {
+  PathType,
+  determinePathType,
+  resolveParent,
+} from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
   DoubleSide,
@@ -124,8 +128,9 @@ export const getMediaPathForFo3dSample = (
 };
 
 export const getFo3dRoot = (fo3dUrl: string) => {
+  // for some reason we are seeing :/ in some URLs instead of :// so this is a hotfix
+  fo3dUrl = fo3dUrl.replace(/:\/(?!\/)/g, "://");
   let filepath = fo3dUrl;
-
   const decodedUrl = decodeURIComponent(fo3dUrl);
 
   // extract the filepath from the URL

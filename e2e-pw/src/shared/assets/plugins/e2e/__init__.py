@@ -97,7 +97,7 @@ class E2EProgress(foo.Operator):
 class E2ECounterPythonPanel(foo.Panel):
     @property
     def config(self):
-        return foo.PanelOperatorConfig(
+        return foo.PanelConfig(
             name="e2e_counter_python_panel",
             label="E2E: Counter Python Panel",
             allow_multiple=True,

@@ -2,6 +2,7 @@ import type { CallbackInterface, RecoilState } from "recoil";
 
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback } from "recoil";
+import { dynamicGroupsViewMode } from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -9,6 +10,7 @@ import * as modalAtoms from "../recoil/modal";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
+import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
@@ -42,12 +44,17 @@ export default () => {
             selectors.appConfigOption({ key, modal: false }),
           ];
         }),
+
+        [dynamicGroupsViewMode(true), dynamicGroupsViewMode(false)],
+
+        [atoms.cropToContent(true), atoms.cropToContent(false)],
+        [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
+        [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
+        [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
         [
           schemaAtoms.activeFields({ modal: true }),
           schemaAtoms.activeFields({ modal: false }),
         ],
-        [atoms.cropToContent(true), atoms.cropToContent(false)],
-        [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
         [
           sidebarAtoms.sidebarGroupsDefinition(true),
           sidebarAtoms.sidebarGroupsDefinition(false),
@@ -55,9 +62,10 @@ export default () => {
         [sidebarAtoms.sidebarWidth(true), sidebarAtoms.sidebarWidth(false)],
         [sidebarAtoms.sidebarVisible(true), sidebarAtoms.sidebarVisible(false)],
         [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
-
-        [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-        [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
+        [
+          sidebarExpandedAtoms.sidebarExpandedStore(true),
+          sidebarExpandedAtoms.sidebarExpandedStore(false),
+        ],
       ];
 
       const slice = await snapshot.getPromise(groupAtoms.groupSlice);
