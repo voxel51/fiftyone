@@ -2,12 +2,12 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
+import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
-import { ModalPanelPom } from "../panels/modal-panel";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -84,6 +84,19 @@ export class ModalPom {
     return this.locator.getByTestId(
       `nav-${direction === "forward" ? "right" : "left"}-button`
     );
+  }
+
+  async hideControls() {
+    let isControlsOpacityZero = false;
+    const controls = this.locator.getByTestId("looker-controls");
+
+    do {
+      await controls.press("c");
+      const opacity = await controls.evaluate(
+        (e) => getComputedStyle(e).opacity
+      );
+      isControlsOpacityZero = parseFloat(opacity) === 0;
+    } while (!isControlsOpacityZero);
   }
 
   async toggleSelection(isPcd = false) {

@@ -108,6 +108,7 @@ test.describe("tag", () => {
     await grid.openFirstSample();
 
     await modal.sidebar.toggleLabelCheckbox("ground_truth");
+    await modal.hideControls();
     await expect(modal.looker).toHaveScreenshot("labels.png");
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
@@ -124,7 +125,7 @@ test.describe("tag", () => {
     await modal.tagger.addLabelTag("correct");
 
     await modal.sidebar.clearGroupFilters("labels");
-    await page.keyboard.press("c");
+    await modal.hideControls();
     await expect(modal.looker).toHaveScreenshot("labels.png");
   });
 });
