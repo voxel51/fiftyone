@@ -48,3 +48,4 @@ export { default as LazyFieldView } from "./LazyFieldView";
 export { default as GridView } from "./GridView";
 export { default as DashboardView } from "./DashboardView";
 export { default as ArrowNavView } from "./ArrowNavView";
+export { default as FrameLoaderView } from "./FrameLoaderView";
