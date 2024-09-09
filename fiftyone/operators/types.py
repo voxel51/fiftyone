@@ -2399,6 +2399,20 @@ class ArrowNavView(View):
         }
 
 
+class FrameLoaderView(View):
+    """Utility for loading frames and animated panels.
+
+    Args:
+        timeline_id (None): the ID of the timeline to load
+        on_load (None): the operator to execute when the frame is loaded
+        on_error (None): the operator to execute when the frame fails to load
+        on_load_range (None): the operator to execute when the frame is loading
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class Container(BaseType):
     """Represents a base container for a container types."""
 

@@ -18,3 +18,6 @@ registerComponent({
 });
 
 // registerOperator(new OpenEmbeddingsPanel());
+import { main } from "./Testing";
+
+main();
