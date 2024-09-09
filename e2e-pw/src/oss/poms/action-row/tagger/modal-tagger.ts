@@ -9,6 +9,7 @@ export class ModalTaggerPom {
   }
 
   async toggleOpen() {
+    await this.locator.getByTestId("tagger-container").hover();
     await this.modal.locator.getByTestId("action-tag-sample-labels").click();
   }
 
