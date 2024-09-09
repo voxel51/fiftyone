@@ -103,7 +103,6 @@ test.describe("tag", () => {
     eventUtils,
     grid,
     modal,
-    page,
   }) => {
     await grid.openFirstSample();
 
