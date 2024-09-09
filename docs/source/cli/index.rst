@@ -2557,7 +2557,7 @@ Tools for working with the FiftyOne Model Zoo.
 .. code-block:: text
 
     fiftyone zoo models [-h] [--all-help]
-                        {list,find,info,requirements,download,apply,embed,delete}
+                        {list,find,info,requirements,download,apply,embed,delete,list-sources,register-source,delete-source}
                         ...
 
 **Arguments**
@@ -2569,8 +2569,8 @@ Tools for working with the FiftyOne Model Zoo.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,find,info,requirements,download,apply,embed,delete}
-        list                List datasets in the FiftyOne Model Zoo.
+      {list,find,info,requirements,download,apply,embed,delete,register-source,delete-source}
+        list                List models in the FiftyOne Model Zoo.
         find                Locate the downloaded zoo model on disk.
         info                Print information about models in the FiftyOne Model Zoo.
         requirements        Handles package requirements for zoo models.
@@ -2578,17 +2578,20 @@ Tools for working with the FiftyOne Model Zoo.
         apply               Apply zoo models to datasets.
         embed               Generate embeddings for datasets with zoo models.
         delete              Deletes the local copy of the zoo model on disk.
+        list-sources        Lists remote zoo model sources that are registered locally.
+        register-source     Registers a remote source of zoo models.
+        delete-source       Deletes the remote source and all downloaded models associated with it.
 
 .. _cli-fiftyone-zoo-models-list:
 
 List models in zoo
 ~~~~~~~~~~~~~~~~~~
 
-List datasets in the FiftyOne Model Zoo.
+List models in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo models list [-h] [-n] [-d] [-t TAG]
+    fiftyone zoo models list [-h] [-n] [-d] [-t TAGS] [-s SOURCE]
 
 **Arguments**
 
@@ -2600,6 +2603,8 @@ List datasets in the FiftyOne Model Zoo.
       -d, --downloaded-only
                             only show models that have been downloaded
       -t TAGS, --tags TAGS  only show models with the specified tag or list,of,tags
+      -s SOURCE, --source SOURCE
+                            only show models available from the specified remote source
 
 **Examples**
 
@@ -2622,6 +2627,11 @@ List datasets in the FiftyOne Model Zoo.
 
     # List available models with the given tag
     fiftyone zoo models list --tags <tag>
+
+.. code-block:: shell
+
+    # List available models from the given remote source
+    fiftyone zoo models list --source <source>
 
 .. _cli-fiftyone-zoo-models-find:
 
@@ -2731,28 +2741,51 @@ Download zoo models
 
 Download zoo models.
 
+When downloading remotely-sourced zoo models, you can provide any of the
+following:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
+
 .. code-block:: text
 
-    fiftyone zoo models download [-h] [-f] NAME
+    fiftyone zoo models download [-h] [-n MODEL_NAME] [-o] NAME_OR_URL
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the zoo model
+      NAME_OR_URL           the name or remote location of the model
 
     optional arguments:
       -h, --help            show this help message and exit
-      -f, --force           whether to force download the model if it is already
-                            downloaded
+      -n MODEL_NAME, --model-name MODEL_NAME
+                            the specific model to download, if `name_or_url` is
+                            a remote source
+      -o, --overwrite       whether to overwrite any existing model files
 
 **Examples**
 
 .. code-block:: shell
 
-    # Download the zoo model
+    # Download a zoo model
     fiftyone zoo models download <name>
+
+.. code-block:: shell
+
+    # Download a remotely-sourced zoo model
+    fiftyone zoo models download https://github.com/<user>/<repo> \
+        --model-name <name>
+    fiftyone zoo models download <url> --model-name <name>
 
 .. _cli-fiftyone-zoo-models-apply:
 
@@ -2761,23 +2794,41 @@ Apply zoo models to datasets
 
 Apply zoo models to datasets.
 
+When applying remotely-sourced zoo models, you can provide any of the following
+formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
+
 .. code-block:: text
 
-    fiftyone zoo models apply [-h] [-b BATCH_SIZE] [-t THRESH] [-l] [-i]
-                              [--error-level LEVEL]
-                              MODEL_NAME DATASET_NAME LABEL_FIELD
+    fiftyone zoo models apply [-h] [-n MODEL_NAME] [-b BATCH_SIZE] [-t THRESH]
+                              [-l] [-i] [--error-level LEVEL]
+                              NAME_OR_URL DATASET_NAME LABEL_FIELD
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      MODEL_NAME            the name of the zoo model
+      NAME_OR_URL           the name or remote location of the zoo model
       DATASET_NAME          the name of the FiftyOne dataset to process
       LABEL_FIELD           the name of the field in which to store the predictions
 
     optional arguments:
       -h, --help            show this help message and exit
+      -n MODEL_NAME, --model-name MODEL_NAME
+                            the specific model to apply, if `name_or_url` is a
+                            remote source
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -t THRESH, --confidence-thresh THRESH
@@ -2792,8 +2843,16 @@ Apply zoo models to datasets.
 
 .. code-block:: shell
 
-    # Apply the zoo model to the dataset
+    # Apply a zoo model to a dataset
     fiftyone zoo models apply <model-name> <dataset-name> <label-field>
+
+.. code-block:: shell
+
+    # Apply a remotely-sourced zoo model to a dataset
+    fiftyone zoo models apply https://github.com/<user>/<repo> \
+        <dataset-name> <label-field> --model-name <model-name>
+    fiftyone zoo models apply <url> \
+        <dataset-name> <label-field> --model-name <model-name>
 
 .. code-block:: shell
 
@@ -2811,23 +2870,41 @@ Generate embeddings with zoo models
 
 Generate embeddings for datasets with zoo models.
 
+When applying remotely-sourced zoo models, you can provide any of the following
+formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
+
 .. code-block:: text
 
-    fiftyone zoo models embed [-h] [-b BATCH_SIZE] [-i]
+    fiftyone zoo models embed [-h] [-n MODEL_NAME] [-b BATCH_SIZE] [-i]
                               [--error-level LEVEL]
-                              MODEL_NAME DATASET_NAME EMBEDDINGS_FIELD
+                              NAME_OR_URL DATASET_NAME EMBEDDINGS_FIELD
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      MODEL_NAME            the name of the zoo model
+      NAME_OR_URL           the name or remote location of the zoo model
       DATASET_NAME          the name of the FiftyOne dataset to process
       EMBEDDINGS_FIELD      the name of the field in which to store the embeddings
 
     optional arguments:
       -h, --help            show this help message and exit
+      -n MODEL_NAME, --model-name MODEL_NAME
+                            the specific model to apply, if `name_or_url` is a
+                            remote source
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -i, --install         install any requirements for the zoo model
@@ -2838,8 +2915,16 @@ Generate embeddings for datasets with zoo models.
 
 .. code-block:: shell
 
-    # Generate embeddings for the dataset with the zoo model
+    # Generate embeddings for a dataset with a zoo model
     fiftyone zoo models embed <model-name> <dataset-name> <embeddings-field>
+
+.. code-block:: shell
+
+    # Generate embeddings for a dataset with a remotely-sourced zoo model
+    fiftyone zoo models embed https://github.com/<user>/<repo> \
+        <dataset-name> <embeddings-field> --model-name <model-name>
+    fiftyone zoo models embed <url> \
+        <dataset-name> <embeddings-field> --model-name <model-name>
 
 .. _cli-fiftyone-zoo-models-delete:
 
@@ -2868,3 +2953,102 @@ Deletes the local copy of the zoo model on disk.
 
     # Delete the zoo model from disk
     fiftyone zoo models delete <name>
+
+.. _cli-fiftyone-zoo-models-list-sources:
+
+List zoo model sources
+~~~~~~~~~~~~~~~~~~~~~~
+
+Lists remote zoo model sources that are registered locally.
+
+.. code-block:: text
+
+    fiftyone zoo models list-sources [-h]
+
+**Examples**
+
+.. code-block:: shell
+
+    # Lists the registered remote zoo model sources
+    fiftyone zoo models list-sources
+
+.. _cli-fiftyone-zoo-models-register-source:
+
+Register zoo model sources
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Registers a remote source of zoo models.
+
+You can provide any of the following formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. note::
+
+    To download from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
+    environment variable.
+
+.. code-block:: text
+
+    fiftyone zoo models register-source [-h] [-o] URL_OR_GH_REPO
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URL_OR_GH_REPO   the remote source to register
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      -o, --overwrite  whether to overwrite any existing files
+
+**Examples**
+
+.. code-block:: shell
+
+    # Register a remote zoo model source
+    fiftyone zoo models register-source https://github.com/<user>/<repo>
+    fiftyone zoo models register-source <url>
+
+.. _cli-fiftyone-zoo-models-delete-source:
+
+Delete zoo model sources
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deletes the remote source and all downloaded models associated with it.
+
+You can provide any of the following formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+-   a publicly accessible URL of an archive (eg zip or tar) file
+
+.. code-block:: text
+
+    fiftyone zoo models delete-source [-h] URL_OR_GH_REPO
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URL_OR_GH_REPO   the remote source to delete
+
+    optional arguments:
+      -h, --help       show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete a remote zoo model source
+    fiftyone zoo models delete-source https://github.com/<user>/<repo>
+    fiftyone zoo models delete-source <url>
