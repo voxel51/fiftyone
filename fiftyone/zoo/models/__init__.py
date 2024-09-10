@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 def list_zoo_models(tags=None, source=None):
     """Returns the list of available models in the FiftyOne Model Zoo.
 
-    Also includes any remotely-sourced zoo models that you've downloaded.
+    Also includes models from any remote sources that you've registered.
 
     Example usage::
 
@@ -122,7 +122,7 @@ def is_zoo_model_downloaded(name):
 
 
 def download_zoo_model(name_or_url, model_name=None, overwrite=False):
-    """Downloads specified model from the FiftyOne Model Zoo.
+    """Downloads the specified model from the FiftyOne Model Zoo.
 
     If the model is already downloaded, it is not re-downloaded unless
     ``overwrite == True`` is specified.
@@ -361,8 +361,7 @@ def delete_zoo_model(name):
 
 
 def list_zoo_model_sources():
-    """Returns the list of remote zoo model sources that are registered
-    locally.
+    """Returns the list of remote model sources that are registered locally.
 
     Returns:
         the list of remote sources
