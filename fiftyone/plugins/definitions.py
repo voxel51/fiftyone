@@ -5,6 +5,7 @@ Plugin definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import hashlib
 import os
 
 import yaml
@@ -139,6 +140,20 @@ class PluginDefinition(object):
         if self.has_js:
             return os.path.join(self.server_path, self.js_bundle)
 
+    @property
+    def js_bundle_hash(self):
+        """A hash of the plugin's JS bundle file."""
+        if not self.has_js:
+            return None
+
+        try:
+            with open(self.js_bundle_path, "rb") as f:
+                h = hashlib.sha1()
+                h.update(f.read())
+                return h.hexdigest()
+        except:
+            return None
+
     def can_register_operator(self, name):
         """Whether the plugin can register the given operator.
 
@@ -185,6 +200,7 @@ class PluginDefinition(object):
             "py_entry": self.py_entry,
             "js_bundle_exists": self.has_js,
             "js_bundle_server_path": self.js_bundle_server_path,
+            "js_bundle_hash": self.js_bundle_hash,
             "has_py": self.has_py,
             "has_js": self.has_js,
             "server_path": self.server_path,

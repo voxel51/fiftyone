@@ -1,7 +1,5 @@
 import {
-  Lookers,
   ModalSample,
-  isDynamicGroup,
   modalSample,
   modalSampleId,
   useHoveredSample,
@@ -9,17 +7,21 @@ import {
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import { SampleBar } from "./Bars";
-import Looker from "./Looker";
+import styled from "styled-components";
+import { ModalLooker } from "./ModalLooker";
+import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
+
+const CheckboxWrapper = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+`;
 
 export const SampleWrapper = ({
   children,
-  actions,
-  lookerRef,
   sampleAtom = modalSample,
 }: React.PropsWithChildren<{
-  lookerRef?: MutableRefObject<Lookers | undefined>;
-  actions?: boolean;
   sampleAtom?: RecoilValueReadOnly<ModalSample>;
 }>) => {
   const [hovering, setHovering] = useState(false);
@@ -47,57 +49,33 @@ export const SampleWrapper = ({
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const sample = useRecoilValue(sampleAtom);
-  const isGroup = useRecoilValue(isDynamicGroup);
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
   });
-
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hoverEventHandlers}
     >
-      {!isGroup && (
-        <SampleBar
-          sampleId={sample.sample._id}
-          lookerRef={lookerRef}
-          visible={hovering}
-          hoveringRef={hoveringRef}
-          actions={actions}
-        />
+      {hovering && (
+        <CheckboxWrapper>
+          <SelectSampleCheckbox
+            sampleId={sample.sample._id ?? sample.sample.id}
+          />
+        </CheckboxWrapper>
       )}
       {children}
     </div>
   );
 };
 
-interface SampleProps {
-  lookerRefCallback: (looker: Lookers) => void;
-  lookerRef?: MutableRefObject<Lookers | undefined>;
-  actions?: boolean;
-}
-
-const Sample = ({
-  lookerRefCallback,
-  lookerRef: propsLookerRef,
-  actions,
-}: SampleProps) => {
-  const lookerRef = useRef<Lookers | undefined>(undefined);
-
-  const ref = propsLookerRef || lookerRef;
-
+export const Sample2D = () => {
   const id = useRecoilValue(modalSampleId);
 
   return (
-    <SampleWrapper lookerRef={ref} actions={actions}>
-      <Looker
-        key={`looker-${id}`}
-        lookerRef={ref}
-        lookerRefCallback={lookerRefCallback}
-      />
+    <SampleWrapper>
+      <ModalLooker key={`looker-${id}`} />
     </SampleWrapper>
   );
 };
-
-export default Sample;

@@ -1,4 +1,3 @@
-import { currentSampleId } from "@fiftyone/state";
 import DoneIcon from "@mui/icons-material/Done";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import { CircularProgress, Typography } from "@mui/material";
@@ -6,7 +5,7 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ALL_LOADING_COMPLETE } from "./hooks";
-import { fo3dAssetsParseStatusLog } from "./state";
+import { fo3dAssetsParseStatusThisSample } from "./state";
 
 const LogContainer = styled.div`
   width: 70%;
@@ -18,8 +17,7 @@ const LogContainer = styled.div`
 `;
 
 export const Logs = () => {
-  const currentSample = useRecoilValue(currentSampleId);
-  const logs = useRecoilValue(fo3dAssetsParseStatusLog(currentSample));
+  const logs = useRecoilValue(fo3dAssetsParseStatusThisSample);
 
   const errorLogs = useMemo(() => {
     return logs.filter((log) => log.status === "error");

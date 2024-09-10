@@ -59,7 +59,8 @@
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^5.2.12",
         "vite-plugin-relay": "^1.0.7",
-        "vite-plugin-rewrite-all": "^1.0.2"
+        "vite-plugin-rewrite-all": "^1.0.2",
+        "vite-plugin-svgr": "^4.2.0"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",

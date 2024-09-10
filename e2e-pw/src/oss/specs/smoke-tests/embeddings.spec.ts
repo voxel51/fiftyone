@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { EmbeddingsPom } from "src/oss/poms/panels/embeddings-panel";
-import { PanelPom } from "src/oss/poms/panels/panel";
+import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
@@ -9,13 +9,13 @@ const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 const test = base.extend<{
   embeddings: EmbeddingsPom;
   grid: GridPom;
-  panel: PanelPom;
+  panel: GridPanelPom;
 }>({
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   panel: async ({ page }, use) => {
-    await use(new PanelPom(page));
+    await use(new GridPanelPom(page));
   },
   embeddings: async ({ eventUtils, page }, use) => {
     await use(new EmbeddingsPom(page, eventUtils));
@@ -52,7 +52,7 @@ test.describe("embeddings on quickstart dataset", () => {
     panel,
   }: {
     embeddings: EmbeddingsPom;
-    panel: PanelPom;
+    panel: GridPanelPom;
   }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifySelectorVisible();
@@ -64,7 +64,7 @@ test.describe("embeddings on quickstart dataset", () => {
     panel,
   }: {
     embeddings: EmbeddingsPom;
-    panel: PanelPom;
+    panel: GridPanelPom;
   }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifyLassoSelectsSamples();

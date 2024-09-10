@@ -5,6 +5,7 @@ import {
   PillButton,
 } from "@fiftyone/components";
 import { withSuspense } from "@fiftyone/state";
+import { isPrimitiveString } from "@fiftyone/utilities";
 import { Extension } from "@mui/icons-material";
 import styled from "styled-components";
 import { types } from ".";
@@ -16,7 +17,8 @@ import {
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
-import { isPrimitiveString } from "@fiftyone/utilities";
+
+import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps
@@ -29,12 +31,13 @@ export function OperatorPlacementWithErrorBoundary(
 }
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
-  const { place } = props;
+  const { place, modal } = props;
   const { placements } = useOperatorPlacements(place);
 
   return placements.map((placement) => (
     <OperatorPlacementWithErrorBoundary
       key={placement?.operator?.uri}
+      modal={modal}
       place={place}
       {...placement}
     />
@@ -61,7 +64,7 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 
 function ButtonPlacement(props: OperatorPlacementProps) {
   const promptForInput = usePromptOperatorInput();
-  const { operator, placement, place, adaptiveMenuItemProps } = props;
+  const { operator, placement, place, adaptiveMenuItemProps, modal } = props;
   const { uri, label: operatorLabel, name: operatorName } = operator;
   const { view = {} } = placement;
   const { label } = view;
@@ -101,20 +104,21 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   ) {
     return (
       <PillButton
-        {...(adaptiveMenuItemProps || {})}
+        {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
         onClick={handleClick}
         icon={showIcon && IconComponent}
         text={!showIcon && title}
         title={title}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
+        tooltipPlacement={modal ? "top" : "bottom"}
       />
     );
   }
 
   return (
     <SquareButton
-      {...(adaptiveMenuItemProps || {})}
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       to={handleClick}
       title={label}
     >
@@ -125,9 +129,11 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
 type OperatorPlacementsProps = {
   place: Places;
+  modal?: boolean;
 };
 
 type OperatorPlacementProps = {
+  modal?: boolean;
   placement: Placement;
   place: Places;
   operator: Operator;

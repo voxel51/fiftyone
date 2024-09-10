@@ -4507,8 +4507,8 @@ of images and their associated properties stored in
 
 .. note::
 
-    You must have `pydicom <https://github.com/pydicom/pydicom>`_ installed in
-    order to load DICOM datasets.
+    You must have `pydicom<3 <https://github.com/pydicom/pydicom>`_ installed
+    in order to load DICOM datasets.
 
 The standard format for datasets of this type is the following:
 
