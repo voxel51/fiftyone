@@ -20,7 +20,6 @@ const useCallGA = (info: Analytics$data) => {
         clientId: info.uid,
         page_location: "omitted",
         page_path: "omitted",
-        kind:  "Web",
         version: info.version,
         context: info.context,
         checkProtocolTask: null, // disable check, allow file:// URLs
