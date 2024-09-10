@@ -1,16 +1,36 @@
 import { IconButton, Popout, scrollable } from "@fiftyone/components";
-import { useOutsideClick } from "@fiftyone/state";
+import { PluginComponentRegistration } from "@fiftyone/plugins";
+import * as fos from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { useMemo, useRef, useState } from "react";
+import { useRecoilCallback } from "recoil";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
+import { panelsCompareFn } from "../utils/sort";
 import AddPanelItem from "./AddPanelItem";
 import { AddPanelButtonContainer } from "./StyledElements";
-import { panelsCompareFn } from "../utils/sort";
 
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
-  const panels = usePanels();
+  const panelsPredicate = useRecoilCallback(
+    ({ snapshot }) =>
+      (panel: PluginComponentRegistration) => {
+        const isModalActive = snapshot
+          .getLoadable(fos.isModalActive)
+          .valueOrThrow();
+        const surface = panel.panelOptions?.surfaces;
+
+        if (isModalActive) {
+          return surface === "modal" || surface === "grid modal";
+        }
+
+        if (surface === "modal") return false;
+
+        return true;
+      },
+    []
+  );
+  const panels = usePanels(panelsPredicate);
   const spaceNodes = useSpaceNodes(spaceId);
   const nodeTypes = useMemo(() => {
     return spaceNodes.map((node) => {
@@ -18,7 +38,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
     });
   }, [spaceNodes]);
   const popoutRef = useRef();
-  useOutsideClick(popoutRef, () => {
+  fos.useOutsideClick(popoutRef, () => {
     setOpen(false);
   });
 

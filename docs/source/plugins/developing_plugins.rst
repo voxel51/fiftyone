@@ -1837,10 +1837,14 @@ subsequent sections.
 
             # Define components that appear in the panel's main body
             panel.str("event", label="The last event", view=types.LabelValueView())
-            panel.obj("event_data", label="The last event data", view=types.JSONView())
+            panel.obj(
+                "event_data", label="The last event data", view=types.JSONView()
+            )
 
             # Display a checkbox to toggle between plot and compute visualization button
-            show_compute_visualization_btn = ctx.panel.get_state("show_start_button", True)
+            show_compute_visualization_btn = ctx.panel.get_state(
+                "show_start_button", True
+            )
             panel.bool(
                 "show_start_button",
                 label="Show compute visualization button",
@@ -1867,7 +1871,9 @@ subsequent sections.
                     height="400px",
                 )
 
-            return types.Property(panel, view=types.GridView(orientation="vertical"))
+            return types.Property(
+                panel, view=types.GridView(orientation="vertical")
+            )
 
         #######################################################################
         # Builtin events
@@ -2014,7 +2020,11 @@ subsequent sections.
 
             # Format results for plotly
             x, y = zip(*results.points.tolist())
-            plot_data = [{"x": x, "y": y, "type": "scatter", "mode": "markers"}]
+            ids = results.sample_ids
+
+            plot_data = [
+                {"x": x, "y": y, "ids": ids, "type": "scatter", "mode": "markers"}
+            ]
 
             # Store large content as panel data for efficiency
             ctx.panel.set_data("embeddings", plot_data)
@@ -2035,8 +2045,8 @@ subsequent sections.
             ctx.ops.notify(f"Check out {url} for more information")
 
         def on_selected_embeddings(self, ctx):
-            # Retrieve data from plot
-            selected_points = ctx.panel.state.embeddings.get("data", [])
+            # Get selected points from event params
+            selected_points = ctx.params.get("data", [])
             selected_sample_ids = [d.get("id", None) for d in selected_points]
 
             # Conditionally trigger a builtin operation via `ctx.ops`
@@ -3000,15 +3010,13 @@ returns `true`:
 
 -   **Panel**: JS plugins can register panel components that can be opened by
     clicking the `+` next to any existing panel's tab
--   **Visualizer**: JS plugins can register a component that will override the
-    builtin :ref:`Sample visualizer <app-sample-view>`
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, visualizers, and components
------------------------------------
+Panels and Components
+---------------------
 
-Here's some examples of using panels, visualizers, and components to add your
+Here's some examples of using panels and components to add your
 own custom user interface and components to the FiftyOne App.
 
 Hello world panel
@@ -3033,48 +3041,9 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: jsx
     :linenos:
 
-    import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/state";
-
-    function PointCloud({ src }) {
-        // TODO: implement your visualizer using React
-    }
-
-    // this separate components shows where the FiftyOne plugin
-    // dependent code ends and the pure react code begins
-    function CustomVisualizer({ sample }) {
-        const src = fos.getSampleSrc(sample.filepath);
-
-        // now that we have all the data we need
-        // we can delegate to code that doesn't depend
-        // on the FiftyOne plugin API
-        return <PointCloud src={src} />;
-    }
-
-    function myActivator({ dataset }) {
-        return dataset.mediaType ??
-            dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-            undefined
-    }
-
-    fop.registerComponent({
-        // component to delegate to
-        component: CustomVisualizer,
-
-        // tell FiftyOne you want to provide a Visualizer
-        type: PluginComponentType.Visualizer,
-
-        // activate this plugin when the mediaType is PointCloud
-        activator: myActivator,
-    });
-
-Adding a custom panel
+Adding a custom Panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx

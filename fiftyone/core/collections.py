@@ -19,7 +19,7 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany
+from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -3184,8 +3184,8 @@ class SampleCollection(object):
                 patches before extracting them, in ``[-1, inf)``. If provided,
                 the length and width of the box are expanded (or contracted,
                 when ``alpha < 0``) by ``(100 * alpha)%``. For example, set
-                ``alpha = 1.1`` to expand the boxes by 10%, and set
-                ``alpha = 0.9`` to contract the boxes by 10%
+                ``alpha = 0.1`` to expand the boxes by 10%, and set
+                ``alpha = -0.1`` to contract the boxes by 10%
             handle_missing ("skip"): how to handle images with no patches.
                 Supported values are:
 
@@ -9091,7 +9091,7 @@ class SampleCollection(object):
                 if key in sample_info:
                     sample_info[key]["size"] = size
 
-            for key in cs["indexBuilds"]:
+            for key in cs.get("indexBuilds", []):
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
 
@@ -9113,7 +9113,7 @@ class SampleCollection(object):
                     if key in frame_info:
                         frame_info[key]["size"] = size
 
-                for key in cs["indexBuilds"]:
+                for key in cs.get("indexBuilds", []):
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
 
@@ -9126,7 +9126,7 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, **kwargs):
+    def create_index(self, field_or_spec, unique=False, wait=True, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -9160,6 +9160,7 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            wait (True): whether to wait for index creation to finish
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
 
@@ -9238,10 +9239,17 @@ class SampleCollection(object):
             # Satisfactory index already exists
             return index_name
 
+        # Setting `w=0` sets `acknowledged=False` in pymongo
+        write_concern = None if wait else WriteConcern(w=0)
+
         if is_frame_index:
-            coll = self._dataset._frame_collection
+            coll = self._dataset._get_frame_collection(
+                write_concern=write_concern
+            )
         else:
-            coll = self._dataset._sample_collection
+            coll = self._dataset._get_sample_collection(
+                write_concern=write_concern
+            )
 
         name = coll.create_index(index_spec, unique=unique, **kwargs)
 

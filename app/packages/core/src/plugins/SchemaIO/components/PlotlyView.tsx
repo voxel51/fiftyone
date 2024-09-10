@@ -9,6 +9,30 @@ import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
 
+type TraceWithIds = {
+  name?: string;
+  ids?: string[];
+};
+
+function getIdForTrace(
+  point: Plotly.Point,
+  trace: TraceWithIds,
+  options: { is2DArray?: boolean } = {}
+) {
+  const { is2DArray = false } = options;
+  const { data } = point;
+  const { x, y, z } = data;
+  if (trace?.ids) {
+    if (is2DArray) {
+      const [xIdx, yIdx] = point.pointIndex;
+      return trace.ids[yIdx][xIdx];
+    } else {
+      return trace.ids[point.pointIndex];
+    }
+  }
+  return null;
+}
+
 export default function PlotlyView(props: ViewPropsType) {
   const { data, schema, path, relativeLayout } = props;
   const { view = {} } = schema;
@@ -23,10 +47,12 @@ export default function PlotlyView(props: ViewPropsType) {
     const data = EventDataMappers[event]?.(e) || {};
     let xValue = null;
     let yValue = null;
+    let zValue = null;
     let value;
     let label;
+    let id = null;
+
     if (event === "onClick") {
-      const values = e.points[0];
       let selected = [];
       let xBinsSize = null;
       for (const p of e.points) {
@@ -49,10 +75,12 @@ export default function PlotlyView(props: ViewPropsType) {
         } else if (type === "heatmap") {
           xValue = p.x;
           yValue = p.y;
+          zValue = p.z;
         } else if (type === "pie") {
           value = p.v;
           label = p.label;
         }
+        id = getIdForTrace(p, fullData, { is2DArray: type === "heatmap" });
       }
       if (selected.length === 0) {
         selected = null;
@@ -61,6 +89,7 @@ export default function PlotlyView(props: ViewPropsType) {
 
     const eventHandlerOperator = view[snakeCase(event)];
     const defaultParams = {
+      id,
       path: props.path,
       relative_path: props.relativePath,
       schema: props.schema,
@@ -68,22 +97,35 @@ export default function PlotlyView(props: ViewPropsType) {
       event,
       value,
       label,
+      shift_pressed: Boolean(e?.event?.shiftKey),
     };
 
     if (eventHandlerOperator) {
       let params = {};
       if (event === "onClick") {
+        const eventData = e as Plotly.PlotMouseEvent;
         params = {
           ...defaultParams,
           range,
           x: xValue,
           y: yValue,
+          z: zValue,
+          idx: e.points[0].pointIndex,
+          trace: eventData.points[0].data.name,
+          trace_idx: eventData.points[0].curveNumber,
+          value,
+          label,
         };
       } else if (event === "onSelected") {
         params = {
           ...defaultParams,
           data,
           path,
+        };
+      } else {
+        params = {
+          ...defaultParams,
+          data,
         };
       }
 
@@ -235,6 +277,7 @@ const EventDataMappers = {
     const result = {
       ...pointdata,
       data: metadata,
+      trace: fullData.name,
     };
     return result;
   },
@@ -245,6 +288,8 @@ const EventDataMappers = {
       const { data, fullData, xaxis, yaxis, ...pointdata } = point;
       const { x, y, z, ids, selectedpoints, ...metadata } = data;
       selected.push({
+        trace: fullData.name,
+        trace_idx: point.curveNumber,
         idx: point.pointIndex,
         id: Array.isArray(ids) ? ids[point.pointIndex] : null,
         x: Array.isArray(x) ? x[point.pointIndex] : null,

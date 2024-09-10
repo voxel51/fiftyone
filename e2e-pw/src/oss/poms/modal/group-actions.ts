@@ -27,7 +27,8 @@ export class ModalGroupActionsPom {
 
   async toggleMedia(media: "3d" | "carousel" | "viewer") {
     if (!(await this.groupMediaVisibilityPopout.isVisible())) {
-      await this.toggleMediaButton.click();
+      // using force=true because react-draggable is intercepting click event
+      await this.toggleMediaButton.click({ force: true });
     }
 
     switch (media) {
@@ -45,12 +46,6 @@ export class ModalGroupActionsPom {
     }
   }
 
-  async getGroupPinnedText() {
-    return this.modal.locator
-      .getByTestId("pinned-slice-bar-description")
-      .textContent();
-  }
-
   async selectNthItemFromCarousel(index: number) {
     return this.modal.locator
       .getByTestId("flashlight-section-horizontal")
@@ -61,7 +56,8 @@ export class ModalGroupActionsPom {
   async setDynamicGroupsNavigationMode(
     mode: "carousel" | "pagination" | "video"
   ) {
-    await this.modal.toggleDisplayOptionsButton.click();
+    // using force=true because react-draggable is intercepting click event
+    await this.modal.toggleDisplayOptionsButton.click({ force: true });
 
     switch (mode) {
       case "carousel":
@@ -80,17 +76,13 @@ export class ModalGroupActionsPom {
       default:
         throw new Error(`Unknown mode: ${mode}`);
     }
-    await this.modal.toggleDisplayOptionsButton.click();
+    // using force=true because react-draggable is intercepting click event
+    await this.modal.toggleDisplayOptionsButton.click({ force: true });
   }
 }
 
 class ModalGroupActionsAsserter {
   constructor(private readonly groupActionsPom: ModalGroupActionsPom) {}
-
-  async assertGroupPinnedText(text: string) {
-    const pinnedText = await this.groupActionsPom.getGroupPinnedText();
-    expect(pinnedText).toBe(text);
-  }
 
   async assertIsCarouselVisible() {
     await expect(this.groupActionsPom.modal.carousel).toBeVisible();

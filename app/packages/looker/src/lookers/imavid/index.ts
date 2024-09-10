@@ -1,3 +1,4 @@
+import { BufferManager } from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
 import { ImaVidElement } from "../../elements/imavid";
@@ -9,8 +10,14 @@ import {
 } from "../../state";
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
-import { BufferManager } from "./buffer-manager";
-import { DEFAULT_PLAYBACK_RATE } from "./constants";
+import {
+  DEFAULT_PLAYBACK_RATE,
+  IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
+} from "./constants";
+
+const DEFAULT_PAN = 0;
+const DEFAULT_SCALE = 1;
+const FIRST_FRAME = 1;
 
 /**
  * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
@@ -84,8 +91,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     config: ImaVidState["config"],
     options: ImaVidState["options"]
   ): ImaVidState {
-    const firstFrame = config.firstFrameNumber ?? 1;
-
     return {
       ...this.getInitialBaseState(),
       options: {
@@ -95,32 +100,38 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       config: { ...config },
       seeking: false,
       playing: false,
-      currentFrameNumber: firstFrame,
-      isCurrentFrameNumberAuthoritative: false,
+      currentFrameNumber: FIRST_FRAME,
       totalFrames: config.frameStoreController.totalFrameCount ?? 1,
       buffering: false,
-      bufferManager: new BufferManager([[firstFrame, firstFrame]]),
+      bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
     };
   }
 
   hasDefaultZoom(state: ImaVidState): boolean {
-    let pan = [0, 0];
-    let scale = 1;
-
     return (
-      scale === state.scale &&
-      pan[0] === state.pan[0] &&
-      pan[1] === state.pan[1]
+      DEFAULT_SCALE === state.scale &&
+      DEFAULT_PAN === state.pan[0] &&
+      DEFAULT_PAN === state.pan[1]
     );
   }
 
   getDefaultOptions(): ImaVidOptions {
+    let defaultPlaybackRate = DEFAULT_PLAYBACK_RATE;
+
+    const mayBePlayBackRateFromLocalStorage = localStorage.getItem(
+      IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY
+    );
+
+    if (mayBePlayBackRateFromLocalStorage) {
+      defaultPlaybackRate = parseFloat(mayBePlayBackRateFromLocalStorage);
+    }
+
     return {
       ...DEFAULT_BASE_OPTIONS,
       loop: false,
-      playbackRate: DEFAULT_PLAYBACK_RATE,
+      playbackRate: defaultPlaybackRate,
     } as ImaVidOptions;
   }
 

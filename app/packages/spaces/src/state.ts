@@ -27,9 +27,9 @@ export const spaceSelector = selectorFamily({
     (spaceId: string) =>
     ({ get, set }, spaceState) => {
       const spaces = get(spacesAtom);
-      const updateSpaces = { ...spaces };
-      updateSpaces[spaceId] = spaceState as SpaceNodeJSON;
-      set(spacesAtom, updateSpaces);
+      const updatedSpaces = { ...spaces };
+      updatedSpaces[spaceId] = spaceState as SpaceNodeJSON;
+      set(spacesAtom, updatedSpaces);
     },
 });
 

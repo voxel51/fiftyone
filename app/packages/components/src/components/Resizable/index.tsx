@@ -1,23 +1,24 @@
-import React from "react";
 import {
   Resizable as ReResizable,
   ResizableProps as ReResizableProps,
 } from "re-resizable";
-import { resizeHandle } from "./index.module.css";
+import React from "react";
 import { useTheme } from "../ThemeProvider";
+import { resizeHandle } from "./index.module.css";
 
 /**
  * Currently, only supports resizing left and right
  */
 export default function Resizable(props: ResizableProps) {
-  const { direction, onResizeStop, onResizeReset, style } = props;
+  const { direction, onResizeStop, onResizeReset, style, ...otherProps } =
+    props;
   const resizeRight = direction === "right";
   const resizeLeft = direction === "left";
   const theme = useTheme();
 
   return (
     <ReResizable
-      {...props}
+      {...otherProps}
       enable={{
         top: false,
         right: resizeRight,

@@ -1,13 +1,13 @@
 import { test as base } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
+import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
-import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{
   actionsRow: GridActionsRowPom;
   histogram: HistogramPom;
-  panel: PanelPom;
+  panel: GridPanelPom;
 }>({
   actionsRow: async ({ page, eventUtils }, use) => {
     await use(new GridActionsRowPom(page, eventUtils));
@@ -16,7 +16,7 @@ const test = base.extend<{
     await use(new HistogramPom(page, eventUtils));
   },
   panel: async ({ page }, use) => {
-    await use(new PanelPom(page));
+    await use(new GridPanelPom(page));
   },
 });
 

@@ -7,6 +7,8 @@ import { type AppReadyState, EVENTS } from "./registerEvent";
 
 const HANDLERS = {};
 
+const IGNORE = new Set(["ping", ""]);
+
 const useEvents = (
   controller: AbortController,
   router: RoutingContext<Queries>,
@@ -27,7 +29,7 @@ const useEvents = (
   return {
     subscriptions,
     handler: useCallback((event: string, payload: string) => {
-      if (event === "" || event === "ping") {
+      if (IGNORE.has(event)) {
         return;
       }
 
