@@ -13,6 +13,7 @@ import importlib
 import inspect
 import logging
 import os
+import sys
 
 import yaml
 
@@ -1612,7 +1613,7 @@ class RemoteZooDataset(ZooDataset):
         ).replace("/", ".")
         spec = importlib.util.spec_from_file_location(module_name, module_path)
         module = importlib.util.module_from_spec(spec)
-        # sys.modules[module.__name__] = module
+        sys.modules[module.__name__] = module
         spec.loader.exec_module(module)
         return module
 
