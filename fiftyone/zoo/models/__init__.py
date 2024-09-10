@@ -10,6 +10,7 @@ from copy import deepcopy
 import importlib
 import logging
 import os
+import sys
 import weakref
 
 from eta.core.config import ConfigError
@@ -503,12 +504,13 @@ class RemoteZooModel(ZooModel):
             self.manager = RemoteModelManager(config)
 
 
-class RemoteModelManagerConfig(fom.ModelManagerConfig):
+class RemoteModelManagerConfig(etam.ModelManagerConfig):
     def __init__(self, d):
+        super().__init__(d)
         self.model_name = self.parse_string(d, "model_name")
 
 
-class RemoteModelManager(fom.ModelManager):
+class RemoteModelManager(etam.ModelManager):
     def _download_model(self, model_path):
         _download_remote_model(self.config.model_name, model_path)
 
@@ -542,7 +544,7 @@ def _import_zoo_module(model_dir):
     )
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
-    # sys.modules[module.__name__] = module
+    sys.modules[module.__name__] = module
     spec.loader.exec_module(module)
     return module
 
