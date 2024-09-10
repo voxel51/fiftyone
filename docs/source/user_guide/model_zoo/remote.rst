@@ -46,7 +46,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        foz.register_zoo_model_source("https://github.com/voxel51/ultralytics-models")
+        foz.register_zoo_model_source("https://github.com/voxel51/openai-clip")
 
     Use :meth:`list_zoo_model_sources() <fiftyone.zoo.models.list_zoo_model_sources>`
     to list all remote sources that have been registered locally:
@@ -57,7 +57,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
         remote_sources = foz.list_zoo_model_sources()
 
         print(remote_sources)
-        # [..., "https://github.com/voxel51/ultralytics-models", ...]
+        # [..., "https://github.com/voxel51/openai-clip", ...]
 
     Once you've registered a remote source, any models that it
     :ref:`declares <model-zoo-remote-manifest>` will subsequently appear as
@@ -70,7 +70,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
         available_models = foz.list_zoo_models()
 
         print(available_models)
-        # [..., "voxel51/yolov10s-coco-torch", ...]
+        # [..., "voxel51/clip-vit-base32-torch", ...]
 
     You can download a remote zoo model by calling
     :meth:`download_zoo_model() <fiftyone.zoo.models.download_zoo_model>`:
@@ -78,7 +78,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
     .. code-block:: python
         :linenos:
 
-        foz.download_zoo_model("voxel51/yolov10s-coco-torch")
+        foz.download_zoo_model("voxel51/clip-vit-base32-torch")
 
     You can also directly download a remote zoo model and implicitly register
     its source via the following syntax:
@@ -87,8 +87,8 @@ Here's the basic recipe for working with remotely-sourced zoo models:
         :linenos:
 
         foz.download_zoo_model(
-            "https://github.com/voxel51/ultralytics-models",
-            model_name="voxel51/yolov10s-coco-torch",
+            "https://github.com/voxel51/openai-clip",
+            model_name="voxel51/clip-vit-base32-torch",
         )
 
     You can load a remote zoo model and apply it to a dataset or view via
@@ -99,9 +99,9 @@ Here's the basic recipe for working with remotely-sourced zoo models:
         :linenos:
 
         dataset = foz.load_zoo_dataset("quickstart")
-        model = foz.load_zoo_model("voxel51/yolov10s-coco-torch")
+        model = foz.load_zoo_model("voxel51/clip-vit-base32-torch")
 
-        dataset.apply_model(model, label_field="yolov10")
+        dataset.apply_model(model, label_field="clip")
 
     You can delete the local copy of a remotely-sourced zoo model via
     :meth:`delete_zoo_model() <fiftyone.zoo.models.delete_zoo_model>`:
@@ -109,7 +109,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
     .. code-block:: python
         :linenos:
 
-        foz.delete_zoo_model("voxel51/yolov10s-coco-torch")
+        foz.delete_zoo_model("voxel51/clip-vit-base32-torch")
 
     You can unregister a remote source of zoo models and delete any local
     copies of models that it declares via
@@ -118,7 +118,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
     .. code-block:: python
         :linenos:
 
-        foz.delete_zoo_model_source("https://github.com/voxel51/ultralytics-models")
+        foz.delete_zoo_model_source("https://github.com/voxel51/openai-clip")
 
   .. group-tab:: CLI
 
@@ -128,7 +128,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
     .. code-block:: shell
 
         fiftyone zoo models register-source \
-            https://github.com/voxel51/ultralytics-models
+            https://github.com/voxel51/openai-clip
 
     Use :ref:`fiftyone zoo models list-sources <cli-fiftyone-zoo-models-list-sources>`
     to list all remote sources that have been registered locally:
@@ -137,7 +137,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
 
         fiftyone zoo models list-sources
 
-        # contains a row for 'https://github.com/voxel51/ultralytics-models'
+        # contains a row for 'https://github.com/voxel51/openai-clip'
 
     Once you've registered a remote source, any models that it
     :ref:`declares <model-zoo-remote-manifest>` will subsequently appear as
@@ -148,14 +148,14 @@ Here's the basic recipe for working with remotely-sourced zoo models:
 
         fiftyone zoo models list
 
-        # contains a row for 'voxel51/yolov10s-coco-torch'
+        # contains a row for 'voxel51/clip-vit-base32-torch'
 
     You can download a remote zoo model by calling
     :ref:`fiftyone zoo models download <cli-fiftyone-zoo-models-download>`:
 
     .. code-block:: shell
 
-        fiftyone zoo models download voxel51/yolov10s-coco-torch
+        fiftyone zoo models download voxel51/clip-vit-base32-torch
 
     You can also directly download a remote zoo model and implicitly register
     its source via the following syntax:
@@ -163,17 +163,17 @@ Here's the basic recipe for working with remotely-sourced zoo models:
     .. code-block:: shell
 
         fiftyone zoo models \
-            download https://github.com/voxel51/ultralytics-models \
-            --model-name voxel51/yolov10s-coco-torch
+            download https://github.com/voxel51/openai-clip \
+            --model-name voxel51/clip-vit-base32-torch
 
     You can load a remote zoo model and apply it to a dataset via
     :ref:`fiftyone zoo models apply <cli-fiftyone-zoo-models-apply>`:
 
     .. code-block:: shell
 
-        MODEL_NAME=voxel51/yolov10s-coco-torch
+        MODEL_NAME=voxel51/clip-vit-base32-torch
         DATASET_NAME=quickstart
-        LABEL_FIELD=yolov10
+        LABEL_FIELD=clip
 
         fiftyone zoo models apply $MODEL_NAME $DATASET_NAME $LABEL_FIELD
 
@@ -182,7 +182,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
 
     .. code-block:: shell
 
-        fiftyone zoo models delete voxel51/yolov10s-coco-torch
+        fiftyone zoo models delete voxel51/clip-vit-base32-torch
 
     You can unregister a remote source of zoo models and delete any local
     copies of models that it declares via
@@ -190,7 +190,7 @@ Here's the basic recipe for working with remotely-sourced zoo models:
 
     .. code-block:: shell
 
-        fiftyone zoo models delete-source https://github.com/voxel51/ultralytics-models
+        fiftyone zoo models delete-source https://github.com/voxel51/openai-clip
 
 .. _model-zoo-remote-creation:
 
@@ -284,25 +284,28 @@ Here's an exaxmple model manifest file that declares a single model:
 .. code-block:: json
 
     {
-        "name": "voxel51/ultralytics",
-        "url": "https://github.com/voxel51/ultralytics-models",
+        "name": "voxel51/openai-clip",
+        "url": "https://github.com/voxel51/openai-clip",
         "models": [
             {
-                "base_name": "voxel51/yolov8s-coco-torch",
-                "base_filename": "yolov8s-coco.pt",
-                "author": "Ultralytics",
-                "license": "https://www.ultralytics.com/license",
-                "source": "https://docs.ultralytics.com/models/yolov8/",
-                "description": "Ultralytics YOLOv8s model trained on COCO",
-                "tags": ["detection", "coco", "torch", "yolo"],
-                "size_bytes": 22573363,
-                "date_added": "2024-03-11 19:22:51",
+                "base_name": "voxel51/clip-vit-base32-torch",
+                "base_filename": "CLIP-ViT-B-32.pt",
+                "author": "OpenAI",
+                "license": "MIT",
+                "source": "https://github.com/openai/CLIP",
+                "description": "CLIP text/image encoder from Learning Transferable Visual Models From Natural Language Supervision (https://arxiv.org/abs/2103.00020) trained on 400M text-image pairs",
+                "tags": [
+                    "classification",
+                    "logits",
+                    "embeddings",
+                    "torch",
+                    "clip",
+                    "zero-shot"
+                ],
+                "size_bytes": 353976522,
+                "date_added": "2022-04-12 17:49:51",
                 "requirements": {
-                    "packages": [
-                        "torch>=1.7.0",
-                        "torchvision>=0.8.1",
-                        "ultralytics"
-                    ],
+                    "packages": ["torch", "torchvision"],
                     "cpu": {
                         "support": true
                     },
@@ -405,5 +408,5 @@ is called, any `kwargs` are passed through to ``load_model(..., **kwargs)``.
 
 .. note::
 
-    Check out `voxel51/ultralytics-models <https://github.com/voxel51/ultralytics-models>`_
+    Check out `voxel51/openai-clip <https://github.com/voxel51/openai-clip>`_
     for an example of a remote model source.
