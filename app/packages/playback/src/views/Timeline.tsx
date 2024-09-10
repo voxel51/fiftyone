@@ -1,12 +1,9 @@
 import { BufferRange } from "@fiftyone/utilities";
 import React from "react";
-import {
-  DEFAULT_FRAME_NUMBER,
-  GLOBAL_TIMELINE_ID,
-  SEEK_BAR_DEBOUNCE,
-} from "../lib/constants";
+import { DEFAULT_FRAME_NUMBER, SEEK_BAR_DEBOUNCE } from "../lib/constants";
 import { TimelineName } from "../lib/state";
 import { useCreateTimeline } from "../lib/use-create-timeline";
+import { useDefaultTimelineName } from "../lib/use-default-timeline-name";
 import { useTimeline } from "../lib/use-timeline";
 import { useTimelineVizUtils } from "../lib/use-timeline-viz-utils";
 import {
@@ -29,7 +26,11 @@ interface TimelineProps {
  */
 export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
   ({ name: maybeTimelineName, style }, ref) => {
-    const name = maybeTimelineName ?? GLOBAL_TIMELINE_ID;
+    const { getName } = useDefaultTimelineName();
+    const name = React.useMemo(
+      () => maybeTimelineName ?? getName(),
+      [maybeTimelineName, getName]
+    );
 
     const { frameNumber, playHeadState, config, play, pause } =
       useTimeline(name);
@@ -109,12 +110,9 @@ export const ComponentWithTimeline = () => {
   React.useEffect(() => {
     if (isTimelineInitialized) {
       subscribe({
-        name: GLOBAL_TIMELINE_ID,
-        subscription: {
-          id: "sub1",
-          loadRange,
-          renderFrame: myRenderFrame,
-        },
+        id: "sub1",
+        loadRange,
+        renderFrame: myRenderFrame,
       });
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame]);
@@ -153,12 +151,9 @@ export const Component2WithTimeline = () => {
     }
 
     subscribe({
-      name: GLOBAL_TIMELINE_ID,
-      subscription: {
-        id: "sub2",
-        loadRange,
-        renderFrame: myRenderFrame,
-      },
+      id: "sub2",
+      loadRange,
+      renderFrame: myRenderFrame,
     });
   }, [loadRange, myRenderFrame, isTimelineInitialized]);
 
@@ -196,12 +191,9 @@ export const Component3WithTimeline = () => {
     }
 
     subscribe({
-      name: GLOBAL_TIMELINE_ID,
-      subscription: {
-        id: "sub3",
-        loadRange,
-        renderFrame: myRenderFrame,
-      },
+      id: "sub3",
+      loadRange,
+      renderFrame: myRenderFrame,
     });
   }, [loadRange, myRenderFrame, isTimelineInitialized]);
 

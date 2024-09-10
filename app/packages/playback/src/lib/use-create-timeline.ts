@@ -62,7 +62,8 @@ export const useCreateTimeline = (
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
 
     return () => {
-      cancelAnimation();
+      // when component using this hook unmounts, pause animation
+      pause();
     };
     // note: we're not using newTimelineConfig.config as a dependency
     // because it's not guaranteed to be referentially stable.
