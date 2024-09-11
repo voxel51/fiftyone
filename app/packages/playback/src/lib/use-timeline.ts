@@ -1,4 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   _INTERNAL_timelineConfigsLruCache,
@@ -31,17 +32,22 @@ export const useTimeline = (name?: TimelineName) => {
     useAtomValue(getTimelineConfigAtom(timelineName));
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
-  const frameNumber = useAtomValue(getFrameNumberAtom(timelineName));
   const subscribeImpl = useSetAtom(addSubscriberAtom);
 
   useEffect(() => {
     // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
-  }, []);
+  }, [timelineName]);
 
-  const setPlayHeadState = useCallback((newState: PlayheadState) => {
-    setPlayheadStateWrapper({ name: timelineName, state: newState });
-  }, []);
+  const getFrameNumber = useAtomCallback(
+    useCallback(
+      (get) => {
+        const currFramenumber = get(getFrameNumberAtom(timelineName));
+        return currFramenumber;
+      },
+      [timelineName]
+    )
+  );
 
   const play = useCallback(() => {
     dispatchEvent(
@@ -55,6 +61,13 @@ export const useTimeline = (name?: TimelineName) => {
     );
   }, [timelineName]);
 
+  const setPlayHeadState = useCallback(
+    (newState: PlayheadState) => {
+      setPlayheadStateWrapper({ name: timelineName, state: newState });
+    },
+    [timelineName]
+  );
+
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
@@ -64,12 +77,30 @@ export const useTimeline = (name?: TimelineName) => {
 
   return {
     config,
-    frameNumber,
     isTimelineInitialized,
     playHeadState,
+
+    /**
+     * Imperative way to get the current frame number of the timeline.
+     * If you want to subscribe to the frame number, use the `subscribe` method, or
+     * use the `useFrameNumber` hook.
+     */
+    getFrameNumber,
+    /**
+     * Dispatch a play event to the timeline.
+     */
     play,
+    /**
+     * Dispatch a pause event to the timeline.
+     */
     pause,
+    /**
+     * Set the playhead state of the timeline.
+     */
     setPlayHeadState,
+    /**
+     * Subscribe to the timeline for frame updates.
+     */
     subscribe,
   };
 };
