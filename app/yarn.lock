@@ -1774,7 +1774,6 @@ __metadata:
     classnames: ^2.3.1
     framer-motion: ^6.2.7
     material-icons: ^1.13.12
-    path-to-regexp: ^8.0.0
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
     react-laag: ^2.0.3
@@ -1829,7 +1828,6 @@ __metadata:
     lodash: ^4.17.21
     lru-cache: ^6.0.0
     numeral: ^2.0.6
-    path-to-regexp: ^8.0.0
     prettier: 2.2.1
     re-resizable: ^6.9.17
     react-color: ^2.19.3
