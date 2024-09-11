@@ -180,6 +180,7 @@ const Checkboxes = ({
   const show = useRecoilValue(showSearchSelector({ modal, path }));
   const getCount = useGetCount(modal, path);
 
+  // if results are null, and show is false, values are loading
   if (loading || (!show && results === null)) {
     return <LoadingDots text={"Loading"} />;
   }
