@@ -90,7 +90,7 @@ export const currentModalUniqueId = selector({
       return null;
     }
 
-    return `${currentGroupIdVal}/${currentSampleIdVal}`;
+    return `${currentGroupIdVal ?? ""}/${currentSampleIdVal}`;
   },
 });
 

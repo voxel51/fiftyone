@@ -2,6 +2,7 @@ import { useSetAtom } from "jotai";
 import React from "react";
 import { setFrameNumberAtom, TimelineName } from "./state";
 import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useFrameNumber } from "./use-frame-number";
 import { useTimeline } from "./use-timeline";
 
 /**
@@ -17,7 +18,9 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
 
   const timelineName = React.useMemo(() => name ?? getName(), [name, getName]);
 
-  const { config, frameNumber, pause } = useTimeline(timelineName);
+  const { config, pause } = useTimeline(timelineName);
+  const frameNumber = useFrameNumber(timelineName);
+
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
 
   const getSeekValue = React.useCallback(() => {
