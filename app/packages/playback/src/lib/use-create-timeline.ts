@@ -1,5 +1,6 @@
 import { Optional, useEventHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   _INTERNAL_timelineConfigsLruCache,
@@ -56,14 +57,14 @@ export const useCreateTimeline = (
   useEffect(() => {
     addTimeline({ name: timelineName, config: newTimelineConfig.config });
 
-    setIsTimelineInitialized(true);
-
     // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
 
+    setIsTimelineInitialized(true);
+
     return () => {
       // when component using this hook unmounts, pause animation
-      pause();
+      // pause();
     };
     // note: we're not using newTimelineConfig.config as a dependency
     // because it's not guaranteed to be referentially stable.
@@ -255,5 +256,29 @@ export const useCreateTimeline = (
     [addSubscriber, timelineName]
   );
 
-  return { isTimelineInitialized, subscribe };
+  const refresh = useAtomCallback(
+    useCallback(
+      (get, set) => {
+        const currentFrameNumber = get(getFrameNumberAtom(timelineName));
+
+        set(setFrameNumberAtom, {
+          name: timelineName,
+          newFrameNumber: currentFrameNumber,
+        });
+      },
+      [timelineName]
+    )
+  );
+
+  useEffect(() => {
+    if (!isTimelineInitialized) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      refresh();
+    });
+  }, [isTimelineInitialized, refresh]);
+
+  return { isTimelineInitialized, refresh, subscribe };
 };

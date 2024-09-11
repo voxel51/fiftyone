@@ -9,6 +9,7 @@ import {
   getTimelineConfigAtom,
   PlayheadState,
   SequenceTimelineSubscription,
+  setFrameNumberAtom,
   TimelineName,
   updatePlayheadStateAtom,
 } from "../lib/state";
@@ -48,6 +49,30 @@ export const useTimeline = (name?: TimelineName) => {
       [timelineName]
     )
   );
+
+  const refresh = useAtomCallback(
+    useCallback(
+      (get, set) => {
+        const currentFrameNumber = get(getFrameNumberAtom(timelineName));
+
+        set(setFrameNumberAtom, {
+          name: timelineName,
+          newFrameNumber: currentFrameNumber,
+        });
+      },
+      [timelineName]
+    )
+  );
+
+  useEffect(() => {
+    if (!isTimelineInitialized) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      refresh();
+    });
+  }, [isTimelineInitialized, refresh]);
 
   const play = useCallback(() => {
     dispatchEvent(
@@ -94,6 +119,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Dispatch a pause event to the timeline.
      */
     pause,
+    /**
+     * Reruns renderFrame for all subscribers.
+     */
+    refresh,
     /**
      * Set the playhead state of the timeline.
      */

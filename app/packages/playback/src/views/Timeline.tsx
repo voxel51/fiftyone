@@ -3,7 +3,7 @@ import React from "react";
 import { DEFAULT_FRAME_NUMBER, SEEK_BAR_DEBOUNCE } from "../lib/constants";
 import { TimelineName } from "../lib/state";
 import { useCreateTimeline } from "../lib/use-create-timeline";
-import { useDefaultTimelineName } from "../lib/use-default-timeline-name";
+import { useFrameNumber } from "../lib/use-frame-number";
 import { useTimeline } from "../lib/use-timeline";
 import { useTimelineVizUtils } from "../lib/use-timeline-viz-utils";
 import {
@@ -17,7 +17,7 @@ import {
 } from "./PlaybackElements";
 
 interface TimelineProps {
-  name?: TimelineName;
+  name: TimelineName;
   style?: React.CSSProperties;
 }
 
@@ -25,15 +25,9 @@ interface TimelineProps {
  * Renders a "classic" FO timeline with a seekbar, playhead, speed control, and status indicator.
  */
 export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ name: maybeTimelineName, style }, ref) => {
-    const { getName } = useDefaultTimelineName();
-    const name = React.useMemo(
-      () => maybeTimelineName ?? getName(),
-      [maybeTimelineName, getName]
-    );
-
-    const { frameNumber, playHeadState, config, play, pause } =
-      useTimeline(name);
+  ({ name, style }, ref) => {
+    const { playHeadState, config, play, pause } = useTimeline(name);
+    const frameNumber = useFrameNumber(name);
 
     const { getSeekValue, seekTo } = useTimelineVizUtils();
 
