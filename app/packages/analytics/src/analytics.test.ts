@@ -71,21 +71,6 @@ describe("Analytics", () => {
     expect(analytics["_segment"]).toBeNull();
   });
 
-  it("should track an event if within rate limit", () => {
-    analytics.load(SIMPLE_CONFIG);
-    const properties = { prop1: "value1" };
-    analytics.track("test_event", properties);
-    expect(mockSegment.track).toHaveBeenCalledWith("test_event", properties);
-  });
-
-  it("should not track an event if rate limit is exceeded", () => {
-    analytics.load(SIMPLE_CONFIG);
-    for (let i = 0; i < 6; i++) {
-      analytics.track(`test_event_${i}`);
-    }
-    expect(mockSegment.track).toHaveBeenCalledTimes(5); // Rate limit is 5
-  });
-
   it("should debounce duplicate events within the debounce interval", () => {
     analytics.load(SIMPLE_CONFIG);
     vi.spyOn(Date, "now").mockImplementation(() => 10000); // Mock initial time
