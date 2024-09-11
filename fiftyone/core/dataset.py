@@ -1752,10 +1752,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             self.add_sample_field(rollup_path, fo.ListField, info=info)
 
-        # Optionally create mongodb index on rollup field
-        if create_index:
-            self.create_index(rollup_path)
-
         # Create pipeline depending on mode we've chosen
         pipeline = [
             {"$unwind": "$frames"},
@@ -1841,6 +1837,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _set_field_read_only(rollup_field, True)
         rollup_field.save()
 
+        # Optionally create mongodb index on rollup field
+        if create_index:
+            self.create_index(rollup_path, wait=False)
+
     def delete_frame_rollup_field(self, rollup_path):
         """Deletes frame rollup field
 
@@ -1871,6 +1871,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _set_field_read_only(field, False)
         field.save()
         self.delete_sample_field(rollup_path)
+
+        # Delete the index of the rollup field
+        self.delete_index(rollup_path)
 
     def check_frame_rollup_fields(self):
         """Returns a list of frame rollup fields that could be out of sync
