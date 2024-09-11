@@ -80,6 +80,20 @@ export const currentSampleId = selector({
   },
 });
 
+export const currentModalUniqueId = selector({
+  key: "currentModalId",
+  get: ({ get }) => {
+    const currentSampleIdVal = get(nullableModalSampleId);
+    const currentGroupIdVal = get(groupId);
+
+    if (!currentSampleIdVal && !currentGroupIdVal) {
+      return null;
+    }
+
+    return `${currentGroupIdVal}/${currentSampleIdVal}`;
+  },
+});
+
 export type ModalSampleData = Exclude<
   Exclude<
     ResponseFrom<mainSampleQuery>["sample"],
