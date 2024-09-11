@@ -264,11 +264,18 @@ def handle_group_filter(
 
         for stage in stages:
             # add stages after flattening and group match
+
             if group_by and isinstance(stage, fosg.GroupBy) and filter.slices:
                 view = view.match(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
-            view = view._add_view_stage(stage, validate=False)
+
+            # if selecting a group, filter out select/reorder stages
+            if (
+                not filter.id
+                or type(stage) not in fosg._STAGES_THAT_SELECT_OR_REORDER
+            ):
+                view = view._add_view_stage(stage, validate=False)
 
     elif filter.id:
         view = fov.make_optimized_select_view(view, filter.id, groups=True)
