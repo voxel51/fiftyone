@@ -5,6 +5,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import argparse
 import warnings
 from collections import defaultdict
@@ -126,9 +127,6 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart as a remote session
         fiftyone quickstart --remote
-
-        # Launch the quickstart in a desktop App session
-        fiftyone quickstart --desktop
     """
 
     @staticmethod
@@ -162,12 +160,6 @@ class QuickstartCommand(Command):
             help="whether to launch a remote App session",
         )
         parser.add_argument(
-            "-a",
-            "--desktop",
-            action="store_true",
-            help="whether to launch a desktop App instance",
-        )
-        parser.add_argument(
             "-w",
             "--wait",
             metavar="WAIT",
@@ -182,15 +174,11 @@ class QuickstartCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        # If desktop wasn't explicitly requested, fallback to default
-        desktop = args.desktop or None
-
         _, session = fouq.quickstart(
             video=args.video,
             port=args.port,
             address=args.address,
             remote=args.remote,
-            desktop=desktop,
         )
 
         _watch_session(session, args.wait)
@@ -1305,9 +1293,6 @@ class AppLaunchCommand(Command):
         # Launch a remote App session
         fiftyone app launch ... --remote
 
-        # Launch a desktop App session
-        fiftyone app launch ... --desktop
-
         # Launch the App in the non-default browser
         fiftyone app launch ... --browser firefox
     """
@@ -1343,12 +1328,6 @@ class AppLaunchCommand(Command):
             help="whether to launch a remote App session",
         )
         parser.add_argument(
-            "-a",
-            "--desktop",
-            action="store_true",
-            help="whether to launch a desktop App instance",
-        )
-        parser.add_argument(
             "-b",
             "--browser",
             metavar="BROWSER",
@@ -1371,9 +1350,6 @@ class AppLaunchCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        # If desktop wasn't explicitly requested, fallback to default
-        desktop = args.desktop or None
-
         if args.name:
             dataset = fod.load_dataset(args.name)
         else:
@@ -1384,7 +1360,6 @@ class AppLaunchCommand(Command):
             port=args.port,
             address=args.address,
             remote=args.remote,
-            desktop=desktop,
             browser=args.browser,
         )
 
@@ -1441,9 +1416,6 @@ class AppViewCommand(Command):
 
         # View the dataset in a remote App session
         fiftyone app view ... --remote
-
-        # View the dataset using the desktop App
-        fiftyone app view ... --desktop
 
         # View a random subset of the data stored on disk in the App
         fiftyone app view ... --kwargs max_samples=50 shuffle=True
@@ -1528,12 +1500,6 @@ class AppViewCommand(Command):
             help="whether to launch a remote App session",
         )
         parser.add_argument(
-            "-a",
-            "--desktop",
-            action="store_true",
-            help="whether to launch a desktop App instance",
-        )
-        parser.add_argument(
             "-w",
             "--wait",
             metavar="WAIT",
@@ -1608,15 +1574,11 @@ class AppViewCommand(Command):
                 **kwargs,
             )
 
-        # If desktop wasn't explicitly requested, fallback to default
-        desktop = args.desktop or None
-
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
             address=args.address,
             remote=args.remote,
-            desktop=desktop,
         )
 
         _watch_session(session, args.wait)

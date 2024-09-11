@@ -116,7 +116,6 @@ Launch a FiftyOne quickstart.
       -A ADDRESS, --address ADDRESS
                             the address (server name) to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
                             lost. If negative, the process will wait forever,
@@ -1887,7 +1886,6 @@ Launch the FiftyOne App.
       -A ADDRESS, --address ADDRESS
                             the address (server name) to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch a desktop App instance
       -b BROWSER, --browser BROWSER
                             the browser to use to open the App
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
@@ -1914,12 +1912,7 @@ Launch the FiftyOne App.
 
 .. code-block:: shell
 
-    # Launch a desktop App session
-    fiftyone app launch ... --desktop
-
-.. code-block:: shell
-
-    # Launch a desktop App session
+    # Launch an App session with a specific browser
     fiftyone app launch ... --browser <name>
 
 .. _cli-fiftyone-app-view:
@@ -1966,7 +1959,6 @@ View datasets in the FiftyOne App without persisting them to the database.
       -A ADDRESS, --address ADDRESS
                             the address (server name) to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
                             lost. If negative, the process will wait forever,
@@ -2016,11 +2008,6 @@ View datasets in the FiftyOne App without persisting them to the database.
 
     # View the dataset in a remote App session
     fiftyone app view ... --remote
-
-.. code-block:: shell
-
-    # View the dataset using the desktop App
-    fiftyone app view ... --desktop
 
 .. code-block:: shell
 

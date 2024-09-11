@@ -273,7 +273,7 @@ for information on building and contributing to the documentation.
 You can uninstall FiftyOne as follows:
 
 ```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
+pip uninstall fiftyone fiftyone-brain fiftyone-db
 ```
 
 ## Contributors

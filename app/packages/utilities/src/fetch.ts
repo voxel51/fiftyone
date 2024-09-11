@@ -3,7 +3,6 @@ import {
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
 import fetchRetry from "fetch-retry";
-import { isElectron } from "./electron";
 
 import { NetworkError, ServerError } from "./errors";
 
@@ -227,14 +226,12 @@ export const getAPI = () => {
   if (import.meta.env?.VITE_API) {
     return import.meta.env.VITE_API;
   }
+
   if (window.FIFTYONE_SERVER_ADDRESS) {
     return window.FIFTYONE_SERVER_ADDRESS;
   }
-  return isElectron()
-    ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
-        process.env.FIFTYONE_SERVER_PORT || 5151
-      }`
-    : window.location.origin;
+
+  return window.location.origin;
 };
 
 if (hasWindow) {

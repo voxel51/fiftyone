@@ -4454,12 +4454,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             contains_videos = self._contains_videos(any_slice=True)
 
+        ops = []
         if sample_ids is not None:
-            d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            d = {}
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
 
-        self._sample_collection.delete_many(d)
+            for _ids in fou.iter_batches(sample_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
+                    )
+                )
+        else:
+            ops.append(DeleteMany({}))
+
+        foo.bulk_write(ops, self._sample_collection)
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
@@ -4547,9 +4557,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 frame_ids = view.values("frames.id", unwind=True)
 
         if frame_ids is not None:
-            self._frame_collection.delete_many(
-                {"_id": {"$in": [ObjectId(_id) for _id in frame_ids]}}
+            ops = []
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
             )
+
+            for _ids in fou.iter_batches(frame_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
+                    )
+                )
+
+            foo.bulk_write(ops, self._frame_collection)
             fofr.Frame._reset_docs_by_frame_id(
                 self._frame_collection_name, frame_ids
             )
@@ -4561,12 +4581,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             sample_ids = view.values("id")
 
+        ops = []
         if sample_ids is not None:
-            d = {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            d = {}
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
 
-        self._frame_collection.delete_many(d)
+            for _ids in fou.iter_batches(sample_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {
+                            "_sample_id": {
+                                "$in": [ObjectId(_id) for _id in _ids]
+                            }
+                        }
+                    )
+                )
+        else:
+            ops.append(DeleteMany({}))
+
+        foo.bulk_write(ops, self._frame_collection)
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
@@ -4576,25 +4610,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_collection._contains_videos(any_slice=True):
             return
 
-        if self._is_clips:
-            if frame_ids is None and view is None:
-                view = self
-
-            if view is not None:
-                frame_ids = view.values("frames.id", unwind=True)
-
-        if frame_ids is not None:
-            self._frame_collection.delete_many(
-                {
-                    "_id": {
-                        "$not": {"$in": [ObjectId(_id) for _id in frame_ids]}
-                    }
-                }
-            )
-            fofr.Frame._reset_docs_by_frame_id(
-                self._frame_collection_name, frame_ids, keep=True
-            )
-            return
+        if self._is_clips and view is None:
+            view = self
 
         if view is None:
             return
@@ -4602,10 +4619,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view.media_type == fom.GROUP:
             view = view.select_group_slices(media_type=fom.VIDEO)
 
-        sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
+        if view._is_clips:
+            sample_ids, frame_numbers = view.values(
+                ["sample_id", "frames.frame_number"]
+            )
+
+            # Handle multiple clips per sample
+            d = defaultdict(set)
+            for sample_id, fns in zip(sample_ids, frame_numbers):
+                d[sample_id].update(fns)
+
+            sample_ids, frame_numbers = zip(
+                *((sample_id, list(fns)) for sample_id, fns in d.items())
+            )
+        else:
+            sample_ids, frame_numbers = view.values(
+                ["id", "frames.frame_number"]
+            )
 
         ops = []
         for sample_id, fns in zip(sample_ids, frame_numbers):
+            # Note: this may fail if `fns` is too large (eg >100k frames), but
+            # to address this we'd need to do something like lookup all frame
+            # numbers on the dataset and reverse the $not in-memory, which
+            # would be quite expensive...
             ops.append(
                 DeleteMany(
                     {
