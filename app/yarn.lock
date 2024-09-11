@@ -1729,7 +1729,7 @@ __metadata:
     lodash: ^4.17.21
     notistack: ^3.0.1
     numeral: ^2.0.6
-    path-to-regexp: ^6.2.0
+    path-to-regexp: ^8.0.0
     react: 18.2.0
     react-dom: 18.2.0
     react-error-boundary: ^3.1.4
@@ -1774,7 +1774,7 @@ __metadata:
     classnames: ^2.3.1
     framer-motion: ^6.2.7
     material-icons: ^1.13.12
-    path-to-regexp: ^6.2.0
+    path-to-regexp: ^8.0.0
     prettier: ^2.7.1
     react-input-autosize: ^3.0.0
     react-laag: ^2.0.3
@@ -1829,7 +1829,7 @@ __metadata:
     lodash: ^4.17.21
     lru-cache: ^6.0.0
     numeral: ^2.0.6
-    path-to-regexp: ^6.2.0
+    path-to-regexp: ^8.0.0
     prettier: 2.2.1
     re-resizable: ^6.9.17
     react-color: ^2.19.3
@@ -13421,10 +13421,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path-to-regexp@npm:^6.2.0":
-  version: 6.2.1
-  resolution: "path-to-regexp@npm:6.2.1"
-  checksum: f0227af8284ea13300f4293ba111e3635142f976d4197f14d5ad1f124aebd9118783dd2e5f1fe16f7273743cc3dbeddfb7493f237bb27c10fdae07020cc9b698
+"path-to-regexp@npm:^8.0.0":
+  version: 8.1.0
+  resolution: "path-to-regexp@npm:8.1.0"
+  checksum: 982b784f8dff704c04c79dc3e26d51d2dba340e6bd513a8bdc48559a8543d730547d9d2355122166171eb509236e7524802ed643f8a77d527e12c69ffc74f97f
   languageName: node
   linkType: hard
 

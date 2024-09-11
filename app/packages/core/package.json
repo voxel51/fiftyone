@@ -30,7 +30,7 @@
         "lodash": "^4.17.21",
         "lru-cache": "^6.0.0",
         "numeral": "^2.0.6",
-        "path-to-regexp": "^6.2.0",
+        "path-to-regexp": "^8.0.0",
         "re-resizable": "^6.9.17",
         "react-color": "^2.19.3",
         "react-draggable": "^4.4.5",
