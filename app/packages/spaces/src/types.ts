@@ -65,6 +65,7 @@ export type SpaceProps = {
 export type PanelStateParameter = {
   panelId: string;
   local?: boolean;
+  scope?: string;
 };
 
 export type PanelStatePartialParameter = PanelStateParameter & {

@@ -1,7 +1,6 @@
 import {
   Layout,
   SpaceNode,
-  usePanelState,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -12,6 +11,7 @@ import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
 import { useTrackEvent } from "@fiftyone/analytics";
+import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
@@ -31,7 +31,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 
 //
 // BUILT-IN OPERATORS
@@ -1029,8 +1028,6 @@ class PromptUserForOperation extends Operator {
     return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
-    const panelId = ctx.getCurrentPanelId();
-    const [panelState] = usePanelState(panelId);
     const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
