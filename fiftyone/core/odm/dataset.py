@@ -263,14 +263,18 @@ class ColorScheme(EmbeddedDocument):
             -   ``valueColors`` (optional): a list of dicts specifying colors
                 to use for individual values of this field
             -   ``maskTargetsColors`` (optional): a list of dicts specifying
-                index and color for 2D masks
+                index and color for 2D masks in the same format as described
+                below for default mask targets
         default_mask_targets_colors (None): a list of dicts with the following
             keys specifying index and color for 2D masks of the dataset. If a
             field does not have field specific mask targets colors, this list
             will be used:
 
-            -   ``intTarget``: a positive integer target value
+            -   ``intTarget``: an integer target value
             -   ``color``: a color string
+
+            Note that the pixel value ``0`` is a reserved "background" class
+            that is always rendered as invisible in the App
         default_colorscale (None): dataset default colorscale dict with the
             following keys:
 
@@ -280,7 +284,7 @@ class ColorScheme(EmbeddedDocument):
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1
-                -   ``color``: an rgb color string
+                -   ``color``: an RGB color string
         colorscales (None): an optional list of dicts of per-field custom
             colorscales with the following keys:
 
@@ -293,7 +297,7 @@ class ColorScheme(EmbeddedDocument):
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1
-                -   ``color``: an rgb color string
+                -   ``color``: an RGB color string
         label_tags (None): an optional dict specifying custom colors for label
             tags with the following keys:
 
