@@ -80,11 +80,6 @@ granted access (a dataset's
 Collaborators), and they may only be granted **Can view**,  **Can tag** 
 or **Can edit** access to datasets.
 
-.. note::
-    
-   For customers with App-only seats, Collaborators cannot be granted 
-   **Can edit** permissions.
-
 Collaborators cannot create new datasets, clone existing datasets, or view
 other users of the deployment. Collaborators may export datasets to which
 they've been granted access.
