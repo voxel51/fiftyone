@@ -6,6 +6,8 @@ export type AnalyticsInfo = {
   userGroup: string;
   doNotTrack?: boolean;
   debug: boolean;
+  disableUrlTracking?: boolean;
+  redact?: string[];
 };
 
 export type AnalyticsConfig = {
@@ -29,11 +31,23 @@ export class Analytics {
   private _debug = false;
   private _lastEventTimestamps: Record<string, number> = {}; // Tracks last event times
   private _debounceInterval = 1000; // Default debounce interval in milliseconds (5 seconds)
+  private _disableUrlTracking = false;
+  private _redactedProperties: string[] = [];
 
   constructor(config?: AnalyticsConfig) {
     if (config?.debounceInterval) {
       this._debounceInterval = config.debounceInterval;
     }
+  }
+
+  redact(properties: Record<string, any>) {
+    if (!properties) return properties;
+    return Object.keys(properties).reduce((acc, key) => {
+      if (this._redactedProperties.includes(key)) {
+        acc[key] = "<redacted>";
+      }
+      return acc;
+    }, properties);
   }
 
   load(info: AnalyticsInfo) {
@@ -45,6 +59,10 @@ export class Analytics {
       this.disable();
       return;
     }
+    if (info.redact) {
+      this._redactedProperties = info.redact;
+    }
+    this._disableUrlTracking = info.disableUrlTracking;
     if (!info.writeKey) {
       console.warn("Analytics disabled (no write key)");
       this.disable();
@@ -71,12 +89,14 @@ export class Analytics {
 
   page(name?: string, properties?: {}) {
     if (!this._segment) return;
+    properties = this.redact(properties);
     this._segment.page(name, properties);
   }
 
   track(name: string, properties?: {}) {
     const now = Date.now();
     const lastTimestamp = this._lastEventTimestamps[name] || 0;
+    properties = this.redact(properties);
 
     if (now - lastTimestamp < this._debounceInterval) {
       if (this._debug) {
@@ -92,7 +112,11 @@ export class Analytics {
     }
 
     if (!this._segment) return;
-    this._segment.track(name, properties);
+    let opts;
+    if (this._disableUrlTracking) {
+      opts = { context: { page: { url: undefined } } };
+    }
+    this._segment.track(name, properties, opts);
   }
 
   trackEvent(name: string, properties?: {}) {
@@ -101,11 +125,13 @@ export class Analytics {
 
   identify(userId: string, traits?: {}) {
     if (!this._segment) return;
+    traits = this.redact(traits);
     this._segment.identify(userId, traits);
   }
 
   group(groupId: string, traits?: {}) {
     if (!this._segment) return;
+    traits = this.redact(traits);
     this._segment.group(groupId, traits);
   }
 }
