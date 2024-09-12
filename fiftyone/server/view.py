@@ -264,7 +264,6 @@ def handle_group_filter(
 
         for stage in stages:
             # add stages after flattening and group match
-
             if group_by and isinstance(stage, fosg.GroupBy) and filter.slices:
                 view = view.match(
                     {group_field + ".name": {"$in": filter.slices}}
