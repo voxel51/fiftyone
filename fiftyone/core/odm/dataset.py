@@ -375,12 +375,12 @@ class ColorScheme(EmbeddedDocument):
                 not isinstance(entry, dict)
                 or int_target_value is None
                 or not isinstance(int_target_value, int)
-                or int_target_value <= 0
+                or int_target_value < 0
             ):
 
                 raise ValidationError(
                     f"Invalid intTarget in {context}."
-                    "intTarget must be a positive integer."
+                    "intTarget must be a nonnegative integer."
                     f"Invalid entry: {entry}"
                 )
 
