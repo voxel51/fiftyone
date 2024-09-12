@@ -27,7 +27,7 @@ and download annotations using Label Studio, all programmatically in Python.
 All of the following label types are supported for image datasets:
 
 - :ref:`Classification <classification>`
-- :ref:`Multilabel Classification <multilabel-classification>`
+- :ref:`Multilabel classification <multilabel-classification>`
 - :ref:`Detections <object-detection>`
 - :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polygons and polylines <polylines>`
