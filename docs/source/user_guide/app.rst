@@ -1042,7 +1042,7 @@ You can also programmatically configure a session's color scheme by creating
         ],
         color_by="value",
         opacity=0.5,
-        default_colorscale= { "name": "rdbu", "list": None },
+        default_colorscale= {"name": "rdbu", "list": None},
         colorscales=[
             {
                  # field definition overrides the default_colorscale
@@ -1062,11 +1062,6 @@ You can also programmatically configure a session's color scheme by creating
 
     Refer to the |ColorScheme| class for documentation of the available
     customization options.
-
-.. note::
-
-    For maskTargetsColors, intTarget must be a positive integer. 
-    Do not set color for intTarget 0. 
 
 You can launch the App with a custom color scheme by passing the optional
 `color_scheme` parameter to

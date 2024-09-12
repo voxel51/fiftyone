@@ -9,6 +9,7 @@ Documents that track datasets and their sample schemas in the database.
 import logging
 
 from bson import DBRef, ObjectId
+from mongoengine.errors import ValidationError
 
 import eta.core.utils as etau
 
@@ -203,7 +204,6 @@ class ColorScheme(EmbeddedDocument):
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                     "maskTargetsColors": [
-                        # do not define intTarget 0
                         {"intTarget": 2, "color": "#ff0000"},
                         {"intTarget": 12, "color": "#99ff00"},
                     ],
@@ -220,7 +220,6 @@ class ColorScheme(EmbeddedDocument):
                 {
                     "path": "heatmap1",
                     "list": [
-                        # value should be between 0 and 1
                         {"value": 0, "color": "rgb(0, 0, 255)"},
                         {"value": 1, "color": "rgb(0, 255, 255)"},
                     ],
@@ -234,7 +233,6 @@ class ColorScheme(EmbeddedDocument):
             opacity=0.5,
             show_skeletons=True,
             default_mask_targets_colors=[
-                # do not define intTarget 0
                 {"intTarget": 1, "color": "#FEC0AA"},
                 {"intTarget": 2, "color": "#EC4E20"},
             ],
@@ -265,7 +263,7 @@ class ColorScheme(EmbeddedDocument):
             -   ``valueColors`` (optional): a list of dicts specifying colors
                 to use for individual values of this field
             -   ``maskTargetsColors`` (optional): a list of dicts specifying
-                index and color for 2D masks.
+                index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts with the following
             keys specifying index and color for 2D masks of the dataset. If a
             field does not have field specific mask targets colors, this list
@@ -277,7 +275,7 @@ class ColorScheme(EmbeddedDocument):
             following keys:
 
             -   ``name`` (optional): a named plotly colorscale, e.g. ``"hsv"``.
-                See https://plotly.com/python/builtin-colorscales"
+                See https://plotly.com/python/builtin-colorscales
             -   ``list`` (optional): a list of dicts of colorscale values
 
                 -   ``value``: a float number between 0 and 1. A valid list
@@ -326,15 +324,11 @@ class ColorScheme(EmbeddedDocument):
     def _id(self):
         return ObjectId(self.id)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.clean()
-
     @_id.setter
     def _id(self, value):
         self.id = str(value)
 
-    def clean(self):
+    def _validate(self):
         self._validate_color_by()
         self._validate_opacity()
         self._validate_fields()
@@ -344,13 +338,13 @@ class ColorScheme(EmbeddedDocument):
 
     def _validate_color_by(self):
         if self.color_by not in [None, "field", "value", "instance"]:
-            raise ValueError(
+            raise ValidationError(
                 "color_by must be one of [None, 'field', 'value', 'instance']"
             )
 
     def _validate_opacity(self):
         if self.opacity is not None and not 0 <= self.opacity <= 1:
-            raise ValueError("opacity must be between 0 and 1")
+            raise ValidationError("opacity must be between 0 and 1")
 
     def _validate_default_mask_targets_colors(self):
         if self.default_mask_targets_colors:
@@ -363,7 +357,7 @@ class ColorScheme(EmbeddedDocument):
             for field in self.fields:
                 path = field.get("path")
                 if not path:
-                    raise ValueError(
+                    raise ValidationError(
                         "path is required for each field in fields"
                     )
 
@@ -384,7 +378,7 @@ class ColorScheme(EmbeddedDocument):
                 or int_target_value <= 0
             ):
 
-                raise ValueError(
+                raise ValidationError(
                     f"Invalid intTarget in {context}."
                     "intTarget must be a positive integer."
                     f"Invalid entry: {entry}"
@@ -395,7 +389,7 @@ class ColorScheme(EmbeddedDocument):
             return
 
         if not isinstance(self.colorscales, list):
-            raise ValueError("colorscales must be a list or None")
+            raise ValidationError("colorscales must be a list or None")
 
         for scale in self.colorscales:
             self._validate_single_colorscale(scale)
@@ -408,7 +402,7 @@ class ColorScheme(EmbeddedDocument):
 
     def _validate_single_colorscale(self, scale):
         if not isinstance(scale, dict):
-            raise ValueError(
+            raise ValidationError(
                 f"Each colorscale entry must be a dict. Invalid entry: {scale}"
             )
 
@@ -416,13 +410,13 @@ class ColorScheme(EmbeddedDocument):
         color_list = scale.get("list")
 
         if name is None and color_list is None:
-            raise ValueError(
+            raise ValidationError(
                 "Each colorscale entry must have either a 'name' or a 'list'."
                 f"Invalid entry: {scale}"
             )
 
         if name is not None and not isinstance(name, str):
-            raise ValueError(
+            raise ValidationError(
                 "Invalid colorscale name."
                 "See https://plotly.com/python/colorscales for possible options."
                 f"Invalid name: {name}"
@@ -430,7 +424,7 @@ class ColorScheme(EmbeddedDocument):
 
         if color_list is not None:
             if not isinstance(color_list, list):
-                raise ValueError(
+                raise ValidationError(
                     "The 'list' field in colorscales must be a list."
                     f"Invalid entry: {color_list}"
                 )
@@ -438,7 +432,6 @@ class ColorScheme(EmbeddedDocument):
             if len(color_list) == 0:
                 return
 
-            # the list must have colors defined for 0 and 1
             has_value_0 = False
             has_value_1 = False
 
@@ -450,7 +443,7 @@ class ColorScheme(EmbeddedDocument):
                     or not isinstance(value, (int, float))
                     or not (0 <= value <= 1)
                 ):
-                    raise ValueError(
+                    raise ValidationError(
                         "Each entry in the 'list' must have a 'value'"
                         f"between 0 and 1. Invalid entry: {entry}"
                     )
@@ -461,7 +454,7 @@ class ColorScheme(EmbeddedDocument):
                     has_value_1 = True
 
             if not has_value_0 or not has_value_1:
-                raise ValueError(
+                raise ValidationError(
                     "The colorscale 'list' must have colors defined for 0 and 1."
                     f"Invalid list: {color_list}"
                 )
