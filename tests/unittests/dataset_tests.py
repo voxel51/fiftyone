@@ -712,6 +712,35 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_rollup_field_simple(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Populate string lists of observed values
+        dataset.add_frame_rollup_field("frames.gt")
+        rollup_fields = dataset.list_frame_rollup_fields()
+        self.assertEqual(rollup_fields, ["rollup_list_gt"])
+
+    @drop_datasets
+    def test_rollup_field_simple_with_index(self):
+        gt = fo.Detections(detections=[fo.Detection(label="foo")])
+        sample = fo.Sample(filepath="video.mp4", gt=gt)
+        sample.frames[1] = fo.Frame(gt=gt)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Populate string lists of observed values
+        dataset.add_frame_rollup_field("frames.gt", create_index=True)
+
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert "rollup_list_gt" in index_stats
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
