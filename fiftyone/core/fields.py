@@ -407,6 +407,7 @@ class Field(mongoengine.fields.BaseField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(
@@ -428,6 +429,9 @@ class Field(mongoengine.fields.BaseField):
 
     def __str__(self):
         return etau.get_class_name(self)
+
+    def _set_created_at(self, created_at):
+        self._created_at = created_at
 
     def _set_dataset(self, dataset, path):
         self.__dataset = dataset
@@ -538,7 +542,7 @@ class Field(mongoengine.fields.BaseField):
 
     @property
     def created_at(self):
-        """The datetime when the field was created or added to dataset."""
+        """The datetime the field was created."""
         return self._created_at
 
     def copy(self):
@@ -598,13 +602,22 @@ class IntField(mongoengine.fields.IntField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -620,13 +633,22 @@ class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -648,13 +670,22 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
 
 class BooleanField(mongoengine.fields.BooleanField, Field):
@@ -664,13 +695,22 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def validate(self, value):
         if not isinstance(value, (bool, np.bool_)):
@@ -684,13 +724,22 @@ class DateField(mongoengine.fields.DateField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -725,9 +774,17 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         if "null" not in kwargs:
             kwargs["null"] = True
 
@@ -735,6 +792,7 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def validate(self, value):
         if not isinstance(value, datetime):
@@ -748,13 +806,22 @@ class FloatField(mongoengine.fields.FloatField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -784,13 +851,22 @@ class StringField(mongoengine.fields.StringField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
 
 class ColorField(StringField):
@@ -800,6 +876,7 @@ class ColorField(StringField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def validate(self, value):
@@ -821,6 +898,7 @@ class ListField(mongoengine.fields.ListField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(
@@ -829,6 +907,7 @@ class ListField(mongoengine.fields.ListField, Field):
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         **kwargs,
     ):
         if field is not None:
@@ -842,6 +921,7 @@ class ListField(mongoengine.fields.ListField, Field):
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def __str__(self):
         if self.field is not None:
@@ -867,6 +947,7 @@ class HeatmapRangeField(ListField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(self, **kwargs):
@@ -901,6 +982,7 @@ class DictField(mongoengine.fields.DictField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(
@@ -909,6 +991,7 @@ class DictField(mongoengine.fields.DictField, Field):
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         **kwargs,
     ):
         if field is not None:
@@ -922,6 +1005,7 @@ class DictField(mongoengine.fields.DictField, Field):
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def __str__(self):
         if self.field is not None:
@@ -959,6 +1043,7 @@ class KeypointsField(ListField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __str__(self):
@@ -982,6 +1067,7 @@ class PolylinePointsField(ListField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __str__(self):
@@ -1014,6 +1100,7 @@ class _GeoField(Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     # The GeoJSON type of the field. Subclasses must implement this
@@ -1041,6 +1128,7 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "Point"
@@ -1063,6 +1151,7 @@ class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "LineString"
@@ -1092,6 +1181,7 @@ class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "Polygon"
@@ -1114,6 +1204,7 @@ class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "MultiPoint"
@@ -1142,6 +1233,7 @@ class GeoMultiLineStringField(
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "MultiLineString"
@@ -1176,6 +1268,7 @@ class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     _TYPE = "MultiPolygon"
@@ -1199,13 +1292,22 @@ class VectorField(mongoengine.fields.BinaryField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -1245,13 +1347,22 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
-    def __init__(self, description=None, info=None, read_only=False, **kwargs):
+    def __init__(
+        self,
+        description=None,
+        info=None,
+        read_only=False,
+        created_at=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def to_mongo(self, value):
         if value is None:
@@ -1278,6 +1389,7 @@ class FrameNumberField(IntField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def validate(self, value):
@@ -1294,6 +1406,7 @@ class FrameSupportField(ListField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(self, **kwargs):
@@ -1326,6 +1439,7 @@ class ClassesField(ListField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(self, **kwargs):
@@ -1348,6 +1462,7 @@ class MaskTargetsField(DictField):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(self, **kwargs):
@@ -1449,7 +1564,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
-        created_at (None): datetime field was created
+        created_at (None): the datetime the field was created
     """
 
     def __init__(
@@ -1476,6 +1591,15 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def _set_created_at(self, created_at):
+        super()._set_created_at(created_at)
+
+        for field in self._fields.values():
+            if isinstance(field, Field):
+                field._set_created_at(created_at)
+            else:
+                field._created_at = created_at
 
     def _set_dataset(self, dataset, path):
         super()._set_dataset(dataset, path)
@@ -1761,6 +1885,7 @@ class EmbeddedDocumentListField(
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
     """
 
     def __init__(
@@ -1769,12 +1894,14 @@ class EmbeddedDocumentListField(
         description=None,
         info=None,
         read_only=False,
+        created_at=None,
         **kwargs,
     ):
         super().__init__(document_type, **kwargs)
         self._description = description
         self._info = info
         self._read_only = read_only
+        self._created_at = created_at
 
     def __str__(self):
         # pylint: disable=no-member

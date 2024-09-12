@@ -487,9 +487,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "metadata",
                 fof.EmbeddedDocumentField,
                 embedded_doc_type=doc_type,
-                created_at=datetime.utcnow(),
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
+            field_doc._set_created_at(datetime.utcnow())
+
             self._doc.sample_fields[idx] = field_doc
 
     def _init_frames(self):
@@ -1457,7 +1458,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ValueError: if a field of the same name already exists and it is
                 not compliant with the specified values
         """
-        created_at = kwargs.pop("created_at", datetime.utcnow())
         if embedded_doc_type is not None and issubclass(
             embedded_doc_type, fog.Group
         ):
@@ -1466,7 +1466,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
-                created_at=created_at,
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1478,7 +1477,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 description=description,
                 info=info,
                 read_only=read_only,
-                created_at=created_at,
                 **kwargs,
             )
 
@@ -1613,7 +1611,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Only datasets that contain videos may have frame fields"
             )
 
-        created_at = kwargs.pop("created_at", datetime.utcnow())
         expanded = self._frame_doc_cls.add_field(
             field_name,
             ftype,
@@ -1623,7 +1620,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
-            created_at=created_at,
             **kwargs,
         )
 
@@ -1746,7 +1742,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             description=description,
             info=info,
             read_only=read_only,
-            created_at=datetime.utcnow(),
         )
 
         if expanded:
@@ -7818,18 +7813,24 @@ def _create_frame_document_cls(
 
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
+    default_fields = set(doc_cls._fields.keys())
+    if field_docs is not None:
+        default_fields -= {field_doc.name for field_doc in field_docs}
+
+    # Declare default fields that don't already exist
     now = datetime.utcnow()
-    for field_name in tuple(doc_cls._fields.keys()):
+    for field_name in default_fields:
         field = doc_cls._fields[field_name]
-        field._created_at = now
 
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
         else:
             field = field.copy()
 
+        field._set_created_at(now)
         doc_cls._declare_field(dataset, field_name, field)
 
+    # Declare existing fields
     if field_docs is not None:
         for field_doc in field_docs:
             doc_cls._declare_field(dataset, field_doc.name, field_doc)
@@ -8014,10 +8015,10 @@ def _clone_collection(sample_collection, name, persistent):
         dataset_doc.default_group_slice = None
 
     for field in dataset_doc.sample_fields:
-        field.created_at = now
+        field._set_created_at(now)
 
-    for field in dataset_doc.frame_fields:
-        field.created_at = now
+    for field in dataset_doc.frame_fields or []:
+        field._set_created_at(now)
 
     # Runs/views get special treatment at the end
     dataset_doc.workspaces.clear()

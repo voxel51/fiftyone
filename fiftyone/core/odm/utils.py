@@ -218,7 +218,7 @@ def create_field(
         description (None): an optional description
         info (None): an optional info dict
         read_only (False): whether the field should be read-only
-        created_at (None): datetime when this field was added to dataset
+        created_at (None): the datetime the field was created
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
@@ -284,21 +284,20 @@ def create_field(
     return field
 
 
-def create_implied_field(path, value, dynamic=False, created_at=None):
+def create_implied_field(path, value, dynamic=False):
     """Creates the field for the given value.
 
     Args:
         path: the field name or path
         value: a value
         dynamic (False): whether to declare dynamic embedded document fields
-        created_at (None): datetime the field was created
 
     Returns:
         a :class:`fiftyone.core.fields.Field`
     """
     field_name = path.rsplit(".", 1)[-1]
     kwargs = get_implied_field_kwargs(value, dynamic=dynamic)
-    return create_field(field_name, created_at=created_at, **kwargs)
+    return create_field(field_name, **kwargs)
 
 
 def get_field_kwargs(field):

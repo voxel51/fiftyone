@@ -262,6 +262,7 @@ class DatasetTests(unittest.TestCase):
     def test_dataset_field_metadata(self):
         dataset = fo.Dataset()
         dataset.reload()
+
         check_time = dataset.created_at
         dataset.media_type = "video"
 
@@ -1748,8 +1749,9 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNone(sample11.new_gt)
         self.assertIsNotNone(sample12.gt)
         self.assertIsNotNone(sample12.new_gt)
-        self.assertEqual(
-            dataset1.get_field("new_gt").created_at, field_created_at
+        self.assertGreater(
+            dataset1.get_field("new_gt").created_at,
+            field_created_at,
         )
 
     @drop_datasets
@@ -4486,7 +4488,6 @@ class DatasetIdTests(unittest.TestCase):
 
         # Empty dataset
 
-        time.sleep(1)
         dataset2 = dataset.clone()
         self.assertGreater(
             dataset2.get_field("filepath").created_at,

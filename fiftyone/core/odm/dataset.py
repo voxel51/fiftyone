@@ -70,6 +70,11 @@ class SampleFieldDocument(EmbeddedDocument):
     read_only = BooleanField(default=False)
     created_at = DateTimeField(null=True, default=None)
 
+    def _set_created_at(self, created_at):
+        self.created_at = created_at
+        for field in self.fields or []:
+            field._set_created_at(created_at)
+
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
         document.

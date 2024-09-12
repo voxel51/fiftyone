@@ -1815,6 +1815,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
     def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name
         empty_import = not bool(dataset)
+        now = datetime.utcnow()
 
         #
         # Import DatasetDocument
@@ -1861,13 +1862,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 tags.extend([t for t in new_tags if t not in tags])
                 keep_fields["tags"] = tags
 
-            # Set field created_at times to now, since we are directly setting
-            #   the dataset doc
-            created_at = dataset.created_at
-            for field in dataset_dict["sample_fields"]:
-                field["created_at"] = created_at
-            for field in dataset_dict["frame_fields"]:
-                field["created_at"] = created_at
+            for field_dict in dataset_dict.get("sample_fields", []):
+                _set_created_at(field_dict, now)
+
+            for field_dict in dataset_dict.get("frame_fields", []):
+                _set_created_at(field_dict, now)
 
             dataset_dict.update(keep_fields)
 
@@ -1912,7 +1911,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         media_fields = self._media_fields
         dataset_id = dataset._doc.id
-        now = datetime.utcnow()
 
         def _parse_sample(sd):
             if not os.path.isabs(sd["filepath"]):
@@ -2073,6 +2071,12 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             seed=self.seed,
             max_samples=self.max_samples,
         )
+
+
+def _set_created_at(field_dict, created_at):
+    field_dict["created_at"] = created_at
+    for _field_dict in field_dict.get("fields", []):
+        _set_created_at(_field_dict, created_at)
 
 
 def _import_saved_views(dataset, views):

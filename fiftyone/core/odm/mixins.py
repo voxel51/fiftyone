@@ -262,6 +262,7 @@ class DatasetMixin(object):
         dataset_doc = dataset._doc
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
+        now = datetime.utcnow()
 
         new_schema = {}
         new_metadata = {}
@@ -318,7 +319,7 @@ class DatasetMixin(object):
                 path = path[:-2]
                 field = fof.ListField(field=field)
 
-            cls._add_field_schema(path, field)
+            cls._add_field_schema(path, field, created_at=now)
 
         for path, d in new_metadata.items():
             cls._update_field_metadata(path, d)
@@ -338,7 +339,6 @@ class DatasetMixin(object):
         description=None,
         info=None,
         read_only=False,
-        created_at=None,
         expand_schema=True,
         recursive=True,
         validate=True,
@@ -365,7 +365,6 @@ class DatasetMixin(object):
             description (None): an optional description
             info (None): an optional info dict
             read_only (False): whether the field should be read-only
-            created_at (None): datetime when this field was added to dataset
             expand_schema (True): whether to add new fields to the schema
                 (True) or simply validate that the field already exists with a
                 consistent type (False)
@@ -391,7 +390,6 @@ class DatasetMixin(object):
             description=description,
             info=info,
             read_only=read_only,
-            created_at=created_at,
             **kwargs,
         )
 
@@ -436,9 +434,7 @@ class DatasetMixin(object):
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name
         """
-        field = create_implied_field(
-            path, value, dynamic=dynamic, created_at=datetime.utcnow()
-        )
+        field = create_implied_field(path, value, dynamic=dynamic)
 
         return cls.merge_field_schema(
             {path: field},
@@ -458,7 +454,6 @@ class DatasetMixin(object):
         description=None,
         info=None,
         read_only=False,
-        created_at=None,
         **kwargs,
     ):
         field_name = path.rsplit(".", 1)[-1]
@@ -471,7 +466,6 @@ class DatasetMixin(object):
             description=description,
             info=info,
             read_only=read_only,
-            created_at=created_at,
             **kwargs,
         )
 
@@ -597,6 +591,7 @@ class DatasetMixin(object):
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
         is_dataset = isinstance(sample_collection, fod.Dataset)
+        now = datetime.utcnow()
 
         simple_paths = []
         coll_paths = []
@@ -652,7 +647,7 @@ class DatasetMixin(object):
             cls._reload_fields()
 
         for path, new_path in schema_paths:
-            cls._clone_field_schema(path, new_path)
+            cls._clone_field_schema(path, new_path, created_at=now)
 
         dataset_doc.save()
 
@@ -1205,12 +1200,16 @@ class DatasetMixin(object):
         return {path: field}, None
 
     @classmethod
-    def _add_field_schema(cls, path, field):
+    def _add_field_schema(cls, path, field, created_at=None):
+        if created_at is None:
+            created_at = datetime.utcnow()
+
         field_name, doc, field_docs, root_doc = cls._parse_path(path)
 
         field = field.copy()
         field.db_field = _get_db_field(field, field_name)
         field.name = field_name
+        field._set_created_at(created_at)
 
         doc._declare_field(cls._dataset, path, field)
         _add_field_doc(field_docs, root_doc, field)
@@ -1240,12 +1239,11 @@ class DatasetMixin(object):
             _add_field_doc(new_field_docs, new_root_doc, field)
 
     @classmethod
-    def _clone_field_schema(cls, path, new_path):
+    def _clone_field_schema(cls, path, new_path, created_at=None):
         field_name, doc, _, _ = cls._parse_path(path)
         field = doc._fields[field_name]
-        field._created_at = datetime.utcnow()
 
-        cls._add_field_schema(new_path, field)
+        cls._add_field_schema(new_path, field, created_at=created_at)
 
     @classmethod
     def _delete_field_schema(cls, path):
