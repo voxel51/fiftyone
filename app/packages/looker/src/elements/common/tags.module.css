@@ -4,8 +4,10 @@
 
 .lookerTags {
   position: absolute;
+  display: flex;
+  gap: 4px;
+  justify-content: left;
   bottom: 0;
-  padding: 0.5rem;
   max-height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
@@ -30,8 +32,7 @@
 .lookerTags > div {
   display: inline-block;
   box-sizing: content-box;
-  margin: 2px;
-  padding: 3px;
+  padding: 2px;
   color: var(--fo-palette-text-lookerTag);
   border-radius: 3px;
   font-weight: bold;

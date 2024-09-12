@@ -54,6 +54,9 @@ interface TagData {
   value: string;
 }
 
+const LINE_HEIGHT_COEFFICIENT = 1.15;
+const SPACING_COEFFICIENT = 0.25;
+
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private attributeVisibility: object;
@@ -487,7 +490,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     if (this.fontSize !== fontSize) {
       this.fontSize = fontSize;
       this.element.style.setProperty("font-size", `${fontSize}px`);
-      this.element.style.setProperty("line-height", `${fontSize * 1.15}px`);
+
+      this.element.style.setProperty(
+        "line-height",
+        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`
+      );
+
+      const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
+      this.element.style.setProperty("gap", spacing);
+      this.element.style.setProperty("padding", spacing);
     }
   }
 }
