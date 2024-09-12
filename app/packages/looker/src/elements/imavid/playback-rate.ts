@@ -3,6 +3,7 @@ import { BaseElement, Events } from "../base";
 import { lookerPlaybackRate } from "../video.module.css";
 import { lookerClickable } from "../common/controls.module.css";
 import { playbackRate } from "../../icons";
+import { IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY } from "../../lookers/imavid/constants";
 
 const resetPlaybackRate: Control<ImaVidState> = {
   title: "Reset playback rate",
@@ -90,6 +91,11 @@ class PlaybackRateBarElement extends BaseElement<
       );
       this.element.value = playbackRate.toFixed(4);
       this.playbackRate = playbackRate;
+
+      window.localStorage.setItem(
+        IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
+        playbackRate.toString()
+      );
     }
 
     return this.element;

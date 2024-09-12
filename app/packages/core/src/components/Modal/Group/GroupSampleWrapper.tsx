@@ -6,8 +6,16 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { GroupSampleBar } from "../Bars";
+import styled from "styled-components";
 import { groupSample, groupSampleActive } from "./Group.module.css";
+import { SelectSampleCheckbox } from "../SelectSampleCheckbox";
+
+const CheckboxWrapper = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+`;
 
 export const GroupSampleWrapper: React.FC<
   React.PropsWithChildren<{
@@ -54,14 +62,12 @@ export const GroupSampleWrapper: React.FC<
       }}
       onClickCapture={onClick}
     >
-      {children}
       {hovering && (
-        <GroupSampleBar
-          hoveringRef={hoveringRef}
-          sampleId={sampleId}
-          pinned={pinned}
-        />
+        <CheckboxWrapper>
+          <SelectSampleCheckbox sampleId={sampleId} />
+        </CheckboxWrapper>
       )}
+      {children}
     </div>
   );
 };

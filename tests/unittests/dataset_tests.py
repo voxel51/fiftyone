@@ -413,6 +413,27 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.info, {"foo2": "bar2"})
 
     @drop_datasets
+    def test_dataset_shared_field_metadata(self):
+        """Test field metadata for default/shared fields"""
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        f = dataset1.get_field("filepath")
+        self.assertIsNot(f, dataset2.get_field("filepath"))
+
+        # Save metadata on dataset1 field, should not show up in dataset2
+        f.info = {"foo": "bar"}
+        f.save()
+
+        dataset2.reload()
+        self.assertIsNone(dataset2.get_field("filepath").info)
+
+        # Really fresh reload
+        fo.Dataset._instances.clear()
+        dataset2b = fo.load_dataset(dataset2.name)
+        self.assertIsNone(dataset2b.get_field("filepath").info)
+
+    @drop_datasets
     def test_dataset_app_config(self):
         dataset_name = self.test_dataset_app_config.__name__
 
@@ -2212,6 +2233,67 @@ class DatasetTests(unittest.TestCase):
         dataset.delete_sample_field("predictions.detections.new_field")
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
+
+    @drop_datasets
+    def test_rename_delete_indexes(self):
+        sample = fo.Sample(
+            filepath="video.mp4",
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+        sample.frames[1] = fo.Frame(
+            field=1,
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        dataset.create_index("field")
+        dataset.create_index([("id", 1), ("field", -1)])
+        dataset.create_index("predictions.detections.field")
+
+        dataset.create_index("frames.field")
+        dataset.create_index([("frames.id", 1), ("frames.field", -1)])
+        dataset.create_index("frames.predictions.detections.field")
+
+        index_info = dataset.get_index_information()
+
+        self.assertIn("field", index_info)
+        self.assertIn("_id_1_field_-1", index_info)
+        self.assertIn("predictions.detections.field", index_info)
+
+        self.assertIn("frames.field", index_info)
+        self.assertIn("frames._id_1_field_-1", index_info)
+        self.assertIn("frames.predictions.detections.field", index_info)
+
+        dataset.rename_sample_fields({"field": "f", "predictions": "p"})
+        dataset.rename_frame_fields({"field": "f", "predictions": "p"})
+
+        index_info = dataset.get_index_information()
+
+        self.assertIn("f", index_info)
+        self.assertIn("_id_1_f_-1", index_info)
+        self.assertIn("p.detections.field", index_info)
+
+        self.assertIn("frames.f", index_info)
+        self.assertIn("frames._id_1_f_-1", index_info)
+        self.assertIn("frames.p.detections.field", index_info)
+
+        dataset.delete_sample_fields(["f", "p"])
+        dataset.delete_frame_fields(["f", "p"])
+
+        indexes = dataset.list_indexes()
+
+        self.assertSetEqual(
+            set(indexes),
+            {
+                "id",
+                "filepath",
+                "frames.id",
+                "frames._sample_id_1_frame_number_1",
+            },
+        )
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets

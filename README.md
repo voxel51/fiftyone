@@ -137,7 +137,7 @@ You will need:
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
     [enable Yarn](https://yarnpkg.com/getting-started/install) via
-	`corepack enable`
+    `corepack enable`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
     `libcurl3` instead of `libcurl`, depending on the age of your distribution.
@@ -272,7 +272,7 @@ for information on building and contributing to the documentation.
 You can uninstall FiftyOne as follows:
 
 ```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
+pip uninstall fiftyone fiftyone-brain fiftyone-db
 ```
 
 ## Contributors

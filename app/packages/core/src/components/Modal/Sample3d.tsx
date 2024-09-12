@@ -1,10 +1,10 @@
 import { Loading } from "@fiftyone/components";
-import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { Looker3d } from "@fiftyone/looker-3d/src/Looker3d";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useRef } from "react";
+import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { SampleWrapper } from "./Sample";
+import { SampleWrapper } from "./Sample2D";
 
 const Sample3dContainer = styled.div`
   width: 100%;
@@ -12,46 +12,20 @@ const Sample3dContainer = styled.div`
   position: relative;
 `;
 
-const Looker3dPluginWrapper = () => {
-  const groupId = useRecoilValue(fos.groupId);
-  const modal = useRecoilValue(fos.modalSelector);
-
-  const dataset = useRecoilValue(fos.dataset);
-  const plugin = useActivePlugins(PluginComponentType.Visualizer, {
-    dataset,
-  }).pop();
-
-  const pluginAPI = React.useMemo(
-    () => ({
-      dataset,
-    }),
-    [dataset]
-  );
-
-  return (
-    <plugin.component
-      // use group id in group model sample filepath in non-group mode to force a remount when switching between samples
-      key={groupId ?? modal?.id}
-      api={pluginAPI}
-    />
-  );
-};
-
-export const Sample3d = () => {
-  const lookerRef = useRef<fos.Lookers | undefined>(undefined);
+export const Sample3d = React.memo(() => {
   const isGroup = useRecoilValue(fos.isGroup);
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
       <Sample3dContainer data-cy="modal-looker-container">
         {isGroup ? (
-          <Looker3dPluginWrapper />
+          <Looker3d />
         ) : (
-          <SampleWrapper lookerRef={lookerRef}>
-            <Looker3dPluginWrapper />
+          <SampleWrapper>
+            <Looker3d />
           </SampleWrapper>
         )}
       </Sample3dContainer>
     </Suspense>
   );
-};
+});

@@ -583,6 +583,25 @@ class Document(BaseDocument, mongoengine.Document):
     def _doc_name(cls):
         return "Document"
 
+    def copy(self, new_id=False):
+        """Returns a deep copy of the document.
+
+        Args:
+            new_id (False): whether to generate a new ID for the copied
+                document. By default, the ID is left as ``None`` and will be
+                automatically populated when the document is added to the
+                database
+        """
+        doc_copy = super().copy()
+
+        if new_id:
+            # pylint: disable=no-member
+            id_field = self._meta.get("id_field", "id")
+            doc_copy.set_field(id_field, ObjectId())
+            doc_copy._created = True
+
+        return doc_copy
+
     def reload(self, *fields, **kwargs):
         """Reloads the document from the database.
 

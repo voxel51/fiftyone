@@ -57,6 +57,7 @@ export default function (
   const shown =
     (resultsLoadable.state !== "loading" || lightning) &&
     (showSearch || length > CHECKBOX_LIMIT);
+
   return {
     results,
     useSearch: useRecoilValue(hasSearchResultsSelector(path))

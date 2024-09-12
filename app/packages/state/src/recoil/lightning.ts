@@ -169,7 +169,7 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
             })
           )
             .map((p) => `${expanded}.${p}`)
-            .filter((p) => indexes.has(p))
+            .filter((p) => indexes.has(get(schemaAtoms.dbPath(p))))
         );
       }
 

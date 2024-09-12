@@ -3,6 +3,7 @@ export type SchemaViewType = { [key: string]: any };
 export type BaseSchemaType = {
   type: string;
   view: SchemaViewType;
+  default?: unknown;
 };
 
 export type ArraySchemaType = BaseSchemaType & {

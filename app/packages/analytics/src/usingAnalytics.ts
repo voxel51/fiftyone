@@ -8,6 +8,10 @@ export type AnalyticsInfo = {
   debug: boolean;
 };
 
+export type AnalyticsConfig = {
+  debounceInterval: number;
+};
+
 let _analytics: Analytics = null;
 
 export default function usingAnalytics(info: AnalyticsInfo): Analytics {
@@ -23,6 +27,15 @@ export default function usingAnalytics(info: AnalyticsInfo): Analytics {
 export class Analytics {
   private _segment?: AnalyticsBrowser;
   private _debug = false;
+  private _lastEventTimestamps: Record<string, number> = {}; // Tracks last event times
+  private _debounceInterval = 1000; // Default debounce interval in milliseconds (5 seconds)
+
+  constructor(config?: AnalyticsConfig) {
+    if (config?.debounceInterval) {
+      this._debounceInterval = config.debounceInterval;
+    }
+  }
+
   load(info: AnalyticsInfo) {
     if (this._segment) return;
     this._debug = info?.debug;
@@ -62,15 +75,27 @@ export class Analytics {
   }
 
   track(name: string, properties?: {}) {
+    const now = Date.now();
+    const lastTimestamp = this._lastEventTimestamps[name] || 0;
+
+    if (now - lastTimestamp < this._debounceInterval) {
+      if (this._debug) {
+        console.log("Debounced event:", name);
+      }
+      return;
+    }
+
+    this._lastEventTimestamps[name] = now;
+
     if (this._debug) {
       console.log("track", name, properties);
     }
+
     if (!this._segment) return;
     this._segment.track(name, properties);
   }
 
   trackEvent(name: string, properties?: {}) {
-    if (!this._segment) return;
     this.track(name, properties);
   }
 

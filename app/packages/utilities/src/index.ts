@@ -1,11 +1,10 @@
 import { Sample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
-import { isElectron } from "./electron";
 import { Field } from "./schema";
 
+export * from "./buffer-manager";
 export * from "./color";
-export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
@@ -499,20 +498,7 @@ export const isNotebook = () => {
 };
 
 export const useExternalLink = (href) => {
-  let openExternal;
-  if (isElectron()) {
-    try {
-      openExternal = require("electron").shell.openExternal;
-    } catch {}
-  }
-
-  return openExternal
-    ? (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openExternal(href);
-      }
-    : (e) => e.stopPropagation();
+  return (e) => e.stopPropagation();
 };
 
 const isURL = (() => {

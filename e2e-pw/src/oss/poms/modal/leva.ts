@@ -1,5 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { ModalPom } from ".";
 const DEFAULT_FOLDER_NAMES = ["Visibility", "Labels", "Lights"];
 
 export class ModalLevaPom {
@@ -7,23 +6,21 @@ export class ModalLevaPom {
   readonly locator: Locator;
   readonly assert: LevaAsserter;
 
-  constructor(page: Page, private readonly modal: ModalPom) {
+  constructor(page: Page) {
     this.page = page;
-    this.locator = page.locator("#fo-leva-container");
+    this.locator = page.getByTestId("looker3d-leva-container");
     this.assert = new LevaAsserter(this);
   }
 
   getFolder(folderName: string) {
-    return this.page.locator('div[style*="--leva-colors-folderWidgetColor"]', {
-      has: this.page.locator(`text="${folderName}"`),
-    });
+    return this.locator.locator("div").getByText(folderName, { exact: true });
   }
 
   async toggleFolder(folderName: string) {
     return this.getFolder(folderName).click();
   }
 
-  async minSlider(sliderName: string) {
+  async moveSliderToMin(sliderName: string) {
     const regex = new RegExp(`^${sliderName}$`);
     const slider = this.page
       .locator("div")
@@ -36,7 +33,7 @@ export class ModalLevaPom {
     return await slider.click({ position: { x: 0, y: 0 } });
   }
 
-  async maxSlider(sliderName: string) {
+  async moveSliderToMax(sliderName: string) {
     const regex = new RegExp(`^${sliderName}$`);
     const slider = this.page
       .locator("div")

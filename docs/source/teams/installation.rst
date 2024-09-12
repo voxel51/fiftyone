@@ -322,22 +322,10 @@ here is an example configuration:
 
     [
         {
-            "AllowedHeaders": [
-                "*"
-            ],
-            "AllowedMethods": [
-                "GET",
-                "HEAD",
-            ],
-            "AllowedOrigins": [
-                "https://fiftyone-teams-deployment.yourcompany.com"
-            ],
-            "ExposeHeaders": [
-                "x-amz-server-side-encryption",
-                "x-amz-request-id",
-                "x-amz-id-2"
-            ],
-            "MaxAgeSeconds": 3000
+            "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
+            "method": ["GET", "HEAD"],
+            "responseHeader": ["*"],
+            "maxAgeSeconds": 3600
         }
     ]
 

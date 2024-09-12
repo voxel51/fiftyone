@@ -63,14 +63,14 @@ test.describe("quickstart-groups", () => {
     await grid.assert.isLookerCountEqualTo(8);
 
     await grid.openFirstSample();
-    await modal.group.assert.assertGroupPinnedText("left is pinned");
+    await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
     await modal.group.assert.assertIsCarouselVisible();
     await modal.navigateSlice("group.name", "right");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
 
     await modal.clickOnLooker3d();
-    await modal.group.assert.assertGroupPinnedText("pcd is pinned");
+    await modal.assert.verifyModalSamplePluginTitle("pcd", { pinned: true });
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "pcd");
   });
 });

@@ -60,7 +60,6 @@ export default () => {
           sidebarAtoms.sidebarGroupsDefinition(false),
         ],
         [sidebarAtoms.sidebarWidth(true), sidebarAtoms.sidebarWidth(false)],
-        [sidebarAtoms.sidebarVisible(true), sidebarAtoms.sidebarVisible(false)],
         [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
         [
           sidebarExpandedAtoms.sidebarExpandedStore(true),

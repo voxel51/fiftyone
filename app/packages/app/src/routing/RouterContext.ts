@@ -11,12 +11,7 @@ import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
 
-import {
-  NotFoundError,
-  Resource,
-  isElectron,
-  isNotebook,
-} from "@fiftyone/utilities";
+import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import { createBrowserHistory, createMemoryHistory } from "history";
 import React from "react";
 import { loadQuery } from "react-relay";
@@ -72,10 +67,7 @@ export const createRouter = <T extends OperationType>(
   routes: RouteDefinition<T>[],
   handleError?: (error: unknown) => void
 ): Router<T> => {
-  const history =
-    isElectron() || isNotebook()
-      ? createMemoryHistory()
-      : createBrowserHistory();
+  const history = isNotebook() ? createMemoryHistory() : createBrowserHistory();
 
   let currentEntryResource: Resource<Entry<T>>;
   let nextCurrentEntryResource: Resource<Entry<T>>;

@@ -1,4 +1,3 @@
-import { isElectron } from "@fiftyone/utilities";
 import React, { useCallback } from "react";
 import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
@@ -21,7 +20,6 @@ const useCallGA = (info: Analytics$data) => {
         clientId: info.uid,
         page_location: "omitted",
         page_path: "omitted",
-        kind: isElectron() ? "Desktop" : "Web",
         version: info.version,
         context: info.context,
         checkProtocolTask: null, // disable check, allow file:// URLs

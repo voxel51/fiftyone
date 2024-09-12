@@ -6,7 +6,7 @@ import { useThree } from "@react-three/fiber";
 import { type MutableRefObject, useEffect, useMemo } from "react";
 import { type Box3, type Camera, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { Looker3dPluginSettings } from "./Looker3dPlugin";
+import type { Looker3dSettings } from "./settings";
 import { getGridQuaternionFromUpVector } from "./utils";
 
 export const CAMERA_POSITION_KEY = "fiftyone-camera-position";
@@ -14,7 +14,7 @@ export const CAMERA_POSITION_KEY = "fiftyone-camera-position";
 type EnvironmentProps = {
   cameraRef: MutableRefObject<Camera>;
   controlsRef: MutableRefObject<OrbitControlsImpl>;
-  settings: Looker3dPluginSettings;
+  settings: Looker3dSettings;
   isGridOn: boolean;
   bounds: Box3;
 };
