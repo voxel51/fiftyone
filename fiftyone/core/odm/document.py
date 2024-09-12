@@ -722,10 +722,14 @@ class Document(BaseDocument, mongoengine.Document):
                 self._get_changed_fields_orig = self._get_changed_fields
                 self._to_mongo_orig = self.to_mongo
 
-                changed_fields = self._get_changed_fields()
-                roots, paths = self._parse_changed_fields(changed_fields)
+                if hasattr(self, "_changed_fields"):
+                    changed_fields = self._get_changed_fields()
+                    roots, paths = self._parse_changed_fields(changed_fields)
+                else:
+                    # Changes aren't yet tracked, so validate everything
+                    roots, paths = None, None
 
-                if validate and changed_fields:
+                if validate:
                     self._validate_updates(
                         roots,
                         paths,
@@ -857,7 +861,7 @@ class Document(BaseDocument, mongoengine.Document):
     def _validate_updates(
         self, roots, paths, clean=True, enforce_read_only=True
     ):
-        if enforce_read_only:
+        if enforce_read_only and paths is not None:
             for path in paths:
                 field = self._get_field(path, allow_missing=True)
                 if getattr(field, "read_only", False):
