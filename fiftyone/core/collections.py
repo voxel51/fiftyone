@@ -9482,13 +9482,14 @@ class SampleCollection(object):
 
         return name
 
-    def drop_index(self, field_or_name):
+    def drop_index(self, field_or_name, quiet=False):
         """Drops the index for the given field or name.
 
         Args:
             field_or_name: a field name, ``embedded.field.name``, or compound
                 index name. Use :meth:`list_indexes` to see the available
                 indexes
+            quiet (booL): whether to raise an error if no index exists
         """
         name, is_frame_index = self._handle_frame_field(field_or_name)
 
@@ -9516,10 +9517,12 @@ class SampleCollection(object):
                 index_map[key] = key
 
         if name not in index_map:
-            itype = "frame index" if is_frame_index else "index"
-            raise ValueError(
-                "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
-            )
+            if not quiet:
+                itype = "frame index" if is_frame_index else "index"
+                msg = "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
+                raise ValueError(msg)
+            else:
+                return
 
         coll.drop_index(index_map[name])
 
