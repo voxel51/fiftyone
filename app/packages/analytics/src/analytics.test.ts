@@ -29,7 +29,6 @@ describe("Analytics", () => {
     // Mock return value of AnalyticsBrowser.load
     AnalyticsBrowser.load.mockReturnValue(mockSegment);
     analytics = new Analytics({
-      eventRateLimit: 5,
       debounceInterval: 5000,
     });
   });
@@ -78,6 +77,7 @@ describe("Analytics", () => {
     analytics.track("debounced_event");
     expect(mockSegment.track).toHaveBeenCalledWith(
       "debounced_event",
+      undefined,
       undefined
     );
 
@@ -124,7 +124,6 @@ describe("Analytics", () => {
   });
 
   it("should not log debug information when debug mode is disabled", () => {
-    analytics.load(SIMPLE_CONFIG);
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     analytics = new Analytics({
       writeKey: "test",
@@ -137,5 +136,63 @@ describe("Analytics", () => {
     expect(consoleSpy).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
+  });
+
+  it("should allow disabling of url tracking", () => {
+    analytics = new Analytics();
+    analytics.load({
+      writeKey: "test",
+      userId: "user",
+      userGroup: "group",
+      debug: false,
+      disableUrlTracking: true,
+    });
+    analytics.track("custom_event");
+    // segment should be called with context.page.url = undefined
+    expect(mockSegment.track).toHaveBeenCalledWith("custom_event", undefined, {
+      context: {
+        page: { url: undefined },
+      },
+    });
+  });
+
+  it("should obfuscate uri properties of all events", () => {
+    analytics = new Analytics();
+    analytics.load({
+      writeKey: "test",
+      userId: "user",
+      userGroup: "group",
+      debug: false,
+      redact: ["uri"],
+    });
+    analytics.track("random_event", { uri: "@my_name/my_plugin/my_operator" });
+    // segment should be called with properties.uri = "<redacted>"
+    console.log(mockSegment.track.mock.calls[0]);
+    expect(mockSegment.track).toHaveBeenCalledWith(
+      "random_event",
+      { uri: "<redacted>" },
+      undefined
+    );
+  });
+
+  it("should redact properties properly", () => {
+    analytics = new Analytics();
+    analytics.load({
+      writeKey: "test",
+      userId: "user",
+      userGroup: "group",
+      debug: false,
+      redact: ["uri"],
+    });
+    const redacted = analytics.redact({
+      uri: "@my_name/my_plugin/my_operator",
+    });
+    expect(redacted).toEqual({ uri: "<redacted>" });
+    const redacted2 = analytics.redact({ other: "value" });
+    expect(redacted2).toEqual({ other: "value" });
+    const redacted3 = analytics.redact({});
+    expect(redacted3).toEqual({});
+    const redacted4 = analytics.redact(undefined);
+    expect(redacted4).toEqual(undefined);
   });
 });
