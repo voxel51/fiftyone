@@ -5,6 +5,7 @@ DICOM utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import warnings
@@ -17,7 +18,7 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-fou.ensure_package("pydicom")
+fou.ensure_package("pydicom<3")
 import pydicom
 from pydicom.fileset import FileInstance, FileSet
 

@@ -1,4 +1,3 @@
-import { CopyButton, useTheme } from "@fiftyone/components";
 import {
   Box,
   Link,
@@ -24,6 +23,8 @@ import tomorrow from "react-syntax-highlighter/dist/esm/styles/hljs/tomorrow";
 import vs2015 from "react-syntax-highlighter/dist/esm/styles/hljs/vs2015";
 import remarkGfm from "remark-gfm";
 import styled from "styled-components";
+import CopyButton from "../CopyButton";
+import { useTheme } from "../ThemeProvider";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);

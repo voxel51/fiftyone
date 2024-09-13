@@ -6,6 +6,7 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
+import itertools
 
 from bson import ObjectId
 from pymongo import UpdateOne
@@ -469,11 +470,6 @@ class DatasetMixin(object):
             if field is not None:
                 schema_paths.append((path, new_path))
 
-        # This fixes https://github.com/voxel51/fiftyone/issues/3185
-        # @todo improve list field updates in general so this isn't necessary
-        if schema_paths:
-            cls._reload_fields()
-
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._rename_fields_simple(_paths, _new_paths)
@@ -483,6 +479,11 @@ class DatasetMixin(object):
             cls._rename_fields_collection(
                 sample_collection, _paths, _new_paths
             )
+
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if schema_paths:
+            cls._reload_fields()
 
         for path, new_path in schema_paths:
             cls._rename_field_schema(path, new_path)
@@ -496,6 +497,9 @@ class DatasetMixin(object):
 
         dataset_doc.app_config._rename_paths(paths, new_paths)
         dataset_doc.save()
+
+        if schema_paths:
+            cls._rename_indexes(paths, new_paths)
 
     @classmethod
     def _clone_fields(cls, sample_collection, paths, new_paths):
@@ -554,11 +558,6 @@ class DatasetMixin(object):
             if field is not None:
                 schema_paths.append((path, new_path))
 
-        # This fixes https://github.com/voxel51/fiftyone/issues/3185
-        # @todo improve list field updates in general so this isn't necessary
-        if schema_paths:
-            cls._reload_fields()
-
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._clone_fields_simple(_paths, _new_paths)
@@ -566,6 +565,11 @@ class DatasetMixin(object):
         if coll_paths:
             _paths, _new_paths = zip(*coll_paths)
             cls._clone_fields_collection(sample_collection, _paths, _new_paths)
+
+        # This fixes https://github.com/voxel51/fiftyone/issues/3185
+        # @todo improve list field updates in general so this isn't necessary
+        if schema_paths:
+            cls._reload_fields()
 
         for path, new_path in schema_paths:
             cls._clone_field_schema(path, new_path)
@@ -684,12 +688,12 @@ class DatasetMixin(object):
         if not del_paths:
             return
 
+        cls._delete_fields_simple(del_paths)
+
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if del_schema_paths:
             cls._reload_fields()
-
-        cls._delete_fields_simple(del_paths)
 
         for del_path in del_schema_paths:
             cls._delete_field_schema(del_path)
@@ -699,6 +703,9 @@ class DatasetMixin(object):
 
         dataset_doc.app_config._delete_paths(del_paths)
         dataset_doc.save()
+
+        if del_paths:
+            cls._delete_indexes(del_paths)
 
     @classmethod
     def _remove_dynamic_fields(cls, paths, error_level=0):
@@ -1117,6 +1124,21 @@ class DatasetMixin(object):
 
         doc._undeclare_field(field_name)
         _delete_field_doc(field_docs, field_name)
+
+    @classmethod
+    def _rename_indexes(cls, paths, new_paths):
+        updates = _get_index_updates(cls._dataset, paths, new_paths=new_paths)
+
+        for name, new_index_spec in updates.items():
+            cls._dataset.drop_index(name)
+            cls._dataset.create_index(new_index_spec)
+
+    @classmethod
+    def _delete_indexes(cls, paths):
+        updates = _get_index_updates(cls._dataset, paths)
+
+        for name in updates.keys():
+            cls._dataset.drop_index(name)
 
     @classmethod
     def _reload_fields(cls):
@@ -1710,3 +1732,54 @@ def _delete_field_doc(field_docs, field_name):
         if field_doc.name == field_name:
             del field_docs[i]
             break
+
+
+def _get_index_updates(dataset, paths, new_paths=None):
+    if not paths:
+        return {}
+
+    update = new_paths is not None
+    if new_paths is None:
+        new_paths = itertools.repeat("")
+
+    has_frame_fields = dataset._has_frame_fields()
+    index_info = dataset.get_index_information()
+    fields_map = dataset._get_db_fields_map(reverse=True)
+    if has_frame_fields:
+        prefix = dataset._FRAMES_PREFIX
+        frame_fields_map = dataset._get_db_fields_map(
+            frames=True, reverse=True
+        )
+
+    updates = {}
+
+    for name, info in index_info.items():
+        is_frame_index = has_frame_fields and name.startswith(prefix)
+
+        modified = False
+        new_index_spec = []
+        for _path, arg in info["key"]:
+            if is_frame_index:
+                _path = prefix + frame_fields_map.get(_path, _path)
+            else:
+                _path = fields_map.get(_path, _path)
+
+            key = (_path, arg)
+
+            for path, new_path in zip(paths, new_paths):
+                if _path == path:
+                    key = (new_path, arg)
+                    modified = True
+                elif _path.startswith(path + "."):
+                    key = (new_path + _path[len(path) :], arg)
+                    modified = True
+
+            new_index_spec.append(key)
+
+        if modified:
+            if update:
+                updates[name] = new_index_spec
+            else:
+                updates[name] = None
+
+    return updates

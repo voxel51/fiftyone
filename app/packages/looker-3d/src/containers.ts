@@ -78,14 +78,7 @@ export const Container = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-`;
-
-export const LevaContainer = styled.div<{ isSidebarVisible: boolean }>`
-  position: absolute;
-  top: 12vh;
-  right: ${(props) => (props.isSidebarVisible ? "23vw" : "3vw")};
-  z-index: 1000;
-  height: 0;
+  overflow-x: hidden;
 `;
 
 export const StatusBarRootContainer = styled.div`

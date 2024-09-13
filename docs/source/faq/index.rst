@@ -15,9 +15,6 @@ Yes! In fact, this is the default behavior. Unless you're working
 web browser whenever you call
 :func:`launch_app() <fiftyone.core.session.launch_app>` .
 
-You can also run FiftyOne
-:ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
-
 Check out the :ref:`environments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
@@ -31,25 +28,6 @@ Safari.
 
 You may find success using browsers like Edge, Opera, or Chromium, but your
 mileage will vary. Internet Explorer is explicitly unsupported at this time.
-
-If using a supported browser is not an option, you can also run FiftyOne
-:ref:`as a desktop application <faq-desktop-app-support>`.
-
-.. _faq-desktop-app-support:
-
-Can I run the FiftyOne App as a desktop application?
-----------------------------------------------------
-
-Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
-
-Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
-an optional ``desktop`` flag that let you control whether to launch the App in
-your browser or as a desktop App. You can also set the ``desktop_app`` flag of
-your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
-default.
-
-Check out the :ref:`environments guide <environments>` to see how to use
-FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-app-no-session:
 
@@ -219,14 +197,6 @@ while others do not. You may be able to install a browser extension to work
 with additional image types, but Voxel51 does not currently recommend any
 such extensions in particular.
 
-.. note::
-
-    The :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` is an
-    `Electron App <https://electronjs.org>`_, which uses the Chromium rendering
-    engine. Therefore, refer to Chromium in
-    `this chart <https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_
-    for supported image types.
-
 .. _faq-video-types:
 
 What video file types are supported?
@@ -247,14 +217,6 @@ to re-encode the source video so it is viewable in the App.
     You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
     datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
     installation instructions.
-
-.. note::
-
-    The :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` is an
-    `Electron App <https://electronjs.org>`_, which uses the Chromium rendering
-    engine. Therefore, refer to Chromium in
-    `this chart <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_
-    for supported video types.
 
 .. _faq-supported-labels:
 

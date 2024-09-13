@@ -5,6 +5,7 @@ FiftyOne Services.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import subprocess
@@ -386,57 +387,3 @@ class ServerService(Service):
     def env(self):
         dnt = "1" if self._do_not_track else "0"
         return {"FIFTYONE_DO_NOT_TRACK": dnt}
-
-
-class AppService(Service):
-    """Service that controls the FiftyOne app."""
-
-    service_name = "app"
-    working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
-
-    def __init__(self, server_port=None, server_address=None):
-        # initialize before start() is called
-        self.server_port = server_port
-        self.server_address = server_address
-        super().__init__()
-
-    @property
-    def command(self):
-        with etau.WorkingDir(foc.FIFTYONE_DESKTOP_APP_DIR):
-            return self.find_app()
-
-    def find_app(self):
-        if foc.DEV_INSTALL:
-            return ["yarn", "start-desktop"]
-
-        for path in etau.list_files("./"):
-            if path.endswith(".tar.gz"):
-                logger.info("Installing FiftyOne App")
-                etau.extract_tar(path, "./", delete_tar=True)
-
-        pre = foc.FIFTYONE_DESKTOP_APP_DIR
-        for path in etau.list_files("./"):
-            if path.endswith(".AppImage") or path.endswith(".exe"):
-                return [os.path.join(pre, path)]
-
-        if os.path.isdir("./FiftyOne.app"):
-            return [
-                os.path.join(
-                    pre, "FiftyOne.app", "Contents", "MacOS", "FiftyOne"
-                )
-            ]
-
-        raise RuntimeError(
-            "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
-        )
-
-    @property
-    def env(self):
-        env = {}
-        if self.server_port is not None:
-            env["FIFTYONE_SERVER_PORT"] = str(self.server_port)
-
-        if self.server_address:
-            env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)
-
-        return env

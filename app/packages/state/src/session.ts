@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { DefaultValue, RecoilState, atom, selector } from "recoil";
 import { State } from "./recoil";
 
-export const SPACES_DEFAULT = {
+export const GRID_SPACES_DEFAULT = {
   id: "",
   _cls: "Space",
   component_id: "root",
@@ -76,7 +76,7 @@ export const SESSION_DEFAULT: Session = {
   readOnly: false,
   selectedSamples: new Set(),
   selectedLabels: [],
-  sessionSpaces: SPACES_DEFAULT,
+  sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };
 

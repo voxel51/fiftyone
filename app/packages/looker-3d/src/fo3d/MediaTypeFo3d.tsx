@@ -1,3 +1,4 @@
+import { LoadingDots } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { AdaptiveDpr, AdaptiveEvents, CameraControls } from "@react-three/drei";
@@ -14,7 +15,6 @@ import {
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type * as THREE from "three";
 import { type PerspectiveCamera, Vector3 } from "three";
-import type { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
 import {
@@ -26,6 +26,7 @@ import { StatusBarRootContainer } from "../containers";
 import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
+import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
   cameraPositionAtom,
@@ -33,7 +34,6 @@ import {
 } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import Leva from "./Leva";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
 import {
@@ -48,7 +48,7 @@ export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const settings = usePluginSettings<Looker3dPluginSettings>("3d");
+  const settings = usePluginSettings<Looker3dSettings>("3d");
 
   const mediaPath = useMemo(
     () => getMediaPathForFo3dSample(sample, mediaField),
@@ -396,16 +396,11 @@ export const MediaTypeFo3dComponent = () => {
   useTrackStatus();
 
   if (isParsingFo3d) {
-    return (
-      <Canvas>
-        <SpinningCube />
-      </Canvas>
-    );
+    return <LoadingDots />;
   }
 
   return (
     <>
-      <Leva />
       <Canvas
         id={CANVAS_WRAPPER_ID}
         camera={canvasCameraProps}
@@ -435,7 +430,7 @@ export const MediaTypeFo3dComponent = () => {
 
           <StatusTunnel.Out />
 
-          <ThreeDLabels sampleMap={{ fo3d: sample }} />
+          {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
         </Fo3dSceneContext.Provider>
       </Canvas>
       <StatusBarRootContainer>

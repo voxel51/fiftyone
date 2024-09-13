@@ -317,23 +317,6 @@ call :meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
     session = fo.launch_app(dataset, auto=False)
     session.open_tab()
 
-Using the desktop App
-~~~~~~~~~~~~~~~~~~~~~
-
-If you are working from a Jupyter notebook on a machine with the
-:ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` installed, you can
-optionally open the desktop App rather than working with the App in cell
-output(s).
-
-To do this, pass the ``desktop=True`` flag to
-:meth:`launch_app() <fiftyone.core.session.launch_app>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Creates a session and launches the desktop App
-    session = fo.launch_app(dataset, desktop=True)
-
 .. _remote-notebooks:
 
 Remote notebooks

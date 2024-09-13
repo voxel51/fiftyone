@@ -8,7 +8,6 @@ Installs FiftyOne Teams.
 """
 
 from importlib import metadata
-import os
 import re
 from setuptools import setup, find_packages
 
@@ -54,7 +53,7 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql==0.138.1",
+    "strawberry-graphql",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
@@ -112,9 +111,6 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.24.1"]}
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -128,7 +124,6 @@ setup(
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    extras_require=EXTRAS_REQUIREMENTS,
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(

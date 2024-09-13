@@ -5,6 +5,7 @@ import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
+import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
 import {
@@ -37,6 +38,8 @@ export const Looker3d = () => {
 
   const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
 
+  const thisSampleId = useRecoilValue(fos.modalSampleId);
+
   useEffect(() => {
     return () => {
       setFo3dHasBackground(false);
@@ -64,14 +67,6 @@ export const Looker3d = () => {
     "KeyG",
     async ({ set }) => {
       set(isGridOnAtom, (prev) => !prev);
-    },
-    []
-  );
-
-  useHotkey(
-    "KeyF",
-    async ({ set }) => {
-      set(fos.fullscreen, (f) => !f);
     },
     []
   );
@@ -155,14 +150,15 @@ export const Looker3d = () => {
   }
 
   const component = shouldRenderFo3dComponent ? (
-    <MediaTypeFo3dComponent />
+    <MediaTypeFo3dComponent key={thisSampleId} />
   ) : (
-    <MediaTypePcdComponent />
+    <MediaTypePcdComponent key={thisSampleId} />
   );
 
   return (
     <Fo3dErrorBoundary boundaryName="fo3d">
-      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
+      <Leva />
+      <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
         {component}
         <ActionBar
           onMouseEnter={() => {

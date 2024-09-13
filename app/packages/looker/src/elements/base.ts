@@ -10,10 +10,13 @@ type ElementEvent<State extends BaseState, E extends Event> = (args: {
   dispatchEvent: DispatchEvent;
 }) => void;
 
-export type Events<State extends BaseState> = {
-  [K in keyof HTMLElementEventMap]?: ElementEvent<
+export type Events<
+  State extends BaseState,
+  CustomEvents extends Record<string, Event> = Record<string, never>
+> = {
+  [K in keyof (HTMLElementEventMap & CustomEvents)]?: ElementEvent<
     State,
-    HTMLElementEventMap[K]
+    (HTMLElementEventMap & CustomEvents)[K]
   >;
 };
 

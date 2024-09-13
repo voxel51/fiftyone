@@ -1,13 +1,13 @@
 import styled from "styled-components";
 
-const Arrow = styled.span<{ isRight?: boolean }>`
+const Arrow = styled.span<{ $isRight?: boolean }>`
   cursor: pointer;
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  right: ${(props) => (props.isRight ? "0.75rem" : "initial")};
-  left: ${(props) => (props.isRight ? "initial" : "0.75rem")};
+  right: ${(props) => (props.$isRight ? "0.75rem" : "initial")};
+  left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
   bottom: 40vh;

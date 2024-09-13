@@ -22,7 +22,14 @@ from bson import json_util, ObjectId, DBRef
 import cachetools
 from deprecated import deprecated
 import mongoengine.errors as moe
-from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo import (
+    DeleteMany,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
+from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.utils as etau
@@ -1325,14 +1332,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _sample_collstats(self):
         conn = foo.get_db_conn()
-        return conn.command("collstats", self._sample_collection_name)
+        return conn.command(
+            "collstats",
+            self._sample_collection_name,
+        )
 
     def _frame_collstats(self):
         if self._frame_collection_name is None:
             return None
 
         conn = foo.get_db_conn()
-        return conn.command("collstats", self._frame_collection_name)
+        return conn.command(
+            "collstats",
+            self._frame_collection_name,
+        )
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -4441,12 +4454,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             contains_videos = self._contains_videos(any_slice=True)
 
+        ops = []
         if sample_ids is not None:
-            d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            d = {}
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
 
-        self._sample_collection.delete_many(d)
+            for _ids in fou.iter_batches(sample_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
+                    )
+                )
+        else:
+            ops.append(DeleteMany({}))
+
+        foo.bulk_write(ops, self._sample_collection)
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
@@ -4534,9 +4557,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 frame_ids = view.values("frames.id", unwind=True)
 
         if frame_ids is not None:
-            self._frame_collection.delete_many(
-                {"_id": {"$in": [ObjectId(_id) for _id in frame_ids]}}
+            ops = []
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
             )
+
+            for _ids in fou.iter_batches(frame_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {"_id": {"$in": [ObjectId(_id) for _id in _ids]}}
+                    )
+                )
+
+            foo.bulk_write(ops, self._frame_collection)
             fofr.Frame._reset_docs_by_frame_id(
                 self._frame_collection_name, frame_ids
             )
@@ -4548,12 +4581,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             sample_ids = view.values("id")
 
+        ops = []
         if sample_ids is not None:
-            d = {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            d = {}
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
 
-        self._frame_collection.delete_many(d)
+            for _ids in fou.iter_batches(sample_ids, batch_size):
+                ops.append(
+                    DeleteMany(
+                        {
+                            "_sample_id": {
+                                "$in": [ObjectId(_id) for _id in _ids]
+                            }
+                        }
+                    )
+                )
+        else:
+            ops.append(DeleteMany({}))
+
+        foo.bulk_write(ops, self._frame_collection)
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
@@ -4563,25 +4610,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_collection._contains_videos(any_slice=True):
             return
 
-        if self._is_clips:
-            if frame_ids is None and view is None:
-                view = self
-
-            if view is not None:
-                frame_ids = view.values("frames.id", unwind=True)
-
-        if frame_ids is not None:
-            self._frame_collection.delete_many(
-                {
-                    "_id": {
-                        "$not": {"$in": [ObjectId(_id) for _id in frame_ids]}
-                    }
-                }
-            )
-            fofr.Frame._reset_docs_by_frame_id(
-                self._frame_collection_name, frame_ids, keep=True
-            )
-            return
+        if self._is_clips and view is None:
+            view = self
 
         if view is None:
             return
@@ -4589,10 +4619,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view.media_type == fom.GROUP:
             view = view.select_group_slices(media_type=fom.VIDEO)
 
-        sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
+        if view._is_clips:
+            sample_ids, frame_numbers = view.values(
+                ["sample_id", "frames.frame_number"]
+            )
+
+            # Handle multiple clips per sample
+            d = defaultdict(set)
+            for sample_id, fns in zip(sample_ids, frame_numbers):
+                d[sample_id].update(fns)
+
+            sample_ids, frame_numbers = zip(
+                *((sample_id, list(fns)) for sample_id, fns in d.items())
+            )
+        else:
+            sample_ids, frame_numbers = view.values(
+                ["id", "frames.frame_number"]
+            )
 
         ops = []
         for sample_id, fns in zip(sample_ids, frame_numbers):
+            # Note: this may fail if `fns` is too large (eg >100k frames), but
+            # to address this we'd need to do something like lookup all frame
+            # numbers on the dataset and reverse the $not in-memory, which
+            # would be quite expensive...
             ops.append(
                 DeleteMany(
                     {
@@ -7255,7 +7305,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection(self):
-        return foo.get_db_conn()[self._sample_collection_name]
+        return self._get_sample_collection()
+
+    def _get_sample_collection(self, write_concern=None):
+        return foo.get_db_conn().get_collection(
+            self._sample_collection_name, write_concern=write_concern
+        )
 
     @property
     def _frame_collection_name(self):
@@ -7263,10 +7318,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _frame_collection(self):
+        return self._get_frame_collection()
+
+    def _get_frame_collection(self, write_concern=None):
         if self._frame_collection_name is None:
             return None
 
-        return foo.get_db_conn()[self._frame_collection_name]
+        return foo.get_db_conn().get_collection(
+            self._frame_collection_name, write_concern=write_concern
+        )
 
     @property
     def _frame_indexes(self):
@@ -7828,9 +7888,10 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            doc_cls._declare_field(dataset, field_name, field)
         else:
-            field._set_dataset(dataset, field_name)
+            field = field.copy()
+
+        doc_cls._declare_field(dataset, field_name, field)
 
     if field_docs is not None:
         for field_doc in field_docs:

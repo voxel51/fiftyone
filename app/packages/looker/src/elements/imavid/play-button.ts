@@ -14,20 +14,16 @@ export const playPause: Control<ImaVidState> = {
         playing,
         config: { frameStoreController, thumbnail },
       }) => {
-        if (thumbnail) {
+        if (thumbnail || frameStoreController.isStoreBufferManagerEmpty) {
           return {};
         }
-
+        const reachedEnd =
+          currentFrameNumber >= frameStoreController.totalFrameCount;
         dispatchEvent("options", { showJSON: false });
-
-        // todo: figure out why setting frame number to 1 doesn't restart playback because of drawFrame
         return {
-          playing: !playing,
-          frameNumber:
-            currentFrameNumber === frameStoreController.totalFrameCount
-              ? 1
-              : currentFrameNumber,
+          currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
           options: { showJSON: false },
+          playing: !playing || reachedEnd,
         };
       }
     );
@@ -113,14 +109,21 @@ export class PlayButtonElement extends BaseElement<
     return element;
   }
 
-  renderSelf({ playing, buffering, loaded }: Readonly<ImaVidState>) {
+  renderSelf({
+    playing,
+    buffering,
+    loaded,
+    config: {
+      frameStoreController: { isStoreBufferManagerEmpty },
+    },
+  }: Readonly<ImaVidState>) {
     if (
       playing !== this.isPlaying ||
       this.isBuffering !== buffering ||
       !loaded
     ) {
       this.element.textContent = "";
-      if (!loaded) {
+      if (!loaded || isStoreBufferManagerEmpty) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading";
         this.element.style.cursor = "default";

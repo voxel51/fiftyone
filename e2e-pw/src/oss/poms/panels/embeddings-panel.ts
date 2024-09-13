@@ -1,7 +1,7 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "../selector";
-import { PanelPom } from "./panel";
+import { GridPanelPom } from "./grid-panel";
 
 export class EmbeddingsPom {
   readonly locator: Locator;
@@ -21,7 +21,7 @@ export class EmbeddingsPom {
     );
 
     this.plotContainer = this.page.getByTestId("embeddings-plot-container");
-    this.asserter = new EmebddingsAsserter(this, new PanelPom(page));
+    this.asserter = new EmebddingsAsserter(this, new GridPanelPom(page));
     this.lassoTool = this.locator.getByTestId("embeddings-plot-option-lasso");
   }
 
@@ -45,7 +45,7 @@ export class EmbeddingsPom {
 class EmebddingsAsserter {
   constructor(
     private readonly embeddingsPom: EmbeddingsPom,
-    private readonly panelPom: PanelPom
+    private readonly panelPom: GridPanelPom
   ) {}
 
   async verifyPanelVisible() {

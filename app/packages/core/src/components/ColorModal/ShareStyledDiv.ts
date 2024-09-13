@@ -138,12 +138,12 @@ export const FieldColorSquare = styled.div<{ color: string }>`
   display: "inline-block";
 `;
 
-export const PickerWrapper = styled.div<{ visible: boolean }>`
+export const PickerWrapper = styled.div<{ $visible: boolean }>`
   position: absolute;
   top: 60px;
   left: 0;
   z-index: 10001;
-  visibility: ${(props) => (props.visible ? "visible" : "hidden")};
+  visibility: ${(props) => (props.$visible ? "visible" : "hidden")};
 `;
 
 export const FieldCHILD_STYLE = {
