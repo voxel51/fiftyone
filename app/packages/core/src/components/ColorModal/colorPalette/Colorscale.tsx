@@ -264,8 +264,8 @@ const Colorscale: React.FC = () => {
           )}
           {tab === "list" && (
             <div>
-              Define a custom colorscale (range between 0 and 1): * must include
-              0 and 1
+              Define a custom colorscale (range between 0 and 1): <br />
+              * must include 0 and 1
               <ManualColorScaleList
                 initialValue={
                   setting?.list && setting?.list.length > 0

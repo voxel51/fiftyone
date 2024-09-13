@@ -4,6 +4,8 @@ In color by value mode, fields and label tags use this component
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
+import DeleteIcon from "@mui/icons-material/Delete";
+import IconButton from "@mui/material/IconButton";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
@@ -14,7 +16,6 @@ import {
   AddContainer,
   ChromePickerWrapper,
   ColorSquare,
-  DeleteButton,
   RowContainer,
 } from "../ShareStyledDiv";
 import { activeColorPath } from "../state";
@@ -244,11 +245,15 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
               onSyncColor(index, input[index].color);
             }}
           />
-          <DeleteButton
+          <IconButton
+            aria-label="delete"
+            disabled={input.length <= 2}
             onClick={() => {
               handleDelete(index);
             }}
-          />
+          >
+            <DeleteIcon />
+          </IconButton>
         </RowContainer>
       ))}
       {shouldShowAddButton && (
