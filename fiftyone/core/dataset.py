@@ -8044,7 +8044,12 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset._reload()
 
-    _id = ObjectId()
+    #
+    # Clone dataset document
+    #
+
+    dataset_doc = dataset._doc.copy(new_id=True)
+    _id = dataset_doc.id
 
     sample_collection_name = _make_sample_collection_name(_id)
 
@@ -8055,13 +8060,6 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     else:
         frame_collection_name = None
 
-    #
-    # Clone dataset document
-    #
-
-    dataset_doc = dataset._doc.copy()
-
-    dataset_doc.id = _id
     dataset_doc.name = name
     dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
@@ -8522,14 +8520,12 @@ def _clone_extras(src_dataset, dst_dataset):
 
 
 def _clone_reference_doc(ref_doc):
-    _ref_doc = ref_doc.copy()
-    _ref_doc.id = ObjectId()
+    _ref_doc = ref_doc.copy(new_id=True)
     return _ref_doc
 
 
 def _clone_run(run_doc):
-    _run_doc = run_doc.copy()
-    _run_doc.id = ObjectId()
+    _run_doc = run_doc.copy(new_id=True)
     _run_doc.results = None
 
     # Unfortunately the only way to copy GridFS files is to read-write them...

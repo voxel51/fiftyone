@@ -27,6 +27,7 @@ and download annotations using Label Studio, all programmatically in Python.
 All of the following label types are supported for image datasets:
 
 - :ref:`Classification <classification>`
+- :ref:`Multilabel classification <multilabel-classification>`
 - :ref:`Detections <object-detection>`
 - :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polygons and polylines <polylines>`
@@ -417,6 +418,8 @@ more details:
 
     -   ``"classification"``: a single classification stored in
         |Classification| fields
+    -   ``"classifications"``: multilabel classifications stored in
+        |Classifications| fields
     -   ``"detections"``: object detections stored in |Detections| fields
     -   ``"instances"``: instance segmentations stored in |Detections| fields
         with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
@@ -664,5 +667,6 @@ ________________
 
 .. note::
 
-    Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_ and
+    Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_,
+    `Ganesh Tata <https://github.com/tataganesh>`_, and
     `Emil Zakirov <https://github.com/bonlime>`_ for building this integration!
