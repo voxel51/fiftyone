@@ -158,10 +158,10 @@ export const NumberInput = React.memo(
       const display = [null, undefined].includes(value) ? "" : Number(value);
       const [error, setError] = useState<string | null>(null);
       let errorMsg: string[] | string = [];
-      if (min || min === 0) {
+      if (typeof min === "number") {
         errorMsg.push(`Min: ${min}.`);
       }
-      if (max || max === 0) {
+      if (typeof max === "number") {
         errorMsg.push(`Max: ${max}.`);
       }
       errorMsg = errorMsg.join(" ");
