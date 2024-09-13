@@ -1682,10 +1682,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "rollup_label_counts",
                 include_counts=True
             )
-            dataset.add_frame_rollup_field(
-                "frames.detections.detections.confidence",
-                include_counts=True
-            )
 
             print(dataset.list_frame_rollup_fields())
 
@@ -1753,11 +1749,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 info=info,
             )
         else:
-            self.add_sample_field(rollup_path, fo.ListField, info=info)
+            ftype = type(self.get_field(frame_path))
+            supported_types = [fo.StringField]
+            if ftype not in supported_types:
+                raise ValueError(
+                    f"{ftype} field is not supported for list rollup"
+                )
+
+            self.add_sample_field(
+                rollup_path, fo.ListField, subfield=fo.StringField, info=info
+            )
 
         # Optionally create mongodb index on rollup field
         if create_index:
-            self.create_index(rollup_path, wait=False)
+            index_name = (
+                rollup_path + ".classifications.label"
+                if include_counts
+                else rollup_path
+            )
+            self.create_index(index_name, wait=False)
 
         # Create pipeline depending on mode we've chosen
         pipeline = [
