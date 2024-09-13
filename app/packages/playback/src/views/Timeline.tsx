@@ -22,8 +22,8 @@ interface TimelineProps {
 /**
  * Renders a "classic" FO timeline with a seekbar, playhead, speed control, and status indicator.
  */
-export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ name, style }, ref) => {
+export const Timeline = React.memo(
+  React.forwardRef<HTMLDivElement, TimelineProps>(({ name, style }, ref) => {
     const { playHeadState, config, play, pause } = useTimeline(name);
     const frameNumber = useFrameNumber(name);
 
@@ -73,5 +73,5 @@ export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
         </FoTimelineControlsContainer>
       </FoTimelineContainer>
     );
-  }
+  })
 );
