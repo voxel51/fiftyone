@@ -148,7 +148,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
     [input, values, onSyncUpdate]
   );
 
-  const onValidateNumber = useCallback((value: number | string) => {
+  const onValidateUnitInterval = useCallback((value: number | string) => {
     return Number(value) >= 0 && Number(value) <= 1;
   }, []);
 
@@ -174,7 +174,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
           <NumberInput
             placeholder="float"
             value={input[index].value}
-            validator={onValidateNumber}
+            validator={onValidateUnitInterval}
             setter={(v) => {
               setInput((p) => {
                 const copy = cloneDeep(p);

@@ -167,7 +167,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       {input?.map((v, index) => (
         <RowContainer key={index}>
           <NumberInput
-            placeholder="integer (>0)"
+            placeholder="integer"
             value={input[index].intTarget}
             setter={(v) =>
               setInput((p) => {

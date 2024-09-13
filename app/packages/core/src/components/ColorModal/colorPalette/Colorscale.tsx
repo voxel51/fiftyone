@@ -276,7 +276,7 @@ const Colorscale: React.FC = () => {
                 style={FieldCHILD_STYLE}
                 min={0}
                 max={1}
-                onValidate={validateFloat}
+                onValidate={validateUnitInterval}
                 onSyncUpdate={onSyncUpdate}
                 shouldShowAddButton={shouldShowAddButton}
                 step={0.01}
@@ -291,7 +291,7 @@ const Colorscale: React.FC = () => {
 
 export default Colorscale;
 
-const validateFloat = (n: number) => {
+const validateUnitInterval = (n: number) => {
   // 1 and 1.0 should both pass
   return Number.isFinite(n) && n >= 0 && n <= 1;
 };
