@@ -38,20 +38,6 @@ const ModalContainer = styled.div`
   z-index: 10001;
 `;
 
-const ModalNavigationContainer = styled.div<{
-  $sidebarWidth: number;
-  $isSidebarVisible: boolean;
-}>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: ${({ $sidebarWidth, $isSidebarVisible }) =>
-    $isSidebarVisible ? `calc(100% - ${$sidebarWidth}px)` : "100%"};
-  height: 100%;
-  position: absolute;
-  left: 0;
-`;
-
 const SpacesContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -92,9 +78,6 @@ const Modal = () => {
   const renderEntry = useModalSidebarRenderEntry();
 
   const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
-
-  const hoveringSample = useRecoilValue(fos.hoveredSample);
-  const currentModalSampleId = useRecoilValue(fos.modalSampleId);
 
   const select = fos.useSelectSample();
 
@@ -179,8 +162,6 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
-  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -231,12 +212,7 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigationContainer
-            $isSidebarVisible={isSidebarVisible}
-            $sidebarWidth={sidebarwidth}
-          >
-            <ModalNavigation onNavigate={onNavigate} />
-          </ModalNavigationContainer>
+          <ModalNavigation onNavigate={onNavigate} />
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>
