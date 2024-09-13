@@ -48,7 +48,7 @@ IF %SOURCE_BRAIN_INSTALL%==true (
   git clone https://github.com/voxel51/fiftyone-brain
   cd fiftyone-brain
   IF %DEV_INSTALL%==true (
-    ./install.bat -d
+    CALL install.bat -d
   ) else (
     pip install .
   )
