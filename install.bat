@@ -47,18 +47,18 @@ IF %SOURCE_BRAIN_INSTALL%==true (
   echo Cloning FiftyOne Brain repository
   git clone https://github.com/voxel51/fiftyone-brain
   cd fiftyone-brain
-  pip install .
+  IF %DEV_INSTALL%==true (
+    ./install.bat -d
+  ) else (
+    pip install .
+  )
   cd ..
 ) else (
   pip install --upgrade fiftyone-brain
 )
 
 echo ***** INSTALLING FIFTYONE *****
-set IS_DEV_INSTALL_FLAG=false
-IF %DEV_INSTALL%==true set IS_DEV_INSTALL_FLAG=true
-IF %VOXEL51_INSTALL%==true set IS_DEV_INSTALL_FLAG=true
-
-IF %IS_DEV_INSTALL_FLAG%==true (
+IF %DEV_INSTALL%==true (
   echo Performing dev install
   pip install -r requirements/dev.txt
   pre-commit install
