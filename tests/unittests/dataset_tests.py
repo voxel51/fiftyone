@@ -721,9 +721,20 @@ class DatasetTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # Populate string lists of observed values
-        dataset.add_frame_rollup_field("frames.gt")
-        rollup_fields = dataset.list_frame_rollup_fields()
-        self.assertEqual(rollup_fields, ["rollup_list_gt"])
+        rollup_field_path = dataset.add_frame_rollup_field("frames.gt")
+        assert rollup_field_path == "rollup_list_gt"
+
+        self.assertEqual(
+            dataset.list_frame_rollup_fields(), ["rollup_list_gt"]
+        )
+
+        # Get the rollup field, check read only
+        rollup_field = dataset.get_field(rollup_field_path)
+        self.assertTrue(rollup_field.read_only)
+
+        # Delete rollup field
+        dataset.delete_frame_rollup_field(rollup_field_path)
+        self.assertEqual(dataset.list_frame_rollup_fields(), [])
 
     @drop_datasets
     def test_rollup_field_simple_with_index(self):
@@ -739,6 +750,11 @@ class DatasetTests(unittest.TestCase):
 
         index_stats = dataset.get_index_information(include_stats=True)
         assert "rollup_list_gt" in index_stats
+
+        # Delete rollup field
+        dataset.delete_frame_rollup_field("rollup_list_gt")
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert "rollup_list_gt" not in index_stats
 
     @drop_datasets
     def test_iter_samples(self):

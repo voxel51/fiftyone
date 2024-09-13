@@ -1653,7 +1653,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         include_counts=False,
         overwrite=True,
         create_index=True,
-    ):
+    ) -> str:
         """Populates a sample-level field on each sample in the given video
         dataset that records the unique values that appear in the frame-level
         field across all frames of that sample.
@@ -1708,6 +1708,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 with the same name
             create_index (True): whether to create a database index for the
                 rollup field so it can be quickly filtered on
+
+        Returns:
+            (str): The name of the field for the rollup results
 
         Raises:
             ValueError: If ``frame_path`` is not a valid frame field
@@ -1840,6 +1843,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         rollup_field = self.get_field(rollup_path)
         _set_field_read_only(rollup_field, True)
         rollup_field.save()
+
+        return rollup_path
 
     def delete_frame_rollup_field(self, rollup_path):
         """Deletes frame rollup field
