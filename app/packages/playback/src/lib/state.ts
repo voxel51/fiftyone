@@ -354,6 +354,15 @@ export const getPlayheadStateAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => get(_playHeadStates(_timelineName)))
 );
 
+export const getIsTimelineInitializedAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => {
+      return Boolean(
+        get(_timelineConfigs(_timelineName)).__internal_IsTimelineInitialized
+      );
+    })
+);
+
 export const getTimelineConfigAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => get(_timelineConfigs(_timelineName)))
 );
