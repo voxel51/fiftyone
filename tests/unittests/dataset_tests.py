@@ -731,6 +731,7 @@ class DatasetTests(unittest.TestCase):
         # Get the rollup field, check read only
         rollup_field = dataset.get_field(rollup_field_path)
         self.assertTrue(rollup_field.read_only)
+        self.assertEqual(rollup_field.info, {"_frame_rollup": "gt"})
 
         # Delete rollup field
         dataset.delete_frame_rollup_field(rollup_field_path)
