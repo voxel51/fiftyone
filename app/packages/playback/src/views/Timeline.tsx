@@ -23,56 +23,58 @@ interface TimelineProps {
 /**
  * Renders a "classic" FO timeline with a seekbar, playhead, speed control, and status indicator.
  */
-export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ name, style, controlsStyle }, ref) => {
-    const { playHeadState, config, play, pause } = useTimeline(name);
-    const frameNumber = useFrameNumber(name);
+export const Timeline = React.memo(
+  React.forwardRef<HTMLDivElement, TimelineProps>(
+    ({ name, style, controlsStyle }, ref) => {
+      const { playHeadState, config, play, pause } = useTimeline(name);
+      const frameNumber = useFrameNumber(name);
 
-    const { getSeekValue, seekTo } = useTimelineVizUtils();
+      const { getSeekValue, seekTo } = useTimelineVizUtils();
 
-    const seekBarValue = React.useMemo(() => getSeekValue(), [frameNumber]);
+      const seekBarValue = React.useMemo(() => getSeekValue(), [frameNumber]);
 
-    const onChangeSeek = React.useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newSeekBarValue = Number(e.target.value);
-        seekTo(newSeekBarValue);
-      },
-      [seekTo]
-    );
+      const onChangeSeek = React.useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+          const newSeekBarValue = Number(e.target.value);
+          seekTo(newSeekBarValue);
+        },
+        [seekTo]
+      );
 
-    const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
+      const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
 
-    return (
-      <FoTimelineContainer
-        ref={ref}
-        style={style}
-        onMouseEnter={() => setIsHoveringSeekBar(true)}
-        onMouseLeave={() => setIsHoveringSeekBar(false)}
-      >
-        <Seekbar
-          value={seekBarValue}
-          bufferValue={0}
-          onChange={onChangeSeek}
-          debounce={SEEK_BAR_DEBOUNCE}
-        />
-        <SeekbarThumb
-          shouldDisplayThumb={isHoveringSeekBar}
-          value={seekBarValue}
-        />
-        <FoTimelineControlsContainer style={controlsStyle}>
-          <Playhead
-            status={playHeadState}
-            timelineName={name}
-            play={play}
-            pause={pause}
+      return (
+        <FoTimelineContainer
+          ref={ref}
+          style={style}
+          onMouseEnter={() => setIsHoveringSeekBar(true)}
+          onMouseLeave={() => setIsHoveringSeekBar(false)}
+        >
+          <Seekbar
+            value={seekBarValue}
+            bufferValue={0}
+            onChange={onChangeSeek}
+            debounce={SEEK_BAR_DEBOUNCE}
           />
-          <Speed speed={0.3} />
-          <StatusIndicator
-            currentFrame={frameNumber}
-            totalFrames={config.totalFrames}
+          <SeekbarThumb
+            shouldDisplayThumb={isHoveringSeekBar}
+            value={seekBarValue}
           />
-        </FoTimelineControlsContainer>
-      </FoTimelineContainer>
-    );
-  }
+          <FoTimelineControlsContainer style={controlsStyle}>
+            <Playhead
+              status={playHeadState}
+              timelineName={name}
+              play={play}
+              pause={pause}
+            />
+            <Speed speed={0.3} />
+            <StatusIndicator
+              currentFrame={frameNumber}
+              totalFrames={config.totalFrames}
+            />
+          </FoTimelineControlsContainer>
+        </FoTimelineContainer>
+      );
+    }
+  )
 );
