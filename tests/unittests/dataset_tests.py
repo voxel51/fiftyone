@@ -758,6 +758,85 @@ class DatasetTests(unittest.TestCase):
         assert "rollup_list_gt" not in index_stats
 
     @drop_datasets
+    def test_rollup_field_count_classification(self):
+        sample = fo.Sample(filepath="video1.mp4")
+        sample.frames[1] = fo.Frame(
+            frame_number=1, ground_truth=fo.Classification(label="cat")
+        )
+        sample.frames[2] = fo.Frame(
+            frame_number=2, ground_truth=fo.Classification(label="dog")
+        )
+        sample.frames[3] = fo.Frame(
+            frame_number=3, ground_truth=fo.Classification(label="rabbit")
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        # Populate string lists of observed values
+        field_name = dataset.add_frame_rollup_field(
+            "frames.ground_truth", create_index=True, include_counts=True
+        )
+
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert field_name in index_stats
+
+        # Delete rollup field
+        dataset.delete_frame_rollup_field(field_name)
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert field_name not in index_stats
+
+    @drop_datasets
+    def test_rollup_field_count_detection(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+
+        frame1 = fo.Frame(
+            frame_number=1,
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
+                    ),
+                    fo.Detection(
+                        label="rabbit",
+                        confidence=0.1,
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                ]
+            ),
+        )
+        sample1.frames[1] = frame1
+
+        frame2 = frame1.copy()
+        frame2.frame_number = 2
+        sample1.frames[2] = frame2
+
+        frame3 = frame1.copy()
+        frame3.frame_number = 3
+        sample1.frames[3] = frame3
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample1)
+
+        # Populate string lists of observed values
+        field_name = dataset.add_frame_rollup_field(
+            "frames.ground_truth", create_index=True, include_counts=True
+        )
+
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert field_name in index_stats
+
+        # Delete rollup field
+        dataset.delete_frame_rollup_field(field_name)
+        index_stats = dataset.get_index_information(include_stats=True)
+        assert field_name not in index_stats
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
