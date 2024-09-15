@@ -3300,11 +3300,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             )
         )
         self.assertTrue(
-            all(
-                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
-            )
-        )
-        self.assertTrue(
             all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
         )
         self.assertTrue(

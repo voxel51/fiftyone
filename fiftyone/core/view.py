@@ -935,11 +935,9 @@ class DatasetView(foc.SampleCollection):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -998,11 +996,9 @@ class DatasetView(foc.SampleCollection):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all

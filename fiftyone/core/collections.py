@@ -1423,11 +1423,9 @@ class SampleCollection(object):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1469,11 +1467,9 @@ class SampleCollection(object):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -9482,14 +9478,13 @@ class SampleCollection(object):
 
         return name
 
-    def drop_index(self, field_or_name, quiet=False):
-        """Drops the index for the given field or name.
+    def drop_index(self, field_or_name):
+        """Drops the index for the given field or name, if necessary.
 
         Args:
             field_or_name: a field name, ``embedded.field.name``, or compound
                 index name. Use :meth:`list_indexes` to see the available
                 indexes
-            quiet (booL): whether to raise an error if no index exists
         """
         name, is_frame_index = self._handle_frame_field(field_or_name)
 
@@ -9516,15 +9511,8 @@ class SampleCollection(object):
             else:
                 index_map[key] = key
 
-        if name not in index_map:
-            if not quiet:
-                itype = "frame index" if is_frame_index else "index"
-                msg = "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
-                raise ValueError(msg)
-            else:
-                return
-
-        coll.drop_index(index_map[name])
+        if name in index_map:
+            coll.drop_index(index_map[name])
 
     def _get_default_indexes(self, frames=False):
         if frames:

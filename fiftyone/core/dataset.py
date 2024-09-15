@@ -46,7 +46,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.odm.dataset import DatasetAppConfig, SidebarGroupDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -58,6 +58,8 @@ import fiftyone.core.view as fov
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
+
+_INVERTED_INDEX_KEY = "_inverted_index"
 
 logger = logging.getLogger(__name__)
 
@@ -1351,11 +1353,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1407,11 +1407,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
-                a field's ``info`` dict in order for it to be included in the
-                returned schema. If ``None``, no filtering is performed.
-            created_after (None): an optional ``datetime`` to filter the
-                returned schema by, such that the field was `created_at` after
-                this time. If ``None``, no filtering is performed.
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1646,218 +1644,386 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def add_frame_rollup_field(
-        self,
-        frame_path,
-        rollup_path=None,
-        include_counts=False,
-        overwrite=True,
-        create_index=True,
-    ) -> str:
-        """Populates a sample-level field on each sample in the given video
-        dataset that records the unique values that appear in the frame-level
-        field across all frames of that sample.
+    def list_inverted_indexes(self):
+        """Lists the inverted indexes on this dataset.
 
-        This method is useful for generating a sample-level rollup that can be
-        efficiently queried to retrieve samples that contain specific values of
-        interest in at least one frame.
+        Use :meth:`create_inverted_index` to create inverted indexes, and use
+        :meth:`drop_inverted_index` to delete them.
+
+        Returns:
+            a list of inverted index field names
+        """
+        return sorted(
+            self.get_field_schema(flat=True, info_keys=_INVERTED_INDEX_KEY)
+        )
+
+    def create_inverted_index(
+        self,
+        path,
+        field_name=None,
+        sidebar_group=None,
+        include_counts=False,
+        group_by=None,
+        read_only=True,
+        create_index=True,
+        overwrite=True,
+    ):
+        """Populates a sample-level field on each sample in a dataset that
+        records the unique values that appear in the specified field.
+
+        This method is particularly useful for indexing frame-level fields of
+        video datasets, in which case the sample-level field records the unique
+        values that appear in the specified frame-level field across all frames
+        of that sample. This index field can then be efficiently queried to
+        retrieve samples that contain specific values of interest in at least
+        one frame.
 
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart-video")
+            dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
 
-            # Populate string lists of observed values
-            dataset.add_frame_rollup_field(
+            # Generate an inverted index for object labels
+            dataset.create_inverted_index("frames.detections.detections.label")
+
+            # Generate an inverted index for [min, max] confidences
+            dataset.create_inverted_index("frames.detections.detections.confidence")
+
+            # Generate an inverted index for object labels and counts
+            dataset.create_inverted_index(
                 "frames.detections.detections.label",
-                "rollup_labels"
-            )
-            dataset.add_frame_rollup_field("frames.detections.detections.confidence")
-
-            # Populate `Classifications` that record the observed values and their counts
-            dataset.add_frame_rollup_field(
-                "frames.detections.detections.label",
-                "rollup_label_counts",
-                include_counts=True
+                field_name="frames_detections_label2",
+                include_counts=True,
             )
 
-            print(dataset.list_frame_rollup_fields())
+            # Generate an inverted index with per-label [min, max] confidences
+            dataset.create_inverted_index(
+                "frames.detections.detections.confidence",
+                field_name="frames_detections_confidence2",
+                group_by="label",
+            )
 
+            print(dataset.list_inverted_indexes())
 
         Args:
-            frame_path: the frame field to rollup
-            rollup_path (None): the sample-level field in which to store the
-                rollup results. If ``None``, a default field name will be
-                chosen in this form: rollup_{type}_{embedded_frame_field_name}
-            include_counts (False): determines the format to populate
-                ``rollup_path`` with:
-                -   ``False``: store a list of unique observed values on each
-                    sample
-                -   ``True``: store the results in a
-                    :class:`fiftyone.core.labels.Classifications` field whose
-                    ``label`` and ``count`` attributes encode the observed
-                    values and their counts, respectively. Only applicable when
-                    ``frame_path`` contains string values
-            overwrite (True): whether to overwrite any existing rollup field
-                with the same name
-            create_index (True): whether to create a database index for the
-                rollup field so it can be quickly filtered on
+            path: the frame field to index
+            field_name (None): the sample-level field in which to store the
+                inverted index. By default, a suitable name is derived from the
+                given ``path``
+            sidebar_group (None): the name of a
+                :ref:`App sidebar group <app-sidebar-groups>` to which to add
+                the inverted index field, if necessary. By default, all
+                inverted indexes are added to an ``"inverted indexes"`` group.
+                You can pass ``False`` to skip sidebar group modification
+            include_counts (False): whether to include per-value counts when
+                indexing categorical fields:
+            group_by (None): an optional attribute to group by when ``path``
+                is a numeric field to generate per-attribute ``[min, max]``
+                ranges. This may either be an absolute path or an attribute
+                name that is interpreted relative to ``path``
+            read_only (True): whether to mark the inverted index field as
+                read-only
+            create_index (True): whether to create database index(es) for the
+                inverted index field
+            overwrite (True): whether to overwrite any existing inverted index
+                field with the same name
 
         Returns:
-            (str): The name of the field for the rollup results
-
-        Raises:
-            ValueError: If ``frame_path`` is not a valid frame field
+            the inverted index field name
         """
-        frame_rollup_key = "_frame_rollup"
-        has_frames = self._has_frame_fields()
-        if not has_frames:
-            raise ValueError("Dataset does not contain videos")
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+        _field = self.get_field(path)
 
-        inpath, is_frame_field, list_fields, _, _ = self._parse_field_name(
-            frame_path
-        )
-
-        if not is_frame_field or inpath not in self.get_frame_field_schema(
-            flat=True
+        if isinstance(_field, (fof.StringField, fof.BooleanField)):
+            index_type = "categorical"
+        elif isinstance(
+            _field,
+            (fof.FloatField, fof.IntField, fof.DateField, fof.DateTimeField),
         ):
-            raise ValueError("frame_path must be a valid frame field")
-
-        # Format: rollup_[list|counts]_{embedded_frame_field}
-        if rollup_path is None:
-            rollup_path = "rollup_"
-            rollup_path += "counts_" if include_counts else "list_"
-            rollup_path += inpath.replace(".", "_")
-
-        # Delete old field if overwriting
-        _field = self.get_field(rollup_path)
-        if _field is not None:
-            if overwrite and "_frame_rollup" in _field.info:
-                self.delete_frame_rollup_field(rollup_path)
-            else:
-                raise ValueError(f"Field '{rollup_path}' already exists")
-
-        # Create sample field up front
-        info = {frame_rollup_key: inpath}
-        if include_counts:
-            self.add_sample_field(
-                rollup_path,
-                fo.EmbeddedDocumentField,
-                embedded_doc_type=fo.Classifications,
-                info=info,
+            index_type = "numeric"
+        elif _field is not None:
+            raise ValueError(
+                f"Cannot generate an inverted index for field '{path}' of "
+                f"type {type(_field)}"
             )
         else:
-            ftype = type(self.get_field(frame_path))
-            supported_types = [fo.StringField]
-            if ftype not in supported_types:
-                raise ValueError(
-                    f"{ftype} field is not supported for list rollup"
+            raise ValueError(
+                "Cannot generate an inverted index for non-existent or "
+                f"undeclared field '{path}'"
+            )
+
+        if field_name is None:
+            _chunks = _path.split(".")
+
+            chunks = []
+            if is_frame_field:
+                chunks.append("frames")
+
+            found_list = False
+            for i, _chunk in enumerate(_chunks, 1):
+                if ".".join(_chunks[:i]) in list_fields:
+                    found_list = True
+                    break
+                else:
+                    chunks.append(_chunk)
+
+            if found_list:
+                chunks.append(_chunks[-1])
+
+            field_name = "_".join(chunks)
+
+        field = self.get_field(field_name)
+        if field is not None:
+            if overwrite and _INVERTED_INDEX_KEY in field.info:
+                self.drop_inverted_index(field_name)
+            else:
+                raise ValueError(f"Field '{field_name}' already exists")
+
+        if include_counts:
+            value = path.rsplit(".", 1)[-1]
+
+        if group_by is not None:
+            if "." in group_by:
+                value = group_by.rsplit(".", 1)[1]
+                group_path = group_by
+            else:
+                value = group_by
+                group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+            _group_path, _ = self._handle_frame_field(group_path)
+            _group_field = self.get_field(group_path)
+
+        index_fields = []
+        info = {_INVERTED_INDEX_KEY: path}
+        if index_type == "categorical":
+            if include_counts:
+                label_field = field_name + ".label"
+                count_field = field_name + ".count"
+                index_fields.extend([label_field, count_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info=info,
                 )
+                self.add_sample_field(label_field, type(_field))
+                self.add_sample_field(count_field, fof.IntField)
+            else:
+                index_fields.append(field_name)
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=type(_field),
+                    info=info,
+                )
+        elif index_type == "numeric":
+            if group_by is not None:
+                value_field = field_name + f".{value}"
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([value_field, min_field, max_field])
 
-            self.add_sample_field(
-                rollup_path, fo.ListField, subfield=fo.StringField, info=info
-            )
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info=info,
+                )
+                self.add_sample_field(value_field, type(_group_field))
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+            else:
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([min_field, max_field])
 
-        # Optionally create mongodb index on rollup field
+                self.add_sample_field(
+                    field_name,
+                    fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info=info,
+                )
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+
+        if sidebar_group is not False:
+            if sidebar_group is None:
+                sidebar_group = "inverted indexes"
+
+            if self.app_config.sidebar_groups is None:
+                sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
+                self.app_config.sidebar_groups = sidebar_groups
+            else:
+                sidebar_groups = self.app_config.sidebar_groups
+
+            index_group = None
+            for group in sidebar_groups:
+                if group.name == sidebar_group:
+                    index_group = group
+                else:
+                    if field_name in group.paths:
+                        group.paths.remove(field_name)
+
+            if index_group is None:
+                index_group = SidebarGroupDocument(name=sidebar_group)
+
+                insert_after = None
+                for i, group in enumerate(sidebar_groups):
+                    if group.name == "labels":
+                        insert_after = i
+
+                if insert_after is None:
+                    sidebar_groups.append(index_group)
+                else:
+                    sidebar_groups.insert(insert_after + 1, index_group)
+
+            if field_name not in index_group.paths:
+                index_group.paths.append(field_name)
+
         if create_index:
-            index_name = (
-                rollup_path + ".classifications.label"
-                if include_counts
-                else rollup_path
-            )
-            self.create_index(index_name, wait=False)
+            for _field_name in index_fields:
+                self.create_index(_field_name)
 
-        # Create pipeline depending on mode we've chosen
-        pipeline = [
-            {"$unwind": "$frames"},
-            {"$replaceRoot": {"newRoot": "$frames"}},
-        ]
+        pipeline = []
+
+        if is_frame_field:
+            pipeline.extend(
+                [
+                    {"$unwind": "$frames"},
+                    {"$replaceRoot": {"newRoot": "$frames"}},
+                ]
+            )
+            _id = "_sample_id"
+        else:
+            _id = "_id"
 
         if list_fields:
             pipeline.append({"$unwind": "$" + list_fields[0]})
 
-        if include_counts:
-            # Values plus counts:
-            #   1. Group by (_sample_id, field value) and aggregate the count
-            #   2. Remove nulls
-            #   3. Group by _sample_id and push all counts to a list
-            pipeline.extend(
-                [
-                    {
-                        "$group": {
-                            "_id": {
-                                "sample": "$_sample_id",
-                                "value": "$" + inpath,
-                            },
-                            "count": {"$sum": 1},
-                        },
-                    },
-                    {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
-                    {
-                        "$group": {
-                            "_id": "$_id.sample",
-                            "result": {
-                                "$push": {"k": "$_id.value", "v": "$count"}
+        if index_type == "categorical":
+            if include_counts:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _path,
+                                },
+                                "count": {"$sum": 1},
                             },
                         },
-                    },
-                    {"$set": {"result": {"$arrayToObject": "$result"}}},
-                ]
-            )
-        else:
-            # Values only:
-            #   1. Group by _sample_id, add all values seen to a set
-            #   2. Remove nulls
-            pipeline.extend(
-                [
-                    {
-                        "$group": {
-                            "_id": "$_sample_id",
-                            "values": {"$addToSet": "$" + inpath},
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "count": "$count",
+                                    }
+                                },
+                            },
                         },
-                    },
-                    {
-                        "$project": {
-                            "values": {
-                                "$filter": {
-                                    "input": "$values",
-                                    "cond": {"$gt": ["$$this", None]},
-                                }
-                            }
-                        }
-                    },
-                ]
-            )
-
-        results = self._aggregate(pipeline=pipeline, attach_frames=True)
-
-        # Parse and set values to field
-        if include_counts:
-            labels = {
-                str(r["_id"]): fo.Classifications(
-                    classifications=[
-                        fo.Classification(label=k, count=v)
-                        for k, v in r["result"].items()
                     ]
                 )
-                for r in results
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "values": {"$addToSet": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {
+                                    "$filter": {
+                                        "input": "$values",
+                                        "cond": {"$gt": ["$$this", None]},
+                                    }
+                                }
+                            }
+                        },
+                    ]
+                )
+        elif index_type == "numeric":
+            if group_by is not None:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _group_path,
+                                },
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "min": "$min",
+                                        "max": "$max",
+                                    }
+                                },
+                            }
+                        },
+                    ]
+                )
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {"min": "$min", "max": "$max"}
+                            }
+                        },
+                    ]
+                )
+
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": self._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
             }
-        else:
-            labels = {str(r["_id"]): list(r["values"]) for r in results}
+        )
 
-        self.set_values(rollup_path, labels, key_field="id")
+        self._aggregate(pipeline=pipeline, attach_frames=is_frame_field)
 
-        # Now lock this field as readonly.
-        rollup_field = self.get_field(rollup_path)
-        _set_field_read_only(rollup_field, True)
-        rollup_field.save()
+        if read_only:
+            field = self.get_field(field_name)
+            field.read_only = True
+            field.save()
 
-        return rollup_path
+        return field_name
 
-    def delete_frame_rollup_field(self, rollup_path):
-        """Deletes frame rollup field
+    def drop_inverted_index(self, field_name):
+        """Drops the inverted index, if one exists.
 
         Examples::
 
@@ -1865,65 +2031,59 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             import fiftyone.zoo as foz
 
             dataset = foz.load_zoo_dataset("quickstart-video")
+            dataset.create_inverted_index("frames.detections.detections.label")
 
-            dataset.add_frame_rollup_field(
-                "frames.detections.detections.label",
-                "rollup_labels"
-            )
-
-            dataset.delete_frame_rollup_field("rollup_labels")
+            dataset.drop_inverted_index("frames_detections_label")
 
         Args:
-            rollup_path: path to rollup
-
-        Raises:
-            ValueError: If rollup_path is not a frame rollup field
+            field_name: the inverted index field name
         """
-        if rollup_path not in self.list_frame_rollup_fields():
-            raise ValueError("Path is not a valid frame rollup field")
+        if field_name not in self.list_inverted_indexes():
+            return
 
-        field = self.get_field(rollup_path)
-        _set_field_read_only(field, False)
-        field.save()
-        self.delete_sample_field(rollup_path)
+        field = self.get_field(field_name)
+        if field.read_only:
+            field.read_only = False
+            field.save()
 
-        # Delete the index of the rollup field if it exists
-        self.drop_index(rollup_path, quiet=True)
+        self.delete_sample_field(field_name)
 
-    def check_frame_rollup_fields(self):
-        """Returns a list of frame rollup fields that could be out of sync
-        with their target frame field.
+    def check_inverted_indexes(self):
+        """Returns a list of inverted indexes that **may** need to be updated.
 
-        Inclusion in this list is a heuristic, not a guarantee. However, there
-        are no false negatives.
+        Inverted indexes may need to be updated whenever there have been
+        modifications to the dataset's samples since the indexes were created.
+
+        Note that inclusion in this list is only a heuristic, as any sample
+        modifications may not have affected the inverted index's source field.
 
         Returns:
-            list of frame rollup fields
+            list of inverted index field names
         """
-        frames_schema = self.get_frame_field_schema(flat=True)
-        frame_rollup_schema = self.get_field_schema(
-            info_keys=["_frame_rollup"]
+        inverted_index_schema = self.get_field_schema(
+            flat=True, info_keys=_INVERTED_INDEX_KEY
         )
 
-        _, last_frame_mod = self.bounds("frames.last_modified_at")
+        update_indexes = []
+        last_modified_at = None
+        frames_last_modified_at = None
+        for path, field in inverted_index_schema.items():
+            if self._is_frame_field(field.info[_INVERTED_INDEX_KEY]):
+                if frames_last_modified_at is None:
+                    frames_last_modified_at, _ = self.bounds(
+                        "frames.last_modified_at"
+                    )
 
-        return [
-            rollup_field.name
-            for rollup_field in frame_rollup_schema.values()
-            if (
-                rollup_field.info["_frame_rollup"] not in frames_schema
-                or rollup_field.created_at > last_frame_mod
-            )
-        ]
+                if field.created_at < frames_last_modified_at:
+                    update_indexes.append(path)
+            else:
+                if last_modified_at is None:
+                    _, last_modified_at = self.bounds("last_modified_at")
 
-    def list_frame_rollup_fields(self):
-        """Lists frame rollup fields created via
-        :meth:`Dataset.add_frame_rollup_field`
+                if field.created_at < last_modified_at:
+                    update_indexes.append(path)
 
-        Use :meth:`Dataset.delete_frame_rollup_field` to delete these fields,
-        or :meth:`Dataset.get_field` to get information about these fields.
-        """
-        return sorted(list(self.get_field_schema(info_keys="_frame_rollup")))
+        return update_indexes
 
     def _add_implied_frame_field(
         self, field_name, value, dynamic=False, validate=True

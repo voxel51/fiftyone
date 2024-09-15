@@ -48,6 +48,9 @@ class DynamicEmbeddedDocument(
         super().__init__(*args, **kwargs)
         self.validate()
 
+    def __hash__(self):
+        return hash(str(self))
+
     def _get_field(self, field_name, allow_missing=False):
         # pylint: disable=no-member
         chunks = field_name.split(".", 1)

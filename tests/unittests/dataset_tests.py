@@ -712,129 +712,222 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_rollup_field_simple(self):
-        gt = fo.Detections(detections=[fo.Detection(label="foo")])
-        sample = fo.Sample(filepath="video.mp4", gt=gt)
-        sample.frames[1] = fo.Frame(gt=gt)
+    def test_inverted_indexes(self):
+        gt = fo.Detections(
+            detections=[
+                fo.Detection(label="foo", confidence=0.1),
+                fo.Detection(label="foo", confidence=0.9),
+                fo.Detection(label="bar", confidence=0.5),
+            ]
+        )
+        sample1 = fo.Sample(filepath="video1.mp4", gt=gt)
+        sample1.frames[1] = fo.Frame(gt=gt)
+        sample1.frames[2] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
 
         dataset = fo.Dataset()
-        dataset.add_sample(sample)
+        dataset.add_samples([sample1, sample2])
 
-        # Populate string lists of observed values
-        rollup_field_path = dataset.add_frame_rollup_field("frames.gt")
-        assert rollup_field_path == "rollup_list_gt"
-
-        self.assertEqual(
-            dataset.list_frame_rollup_fields(), ["rollup_list_gt"]
+        dataset.create_inverted_index("gt.detections.label")
+        dataset.create_inverted_index("gt.detections.confidence")
+        dataset.create_inverted_index(
+            "gt.detections.label",
+            field_name="gt_label_counts",
+            include_counts=True,
+            read_only=False,
+            create_index=False,
+        )
+        dataset.create_inverted_index(
+            "gt.detections.confidence",
+            field_name="gt_confidence_by_label",
+            group_by="label",
+            read_only=False,
+            create_index=False,
         )
 
-        # Get the rollup field, check read only
-        rollup_field = dataset.get_field(rollup_field_path)
-        self.assertTrue(rollup_field.read_only)
-        self.assertEqual(rollup_field.info, {"_frame_rollup": "gt"})
-
-        # Delete rollup field
-        dataset.delete_frame_rollup_field(rollup_field_path)
-        self.assertEqual(dataset.list_frame_rollup_fields(), [])
-
-    @drop_datasets
-    def test_rollup_field_simple_with_index(self):
-        gt = fo.Detections(detections=[fo.Detection(label="foo")])
-        sample = fo.Sample(filepath="video.mp4", gt=gt)
-        sample.frames[1] = fo.Frame(gt=gt)
-
-        dataset = fo.Dataset()
-        dataset.add_sample(sample)
-
-        # Populate string lists of observed values
-        dataset.add_frame_rollup_field("frames.gt", create_index=True)
-
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert "rollup_list_gt" in index_stats
-
-        # Delete rollup field
-        dataset.delete_frame_rollup_field("rollup_list_gt")
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert "rollup_list_gt" not in index_stats
-
-    @drop_datasets
-    def test_rollup_field_count_classification(self):
-        sample = fo.Sample(filepath="video1.mp4")
-        sample.frames[1] = fo.Frame(
-            frame_number=1, ground_truth=fo.Classification(label="cat")
+        dataset.create_inverted_index("frames.gt.detections.label")
+        dataset.create_inverted_index("frames.gt.detections.confidence")
+        dataset.create_inverted_index(
+            "frames.gt.detections.label",
+            field_name="frames_gt_label_counts",
+            include_counts=True,
+            read_only=False,
+            create_index=False,
         )
-        sample.frames[2] = fo.Frame(
-            frame_number=2, ground_truth=fo.Classification(label="dog")
-        )
-        sample.frames[3] = fo.Frame(
-            frame_number=3, ground_truth=fo.Classification(label="rabbit")
+        dataset.create_inverted_index(
+            "frames.gt.detections.confidence",
+            field_name="frames_gt_confidence_by_label",
+            group_by="label",
+            read_only=False,
+            create_index=False,
         )
 
-        dataset = fo.Dataset()
-        dataset.add_sample(sample)
+        to_sets = lambda l: [set(x) if x is not None else x for x in l]
 
-        # Populate string lists of observed values
-        field_name = dataset.add_frame_rollup_field(
-            "frames.ground_truth", create_index=True, include_counts=True
+        self.assertListEqual(
+            to_sets(dataset.values("gt_label")),
+            [{"foo", "bar"}, None],
+        )
+        self.assertListEqual(
+            dataset.values("gt_confidence"),
+            [fo.DynamicEmbeddedDocument(min=0.1, max=0.9), None],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("gt_label_counts")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", count=2),
+                    fo.DynamicEmbeddedDocument(label="bar", count=1),
+                },
+                None,
+            ],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("gt_confidence_by_label")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", min=0.1, max=0.9),
+                    fo.DynamicEmbeddedDocument(label="bar", min=0.5, max=0.5),
+                },
+                None,
+            ],
         )
 
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert field_name in index_stats
-
-        # Delete rollup field
-        dataset.delete_frame_rollup_field(field_name)
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert field_name not in index_stats
-
-    @drop_datasets
-    def test_rollup_field_count_detection(self):
-        sample1 = fo.Sample(filepath="video1.mp4")
-
-        frame1 = fo.Frame(
-            frame_number=1,
-            ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(
-                        label="cat",
-                        bounding_box=[0, 0, 0.5, 0.5],
-                    ),
-                    fo.Detection(
-                        label="dog",
-                        bounding_box=[0.25, 0, 0.5, 0.1],
-                    ),
-                    fo.Detection(
-                        label="rabbit",
-                        confidence=0.1,
-                        bounding_box=[0, 0, 0.5, 0.5],
-                    ),
-                ]
-            ),
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_label")),
+            [{"foo", "bar"}, None],
         )
-        sample1.frames[1] = frame1
-
-        frame2 = frame1.copy()
-        frame2.frame_number = 2
-        sample1.frames[2] = frame2
-
-        frame3 = frame1.copy()
-        frame3.frame_number = 3
-        sample1.frames[3] = frame3
-
-        dataset = fo.Dataset()
-        dataset.add_sample(sample1)
-
-        # Populate string lists of observed values
-        field_name = dataset.add_frame_rollup_field(
-            "frames.ground_truth", create_index=True, include_counts=True
+        self.assertListEqual(
+            dataset.values("frames_gt_confidence"),
+            [fo.DynamicEmbeddedDocument(min=0.1, max=0.9), None],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_label_counts")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", count=2),
+                    fo.DynamicEmbeddedDocument(label="bar", count=1),
+                },
+                None,
+            ],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_confidence_by_label")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", min=0.1, max=0.9),
+                    fo.DynamicEmbeddedDocument(label="bar", min=0.5, max=0.5),
+                },
+                None,
+            ],
         )
 
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert field_name in index_stats
+        inverted_indexes = dataset.list_inverted_indexes()
 
-        # Delete rollup field
-        dataset.delete_frame_rollup_field(field_name)
-        index_stats = dataset.get_index_information(include_stats=True)
-        assert field_name not in index_stats
+        self.assertTrue(dataset.get_field("gt_label").read_only)
+        self.assertTrue(dataset.get_field("gt_confidence").read_only)
+        self.assertFalse(dataset.get_field("gt_label_counts").read_only)
+        self.assertFalse(dataset.get_field("gt_confidence_by_label").read_only)
+
+        self.assertTrue(dataset.get_field("frames_gt_label").read_only)
+        self.assertTrue(dataset.get_field("frames_gt_confidence").read_only)
+        self.assertFalse(dataset.get_field("frames_gt_label_counts").read_only)
+        self.assertFalse(
+            dataset.get_field("frames_gt_confidence_by_label").read_only
+        )
+
+        self.assertSetEqual(
+            set(inverted_indexes),
+            {
+                "gt_label",
+                "gt_confidence",
+                "gt_label_counts",
+                "gt_confidence_by_label",
+                "frames_gt_label",
+                "frames_gt_confidence",
+                "frames_gt_label_counts",
+                "frames_gt_confidence_by_label",
+            },
+        )
+
+        db_indexes = dataset.list_indexes()
+
+        self.assertTrue("gt_label" in db_indexes)
+        self.assertTrue("gt_confidence.min" in db_indexes)
+        self.assertTrue("gt_confidence.max" in db_indexes)
+        self.assertFalse("gt_label_counts.label" in db_indexes)
+        self.assertFalse("gt_label_counts.count" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.max" in db_indexes)
+
+        self.assertTrue("frames_gt_label" in db_indexes)
+        self.assertTrue("frames_gt_confidence.min" in db_indexes)
+        self.assertTrue("frames_gt_confidence.max" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.label" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.count" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
+
+        update_indexes = dataset.check_inverted_indexes()
+
+        self.assertListEqual(update_indexes, [])
+
+        label_upper = F("label").upper()
+        dataset.set_field("gt.detections.label", label_upper).save()
+        dataset.set_field("frames.gt.detections.label", label_upper).save()
+
+        update_indexes = dataset.check_inverted_indexes()
+
+        self.assertSetEqual(
+            set(update_indexes),
+            {
+                "gt_label",
+                "gt_confidence",
+                "gt_label_counts",
+                "gt_confidence_by_label",
+                "frames_gt_label",
+                "frames_gt_confidence",
+                "frames_gt_label_counts",
+                "frames_gt_confidence_by_label",
+            },
+        )
+
+        dataset.drop_inverted_index("gt_label")
+        dataset.drop_inverted_index("gt_confidence")
+        dataset.drop_inverted_index("gt_label_counts")
+        dataset.drop_inverted_index("gt_confidence_by_label")
+
+        dataset.drop_inverted_index("frames_gt_label")
+        dataset.drop_inverted_index("frames_gt_confidence")
+        dataset.drop_inverted_index("frames_gt_label_counts")
+        dataset.drop_inverted_index("frames_gt_confidence_by_label")
+
+        inverted_indexes = dataset.list_inverted_indexes()
+
+        self.assertListEqual(inverted_indexes, [])
+
+        db_indexes = dataset.list_indexes()
+
+        self.assertFalse("gt_label" in db_indexes)
+        self.assertFalse("gt_confidence.min" in db_indexes)
+        self.assertFalse("gt_confidence.max" in db_indexes)
+        self.assertFalse("gt_label_counts.label" in db_indexes)
+        self.assertFalse("gt_label_counts.count" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.max" in db_indexes)
+
+        self.assertFalse("frames_gt_label" in db_indexes)
+        self.assertFalse("frames_gt_confidence.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence.max" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.label" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.count" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
 
     @drop_datasets
     def test_iter_samples(self):
