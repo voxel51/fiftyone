@@ -1668,15 +1668,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         create_index=True,
         overwrite=True,
     ):
-        """Populates a sample-level field on each sample in a dataset that
-        records the unique values that appear in the specified field.
+        """Populates a sample-level field that records the unique values or
+        numeric ranges that appear in the specified field on each sample in
+        the dataset.
 
         This method is particularly useful for indexing frame-level fields of
         video datasets, in which case the sample-level field records the unique
-        values that appear in the specified frame-level field across all frames
-        of that sample. This index field can then be efficiently queried to
-        retrieve samples that contain specific values of interest in at least
-        one frame.
+        values or numeric ranges that appear in the specified frame-level field
+        across all frames of that sample. This index field can then be
+        efficiently queried to retrieve samples that contain specific values of
+        interest in at least one frame.
 
         Examples::
 
@@ -1700,7 +1701,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 include_counts=True,
             )
 
-            # Generate an inverted index with per-label [min, max] confidences
+            # Generate an inverted index for per-label [min, max] confidences
             dataset.create_inverted_index(
                 "frames.detections.detections.confidence",
                 field_name="frames_detections_confidence2",
@@ -1710,7 +1711,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             print(dataset.list_inverted_indexes())
 
         Args:
-            path: the frame field to index
+            path: a field path
             field_name (None): the sample-level field in which to store the
                 inverted index. By default, a suitable name is derived from the
                 given ``path``
@@ -1720,7 +1721,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 inverted indexes are added to an ``"inverted indexes"`` group.
                 You can pass ``False`` to skip sidebar group modification
             include_counts (False): whether to include per-value counts when
-                indexing categorical fields:
+                indexing categorical fields
             group_by (None): an optional attribute to group by when ``path``
                 is a numeric field to generate per-attribute ``[min, max]``
                 ranges. This may either be an absolute path or an attribute
@@ -2023,7 +2024,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return field_name
 
     def drop_inverted_index(self, field_name):
-        """Drops the inverted index, if one exists.
+        """Drops the inverted index, if necessary.
 
         Examples::
 
