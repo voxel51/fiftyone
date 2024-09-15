@@ -1,27 +1,17 @@
 .. _dataset-zoo-api:
 
-Dataset Zoo API Reference
-=========================
+Dataset Zoo API
+===============
 
 .. default-role:: code
 
-This page describes the full API for working with the Dataset Zoo.
-
-.. _dataset-zoo-package:
-
-Dataset zoo package
--------------------
-
-You can interact with the Dataset Zoo either via the Python library or
-the CLI.
+You can interact with the Dataset Zoo either via the Python library or the CLI:
 
 .. tabs::
 
   .. group-tab:: Python
 
-    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo.datasets` package,
-    whose public methods are imported into the ``fiftyone.zoo`` namespace, for
-    convenience.
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
@@ -550,8 +540,8 @@ Deleting zoo datasets
 Adding datasets to the zoo
 --------------------------
 
-We frequently add new datasets to the Dataset Zoo, which will automatically
-become accessible to you when you update your FiftyOne package.
+We frequently add new built-in datasets to the Dataset Zoo, which will
+automatically become accessible to you when you update your FiftyOne package.
 
 .. note::
 

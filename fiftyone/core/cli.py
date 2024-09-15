@@ -1720,7 +1720,7 @@ class DatasetZooListCommand(Command):
         # List available datasets
         fiftyone zoo datasets list
 
-        # List available datasets (names only)
+        # List available dataset names
         fiftyone zoo datasets list --names-only
 
         # List downloaded datasets
@@ -1759,15 +1759,6 @@ class DatasetZooListCommand(Command):
             metavar="TAGS",
             help="only show datasets with the specified tag or list,of,tags",
         )
-        parser.add_argument(
-            "-b",
-            "--base-dir",
-            metavar="BASE_DIR",
-            help=(
-                "a custom base directory in which to search for downloaded "
-                "datasets"
-            ),
-        )
 
     @staticmethod
     def execute(parser, args):
@@ -1776,13 +1767,8 @@ class DatasetZooListCommand(Command):
         match_source = args.source
         match_tags = args.tags
 
-        all_datasets = fozd._get_zoo_datasets()
-        all_sources, default_source = fozd._get_zoo_dataset_sources()
-
-        base_dir = args.base_dir
-        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
-            base_dir=base_dir
-        )
+        downloaded_datasets = fozd.list_downloaded_zoo_datasets()
+        all_datasets, all_sources, default_source = fozd._get_zoo_datasets()
 
         _print_zoo_dataset_list(
             downloaded_datasets,
@@ -1811,8 +1797,8 @@ def _print_zoo_dataset_list(
 
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
-        for name, zoo_dataset_cls in datasets.items():
-            available_datasets[name][source] = zoo_dataset_cls()
+        for name, zoo_dataset in datasets.items():
+            available_datasets[name][source] = zoo_dataset
 
     records = []
 
@@ -1827,9 +1813,9 @@ def _print_zoo_dataset_list(
             continue
 
         tags = None
-        for source, zoo_model in dataset_sources.items():
+        for source, zoo_dataset in dataset_sources.items():
             if tags is None or source == default_source:
-                tags = zoo_model.tags
+                tags = zoo_dataset.tags
 
         if (match_tags is not None) and (
             tags is None or not all(tag in tags for tag in match_tags)
@@ -1907,21 +1893,27 @@ def _print_zoo_dataset_list(
 
 
 class DatasetZooFindCommand(Command):
-    """Locate the downloaded zoo dataset on disk.
+    """Locate a downloaded zoo dataset on disk.
 
     Examples::
 
-        # Print the location of the downloaded zoo dataset on disk
+        # Print the location of a downloaded zoo dataset on disk
         fiftyone zoo datasets find <name>
 
-        # Print the location of a specific split of the dataset
+        # Print the location of a remotely-sourced zoo dataset on disk
+        fiftyone zoo datasets find https://github.com/<user>/<repo>
+        fiftyone zoo datasets find <url>
+
+        # Print the location of a specific split of a dataset
         fiftyone zoo datasets find <name> --split <split>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset"
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the dataset",
         )
         parser.add_argument(
             "-s",
@@ -1932,10 +1924,10 @@ class DatasetZooFindCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
+        name_or_url = args.name_or_url
         split = args.split
 
-        dataset_dir = fozd.find_zoo_dataset(name, split=split)
+        dataset_dir = fozd.find_zoo_dataset(name_or_url, split=split)
         print(dataset_dir)
 
 
@@ -1946,71 +1938,83 @@ class DatasetZooInfoCommand(Command):
 
         # Print information about a zoo dataset
         fiftyone zoo datasets info <name>
+
+        # Print information about a remote zoo dataset
+        fiftyone zoo datasets info https://github.com/<user>/<repo>
+        fiftyone zoo datasets info <url>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset"
-        )
-        parser.add_argument(
-            "-b",
-            "--base-dir",
-            metavar="BASE_DIR",
-            help=(
-                "a custom base directory in which to search for downloaded "
-                "datasets"
-            ),
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the dataset",
         )
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
+        name_or_url = args.name_or_url
 
-        # Print dataset info
-        zoo_dataset = fozd.get_zoo_dataset(name)
-        print(
-            "***** Dataset description *****\n%s"
-            % textwrap.dedent("    " + zoo_dataset.__doc__)
-        )
+        zoo_dataset = fozd.get_zoo_dataset(name_or_url)
 
-        # Check if dataset is downloaded
-        base_dir = args.base_dir
-        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
-            base_dir=base_dir
-        )
+        try:
+            dataset_dir = fozd.find_zoo_dataset(name_or_url)
+        except:
+            dataset_dir = None
 
-        if zoo_dataset.has_tags:
-            print("***** Tags *****")
-            print("%s\n" % ", ".join(zoo_dataset.tags))
+        if zoo_dataset.is_remote:
+            _print_dict_as_table(zoo_dataset.metadata)
+            print("")
+        else:
+            description = textwrap.dedent("    " + zoo_dataset.__doc__)
+            if description:
+                print("***** Dataset description *****\n%s" % description)
 
-        if zoo_dataset.has_splits:
-            print("***** Supported splits *****")
-            print("%s\n" % ", ".join(zoo_dataset.supported_splits))
+            if zoo_dataset.has_tags:
+                print("***** Tags *****")
+                print("%s\n" % ", ".join(zoo_dataset.tags))
+
+            if zoo_dataset.has_splits:
+                print("***** Supported splits *****")
+                print("%s\n" % ", ".join(zoo_dataset.supported_splits))
 
         print("***** Dataset location *****")
-        if name not in downloaded_datasets:
-            print("Dataset '%s' is not downloaded" % name)
-        else:
-            dataset_dir, info = downloaded_datasets[name]
+        if dataset_dir is not None:
             print(dataset_dir)
-            print("\n***** Dataset info *****")
-            print(info)
+        else:
+            print("Dataset '%s' is not downloaded" % name_or_url)
 
 
 class DatasetZooDownloadCommand(Command):
     """Download zoo datasets.
 
+    When downloading remotely-sourced zoo datasets, you can provide any of the
+    following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Examples::
 
-        # Download the entire zoo dataset
+        # Download a zoo dataset
         fiftyone zoo datasets download <name>
 
-        # Download the specified split(s) of the zoo dataset
-        fiftyone zoo datasets download <name> --splits <split1> ...
+        # Download a remotely-sourced zoo dataset
+        fiftyone zoo datasets download https://github.com/<user>/<repo>
+        fiftyone zoo datasets download <url>
 
-        # Download the zoo dataset to a custom directory
-        fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
+        # Download the specified split(s) of a zoo dataset
+        fiftyone zoo datasets download <name> --splits <split1> ...
 
         # Download a zoo dataset that requires extra keyword arguments
         fiftyone zoo datasets download <name> \\
@@ -2020,7 +2024,9 @@ class DatasetZooDownloadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset"
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the dataset",
         )
         parser.add_argument(
             "-s",
@@ -2028,12 +2034,6 @@ class DatasetZooDownloadCommand(Command):
             metavar="SPLITS",
             nargs="+",
             help="the dataset splits to download",
-        )
-        parser.add_argument(
-            "-d",
-            "--dataset-dir",
-            metavar="DATASET_DIR",
-            help="a custom directory to which to download the dataset",
         )
         parser.add_argument(
             "-k",
@@ -2049,32 +2049,45 @@ class DatasetZooDownloadCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
+        name_or_url = args.name_or_url
         splits = args.splits
-        dataset_dir = args.dataset_dir
         kwargs = args.kwargs or {}
 
-        fozd.download_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir, **kwargs
-        )
+        fozd.download_zoo_dataset(name_or_url, splits=splits, **kwargs)
 
 
 class DatasetZooLoadCommand(Command):
     """Load zoo datasets as persistent FiftyOne datasets.
+
+    When loading remotely-sourced zoo datasets, you can provide any of the
+    following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
 
     Examples::
 
         # Load the zoo dataset with the given name
         fiftyone zoo datasets load <name>
 
-        # Load the specified split(s) of the zoo dataset
+        # Load a remotely-sourced zoo dataset
+        fiftyone zoo datasets load https://github.com/<user>/<repo>
+        fiftyone zoo datasets load <url>
+
+        # Load the specified split(s) of a zoo dataset
         fiftyone zoo datasets load <name> --splits <split1> ...
 
-        # Load the zoo dataset with a custom name
+        # Load a zoo dataset with a custom name
         fiftyone zoo datasets load <name> --dataset-name <dataset-name>
-
-        # Load the zoo dataset from a custom directory
-        fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
         # Load a zoo dataset that requires custom keyword arguments
         fiftyone zoo datasets load <name> \\
@@ -2088,7 +2101,9 @@ class DatasetZooLoadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset"
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the dataset",
         )
         parser.add_argument(
             "-s",
@@ -2104,12 +2119,6 @@ class DatasetZooLoadCommand(Command):
             help="a custom name to give the FiftyOne dataset",
         )
         parser.add_argument(
-            "-d",
-            "--dataset-dir",
-            metavar="DATASET_DIR",
-            help="a custom directory in which the dataset is downloaded",
-        )
-        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -2123,17 +2132,15 @@ class DatasetZooLoadCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
+        name_or_url = args.name_or_url
         splits = args.splits
         dataset_name = args.dataset_name
-        dataset_dir = args.dataset_dir
         kwargs = args.kwargs or {}
 
         dataset = fozd.load_zoo_dataset(
-            name,
+            name_or_url,
             splits=splits,
             dataset_name=dataset_name,
-            dataset_dir=dataset_dir,
             persistent=True,
             **kwargs,
         )
@@ -2144,8 +2151,12 @@ class DatasetZooDeleteCommand(Command):
 
     Examples::
 
-        # Delete an entire zoo dataset from disk
+        # Delete a zoo dataset from disk
         fiftyone zoo datasets delete <name>
+
+        # Delete a remotely-sourced zoo dataset from disk
+        fiftyone zoo datasets delete https://github.com/<user>/<repo>
+        fiftyone zoo datasets delete <url>
 
         # Delete a specific split of a zoo dataset from disk
         fiftyone zoo datasets delete <name> --split <split>
@@ -2154,7 +2165,9 @@ class DatasetZooDeleteCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset"
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the dataset",
         )
         parser.add_argument(
             "-s",
@@ -2165,9 +2178,9 @@ class DatasetZooDeleteCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
+        name_or_url = args.name_or_url
         split = args.split
-        fozd.delete_zoo_dataset(name, split=split)
+        fozd.delete_zoo_dataset(name_or_url, split=split)
 
 
 class ModelZooCommand(Command):
