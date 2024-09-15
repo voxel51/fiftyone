@@ -5,6 +5,8 @@ Video frames.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from datetime import datetime
 import itertools
 
 from bson import ObjectId
@@ -301,9 +303,12 @@ class Frames(object):
                     create=expand_schema,
                     validate=validate,
                     dynamic=dynamic,
+                    _enforce_read_only=False,
                 )
 
-            doc.set_field("frame_number", frame_number)
+            doc.set_field(
+                "frame_number", frame_number, _enforce_read_only=False
+            )
             frame._set_backing_doc(doc, dataset=self._dataset)
         else:
             if frame._in_db:
@@ -638,10 +643,15 @@ class Frames(object):
         return foo.aggregate(self._frame_collection, pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return Frame.from_doc(doc, dataset=self._dataset)
+        return self._dataset._make_frame(d)
 
-    def _make_dict(self, frame, include_id=False):
+    def _make_dict(
+        self,
+        frame,
+        include_id=False,
+        created_at=None,
+        last_modified_at=None,
+    ):
         d = frame.to_mongo_dict(include_id=include_id)
 
         # We omit None here to allow frames with None-valued new fields to
@@ -651,6 +661,12 @@ class Frames(object):
 
         d["_sample_id"] = self._sample_id
         d["_dataset_id"] = self._dataset._doc.id
+
+        if created_at is not None and not frame._in_db:
+            d["created_at"] = created_at
+
+        if last_modified_at is not None:
+            d["last_modified_at"] = last_modified_at
 
         return d
 
@@ -703,7 +719,7 @@ class Frames(object):
         return ops
 
     def _save_replacements(
-        self, include_singletons=True, validate=True, deferred=False
+        self, include_singletons=True, validate=True, deferred=False, **kwargs
     ):
         if include_singletons:
             #
@@ -729,69 +745,83 @@ class Frames(object):
             return []
 
         if validate:
-            self._validate_frames(replacements)
+            schema = self._dataset.get_frame_field_schema(include_private=True)
+
+        now = datetime.utcnow()
 
         ops = []
         new_dicts = {}
         for frame_number, frame in replacements.items():
-            d = self._make_dict(frame)
             if not frame._in_db:
-                new_dicts[frame_number] = d
+                if validate:
+                    self._validate_frame(frame, schema)
 
-            op = ReplaceOne(
-                {"frame_number": frame_number, "_sample_id": self._sample_id},
-                d,
-                upsert=True,
-            )
-            ops.append(op)
+                d = self._make_dict(
+                    frame, created_at=now, last_modified_at=now
+                )
+                if isinstance(frame, Frame):
+                    new_dicts[frame_number] = d
+
+                op = ReplaceOne(
+                    {
+                        "frame_number": frame_number,
+                        "_sample_id": self._sample_id,
+                    },
+                    d,
+                    upsert=True,
+                )
+                ops.append(op)
+            else:
+                _ops = frame._doc._save(
+                    deferred=True, validate=validate, **kwargs
+                )
+                if _ops is not None:
+                    ops.extend(_ops)
 
         if not deferred:
-            self._frame_collection.bulk_write(ops, ordered=False)
+            if ops:
+                self._frame_collection.bulk_write(ops, ordered=False)
 
             if new_dicts:
                 ids_map = self._get_ids_map()
                 for frame_number, d in new_dicts.items():
-                    frame = replacements[frame_number]
-                    if isinstance(frame._doc, foo.NoDatasetFrameDocument):
-                        doc = self._dataset._frame_dict_to_doc(d)
-                        frame._set_backing_doc(doc, dataset=self._dataset)
+                    doc = self._dataset._frame_dict_to_doc(d)
+                    doc.id = ids_map[frame_number]
 
-                    frame._doc.id = ids_map[frame_number]
+                    frame = replacements[frame_number]
+                    frame._set_backing_doc(doc, dataset=self._dataset)
 
         self._replacements.clear()
 
         return ops
 
-    def _validate_frames(self, frames):
-        schema = self._dataset.get_frame_field_schema(include_private=True)
+    def _validate_frame(self, frame, schema):
+        non_existent_fields = None
 
-        for frame_number, frame in frames.items():
-            non_existent_fields = None
+        for field_name, value in frame.iter_fields(include_timestamps=True):
+            field = schema.get(field_name, None)
+            if field is None:
+                if value is not None:
+                    if non_existent_fields is None:
+                        non_existent_fields = {field_name}
+                    else:
+                        non_existent_fields.add(field_name)
+            else:
+                if value is not None or not field.null:
+                    try:
+                        field.validate(value)
+                    except Exception as e:
+                        raise ValueError(
+                            "Invalid value for field '%s' of frame %d. "
+                            "Reason: %s"
+                            % (field_name, frame.frame_number, str(e))
+                        )
 
-            for field_name, value in frame.iter_fields():
-                field = schema.get(field_name, None)
-                if field is None:
-                    if value is not None:
-                        if non_existent_fields is None:
-                            non_existent_fields = {field_name}
-                        else:
-                            non_existent_fields.add(field_name)
-                else:
-                    if value is not None or not field.null:
-                        try:
-                            field.validate(value)
-                        except Exception as e:
-                            raise ValueError(
-                                "Invalid value for field '%s' of frame %d. "
-                                "Reason: %s"
-                                % (field_name, frame_number, str(e))
-                            )
-
-            if non_existent_fields:
-                raise ValueError(
-                    "Frame fields %s do not exist on dataset '%s'"
-                    % (non_existent_fields, self._dataset.name)
-                )
+        if non_existent_fields:
+            raise ValueError(
+                "Frame fields %s do not exist on dataset '%s'"
+                % (non_existent_fields, self._dataset.name)
+            )
 
 
 class FramesView(Frames):
@@ -817,23 +847,15 @@ class FramesView(Frames):
 
         view = sample_view._view
 
-        sf, ef = view._get_selected_excluded_fields(
-            frames=True, roots_only=True
-        )
-        ff = view._get_filtered_fields(frames=True)
-
+        filtered_fields = view._get_filtered_fields(frames=True)
         needs_frames = view._needs_frames()
-        contains_all_fields = view._contains_all_fields(frames=True)
 
         optimized_view = fov.make_optimized_select_view(view, sample_view.id)
         frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
-        self._selected_fields = sf
-        self._excluded_fields = ef
-        self._filtered_fields = ff
+        self._filtered_fields = filtered_fields
         self._needs_frames = needs_frames
-        self._contains_all_fields = contains_all_fields
         self._frames_pipeline = frames_pipeline
 
     @property
@@ -876,17 +898,21 @@ class FramesView(Frames):
             )
 
         frame_view = self._make_frame({"_sample_id": self._sample_id})
+        doc = frame_view._doc
 
         for field, value in frame.iter_fields():
-            frame_view.set_field(
+            doc.set_field(
                 field,
                 value,
                 create=expand_schema,
                 validate=validate,
                 dynamic=dynamic,
+                _enforce_read_only=False,
             )
+            if frame_view._selected_fields is not None:
+                frame_view._selected_fields.add(field)
 
-        frame_view.set_field("frame_number", frame_number)
+        doc.set_field("frame_number", frame_number, _enforce_read_only=False)
         self._set_replacement(frame_view)
 
     def reload(self):
@@ -963,67 +989,15 @@ class FramesView(Frames):
         return foo.aggregate(self._sample_collection, self._frames_pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return FrameView(
-            doc,
-            self._view,
-            selected_fields=self._selected_fields,
-            excluded_fields=self._excluded_fields,
-            filtered_fields=self._filtered_fields,
-        )
+        return self._view._make_frame(d)
 
     def _save_replacements(self, validate=True, deferred=False):
-        if not self._replacements:
-            return []
-
-        if self._contains_all_fields:
-            return super()._save_replacements(
-                include_singletons=False,
-                validate=validate,
-                deferred=deferred,
-            )
-
-        if validate:
-            self._validate_frames(self._replacements)
-
-        ops = []
-        for frame_number, frame in self._replacements.items():
-            doc = self._make_dict(frame)
-
-            # Update elements of filtered array fields separately
-            if self._filtered_fields is not None:
-                for field in self._filtered_fields:
-                    root, leaf = field.split(".", 1)
-                    for element in doc.pop(root, {}).get(leaf, []):
-                        ops.append(
-                            UpdateOne(
-                                {
-                                    "frame_number": frame_number,
-                                    "_sample_id": self._sample_id,
-                                    field + "._id": element["_id"],
-                                },
-                                {"$set": {field + ".$": element}},
-                            )
-                        )
-
-            # Update non-filtered fields
-            ops.append(
-                UpdateOne(
-                    {
-                        "frame_number": frame_number,
-                        "_sample_id": self._sample_id,
-                    },
-                    {"$set": doc},
-                    upsert=True,
-                )
-            )
-
-        if not deferred:
-            self._frame_collection.bulk_write(ops, ordered=False)
-
-        self._replacements.clear()
-
-        return ops
+        return super()._save_replacements(
+            include_singletons=False,
+            validate=validate,
+            deferred=deferred,
+            filtered_fields=self._filtered_fields,
+        )
 
     def save(self):
         super().save()

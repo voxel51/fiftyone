@@ -52,6 +52,7 @@ test("histograms panel", async ({ histogram, panel }) => {
   await histogram.selector.openResults();
   await histogram.assert.verifyFields([
     "bool",
+    "created_at",
     "classification.confidence",
     "classification.label",
     "classification.tags",
@@ -61,6 +62,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.tags",
     "float",
     "int",
+    "last_modified_at",
     "list_bool",
     "list_float",
     "list_int",
