@@ -174,11 +174,12 @@ export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
 export const addTimelineAtom = atom(
   null,
   (get, set, timeline: CreateFoTimeline) => {
-    const timelineName = timeline.name;
-
-    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+    // null config means skip timeline creation
+    if (!timeline.config) {
       return;
     }
+
+    const timelineName = timeline.name;
 
     const configWithImputedValues: Required<FoTimelineConfig> = {
       totalFrames: timeline.config.totalFrames,
@@ -195,6 +196,12 @@ export const addTimelineAtom = atom(
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
       __internal_IsTimelineInitialized: true,
     };
+
+    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+      // update config and return
+      set(_timelineConfigs(timelineName), configWithImputedValues);
+      return;
+    }
 
     if (
       configWithImputedValues.defaultFrameNumber >

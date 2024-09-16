@@ -52,7 +52,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   get element() {
-    return this.elements.children[0] as ImaVidElement;
+    return this.lookerElement.children[0] as ImaVidElement;
   }
 
   destroy() {
