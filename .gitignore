@@ -1,19 +1,17 @@
-
-**/*.DS_store
+__pycache__
+.DS_store
+.idea
+.ipynb_checkpoints
+.fiftyone
+.project
+.pydevproject
 .vscode
 node_modules
 
-__pycache__
-*.py[cod]
-
-*.egg-info
-.project
-.pydevproject
-**/*.ipynb_checkpoints
-.idea
-*.swp
-
 *~
+*.egg-info
+*.py[cod]
+*.swp
 
 build/
 dist/
@@ -26,6 +24,7 @@ dist/
 
 /bin
 /lib
-coverage.xml
 .coverage.*
+
+coverage.xml
 pyvenv.cfg
