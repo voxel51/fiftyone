@@ -33,6 +33,7 @@ import {
 } from "@fiftyone/playback/src/views/PlaybackElements";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { useDefaultTimelineName } from "@fiftyone/playback/src/lib/use-default-timeline-name";
+import {Timeline} from "@fiftyone/playback/src/views/Timeline";
 
 interface TimelineProps {
   name?: TimelineName;
