@@ -59,7 +59,7 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
-_INVERTED_INDEX_KEY = "_inverted_index"
+_FRAME_SUMMARY_KEY = "_frame_summary"
 
 logger = logging.getLogger(__name__)
 
@@ -1644,20 +1644,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def list_inverted_indexes(self):
-        """Lists the inverted indexes on this dataset.
+    def list_frame_summaries(self):
+        """Lists the frame summaries on this dataset.
 
-        Use :meth:`create_inverted_index` to create inverted indexes, and use
-        :meth:`drop_inverted_index` to delete them.
+        Use :meth:`create_frame_summary` to create frame summaries, and use
+        :meth:`drop_frame_summary` to delete them.
 
         Returns:
-            a list of inverted index field names
+            a list of frame summary field names
         """
         return sorted(
-            self.get_field_schema(flat=True, info_keys=_INVERTED_INDEX_KEY)
+            self.get_field_schema(flat=True, info_keys=_FRAME_SUMMARY_KEY)
         )
 
-    def create_inverted_index(
+    def create_frame_summary(
         self,
         path,
         field_name=None,
@@ -1688,27 +1688,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset = foz.load_zoo_dataset("quickstart-video")
             dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
 
-            # Generate an inverted index for object labels
-            dataset.create_inverted_index("frames.detections.detections.label")
+            # Generate a frame summary for object labels
+            dataset.create_frame_summary("frames.detections.detections.label")
 
             # Generate an inverted index for [min, max] confidences
-            dataset.create_inverted_index("frames.detections.detections.confidence")
+            dataset.create_frame_summary("frames.detections.detections.confidence")
 
             # Generate an inverted index for object labels and counts
-            dataset.create_inverted_index(
+            dataset.create_frame_summary(
                 "frames.detections.detections.label",
                 field_name="frames_detections_label2",
                 include_counts=True,
             )
 
             # Generate an inverted index for per-label [min, max] confidences
-            dataset.create_inverted_index(
+            dataset.create_frame_summary(
                 "frames.detections.detections.confidence",
                 field_name="frames_detections_confidence2",
                 group_by="label",
             )
 
-            print(dataset.list_inverted_indexes())
+            print(dataset.list_frame_summaries())
 
         Args:
             path: a field path
@@ -1718,7 +1718,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sidebar_group (None): the name of a
                 :ref:`App sidebar group <app-sidebar-groups>` to which to add
                 the inverted index field, if necessary. By default, all
-                inverted indexes are added to an ``"inverted indexes"`` group.
+                frame summaries are added to an ``"frame summaries"`` group.
                 You can pass ``False`` to skip sidebar group modification
             include_counts (False): whether to include per-value counts when
                 indexing categorical fields
@@ -1779,8 +1779,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field = self.get_field(field_name)
         if field is not None:
-            if overwrite and _INVERTED_INDEX_KEY in field.info:
-                self.drop_inverted_index(field_name)
+            if overwrite and _FRAME_SUMMARY_KEY in field.info:
+                self.drop_frame_summary(field_name)
             else:
                 raise ValueError(f"Field '{field_name}' already exists")
 
@@ -1799,7 +1799,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _group_field = self.get_field(group_path)
 
         index_fields = []
-        info = {_INVERTED_INDEX_KEY: path}
+        info = {_FRAME_SUMMARY_KEY: path}
         if index_type == "categorical":
             if include_counts:
                 label_field = field_name + ".label"
@@ -1856,7 +1856,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if sidebar_group is not False:
             if sidebar_group is None:
-                sidebar_group = "inverted indexes"
+                sidebar_group = "frame summaries"
 
             if self.app_config.sidebar_groups is None:
                 sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
@@ -2023,7 +2023,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return field_name
 
-    def drop_inverted_index(self, field_name):
+    def drop_frame_summary(self, field_name):
         """Drops the inverted index, if necessary.
 
         Examples::
@@ -2032,14 +2032,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             import fiftyone.zoo as foz
 
             dataset = foz.load_zoo_dataset("quickstart-video")
-            dataset.create_inverted_index("frames.detections.detections.label")
+            dataset.create_frame_summary("frames.detections.detections.label")
 
-            dataset.drop_inverted_index("frames_detections_label")
+            dataset.drop_frame_summary("frames_detections_label")
 
         Args:
             field_name: the inverted index field name
         """
-        if field_name not in self.list_inverted_indexes():
+        if field_name not in self.list_frame_summaries():
             return
 
         field = self.get_field(field_name)
@@ -2049,10 +2049,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.delete_sample_field(field_name)
 
-    def check_inverted_indexes(self):
-        """Returns a list of inverted indexes that **may** need to be updated.
+    def check_frame_summaries(self):
+        """Returns a list of frame summaries that **may** need to be updated.
 
-        Inverted indexes may need to be updated whenever there have been
+        Frame summaries may need to be updated whenever there have been
         modifications to the dataset's samples since the indexes were created.
 
         Note that inclusion in this list is only a heuristic, as any sample
@@ -2061,15 +2061,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             list of inverted index field names
         """
-        inverted_index_schema = self.get_field_schema(
-            flat=True, info_keys=_INVERTED_INDEX_KEY
+        frame_summary_schema = self.get_field_schema(
+            flat=True, info_keys=_FRAME_SUMMARY_KEY
         )
 
         update_indexes = []
         last_modified_at = None
         frames_last_modified_at = None
-        for path, field in inverted_index_schema.items():
-            if self._is_frame_field(field.info[_INVERTED_INDEX_KEY]):
+        for path, field in frame_summary_schema.items():
+            if self._is_frame_field(field.info[_FRAME_SUMMARY_KEY]):
                 if frames_last_modified_at is None:
                     frames_last_modified_at, _ = self.bounds(
                         "frames.last_modified_at"

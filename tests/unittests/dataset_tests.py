@@ -712,7 +712,7 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_inverted_indexes(self):
+    def test_frame_summaries(self):
         gt = fo.Detections(
             detections=[
                 fo.Detection(label="foo", confidence=0.1),
@@ -729,16 +729,16 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_samples([sample1, sample2])
 
-        dataset.create_inverted_index("gt.detections.label")
-        dataset.create_inverted_index("gt.detections.confidence")
-        dataset.create_inverted_index(
+        dataset.create_frame_summary("gt.detections.label")
+        dataset.create_frame_summary("gt.detections.confidence")
+        dataset.create_frame_summary(
             "gt.detections.label",
             field_name="gt_label_counts",
             include_counts=True,
             read_only=False,
             create_index=False,
         )
-        dataset.create_inverted_index(
+        dataset.create_frame_summary(
             "gt.detections.confidence",
             field_name="gt_confidence_by_label",
             group_by="label",
@@ -746,16 +746,16 @@ class DatasetTests(unittest.TestCase):
             create_index=False,
         )
 
-        dataset.create_inverted_index("frames.gt.detections.label")
-        dataset.create_inverted_index("frames.gt.detections.confidence")
-        dataset.create_inverted_index(
+        dataset.create_frame_summary("frames.gt.detections.label")
+        dataset.create_frame_summary("frames.gt.detections.confidence")
+        dataset.create_frame_summary(
             "frames.gt.detections.label",
             field_name="frames_gt_label_counts",
             include_counts=True,
             read_only=False,
             create_index=False,
         )
-        dataset.create_inverted_index(
+        dataset.create_frame_summary(
             "frames.gt.detections.confidence",
             field_name="frames_gt_confidence_by_label",
             group_by="label",
@@ -823,7 +823,7 @@ class DatasetTests(unittest.TestCase):
             ],
         )
 
-        inverted_indexes = dataset.list_inverted_indexes()
+        frame_summaries = dataset.list_frame_summaries()
 
         self.assertTrue(dataset.get_field("gt_label").read_only)
         self.assertTrue(dataset.get_field("gt_confidence").read_only)
@@ -838,7 +838,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertSetEqual(
-            set(inverted_indexes),
+            set(frame_summaries),
             {
                 "gt_label",
                 "gt_confidence",
@@ -871,7 +871,7 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse("frames_gt_confidence_by_label.min" in db_indexes)
         self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
 
-        update_indexes = dataset.check_inverted_indexes()
+        update_indexes = dataset.check_frame_summaries()
 
         self.assertListEqual(update_indexes, [])
 
@@ -879,7 +879,7 @@ class DatasetTests(unittest.TestCase):
         dataset.set_field("gt.detections.label", label_upper).save()
         dataset.set_field("frames.gt.detections.label", label_upper).save()
 
-        update_indexes = dataset.check_inverted_indexes()
+        update_indexes = dataset.check_frame_summaries()
 
         self.assertSetEqual(
             set(update_indexes),
@@ -895,19 +895,19 @@ class DatasetTests(unittest.TestCase):
             },
         )
 
-        dataset.drop_inverted_index("gt_label")
-        dataset.drop_inverted_index("gt_confidence")
-        dataset.drop_inverted_index("gt_label_counts")
-        dataset.drop_inverted_index("gt_confidence_by_label")
+        dataset.drop_frame_summary("gt_label")
+        dataset.drop_frame_summary("gt_confidence")
+        dataset.drop_frame_summary("gt_label_counts")
+        dataset.drop_frame_summary("gt_confidence_by_label")
 
-        dataset.drop_inverted_index("frames_gt_label")
-        dataset.drop_inverted_index("frames_gt_confidence")
-        dataset.drop_inverted_index("frames_gt_label_counts")
-        dataset.drop_inverted_index("frames_gt_confidence_by_label")
+        dataset.drop_frame_summary("frames_gt_label")
+        dataset.drop_frame_summary("frames_gt_confidence")
+        dataset.drop_frame_summary("frames_gt_label_counts")
+        dataset.drop_frame_summary("frames_gt_confidence_by_label")
 
-        inverted_indexes = dataset.list_inverted_indexes()
+        frame_summaries = dataset.list_frame_summaries()
 
-        self.assertListEqual(inverted_indexes, [])
+        self.assertListEqual(frame_summaries, [])
 
         db_indexes = dataset.list_indexes()
 
