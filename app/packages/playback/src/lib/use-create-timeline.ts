@@ -70,7 +70,7 @@ export const useCreateTimeline = (
     // because it's not guaranteed to be referentially stable.
     // that would require caller to memoize the passed config object.
     // using just the timelineName as a dependency is fine.
-  }, [addTimeline, timelineName]);
+  }, [addTimeline, timelineName, config.totalFrames]);
 
   /**
    * this effect starts or stops the animation
