@@ -1,7 +1,7 @@
 import { Optional, useEventHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
@@ -39,9 +39,8 @@ export const useCreateTimeline = (
     [mayBeTimelineName, getName]
   );
 
-  const [isTimelineInitialized, setIsTimelineInitialized] = useState(false);
-
-  const config = useAtomValue(getTimelineConfigAtom(timelineName));
+  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
+    useAtomValue(getTimelineConfigAtom(timelineName));
   const frameNumber = useAtomValue(getFrameNumberAtom(timelineName));
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const updateFreq = useAtomValue(getTimelineUpdateFreqAtom(timelineName));
@@ -50,65 +49,6 @@ export const useCreateTimeline = (
   const addTimeline = useSetAtom(addTimelineAtom);
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
   const setPlayHeadState = useSetAtom(updatePlayheadStateAtom);
-
-  /**
-   * this effect creates the timeline
-   */
-  useEffect(() => {
-    addTimeline({ name: timelineName, config: newTimelineConfig.config });
-
-    // this is so that this timeline is brought to the front of the cache
-    _INTERNAL_timelineConfigsLruCache.get(timelineName);
-
-    setIsTimelineInitialized(true);
-
-    return () => {
-      // when component using this hook unmounts, pause animation
-      // pause();
-    };
-    // note: we're not using newTimelineConfig.config as a dependency
-    // because it's not guaranteed to be referentially stable.
-    // that would require caller to memoize the passed config object.
-    // using just the timelineName as a dependency is fine.
-  }, [addTimeline, timelineName]);
-
-  /**
-   * this effect starts or stops the animation
-   * based on the playhead state
-   */
-  useEffect(() => {
-    if (playHeadState === "playing") {
-      startAnimation();
-    }
-
-    if (playHeadState === "paused") {
-      cancelAnimation();
-    }
-
-    playHeadStateRef.current = playHeadState;
-  }, [playHeadState]);
-
-  /**
-   * this effect establishes a binding with externally
-   * updated frame number. Note that for this effect to have
-   * the required effect, the external setter needs to have disabled animation first
-   * by dispatching a pause event
-   */
-  useEffect(() => {
-    if (!isAnimationActiveRef.current) {
-      frameNumberRef.current = frameNumber;
-    }
-  }, [frameNumber]);
-
-  /**
-   * the following effects are used to keep the refs up to date
-   */
-  useEffect(() => {
-    configRef.current = config;
-  }, [config]);
-  useEffect(() => {
-    updateFreqRef.current = updateFreq;
-  }, [updateFreq]);
 
   const animationId = useRef(-1);
   const configRef = useRef(config);
@@ -270,6 +210,68 @@ export const useCreateTimeline = (
     )
   );
 
+  /**
+   * this effect creates the timeline
+   */
+  useEffect(() => {
+    addTimeline({ name: timelineName, config: newTimelineConfig.config });
+
+    // this is so that this timeline is brought to the front of the cache
+    _INTERNAL_timelineConfigsLruCache.get(timelineName);
+
+    return () => {
+      // when component using this hook unmounts, pause animation
+      pause();
+
+      // timeline cleanup is handled by `_INTERNAL_timelineConfigsLruCache::dispose()`
+    };
+    // note: we're not using newTimelineConfig.config as a dependency
+    // because it's not guaranteed to be referentially stable.
+    // that would require caller to memoize the passed config object.
+    // using just the timelineName as a dependency is fine.
+  }, [addTimeline, timelineName]);
+
+  /**
+   * this effect starts or stops the animation
+   * based on the playhead state
+   */
+  useEffect(() => {
+    if (playHeadState === "playing") {
+      startAnimation();
+    }
+
+    if (playHeadState === "paused") {
+      cancelAnimation();
+    }
+
+    playHeadStateRef.current = playHeadState;
+  }, [playHeadState]);
+
+  /**
+   * this effect establishes a binding with externally
+   * updated frame number. Note that for this effect to have
+   * the required effect, the external setter needs to have disabled animation first
+   * by dispatching a pause event
+   */
+  useEffect(() => {
+    if (!isAnimationActiveRef.current) {
+      frameNumberRef.current = frameNumber;
+    }
+  }, [frameNumber]);
+
+  /**
+   * The following effects are used to keep the refs up to date
+   */
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+  useEffect(() => {
+    updateFreqRef.current = updateFreq;
+  }, [updateFreq]);
+
+  /**
+   * This effect is used to refresh the timeline when it's initialized.
+   */
   useEffect(() => {
     if (!isTimelineInitialized) {
       return;
