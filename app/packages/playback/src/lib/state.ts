@@ -222,15 +222,18 @@ export const addTimelineAtom = atom(
 export const addSubscriberAtom = atom(
   null,
   (
-    _get,
+    get,
     set,
     {
       name,
       subscription,
     }: { name: TimelineName; subscription: SequenceTimelineSubscription }
   ) => {
+    const bufferManager = get(_dataLoadedBuffers(name));
+
     set(_subscribers(name), (prev) => {
       prev.set(subscription.id, subscription);
+      bufferManager.reset();
       return prev;
     });
   }
