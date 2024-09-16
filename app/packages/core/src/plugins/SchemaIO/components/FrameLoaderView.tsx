@@ -49,7 +49,9 @@ export default function FrameLoaderView(props: ViewPropsType) {
       const currentFrameData = data?.frames[frameNumber] || {};
       const currentData = current.data || {};
       const updatedData = { ...currentData };
+      console.log("currentData", currentData);
       _.set(updatedData, target, currentFrameData);
+      console.log("updatedData", updatedData);
       return { ...current, data: updatedData };
     });
   }, []);

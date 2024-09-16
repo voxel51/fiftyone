@@ -5,6 +5,9 @@ export function main() {
     component: ComponentWithTimeline,
     type: PluginComponentType.Panel,
     activator: () => true,
+    panelOptions: {
+      surfaces: 'modal'
+    }
   });
   registerComponent({
     name: "Component2WithTimeline",
@@ -112,6 +115,7 @@ export const ComponentWithTimeline = () => {
   }, []);
 
   const { isTimelineInitialized, subscribe } = useCreateTimeline({
+    name: GLOBAL_TIMELINE_ID,
     config: {
       totalFrames: 50,
       loop: true,
@@ -121,12 +125,9 @@ export const ComponentWithTimeline = () => {
   React.useEffect(() => {
     if (isTimelineInitialized) {
       subscribe({
-        name: GLOBAL_TIMELINE_ID,
-        subscription: {
-          id: "sub1",
-          loadRange,
-          renderFrame: myRenderFrame,
-        },
+        id: "sub1",
+        loadRange,
+        renderFrame: myRenderFrame,
       });
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame]);
