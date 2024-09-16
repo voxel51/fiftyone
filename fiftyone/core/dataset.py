@@ -59,7 +59,7 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
-_FRAME_SUMMARY_KEY = "_frame_summary"
+_SUMMARY_FIELD_KEY = "_summary_field"
 
 logger = logging.getLogger(__name__)
 
@@ -1644,20 +1644,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def list_frame_summaries(self):
-        """Lists the frame summaries on this dataset.
+    def list_summary_fields(self):
+        """Lists the summary fields on the dataset.
 
-        Use :meth:`create_frame_summary` to create frame summaries, and use
-        :meth:`drop_frame_summary` to delete them.
+        Use :meth:`create_summary_field` to create summary fields, and use
+        :meth:`delete_summary_field` to delete them.
 
         Returns:
-            a list of frame summary field names
+            a list of summary field names
         """
         return sorted(
-            self.get_field_schema(flat=True, info_keys=_FRAME_SUMMARY_KEY)
+            self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
         )
 
-    def create_frame_summary(
+    def create_summary_field(
         self,
         path,
         field_name=None,
@@ -1672,12 +1672,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         numeric ranges that appear in the specified field on each sample in
         the dataset.
 
-        This method is particularly useful for indexing frame-level fields of
-        video datasets, in which case the sample-level field records the unique
-        values or numeric ranges that appear in the specified frame-level field
-        across all frames of that sample. This index field can then be
-        efficiently queried to retrieve samples that contain specific values of
-        interest in at least one frame.
+        This method is particularly useful for summarizing frame-level fields
+        of video datasets, in which case the sample-level field records the
+        unique values or numeric ranges that appear in the specified
+        frame-level field across all frames of that sample. This summary field
+        can then be efficiently queried to retrieve samples that contain
+        specific values of interest in at least one frame.
 
         Examples::
 
@@ -1688,55 +1688,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset = foz.load_zoo_dataset("quickstart-video")
             dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
 
-            # Generate a frame summary for object labels
-            dataset.create_frame_summary("frames.detections.detections.label")
+            # Generate a summary field for object labels
+            dataset.create_summary_field("frames.detections.detections.label")
 
-            # Generate an inverted index for [min, max] confidences
-            dataset.create_frame_summary("frames.detections.detections.confidence")
+            # Generate a summary field for [min, max] confidences
+            dataset.create_summary_field("frames.detections.detections.confidence")
 
-            # Generate an inverted index for object labels and counts
-            dataset.create_frame_summary(
+            # Generate a summary field for object labels and counts
+            dataset.create_summary_field(
                 "frames.detections.detections.label",
                 field_name="frames_detections_label2",
                 include_counts=True,
             )
 
-            # Generate an inverted index for per-label [min, max] confidences
-            dataset.create_frame_summary(
+            # Generate a summary field for per-label [min, max] confidences
+            dataset.create_summary_field(
                 "frames.detections.detections.confidence",
                 field_name="frames_detections_confidence2",
                 group_by="label",
             )
 
-            print(dataset.list_frame_summaries())
+            print(dataset.list_summary_fields())
 
         Args:
-            path: a field path
+            path: an input field path
             field_name (None): the sample-level field in which to store the
-                inverted index. By default, a suitable name is derived from the
+                summary data. By default, a suitable name is derived from the
                 given ``path``
             sidebar_group (None): the name of a
                 :ref:`App sidebar group <app-sidebar-groups>` to which to add
-                the inverted index field, if necessary. By default, all
-                frame summaries are added to an ``"frame summaries"`` group.
-                You can pass ``False`` to skip sidebar group modification
+                the summary field, if necessary. By default, all summary fields
+                are added to a ``"summaries"`` group. You can pass ``False`` to
+                skip sidebar group modification
             include_counts (False): whether to include per-value counts when
-                indexing categorical fields
+                summarizing categorical fields
             group_by (None): an optional attribute to group by when ``path``
                 is a numeric field to generate per-attribute ``[min, max]``
                 ranges. This may either be an absolute path or an attribute
                 name that is interpreted relative to ``path``
-            read_only (True): whether to mark the inverted index field as
-                read-only
+            read_only (True): whether to mark the summary field as read-only
             create_index (True): whether to create database index(es) for the
-                inverted index field
-            overwrite (True): whether to overwrite any existing inverted index
-                field with the same name
+                summary field
+            overwrite (True): whether to overwrite any existing summary field
+                with the same name
 
         Returns:
-            the inverted index field name
+            the summary field name
         """
-        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
         _field = self.get_field(path)
 
         if isinstance(_field, (fof.StringField, fof.BooleanField)):
@@ -1748,14 +1746,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             index_type = "numeric"
         elif _field is not None:
             raise ValueError(
-                f"Cannot generate an inverted index for field '{path}' of "
+                f"Cannot generate a summary for field '{path}' of "
                 f"type {type(_field)}"
             )
         else:
             raise ValueError(
-                "Cannot generate an inverted index for non-existent or "
+                "Cannot generate a summary field for non-existent or "
                 f"undeclared field '{path}'"
             )
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
 
         if field_name is None:
             _chunks = _path.split(".")
@@ -1779,28 +1779,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field = self.get_field(field_name)
         if field is not None:
-            if overwrite and _FRAME_SUMMARY_KEY in field.info:
-                self.drop_frame_summary(field_name)
+            if overwrite and _SUMMARY_FIELD_KEY in field.info:
+                self.delete_summary_field(field_name)
             else:
                 raise ValueError(f"Field '{field_name}' already exists")
 
-        if include_counts:
-            value = path.rsplit(".", 1)[-1]
-
-        if group_by is not None:
-            if "." in group_by:
-                value = group_by.rsplit(".", 1)[1]
-                group_path = group_by
-            else:
-                value = group_by
-                group_path = path.rsplit(".", 1)[0] + "." + group_by
-
-            _group_path, _ = self._handle_frame_field(group_path)
-            _group_field = self.get_field(group_path)
-
         index_fields = []
-        info = {_FRAME_SUMMARY_KEY: path}
+        summary_info = {"path": path, "index_type": index_type}
         if index_type == "categorical":
+            summary_info["include_counts"] = include_counts
             if include_counts:
                 label_field = field_name + ".label"
                 count_field = field_name + ".count"
@@ -1811,7 +1798,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fof.ListField,
                     subfield=fof.EmbeddedDocumentField,
                     embedded_doc_type=foo.DynamicEmbeddedDocument,
-                    info=info,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
                 )
                 self.add_sample_field(label_field, type(_field))
                 self.add_sample_field(count_field, fof.IntField)
@@ -1821,10 +1808,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     field_name,
                     fof.ListField,
                     subfield=type(_field),
-                    info=info,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
                 )
         elif index_type == "numeric":
+            summary_info["group_by"] = group_by
             if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_field = self.get_field(group_path)
+
                 value_field = field_name + f".{value}"
                 min_field = field_name + ".min"
                 max_field = field_name + ".max"
@@ -1835,7 +1832,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fof.ListField,
                     subfield=fof.EmbeddedDocumentField,
                     embedded_doc_type=foo.DynamicEmbeddedDocument,
-                    info=info,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
                 )
                 self.add_sample_field(value_field, type(_group_field))
                 self.add_sample_field(min_field, type(_field))
@@ -1849,14 +1846,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     field_name,
                     fof.EmbeddedDocumentField,
                     embedded_doc_type=foo.DynamicEmbeddedDocument,
-                    info=info,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
                 )
                 self.add_sample_field(min_field, type(_field))
                 self.add_sample_field(max_field, type(_field))
 
         if sidebar_group is not False:
             if sidebar_group is None:
-                sidebar_group = "frame summaries"
+                sidebar_group = "summaries"
 
             if self.app_config.sidebar_groups is None:
                 sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
@@ -1892,6 +1889,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for _field_name in index_fields:
                 self.create_index(_field_name)
 
+        field = self.get_field(field_name)
+        field.info[_SUMMARY_FIELD_KEY]["last_modified_at"] = field.created_at
+
+        if read_only:
+            field.read_only = True
+
+        field.save()
+
+        self._populate_summary_field(field_name, summary_info)
+
+        return field_name
+
+    def _populate_summary_field(self, field_name, summary_info):
+        path = summary_info["path"]
+        index_type = summary_info["index_type"]
+        include_counts = summary_info.get("include_counts", False)
+        group_by = summary_info.get("group_by", None)
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+
         pipeline = []
 
         if is_frame_field:
@@ -1910,6 +1927,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if index_type == "categorical":
             if include_counts:
+                value = path.rsplit(".", 1)[-1]
                 pipeline.extend(
                     [
                         {
@@ -1958,6 +1976,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
         elif index_type == "numeric":
             if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_path, _ = self._handle_frame_field(group_path)
+
                 pipeline.extend(
                     [
                         {
@@ -2016,75 +2043,126 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._aggregate(pipeline=pipeline, attach_frames=is_frame_field)
 
-        if read_only:
-            field = self.get_field(field_name)
-            field.read_only = True
-            field.save()
+        fos.Sample._reload_docs(self._sample_collection_name)
 
-        return field_name
+    def check_summary_fields(self):
+        """Returns a list of summary fields that **may** need to be updated.
 
-    def drop_frame_summary(self, field_name):
-        """Drops the inverted index, if necessary.
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("quickstart-video")
-            dataset.create_frame_summary("frames.detections.detections.label")
-
-            dataset.drop_frame_summary("frames_detections_label")
-
-        Args:
-            field_name: the inverted index field name
-        """
-        if field_name not in self.list_frame_summaries():
-            return
-
-        field = self.get_field(field_name)
-        if field.read_only:
-            field.read_only = False
-            field.save()
-
-        self.delete_sample_field(field_name)
-
-    def check_frame_summaries(self):
-        """Returns a list of frame summaries that **may** need to be updated.
-
-        Frame summaries may need to be updated whenever there have been
-        modifications to the dataset's samples since the indexes were created.
+        Summary fields may need to be updated whenever there have been
+        modifications to the dataset's samples since the summaries were last
+        generated.
 
         Note that inclusion in this list is only a heuristic, as any sample
-        modifications may not have affected the inverted index's source field.
+        modifications may not have affected the summary's source field.
 
         Returns:
-            list of inverted index field names
+            list of summary field names
         """
-        frame_summary_schema = self.get_field_schema(
-            flat=True, info_keys=_FRAME_SUMMARY_KEY
+        summary_schema = self.get_field_schema(
+            flat=True, info_keys=_SUMMARY_FIELD_KEY
         )
 
         update_indexes = []
-        last_modified_at = None
+        samples_last_modified_at = None
         frames_last_modified_at = None
-        for path, field in frame_summary_schema.items():
-            if self._is_frame_field(field.info[_FRAME_SUMMARY_KEY]):
+        for path, field in summary_schema.items():
+            summary_info = field.info[_SUMMARY_FIELD_KEY]
+            source_path = summary_info.get("path", None)
+            last_modified_at = summary_info.get("last_modified_at", None)
+
+            if source_path is None:
+                continue
+            elif last_modified_at is None:
+                update_indexes.append(path)
+            elif self._is_frame_field(source_path):
                 if frames_last_modified_at is None:
                     frames_last_modified_at, _ = self.bounds(
                         "frames.last_modified_at"
                     )
 
-                if field.created_at < frames_last_modified_at:
+                if frames_last_modified_at > last_modified_at:
                     update_indexes.append(path)
             else:
-                if last_modified_at is None:
-                    _, last_modified_at = self.bounds("last_modified_at")
+                if samples_last_modified_at is None:
+                    _, samples_last_modified_at = self.bounds(
+                        "last_modified_at"
+                    )
 
-                if field.created_at < last_modified_at:
+                if samples_last_modified_at > last_modified_at:
                     update_indexes.append(path)
 
         return update_indexes
+
+    def update_summary_field(self, field_name):
+        """Updates the summary field based on the current values of its source
+        field.
+
+        Args:
+            field_name: the summary field
+        """
+
+        # This prevents a "weakly-referenced object no longer exists" error
+        # from occurring when updating multiple summary fields sequentially
+        # @todo diagnose and cure root cause so this isn't needed
+        self._reload(hard=True)
+
+        field = self.get_field(field_name)
+        if field is None or _SUMMARY_FIELD_KEY not in field.info:
+            raise ValueError(f"Field {field_name} is not a summary field")
+
+        summary_info = field.info[_SUMMARY_FIELD_KEY]
+        summary_info["last_modified_at"] = datetime.utcnow()
+        field.save(_enforce_read_only=False)
+
+        self._populate_summary_field(field_name, summary_info)
+
+    def delete_summary_field(self, field_name, error_level=0):
+        """Deletes the summary field from all samples in the dataset.
+
+        Args:
+            field_name: the summary field
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_name, error_level)
+
+    def delete_summary_fields(self, field_names, error_level=0):
+        """Deletes the summary fields from all samples in the dataset.
+
+        Args:
+            field_names: the summary field or iterable of summary fields
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_names, error_level)
+
+    def _delete_summary_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+
+        _field_names = []
+        for field_name in field_names:
+            field = self.get_field(field_name)
+
+            if field is None or _SUMMARY_FIELD_KEY not in field.info:
+                fou.handle_error(
+                    ValueError(f"Field {field_name} is not a summary field"),
+                    error_level,
+                )
+            else:
+                if field.read_only:
+                    field.read_only = False
+                    field.save()
+
+                _field_names.append(field_name)
+
+        if _field_names:
+            self._delete_sample_fields(_field_names, error_level)
 
     def _add_implied_frame_field(
         self, field_name, value, dynamic=False, validate=True
@@ -4152,7 +4230,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._deleted = True
             raise ValueError("Dataset '%s' is deleted" % name)
 
-    def _save_field(self, field):
+    def _save_field(self, field, _enforce_read_only=True):
         if self._is_generated:
             raise ValueError(
                 "Cannot save fields on generated views. Use the dataset's "
@@ -4169,7 +4247,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc = doc_cls._get_field_doc(path, reload=True)
 
-        if is_default:
+        if is_default and _enforce_read_only:
             default_field = self._get_default_field(field.path)
             if default_field.read_only and not field.read_only:
                 raise ValueError(
@@ -4177,7 +4255,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     % field.path
                 )
 
-        if "." in path:
+        if "." in path and _enforce_read_only:
             root = path.rsplit(".", 1)[0]
             root_doc = doc_cls._get_field_doc(root)
             if root_doc.read_only:
@@ -4185,7 +4263,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Cannot edit read-only field '%s'" % field.path
                 )
 
-        if field.read_only and field_doc.read_only:
+        if field.read_only and field_doc.read_only and _enforce_read_only:
             raise ValueError("Cannot edit read-only field '%s'" % field.path)
 
         if field.read_only != field_doc.read_only:
@@ -4204,7 +4282,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
         if _reload:
-            self.reload()
+            self._reload(hard=True)
 
     @property
     def has_saved_views(self):

@@ -624,7 +624,7 @@ class Field(mongoengine.fields.BaseField):
         field._set_dataset(None, None)
         return field
 
-    def save(self):
+    def save(self, _enforce_read_only=True):
         """Saves any edits to this field's :attr:`description` and :attr:`info`
         attributes.
 
@@ -659,7 +659,7 @@ class Field(mongoengine.fields.BaseField):
         if self.__dataset is None:
             return
 
-        self.__dataset._save_field(self)
+        self.__dataset._save_field(self, _enforce_read_only=_enforce_read_only)
 
 
 class IntField(mongoengine.fields.IntField, Field):
