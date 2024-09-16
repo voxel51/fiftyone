@@ -4,10 +4,9 @@ import React, { Suspense, useEffect } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
-import { useLookerHelpers, useModalContext } from "./hooks";
+import { useModalContext } from "./hooks";
 import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
-import ModalNavigation from "./ModalNavigation";
 
 const ContentColumn = styled.div`
   display: flex;
@@ -27,10 +26,6 @@ export const ModalSample = React.memo(() => {
   const tooltip = fos.useTooltip();
   const setIsTooltipLocked = useSetRecoilState(fos.isTooltipLocked);
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-
-  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
-  const { onNavigate } = useLookerHelpers();
 
   const tooltipEventHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -77,9 +72,6 @@ export const ModalSample = React.memo(() => {
 
   return (
     <ContentColumn>
-      <ModalNavigationContainer>
-        <ModalNavigation onNavigate={onNavigate} />
-      </ModalNavigationContainer>
       <ErrorBoundary onReset={() => {}}>
         <Suspense>
           {isGroup ? <Group /> : is3D ? <Sample3d /> : <Sample2D />}
@@ -88,13 +80,3 @@ export const ModalSample = React.memo(() => {
     </ContentColumn>
   );
 });
-
-const ModalNavigationContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  left: 0;
-`;
