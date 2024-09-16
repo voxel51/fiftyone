@@ -4282,7 +4282,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
         if _reload:
-            self._reload(hard=True)
+            self.reload()
 
     @property
     def has_saved_views(self):
