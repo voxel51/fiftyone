@@ -1,20 +1,13 @@
 export function main() {
   registerComponent({
-    name: "ComponentWithTimeline",
-    label: "ComponentWithTimeline",
-    component: ComponentWithTimeline,
+    name: "TimelineCreator",
+    label: "TimelineCreator",
+    component: TimelineCreator,
     type: PluginComponentType.Panel,
     activator: () => true,
     panelOptions: {
-      surfaces: 'modal'
-    }
-  });
-  registerComponent({
-    name: "Component2WithTimeline",
-    label: "Component2WithTimeline",
-    component: Component2WithTimeline,
-    type: PluginComponentType.Panel,
-    activator: () => true,
+      surfaces: "modal",
+    },
   });
 }
 
@@ -39,70 +32,68 @@ import {
   StatusIndicator,
 } from "@fiftyone/playback/src/views/PlaybackElements";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import { useDefaultTimelineName } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 
 interface TimelineProps {
   name?: TimelineName;
   style?: React.CSSProperties;
 }
+export const TimelineCreator = () => {
+  const [myLocalFrameNumber, setMyLocalFrameNumber] =
+    React.useState(DEFAULT_FRAME_NUMBER);
+  const { getName } = useDefaultTimelineName();
+  const timelineName = React.useMemo(() => getName(), [getName]);
 
-// the following is an example of how a timline component view can be created
-export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ name: maybeTimelineName, style }, ref) => {
-    const name = maybeTimelineName ?? GLOBAL_TIMELINE_ID;
+  const loadRange = React.useCallback(async (range: BufferRange) => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 100);
+    });
+  }, []);
 
-    const { frameNumber, playHeadState, config, play, pause } =
-      useTimeline(name);
+  const myRenderFrame = React.useCallback(
+    (frameNumber: number) => {
+      setMyLocalFrameNumber(frameNumber);
+    },
+    [setMyLocalFrameNumber]
+  );
 
-    const { getSeekValue, seekTo } = useTimelineVizUtils();
+  const { isTimelineInitialized, subscribe } = useCreateTimeline({
+    config: {
+      totalFrames: 50,
+      loop: true,
+    },
+  });
 
-    const seekBarValue = React.useMemo(() => getSeekValue(), [frameNumber]);
+  React.useEffect(() => {
+    if (isTimelineInitialized) {
+      subscribe({
+        id: `creator`,
+        loadRange,
+        renderFrame: myRenderFrame,
+      });
+    }
+  }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
 
-    const onChangeSeek = React.useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newSeekBarValue = Number(e.target.value);
-        seekTo(newSeekBarValue);
-      },
-      []
-    );
-
-    const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
-
-    return (
-      <FoTimelineContainer
-        ref={ref}
-        style={style}
-        onMouseEnter={() => setIsHoveringSeekBar(true)}
-        onMouseLeave={() => setIsHoveringSeekBar(false)}
-      >
-        <Seekbar
-          value={seekBarValue}
-          bufferValue={0}
-          onChange={onChangeSeek}
-          debounce={SEEK_BAR_DEBOUNCE}
-        />
-        <SeekbarThumb
-          shouldDisplayThumb={isHoveringSeekBar}
-          value={seekBarValue}
-        />
-        <FoTimelineControlsContainer>
-          <Playhead
-            status={playHeadState}
-            timelineName={name}
-            play={play}
-            pause={pause}
-          />
-          <Speed speed={0.3} />
-          <StatusIndicator
-            currentFrame={frameNumber}
-            totalFrames={config.totalFrames}
-          />
-        </FoTimelineControlsContainer>
-      </FoTimelineContainer>
-    );
+  if (!isTimelineInitialized) {
+    return <div>initializing timeline...</div>;
   }
-);
 
-export const ComponentWithTimeline = () => {
+  return (
+    <>
+      <div style={{ margin: "1em" }}>
+        creator frame number {timelineName}: {myLocalFrameNumber}
+      </div>
+      <Timeline name={timelineName} />
+    </>
+  );
+};
+
+export const TimelineSubscriber1 = () => {
+  const { getName } = useDefaultTimelineName();
+  const timelineName = React.useMemo(() => getName(), [getName]);
+
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
     React.useState(DEFAULT_FRAME_NUMBER);
 
@@ -114,23 +105,19 @@ export const ComponentWithTimeline = () => {
     setMyLocalFrameNumber(frameNumber);
   }, []);
 
-  const { isTimelineInitialized, subscribe } = useCreateTimeline({
-    name: GLOBAL_TIMELINE_ID,
-    config: {
-      totalFrames: 50,
-      loop: true,
-    },
-  });
+  const { subscribe, isTimelineInitialized, getFrameNumber } = useTimeline();
 
   React.useEffect(() => {
-    if (isTimelineInitialized) {
-      subscribe({
-        id: "sub1",
-        loadRange,
-        renderFrame: myRenderFrame,
-      });
+    if (!isTimelineInitialized) {
+      return;
     }
-  }, [isTimelineInitialized, loadRange, myRenderFrame]);
+
+    subscribe({
+      id: `sub1`,
+      loadRange,
+      renderFrame: myRenderFrame,
+    });
+  }, [loadRange, myRenderFrame, subscribe, isTimelineInitialized]);
 
   if (!isTimelineInitialized) {
     return <div>loading...</div>;
@@ -139,26 +126,22 @@ export const ComponentWithTimeline = () => {
   return (
     <>
       <div style={{ margin: "1em" }}>
-        creator frame number: {myLocalFrameNumber}
+        Subscriber 1 frame number {timelineName}: {myLocalFrameNumber}
       </div>
-      <Timeline />
+      <Timeline name={timelineName} />
     </>
   );
 };
 
-export const Component2WithTimeline = () => {
+export const TimelineSubscriber2 = () => {
+  const { getName } = useDefaultTimelineName();
+  const timelineName = React.useMemo(() => getName(), [getName]);
+
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
     React.useState(DEFAULT_FRAME_NUMBER);
 
   const loadRange = React.useCallback(async (range: BufferRange) => {
-    console.log("loading range", range);
     // no-op for now, but maybe for testing, i can resolve a promise inside settimeout
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log("resolved");
-        resolve();
-      }, 1000);
-    });
   }, []);
 
   const myRenderFrame = React.useCallback((frameNumber: number) => {
@@ -173,14 +156,11 @@ export const Component2WithTimeline = () => {
     }
 
     subscribe({
-      name: GLOBAL_TIMELINE_ID,
-      subscription: {
-        id: "sub3",
-        loadRange,
-        renderFrame: myRenderFrame,
-      },
+      id: `sub2`,
+      loadRange,
+      renderFrame: myRenderFrame,
     });
-  }, [loadRange, myRenderFrame, isTimelineInitialized]);
+  }, [loadRange, myRenderFrame, subscribe, isTimelineInitialized]);
 
   if (!isTimelineInitialized) {
     return <div>loading...</div>;
@@ -189,9 +169,8 @@ export const Component2WithTimeline = () => {
   return (
     <>
       <div style={{ margin: "1em" }}>
-        subscriber frame number: {myLocalFrameNumber}
+        Subscriber 2 frame number {timelineName}: {myLocalFrameNumber}
       </div>
-      <Timeline />
     </>
   );
 };

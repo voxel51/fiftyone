@@ -42,6 +42,8 @@ export default function FrameLoaderView(props: ViewPropsType) {
     }
   }, []);
 
+  const [currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
+
   const myRenderFrame = React.useCallback((frameNumber: number) => {
     setMyLocalFrameNumber(frameNumber);
     console.log("rendering frame", frameNumber, props);
@@ -54,6 +56,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
       console.log("updatedData", updatedData);
       return { ...current, data: updatedData };
     });
+    setCurrentFrame(frameNumber)
   }, []);
 
   const { isTimelineInitialized, subscribe } = useCreateTimeline({
@@ -80,5 +83,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame]);
 
-  return null;
+  return (
+    <h1>{currentFrame}</h1>
+  )
 }
