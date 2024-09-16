@@ -31,42 +31,46 @@ export default function FrameLoaderView(props: ViewPropsType) {
     React.useState(DEFAULT_FRAME_NUMBER);
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
-  const { getName } = useDefaultTimelineName();
-  const timelineName = React.useMemo(() => getName(), [getName]);
 
-  const loadRange = React.useCallback(async (range: BufferRange) => {
-    console.log("loadRange", range);
-    if (on_load_range) {
-      return triggerEvent(panelId, {
-        params: { range },
-        operator: on_load_range,
-      });
-    }
-  }, [triggerEvent, on_load_range]);
+  const loadRange = React.useCallback(
+    async (range: BufferRange) => {
+      console.log("loadRange", range);
+      if (on_load_range) {
+        return triggerEvent(panelId, {
+          params: { range },
+          operator: on_load_range,
+        });
+      }
+    },
+    [triggerEvent, on_load_range]
+  );
 
-  useEffect(() => {
-    loadRange([0, 50]);
-  }, []);
+  // useEffect(() => {
+  //   loadRange([0, 50]);
+  // }, []);
 
   const [currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 
-  const myRenderFrame = React.useCallback((frameNumber: number) => {
-    setMyLocalFrameNumber(frameNumber);
-    // console.log("rendering frame", frameNumber, props);
-    setPanelState(panelId, (current) => {
-      const currentFrameData = data?.frames[frameNumber] || {};
-      const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
-      let updatedData = { ...currentData };
-    
-      console.log("data?.frames", data?.frames);
-      console.log("target", target);
-      _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
-      console.log("updatedData", updatedData);
-    
-      return { ...current, data: updatedData };
-    });
-    setCurrentFrame(frameNumber)
-  }, [data, setPanelState, panelId, target]);
+  const myRenderFrame = React.useCallback(
+    (frameNumber: number) => {
+      setMyLocalFrameNumber(frameNumber);
+      // console.log("rendering frame", frameNumber, props);
+      setPanelState(panelId, (current) => {
+        const currentFrameData = data?.frames[frameNumber] || {};
+        const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
+        let updatedData = { ...currentData };
+
+        console.log("data?.frames", data?.frames);
+        console.log("target", target);
+        _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
+        console.log("updatedData", updatedData);
+
+        return { ...current, data: updatedData };
+      });
+      setCurrentFrame(frameNumber);
+    },
+    [data, setPanelState, panelId, target]
+  );
 
   const { isTimelineInitialized, subscribe } = useTimeline();
 
@@ -80,7 +84,5 @@ export default function FrameLoaderView(props: ViewPropsType) {
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
 
-  return (
-    <h1>{currentFrame}</h1>
-  )
+  return <h1>{currentFrame}</h1>;
 }
