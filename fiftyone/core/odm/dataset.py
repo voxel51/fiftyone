@@ -67,6 +67,13 @@ class SampleFieldDocument(EmbeddedDocument):
     db_field = StringField(null=True)
     description = StringField(null=True)
     info = DictField(null=True)
+    read_only = BooleanField(default=False)
+    created_at = DateTimeField(null=True, default=None)
+
+    def _set_created_at(self, created_at):
+        self.created_at = created_at
+        for field in self.fields or []:
+            field._set_created_at(created_at)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -98,6 +105,8 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=self.db_field,
             description=self.description,
             info=self.info,
+            read_only=self.read_only,
+            created_at=self.created_at,
         )
 
     @classmethod
@@ -125,6 +134,8 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=field.db_field,
             description=field.description,
             info=field.info,
+            read_only=field.read_only,
+            created_at=field.created_at,
         )
 
     @staticmethod
@@ -619,6 +630,7 @@ class DatasetDocument(Document):
     slug = StringField()
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
+    last_modified_at = DateTimeField()
     last_loaded_at = DateTimeField()
     sample_collection_name = StringField(unique=True, required=True)
     frame_collection_name = StringField()

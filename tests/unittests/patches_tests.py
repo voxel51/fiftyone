@@ -6,6 +6,7 @@ FiftyOne patches-related unit tests.
 |
 """
 from copy import deepcopy
+from datetime import datetime
 
 from bson import ObjectId
 import unittest
@@ -71,6 +72,8 @@ class PatchesTests(unittest.TestCase):
                 "filepath",
                 "tags",
                 "metadata",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
                 "ground_truth",
             },
@@ -88,7 +91,15 @@ class PatchesTests(unittest.TestCase):
 
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
-            {"id", "filepath", "tags", "metadata", "sample_id"},
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "created_at",
+                "last_modified_at",
+                "sample_id",
+            },
         )
 
         with self.assertRaises(ValueError):
@@ -96,8 +107,14 @@ class PatchesTests(unittest.TestCase):
 
         index_info = view.get_index_information()
         indexes = view.list_indexes()
+        default_indexes = {
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "sample_id",
+        }
 
-        default_indexes = {"id", "filepath", "sample_id"}
         self.assertSetEqual(set(index_info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -374,6 +391,8 @@ class PatchesTests(unittest.TestCase):
                 "filepath",
                 "metadata",
                 "tags",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
                 "ground_truth",
                 "predictions",
@@ -385,7 +404,15 @@ class PatchesTests(unittest.TestCase):
 
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
-            {"id", "filepath", "metadata", "tags", "sample_id"},
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "created_at",
+                "last_modified_at",
+                "sample_id",
+            },
         )
 
         with self.assertRaises(ValueError):
@@ -393,8 +420,14 @@ class PatchesTests(unittest.TestCase):
 
         index_info = view.get_index_information()
         indexes = view.list_indexes()
+        default_indexes = {
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+            "sample_id",
+        }
 
-        default_indexes = {"id", "filepath", "sample_id"}
         self.assertSetEqual(set(index_info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -753,6 +786,203 @@ class PatchesTests(unittest.TestCase):
 
         self.assertEqual(view.count("ground_truth.foo"), 4)
         self.assertEqual(dataset.count("ground_truth.detections.foo"), 4)
+
+    @drop_datasets
+    def test_to_patches_datetimes(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.png")
+
+        sample3 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        field = dataset.get_field("ground_truth.detections.label")
+        field.read_only = True
+        field.save()
+
+        patches = dataset.to_patches("ground_truth")
+
+        field = patches.get_field("ground_truth.label")
+        self.assertTrue(field.read_only)
+
+        patch = patches.first()
+
+        with self.assertRaises(ValueError):
+            patch.created_at = datetime.utcnow()
+
+        with self.assertRaises(ValueError):
+            patch.last_modified_at = datetime.utcnow()
+
+        patch.reload()
+
+        patch.ground_truth.label = "dog"
+        with self.assertRaises(ValueError):
+            patch.save()
+
+        patch.reload()
+
+        # Patch.save()
+
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+        created_at1p = patches.values("created_at")
+        last_modified_at1p = patches.values("last_modified_at")
+
+        for patch in patches.iter_samples():
+            patch.ground_truth.foo = "bar"
+            patch.save()
+
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
+        created_at2p = patches.values("created_at")
+        last_modified_at2p = patches.values("last_modified_at")
+
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1, created_at2))
+        )
+        self.assertListEqual(
+            [
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1, last_modified_at2)
+            ],
+            [True, False, True],
+        )
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1p, created_at2p))
+        )
+        self.assertTrue(
+            all(
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1p, last_modified_at2p)
+            )
+        )
+
+        # PatchView.save()
+
+        view = patches.select_fields("ground_truth")
+
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+        created_at1p = view.values("created_at")
+        last_modified_at1p = view.values("last_modified_at")
+
+        for patch in view.iter_samples():
+            patch.ground_truth.spam = "eggs"
+            patch.save()
+
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
+        created_at2p = view.values("created_at")
+        last_modified_at2p = view.values("last_modified_at")
+
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1, created_at2))
+        )
+        self.assertListEqual(
+            [
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1, last_modified_at2)
+            ],
+            [True, False, True],
+        )
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1p, created_at2p))
+        )
+        self.assertTrue(
+            all(
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1p, last_modified_at2p)
+            )
+        )
+
+        # PatchesView.set_values()
+
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+        created_at1p = patches.values("created_at")
+        last_modified_at1p = patches.values("last_modified_at")
+
+        patches.set_values("ground_truth.foo", ["baz"] * len(patches))
+
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
+        created_at2p = patches.values("created_at")
+        last_modified_at2p = patches.values("last_modified_at")
+
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1, created_at2))
+        )
+        self.assertListEqual(
+            [
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1, last_modified_at2)
+            ],
+            [True, False, True],
+        )
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1p, created_at2p))
+        )
+        self.assertTrue(
+            all(
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1p, last_modified_at2p)
+            )
+        )
+
+        # PatchesView.save()
+
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+        created_at1p = patches.values("created_at")
+        last_modified_at1p = patches.values("last_modified_at")
+
+        patches.set_field("ground_truth.spam", ["eggz"] * len(patches)).save()
+
+        created_at2 = dataset.values("created_at")
+        last_modified_at2 = dataset.values("last_modified_at")
+        created_at2p = patches.values("created_at")
+        last_modified_at2p = patches.values("last_modified_at")
+
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1, created_at2))
+        )
+        self.assertListEqual(
+            [
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1, last_modified_at2)
+            ],
+            [True, False, True],
+        )
+        self.assertTrue(
+            all(dt1 == dt2 for dt1, dt2 in zip(created_at1p, created_at2p))
+        )
+        self.assertTrue(
+            all(
+                dt1 < dt2
+                for dt1, dt2 in zip(last_modified_at1p, last_modified_at2p)
+            )
+        )
 
 
 if __name__ == "__main__":

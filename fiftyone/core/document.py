@@ -189,7 +189,7 @@ class _Document(object):
 
         Raises:
             ValueError: if ``field_name`` is not an allowed field name
-            AttirubteError: if the field does not exist and ``create == False``
+            AttributeError: if the field does not exist and ``create == False``
         """
         self._doc.set_field(
             field_name,
@@ -241,18 +241,26 @@ class _Document(object):
         """
         self._doc.clear_field(field_name)
 
-    def iter_fields(self, include_id=False):
+    def iter_fields(self, include_id=False, include_timestamps=False):
         """Returns an iterator over the ``(name, value)`` pairs of the public
         fields of the document.
 
         Args:
             include_id (False): whether to include the ``id`` field
+            include_timestamps (False): whether to include the ``created_at``
+                and ``last_modified_at`` fields
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
         for field_name in self.field_names:
-            if field_name == "id" and not include_id:
+            if not include_id and field_name == "id":
+                continue
+
+            if not include_timestamps and field_name in (
+                "created_at",
+                "last_modified_at",
+            ):
                 continue
 
             yield field_name, self.get_field(field_name)
@@ -452,7 +460,8 @@ class _Document(object):
             fields = {
                 f: f
                 for f in self.field_names
-                if f not in ("id", "_dataset_id")
+                if f
+                not in ("id", "_dataset_id", "created_at", "last_modified_at")
             }
         elif etau.is_str(fields):
             fields = {fields: fields}

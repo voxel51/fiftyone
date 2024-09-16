@@ -193,17 +193,37 @@ used to define the plugin's metadata, declare any operators and panels that it
 exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
--   `name` **(required)**: the name of the plugin
--   `author`: the author of the plugin
--   `version`: the version of the plugin
--   `url`: the page (eg GitHub repository) where the plugin's code lives
--   `license`: the license under which the plugin is distributed
--   `description`: a brief description of the plugin
--   `fiftyone.version`: a semver version specifier (or `*`) describing the
-    required FiftyOne version for the plugin to work properly
--   `operators`: a list of operator names registered by the plugin
--   `panels`: a list of panel names registred by the plugin
--   `secrets`: a list of secret keys that may be used by the plugin
+.. table::
+    :widths: 20,10,70
+
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | Field                        | Required? | Description                                                                 |
+    +==============================+===========+=============================================================================+
+    | `name`                       | **yes**   | The name of the plugin                                                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `type`                       |           | Declare that the directory defines a `plugin`. This can be omitted for      |
+    |                              |           | backwards compatibility, but it is recommended to specify this              |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `author`                     |           | The author of the plugin                                                    |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `version`                    |           | The version of the plugin                                                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `url`                        |           | The remote source (eg GitHub repository) where the directory containing     |
+    |                              |           | this file is hosted                                                         |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `license`                    |           | The license under which the plugin is distributed                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `description`                |           | A brief description of the plugin                                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `fiftyone.version`           |           | A semver version specifier (or `*`) describing the required                 |
+    |                              |           | FiftyOne version for the plugin to work properly                            |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `panels`                     |           | A list of panel names registred by the plugin, if any                       |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
 
 For example, the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml>`_
@@ -213,12 +233,14 @@ plugin's `fiftyone.yml` looks like this:
     :linenos:
 
     name: "@voxel51/annotation"
-    description: Utilities for integrating FiftyOne with annotation tools
+    type: plugin
+    author: Voxel51
     version: 1.0.0
-    fiftyone:
-      version: ">=0.22"
     url: https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation
     license: Apache 2.0
+    description: Utilities for integrating FiftyOne with annotation tools
+    fiftyone:
+      version: ">=0.22"
     operators:
       - request_annotations
       - load_annotations
@@ -331,12 +353,14 @@ defines both a JS Panel and a Python operator:
         :linenos:
 
         name: "@voxel51/hello-world"
-        description: An example of JS and Python components in a single plugin
+        type: plugin
+        author: Voxel51
         version: 1.0.0
-        fiftyone:
-          version: "*"
         url: https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/hello-world/README.md
         license: Apache 2.0
+        description: An example of JS and Python components in a single plugin
+        fiftyone:
+          version: "*"
         operators:
           - count_samples
           - show_alert

@@ -4,13 +4,18 @@
 
 .lookerTags {
   position: absolute;
+  display: flex;
+  gap: 4px;
+  justify-content: left;
   bottom: 0;
-  padding: 0.5rem;
   max-height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
   width: 100%;
   pointer-events: none;
+
+  font-size: 14px;
+  line-height: 12px;
 }
 
 .lookerTags::-webkit-scrollbar {
@@ -27,12 +32,8 @@
 .lookerTags > div {
   display: inline-block;
   box-sizing: content-box;
-  height: 1em;
-  margin: 0 2px 0;
-  padding: 3px;
+  padding: 2px;
   color: var(--fo-palette-text-lookerTag);
-  font-size: 14px;
-  line-height: 12px;
   border-radius: 3px;
   font-weight: bold;
   text-align: center;
