@@ -21,6 +21,8 @@ const test = base.extend<{
 });
 
 test.describe("Display Options", () => {
+  test.skip(true, "THIS TEST USES ZOO DATASET. TODO: FIX IT");
+
   const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 
   test.beforeAll(async ({ fiftyoneLoader }) => {
