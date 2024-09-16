@@ -9,6 +9,7 @@ import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
 import { useLookerHelpers } from "./hooks";
 import { modalContext } from "./modal-context";
+import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
@@ -162,6 +163,8 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
+
+  const { onNavigate } = useLookerHelpers();
 
   const screenParams = useMemo(() => {
     return isFullScreen

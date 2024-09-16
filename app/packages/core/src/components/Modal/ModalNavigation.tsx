@@ -26,7 +26,7 @@ const Arrow = styled.span<{
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 50%;
+  bottom: 33vh;
   width: 3rem;
   height: 3rem;
   background-color: var(--fo-palette-background-button);
