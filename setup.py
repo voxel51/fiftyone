@@ -69,6 +69,7 @@ INSTALL_REQUIRES = [
     "starlette>=0.24.0",
     "strawberry-graphql",
     "tabulate",
+    "tifffile",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
