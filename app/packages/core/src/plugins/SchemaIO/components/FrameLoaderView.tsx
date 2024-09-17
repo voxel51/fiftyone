@@ -31,23 +31,39 @@ export default function FrameLoaderView(props: ViewPropsType) {
     React.useState(DEFAULT_FRAME_NUMBER);
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
+  const localIdRef = React.useRef<string>();
+
+  useEffect(() => {
+    localIdRef.current = Math.random().toString(36).substring(7);
+    if (data?.frames)
+      dispatchEvent(
+        new CustomEvent(`frames-loaded`, {
+          detail: { localId: localIdRef.current },
+        })
+      );
+  }, [JSON.stringify(data?.frames)]);
 
   const loadRange = React.useCallback(
     async (range: BufferRange) => {
-      console.log("loadRange", range);
       if (on_load_range) {
-        return triggerEvent(panelId, {
+        triggerEvent(panelId, {
           params: { range },
           operator: on_load_range,
         });
+        return new Promise<void>((resolve) => {
+          window.addEventListener(`frames-loaded`, (e) => {
+            if (
+              e instanceof CustomEvent &&
+              e.detail.localId === localIdRef.current
+            ) {
+              resolve();
+            }
+          });
+        });
       }
     },
-    [triggerEvent, on_load_range]
+    [triggerEvent, on_load_range, localIdRef.current]
   );
-
-  // useEffect(() => {
-  //   loadRange([0, 50]);
-  // }, []);
 
   const [currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 
@@ -56,15 +72,11 @@ export default function FrameLoaderView(props: ViewPropsType) {
       setMyLocalFrameNumber(frameNumber);
       // console.log("rendering frame", frameNumber, props);
       setPanelState(panelId, (current) => {
-        const currentFrameData = data?.frames[frameNumber] || {};
         const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
+        const currentFrameData = _.get(currentData, path, { frames: [] })
+          .frames[frameNumber];
         let updatedData = { ...currentData };
-
-        console.log("data?.frames", data?.frames);
-        console.log("target", target);
         _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
-        console.log("updatedData", updatedData);
-
         return { ...current, data: updatedData };
       });
       setCurrentFrame(frameNumber);
@@ -73,14 +85,17 @@ export default function FrameLoaderView(props: ViewPropsType) {
   );
 
   const { isTimelineInitialized, subscribe } = useTimeline();
+  const [subscribed, setSubscribed] = useState(false);
 
   React.useEffect(() => {
+    if (subscribed) return;
     if (isTimelineInitialized) {
       subscribe({
         id: `sub1`,
         loadRange,
         renderFrame: myRenderFrame,
       });
+      setSubscribed(true);
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
 
