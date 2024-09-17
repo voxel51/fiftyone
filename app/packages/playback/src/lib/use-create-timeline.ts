@@ -79,6 +79,7 @@ export const useCreateTimeline = (
   }, [
     addTimeline,
     timelineName,
+    newTimelineProps.waitUntilInitialized,
     newTimelineProps.config?.loop,
     newTimelineProps.config?.totalFrames,
   ]);
