@@ -1,4 +1,3 @@
-export * from "./src/lib/events";
 export * from "./src/lib/state";
 export * from "./src/lib/use-create-timeline";
 export * from "./src/lib/use-default-timeline-name";
