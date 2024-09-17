@@ -55,6 +55,14 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return this.lookerElement.children[0] as ImaVidElement;
   }
 
+  get config() {
+    return this.state.config;
+  }
+
+  get options() {
+    return this.state.options;
+  }
+
   destroy() {
     this.unsubscribe && this.unsubscribe();
     this.frameStoreController.pauseFetch();
