@@ -16,6 +16,13 @@ science.
     `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
     plugin!
 
+.. note::
+
+    The `Fiftyone-Brain <https://github.com/voxel51/fiftyone-brain/tree/develop>`
+    is now open source and community contributions are welcome! Check out the 
+    `contribution guide <https://github.com/voxel51/fiftyone-brain/blob/develop/CONTRIBUTING.md>`
+    to learn how to get involved
+
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
 
