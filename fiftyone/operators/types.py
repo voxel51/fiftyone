@@ -1618,16 +1618,39 @@ class Column(View):
         return {**super().to_json(), "key": self.key}
 
 
+class Action(View):
+    """An action (currently supported only in a :class:`TableView`).
+
+    Args:
+        name: the name of the action
+        label (None): the label of the action
+        icon (None): the icon of the action
+        on_click: the operator to execute when the action is clicked
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def clone(self):
+        clone = Action(**self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
 class TableView(View):
     """Displays a table.
 
     Args:
         columns (None): a list of :class:`Column` objects to display
+        row_actions (None): a list of :class:`Action` objects to display
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
+        self.row_actions = kwargs.get("row_actions", [])
 
     def keys(self):
         return [column.key for column in self.columns]
@@ -1637,15 +1660,24 @@ class TableView(View):
         self.columns.append(column)
         return column
 
+    def add_row_action(self, name, on_click, label=None, icon=None, **kwargs):
+        row_action = Action(
+            name=name, on_click=on_click, label=label, icon=icon, **kwargs
+        )
+        self.row_actions.append(row_action)
+        return row_action
+
     def clone(self):
         clone = super().clone()
         clone.columns = [column.clone() for column in self.columns]
+        clone.row_actions = [action.clone() for action in self.row_actions]
         return clone
 
     def to_json(self):
         return {
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
+            "row_actions": [action.to_json() for action in self.row_actions],
         }
 
 
