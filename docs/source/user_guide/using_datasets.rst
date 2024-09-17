@@ -1631,6 +1631,184 @@ editable at any time:
     sample.ground_truth.detections[0].label = "yes"
     sample.save()
 
+.. _summary-fields:
+
+Summary fields
+--------------
+
+Summary fields allow you to efficiently perform queries where directly querying
+the underlying field is prohibitively slow due to the number of objects/frames
+in the field.
+
+For example, as we'll see below, summary fields are useful for retrieving
+samples in a video dataset that contain specific values of interest in at least
+one frame.
+
+Use :meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
+to create a summary field for a given input field path:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
+
+    # Generate a summary field for object labels
+    field_name = dataset.create_summary_field("frames.detections.detections.label")
+
+    # The name of the summary field that was created
+    print(field_name)
+    # 'frames_detections_label'
+
+    # Generate a summary field for [min, max] confidences
+    dataset.create_summary_field("frames.detections.detections.confidence")
+
+.. note::
+
+    Summary fields are :ref:`read-only <read-only-fields>`, as they are
+    implicitly derived from the contents of their source field and are not
+    intended to be directly modified.
+
+    They are also :ref:`indexed <app-indexed-filtering>` by default, so
+    filtering them :ref:`in the App <app-indexed-filtering>` is performant.
+
+Summary fields can be generated for sample-level and frame-level fields, and
+the input fields can be either categorical or numeric:
+
+.. tabs::
+
+    .. group-tab:: Categorical fields
+
+        When the input field is categorical (string or boolean), the summary
+        field of each sample is populated with the list of unique values
+        observed in the field (across all frames for video samples):
+
+        .. code-block:: python
+            :linenos:
+
+            sample = dataset.first()
+            print(sample.frames_detections_label)
+            # ['vehicle', 'road sign', 'person']
+
+        You can also pass `include_counts=True` to include counts for each
+        unique value in the summary field:
+
+        .. code-block:: python
+            :linenos:
+
+            # Generate a summary field for object labels and counts
+            dataset.create_summary_field(
+                "frames.detections.detections.label",
+                field_name="frames_detections_label2",
+                include_counts=True,
+            )
+
+            sample = dataset.first()
+            print(sample.frames_detections_label2)
+            """
+            [
+                <DynamicEmbeddedDocument: {'label': 'road sign', 'count': 198}>,
+                <DynamicEmbeddedDocument: {'label': 'vehicle', 'count': 175}>,
+                <DynamicEmbeddedDocument: {'label': 'person', 'count': 120}>,
+            ]
+            """
+
+    .. group-tab:: Numeric fields
+
+        When the input field is numeric (int, float, date, or datetime), the
+        summary field of each sample is populated with the `[min, max]` range
+        of the values observed in the field (across all frames for video
+        samples):
+
+        .. code-block:: python
+            :linenos:
+
+            sample = dataset.first()
+            print(sample.frames_detections_confidence)
+            # <DynamicEmbeddedDocument: {'min': 0.01, 'max': 0.99}>
+
+        You can also pass the `group_by` parameter to specify an attribute to
+        group by to generate per-attribute `[min, max]` ranges:
+
+        .. code-block:: python
+            :linenos:
+
+            # Generate a summary field for per-label [min, max] confidences
+            dataset.create_summary_field(
+                "frames.detections.detections.confidence",
+                field_name="frames_detections_confidence2",
+                group_by="label",
+            )
+
+            sample = dataset.first()
+            print(sample.frames_detections_confidence2)
+            """
+            [
+                <DynamicEmbeddedDocument: {'label': 'vehicle', 'min': 0.00, 'max': 0.98}>,
+                <DynamicEmbeddedDocument: {'label': 'person', 'min': 0.02, 'max': 0.97}>,
+                <DynamicEmbeddedDocument: {'label': 'road sign', 'min': 0.01, 'max': 0.99}>,
+            ]
+            """
+
+You can use
+:meth:`list_summary_fields() <fiftyone.core.dataset.Dataset.list_summary_fields>`
+to list the names of the summary fields on your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.list_summary_fields())
+    # ['frames_detections_label', 'frames_detections_confidence', ...]
+
+Since a summary field is derived from the contents of another field, it must be
+updated whenever there have been modifications to its source field. You can use
+:meth:`check_summary_fields() <fiftyone.core.dataset.Dataset.check_summary_fields>`
+to check for summary fields that *may* need to be updated:
+
+.. code-block:: python
+    :linenos:
+
+    # Newly created summary fields don't needed updating
+    print(dataset.check_summary_fields())
+    # []
+
+    # Modify the dataset
+    label_upper = F("label").upper()
+    dataset.set_field("frames.detections.detections.label", label_upper).save()
+
+    # Summary fields now (may) need updating
+    print(dataset.check_summary_fields())
+    # ['frames_detections_label', 'frames_detections_confidence', ...]
+
+.. note::
+
+    Note that inclusion in
+    :meth:`check_summary_fields() <fiftyone.core.dataset.Dataset.check_summary_fields>`
+    is only a heuristic, as any sample modifications *may not* have affected
+    the summary's source field.
+
+Use :meth:`update_summary_field() <fiftyone.core.dataset.Dataset.update_summary_field>`
+to regenerate a summary field based on the current values of its source field:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.update_summary_field("frames_detections_label")
+
+Finally, use
+:meth:`delete_summary_field() <fiftyone.core.dataset.Dataset.delete_summary_field>`
+or :meth:`delete_summary_fields() <fiftyone.core.dataset.Dataset.delete_summary_fields>`
+to delete existing summary field(s) that you no longer need:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.delete_summary_field("frames_detections_label")
+
 .. _using-media-type:
 
 Media type
