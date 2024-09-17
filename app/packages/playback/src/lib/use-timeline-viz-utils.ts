@@ -28,13 +28,18 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
     const numerator = frameNumber - 1;
     const denominator = config.totalFrames - 1;
     return (numerator / denominator) * 100;
-  }, [frameNumber]);
+  }, [frameNumber, config?.totalFrames]);
 
-  const seekTo = React.useCallback((newSeekValue: number) => {
-    pause();
-    const newFrameNumber = Math.ceil((newSeekValue / 100) * config.totalFrames);
-    setFrameNumber({ name: timelineName, newFrameNumber });
-  }, []);
+  const seekTo = React.useCallback(
+    (newSeekValue: number) => {
+      pause();
+      const newFrameNumber = Math.ceil(
+        (newSeekValue / 100) * config.totalFrames
+      );
+      setFrameNumber({ name: timelineName, newFrameNumber });
+    },
+    [setFrameNumber, pause, timelineName, config?.totalFrames]
+  );
 
   return {
     getSeekValue,

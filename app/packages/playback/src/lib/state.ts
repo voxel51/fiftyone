@@ -345,14 +345,6 @@ export const updatePlayheadStateAtom = atom(
 
 export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => {
-    // // update age of timeline config in cache by calling `.has`
-    // _timelineConfigsLruCache.has(_timelineName);
-    // console.log(
-    //   ">>>has",
-    //   _timelineName,
-    //   "in cache",
-    //   _timelineConfigsLruCache.has(_timelineName)
-    // );
     return get(_frameNumbers(_timelineName));
   })
 );
