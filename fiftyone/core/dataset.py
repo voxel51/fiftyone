@@ -1738,12 +1738,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _field = self.get_field(path)
 
         if isinstance(_field, (fof.StringField, fof.BooleanField)):
-            index_type = "categorical"
+            field_type = "categorical"
         elif isinstance(
             _field,
             (fof.FloatField, fof.IntField, fof.DateField, fof.DateTimeField),
         ):
-            index_type = "numeric"
+            field_type = "numeric"
         elif _field is not None:
             raise ValueError(
                 f"Cannot generate a summary for field '{path}' of "
@@ -1785,8 +1785,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 raise ValueError(f"Field '{field_name}' already exists")
 
         index_fields = []
-        summary_info = {"path": path, "index_type": index_type}
-        if index_type == "categorical":
+        summary_info = {"path": path, "field_type": field_type}
+        if field_type == "categorical":
             summary_info["include_counts"] = include_counts
             if include_counts:
                 label_field = field_name + ".label"
@@ -1810,7 +1810,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     subfield=type(_field),
                     info={_SUMMARY_FIELD_KEY: summary_info},
                 )
-        elif index_type == "numeric":
+        elif field_type == "numeric":
             summary_info["group_by"] = group_by
             if group_by is not None:
                 if "." in group_by:
@@ -1903,7 +1903,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _populate_summary_field(self, field_name, summary_info):
         path = summary_info["path"]
-        index_type = summary_info["index_type"]
+        field_type = summary_info["field_type"]
         include_counts = summary_info.get("include_counts", False)
         group_by = summary_info.get("group_by", None)
 
@@ -1925,7 +1925,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if list_fields:
             pipeline.append({"$unwind": "$" + list_fields[0]})
 
-        if index_type == "categorical":
+        if field_type == "categorical":
             if include_counts:
                 value = path.rsplit(".", 1)[-1]
                 pipeline.extend(
@@ -1974,7 +1974,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         },
                     ]
                 )
-        elif index_type == "numeric":
+        elif field_type == "numeric":
             if group_by is not None:
                 if "." in group_by:
                     value = group_by.rsplit(".", 1)[1]
