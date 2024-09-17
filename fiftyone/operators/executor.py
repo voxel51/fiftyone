@@ -37,6 +37,7 @@ class ExecutionRunState(object):
     """Enumeration of the available operator run states."""
 
     QUEUED = "queued"
+    PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"

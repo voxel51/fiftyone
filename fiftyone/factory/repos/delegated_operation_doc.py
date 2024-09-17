@@ -46,6 +46,7 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
+        self.pending_at = None
         self.result = None
         self.id = None
         self._doc = None
@@ -68,6 +69,7 @@ class DelegatedOperationDocument(object):
             doc["completed_at"] if "completed_at" in doc else None
         )
         self.failed_at = doc["failed_at"] if "failed_at" in doc else None
+        self.pending_at = doc["pending_at"] if "pending_at" in doc else None
         self.pinned = doc["pinned"] if "pinned" in doc else None
         self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
         self.run_link = doc["run_link"] if "run_link" in doc else None

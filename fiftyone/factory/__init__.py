@@ -12,6 +12,7 @@ class SortByField(object):
 
     UPDATED_AT = "updated_at"
     QUEUED_AT = "queued_at"
+    PENDING_AT = "pending_at"
     COMPLETED_AT = "completed_at"
     STARTED_AT = "started_at"
     FAILED_AT = "failed_at"
