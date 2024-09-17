@@ -31,8 +31,6 @@ const test = base.extend<{
 });
 
 test.describe("quickstart-groups", () => {
-  test.skip(true, "THIS TEST USES ZOO DATASET. TODO: FIX IT");
-
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
       max_samples: 12,

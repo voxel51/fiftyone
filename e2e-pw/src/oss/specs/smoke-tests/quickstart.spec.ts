@@ -23,8 +23,6 @@ const test = base.extend<{
 });
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
-  test.skip(true, "THIS TEST USES ZOO DATASET. TODO: FIX IT");
-
   await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
     max_samples: 5,
   });
