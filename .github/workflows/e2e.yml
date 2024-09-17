@@ -80,19 +80,13 @@ jobs:
             e2e-pw/node_modules
           key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
 
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
-        shell: bash
-
       - name: Cache Zoo
         id: fiftyone-cache
         uses: actions/cache@v4
         with:
           path: |
             .fiftyone
-          key: zoo-${{ steps.get-date.outputs.date }}
+          key: zoo-${{ hashFiles('e2e-pw/src/oss/specs/**') }}
 
       - name: Install E2E dependencies if not cached
         run: yarn install
