@@ -195,4 +195,18 @@ describe("Analytics", () => {
     const redacted4 = analytics.redact(undefined);
     expect(redacted4).toEqual(undefined);
   });
+
+  it("should allow setting version", () => {
+    analytics.load({
+      writeKey: "test",
+      userId: "user",
+      userGroup: "group",
+      debug: false,
+      version: "1.0.0",
+    });
+    analytics.track("custom_event");
+    expect(mockSegment.track).toHaveBeenCalledWith("custom_event", undefined, {
+      version: "1.0.0",
+    });
+  });
 });
