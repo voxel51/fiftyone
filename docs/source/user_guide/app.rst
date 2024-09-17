@@ -423,6 +423,11 @@ to view the existing indexes on a dataset, and you can use
 :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
 to delete indexes that you no longer need.
 
+.. note::
+
+    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
+    fields on large video datasets.
+
 For :ref:`group datasets <groups>`, you should also add a compound index that
 includes your group `name` field to optimize filters applied when viewing a
 single :ref:`group slice <groups-app>`:
@@ -442,11 +447,6 @@ single :ref:`group slice <groups-app>`:
     dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
 
     session = fo.launch_app(dataset)
-
-.. note::
-
-    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
-    fields on large video datasets.
 
 .. _app-sidebar-groups:
 
