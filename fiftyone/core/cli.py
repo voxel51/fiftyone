@@ -2199,6 +2199,15 @@ class ModelZooCommand(Command):
         _register_command(subparsers, "apply", ModelZooApplyCommand)
         _register_command(subparsers, "embed", ModelZooEmbedCommand)
         _register_command(subparsers, "delete", ModelZooDeleteCommand)
+        _register_command(
+            subparsers, "list-sources", ModelZooListSourcesCommand
+        )
+        _register_command(
+            subparsers, "register-source", ModelZooRegisterSourceCommand
+        )
+        _register_command(
+            subparsers, "delete-source", ModelZooDeleteSourceCommand
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2206,7 +2215,7 @@ class ModelZooCommand(Command):
 
 
 class ModelZooListCommand(Command):
-    """List datasets in the FiftyOne Model Zoo.
+    """List models in the FiftyOne Model Zoo.
 
     Examples::
 
@@ -2221,6 +2230,9 @@ class ModelZooListCommand(Command):
 
         # List available models with the given tag
         fiftyone zoo models list --tags <tag>
+
+        # List available models from the given remote source
+        fiftyone zoo models list --source <source>
     """
 
     @staticmethod
@@ -2243,50 +2255,55 @@ class ModelZooListCommand(Command):
             metavar="TAGS",
             help="only show models with the specified tag or list,of,tags",
         )
+        parser.add_argument(
+            "-s",
+            "--source",
+            metavar="SOURCE",
+            help="only show models available from the specified remote source",
+        )
 
     @staticmethod
     def execute(parser, args):
         names_only = args.names_only
         downloaded_only = args.downloaded_only
-        match_tags = args.tags
+        tags = args.tags
+        source = args.source
 
-        models_manifest = fozm._load_zoo_models_manifest()
+        if tags is not None:
+            tags = tags.split(",")
+
+        models = fozm._list_zoo_models(tags=tags, source=source)
         downloaded_models = fozm.list_downloaded_zoo_models()
 
         _print_zoo_models_list(
-            models_manifest,
+            models,
             downloaded_models,
             downloaded_only=downloaded_only,
-            match_tags=match_tags,
             names_only=names_only,
         )
 
 
 def _print_zoo_models_list(
-    models_manifest,
+    models,
     downloaded_models,
     downloaded_only=False,
-    match_tags=None,
     names_only=False,
 ):
-    if match_tags is not None:
-        match_tags = match_tags.split(",")
-
     records = []
-    for model in sorted(models_manifest.models, key=lambda model: model.name):
+    for model in sorted(models, key=lambda model: model.name):
         name = model.name
 
         if downloaded_only and name not in downloaded_models:
             continue
 
-        if (match_tags is not None) and not all(
-            model.has_tag(tag) for tag in match_tags
-        ):
-            continue
-
         if names_only:
             records.append(name)
             continue
+
+        if isinstance(model, fozm.RemoteZooModel):
+            is_remote = "\u2713"
+        else:
+            is_remote = ""
 
         if name in downloaded_models:
             is_downloaded = "\u2713"
@@ -2300,7 +2317,7 @@ def _print_zoo_models_list(
 
         tags = ",".join(model.tags or [])
 
-        records.append((name, tags, is_downloaded, model_path))
+        records.append((name, tags, is_remote, is_downloaded, model_path))
 
     if names_only:
         for name in records:
@@ -2308,7 +2325,7 @@ def _print_zoo_models_list(
 
         return
 
-    headers = ["name", "tags", "downloaded", "model_path"]
+    headers = ["name", "tags", "remote", "downloaded", "model_path"]
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
@@ -2460,43 +2477,95 @@ def _print_model_requirements(zoo_model):
 class ModelZooDownloadCommand(Command):
     """Download zoo models.
 
+    When downloading remotely-sourced zoo models, you can provide any of the
+    following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Examples::
 
-        # Download the zoo model
+        # Download a zoo model
         fiftyone zoo models download <name>
+
+        # Download a remotely-sourced zoo model
+        fiftyone zoo models download https://github.com/<user>/<repo> \\
+            --model-name <name>
+        fiftyone zoo models download <url> --model-name <name>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the zoo model"
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the model",
         )
         parser.add_argument(
-            "-f",
-            "--force",
-            action="store_true",
+            "-n",
+            "--model-name",
+            metavar="MODEL_NAME",
+            default=None,
             help=(
-                "whether to force download the model if it is already "
-                "downloaded"
+                "the specific model to download, if `name_or_url` is a remote "
+                "source"
             ),
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite any existing model files",
         )
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
-        force = args.force
-        fozm.download_zoo_model(name, overwrite=force)
+        fozm.download_zoo_model(
+            args.name_or_url,
+            model_name=args.model_name,
+            overwrite=args.overwrite,
+        )
 
 
 class ModelZooApplyCommand(Command):
     """Apply zoo models to datasets.
 
+    When applying remotely-sourced zoo models, you can provide any of the
+    following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Examples::
 
-        # Apply the zoo model to the dataset
+        # Apply a zoo model to a dataset
         fiftyone zoo models apply <model-name> <dataset-name> <label-field>
 
-        # Apply a zoo classifier with some customized parameters
+        # Apply a remotely-sourced zoo model to a dataset
+        fiftyone zoo models apply https://github.com/<user>/<repo> \\
+            <dataset-name> <label-field> --model-name <model-name>
+        fiftyone zoo models apply <url> \\
+            <dataset-name> <label-field> --model-name <model-name>
+
+        # Apply a zoo model with some customized parameters
         fiftyone zoo models apply \\
             <model-name> <dataset-name> <label-field> \\
             --confidence-thresh 0.7 \\
@@ -2507,9 +2576,9 @@ class ModelZooApplyCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "model_name",
-            metavar="MODEL_NAME",
-            help="the name of the zoo model",
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the zoo model",
         )
         parser.add_argument(
             "dataset_name",
@@ -2520,6 +2589,16 @@ class ModelZooApplyCommand(Command):
             "label_field",
             metavar="LABEL_FIELD",
             help="the name of the field in which to store the predictions",
+        )
+        parser.add_argument(
+            "-n",
+            "--model-name",
+            metavar="MODEL_NAME",
+            default=None,
+            help=(
+                "the specific model to apply, if `name_or_url` is a remote "
+                "source"
+            ),
         )
         parser.add_argument(
             "-b",
@@ -2565,7 +2644,8 @@ class ModelZooApplyCommand(Command):
     @staticmethod
     def execute(parser, args):
         model = fozm.load_zoo_model(
-            args.model_name,
+            args.name_or_url,
+            model_name=args.model_name,
             install_requirements=args.install,
             error_level=args.error_level,
         )
@@ -2584,18 +2664,39 @@ class ModelZooApplyCommand(Command):
 class ModelZooEmbedCommand(Command):
     """Generate embeddings for datasets with zoo models.
 
+    When applying remotely-sourced zoo models, you can provide any of the
+    following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
     Examples::
 
-        # Generate embeddings for the dataset with the zoo model
+        # Generate embeddings for a dataset with a zoo model
         fiftyone zoo models embed <model-name> <dataset-name> <embeddings-field>
+
+        # Generate embeddings for a dataset with a remotely-sourced zoo model
+        fiftyone zoo models embed https://github.com/<user>/<repo> \\
+            <dataset-name> <embeddings-field> --model-name <model-name>
+        fiftyone zoo models embed <url> \\
+            <dataset-name> <embeddings-field> --model-name <model-name>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "model_name",
-            metavar="MODEL_NAME",
-            help="the name of the zoo model",
+            "name_or_url",
+            metavar="NAME_OR_URL",
+            help="the name or remote location of the zoo model",
         )
         parser.add_argument(
             "dataset_name",
@@ -2606,6 +2707,16 @@ class ModelZooEmbedCommand(Command):
             "embeddings_field",
             metavar="EMBEDDINGS_FIELD",
             help="the name of the field in which to store the embeddings",
+        )
+        parser.add_argument(
+            "-n",
+            "--model-name",
+            metavar="MODEL_NAME",
+            default=None,
+            help=(
+                "the specific model to apply, if `name_or_url` is a remote "
+                "source"
+            ),
         )
         parser.add_argument(
             "-b",
@@ -2634,7 +2745,8 @@ class ModelZooEmbedCommand(Command):
     @staticmethod
     def execute(parser, args):
         model = fozm.load_zoo_model(
-            args.model_name,
+            args.name_or_url,
+            model_name=args.model_name,
             install_requirements=args.install,
             error_level=args.error_level,
         )
@@ -2665,6 +2777,120 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class ModelZooListSourcesCommand(Command):
+    """Lists remote zoo model sources that are registered locally.
+
+    Examples::
+
+        # Lists the registered remote zoo model sources
+        fiftyone zoo models list-sources
+    """
+
+    @staticmethod
+    def setup(parser):
+        pass
+
+    @staticmethod
+    def execute(parser, args):
+        _, remote_sources = fozm._load_zoo_models_manifest()
+
+        _print_zoo_model_sources_list(remote_sources)
+
+
+def _print_zoo_model_sources_list(remote_sources):
+    headers = ["name", "url"]
+
+    rows = []
+    for manifest in remote_sources.values():
+        rows.append(
+            {
+                "name": manifest.name or "",
+                "url": manifest.url,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class ModelZooRegisterSourceCommand(Command):
+    """Registers a remote source of zoo models.
+
+    You can provide any of the following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    .. note::
+
+        To download from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
+    Examples::
+
+        # Register a remote zoo model source
+        fiftyone zoo models register-source https://github.com/<user>/<repo>
+        fiftyone zoo models register-source <url>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url_or_gh_repo",
+            metavar="URL_OR_GH_REPO",
+            help="the remote source to register",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite any existing files",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fozm.register_zoo_model_source(
+            args.url_or_gh_repo, overwrite=args.overwrite
+        )
+
+
+class ModelZooDeleteSourceCommand(Command):
+    """Deletes the remote source and all downloaded models associated with it.
+
+    You can provide any of the following formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+    -   a publicly accessible URL of an archive (eg zip or tar) file
+
+    Examples::
+
+        # Delete a remote zoo model source
+        fiftyone zoo models delete-source https://github.com/<user>/<repo>
+        fiftyone zoo models delete-source <url>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url_or_gh_repo",
+            metavar="URL_OR_GH_REPO",
+            help="the remote source to delete",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fozm.delete_zoo_model_source(args.url_or_gh_repo)
 
 
 class OperatorsCommand(Command):
