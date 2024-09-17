@@ -1,22 +1,28 @@
 import { useTheme } from "@fiftyone/components";
 import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
-import { useCreateTimeline } from "@fiftyone/playback";
+import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
 import { useDefaultTimelineName } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import { BufferRange } from "@fiftyone/utilities";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
 import {
-    shortcutToHelpItems,
-    useClearSelectedLabels,
-    useLookerOptionsUpdate,
-    useShowOverlays,
+  shortcutToHelpItems,
+  useClearSelectedLabels,
+  useLookerOptionsUpdate,
+  useShowOverlays,
 } from "./ModalLooker";
 
 interface ImaVidLookerReactProps {
@@ -39,9 +45,8 @@ export const ImaVidLookerReact = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const {
-      subscribeToImaVidStateChanges,
-    } = useInitializeImaVidSubscriptions();
+    const { subscribeToImaVidStateChanges } =
+      useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -128,7 +133,6 @@ export const ImaVidLookerReact = React.memo(
     const hoveredSample = useRecoilValue(fos.hoveredSample);
 
     useEffect(() => {
-      const hoveredSampleId = hoveredSample?._id;
       looker.updater((state) => ({
         ...state,
         // todo: always setting it to true might not be wise
@@ -151,51 +155,84 @@ export const ImaVidLookerReact = React.memo(
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }, []);
 
-    const setDynamicGroupCurrentElementIndex = useSetRecoilState(
-      fos.dynamicGroupCurrentElementIndex
-    );
-
-    const myRenderFrame = React.useCallback((frameNumber: number) => {
-      console.log(">>>setting frame number", frameNumber);
-      ((activeLookerRef.current as unknown) as ImaVidLooker)?.element.drawFrame(
+    const renderFrame = React.useCallback((frameNumber: number) => {
+      (activeLookerRef.current as unknown as ImaVidLooker)?.element.drawFrame(
         frameNumber,
-        false
+        false,
+        true
       );
     }, []);
 
     const { getName } = useDefaultTimelineName();
     const timelineName = React.useMemo(() => getName(), [getName]);
 
+    const [totalFrameCount, setTotalFrameCount] = useState<number | null>(null);
+
+    const totalFrameCountRef = useRef<number | null>(null);
+
     const timelineCreationConfig = useMemo(() => {
       // todo: not working because it's resolved in a promise later
       // maybe emit event to update the total frames
-      const totalFrames = (looker as ImaVidLooker)?.frameStoreController
-        ?.totalFrameCount;
-
-      //   if (!totalFrames) {
-      //     return null;
-      //   }
+      if (!totalFrameCount) {
+        return null;
+      }
 
       return {
-        totalFrames: 120,
-        loop: true,
-      };
-    }, [looker, sampleDataWithExtraParams]);
+        totalFrames: totalFrameCount,
+        loop: (looker as ImaVidLooker).options.loop,
+      } as FoTimelineConfig;
+    }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
+
+    const readyWhen = useCallback(async () => {
+      return new Promise<void>((resolve) => {
+        // wait for total frame count to be resolved
+        let intervalId;
+        intervalId = setInterval(() => {
+          if (totalFrameCountRef.current) {
+            clearInterval(intervalId);
+            resolve();
+          }
+        }, 10);
+      });
+    }, []);
 
     const { isTimelineInitialized, subscribe } = useCreateTimeline({
       name: timelineName,
       config: timelineCreationConfig,
+      waitUntilInitialized: readyWhen,
     });
 
+    /**
+     * This effect subscribes to the timeline.
+     */
     useEffect(() => {
       if (isTimelineInitialized) {
         subscribe({
           id: `imavid-${sample._id}`,
           loadRange,
-          renderFrame: myRenderFrame,
+          renderFrame,
         });
       }
-    }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
+    }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);
+
+    /**
+     * This effect sets the total frame count by polling the frame store controller.
+     */
+    useEffect(() => {
+      // hack: poll every 10ms for total frame count
+      // replace with event listener or callback
+      let intervalId = setInterval(() => {
+        const totalFrameCount = (
+          activeLookerRef.current as unknown as ImaVidLooker
+        ).frameStoreController.totalFrameCount;
+        if (totalFrameCount) {
+          setTotalFrameCount(totalFrameCount);
+          clearInterval(intervalId);
+        }
+      }, 10);
+
+      return () => clearInterval(intervalId);
+    }, [looker]);
 
     return (
       <div

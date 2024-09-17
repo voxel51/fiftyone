@@ -124,6 +124,11 @@ export type CreateFoTimeline = {
    * Configuration for the timeline.
    */
   config: FoTimelineConfig;
+  /**
+   * An optional function that returns a promise that resolves when the timeline is ready to be initialized.
+   * If this function is not provided, the timeline is declared to be initialized immediately upon creation.
+   */
+  waitUntilInitialized?: () => Promise<void>;
 };
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
@@ -181,7 +186,10 @@ export const addTimelineAtom = atom(
 
     const timelineName = timeline.name;
 
-    const configWithImputedValues: Required<FoTimelineConfig> = {
+    const configWithImputedValues: Omit<
+      Required<FoTimelineConfig>,
+      "__internal_IsTimelineInitialized"
+    > = {
       totalFrames: timeline.config.totalFrames,
 
       defaultFrameNumber: Math.max(
@@ -194,12 +202,18 @@ export const addTimelineAtom = atom(
         timeline.config.targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE,
       useTimeIndicator:
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
-      __internal_IsTimelineInitialized: true,
     };
 
-    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+    const isTimelineAlreadyInitialized = get(
+      _timelineConfigs(timelineName)
+    ).__internal_IsTimelineInitialized;
+
+    if (isTimelineAlreadyInitialized) {
       // update config and return
-      set(_timelineConfigs(timelineName), configWithImputedValues);
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
       return;
     }
 
@@ -220,6 +234,21 @@ export const addTimelineAtom = atom(
     set(_timelineConfigs(timelineName), configWithImputedValues);
     set(_dataLoadedBuffers(timelineName), new BufferManager());
     set(_playHeadStates(timelineName), "paused");
+
+    if (timeline.waitUntilInitialized) {
+      timeline.waitUntilInitialized().then(() => {
+        set(_timelineConfigs(timelineName), {
+          ...configWithImputedValues,
+          __internal_IsTimelineInitialized: true,
+        });
+      });
+    } else {
+      // mark timeline as initialized
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
+    }
 
     // 'true' is a placeholder value, since we're just using the cache for disposing
     _INTERNAL_timelineConfigsLruCache.set(timelineName, timelineName);

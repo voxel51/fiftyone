@@ -138,7 +138,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     return {
       ...DEFAULT_BASE_OPTIONS,
-      loop: false,
+      loop: true,
       playbackRate: defaultPlaybackRate,
     } as ImaVidOptions;
   }
