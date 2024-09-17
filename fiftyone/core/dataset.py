@@ -1666,7 +1666,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_by=None,
         read_only=True,
         create_index=True,
-        overwrite=True,
     ):
         """Populates a sample-level field that records the unique values or
         numeric ranges that appear in the specified field on each sample in
@@ -1729,8 +1728,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             read_only (True): whether to mark the summary field as read-only
             create_index (True): whether to create database index(es) for the
                 summary field
-            overwrite (True): whether to overwrite any existing summary field
-                with the same name
 
         Returns:
             the summary field name
@@ -1776,13 +1773,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 chunks.append(_chunks[-1])
 
             field_name = "_".join(chunks)
-
-        field = self.get_field(field_name)
-        if field is not None:
-            if overwrite and _SUMMARY_FIELD_KEY in field.info:
-                self.delete_summary_field(field_name)
-            else:
-                raise ValueError(f"Field '{field_name}' already exists")
 
         index_fields = []
         summary_info = {"path": path, "field_type": field_type}
