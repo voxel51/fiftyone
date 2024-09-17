@@ -46,7 +46,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.odm.dataset import DatasetAppConfig, SidebarGroupDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -58,6 +58,8 @@ import fiftyone.core.view as fov
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
+
+_SUMMARY_FIELD_KEY = "_summary_field"
 
 logger = logging.getLogger(__name__)
 
@@ -1331,6 +1333,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1348,6 +1352,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1365,6 +1373,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
             include_private=include_private,
             flat=flat,
             mode=mode,
@@ -1375,6 +1385,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1394,6 +1406,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -1414,6 +1430,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
             include_private=include_private,
             flat=flat,
             mode=mode,
@@ -1625,6 +1643,516 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if expanded:
             self._reload()
+
+    def list_summary_fields(self):
+        """Lists the summary fields on the dataset.
+
+        Use :meth:`create_summary_field` to create summary fields, and use
+        :meth:`delete_summary_field` to delete them.
+
+        Returns:
+            a list of summary field names
+        """
+        return sorted(
+            self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
+        )
+
+    def create_summary_field(
+        self,
+        path,
+        field_name=None,
+        sidebar_group=None,
+        include_counts=False,
+        group_by=None,
+        read_only=True,
+        create_index=True,
+    ):
+        """Populates a sample-level field that records the unique values or
+        numeric ranges that appear in the specified field on each sample in
+        the dataset.
+
+        This method is particularly useful for summarizing frame-level fields
+        of video datasets, in which case the sample-level field records the
+        unique values or numeric ranges that appear in the specified
+        frame-level field across all frames of that sample. This summary field
+        can then be efficiently queried to retrieve samples that contain
+        specific values of interest in at least one frame.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+            dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
+
+            # Generate a summary field for object labels
+            dataset.create_summary_field("frames.detections.detections.label")
+
+            # Generate a summary field for [min, max] confidences
+            dataset.create_summary_field("frames.detections.detections.confidence")
+
+            # Generate a summary field for object labels and counts
+            dataset.create_summary_field(
+                "frames.detections.detections.label",
+                field_name="frames_detections_label2",
+                include_counts=True,
+            )
+
+            # Generate a summary field for per-label [min, max] confidences
+            dataset.create_summary_field(
+                "frames.detections.detections.confidence",
+                field_name="frames_detections_confidence2",
+                group_by="label",
+            )
+
+            print(dataset.list_summary_fields())
+
+        Args:
+            path: an input field path
+            field_name (None): the sample-level field in which to store the
+                summary data. By default, a suitable name is derived from the
+                given ``path``
+            sidebar_group (None): the name of a
+                :ref:`App sidebar group <app-sidebar-groups>` to which to add
+                the summary field, if necessary. By default, all summary fields
+                are added to a ``"summaries"`` group. You can pass ``False`` to
+                skip sidebar group modification
+            include_counts (False): whether to include per-value counts when
+                summarizing categorical fields
+            group_by (None): an optional attribute to group by when ``path``
+                is a numeric field to generate per-attribute ``[min, max]``
+                ranges. This may either be an absolute path or an attribute
+                name that is interpreted relative to ``path``
+            read_only (True): whether to mark the summary field as read-only
+            create_index (True): whether to create database index(es) for the
+                summary field
+
+        Returns:
+            the summary field name
+        """
+        _field = self.get_field(path)
+
+        if isinstance(_field, (fof.StringField, fof.BooleanField)):
+            field_type = "categorical"
+        elif isinstance(
+            _field,
+            (fof.FloatField, fof.IntField, fof.DateField, fof.DateTimeField),
+        ):
+            field_type = "numeric"
+        elif _field is not None:
+            raise ValueError(
+                f"Cannot generate a summary for field '{path}' of "
+                f"type {type(_field)}"
+            )
+        else:
+            raise ValueError(
+                "Cannot generate a summary field for non-existent or "
+                f"undeclared field '{path}'"
+            )
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+
+        if field_name is None:
+            _chunks = _path.split(".")
+
+            chunks = []
+            if is_frame_field:
+                chunks.append("frames")
+
+            found_list = False
+            for i, _chunk in enumerate(_chunks, 1):
+                if ".".join(_chunks[:i]) in list_fields:
+                    found_list = True
+                    break
+                else:
+                    chunks.append(_chunk)
+
+            if found_list:
+                chunks.append(_chunks[-1])
+
+            field_name = "_".join(chunks)
+
+        index_fields = []
+        summary_info = {"path": path, "field_type": field_type}
+        if field_type == "categorical":
+            summary_info["include_counts"] = include_counts
+            if include_counts:
+                label_field = field_name + ".label"
+                count_field = field_name + ".count"
+                index_fields.extend([label_field, count_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(label_field, type(_field))
+                self.add_sample_field(count_field, fof.IntField)
+            else:
+                index_fields.append(field_name)
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=type(_field),
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+        elif field_type == "numeric":
+            summary_info["group_by"] = group_by
+            if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_field = self.get_field(group_path)
+
+                value_field = field_name + f".{value}"
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([value_field, min_field, max_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(value_field, type(_group_field))
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+            else:
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([min_field, max_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+
+        if sidebar_group is not False:
+            if sidebar_group is None:
+                sidebar_group = "summaries"
+
+            if self.app_config.sidebar_groups is None:
+                sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
+                self.app_config.sidebar_groups = sidebar_groups
+            else:
+                sidebar_groups = self.app_config.sidebar_groups
+
+            index_group = None
+            for group in sidebar_groups:
+                if group.name == sidebar_group:
+                    index_group = group
+                else:
+                    if field_name in group.paths:
+                        group.paths.remove(field_name)
+
+            if index_group is None:
+                index_group = SidebarGroupDocument(name=sidebar_group)
+
+                insert_after = None
+                for i, group in enumerate(sidebar_groups):
+                    if group.name == "labels":
+                        insert_after = i
+
+                if insert_after is None:
+                    sidebar_groups.append(index_group)
+                else:
+                    sidebar_groups.insert(insert_after + 1, index_group)
+
+            if field_name not in index_group.paths:
+                index_group.paths.append(field_name)
+
+        if create_index:
+            for _field_name in index_fields:
+                self.create_index(_field_name)
+
+        field = self.get_field(field_name)
+        field.info[_SUMMARY_FIELD_KEY]["last_modified_at"] = field.created_at
+
+        if read_only:
+            field.read_only = True
+
+        field.save()
+
+        self._populate_summary_field(field_name, summary_info)
+
+        return field_name
+
+    def _populate_summary_field(self, field_name, summary_info):
+        path = summary_info["path"]
+        field_type = summary_info["field_type"]
+        include_counts = summary_info.get("include_counts", False)
+        group_by = summary_info.get("group_by", None)
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+
+        pipeline = []
+
+        if is_frame_field:
+            pipeline.extend(
+                [
+                    {"$unwind": "$frames"},
+                    {"$replaceRoot": {"newRoot": "$frames"}},
+                ]
+            )
+            _id = "_sample_id"
+        else:
+            _id = "_id"
+
+        if list_fields:
+            pipeline.append({"$unwind": "$" + list_fields[0]})
+
+        if field_type == "categorical":
+            if include_counts:
+                value = path.rsplit(".", 1)[-1]
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _path,
+                                },
+                                "count": {"$sum": 1},
+                            },
+                        },
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "count": "$count",
+                                    }
+                                },
+                            },
+                        },
+                    ]
+                )
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "values": {"$addToSet": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {
+                                    "$filter": {
+                                        "input": "$values",
+                                        "cond": {"$gt": ["$$this", None]},
+                                    }
+                                }
+                            }
+                        },
+                    ]
+                )
+        elif field_type == "numeric":
+            if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_path, _ = self._handle_frame_field(group_path)
+
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _group_path,
+                                },
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "min": "$min",
+                                        "max": "$max",
+                                    }
+                                },
+                            }
+                        },
+                    ]
+                )
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {"min": "$min", "max": "$max"}
+                            }
+                        },
+                    ]
+                )
+
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": self._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            }
+        )
+
+        self._aggregate(pipeline=pipeline, attach_frames=is_frame_field)
+
+        fos.Sample._reload_docs(self._sample_collection_name)
+
+    def check_summary_fields(self):
+        """Returns a list of summary fields that **may** need to be updated.
+
+        Summary fields may need to be updated whenever there have been
+        modifications to the dataset's samples since the summaries were last
+        generated.
+
+        Note that inclusion in this list is only a heuristic, as any sample
+        modifications may not have affected the summary's source field.
+
+        Returns:
+            list of summary field names
+        """
+        summary_schema = self.get_field_schema(
+            flat=True, info_keys=_SUMMARY_FIELD_KEY
+        )
+
+        update_indexes = []
+        samples_last_modified_at = None
+        frames_last_modified_at = None
+        for path, field in summary_schema.items():
+            summary_info = field.info[_SUMMARY_FIELD_KEY]
+            source_path = summary_info.get("path", None)
+            last_modified_at = summary_info.get("last_modified_at", None)
+
+            if source_path is None:
+                continue
+            elif last_modified_at is None:
+                update_indexes.append(path)
+            elif self._is_frame_field(source_path):
+                if frames_last_modified_at is None:
+                    frames_last_modified_at, _ = self.bounds(
+                        "frames.last_modified_at"
+                    )
+
+                if frames_last_modified_at > last_modified_at:
+                    update_indexes.append(path)
+            else:
+                if samples_last_modified_at is None:
+                    _, samples_last_modified_at = self.bounds(
+                        "last_modified_at"
+                    )
+
+                if samples_last_modified_at > last_modified_at:
+                    update_indexes.append(path)
+
+        return update_indexes
+
+    def update_summary_field(self, field_name):
+        """Updates the summary field based on the current values of its source
+        field.
+
+        Args:
+            field_name: the summary field
+        """
+
+        # This prevents a "weakly-referenced object no longer exists" error
+        # from occurring when updating multiple summary fields sequentially
+        # @todo diagnose and cure root cause so this isn't needed
+        self._reload(hard=True)
+
+        field = self.get_field(field_name)
+        if field is None or _SUMMARY_FIELD_KEY not in field.info:
+            raise ValueError(f"Field {field_name} is not a summary field")
+
+        summary_info = field.info[_SUMMARY_FIELD_KEY]
+        summary_info["last_modified_at"] = datetime.utcnow()
+        field.save(_enforce_read_only=False)
+
+        self._populate_summary_field(field_name, summary_info)
+
+    def delete_summary_field(self, field_name, error_level=0):
+        """Deletes the summary field from all samples in the dataset.
+
+        Args:
+            field_name: the summary field
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_name, error_level)
+
+    def delete_summary_fields(self, field_names, error_level=0):
+        """Deletes the summary fields from all samples in the dataset.
+
+        Args:
+            field_names: the summary field or iterable of summary fields
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_names, error_level)
+
+    def _delete_summary_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+
+        _field_names = []
+        for field_name in field_names:
+            field = self.get_field(field_name)
+
+            if field is None or _SUMMARY_FIELD_KEY not in field.info:
+                fou.handle_error(
+                    ValueError(f"Field {field_name} is not a summary field"),
+                    error_level,
+                )
+            else:
+                if field.read_only:
+                    field.read_only = False
+                    field.save()
+
+                _field_names.append(field_name)
+
+        if _field_names:
+            self._delete_sample_fields(_field_names, error_level)
 
     def _add_implied_frame_field(
         self, field_name, value, dynamic=False, validate=True
@@ -3692,7 +4220,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._deleted = True
             raise ValueError("Dataset '%s' is deleted" % name)
 
-    def _save_field(self, field):
+    def _save_field(self, field, _enforce_read_only=True):
         if self._is_generated:
             raise ValueError(
                 "Cannot save fields on generated views. Use the dataset's "
@@ -3709,7 +4237,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc = doc_cls._get_field_doc(path, reload=True)
 
-        if is_default:
+        if is_default and _enforce_read_only:
             default_field = self._get_default_field(field.path)
             if default_field.read_only and not field.read_only:
                 raise ValueError(
@@ -3717,7 +4245,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     % field.path
                 )
 
-        if "." in path:
+        if "." in path and _enforce_read_only:
             root = path.rsplit(".", 1)[0]
             root_doc = doc_cls._get_field_doc(root)
             if root_doc.read_only:
@@ -3725,7 +4253,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Cannot edit read-only field '%s'" % field.path
                 )
 
-        if field.read_only and field_doc.read_only:
+        if field.read_only and field_doc.read_only and _enforce_read_only:
             raise ValueError("Cannot edit read-only field '%s'" % field.path)
 
         if field.read_only != field_doc.read_only:
@@ -9653,8 +10181,9 @@ def _handle_nested_fields(schema):
 
 def _set_field_read_only(field_doc, read_only):
     field_doc.read_only = read_only
-    for _field_doc in field_doc.fields:
-        _set_field_read_only(_field_doc, read_only)
+    if hasattr(field_doc, "fields"):
+        for _field_doc in field_doc.fields:
+            _set_field_read_only(_field_doc, read_only)
 
 
 def _extract_archive_if_necessary(archive_path, cleanup):

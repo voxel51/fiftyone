@@ -179,6 +179,8 @@ class DatasetMixin(object):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -198,6 +200,10 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -221,6 +227,8 @@ class DatasetMixin(object):
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
             include_private=include_private,
             flat=flat,
             mode=mode,

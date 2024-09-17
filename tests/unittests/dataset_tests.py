@@ -712,6 +712,233 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_summary_fields(self):
+        gt = fo.Detections(
+            detections=[
+                fo.Detection(label="foo", confidence=0.1),
+                fo.Detection(label="foo", confidence=0.9),
+                fo.Detection(label="bar", confidence=0.5),
+            ]
+        )
+        sample1 = fo.Sample(filepath="video1.mp4", gt=gt)
+        sample1.frames[1] = fo.Frame(gt=gt)
+        sample1.frames[2] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        dataset.create_summary_field("gt.detections.label")
+        dataset.create_summary_field("gt.detections.confidence")
+        dataset.create_summary_field(
+            "gt.detections.label",
+            field_name="gt_label_counts",
+            include_counts=True,
+            read_only=False,
+            create_index=False,
+        )
+        dataset.create_summary_field(
+            "gt.detections.confidence",
+            field_name="gt_confidence_by_label",
+            group_by="label",
+            read_only=False,
+            create_index=False,
+        )
+
+        dataset.create_summary_field("frames.gt.detections.label")
+        dataset.create_summary_field("frames.gt.detections.confidence")
+        dataset.create_summary_field(
+            "frames.gt.detections.label",
+            field_name="frames_gt_label_counts",
+            include_counts=True,
+            read_only=False,
+            create_index=False,
+        )
+        dataset.create_summary_field(
+            "frames.gt.detections.confidence",
+            field_name="frames_gt_confidence_by_label",
+            group_by="label",
+            read_only=False,
+            create_index=False,
+        )
+
+        to_sets = lambda l: [set(x) if x is not None else x for x in l]
+
+        self.assertListEqual(
+            to_sets(dataset.values("gt_label")),
+            [{"foo", "bar"}, None],
+        )
+        self.assertListEqual(
+            dataset.values("gt_confidence"),
+            [fo.DynamicEmbeddedDocument(min=0.1, max=0.9), None],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("gt_label_counts")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", count=2),
+                    fo.DynamicEmbeddedDocument(label="bar", count=1),
+                },
+                None,
+            ],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("gt_confidence_by_label")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", min=0.1, max=0.9),
+                    fo.DynamicEmbeddedDocument(label="bar", min=0.5, max=0.5),
+                },
+                None,
+            ],
+        )
+
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_label")),
+            [{"foo", "bar"}, None],
+        )
+        self.assertListEqual(
+            dataset.values("frames_gt_confidence"),
+            [fo.DynamicEmbeddedDocument(min=0.1, max=0.9), None],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_label_counts")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", count=2),
+                    fo.DynamicEmbeddedDocument(label="bar", count=1),
+                },
+                None,
+            ],
+        )
+        self.assertListEqual(
+            to_sets(dataset.values("frames_gt_confidence_by_label")),
+            [
+                {
+                    fo.DynamicEmbeddedDocument(label="foo", min=0.1, max=0.9),
+                    fo.DynamicEmbeddedDocument(label="bar", min=0.5, max=0.5),
+                },
+                None,
+            ],
+        )
+
+        summary_fields = dataset.list_summary_fields()
+
+        self.assertTrue(dataset.get_field("gt_label").read_only)
+        self.assertTrue(dataset.get_field("gt_confidence").read_only)
+        self.assertFalse(dataset.get_field("gt_label_counts").read_only)
+        self.assertFalse(dataset.get_field("gt_confidence_by_label").read_only)
+
+        self.assertTrue(dataset.get_field("frames_gt_label").read_only)
+        self.assertTrue(dataset.get_field("frames_gt_confidence").read_only)
+        self.assertFalse(dataset.get_field("frames_gt_label_counts").read_only)
+        self.assertFalse(
+            dataset.get_field("frames_gt_confidence_by_label").read_only
+        )
+
+        self.assertSetEqual(
+            set(summary_fields),
+            {
+                "gt_label",
+                "gt_confidence",
+                "gt_label_counts",
+                "gt_confidence_by_label",
+                "frames_gt_label",
+                "frames_gt_confidence",
+                "frames_gt_label_counts",
+                "frames_gt_confidence_by_label",
+            },
+        )
+
+        db_indexes = dataset.list_indexes()
+
+        self.assertTrue("gt_label" in db_indexes)
+        self.assertTrue("gt_confidence.min" in db_indexes)
+        self.assertTrue("gt_confidence.max" in db_indexes)
+        self.assertFalse("gt_label_counts.label" in db_indexes)
+        self.assertFalse("gt_label_counts.count" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.max" in db_indexes)
+
+        self.assertTrue("frames_gt_label" in db_indexes)
+        self.assertTrue("frames_gt_confidence.min" in db_indexes)
+        self.assertTrue("frames_gt_confidence.max" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.label" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.count" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
+
+        update_fields = dataset.check_summary_fields()
+
+        self.assertListEqual(update_fields, [])
+
+        label_upper = F("label").upper()
+        dataset.set_field("gt.detections.label", label_upper).save()
+        dataset.set_field("frames.gt.detections.label", label_upper).save()
+
+        update_fields = dataset.check_summary_fields()
+
+        self.assertSetEqual(
+            set(update_fields),
+            {
+                "gt_label",
+                "gt_confidence",
+                "gt_label_counts",
+                "gt_confidence_by_label",
+                "frames_gt_label",
+                "frames_gt_confidence",
+                "frames_gt_label_counts",
+                "frames_gt_confidence_by_label",
+            },
+        )
+
+        for field_name in update_fields:
+            dataset.update_summary_field(field_name)
+
+        update_fields = dataset.check_summary_fields()
+
+        self.assertListEqual(update_fields, [])
+
+        dataset.delete_summary_field("gt_label")
+        dataset.delete_summary_fields("gt_confidence")
+        dataset.delete_summary_fields(
+            ["gt_label_counts", "gt_confidence_by_label"]
+        )
+
+        dataset.delete_summary_field("frames_gt_label")
+        dataset.delete_summary_fields("frames_gt_confidence")
+        dataset.delete_summary_fields(
+            ["frames_gt_label_counts", "frames_gt_confidence_by_label"]
+        )
+
+        summary_fields = dataset.list_summary_fields()
+
+        self.assertListEqual(summary_fields, [])
+
+        db_indexes = dataset.list_indexes()
+
+        self.assertFalse("gt_label" in db_indexes)
+        self.assertFalse("gt_confidence.min" in db_indexes)
+        self.assertFalse("gt_confidence.max" in db_indexes)
+        self.assertFalse("gt_label_counts.label" in db_indexes)
+        self.assertFalse("gt_label_counts.count" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("gt_confidence_by_label.max" in db_indexes)
+
+        self.assertFalse("frames_gt_label" in db_indexes)
+        self.assertFalse("frames_gt_confidence.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence.max" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.label" in db_indexes)
+        self.assertFalse("frames_gt_label_counts.count" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.label" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.min" in db_indexes)
+        self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
