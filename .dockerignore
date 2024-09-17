@@ -3,3 +3,5 @@
 !dist
 !deployment/
 !docker/
+!app/
+!teams-app/

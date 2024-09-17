@@ -1,0 +1,52 @@
+{
+    "name": "@fiftyone/teams-app",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "lint": "next lint",
+        "start": "next start",
+        "format": "prettier --write ."
+    },
+    "dependencies": {
+        "@fiftyone/state": "*",
+        "bytes": "^3.1.2",
+        "cookie": "^0.6.0",
+        "cookies-next": "^2.1.1",
+        "global-agent": "^3.0.0",
+        "jose": "^5.2.0",
+        "lodash": "^4.17.21",
+        "next": "^12.2.3",
+        "notistack": "^3.0.1",
+        "react-loading-skeleton": "^3.1.0",
+        "react-relay": "^16.2.0",
+        "recoil": "^0.7.6",
+        "recoil-relay": "^0.1.0",
+        "relay-nextjs": "^0.8.0",
+        "relay-runtime": "^16.2.0",
+        "styled-components": "^6.1.8"
+    },
+    "devDependencies": {
+        "@babel/plugin-proposal-private-methods": "^7.18.6",
+        "@types/lodash": "^4.14.184",
+        "@types/node": "18.0.3",
+        "@types/react": "18.0.15",
+        "@types/react-dom": "18.0.6",
+        "babel-plugin-relay": "^14.0.0",
+        "case-sensitive-paths-webpack-plugin": "^2.4.0",
+        "eslint": "8.19.0",
+        "eslint-config-next": "^14.2.5",
+        "file-loader": "^6.2.0",
+        "graphql": "^16.5.0",
+        "next-transpile-modules": "^9.0.0",
+        "prettier": "^2.7.1",
+        "relay-compiler": "^14.0.0",
+        "relay-compiler-language-typescript": "^15.0.1",
+        "relay-config": "^12.0.1",
+        "typescript": "4.7.4"
+    },
+    "relay": {
+        "eagerEsModules": true
+    }
+}
