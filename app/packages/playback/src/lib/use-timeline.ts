@@ -29,8 +29,17 @@ export const useTimeline = (name?: TimelineName) => {
 
   const timelineName = useMemo(() => name ?? getName(), [name, getName]);
 
-  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
-    useAtomValue(getTimelineConfigAtom(timelineName));
+  const config = useAtomValue(getTimelineConfigAtom(timelineName));
+
+  const isTimelineInitialized = useMemo(() => {
+    return config.__internal_IsTimelineInitialized;
+  }, [config]);
+
+  const leanConfig = useMemo(() => {
+    const { __internal_IsTimelineInitialized: _, ...rest } = config;
+    return rest;
+  }, [config]);
+
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const subscribeImpl = useSetAtom(addSubscriberAtom);
@@ -101,7 +110,7 @@ export const useTimeline = (name?: TimelineName) => {
   );
 
   return {
-    config,
+    config: leanConfig,
     isTimelineInitialized,
     playHeadState,
 

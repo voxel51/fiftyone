@@ -36,7 +36,7 @@ export const Timeline = React.memo(
         const newSeekBarValue = Number(e.target.value);
         seekTo(newSeekBarValue);
       },
-      []
+      [seekTo]
     );
 
     const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
