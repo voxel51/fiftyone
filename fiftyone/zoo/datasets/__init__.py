@@ -8,6 +8,7 @@ download via FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 import importlib
 import inspect
@@ -126,11 +127,11 @@ def list_downloaded_zoo_datasets():
         a dict mapping dataset names to
         (``dataset_dir``, :class:`ZooDatasetInfo`) tuples
     """
-    downloaded_datasets = {}
-
     root_dir = fo.config.dataset_zoo_dir
     if not root_dir or not os.path.isdir(root_dir):
-        return
+        return {}
+
+    downloaded_datasets = {}
 
     for dataset_dir, dirs, _ in os.walk(root_dir, followlinks=True):
         if dataset_dir == root_dir:
