@@ -262,8 +262,11 @@ export const ImaVidLookerReact = React.memo(
             position: "absolute",
             bottom: 0,
             width: "100%",
-            height: "38px",
+            height: "43px",
             zIndex: 1,
+          }}
+          controlsStyle={{
+            marginLeft: "1em",
           }}
         />
       </div>
