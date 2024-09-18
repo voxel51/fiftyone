@@ -1,7 +1,7 @@
 import { Optional, useEventHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
@@ -39,9 +39,9 @@ export const useCreateTimeline = (
     [mayBeTimelineName, getName]
   );
 
-  const [isTimelineInitialized, setIsTimelineInitialized] = useState(false);
+  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
+    useAtomValue(getTimelineConfigAtom(timelineName));
 
-  const config = useAtomValue(getTimelineConfigAtom(timelineName));
   const frameNumber = useAtomValue(getFrameNumberAtom(timelineName));
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const updateFreq = useAtomValue(getTimelineUpdateFreqAtom(timelineName));
@@ -65,12 +65,12 @@ export const useCreateTimeline = (
     // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
 
-    setIsTimelineInitialized(true);
-
     return () => {
       // when component using this hook unmounts, pause animation
-      // pause();
+      pause();
+      // timeline cleanup is handled by `_INTERNAL_timelineConfigsLruCache::dispose()`
     };
+
     // note: we're not using newTimelineConfig.config as a dependency
     // because it's not guaranteed to be referentially stable.
     // that would require caller to memoize the passed config object.

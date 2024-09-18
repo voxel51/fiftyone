@@ -258,15 +258,25 @@ export const addTimelineAtom = atom(
 export const addSubscriberAtom = atom(
   null,
   (
-    _get,
+    get,
     set,
     {
       name,
       subscription,
     }: { name: TimelineName; subscription: SequenceTimelineSubscription }
   ) => {
+    // warn if subscription with this id already exists
+    if (get(_subscribers(name)).has(subscription.id)) {
+      console.warn(
+        `Subscription with ${subscription.id} already exists for timeline ${name}. Replacing old subscription. Make sure this is an intentional behavior.`
+      );
+    }
+
+    const bufferManager = get(_dataLoadedBuffers(name));
+
     set(_subscribers(name), (prev) => {
       prev.set(subscription.id, subscription);
+      bufferManager.reset();
       return prev;
     });
   }
@@ -380,6 +390,15 @@ export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
 
 export const getPlayheadStateAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => get(_playHeadStates(_timelineName)))
+);
+
+export const getIsTimelineInitializedAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => {
+      return Boolean(
+        get(_timelineConfigs(_timelineName)).__internal_IsTimelineInitialized
+      );
+    })
 );
 
 export const getTimelineConfigAtom = atomFamily((_timelineName: TimelineName) =>
