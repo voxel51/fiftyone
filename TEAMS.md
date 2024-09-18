@@ -79,8 +79,7 @@ symlinks. The OSS packages required by the Teams App are symlinked in the
 environment across (all frontend code), that enables Hot Module Replacement
 (HMR) for all packages when running the NextJS development server.
 
-There are two monorepos. Each should have dependencies installed to avoid
-dependency issues.
+Dependencies from both the embedded server and teams app must be installed.
 
 ```sh
 # install embedded server
