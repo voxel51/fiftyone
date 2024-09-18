@@ -475,6 +475,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 }
 
 export * from "./frame-count";
+export * from "./iv-controls";
 export * from "./loader-bar";
 export * from "./play-button";
 export * from "./playback-rate";
