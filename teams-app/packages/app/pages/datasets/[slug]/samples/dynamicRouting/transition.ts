@@ -1,24 +1,16 @@
-import {
-  gridAt,
-  gridOffset,
-  gridPage
-} from '@fiftyone/core/src/components/Grid/recoil';
+import { gridAt, gridOffset, gridPage } from '@fiftyone/core/src/components/Grid/recoil';
 import { subscribe } from '@fiftyone/relay';
 import type { SpaceNodeJSON } from '@fiftyone/spaces';
-import {
-  SPACES_DEFAULT,
-  ensureColorScheme,
-  getSessionRef
-} from '@fiftyone/state';
+import { ensureColorScheme, getSessionRef, SPACES_DEFAULT } from '@fiftyone/state';
 import { toSlug } from '@fiftyone/utilities';
 import { loading } from 'pages/state';
 import { useRecoilCallback } from 'recoil';
 import loadPageQuery, { type Page } from './loadPageQuery';
 import {
   CONST_EVENTS,
+  getHistoryState,
   type HistoryState,
   MODAL_EVENT,
-  getHistoryState,
   replaceHistoryState
 } from './state';
 import { type TeamsSession, writeSession } from './useLocalSession';
@@ -135,7 +127,7 @@ const assignSession = (state: HistoryState, session: Session) => {
   }
 
   return {
-    workspaceSlug: session.sessionSpaces._name
+    workspaceSlug: session.sessionSpaces?._name
       ? toSlug(session.sessionSpaces._name)
       : undefined
   };
@@ -225,7 +217,7 @@ export const load = async (
         slice: session.sessionGroupSlice,
         snapshot: session.snapshot,
         view: session.view || [],
-        workspaceSlug: session.sessionSpaces._name
+        workspaceSlug: session.sessionSpaces?._name
           ? toSlug(session.sessionSpaces._name)
           : undefined
       });
