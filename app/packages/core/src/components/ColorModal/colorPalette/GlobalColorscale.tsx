@@ -77,6 +77,14 @@ const GlobalColorscale: React.FC = () => {
         const list = copy.sort(
           (a, b) => (a.value as number) - (b.value as number)
         );
+        // a valid list must include 0 and 1
+        // if not, we will insert the missing value
+        if (list[0].value !== 0) {
+          list.unshift({ value: 0, color: list[0].color });
+        }
+        if (list[list.length - 1].value !== 1) {
+          list.push({ value: 1, color: list[list.length - 1].color });
+        }
         setColorScheme((c) => ({
           ...c,
           defaultColorscale: { ...(c.defaultColorscale ?? {}), list },
