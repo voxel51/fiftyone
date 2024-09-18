@@ -33,8 +33,9 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
   const seekTo = React.useCallback(
     (newSeekValue: number) => {
       pause();
-      const newFrameNumber = Math.ceil(
-        (newSeekValue / 100) * config.totalFrames
+      const newFrameNumber = Math.max(
+        Math.ceil((newSeekValue / 100) * config.totalFrames),
+        1
       );
       setFrameNumber({ name: timelineName, newFrameNumber });
     },

@@ -6,17 +6,17 @@ import {
   FrameState,
   ImaVidState,
   ImageState,
-  ThreeDState,
   StateUpdate,
+  ThreeDState,
   VideoState,
 } from "../state";
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
+import * as imavid from "./imavid";
 import * as pcd from "./three-d";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
-import * as imavid from "./imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
@@ -224,16 +224,8 @@ export const getImaVidElements: GetElements<ImaVidState> = (
         node: common.ThumbnailSelectorElement,
       },
       {
-        node: imavid.LoaderBar,
-      },
-      {
-        node: common.ControlsElement,
+        node: imavid.ImaVidControlsElement,
         children: [
-          { node: imavid.SeekBarElement },
-          { node: imavid.SeekBarThumbElement },
-          { node: imavid.PlayButtonElement },
-          { node: imavid.FrameCountElement },
-          imavid.IMAVID_PLAYBACK_RATE,
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
