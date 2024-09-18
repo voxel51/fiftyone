@@ -105,7 +105,6 @@ const getValidMaskColors = (maskColors: unknown[]) => {
         input &&
         isObject(input) &&
         typeof Number(input["intTarget"]) == "number" &&
-        inRange(Number(input["intTarget"]), 1, 255) &&
         isString(input["color"]) &&
         isValidColor(input?.color)
       );
