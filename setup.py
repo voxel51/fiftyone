@@ -41,7 +41,7 @@ INSTALL_REQUIRES = [
     "pprintpp",
     "psutil",
     "pydash==8.0.1",
-    "pymongo>=3.12",
+    "pymongo>=3.12,<4.9",
     "pytz",
     "PyYAML",
     "regex",
