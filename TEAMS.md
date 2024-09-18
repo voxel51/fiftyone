@@ -1,7 +1,11 @@
 # FiftyOne Teams
 
 This document describes how we develop FiftyOne Teams, which is a private fork
-of [FiftyOne](https://github.com/voxel51/fiftyone).
+of [FiftyOne](https://github.com/voxel51/fiftyone) with Teams-specific
+updates.
+
+Detailed instructions for how to stand up the full FiftyOne Teams stack are
+[available](https://github.com/voxel51/voxel-hub) in the `voxel-hub` repository.
 
 ## Teams Documentation
 
@@ -13,6 +17,7 @@ Release notes for Teams releases are documented
 [in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
 
 ## Developing with the embedded server
+The embedded server is run as the `fiftyone-app` service in deployments.
 
 When developing and integrating features for the new
 [Teams](https://github.com/voxel51/fiftyone) embedded dataset page, you will
@@ -21,6 +26,136 @@ legacy API calls (i.e. the embedded OSS GraphQL API and deprecated rest
 routes). Please refer to the subpackage
 [README](https://github.com/voxel51/fiftyone-teams/tree/develop/package/teams)
 for installation and development instructions.
+
+## Teams App
+Teams App runs as the `teams-app` service in deployments.
+
+Note the App development is nuanced. If these instructions cause confusion,
+please contact an experienced frontend team member!
+
+- teams-app
+    - React web application                                                     │
+    - Runs at: http://localhost:3000                                            │
+    - Code directory at `fiftyone-teams/teams-app/packages/app` and
+	  `fiftyone-teams/app`
+
+- FiftyOne Teams App
+    ```shell
+    % cd fiftyone-teams
+
+    # Use node 18
+    % nvm use 18
+    # Enable yarn (with node 18)
+    % corepack enable
+
+    # Install dependencies
+    % cd app && yarn install && cd -
+    % cd teams-app && yarn install && cd -
+
+    # Start the server
+    % cd teams-app/packages/app
+    % yarn dev
+
+    # FOT should now be running at localhost:3000
+    ```
+
+### App Prerequisites
+
+-   [Node.js 18.10.\* and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+    -   [nvm](https://github.com/nvm-sh/nvm) is recommended
+-   [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+
+### App Setup
+
+The embedded code requires a separate API server. The
+[voxel51/fiftyone-teams][fiftyone-teams] repository is used for embedded
+development. [voxel51/fiftyone-teams][fiftyone-teams] is a private fork of OSS
+fiftyone. We intend to replace fiftyone-teams with OSS fiftyone when we do not
+require a separate embedded server.
+
+Development of the Teams App and embedded server code pages is organized via
+symlinks. The OSS packages required by the Teams App are symlinked in the
+[./teams-app/oss/](./teams-app/oss) directory. This creates a monorepo development
+environment across (all frontend code), that enables Hot Module Replacement
+(HMR) for all packages when running the NextJS development server.
+
+There are two monorepos. Each should have dependencies installed to avoid
+dependency issues.
+
+```sh
+# install embedded server
+cd app && yarn install && cd -
+
+# install Teams
+cd teams-app && yarn install
+```
+
+When developing features that change embedded server packages, prototype and
+commit changes to [voxel51/fiftyone-teams][fiftyone-teams].
+Before merging code into [voxel51/fiftyone-teams][fiftyone-teams] cherry-pick
+the changes into OSS [fiftyone][fiftyone].
+
+After OSS packages are updated in [voxel51/fiftyone][fiftyone], those changes
+should be merged in from the same PR branch.
+
+Your changes should then be committed in the main Teams repository. Here is an
+example (including initial setup)
+
+1. Initial Setup
+```sh
+mkdir ~/code && cd ~/code
+git clone git@github.com:voxel51/fiftyone.git
+git clone git@github.com:voxel51/fiftyone-teams.git
+
+# add remotes
+cd ~/code/fiftyone
+git remote add teams git@github.com:voxel51/fiftyone-teams.git
+
+cd ~/code/fiftyone-teams
+git remote add oss git@github.com:voxel51/fiftyone.git
+
+# install OSS
+cd app && yarn install && cd -
+
+# install Teams
+cd teams-app && yarn install
+```
+
+2. Running hub app
+```sh
+# run dev server and develop
+cd ~/code/fiftyone-teams/teams-app/packages/app
+yarn dev
+```
+
+3. Commiting changes
+```sh
+# commit changes in voxel-hub and the fiftyone-teams submodule
+cd ~/code/fiftyone-teams
+# make edits
+git checkout -b ...
+git add .
+git commit -m ...
+git push ...
+
+# in OSS cherry pick changes and open a PR
+cd ~/code/fiftyone
+git checkout -b ...
+git fetch teams
+# for each commit
+git cherry-pick <COMMIT_SHA>
+
+cd ~/code/fiftyone-teams
+git fetch oss
+git checkout develop
+# create a new branch! this will be committed to develop
+git checkout -b ...
+git rebase <OSS_BRANCH_NAME>
+cd ../
+git add .
+# commit OSS merged submodule and open Hub PR
+git commit -m ...
+```
 
 ## Installing Teams releases
 
