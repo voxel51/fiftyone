@@ -116,7 +116,7 @@ FiftyOne.
 
 ## Contributing to FiftyOne
 
-FiftyOne and [FiftyOne-Brain](https://github.com/voxel51/fiftyone-brain) are
+FiftyOne and [FiftyOne Brain](https://github.com/voxel51/fiftyone-brain) are
 open source and community contributions are welcome!
 
 Check out the
