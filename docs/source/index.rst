@@ -439,8 +439,9 @@ provided via GitHub repositories or URLs.
         "clip-vit-base32-torch",
         text_prompt="A photo of a",
         classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
-        label_field="zero_shot_predictions",
     )
+
+    dataset.apply_model(model, label_field="zero_shot_predictions")
 
     session = fo.launch_app(dataset)
 
