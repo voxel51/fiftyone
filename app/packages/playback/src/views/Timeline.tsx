@@ -17,13 +17,14 @@ import {
 interface TimelineProps {
   name: TimelineName;
   style?: React.CSSProperties;
+  controlsStyle?: React.CSSProperties;
 }
 
 /**
  * Renders a "classic" FO timeline with a seekbar, playhead, speed control, and status indicator.
  */
 export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ name, style }, ref) => {
+  ({ name, style, controlsStyle }, ref) => {
     const { playHeadState, config, play, pause } = useTimeline(name);
     const frameNumber = useFrameNumber(name);
 
@@ -58,7 +59,7 @@ export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
           shouldDisplayThumb={isHoveringSeekBar}
           value={seekBarValue}
         />
-        <FoTimelineControlsContainer>
+        <FoTimelineControlsContainer style={controlsStyle}>
           <Playhead
             status={playHeadState}
             timelineName={name}

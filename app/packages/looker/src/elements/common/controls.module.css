@@ -30,8 +30,16 @@
   width: 50%;
   margin-left: auto;
   z-index: 1000;
-  height: unset;
   opacity: 0.95;
+  height: 43px;
+  margin-right: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 
 .lookerError > .lookerControls {
