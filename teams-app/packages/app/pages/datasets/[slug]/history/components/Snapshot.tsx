@@ -5,32 +5,17 @@ import {
   useCurrentDatasetPermission,
   useMutation
 } from '@fiftyone/hooks';
-import {
-  Box,
-  Button,
-  CopyButton,
-  Timestamp,
-  UserCard
-} from '@fiftyone/teams-components';
+import { Box, Button, CopyButton, Timestamp, UserCard } from '@fiftyone/teams-components';
 import {
   Dataset,
+  historyLoadDatasetSnapshotMutation,
   SNAPSHOT_BANNER_QUERY_CACHE_KEY,
-  UNARCHIVE_DATASET_SNAPSHOT,
-  historyLoadDatasetSnapshotMutation
+  UNARCHIVE_DATASET_SNAPSHOT
 } from '@fiftyone/teams-state';
 import { parentPath } from '@fiftyone/teams-utilities';
-import {
-  MoreHoriz,
-  UnarchiveOutlined,
-  VisibilityOutlined
-} from '@mui/icons-material';
+import { MoreHoriz, UnarchiveOutlined, VisibilityOutlined } from '@mui/icons-material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import {
-  TimelineConnector,
-  TimelineContent,
-  TimelineItem,
-  TimelineSeparator
-} from '@mui/lab';
+import { TimelineConnector, TimelineContent, TimelineItem, TimelineSeparator } from '@mui/lab';
 import { CircularProgress, Grid, Stack, Typography } from '@mui/material';
 import { useRouter } from 'next/router';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -166,15 +151,15 @@ export function SnapshotSummary(props: SnapshotSummaryProps) {
         </Typography>
       )}
       <SnapshotDescription content={description} />
-      <Box pt={0.25}>
+      {createdBy && (<Box pt={0.25}>
         <UserCard
-          name={createdBy.name}
-          src={createdBy.picture}
+          name={createdBy?.name}
+          src={createdBy?.picture || ""}
           color="secondary"
           detailed
           compact
         />
-      </Box>
+      </Box>)}
     </Box>
   );
 }
@@ -235,9 +220,9 @@ export type SnapshotSummaryProps = {
   id: string;
   numSamples: number;
   createdAt: number;
-  createdBy: {
+  createdBy?: {
     name: string;
-    picture: string;
+    picture?: string;
   };
   linearChangeSummary: {
     numSamplesAdded: number;
