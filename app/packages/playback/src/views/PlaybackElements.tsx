@@ -1,5 +1,5 @@
 import controlsStyles from "@fiftyone/looker/src/elements/common/controls.module.css";
-import styles from "@fiftyone/looker/src/elements/video.module.css";
+import videoStyles from "@fiftyone/looker/src/elements/video.module.css";
 import React from "react";
 import styled from "styled-components";
 import { PlayheadState, TimelineName } from "../lib/state";
@@ -7,7 +7,6 @@ import BufferingIcon from "./svgs/buffering.svg?react";
 import PauseIcon from "./svgs/pause.svg?react";
 import PlayIcon from "./svgs/play.svg?react";
 import SpeedIcon from "./svgs/speed.svg?react";
-
 interface PlayheadProps {
   status: PlayheadState;
   timelineName: TimelineName;
@@ -25,21 +24,21 @@ interface StatusIndicatorProps {
 }
 
 export const Playhead = React.forwardRef<
-  SVGSVGElement,
-  PlayheadProps & React.SVGProps<SVGSVGElement>
+  HTMLDivElement,
+  PlayheadProps & React.HTMLProps<HTMLDivElement>
 >(({ status, timelineName, play, pause, ...props }, ref) => {
-  if (status === "playing") {
-    return <PauseIcon ref={ref} {...props} onClick={pause} />;
-  }
-
-  if (status === "paused") {
-    return <PlayIcon ref={ref} {...props} onClick={play} />;
-  }
+  const { className, ...otherProps } = props;
 
   return (
-    <>
-      <BufferingIcon ref={ref} {...props} />;
-    </>
+    <TimelineElementContainer
+      ref={ref}
+      {...otherProps}
+      className={`${className ?? ""} ${controlsStyles.lookerClickable}`}
+    >
+      {status === "playing" && <PauseIcon onClick={pause} />}
+      {status === "paused" && <PlayIcon onClick={play} />}
+      {status !== "playing" && status !== "paused" && <BufferingIcon />}
+    </TimelineElementContainer>
   );
 });
 
@@ -65,7 +64,7 @@ export const Seekbar = React.forwardRef<
       ref={ref}
       type="range"
       value={value}
-      className={styles.lookerSeekBar}
+      className={videoStyles.lookerSeekBar}
       onChange={onChange}
       style={
         {
@@ -93,8 +92,8 @@ export const SeekbarThumb = React.forwardRef<
     <div
       {...props}
       ref={ref}
-      className={`${styles.lookerThumb} ${
-        shouldDisplayThumb ? styles.lookerThumbSeeking : ""
+      className={`${videoStyles.lookerThumb} ${
+        shouldDisplayThumb ? videoStyles.lookerThumbSeeking : ""
       }`}
       style={
         {
@@ -111,10 +110,16 @@ export const Speed = React.forwardRef<
   HTMLDivElement,
   SpeedProps & React.HTMLProps<HTMLDivElement>
 >(({ speed, ...props }, ref) => {
+  const { style, ...otherProps } = props;
+
   return (
-    <div ref={ref} {...props}>
+    <TimelineElementContainer
+      ref={ref}
+      {...otherProps}
+      style={{ ...style, ...{} }}
+    >
       <SpeedIcon />
-    </div>
+    </TimelineElementContainer>
   );
 });
 
@@ -122,8 +127,13 @@ export const StatusIndicator = React.forwardRef<
   HTMLDivElement,
   StatusIndicatorProps & React.HTMLProps<HTMLDivElement>
 >(({ currentFrame, totalFrames, ...props }, ref) => {
+  const { className, ...otherProps } = props;
+
   return (
-    <div>
+    <div
+      {...otherProps}
+      className={`${className ?? ""} ${controlsStyles.lookerTime}`}
+    >
       {currentFrame} / {totalFrames}
     </div>
   );
@@ -137,11 +147,20 @@ const TimelineContainer = styled.div`
   opacity: 1;
 `;
 
+const TimelineElementContainer = styled.div`
+  display: flex;
+`;
+
 export const FoTimelineControlsContainer = styled.div`
   width: 100%;
   display: flex;
   flex-direction: row;
-  gap: 10px;
+  align-items: center;
+  gap: 0.5em;
+
+  > * {
+    padding: 2px;
+  }
 `;
 
 export const FoTimelineContainer = React.forwardRef<

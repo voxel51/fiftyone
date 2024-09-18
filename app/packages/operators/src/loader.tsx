@@ -27,7 +27,8 @@ async function loadOperators(datasetName: string) {
  *  start-up operators for execution.
  */
 export function useOperators(datasetLess?: boolean) {
-  const [ready, setReady] = useState(false);
+  const [state, setState] = useState<"loading" | "error" | "ready">("loading");
+  const [error, setError] = useState<Error | null>(null);
   const datasetName = useRecoilValue(datasetNameAtom);
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
     availableOperatorsRefreshCount
@@ -37,12 +38,17 @@ export function useOperators(datasetLess?: boolean) {
 
   useEffect(() => {
     if (isPrimitiveString(datasetName) || datasetLess) {
-      loadOperators(datasetName).then(() => {
-        // trigger force refresh
-        setAvailableOperatorsRefreshCount((count) => count + 1);
-        setReady(true);
-        setOperatorsInitialized(true);
-      });
+      loadOperators(datasetName)
+        .then(() => {
+          // trigger force refresh
+          setAvailableOperatorsRefreshCount((count) => count + 1);
+          setState("ready");
+          setOperatorsInitialized(true);
+        })
+        .catch((error) => {
+          setState("error");
+          setError(error);
+        });
     }
   }, [
     datasetLess,
@@ -51,5 +57,11 @@ export function useOperators(datasetLess?: boolean) {
     setOperatorsInitialized,
   ]);
 
-  return ready && (initialized || datasetLess);
+  return {
+    ready: state === "ready" && (initialized || datasetLess),
+    hasError: state === "error",
+    isLoading: state === "loading",
+    error,
+    state,
+  };
 }

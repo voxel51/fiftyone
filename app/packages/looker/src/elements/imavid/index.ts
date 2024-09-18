@@ -115,7 +115,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.imageSource = this.canvas;
 
         this.update({
-          // todo: this loaded doesn't have much meaning, remove it
           loaded: true,
           // note: working assumption =  all images in this "video" are of the same width and height
           // this might be an incorrect assumption for certain use cases
@@ -210,7 +209,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.ctx.drawImage(image, 0, 0);
   }
 
-  async drawFrame(frameNumberToDraw: number, animate = true) {
+  async drawFrame(frameNumberToDraw: number, animate = true, force = false) {
     if (this.waitingToPause && this.frameNumber > 1) {
       this.pause();
       return;
@@ -232,7 +231,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // if abs(frameNumberToDraw, currentFrameNumber) > 1, then skip
     // this is to avoid drawing frames that are too far apart
     // this can happen when user is scrubbing through the video
-    if (Math.abs(frameNumberToDraw - this.frameNumber) > 1 && !this.isLoop) {
+    if (
+      !force &&
+      Math.abs(frameNumberToDraw - this.frameNumber) > 1 &&
+      !this.isLoop
+    ) {
       skipAndTryAgain();
       return;
     }
@@ -472,6 +475,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 }
 
 export * from "./frame-count";
+export * from "./iv-controls";
 export * from "./loader-bar";
 export * from "./play-button";
 export * from "./playback-rate";

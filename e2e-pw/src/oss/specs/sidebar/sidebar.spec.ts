@@ -15,8 +15,6 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
 });
 
 test.describe("sidebar-filter-visibility", () => {
-  test.skip(true, "THIS TEST USES ZOO DATASET. TODO: FIX IT");
-
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
       max_samples: 5,

@@ -33,7 +33,6 @@ const test = base.extend<{
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart");
 
 test.describe("color scheme basic functionality with quickstart", () => {
-  test.skip(true, "THIS TEST USES ZOO DATASET. TODO: FIX IT");
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
       max_samples: 5,

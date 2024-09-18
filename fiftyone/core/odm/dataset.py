@@ -16,6 +16,7 @@ from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
     ColorField,
+    DateField,
     DateTimeField,
     DictField,
     EmbeddedDocumentField,
@@ -583,7 +584,15 @@ def _parse_schema(
                     custom.append((name, paths))
         elif isinstance(
             field,
-            (ObjectIdField, IntField, FloatField, StringField, BooleanField),
+            (
+                ObjectIdField,
+                IntField,
+                FloatField,
+                StringField,
+                BooleanField,
+                DateField,
+                DateTimeField,
+            ),
         ):
             if frames:
                 other.append(name)

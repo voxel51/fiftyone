@@ -2154,7 +2154,7 @@ class GridView(View):
         Must be used with :class:`Object` properties.
 
     Args:
-        orientation ("horizontal"): the orientation of the stack. Can be either
+        orientation ("2d"): the orientation of the stack. Can be either ``"2d"``,
             ``"horizontal"`` or ``"vertical"``
         gap (1): the gap between the components
         align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
@@ -2167,7 +2167,7 @@ class GridView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.orientation = kwargs.get("orientation", "horizontal")
+        self.orientation = kwargs.get("orientation", None)
         self.gap = kwargs.get("gap", 1)
         self.align_x = kwargs.get("align_x", "left")
         self.align_y = kwargs.get("align_y", "top")

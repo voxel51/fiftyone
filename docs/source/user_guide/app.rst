@@ -363,6 +363,159 @@ attribute names in the App's sidebar:
     :alt: app-field-tooltips
     :align: center
 
+.. _app-filtering:
+
+Filtering sample fields
+-----------------------
+
+The App provides UI elements in both grid view and expanded sample view that
+you can use to filter your dataset. To view the available filter options for a
+field, click the caret icon to the right of the field's name.
+
+Whenever you modify a filter element, the App will automatically update to show
+only those samples and/or labels that match the filter.
+
+.. note::
+
+    Did you know? When you
+    :ref:`declare custom attributes <dynamic-attributes>` on your dataset's
+    schema, they will automatically become filterable in the App!
+
+.. note::
+
+    Did you know? When you have applied filter(s) in the App, a bookmark icon
+    appears in the top-left corner of the sample grid. Click this button to
+    convert your filters to an equivalent set of stage(s) in the
+    :ref:`view bar <app-create-view>`!
+
+.. image:: /images/app/app-filters.gif
+   :alt: app-filters
+   :align: center
+
+.. _app-indexed-filtering:
+
+Leveraging indexes while filtering
+----------------------------------
+
+By default, most sidebar filters require full collection scans to retrieve the
+relevant results.
+
+However, you can optimize any sidebar filter(s) of interest by using
+:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`
+to index the field or embedded field that you wish to filter by:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+    # Add index to optimize ground truth label filters
+    dataset.create_index("ground_truth.detections.label")
+
+    session = fo.launch_app(dataset)
+
+You can use
+:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
+to view the existing indexes on a dataset, and you can use
+:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
+to delete indexes that you no longer need.
+
+.. note::
+
+    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
+    fields on large video datasets.
+
+For :ref:`group datasets <groups>`, you should also add a compound index that
+includes your group `name` field to optimize filters applied when viewing a
+single :ref:`group slice <groups-app>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Add index to optimize detections label filters in "group" mode
+    dataset.create_index("detections.detections.label")
+
+    # Add compound index to optimize detections label filters in "slice" mode
+    dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
+
+    session = fo.launch_app(dataset)
+
+.. _app-sidebar-groups:
+
+Sidebar groups
+--------------
+
+You can customize the layout of the App's sidebar by creating/renaming/deleting
+groups and dragging fields between groups directly in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-sidebar-groups.gif
+    :alt: app-sidebar-groups
+    :align: center
+
+.. note::
+
+    Any changes you make to a dataset's sidebar groups in the App are saved on
+    the dataset and will persist between sessions.
+
+You can also programmatically modify a dataset's sidebar groups by editing the
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+of the :ref:`dataset's App config <dataset-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Get the default sidebar groups for the dataset
+    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
+
+    # Collapse the `metadata` section by default
+    print(sidebar_groups[2].name)  # metadata
+    sidebar_groups[2].expanded = False
+
+    # Add a new group
+    sidebar_groups.append(fo.SidebarGroupDocument(name="new"))
+
+    # Modify the dataset's App config
+    dataset.app_config.sidebar_groups = sidebar_groups
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset the sidebar groups to their default state by setting
+:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset sidebar groups
+    dataset.app_config.sidebar_groups = None
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    If a dataset has fields that do not appear in the dataset's
+    :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
+    property, these fields will be dynamically assigned to default groups in
+    the App at runtime.
+
 .. _app-lightning-mode:
 
 Lightning mode
@@ -456,6 +609,11 @@ perform initial filters on:
     fo.app_config.lightning_threshold = len(dataset)
 
     session = fo.launch_app(dataset)
+
+.. note::
+
+    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
+    fields on large video datasets.
 
 For :ref:`grouped datasets <groups>`, you should create two indexes for each
 field you wish to filter by in lightning mode: the field itself and a compound
@@ -585,154 +743,6 @@ the :ref:`dataset's App config <dataset-app-config>`:
     dataset.save()  # must save after edits
 
     session.refresh()
-
-.. _app-sidebar-groups:
-
-Sidebar groups
---------------
-
-You can customize the layout of the App's sidebar by creating/renaming/deleting
-groups and dragging fields between groups directly in the App:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    session = fo.launch_app(dataset)
-
-.. image:: /images/app/app-sidebar-groups.gif
-    :alt: app-sidebar-groups
-    :align: center
-
-.. note::
-
-    Any changes you make to a dataset's sidebar groups in the App are saved on
-    the dataset and will persist between sessions.
-
-You can also programmatically modify a dataset's sidebar groups by editing the
-:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` property
-of the :ref:`dataset's App config <dataset-app-config>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Get the default sidebar groups for the dataset
-    sidebar_groups = fo.DatasetAppConfig.default_sidebar_groups(dataset)
-
-    # Collapse the `metadata` section by default
-    print(sidebar_groups[2].name)  # metadata
-    sidebar_groups[2].expanded = False
-
-    # Add a new group
-    sidebar_groups.append(fo.SidebarGroupDocument(name="new"))
-
-    # Modify the dataset's App config
-    dataset.app_config.sidebar_groups = sidebar_groups
-    dataset.save()  # must save after edits
-
-    session = fo.launch_app(dataset)
-
-You can conveniently reset the sidebar groups to their default state by setting
-:class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>` to `None`:
-
-.. code-block:: python
-    :linenos:
-
-    # Reset sidebar groups
-    dataset.app_config.sidebar_groups = None
-    dataset.save()  # must save after edits
-
-    session = fo.launch_app(dataset)
-
-.. note::
-
-    If a dataset has fields that do not appear in the dataset's
-    :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
-    property, these fields will be dynamically assigned to default groups in
-    the App at runtime.
-
-.. _app-filtering:
-
-Filtering sample fields
------------------------
-
-The App provides UI elements in both grid view and expanded sample view that
-you can use to filter your dataset. To view the available filter options for a
-field, click the caret icon to the right of the field's name.
-
-Whenever you modify a filter element, the App will automatically update to show
-only those samples and/or labels that match the filter.
-
-.. note::
-
-    Did you know? When you
-    :ref:`declare custom attributes <dynamic-attributes>` on your dataset's
-    schema, they will automatically become filterable in the App!
-
-.. note::
-
-    Did you know? When you have applied filter(s) in the App, a bookmark icon
-    appears in the top-left corner of the sample grid. Click this button to
-    convert your filters to an equivalent set of stage(s) in the
-    :ref:`view bar <app-create-view>`!
-
-.. image:: /images/app/app-filters.gif
-   :alt: app-filters
-   :align: center
-
-.. _app-indexed-filtering:
-
-Leveraging indexes while filtering
-----------------------------------
-
-By default, most sidebar filters require full collection scans to retrieve the
-relevant results.
-
-However, you can optimize any sidebar filter(s) of interest by using
-:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`
-to index the field or embedded field that you wish to filter by:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-    # Add index to optimize ground truth label filters
-    dataset.create_index("ground_truth.detections.label")
-
-    session = fo.launch_app(dataset)
-
-You can use
-:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
-to view the existing indexes on a dataset, and you can use
-:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
-to delete indexes that you no longer need.
-
-For :ref:`group datasets <groups>`, you should also add a compound index that
-includes your group `name` field to optimize filters applied when viewing a
-single :ref:`group slice <groups-app>`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart-groups")
-
-    # Add index to optimize detections label filters in "group" mode
-    dataset.create_index("detections.detections.label")
-    
-    # Add compound index to optimize detections label filters in "slice" mode
-    dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
-
-    session = fo.launch_app(dataset)
 
 .. _app-create-view:
 

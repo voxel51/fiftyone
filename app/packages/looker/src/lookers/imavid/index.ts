@@ -52,7 +52,15 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   get element() {
-    return this.elements.children[0] as ImaVidElement;
+    return this.lookerElement.children[0] as ImaVidElement;
+  }
+
+  get config() {
+    return this.state.config;
+  }
+
+  get options() {
+    return this.state.options;
   }
 
   destroy() {
@@ -130,7 +138,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     return {
       ...DEFAULT_BASE_OPTIONS,
-      loop: false,
+      loop: true,
       playbackRate: defaultPlaybackRate,
     } as ImaVidOptions;
   }

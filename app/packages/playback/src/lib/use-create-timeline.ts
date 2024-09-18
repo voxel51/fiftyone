@@ -21,7 +21,7 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
 /**
  * This hook creates a new timeline with the given configuration.
  *
- * @param newTimelineConfig - The configuration for the new timeline. `name` is
+ * @param newTimelineProps - The configuration for the new timeline. `name` is
  * optional and defaults to an internal global timeline ID scoped to the current modal.
  *
  * @returns An object with the following properties:
@@ -29,10 +29,10 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
  * - `subscribe`: A function that subscribes to the timeline.
  */
 export const useCreateTimeline = (
-  newTimelineConfig: Optional<CreateFoTimeline, "name">
+  newTimelineProps: Optional<CreateFoTimeline, "name">
 ) => {
   const { getName } = useDefaultTimelineName();
-  const { name: mayBeTimelineName } = newTimelineConfig;
+  const { name: mayBeTimelineName } = newTimelineProps;
 
   const timelineName = useMemo(
     () => mayBeTimelineName ?? getName(),
@@ -214,7 +214,7 @@ export const useCreateTimeline = (
    * this effect creates the timeline
    */
   useEffect(() => {
-    addTimeline({ name: timelineName, config: newTimelineConfig.config });
+    addTimeline({ name: timelineName, config: newTimelineProps.config });
 
     // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
@@ -225,7 +225,7 @@ export const useCreateTimeline = (
 
       // timeline cleanup is handled by `_INTERNAL_timelineConfigsLruCache::dispose()`
     };
-    // note: we're not using newTimelineConfig.config as a dependency
+    // note: we're not using newTimelineProps.config as a dependency
     // because it's not guaranteed to be referentially stable.
     // that would require caller to memoize the passed config object.
     // using just the timelineName as a dependency is fine.

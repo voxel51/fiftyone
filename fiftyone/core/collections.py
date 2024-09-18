@@ -1403,6 +1403,8 @@ class SampleCollection(object):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1418,10 +1420,14 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            include_private (False): whether to include fields that start with
-                ``_`` in the returned schema
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
             mode (None): whether to apply the above constraints before and/or
@@ -1440,6 +1446,8 @@ class SampleCollection(object):
         ftype=None,
         embedded_doc_type=None,
         read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
         mode=None,
@@ -1458,6 +1466,10 @@ class SampleCollection(object):
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
@@ -9467,7 +9479,7 @@ class SampleCollection(object):
         return name
 
     def drop_index(self, field_or_name):
-        """Drops the index for the given field or name.
+        """Drops the index for the given field or name, if necessary.
 
         Args:
             field_or_name: a field name, ``embedded.field.name``, or compound
@@ -9499,13 +9511,8 @@ class SampleCollection(object):
             else:
                 index_map[key] = key
 
-        if name not in index_map:
-            itype = "frame index" if is_frame_index else "index"
-            raise ValueError(
-                "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
-            )
-
-        coll.drop_index(index_map[name])
+        if name in index_map:
+            coll.drop_index(index_map[name])
 
     def _get_default_indexes(self, frames=False):
         if frames:

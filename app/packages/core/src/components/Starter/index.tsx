@@ -5,6 +5,7 @@ import {
   useOperatorExecutor,
   usePromptOperatorInput,
 } from "@fiftyone/operators/src/state";
+import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import {
   Button,
   ButtonProps,
@@ -15,9 +16,8 @@ import {
   Typography,
 } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
-import { CONTENT_BY_MODE } from "./content";
 import { useRecoilValue } from "recoil";
-import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import { CONTENT_BY_MODE } from "./content";
 
 const CREATE_DATASET_OPERATOR = "@voxel51/utils/create_dataset";
 const IMPORT_SAMPLES_OPERATOR = "@voxel51/io/import_samples";
@@ -30,12 +30,12 @@ const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 
 export function Starter(props: StarterPropsType) {
   const { mode } = props;
-  const ready = useOperators(true);
+  const { isLoading } = useOperators(true);
   const datasetName = useRecoilValue(datasetNameAtom);
 
   if (!mode) return null;
 
-  if (!ready) return <Loading>Pixelating...</Loading>;
+  if (isLoading) return <Loading>Pixelating...</Loading>;
 
   const { code, codeTitle, learnMoreLabel, learnMoreLink, title } =
     CONTENT_BY_MODE[mode];

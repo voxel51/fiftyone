@@ -1462,6 +1462,9 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         progress=False,
         total=None,
     ):
+        # If unset or larger, max batch size must be 1 byte per object
+        if max_batch_size is None or max_batch_size > target_size:
+            max_batch_size = target_size
         super().__init__(
             iterable,
             target_size,

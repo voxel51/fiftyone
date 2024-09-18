@@ -124,6 +124,11 @@ export type CreateFoTimeline = {
    * Configuration for the timeline.
    */
   config: FoTimelineConfig;
+  /**
+   * An optional function that returns a promise that resolves when the timeline is ready to be initialized.
+   * If this function is not provided, the timeline is declared to be initialized immediately upon creation.
+   */
+  waitUntilInitialized?: () => Promise<void>;
 };
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
@@ -174,13 +179,17 @@ export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
 export const addTimelineAtom = atom(
   null,
   (get, set, timeline: CreateFoTimeline) => {
-    const timelineName = timeline.name;
-
-    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+    // null config means skip timeline creation
+    if (!timeline.config) {
       return;
     }
 
-    const configWithImputedValues: Required<FoTimelineConfig> = {
+    const timelineName = timeline.name;
+
+    const configWithImputedValues: Omit<
+      Required<FoTimelineConfig>,
+      "__internal_IsTimelineInitialized"
+    > = {
       totalFrames: timeline.config.totalFrames,
 
       defaultFrameNumber: Math.max(
@@ -193,8 +202,20 @@ export const addTimelineAtom = atom(
         timeline.config.targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE,
       useTimeIndicator:
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
-      __internal_IsTimelineInitialized: true,
     };
+
+    const isTimelineAlreadyInitialized = get(
+      _timelineConfigs(timelineName)
+    ).__internal_IsTimelineInitialized;
+
+    if (isTimelineAlreadyInitialized) {
+      // update config and return
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
+      return;
+    }
 
     if (
       configWithImputedValues.defaultFrameNumber >
@@ -213,6 +234,21 @@ export const addTimelineAtom = atom(
     set(_timelineConfigs(timelineName), configWithImputedValues);
     set(_dataLoadedBuffers(timelineName), new BufferManager());
     set(_playHeadStates(timelineName), "paused");
+
+    if (timeline.waitUntilInitialized) {
+      timeline.waitUntilInitialized().then(() => {
+        set(_timelineConfigs(timelineName), {
+          ...configWithImputedValues,
+          __internal_IsTimelineInitialized: true,
+        });
+      });
+    } else {
+      // mark timeline as initialized
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
+    }
 
     // 'true' is a placeholder value, since we're just using the cache for disposing
     _INTERNAL_timelineConfigsLruCache.set(timelineName, timelineName);
@@ -348,14 +384,6 @@ export const updatePlayheadStateAtom = atom(
 
 export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => {
-    // // update age of timeline config in cache by calling `.has`
-    // _timelineConfigsLruCache.has(_timelineName);
-    // console.log(
-    //   ">>>has",
-    //   _timelineName,
-    //   "in cache",
-    //   _timelineConfigsLruCache.has(_timelineName)
-    // );
     return get(_frameNumbers(_timelineName));
   })
 );
