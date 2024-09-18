@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
+import { AbstractLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
@@ -7,27 +7,27 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
+import { useModalContext } from "./hooks";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 
 export const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (
-      update: object,
-      updater?: (updated: {}) => void
-    ) => {
-      const currentOptions = await snapshot.getPromise(fos.savedLookerOptions);
+    ({ snapshot, set }) =>
+      async (update: object, updater?: (updated: {}) => void) => {
+        const currentOptions = await snapshot.getPromise(
+          fos.savedLookerOptions
+        );
 
-      const panels = await snapshot.getPromise(fos.lookerPanels);
-      const updated = {
-        ...currentOptions,
-        ...update,
-        showJSON: panels.json.isOpen,
-        showHelp: panels.help.isOpen,
-      };
-      set(fos.savedLookerOptions, updated);
-      if (updater) updater(updated);
-    }
+        const panels = await snapshot.getPromise(fos.lookerPanels);
+        const updated = {
+          ...currentOptions,
+          ...update,
+          showJSON: panels.json.isOpen,
+          showHelp: panels.help.isOpen,
+        };
+        set(fos.savedLookerOptions, updated);
+        if (updater) updater(updated);
+      }
   );
 };
 
@@ -39,7 +39,9 @@ export const useShowOverlays = () => {
 
 export const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(fos.selectedLabels, []),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, []),
     []
   );
 };
@@ -62,9 +64,6 @@ const ModalLookerNoTimeline = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const {
-      subscribeToImaVidStateChanges,
-    } = useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -79,10 +78,7 @@ const ModalLookerNoTimeline = React.memo(
 
     useEffect(() => {
       setModalLooker(looker);
-      if (looker instanceof ImaVidLooker) {
-        subscribeToImaVidStateChanges();
-      }
-    }, [looker, subscribeToImaVidStateChanges]);
+    }, [looker]);
 
     useEffect(() => {
       if (looker) {
