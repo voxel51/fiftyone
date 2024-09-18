@@ -554,7 +554,19 @@ const ModalActionsRowContainer = styled.div`
     opacity: 1;
     transition: opacity 0.1s ease-out;
   }
-}`;
+
+  svg {
+    font-size: 18px;
+  }
+
+  > div {
+    max-height: 24px;
+
+    > div:first-child {
+      max-height: 24px;
+    }
+  }
+`;
 
 const DraggableHandleIconContainer = styled.div`
   cursor: grab;
