@@ -263,22 +263,27 @@ export const resolveGroups = (
     true
   );
 
-  sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+  for (const { fields, name } of sampleFields
+    .filter(groupFilter)
+    .filter(({ name }) => !present.has(name))) {
     updater(
       name,
       fieldsMatcher(fields || [], () => true, present, `${name}.`)
     );
-  });
+  }
 
-  frameFields.length &&
-    frameFields.filter(groupFilter).forEach(({ fields, name }) => {
+  if (frameFields.length) {
+    for (const { fields, name } of frameFields
+      .filter(groupFilter)
+      .filter(({ name }) => !present.has(name))) {
       present.add(`frames.${name}`);
       updater(
         `frames.${name}`,
         fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
         true
       );
-    });
+    }
+  }
 
   updater("other", fieldsMatcher(sampleFields, unsupportedMatcher, present));
 
