@@ -25,6 +25,15 @@
   box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
 }
 
+.imaVidLookerControls {
+  right: 0;
+  width: 50%;
+  margin-left: auto;
+  z-index: 1000;
+  height: unset;
+  opacity: 0.95;
+}
+
 .lookerError > .lookerControls {
   display: none;
 }
@@ -75,23 +84,28 @@
   outline: none;
   border: none;
 }
+
 .lookerControls input[type="range"]:focus {
   outline: none;
   border: none;
 }
+
 .lookerControls input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
   cursor: pointer;
   animate: 0.2s;
 }
+
 .lookerControls input[type="range"]::-webkit-slider-thumb {
   height: 0;
   width: 0;
   -webkit-appearance: none;
 }
+
 .lookerControls input[type="range"]:hover::-webkit-slider-runnable-track {
   height: 6px;
 }
+
 .lookerControls input[type="range"]::-moz-range-runnable-track {
   height: 4px;
   cursor: pointer;
@@ -108,6 +122,7 @@
   );
   overflow: hidden;
 }
+
 .lookerControls input[type="range"]::-moz-range-thumb {
   height: 0;
   width: 0;
@@ -115,9 +130,11 @@
   border: none;
   overflow: hidden;
 }
+
 .lookerControls input[type="range"]:hover::-moz-range-runnable-track {
   height: 6px;
 }
+
 .lookerControls *:hover,
 .lookerControls *:active {
   outline: none;

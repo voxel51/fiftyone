@@ -1,5 +1,5 @@
 import controlsStyles from "@fiftyone/looker/src/elements/common/controls.module.css";
-import styles from "@fiftyone/looker/src/elements/video.module.css";
+import videoStyles from "@fiftyone/looker/src/elements/video.module.css";
 import React from "react";
 import styled from "styled-components";
 import { PlayheadState, TimelineName } from "../lib/state";
@@ -7,7 +7,6 @@ import BufferingIcon from "./svgs/buffering.svg?react";
 import PauseIcon from "./svgs/pause.svg?react";
 import PlayIcon from "./svgs/play.svg?react";
 import SpeedIcon from "./svgs/speed.svg?react";
-
 interface PlayheadProps {
   status: PlayheadState;
   timelineName: TimelineName;
@@ -65,7 +64,7 @@ export const Seekbar = React.forwardRef<
       ref={ref}
       type="range"
       value={value}
-      className={styles.lookerSeekBar}
+      className={videoStyles.lookerSeekBar}
       onChange={onChange}
       style={
         {
@@ -93,8 +92,8 @@ export const SeekbarThumb = React.forwardRef<
     <div
       {...props}
       ref={ref}
-      className={`${styles.lookerThumb} ${
-        shouldDisplayThumb ? styles.lookerThumbSeeking : ""
+      className={`${videoStyles.lookerThumb} ${
+        shouldDisplayThumb ? videoStyles.lookerThumbSeeking : ""
       }`}
       style={
         {
@@ -122,8 +121,19 @@ export const StatusIndicator = React.forwardRef<
   HTMLDivElement,
   StatusIndicatorProps & React.HTMLProps<HTMLDivElement>
 >(({ currentFrame, totalFrames, ...props }, ref) => {
+  const { style, ...otherProps } = props;
+
   return (
-    <div>
+    <div
+      {...otherProps}
+      style={{
+        ...style,
+        ...{
+          fontFamily: "Arial, sans-serif, monospace",
+          fontWeight: "normal",
+        },
+      }}
+    >
       {currentFrame} / {totalFrames}
     </div>
   );

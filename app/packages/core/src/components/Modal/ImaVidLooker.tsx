@@ -133,6 +133,7 @@ export const ImaVidLookerReact = React.memo(
     const hoveredSample = useRecoilValue(fos.hoveredSample);
 
     useEffect(() => {
+      const hoveredSampleId = hoveredSample?._id;
       looker.updater((state) => ({
         ...state,
         // todo: always setting it to true might not be wise
@@ -255,7 +256,16 @@ export const ImaVidLookerReact = React.memo(
             position: "relative",
           }}
         />
-        <Timeline name={timelineName} />
+        <Timeline
+          name={timelineName}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            width: "100%",
+            height: "38px",
+            zIndex: 1,
+          }}
+        />
       </div>
     );
   }
