@@ -5,7 +5,8 @@ import {
   useCurrentOrganization,
   useCurrentUser,
   useEnv,
-  useInitializeApp
+  useInitializeApp,
+  useProductVersion
 } from '@fiftyone/hooks';
 import {
   AnalyticsConsent,
@@ -118,6 +119,7 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
 
   const SEGMENT_WRITE_KEY = useEnv(FIFTYONE_APP_SEGMENT_WRITE_KEY);
 
+  const version = useProductVersion();
   const [analyticsInfo, setAnalyticsInfo] = useAnalyticsInfo();
   const analytics = usingAnalytics(analyticsInfo);
   const demoMode = useBooleanEnv(FIFTYONE_APP_DEMO_MODE);
@@ -130,7 +132,8 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       userId: demoMode ? user?.id : undefined,
       userGroup: demoMode ? org?.displayName : undefined,
       redact: !demoMode ? ['uri'] : undefined,
-      disableUrlTracking: !demoMode, 
+      disableUrlTracking: !demoMode,
+      version,
       doNotTrack
     });
     if (isServiceWorkerEnabled) {
