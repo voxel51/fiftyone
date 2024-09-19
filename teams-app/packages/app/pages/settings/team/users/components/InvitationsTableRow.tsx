@@ -1,29 +1,25 @@
-import { TableRow, TableCell, Typography, Chip } from '@mui/material';
-import {
-  EditOutlined,
-  Autorenew,
-  RemoveCircleOutline,
-  EmailOutlined
-} from '@mui/icons-material';
-import { OverflowMenu, Avatar, Timestamp } from '@fiftyone/teams-components';
+import { useMutation, useUpdateInvitationsList } from "@fiftyone/hooks";
+import { Avatar, OverflowMenu, Timestamp } from "@fiftyone/teams-components";
 import {
   currentInviteeState,
   settingsTeamInviteTeammateOpen,
   teamInvitationFormState,
   teamRevokeInvitationMutation,
-  teamSendUserInvitationMutation
-} from '@fiftyone/teams-state';
-import { useSetRecoilState } from 'recoil';
-import { capitalize } from 'lodash';
+  teamSendUserInvitationMutation,
+} from "@fiftyone/teams-state";
+import { isExpired } from "@fiftyone/teams-utilities";
 import {
-  useMutation,
-  useUpdateInvitationsList,
-  DURATION_DEFAULT
-} from '@fiftyone/hooks';
-import { teamRevokeInvitationMutation as teamRevokeInvitationMutationType } from 'queries/__generated__/teamRevokeInvitationMutation.graphql';
-import { teamSendUserInvitationMutation as teamSendUserInvitationMutationType } from 'queries/__generated__/teamSendUserInvitationMutation.graphql';
-import { useSnackbar } from 'notistack';
-import { isExpired, timeFromNow } from '@fiftyone/teams-utilities';
+  AddLink,
+  EditOutlined,
+  EmailOutlined,
+  RemoveCircleOutline,
+} from "@mui/icons-material";
+import { Chip, TableCell, TableRow, Typography } from "@mui/material";
+import { capitalize } from "lodash";
+import { useSnackbar } from "notistack";
+import { teamRevokeInvitationMutation as teamRevokeInvitationMutationType } from "queries/__generated__/teamRevokeInvitationMutation.graphql";
+import { teamSendUserInvitationMutation as teamSendUserInvitationMutationType } from "queries/__generated__/teamSendUserInvitationMutation.graphql";
+import { useSetRecoilState } from "recoil";
 
 type InvitationsTableRowProps = {
   email: string;
@@ -31,6 +27,7 @@ type InvitationsTableRowProps = {
   createdAt: string | Date;
   expiresAt: string | Date;
   role: string;
+  url: string;
 };
 
 export default function InvitationsTableRow({
@@ -38,7 +35,8 @@ export default function InvitationsTableRow({
   id,
   createdAt,
   expiresAt,
-  role
+  role,
+  url,
 }: InvitationsTableRowProps) {
   const [revokeInvitation] = useMutation<teamRevokeInvitationMutationType>(
     teamRevokeInvitationMutation
@@ -69,20 +67,20 @@ export default function InvitationsTableRow({
         </Typography>
       </TableCell>
       <TableCell>
-        <Typography variant="body1">
+        <div>
           <Chip
-            label={hasExpired ? 'Expired' : 'Expires'}
-            color={hasExpired ? 'error' : 'success'}
+            label={hasExpired ? "Expired" : "Expires"}
+            color={hasExpired ? "error" : "success"}
             sx={{
               color: (theme) =>
                 hasExpired
                   ? theme.palette.error.main
-                  : theme.palette.success.main
+                  : theme.palette.success.main,
             }}
             size="small"
-          />{' '}
+          />{" "}
           <Timestamp timestamp={expiresAt} />
-        </Typography>
+        </div>
       </TableCell>
       <TableCell>
         <Typography variant="body1">{capitalize(role)}</Typography>
@@ -91,13 +89,30 @@ export default function InvitationsTableRow({
         <OverflowMenu
           items={[
             {
-              primaryText: 'Edit role',
+              primaryText: "Edit role",
               IconComponent: <EditOutlined />,
               onClick: () => {
                 setCurrentInvitee({ email, id, role });
                 setTeamInvitationFormState({ email, id, role });
                 setInviteTeammateOpen(true);
-              }
+              },
+            },
+            {
+              primaryText: "Copy Link",
+              hoverText: url,
+              IconComponent: <AddLink />,
+              onClick: (e) => {
+                e.preventDefault();
+                navigator.clipboard
+                  .writeText(url)
+                  .then(() => {
+                    console.log(`URL (${url}) copied to clipboard`);
+                  })
+                  .catch((err) => {
+                    console.log("URL:", url);
+                    console.error("Failed to copy: ", err);
+                  });
+              },
             },
             // {
             //   primaryText: 'Resend invitation email',
@@ -142,19 +157,19 @@ export default function InvitationsTableRow({
             //   }
             // },
             {
-              primaryText: 'Revoke invitation',
+              primaryText: "Revoke invitation",
               IconComponent: <RemoveCircleOutline />,
               onClick: () => {
                 revokeInvitation({
-                  successMessage: 'Successfully revoked the invitation',
-                  errorMessage: 'Failed to revoke the invitation',
+                  successMessage: "Successfully revoked the invitation",
+                  errorMessage: "Failed to revoke the invitation",
                   variables: { invitationId: id },
                   onCompleted: () => {
                     updateInvitationsList({ id });
-                  }
+                  },
                 });
-              }
-            }
+              },
+            },
           ]}
         />
       </TableCell>
