@@ -351,16 +351,16 @@ export const updateTimelineConfigAtom = atom(
     set,
     {
       name,
-      config,
+      configDelta,
     }: {
       name: TimelineName;
-      config: Partial<
+      configDelta: Partial<
         Omit<FoTimelineConfig, "totalFrames" | "defaultFrameNumber">
       >;
     }
   ) => {
     const oldConfig = get(_timelineConfigs(name));
-    set(_timelineConfigs(name), { ...oldConfig, ...config });
+    set(_timelineConfigs(name), { ...oldConfig, ...configDelta });
   }
 );
 

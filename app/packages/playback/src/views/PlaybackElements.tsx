@@ -16,6 +16,7 @@ interface PlayheadProps {
 
 interface SpeedProps {
   speed: number;
+  setSpeed: (speed: number) => void;
 }
 
 interface StatusIndicatorProps {
@@ -51,8 +52,15 @@ export const Seekbar = React.forwardRef<
     debounce?: number;
   }
 >(({ ...props }, ref) => {
-  const { bufferValue, value, onChange, debounce, style, ...otherProps } =
-    props;
+  const {
+    bufferValue,
+    value,
+    onChange,
+    debounce,
+    style,
+    className,
+    ...otherProps
+  } = props;
 
   // todo: consider debouncing onChange
 
@@ -64,7 +72,9 @@ export const Seekbar = React.forwardRef<
       ref={ref}
       type="range"
       value={value}
-      className={videoStyles.lookerSeekBar}
+      className={`${className ?? ""} ${videoStyles.lookerSeekBar} ${
+        videoStyles.hideInputThumb
+      }`}
       onChange={onChange}
       style={
         {
@@ -109,16 +119,58 @@ export const SeekbarThumb = React.forwardRef<
 export const Speed = React.forwardRef<
   HTMLDivElement,
   SpeedProps & React.HTMLProps<HTMLDivElement>
->(({ speed, ...props }, ref) => {
-  const { style, ...otherProps } = props;
+>(({ speed, setSpeed, ...props }, ref) => {
+  const { style, className, ...otherProps } = props;
+
+  const [isPlaybackConfigurerOpen, setIsPlaybackConfigurerOpen] =
+    React.useState(false);
+
+  const onChangeSpeed = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSpeed(parseFloat(e.target.value));
+    },
+    []
+  );
+
+  const rangeValue = React.useMemo(() => (speed / 2) * 100, [speed]);
 
   return (
     <TimelineElementContainer
       ref={ref}
       {...otherProps}
-      style={{ ...style, ...{} }}
+      className={`${className ?? ""} ${controlsStyles.lookerClickable} ${
+        videoStyles.lookerPlaybackRate
+      }`}
+      style={{
+        ...style,
+        ...{
+          gap: "0.25em",
+        },
+      }}
+      onMouseLeave={() => {
+        setIsPlaybackConfigurerOpen(false);
+      }}
     >
-      <SpeedIcon />
+      <SpeedIcon
+        className={controlsStyles.lookerClickable}
+        onMouseEnter={() => {
+          setIsPlaybackConfigurerOpen(true);
+        }}
+      />
+      <input
+        type="range"
+        min="0.1"
+        max="2"
+        step="0.1"
+        value={speed.toFixed(4)}
+        className={videoStyles.hideInputThumb}
+        style={
+          {
+            "--playback": `${rangeValue}%`,
+          } as React.CSSProperties
+        }
+        onChange={onChangeSpeed}
+      />
     </TimelineElementContainer>
   );
 });

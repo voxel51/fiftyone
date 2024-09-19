@@ -12,6 +12,7 @@ import {
   setFrameNumberAtom,
   TimelineName,
   updatePlayheadStateAtom,
+  updateTimelineConfigAtom,
 } from "../lib/state";
 import { useDefaultTimelineName } from "./use-default-timeline-name";
 
@@ -43,6 +44,7 @@ export const useTimeline = (name?: TimelineName) => {
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const subscribeImpl = useSetAtom(addSubscriberAtom);
+  const updateConfig = useSetAtom(updateTimelineConfigAtom);
 
   useEffect(() => {
     // this is so that this timeline is brought to the front of the cache
@@ -102,6 +104,16 @@ export const useTimeline = (name?: TimelineName) => {
     [timelineName]
   );
 
+  const setSpeed = useCallback(
+    (speed: number) => {
+      updateConfig({
+        name: timelineName,
+        configDelta: { speed },
+      });
+    },
+    [updateConfig, timelineName]
+  );
+
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
@@ -136,6 +148,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Set the playhead state of the timeline.
      */
     setPlayHeadState,
+    /**
+     * Set the speed of the timeline.
+     */
+    setSpeed,
     /**
      * Subscribe to the timeline for frame updates.
      */

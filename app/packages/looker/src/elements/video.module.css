@@ -91,6 +91,11 @@
   width: 100%;
 }
 
+.hideInputThumb {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .lookerThumb {
   --progress: 0%;
   width: 0;
