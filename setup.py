@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.25.1"
+VERSION = "0.25.2"
 
 
 def get_version():
@@ -55,7 +55,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.12",
+    "pymongo>=3.12,<4.9",
     "pytz",
     "PyYAML",
     "regex",
