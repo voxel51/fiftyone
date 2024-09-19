@@ -1,0 +1,18 @@
+{
+    "name": "@fiftyone/teams-components",
+    "version": "1.0.0",
+    "main": "src/index.ts",
+    "license": "MIT",
+    "private": true,
+    "devDependencies": {
+        "typescript": "^4.7.4"
+    },
+    "dependencies": {
+        "lodash": "^4.17.21",
+        "numeral": "^2.0.6",
+        "react-code-blocks": "^0.1.6",
+        "react-file-drop": "^3.1.6",
+        "react-loading-skeleton": "^3.1.0",
+        "typeface-inter": "^3.18.1"
+    }
+}

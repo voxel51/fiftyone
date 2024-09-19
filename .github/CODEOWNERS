@@ -7,3 +7,10 @@
 # Aloha Shirts care about versioning
 /setup.py               @voxel51/aloha-shirts
 /package/teams/setup.py @voxel51/aloha-shirts
+/teams-app/Dockerfile   @voxel51/aloha-shirts
+/teams-app/package.json @voxel51/aloha-shirts
+
+# App
+.prettierignore @voxel51/frontend-devs
+.prettierrc.js  @voxel51/frontend-devs
+/app            @voxel51/frontend-devs
