@@ -26,7 +26,8 @@ interface TimelineProps {
 export const Timeline = React.memo(
   React.forwardRef<HTMLDivElement, TimelineProps>(
     ({ name, style, controlsStyle }, ref) => {
-      const { playHeadState, config, play, pause } = useTimeline(name);
+      const { playHeadState, config, play, pause, setSpeed } =
+        useTimeline(name);
       const frameNumber = useFrameNumber(name);
 
       const { getSeekValue, seekTo } = useTimelineVizUtils();
@@ -67,7 +68,7 @@ export const Timeline = React.memo(
               play={play}
               pause={pause}
             />
-            <Speed speed={0.3} />
+            <Speed speed={config.speed ?? 1} setSpeed={setSpeed} />
             <StatusIndicator
               currentFrame={frameNumber}
               totalFrames={config.totalFrames}
