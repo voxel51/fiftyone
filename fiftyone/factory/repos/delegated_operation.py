@@ -283,14 +283,19 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "result": execution_result_json,
                 }
             }
-        elif (
-            run_state == ExecutionRunState.RUNNING
-            or run_state == ExecutionRunState.PENDING
-        ):
+        elif run_state == ExecutionRunState.RUNNING:
             update = {
                 "$set": {
                     "run_state": run_state,
                     "started_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+            }
+        elif run_state == ExecutionRunState.PENDING:
+            update = {
+                "$set": {
+                    "run_state": run_state,
+                    "pending_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
                 }
             }
