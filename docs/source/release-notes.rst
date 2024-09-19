@@ -3,6 +3,14 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+
+FiftyOne 0.25.2
+---------------
+*Released September 19, 2024*
+
+* Require `pymongo<4.9` to fix database connections
+
+
 FiftyOne Teams 2.0.1
 --------------------
 *Released September 6, 2024*
