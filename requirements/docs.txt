@@ -12,4 +12,5 @@ Sphinx==3.5.4
 sphinx-copybutton==0.4.0
 sphinxcontrib-applehelp==1.0.4
 sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-htmlhelp==2.0.6
 sphinxcontrib-napoleon==0.7
