@@ -3150,7 +3150,7 @@ class DelegatedListCommand(Command):
             default=None,
             help=(
                 "only list operations with this state. Supported values are "
-                "('QUEUED', 'PENDING', RUNNING', 'COMPLETED', 'FAILED')"
+                "('QUEUED', 'PENDING', 'RUNNING', 'COMPLETED', 'FAILED')"
             ),
         )
         parser.add_argument(
