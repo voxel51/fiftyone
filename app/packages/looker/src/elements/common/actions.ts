@@ -2,7 +2,6 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { is } from "immutable";
 import { SCALE_FACTOR } from "../../constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import {
@@ -477,18 +476,8 @@ export const playPause: Control<VideoState | ImaVidState> = {
       const isImaVid = (state.config as ImaVidConfig)
         .frameStoreController as ImaVidFramesController;
       if (isImaVid) {
-        const {
-          currentFrameNumber,
-          playing,
-          config: { frameStoreController },
-        } = state as ImaVidState;
-        const reachedEnd =
-          currentFrameNumber >= frameStoreController.totalFrameCount;
-        return {
-          currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
-          options: { showJSON: false },
-          playing: !playing || reachedEnd,
-        };
+        // do nothing, is handled in React component
+        return {};
       }
 
       const {
