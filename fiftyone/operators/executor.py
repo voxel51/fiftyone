@@ -859,6 +859,20 @@ class ExecutionContext(object):
         else:
             self.log(f"Progress: {progress} - {label}")
 
+    # TODO resolve circular import so this can have a type
+    def create_store(self, store_name):
+        """Creates a new store with the specified name.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            a :class:`fiftyone.operators.store.ExecutionStore`
+        """
+        from fiftyone.operators.store import ExecutionStore
+
+        return ExecutionStore.create(store_name)
+
     def serialize(self):
         """Serializes the execution context.
 
