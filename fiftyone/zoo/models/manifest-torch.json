@@ -449,8 +449,8 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "MedSAM2-video-torch",
-            "base_filename": "MedSAM2_pretrain.pth",
+            "base_name": "med-sam-2-video-torch",
+            "base_filename": "med-sam-2_pretrain.pth",
             "version": null,
             "description": "Fine-tuned SAM2-hiera-tiny model from paper: Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
             "source": "https://github.com/MedicineToken/Medical-SAM2",
@@ -482,7 +482,7 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "MedSAM-2"
+                "med-SAM"
             ],
             "date_added": "2024-08-17 14:48:00"
         },
