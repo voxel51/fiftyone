@@ -9,14 +9,37 @@ FiftyOne execution store related unit tests.
 import time
 import unittest
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import fiftyone
 from bson import ObjectId
 
+import fiftyone.operators as foo
 from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 from fiftyone.operators.store.permissions import StorePermissions
+from fiftyone.factory.repo_factory import ExecutionStoreRepo
+from fiftyone.operators.operator import Operator
+from fiftyone.operators.store import ExecutionStoreService
+
+
+class MockOperator:
+    """Mock operator that interacts with ExecutionStore."""
+
+    def __init__(self, ctx: foo.ExecutionContext):
+        self.ctx = ctx
+
+    def execute(self):
+        # Example logic of interacting with the store
+        store = self.ctx.create_store("widgets")
+
+        # Set a value in the store
+        store.set("widget_1", {"name": "Widget One", "value": 100}, ttl=60000)
+
+        # Get the value back from the store
+        result = store.get("widget_1")
+
+        return result
 
 
 class MockStoreRepo:
@@ -166,5 +189,105 @@ class ExecutionStoreServiceTests(unittest.TestCase):
         self.assertEqual(store.permissions["roles"], permissions.roles)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestOperatorWithExecutionStore(Operator):
+    def execute(self, ctx):
+        # Create a store and interact with it
+        store = ctx.create_store("test_store")
+
+        # Perform some store operations
+        store.set("my_key", {"foo": "bar"})
+        value = store.get("my_key")
+        store.delete("my_key")
+
+        return value
+
+
+class ExecutionStoreIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        # Create a MagicMock for the MongoDB collection
+        self.mock_collection = MagicMock()
+
+        # Instantiate the store repo and replace the _collection attribute
+        self.store_repo = ExecutionStoreRepo(self.mock_collection)
+
+        # Create the store service with the mocked repo
+        self.store_service = ExecutionStoreService(self.store_repo)
+
+        # Create an execution context
+        from fiftyone.operators import ExecutionContext
+
+        self.ctx = ExecutionContext()
+        self.ctx.store_service = (
+            self.store_service
+        )  # Inject the store service into the context
+
+        # Create an instance of the operator
+        self.operator = TestOperatorWithExecutionStore()
+
+    def test_operator_execute_with_store(self):
+        # Mock MongoDB collection methods
+        self.mock_collection.update_one.return_value = None
+        self.mock_collection.find_one.return_value = {
+            "key": "my_key",
+            "value": {"foo": "bar"},
+        }
+        self.mock_collection.delete_one.return_value = None
+
+        # Call the operator's execute method
+        result = self.operator.execute(self.ctx)
+
+        # Verify that the store interactions were made correctly
+        self.mock_collection.update_one.assert_called_once()  # Checking that set operation inserts data
+        self.mock_collection.find_one.assert_called_once_with(
+            {"store_name": "test_store", "key": "my_key"}
+        )  # Checking that get operation retrieves data
+        self.mock_collection.delete_one.assert_called_once_with(
+            {"store_name": "test_store", "key": "my_key"}
+        )  # Checking that delete operation removes data
+
+        # Verify the correct value was returned from the store
+        self.assertEqual(result, {"key": "my_key", "value": {"foo": "bar"}})
+
+    def test_operator_execute_set_key(self):
+        # Mock the insert_one call for the set operation
+        self.mock_collection.insert_one.return_value = None
+
+        # Call the operator's execute method
+        self.operator.execute(self.ctx)
+
+        # Check that insert_one (set) was called with the correct arguments
+        self.mock_collection.insert_one.assert_called_once_with(
+            {
+                "store_name": "test_store",
+                "key": "my_key",
+                "value": {"foo": "bar"},
+            }
+        )
+
+    def test_operator_execute_get_key(self):
+        # Mock the find_one call for the get operation
+        self.mock_collection.find_one.return_value = {
+            "key": "my_key",
+            "value": {"foo": "bar"},
+        }
+
+        # Call the operator's execute method
+        result = self.operator.execute(self.ctx)
+
+        # Check that find_one (get) was called correctly and returned the expected value
+        self.mock_collection.find_one.assert_called_once_with(
+            {"store_name": "test_store", "key": "my_key"}
+        )
+        self.assertEqual(result, {"key": "my_key", "value": {"foo": "bar"}})
+
+    def test_operator_execute_delete_key(self):
+        # Mock the delete_one call for the delete operation
+        self.mock_collection.delete_one.return_value = None
+
+        # Call the operator's execute method
+        self.operator.execute(self.ctx)
+
+        # Check that delete_one was called with the correct arguments
+        self.mock_collection.delete_one.assert_called_once_with(
+            {"store_name": "test_store", "key": "my_key"}
+        )
