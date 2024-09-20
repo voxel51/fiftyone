@@ -57,8 +57,6 @@ class DelegatedOperationDocument(object):
         self.operator = doc.get("operator")
         self.queued_at = doc.get("queued_at")
         self.run_state = doc.get("run_state")
-        self.label = doc.get("label", None)
-        self.updated_at = doc.get("updated_at", None)
 
         # optional fields
         self.delegation_target = doc.get("delegation_target", None)
@@ -69,7 +67,15 @@ class DelegatedOperationDocument(object):
         self.pinned = doc.get("pinned", None)
         self.dataset_id = doc.get("dataset_id", None)
         self.run_link = doc.get("run_link", None)
+        self.metadata = doc.get("metadata", None)
+        self.label = doc.get("label", None)
+        self.updated_at = doc.get("updated_at", None)
 
+        # internal fields
+        self.id = doc["_id"]
+        self._doc = doc
+
+        # nested fields
         if (
             "context" in doc
             and doc["context"] is not None
@@ -97,12 +103,6 @@ class DelegatedOperationDocument(object):
                 self.status.label = doc["status"]["label"]
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
-
-        # internal fields
-        self.id = doc["_id"]
-        self._doc = doc
-
-        self.metadata = doc.get("metadata", None)
 
         return self
 
