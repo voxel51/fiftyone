@@ -63,7 +63,7 @@ class DelegatedOperationDocument(object):
         self.started_at = doc.get("started_at", None)
         self.completed_at = doc.get("completed_at", None)
         self.failed_at = doc.get("failed_at", None)
-        self.pending_at = doc.get("pending_at", None)
+        self.scheduled_at = doc.get("scheduled_at", None)
         self.pinned = doc.get("pinned", None)
         self.dataset_id = doc.get("dataset_id", None)
         self.run_link = doc.get("run_link", None)

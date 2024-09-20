@@ -101,15 +101,15 @@ class DelegatedOperationService(object):
             progress=progress,
         )
 
-    def set_pending(self, doc_id):
-        """Sets the given delegated operation to pending state.
+    def set_scheduled(self, doc_id):
+        """Sets the given delegated operation to scheduled state.
         Args:
             doc_id: the ID of the delegated operation
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.PENDING
+            _id=doc_id, run_state=ExecutionRunState.SCHEDULED
         )
 
     def set_completed(
@@ -246,17 +246,17 @@ class DelegatedOperationService(object):
             operator=operator, dataset_name=dataset_name
         )
 
-    def get_pending_operations(self, operator=None, dataset_name=None):
-        """Returns all pending delegated operations.
+    def get_scheduled_operations(self, operator=None, dataset_name=None):
+        """Returns all scheduled delegated operations.
         Args:
             operator (None): the optional name of the operator to return all
-                the pending delegated operations for
+                the scheduled delegated operations for
             dataset_name (None): the optional name of the dataset to return all
-                the pending delegated operations for
+                the scheduled delegated operations for
         Returns:
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
-        return self._repo.get_pending_operations(
+        return self._repo.get_scheduled_operations(
             operator=operator, dataset_name=dataset_name
         )
 

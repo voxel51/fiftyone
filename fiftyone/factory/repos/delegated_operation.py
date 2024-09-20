@@ -64,12 +64,12 @@ class DelegatedOperationRepo(object):
             "subclass must implement get_queued_operations()"
         )
 
-    def get_pending_operations(
+    def get_scheduled_operations(
         self, operator: str = None, dataset_name=None
     ) -> List[DelegatedOperationDocument]:
-        """Get all pending operations."""
+        """Get all scheduled operations."""
         raise NotImplementedError(
-            "subclass must implement get_pending_operations()"
+            "subclass must implement get_scheduled_operations()"
         )
 
     def get_running_operations(
@@ -291,11 +291,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "updated_at": datetime.utcnow(),
                 }
             }
-        elif run_state == ExecutionRunState.PENDING:
+        elif run_state == ExecutionRunState.SCHEDULED:
             update = {
                 "$set": {
                     "run_state": run_state,
-                    "pending_at": datetime.utcnow(),
+                    "scheduled_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
                 }
             }
@@ -365,7 +365,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             run_state=ExecutionRunState.QUEUED,
         )
 
-    def get_pending_operations(
+    def get_scheduled_operations(
         self,
         operator: str = None,
         dataset_name: ObjectId = None,
@@ -373,7 +373,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
-            run_state=ExecutionRunState.PENDING,
+            run_state=ExecutionRunState.SCHEDULED,
         )
 
     def get_running_operations(
