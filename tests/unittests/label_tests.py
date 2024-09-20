@@ -471,6 +471,38 @@ class LabelTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_parse_stuff_instance(self):
+        mask = np.ones((3, 3), dtype=bool)
+        offset = (0, 0)
+        frame_size = (6, 6)
+        bbox, instance_mask = focl._parse_stuff_instance(
+            mask, offset, frame_size
+        )
+        self.assertEqual(bbox, [0.0, 0.0, 0.5, 0.5])
+        nptest.assert_array_equal(instance_mask, mask)
+
+    @drop_datasets
+    def test_parse_thing_instances(self):
+        # test on multiple disconnected objects with overlapping
+        # bounding boxes
+        mask = np.eye(5, dtype=bool)
+        mask[0, -1] = True
+        offset = (0, 0)
+        frame_size = (10, 10)
+        results = focl._parse_thing_instances(mask, offset, frame_size)
+        self.assertEqual(len(results), 2)
+
+        bbox, instance_mask = max(results, key=lambda x: x[1].size)
+        self.assertEqual(bbox, [0, 0, 0.5, 0.5])
+        expected_mask = np.eye(5, dtype=bool)
+        nptest.assert_array_equal(instance_mask, expected_mask)
+
+        bbox, instance_mask = min(results, key=lambda x: x[1].size)
+        self.assertEqual(bbox, [0.4, 0, 0.1, 0.1])
+        expected_mask = np.eye(1, dtype=bool)
+        nptest.assert_array_equal(instance_mask, expected_mask)
+
+    @drop_datasets
     def test_transform_mask(self):
         # int to int
         mask = np.arange(9).reshape((3, 3))
