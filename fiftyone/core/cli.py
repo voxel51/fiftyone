@@ -3150,7 +3150,7 @@ class DelegatedListCommand(Command):
             default=None,
             help=(
                 "only list operations with this state. Supported values are "
-                "('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')"
+                "('SCHEDULED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')"
             ),
         )
         parser.add_argument(
@@ -3158,7 +3158,7 @@ class DelegatedListCommand(Command):
             default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
-                "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
+                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
             ),
         )
         parser.add_argument(
@@ -3390,7 +3390,7 @@ class DelegatedCleanupCommand(Command):
             default=None,
             help=(
                 "delete operations in this state. Supported values are "
-                "('QUEUED', 'COMPLETED', 'FAILED')"
+                "('SCHEDULED', 'QUEUED', 'COMPLETED', 'FAILED')"
             ),
         )
         parser.add_argument(
