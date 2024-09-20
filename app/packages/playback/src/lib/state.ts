@@ -123,12 +123,16 @@ export type CreateFoTimeline = {
   /**
    * Configuration for the timeline.
    */
-  config: FoTimelineConfig;
+  config?: FoTimelineConfig;
   /**
-   * An optional function that returns a promise that resolves when the timeline is ready to be initialized.
+   * An optional function that returns a promise that resolves when the timeline is ready to be marked as initialized.
    * If this function is not provided, the timeline is declared to be initialized immediately upon creation.
    */
   waitUntilInitialized?: () => Promise<void>;
+  /**
+   * If true, the creator will be responsible for managing the animation loop.
+   */
+  optOutOfAnimation?: boolean;
 };
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>

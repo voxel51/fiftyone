@@ -81,6 +81,7 @@ export const useCreateTimeline = (
     addTimeline,
     timelineName,
     newTimelineProps.waitUntilInitialized,
+    newTimelineProps.optOutOfAnimation,
     newTimelineProps.config?.loop,
     newTimelineProps.config?.totalFrames,
   ]);
@@ -90,6 +91,10 @@ export const useCreateTimeline = (
    * based on the playhead state
    */
   useEffect(() => {
+    if (!isTimelineInitialized || newTimelineProps.optOutOfAnimation) {
+      return;
+    }
+
     if (playHeadState === "playing") {
       startAnimation();
     }
@@ -99,7 +104,11 @@ export const useCreateTimeline = (
     }
 
     playHeadStateRef.current = playHeadState;
-  }, [playHeadState]);
+  }, [
+    isTimelineInitialized,
+    playHeadState,
+    newTimelineProps.optOutOfAnimation,
+  ]);
 
   /**
    * this effect establishes a binding with externally
@@ -128,17 +137,25 @@ export const useCreateTimeline = (
   const isAnimationActiveRef = useRef(false);
   const isLastDrawFinishedRef = useRef(true);
   const frameNumberRef = useRef(frameNumber);
+  const onPlayListenerRef = useRef<() => void>();
+  const onPauseListenerRef = useRef<() => void>();
   const lastDrawTime = useRef(-1);
   const playHeadStateRef = useRef(playHeadState);
   const updateFreqRef = useRef(updateFreq);
 
   const play = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "playing" });
+    if (onPlayListenerRef.current) {
+      onPlayListenerRef.current();
+    }
   }, [timelineName]);
 
   const pause = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "paused" });
     cancelAnimation();
+    if (onPauseListenerRef.current) {
+      onPauseListenerRef.current();
+    }
   }, [timelineName]);
 
   const onPlayEvent = useCallback(
@@ -146,7 +163,6 @@ export const useCreateTimeline = (
       if (e.detail.timelineName !== timelineName) {
         return;
       }
-
       play();
       e.stopPropagation();
     },
@@ -361,5 +377,34 @@ export const useCreateTimeline = (
     setFrameNumberFromEventHandler
   );
 
-  return { isTimelineInitialized, refresh, subscribe };
+  const registerOnPlayCallback = useCallback((listener: () => void) => {
+    onPlayListenerRef.current = listener;
+  }, []);
+
+  const registerOnPauseCallback = useCallback((listener: () => void) => {
+    onPauseListenerRef.current = listener;
+  }, []);
+
+  return {
+    /**
+     * Whether the timeline has been initialized.
+     */
+    isTimelineInitialized,
+    /**
+     * Callback which is invoked when the timeline's playhead state is set to `playing`.
+     */
+    registerOnPlayCallback,
+    /**
+     * Callback which is invoked when the timeline's playhead state is set to `paused`.
+     */
+    registerOnPauseCallback,
+    /**
+     * Re-render all subscribers of the timeline with current frame number.
+     */
+    refresh,
+    /**
+     * Subscribe to the timeline.
+     */
+    subscribe,
+  };
 };
