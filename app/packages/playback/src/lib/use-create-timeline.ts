@@ -298,6 +298,11 @@ export const useCreateTimeline = (
 
   const spaceKeyDownHandler = useCallback(
     (_, e: KeyboardEvent) => {
+      // skip if we're in an input field
+      if (e.target instanceof HTMLInputElement) {
+        return;
+      }
+
       if (playHeadState === "paused") {
         play();
       } else {
