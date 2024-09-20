@@ -1,4 +1,4 @@
-import { Optional, useEventHandler, useKeyDown } from "@fiftyone/state";
+import { Optional, useEventHandler, useKeydownHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -17,6 +17,7 @@ import {
 } from "../lib/state";
 import { DEFAULT_FRAME_NUMBER } from "./constants";
 import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { getTimelineSetFrameNumberEventName } from "./utils";
 
 /**
  * This hook creates a new timeline with the given configuration.
@@ -296,25 +297,69 @@ export const useCreateTimeline = (
     });
   }, [isTimelineInitialized, refresh]);
 
-  const spaceKeyDownHandler = useCallback(
-    (_, e: KeyboardEvent) => {
+  const keyDownHandler = useCallback(
+    (e: KeyboardEvent) => {
       // skip if we're in an input field
       if (e.target instanceof HTMLInputElement) {
         return;
       }
 
-      if (playHeadState === "paused") {
-        play();
-      } else {
+      const key = e.key.toLowerCase();
+
+      if (key === " ") {
+        if (playHeadState === "paused") {
+          play();
+        } else {
+          pause();
+        }
+      } else if (key === ",") {
         pause();
+        setFrameNumber({
+          name: timelineName,
+          newFrameNumber: Math.max(frameNumberRef.current - 1, 1),
+        });
+      } else if (key === ".") {
+        pause();
+        setFrameNumber({
+          name: timelineName,
+          newFrameNumber: Math.min(
+            frameNumberRef.current + 1,
+            configRef.current.totalFrames
+          ),
+        });
       }
+
       e.stopPropagation();
       e.preventDefault();
     },
     [play, pause, playHeadState]
   );
 
-  useKeyDown(" ", spaceKeyDownHandler, [spaceKeyDownHandler]);
+  useKeydownHandler(keyDownHandler);
+
+  const setFrameEventName = useMemo(
+    () => getTimelineSetFrameNumberEventName(timelineName),
+    [timelineName]
+  );
+
+  console.log(">>> on listen side, setFrameEventName", setFrameEventName);
+
+  const setFrameNumberFromEventHandler = useCallback(
+    (e: CustomEvent) => {
+      pause();
+      setFrameNumber({
+        name: timelineName,
+        newFrameNumber: e.detail.frameNumber,
+      });
+    },
+    [timelineName]
+  );
+
+  useEventHandler(
+    document.getElementById("modal")!,
+    setFrameEventName,
+    setFrameNumberFromEventHandler
+  );
 
   return { isTimelineInitialized, refresh, subscribe };
 };

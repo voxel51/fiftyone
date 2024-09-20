@@ -174,7 +174,7 @@ export const ImaVidLookerReact = React.memo(
       // todo: not working because it's resolved in a promise later
       // maybe emit event to update the total frames
       if (!totalFrameCount) {
-        return null;
+        return undefined;
       }
 
       return {
