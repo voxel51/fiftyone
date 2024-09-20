@@ -2913,6 +2913,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
     @drop_datasets
     def test_fiftyone_dataset(self):
         dataset = self._make_dataset()
+        dataset.reload()
 
         # Standard format
 
@@ -3286,6 +3287,46 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertEqual(dataset2.description, description)
         self.assertListEqual(dataset2.tags, tags)
 
+        # Created at/last modified at
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        field_created_at1 = [
+            f.created_at for f in dataset.get_field_schema().values()
+        ]
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_field_schema().values()
+        ]
+        created_at2 = dataset2.values("created_at")
+        last_modified_at2 = dataset2.values("last_modified_at")
+
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
+        self.assertTrue(
+            all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
+        )
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
+
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
@@ -3608,6 +3649,47 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertEqual(dataset2.description, description)
         self.assertListEqual(dataset2.tags, tags)
+
+        # Created at/last modified at
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        field_created_at1 = [
+            f.created_at for f in dataset.get_field_schema().values()
+        ]
+        created_at1 = dataset.values("created_at")
+        last_modified_at1 = dataset.values("last_modified_at")
+
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_field_schema().values()
+        ]
+        created_at2 = dataset2.values("created_at")
+        last_modified_at2 = dataset2.values("last_modified_at")
+
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
+
+        self.assertTrue(
+            all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
+        )
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
 
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):
@@ -4643,6 +4725,99 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
 
         # data/_videos/<filename>
         self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
+
+    @drop_datasets
+    def test_fiftyone_dataset(self):
+        dataset = self._make_dataset()
+
+        # Created at/last modified at
+
+        export_dir = self._new_dir()
+
+        dataset.reload()
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        field_created_at1 = [
+            f.created_at for f in dataset.get_frame_field_schema().values()
+        ]
+        created_at1 = dataset.values("frames.created_at", unwind=True)
+        last_modified_at1 = dataset.values("last_modified_at", unwind=True)
+
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_frame_field_schema().values()
+        ]
+        created_at2 = dataset2.values("frames.created_at", unwind=True)
+        last_modified_at2 = dataset2.values(
+            "frames.last_modified_at", unwind=True
+        )
+
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
+        self.assertTrue(
+            all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
+        )
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
+
+    @drop_datasets
+    def test_legacy_fiftyone_dataset(self):
+        dataset = self._make_dataset()
+
+        # Created at/last modified at
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        field_created_at1 = [
+            f.created_at for f in dataset.get_frame_field_schema().values()
+        ]
+        created_at1 = dataset.values("frames.created_at", unwind=True)
+        last_modified_at1 = dataset.values("last_modified_at", unwind=True)
+
+        field_created_at2 = [
+            f.created_at for f in dataset2.get_frame_field_schema().values()
+        ]
+        created_at2 = dataset2.values("frames.created_at", unwind=True)
+        last_modified_at2 = dataset2.values(
+            "frames.last_modified_at", unwind=True
+        )
+
+        self.assertTrue(
+            all(
+                f1 < f2 for f1, f2 in zip(field_created_at1, field_created_at2)
+            )
+        )
+        self.assertTrue(
+            all(c1 < c2 for c1, c2 in zip(created_at1, created_at2))
+        )
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
 
 
 class UnlabeledMediaDatasetTests(ImageDatasetTests):

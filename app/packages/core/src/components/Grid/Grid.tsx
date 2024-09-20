@@ -17,6 +17,7 @@ import { v4 as uuid } from "uuid";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
+import useFontSize from "./useFontSize";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useSelect from "./useSelect";
@@ -47,6 +48,7 @@ function Grid() {
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const setSample = fos.useExpandSample(store);
+  const getFontSize = useFontSize(id);
 
   const spotlight = useMemo(() => {
     reset;
@@ -82,7 +84,14 @@ function Grid() {
         };
 
         if (!soft) {
-          init(createLooker.current?.({ ...result, symbol: id }));
+          init(
+            createLooker.current?.(
+              { ...result, symbol: id },
+              {
+                fontSize: getFontSize(),
+              }
+            )
+          );
         }
       },
       scrollbar: true,
@@ -91,6 +100,7 @@ function Grid() {
   }, [
     createLooker,
     get,
+    getFontSize,
     lookerStore,
     page,
     records,
@@ -102,7 +112,7 @@ function Grid() {
     threshold,
   ]);
   selectSample.current = useSelectSample(records);
-  useSelect(lookerOptions, lookerStore, spotlight);
+  useSelect(getFontSize, lookerOptions, lookerStore, spotlight);
 
   useLayoutEffect(() => {
     if (resizing || !spotlight) {

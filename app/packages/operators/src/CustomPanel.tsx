@@ -1,4 +1,4 @@
-import { CenteredStack, CodeBlock } from "@fiftyone/components";
+import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
@@ -68,20 +68,27 @@ export function CustomPanel(props: CustomPanelProps) {
 
   return (
     <Box
-      sx={{ height: "100%", width: "100%", position: "relative" }}
-      ref={dimensions.widthRef}
+      className={scrollable}
+      sx={{
+        height: "100%",
+        width: "100%",
+        position: "relative",
+        overflow: "auto",
+      }}
     >
-      <DimensionRefresher dimensions={dimensions}>
-        <OperatorIO
-          id={panelId}
-          schema={schema}
-          onChange={handlePanelStateChange}
-          data={data}
-          layout={{ height, width }}
-          onPathChange={handlePanelStatePathChange}
-          shouldClearUseKeyStores={false}
-        />
-      </DimensionRefresher>
+      <Box ref={dimensions.widthRef}>
+        <DimensionRefresher dimensions={dimensions}>
+          <OperatorIO
+            id={panelId}
+            schema={schema}
+            onChange={handlePanelStateChange}
+            data={data}
+            layout={{ height, width }}
+            onPathChange={handlePanelStatePathChange}
+            shouldClearUseKeyStores={false}
+          />
+        </DimensionRefresher>
+      </Box>
     </Box>
   );
 }

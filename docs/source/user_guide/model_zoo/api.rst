@@ -5,13 +5,6 @@ Model Zoo API Reference
 
 .. default-role:: code
 
-This page describes the full API for working with the Model Zoo.
-
-.. _model-zoo-package:
-
-Model zoo package
------------------
-
 You can interact with the Model Zoo either via the Python library or the CLI.
 
 .. tabs::

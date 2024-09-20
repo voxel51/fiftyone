@@ -23,17 +23,15 @@ logger = logging.getLogger(__name__)
 _HEADER = """
 .. _model-zoo-models:
 
-Available Zoo Models
-====================
+Built-In Zoo Models
+===================
 
 .. default-role:: code
 
-This page lists all of the models available in the Model Zoo.
+This page lists all of the natively available models in the FiftyOne Model Zoo.
 
-.. note::
-
-    Check out the :ref:`API reference <model-zoo-api>` for complete
-    instructions for using the Model Zoo.
+Check out the :ref:`API reference <model-zoo-api>` for complete instructions
+for using the Model Zoo.
 """
 
 

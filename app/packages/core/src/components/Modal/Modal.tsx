@@ -38,26 +38,13 @@ const ModalContainer = styled.div`
   z-index: 10001;
 `;
 
-const ModalNavigationContainer = styled.div<{
-  $sidebarWidth: number;
-  $isSidebarVisible: boolean;
-}>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: ${({ $sidebarWidth, $isSidebarVisible }) =>
-    $isSidebarVisible ? `calc(100% - ${$sidebarWidth}px)` : "100%"};
-  height: 100%;
-  position: absolute;
-  left: 0;
-`;
-
 const SpacesContainer = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  z-index: 1501;
 `;
 
 const SidebarPanelBlendInDiv = styled.div`
@@ -91,10 +78,7 @@ const Modal = () => {
 
   const renderEntry = useModalSidebarRenderEntry();
 
-  const { jsonPanel, helpPanel, onNavigate } = useLookerHelpers();
-
-  const hoveringSample = useRecoilValue(fos.hoveredSample);
-  const currentModalSampleId = useRecoilValue(fos.modalSampleId);
+  const { jsonPanel, helpPanel } = useLookerHelpers();
 
   const select = fos.useSelectSample();
 
@@ -179,13 +163,13 @@ const Modal = () => {
   fos.useEventHandler(document, "keyup", keysHandler);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
-  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
+  const { onNavigate } = useLookerHelpers();
 
   const screenParams = useMemo(() => {
     return isFullScreen
       ? { width: "100%", height: "100%" }
-      : { width: "95%", height: "90%", borderRadius: "3px" };
+      : { width: "95%", height: "calc(100% - 70px)", borderRadius: "8px" };
   }, [isFullScreen]);
 
   const activeLookerRef = useRef<fos.Lookers>();
@@ -231,12 +215,7 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigationContainer
-            $isSidebarVisible={isSidebarVisible}
-            $sidebarWidth={sidebarwidth}
-          >
-            <ModalNavigation onNavigate={onNavigate} />
-          </ModalNavigationContainer>
+          <ModalNavigation onNavigate={onNavigate} />
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>

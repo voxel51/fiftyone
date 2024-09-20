@@ -1,3 +1,4 @@
+import { SxProps } from "@mui/material";
 import { SchemaViewType, ViewPropsType } from "./types";
 
 const CSS_UNIT_PATTERN =
@@ -26,12 +27,14 @@ export function getLayoutProps(props: ViewPropsType) {
   const { view = {} } = schema;
   const { height, width } = layout || {};
   return {
-    height: parseSize(view.height, height),
-    width: parseSize(view.width, width),
-    minHeight: parseSize(view.minHeight || view.min_height, height),
-    minWidth: parseSize(view.minWidth || view.min_width, width),
-    maxHeight: parseSize(view.maxHeight || view.max_height, height),
-    maxWidth: parseSize(view.maxWidth || view.min_width, width),
+    sx: {
+      height: parseSize(view.height, height),
+      width: parseSize(view.width, width),
+      minHeight: parseSize(view.minHeight || view.min_height, height),
+      minWidth: parseSize(view.minWidth || view.min_width, width),
+      maxHeight: parseSize(view.maxHeight || view.max_height, height),
+      maxWidth: parseSize(view.maxWidth || view.min_width, width),
+    },
   };
 }
 
@@ -47,7 +50,7 @@ export function getPaddingSx(view: SchemaViewType = {}): PaddingSxType {
   };
 }
 
-export function getMarginSx(view: SchemaViewType = {}): PaddingSxType {
+export function getMarginSx(view: SchemaViewType = {}): MarginSxType {
   return {
     m: view.margin,
     mx: view.margin_x || view.mx || view.marginX,
@@ -57,6 +60,48 @@ export function getMarginSx(view: SchemaViewType = {}): PaddingSxType {
     mb: view.margin_b || view.mb || view.marginB,
     ml: view.margin_l || view.ml || view.marginL,
   };
+}
+
+export function getGridSx(view: SchemaViewType = {}): SxProps {
+  const { columns, orientation, rows, alignX, alignY, align_x, align_y } = view;
+  const is2D = orientation !== "vertical" && orientation !== "horizontal";
+  const x = alignX || align_x || "start";
+  const y = alignY || align_y || "start";
+  const sx: SxProps = {
+    justifyContent: x,
+    alignItems: y,
+    ...getPaddingSx(view),
+    ...getMarginSx(view),
+  };
+
+  if (is2D) {
+    sx.display = "flex";
+    sx.flexWrap = "wrap";
+    sx.justifyContent = ALIGN_MAP[x] || x;
+    sx.alignItems = ALIGN_MAP[y] || y;
+    return sx;
+  }
+
+  sx.display = "grid";
+
+  /**
+   *  todo@im: template - auto compute width (height?)
+   * [
+   *  [1, 2, 3], row 1
+   *  [4, 5, 6], row 2
+   *  [7, 8, 9], row 3
+   * ]
+   */
+  const direction = orientation === "vertical" ? "row" : "column";
+  if (typeof columns === "number") {
+    sx.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  } else if (typeof rows === "number") {
+    sx.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    sx.gridAutoFlow = direction;
+  } else {
+    sx.gridAutoFlow = direction;
+  }
+  return sx;
 }
 
 export const overlayToSx = {
@@ -110,6 +155,37 @@ export const overlayToSx = {
   },
 };
 
+const ALIGN_MAP = {
+  left: "flex-start",
+  right: "flex-end",
+  center: "safe center",
+  top: "flex-start",
+  bottom: "flex-end",
+  start: "flex-start",
+};
+
+export function parseGap(gap: number | string) {
+  if (typeof gap === "string") {
+    const gapStr = gap.trim().replace("px", "");
+    if (Number.isNaN(Number(gapStr))) {
+      console.warn("Ignored invalid gap value " + gap);
+      return 0;
+    }
+    const gapInt = parseInt(gapStr);
+    return gap.includes("px") ? gapInt / 8 : gapInt;
+  } else if (typeof gap === "number") {
+    return gap;
+  }
+  return 0;
+}
+
+export function getAdjustedLayoutWidth(layoutWidth?: number, gap?: number) {
+  if (typeof gap === "number" && typeof layoutWidth === "number") {
+    return layoutWidth - gap * 8;
+  }
+  return layoutWidth;
+}
+
 type PaddingSxType = {
   p?: number;
   px?: number;
@@ -118,4 +194,14 @@ type PaddingSxType = {
   pr?: number;
   pb?: number;
   pl?: number;
+};
+
+type MarginSxType = {
+  m?: number;
+  mx?: number;
+  my?: number;
+  mt?: number;
+  mr?: number;
+  mb?: number;
+  ml?: number;
 };

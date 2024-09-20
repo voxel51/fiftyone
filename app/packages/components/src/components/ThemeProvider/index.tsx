@@ -76,6 +76,10 @@ let theme = extendMuiTheme({
         secondary: {
           main: "hsl(200, 0%, 30%)",
         },
+        tertiary: {
+          main: "hsl(200, 0%, 90%)",
+          hover: "hsl(200, 0%, 85%)",
+        },
         focusVisible: "hsl(212, 97%, 57%, 0.3)",
         text: {
           buttonHighlight: "hsl(200, 0%, 100%)",
@@ -150,6 +154,10 @@ let theme = extendMuiTheme({
         },
         secondary: {
           main: "hsl(200, 0%, 70%)",
+        },
+        tertiary: {
+          main: "hsl(200, 0%, 15%)",
+          hover: "hsl(200, 0%, 20%)",
         },
         focusVisible: "hsl(212, 97%, 43%, 0.3)",
         text: {

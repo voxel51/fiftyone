@@ -104,6 +104,24 @@ class ViewStage(object):
         """
         return None
 
+    def get_edited_fields(self, sample_collection, frames=False):
+        """Returns a list of names of fields or embedded fields that may have
+        been edited by the stage, if any.
+
+        The ``"frames."`` prefix should be omitted when ``frames`` is True.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
+
+        Returns:
+            a list of fields, or ``None`` if no fields have been edited
+        """
+        return None
+
     def get_filtered_fields(self, sample_collection, frames=False):
         """Returns a list of names of fields or embedded fields that contain
         **arrays** have been filtered by the stage, if any.
@@ -1406,6 +1424,28 @@ class ExcludeLabels(ViewStage):
         """Whether to omit samples that have no labels after filtering."""
         return self._omit_empty
 
+    def get_edited_fields(self, sample_collection, frames=False):
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        edited_fields = []
+
+        for field in fields:
+            field_name, is_frame_field = sample_collection._handle_frame_field(
+                field
+            )
+            if frames == is_frame_field:
+                edited_fields.append(field_name)
+
+        if edited_fields:
+            return edited_fields
+
+        return None
+
     def get_filtered_fields(self, sample_collection, frames=False):
         if self._labels is not None:
             fields = self._labels_map.keys()
@@ -1790,6 +1830,16 @@ class FilterField(ViewStage):
     def only_matches(self):
         """Whether to only include samples that match the filter."""
         return self._only_matches
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
 
     def to_mongo(self, sample_collection):
         field_name, is_frame_field = sample_collection._handle_frame_field(
@@ -2312,6 +2362,16 @@ class FilterLabels(ViewStage):
         """
         return self._trajectories
 
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
+
     def get_filtered_fields(self, sample_collection, frames=False):
         if self._is_labels_list_field and (frames == self._is_frame_field):
             list_path, _ = sample_collection._handle_frame_field(
@@ -2724,6 +2784,16 @@ class FilterKeypoints(ViewStage):
     def only_matches(self):
         """Whether to only include samples that match the filter."""
         return self._only_matches
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
 
     def to_mongo(self, sample_collection):
         label_type, root_path = sample_collection._get_label_field_path(
@@ -3914,6 +3984,16 @@ class LimitLabels(ViewStage):
         """The maximum number of labels to allow in each labels list."""
         return self._limit
 
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
+
     def get_filtered_fields(self, sample_collection, frames=False):
         if frames == self._is_frame_field:
             list_path, _ = sample_collection._handle_frame_field(
@@ -4076,6 +4156,16 @@ class MapLabels(ViewStage):
     def map(self):
         """The labels map dict."""
         return self._map
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
 
     def to_mongo(self, sample_collection):
         labels_field = _parse_labels_field(sample_collection, self._field)[0]
@@ -4242,6 +4332,16 @@ class SetField(ViewStage):
     def expr(self):
         """The expression to apply."""
         return self._expr
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
 
     def to_mongo(self, sample_collection):
         if self._pipeline is None:
@@ -6457,6 +6557,28 @@ class SelectLabels(ViewStage):
     def omit_empty(self):
         """Whether to omit samples that have no labels after filtering."""
         return self._omit_empty
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        edited_fields = []
+
+        for field in fields:
+            field_name, is_frame_field = sample_collection._handle_frame_field(
+                field
+            )
+            if frames == is_frame_field:
+                edited_fields.append(field_name)
+
+        if edited_fields:
+            return edited_fields
+
+        return None
 
     def get_filtered_fields(self, sample_collection, frames=False):
         if self._labels is not None:

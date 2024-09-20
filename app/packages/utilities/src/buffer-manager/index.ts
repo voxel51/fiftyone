@@ -1,4 +1,4 @@
-export type BufferRange = [number, number];
+export type BufferRange = Readonly<[number, number]>;
 export type Buffers = Readonly<BufferRange>[];
 
 /**
@@ -139,6 +139,13 @@ export class BufferManager {
     return this.buffers.findIndex(
       (range) => range && range[0] <= frame && range[1] >= frame
     );
+  }
+
+  /**
+   * Checks if the given value is in the buffer.
+   */
+  public isValueInBuffer(value: number) {
+    return this.getRangeIndexForFrame(value) !== -1;
   }
 
   /**

@@ -207,9 +207,11 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
             logger.info(f"Downloading {url}...")
             _download_archive(url, tmpdir)
 
-        metadata_paths = list(_iter_plugin_metadata_files(root_dir=tmpdir))
+        metadata_paths = list(
+            _iter_plugin_metadata_files(root_dir=tmpdir, strict=True)
+        )
         if not metadata_paths:
-            logger.info(f"No {PLUGIN_METADATA_FILENAMES} files found in {url}")
+            logger.info(f"No plugin YAML files found in {url}")
 
         for metadata_path in metadata_paths:
             try:
@@ -251,7 +253,7 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
 def _download_archive(url, outdir):
     archive_name = os.path.basename(url)
     if not os.path.splitext(archive_name)[1]:
-        raise ValueError("Cannot infer appropriate archive type for '{url}'")
+        raise ValueError(f"Cannot infer appropriate archive type for '{url}'")
 
     archive_path = os.path.join(outdir, archive_name)
     etaw.download_file(url, path=archive_path)
@@ -469,10 +471,6 @@ def create_plugin(
     return plugin_dir
 
 
-def _is_plugin_metadata_file(path):
-    return os.path.basename(path) in PLUGIN_METADATA_FILENAMES
-
-
 def _find_plugin_metadata_file(dirpath):
     for filename in PLUGIN_METADATA_FILENAMES:
         metadata_path = os.path.join(dirpath, filename)
@@ -522,7 +520,7 @@ def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
     return plugin_names
 
 
-def _iter_plugin_metadata_files(root_dir=None):
+def _iter_plugin_metadata_files(root_dir=None, strict=False):
     if root_dir is None:
         root_dir = fo.config.plugins_dir
 
@@ -532,10 +530,28 @@ def _iter_plugin_metadata_files(root_dir=None):
     for root, dirs, files in os.walk(root_dir, followlinks=True):
         # Ignore hidden directories
         dirs[:] = [d for d in dirs if not d.startswith(".")]
+
         for file in files:
-            if _is_plugin_metadata_file(file):
-                yield os.path.join(root, file)
-                dirs[:] = []  # stop traversing `root` once we find a plugin
+            if os.path.basename(file) in PLUGIN_METADATA_FILENAMES:
+                yaml_path = os.path.join(root, file)
+
+                # In strict mode we ensure this is a plugin YAML file
+                if strict:
+                    try:
+                        with open(yaml_path, "r") as f:
+                            type = yaml.safe_load(f).get("type")
+                    except:
+                        logger.warning("Failed to parse '%s'", yaml_path)
+                        continue
+
+                    # Note: if type is missing, we assume it is a plugin
+                    if type not in (None, "plugin"):
+                        continue
+
+                yield yaml_path
+
+                # Stop traversing `root` once we find a plugin
+                dirs[:] = []
                 break
 
 

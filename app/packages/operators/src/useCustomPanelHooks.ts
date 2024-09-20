@@ -2,15 +2,15 @@ import { debounce, merge } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
+import { DimensionsType, useUnboundState } from "@fiftyone/state";
 import {
   PANEL_STATE_CHANGE_DEBOUNCE,
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
 } from "./constants";
 import { executeOperator } from "./operators";
-import { useGlobalExecutionContext } from "./state";
+import { useCurrentSample, useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
-import { useUnboundState } from "@fiftyone/state";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -25,13 +25,7 @@ export interface CustomPanelProps {
   onChangeSelected?: string;
   onChangeSelectedLabels?: string;
   onChangeExtendedSelection?: string;
-  dimensions: {
-    bounds: {
-      height?: number;
-      width?: number;
-    };
-    widthRef: React.MutableRefObject<HTMLDivElement | null>;
-  } | null;
+  dimensions: DimensionsType | null;
   panelName?: string;
   panelLabel?: string;
 }
@@ -74,6 +68,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   });
   const panelSchema = panelStateLocal?.schema;
   const ctx = useGlobalExecutionContext();
+  const currentSample = useCurrentSample();
   const isLoaded: boolean = useMemo(() => {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
@@ -119,7 +114,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   useCtxChangePanelEvent(
     isLoaded,
     panelId,
-    ctx.currentSample,
+    currentSample,
     props.onChangeCurrentSample
   );
   useCtxChangePanelEvent(

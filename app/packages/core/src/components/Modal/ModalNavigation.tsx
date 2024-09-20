@@ -7,13 +7,22 @@ import React, { useCallback, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
-const Arrow = styled.span<{ $isRight?: boolean }>`
+const Arrow = styled.span<{
+  $isRight?: boolean;
+  $sidebarWidth: number;
+  $isSidebarVisible: boolean;
+}>`
   cursor: pointer;
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  right: ${(props) => (props.$isRight ? "0.75rem" : "initial")};
+  right: ${(props) =>
+    props.$isRight
+      ? props.$isSidebarVisible
+        ? `calc(0.75rem + ${props.$sidebarWidth}px)`
+        : "0.75rem"
+      : "initial"};
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
@@ -38,6 +47,9 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
+
+  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   const countLoadable = useRecoilValueLoadable(
     fos.count({ path: "", extended: true, modal: false })
@@ -94,7 +106,10 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   return (
     <>
       {showModalNavigationControls && modal.hasPrevious && (
-        <Arrow>
+        <Arrow
+          $isSidebarVisible={isSidebarVisible}
+          $sidebarWidth={sidebarwidth}
+        >
           <LookerArrowLeftIcon
             data-cy="nav-left-button"
             onClick={navigatePrevious}
@@ -102,7 +117,11 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         </Arrow>
       )}
       {showModalNavigationControls && modal.hasNext && (
-        <Arrow $isRight>
+        <Arrow
+          $isRight
+          $isSidebarVisible={isSidebarVisible}
+          $sidebarWidth={sidebarwidth}
+        >
           <LookerArrowRightIcon
             data-cy="nav-right-button"
             onClick={navigateNext}

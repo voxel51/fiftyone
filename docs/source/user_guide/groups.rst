@@ -123,11 +123,13 @@ for the group field of each |Sample| object in the group based on their slice's
     Persistent:  False
     Tags:        []
     Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
 
 .. note::
 
@@ -213,6 +215,8 @@ visualized in the App's grid view by default:
         'filepath': '~/fiftyone/quickstart/data/003344.jpg',
         'tags': [],
         'metadata': None,
+        'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+        'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
         'group': <Group: {'id': '62db2ce147e9efc3615cd346', 'name': 'center'}>,
     }>
 
@@ -234,6 +238,8 @@ You can change the *active group slice* in your current session by setting the
         'filepath': '~/fiftyone/quickstart/data/001599.jpg',
         'tags': [],
         'metadata': None,
+        'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+        'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
         'group': <Group: {'id': '62db2ce147e9efc3615cd346', 'name': 'left'}>,
     }>
 
@@ -292,13 +298,15 @@ declared on all samples from that slice and all other slices:
     Persistent:  False
     Tags:        []
     Sample fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:        fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
-        int_field:    fiftyone.core.fields.IntField
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        int_field:        fiftyone.core.fields.IntField
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
 
 .. note::
 
@@ -353,6 +361,8 @@ dict containing all samples in a group with a given ID:
             'filepath': '~/fiftyone/quickstart/data/001227.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'left'}>,
         }>,
         'center': <Sample: {
@@ -361,6 +371,8 @@ dict containing all samples in a group with a given ID:
             'filepath': '~/fiftyone/quickstart/data/004172.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'center'}>,
         }>,
         'right': <Sample: {
@@ -369,6 +381,8 @@ dict containing all samples in a group with a given ID:
             'filepath': '~/fiftyone/quickstart/data/000594.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'right'}>,
         }>,
     }
@@ -434,6 +448,8 @@ dataset's :ref:`active slice <groups-dataset-properties>`:
         'filepath': '~/fiftyone/quickstart/data/001394.jpg',
         'tags': [],
         'metadata': None,
+        'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+        'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
         'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
     }>
 
@@ -464,6 +480,8 @@ over dicts containing all samples in each group:
             'filepath': '~/fiftyone/quickstart/data/002538.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'left'}>,
         }>,
         'center': <Sample: {
@@ -472,6 +490,8 @@ over dicts containing all samples in each group:
             'filepath': '~/fiftyone/quickstart/data/001394.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
         }>,
         'right': <Sample: {
@@ -480,6 +500,8 @@ over dicts containing all samples in each group:
             'filepath': '~/fiftyone/quickstart/data/000020.jpg',
             'tags': [],
             'metadata': None,
+            'created_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
+            'last_modified_at': datetime.datetime(2024, 7, 22, 5, 16, 10, 701907),
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'right'}>,
         }>,
     }
@@ -523,12 +545,14 @@ data:
     Persistent:  False
     Tags:        []
     Sample fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:        fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        ground_truth:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
 
 KITTI multiview
 ---------------
@@ -647,11 +671,13 @@ You can perform simple operations like shuffling and limiting grouped datasets:
     Group slice: center
     Num groups:  10
     Group fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
     View stages:
         1. Shuffle(seed=None)
         2. Limit(limit=10)
@@ -807,11 +833,13 @@ images from the grouped dataset:
     Media type:  image
     Num samples: 108
     Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
     View stages:
         1. SelectGroupSlices(slices='left')
 
@@ -830,11 +858,13 @@ images:
     Media type:  image
     Num samples: 216
     Sample fields:
-        id:       fiftyone.core.fields.ObjectIdField
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        group:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        id:               fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        group:            fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
     View stages:
         1. SelectGroupSlices(slices=['left', 'right'])
 

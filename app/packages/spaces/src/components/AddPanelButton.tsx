@@ -2,8 +2,8 @@ import { IconButton, Popout, scrollable } from "@fiftyone/components";
 import { PluginComponentRegistration } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
-import { useMemo, useRef, useState } from "react";
-import { useRecoilCallback } from "recoil";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
 import { panelsCompareFn } from "../utils/sort";
@@ -12,23 +12,16 @@ import { AddPanelButtonContainer } from "./StyledElements";
 
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
-  const panelsPredicate = useRecoilCallback(
-    ({ snapshot }) =>
-      (panel: PluginComponentRegistration) => {
-        const isModalActive = snapshot
-          .getLoadable(fos.isModalActive)
-          .valueOrThrow();
-        const surface = panel.panelOptions?.surfaces;
-
-        if (isModalActive) {
-          return surface === "modal" || surface === "grid modal";
-        }
-
-        if (surface === "modal") return false;
-
-        return true;
-      },
-    []
+  const isModalActive = useRecoilValue(fos.isModalActive);
+  const panelsPredicate = useCallback(
+    (panel: PluginComponentRegistration) => {
+      const surface = panel.panelOptions?.surfaces;
+      if (isModalActive) {
+        return surface === "modal" || surface === "grid modal";
+      }
+      return surface !== "modal";
+    },
+    [isModalActive]
   );
   const panels = usePanels(panelsPredicate);
   const spaceNodes = useSpaceNodes(spaceId);

@@ -10,34 +10,34 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-d] [-e] [-m] [-p] [-v]
+    echo "Usage:  bash $0 [-h] [-b] [-d] [-e] [-m] [-p]
 
 Getting help:
 -h      Display this help message.
 
 Custom installations:
+-b      Source install of fiftyone-brain.
 -d      Install developer dependencies.
 -e      Source install of voxel51-eta.
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 -p      Install only the core python package, not the App.
--v      Voxel51 developer install (don't install fiftyone-brain).
 "
 }
 
 # Parse flags
 SHOW_HELP=false
+SOURCE_BRAIN_INSTALL=false
 DEV_INSTALL=false
 SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
-VOXEL51_INSTALL=false
-while getopts "hdempv" FLAG; do
+while getopts "hbdemp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
+        b) SOURCE_BRAIN_INSTALL=true ;;
         d) DEV_INSTALL=true ;;
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
-        v) VOXEL51_INSTALL=true ;;
         p) BUILD_APP=false ;;
         *) usage ;;
     esac
@@ -94,13 +94,23 @@ else
     pip install fiftyone-db
 fi
 
-if [ ${VOXEL51_INSTALL} = false ]; then
-    echo "***** INSTALLING FIFTYONE-BRAIN *****"
+echo "***** INSTALLING FIFTYONE-BRAIN *****"
+if [ ${SOURCE_BRAIN_INSTALL} = true ]; then
+    git clone https://github.com/voxel51/fiftyone-brain
+    cd fiftyone-brain
+    if [ ${DEV_INSTALL} = true ]; then
+        bash install.bash -d
+    else
+        pip install .
+    fi
+    cd ..
+else
+    echo "Cloning FiftyOne Brain repository"
     pip install --upgrade fiftyone-brain
 fi
 
 echo "***** INSTALLING FIFTYONE *****"
-if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+if [ ${DEV_INSTALL} = true ]; then
     echo "Performing dev install"
     pip install -r requirements/dev.txt
     pre-commit install
@@ -117,7 +127,7 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
         git clone https://github.com/voxel51/eta
     fi
     cd eta
-    if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
+    if [ ${DEV_INSTALL} = true ]; then
         pip install -e .
     else
         pip install .
