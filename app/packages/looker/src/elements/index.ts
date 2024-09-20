@@ -207,22 +207,31 @@ export const getImaVidElements: GetElements<ImaVidState> = (
   dispatchEvent,
   batchUpdate
 ) => {
-  const elements = {
-    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
-    children: [
-      {
-        node: imavid.ImaVidElement,
-      },
-      {
-        node: common.CanvasElement,
-      },
-      {
-        node: common.ErrorElement,
-      },
-      { node: common.TagsElement },
-      {
-        node: common.ThumbnailSelectorElement,
-      },
+  const isThumbnail = config.thumbnail;
+  const children: Array<unknown> = [
+    {
+      node: imavid.ImaVidElement,
+    },
+    {
+      node: common.CanvasElement,
+    },
+    {
+      node: common.ErrorElement,
+    },
+    { node: common.TagsElement },
+    {
+      node: common.ThumbnailSelectorElement,
+    },
+  ];
+
+  if (isThumbnail) {
+    children.push({
+      node: imavid.LoaderBar,
+    });
+  }
+
+  children.push(
+    ...[
       {
         node: imavid.ImaVidControlsElement,
         children: [
@@ -246,7 +255,12 @@ export const getImaVidElements: GetElements<ImaVidState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
-    ],
+    ]
+  );
+
+  const elements = {
+    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
+    children,
   };
 
   return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(
