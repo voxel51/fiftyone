@@ -10,6 +10,7 @@ import datetime
 class KeyDocument(BaseModel):
     """Model representing a key in the store."""
 
+    store_name: str
     key: str
     value: Any
     ttl: Optional[int] = None  # Time To Live in milliseconds
@@ -17,10 +18,14 @@ class KeyDocument(BaseModel):
         default_factory=datetime.datetime.utcnow
     )
     updated_at: Optional[datetime.datetime] = None
+    permissions: Optional[
+        Dict[str, Any]
+    ] = None  # Permissions can be a role/user/plugin map
 
     class Config:
         schema_extra = {
             "example": {
+                "store_name": "widget_store",
                 "key": "widgets_key",
                 "value": {"widget_1": "foo", "widget_2": "bar"},
                 "ttl": 600000,  # 10 minutes
@@ -28,29 +33,17 @@ class KeyDocument(BaseModel):
         }
 
 
-class StoreDocument(BaseModel):
+class StoreDocument(KeyDocument):
     """Model representing a store in the execution store."""
 
-    store_name: str
-    keys: Dict[str, KeyDocument] = Field(default_factory=dict)
-    permissions: Optional[
-        Dict[str, Any]
-    ] = None  # Permissions can be a role/user/plugin map
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.utcnow
-    )
+    key: str = "__store__"
+    value: Optional[Dict[str, Any]] = None
 
     class Config:
         schema_extra = {
             "example": {
+                "key": "__store__",
                 "store_name": "widget_store",
-                "keys": {
-                    "widgets_key": {
-                        "key": "widgets_key",
-                        "value": {"widget_1": "foo", "widget_2": "bar"},
-                        "ttl": 600000,
-                    }
-                },
                 "permissions": {
                     "roles": {"admin": ["read", "write"]},
                     "users": {"user_1": ["read", "write"], "user_2": ["read"]},
