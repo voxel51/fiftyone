@@ -1,18 +1,18 @@
-import { Table, TableBody } from '@mui/material';
+import { Table, TableBody } from "@mui/material";
 import {
   Box,
   TableContainer,
   EmptyState,
-  TableSkeleton
-} from '@fiftyone/teams-components';
-import InvitationsTableRow from './InvitationsTableRow';
-import { useRecoilValueLoadable, useSetRecoilState } from 'recoil';
+  TableSkeleton,
+} from "@fiftyone/teams-components";
+import InvitationsTableRow from "./InvitationsTableRow";
+import { useRecoilValueLoadable, useSetRecoilState } from "recoil";
 import {
   teamInvitationsSelector,
-  userListInvitationsCountState
-} from '@fiftyone/teams-state';
-import { DEFAULT_USERS_PAGE_SIZE } from '@fiftyone/teams-state/src/constants';
-import { useEffect } from 'react';
+  userListInvitationsCountState,
+} from "@fiftyone/teams-state";
+import { DEFAULT_USERS_PAGE_SIZE } from "@fiftyone/teams-state/src/constants";
+import { useEffect } from "react";
 
 export default function InvitationsTable() {
   const { contents: invitations, state } = useRecoilValueLoadable(
@@ -27,8 +27,8 @@ export default function InvitationsTable() {
       setUserListInvitationsCount(invitations.length || null);
   }, [invitations, setUserListInvitationsCount]);
 
-  if (state === 'hasError') throw invitations;
-  if (state === 'loading') {
+  if (state === "hasError") throw invitations;
+  if (state === "loading") {
     return <TableSkeleton rows={DEFAULT_USERS_PAGE_SIZE} />;
   }
 
@@ -39,9 +39,9 @@ export default function InvitationsTable() {
         <Box>
           <TableContainer
             sx={{
-              border: '1px solid',
+              border: "1px solid",
               borderColor: (theme) => theme.palette.divider,
-              borderRadius: 2
+              borderRadius: 2,
             }}
           >
             <Table>
@@ -52,11 +52,13 @@ export default function InvitationsTable() {
                     inviteeRole,
                     createdAt,
                     id,
-                    expiresAt
+                    expiresAt,
+                    url,
                   } = invitation;
                   return (
                     <InvitationsTableRow
                       key={id}
+                      url={url}
                       email={inviteeEmail}
                       id={id}
                       role={inviteeRole}

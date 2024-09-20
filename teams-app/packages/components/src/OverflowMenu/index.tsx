@@ -1,6 +1,6 @@
-import { ItemWithPermission, usePermissionedItems } from '@fiftyone/hooks';
-import { isNullish } from '@fiftyone/utilities';
-import { MoreVert as MoreVertIcon } from '@mui/icons-material';
+import { ItemWithPermission, usePermissionedItems } from "@fiftyone/hooks";
+import { isNullish } from "@fiftyone/utilities";
+import { MoreVert as MoreVertIcon } from "@mui/icons-material";
 import {
   Box,
   BoxProps,
@@ -9,9 +9,10 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  Typography
-} from '@mui/material';
-import { useMemo, useState } from 'react';
+  Typography,
+  Tooltip,
+} from "@mui/material";
+import { useMemo, useState } from "react";
 
 type OverflowMenuItemProps = ItemWithPermission & {
   primaryText: string | React.ReactNode;
@@ -20,6 +21,7 @@ type OverflowMenuItemProps = ItemWithPermission & {
   onClick?: Function;
   disabled?: boolean;
   title?: string;
+  hoverText?: string;
 };
 
 type OverflowMenuProps = {
@@ -33,7 +35,7 @@ export default function OverflowMenu({
   items,
   containerProps = {},
   constrainEvent,
-  hideNotAllowed
+  hideNotAllowed,
 }: OverflowMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -58,14 +60,14 @@ export default function OverflowMenu({
       if (
         item.permission &&
         isNullish(item.permission.label) &&
-        typeof item.primaryText === 'string'
+        typeof item.primaryText === "string"
       ) {
         return {
           ...item,
           permission: {
             ...item.permission,
-            label: item.primaryText.toLowerCase()
-          }
+            label: item.primaryText.toLowerCase(),
+          },
         };
       }
       return item;
@@ -82,8 +84,8 @@ export default function OverflowMenu({
       <IconButton
         aria-label="more"
         id="long-button"
-        aria-controls={open ? 'long-menu' : undefined}
-        aria-expanded={open ? 'true' : undefined}
+        aria-controls={open ? "long-menu" : undefined}
+        aria-expanded={open ? "true" : undefined}
         aria-haspopup="true"
         onClick={handleClick}
       >
@@ -91,7 +93,7 @@ export default function OverflowMenu({
       </IconButton>
       <Menu
         id="long-menu"
-        MenuListProps={{ 'aria-labelledby': 'long-button' }}
+        MenuListProps={{ "aria-labelledby": "long-button" }}
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
@@ -103,8 +105,10 @@ export default function OverflowMenu({
             onClick,
             primaryText,
             secondaryText,
-            title
+            title,
+            hoverText,
           } = item;
+
           const MenuItemComponent = (
             <MenuItem
               key={`overflow-menu-item-${i}`}
@@ -129,13 +133,33 @@ export default function OverflowMenu({
             </MenuItem>
           );
 
-          return disabled ? (
-            <Box title={title} sx={{ cursor: 'not-allowed' }}>
-              {MenuItemComponent}
-            </Box>
-          ) : (
-            MenuItemComponent
-          );
+          const text = useMemo(() => hoverText || "", [hoverText]);
+
+          if (disabled) {
+            return (
+              <Box
+                title={title}
+                sx={{ cursor: "not-allowed" }}
+                key={`menu-item-box-${i}`}
+              >
+                {MenuItemComponent}
+              </Box>
+            );
+          }
+
+          if (!text) {
+            return (
+              <Tooltip
+                title={text}
+                placement="bottom"
+                key={`tooltip-item-${i}`}
+              >
+                {MenuItemComponent}
+              </Tooltip>
+            );
+          }
+
+          return MenuItemComponent;
         })}
       </Menu>
     </Box>

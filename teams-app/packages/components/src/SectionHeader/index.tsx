@@ -6,9 +6,9 @@ import {
   Box,
   SxProps,
   Theme,
-  BoxProps
-} from '@mui/material';
-import React from 'react';
+  BoxProps,
+} from "@mui/material";
+import React from "react";
 
 type SubHeaderProps = {
   title: string | JSX.Element;
@@ -27,28 +27,33 @@ const SectionHeader = (props: SubHeaderProps) => {
     description,
     children,
     learnMoreLink,
-    learnMoreText = 'Learn more',
+    learnMoreText = "Learn more",
     sx = {},
     content,
-    containerProps
+    containerProps,
   } = props;
   return (
     <Box sx={{ pb: 2, ...(containerProps?.sx || {}) }} {...containerProps}>
       <Grid
         container
-        sx={{ justifyContent: 'space-between', alignItems: 'center', ...sx }}
+        sx={{ justifyContent: "space-between", alignItems: "center", ...sx }}
         spacing={2}
       >
-        <Grid item xs sx={{ width: '100%', overflow: 'hidden' }}>
+        <Grid item xs sx={{ width: "100%", overflow: "hidden" }}>
           <Typography variant="h6" component="h6" noWrap data-testid="title">
             {title}
           </Typography>
           {content}
           {description && (
             <Box display="flex" alignItems="center">
-              <Typography variant="body1" noWrap>
-                <Typography variant="body1" noWrap data-testid="description">
-                  {description}{' '}
+              <Typography variant="body1" noWrap component="div">
+                <Typography
+                  variant="body1"
+                  noWrap
+                  data-testid="description"
+                  component="span"
+                >
+                  {description}{" "}
                 </Typography>
                 {learnMoreLink && (
                   <>
@@ -72,8 +77,8 @@ const SectionHeader = (props: SubHeaderProps) => {
             md={4}
             xs={12}
             sx={{
-              display: 'flex',
-              justifyContent: { xs: 'flex-start', md: 'flex-end' }
+              display: "flex",
+              justifyContent: { xs: "flex-start", md: "flex-end" },
             }}
           >
             {children}
