@@ -18,7 +18,7 @@ const FilterablePathEntries = ({
   const color = useRecoilValue(pathColor(path));
   return (
     <>
-      {data.map((props) => (
+      {data.map(({ color: _, ...props }) => (
         <FilterItem key={props.path} color={color} {...events} {...props} />
       ))}
     </>

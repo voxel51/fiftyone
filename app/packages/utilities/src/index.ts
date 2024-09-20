@@ -3,13 +3,13 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
+export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
 export * from "./paths";
-export * from "./Resource";
 export * from "./schema";
 export * as styles from "./styles";
 export * from "./type-check";
@@ -617,6 +617,48 @@ export const formatDate = (timeStamp: number): string => {
     .format(timeStamp)
     .replaceAll("/", "-");
 };
+
+export const formatPrimitive = ({
+  ftype,
+  timeZone,
+  value,
+}: {
+  ftype: string;
+  timeZone: string;
+  value: unknown;
+}) => {
+  if (value === undefined) return value;
+
+  if (value === null) return;
+
+  switch (ftype) {
+    case FRAME_SUPPORT_FIELD:
+      value = `[${value[0]}, ${value[1]}]`;
+      break;
+    case DATE_FIELD:
+      // @ts-ignore
+      value = formatDate(value.datetime as number);
+      break;
+    case DATE_TIME_FIELD:
+      // @ts-ignore
+      value = formatDateTime(value.datetime as number, timeZone);
+      console.log("HUH", value);
+  }
+
+  return prettify(value as string);
+};
+
+export const makePseudoField = (path: string): Field => ({
+  name: path.split(".").slice(1).join("."),
+  ftype: "",
+  subfield: null,
+  description: "",
+  info: null,
+  fields: {},
+  dbField: null,
+  path: path,
+  embeddedDocType: null,
+});
 
 type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;

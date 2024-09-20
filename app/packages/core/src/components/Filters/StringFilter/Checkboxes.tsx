@@ -232,13 +232,14 @@ const Checkboxes = ({
       {!!selectedSet.size && (
         <>
           <FilterOption
+            color={color}
             excludeAtom={excludeAtom}
             isMatchingAtom={isMatchingAtom}
-            valueName={name}
             modal={modal}
             path={path}
+            valueName={name}
           />
-          <Reset modal={modal} path={path} />
+          <Reset color={color} modal={modal} path={path} />
         </>
       )}
     </>
