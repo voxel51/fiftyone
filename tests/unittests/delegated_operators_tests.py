@@ -226,9 +226,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc2.metadata)
         self.assertEqual(doc2.metadata, doc2_metadata)
 
-    def test_list_queued_operations(
-        self, mock_get_operator, mock_operator_exists
-    ):
+    def test_list_operations(self, mock_get_operator, mock_operator_exists):
         dataset_name = f"test_dataset_{ObjectId()}"
         dataset = Dataset(dataset_name, _create=True, persistent=True)
         dataset.save()
@@ -248,9 +246,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # get all the existing counts of queued operations
         initial_queued = len(self.svc.get_queued_operations())
-        initial_running = len(
-            self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
-        )
+        initial_running = len(self.svc.get_running_operations())
+        initial_pending = len(self.svc.get_pending_operations())
         initial_dataset_queued = len(
             self.svc.get_queued_operations(dataset_name=dataset_name)
         )
@@ -306,8 +303,17 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         queued = self.svc.get_queued_operations()
         self.assertEqual(len(queued), 10 + initial_queued)
 
-        running = self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
+        running = self.svc.get_running_operations()
         self.assertEqual(len(running), 10 + initial_running)
+
+        for doc in docs_to_run:
+            self.svc.set_pending(doc)
+
+        queued = self.svc.get_queued_operations()
+        self.assertEqual(len(queued), 10 + initial_queued)
+
+        pending = self.svc.get_pending_operations()
+        self.assertEqual(len(pending), 10 + initial_pending)
 
         dataset.delete()
         dataset2.delete()
