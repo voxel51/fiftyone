@@ -46,7 +46,7 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.pending_at = None
+        self.scheduled_at = None
         self.result = None
         self.id = None
         self._doc = None
