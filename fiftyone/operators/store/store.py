@@ -1,5 +1,5 @@
 """
-FiftyOne execution store service.
+FiftyOne execution store.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -7,125 +7,90 @@ FiftyOne execution store service.
 """
 
 import logging
-import traceback
 from fiftyone.factory.repo_factory import RepositoryFactory
-from fiftyone.operators.store.models import StoreDocument, KeyDocument
-from fiftyone.operators.store.permissions import StorePermissions
+from fiftyone.operators.store.service import ExecutionStoreService
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
-class ExecutionStoreService(object):
-    """Service for managing execution store operations."""
+class ExecutionStore:
+    @staticmethod
+    def create(store_name: str) -> "ExecutionStore":
+        return ExecutionStore(store_name, ExecutionStoreService())
 
-    def __init__(self, repo=None):
-        if repo is None:
-            repo = RepositoryFactory.execution_store_repo()
+    def __init__(self, store_name: str, store_service: ExecutionStoreService):
+        """
+        Args:
+            store_name (str): The name of the store.
+            store_service (ExecutionStoreService): The store service instance.
+        """
+        self.store_name: str = store_name
+        self._store_service: ExecutionStoreService = store_service
 
-        self._repo = repo
-
-    def create_store(self, store_name, permissions=None):
-        """Creates a new store with the specified name and permissions.
+    def get(self, key: str) -> Optional[Any]:
+        """Retrieves a value from the store by its key.
 
         Args:
-            store_name: the name of the store
-            permissions (None): an optional permissions dict
+            key (str): The key to retrieve the value for.
 
         Returns:
-            a :class:`fiftyone.store.models.StoreDocument`
+            Optional[Any]: The value stored under the given key, or None if not found.
         """
-        return self._repo.create_store(
-            store_name=store_name,
-            permissions=permissions or StorePermissions.default(),
-        )
+        key_doc = self._store_service.get_key(self.store_name, key)
+        if key_doc is None:
+            return None
+        return key_doc.value
 
-    def set_key(self, store_name, key, value, ttl=None):
-        """Sets the value of a key in the specified store.
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """Sets a value in the store with an optional TTL.
 
         Args:
-            store_name: the name of the store
-            key: the key to set
-            value: the value to set
-            ttl (None): an optional TTL in milliseconds
-
-        Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            key (str): The key to store the value under.
+            value (Any): The value to store.
+            ttl (Optional[int], optional): The time-to-live in milliseconds. Defaults to None.
         """
-        return self._repo.set_key(
-            store_name=store_name, key=key, value=value, ttl=ttl
-        )
+        self._store_service.set_key(self.store_name, key, value, ttl)
 
-    def get_key(self, store_name, key):
-        """Retrieves the value of a key from the specified store.
+    def delete(self, key: str) -> None:
+        """Deletes a key from the store.
 
         Args:
-            store_name: the name of the store
-            key: the key to retrieve
-
-        Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            key (str): The key to delete.
         """
-        return self._repo.get_key(store_name=store_name, key=key)
+        self._store_service.delete_key(self.store_name, key)
 
-    def delete_key(self, store_name, key):
-        """Deletes the specified key from the store.
+    def has(self, key: str) -> bool:
+        """Checks if the store has a specific key.
 
         Args:
-            store_name: the name of the store
-            key: the key to delete
+            key (str): The key to check.
 
         Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            bool: True if the key exists, False otherwise.
         """
-        return self._repo.delete_key(store_name=store_name, key=key)
+        return self._store_service.has_key(self.store_name, key)
 
-    def update_ttl(self, store_name, key, new_ttl):
-        """Updates the TTL of the specified key in the store.
+    def clear(self) -> None:
+        """Clears all the data in the store."""
+        self._store_service.clear_store(self.store_name)
+
+    def update_ttl(self, key: str, new_ttl: int) -> None:
+        """Updates the TTL for a specific key.
 
         Args:
-            store_name: the name of the store
-            key: the key to update the TTL for
-            new_ttl: the new TTL in milliseconds
-
-        Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            key (str): The key to update the TTL for.
+            new_ttl (int): The new TTL in milliseconds.
         """
-        return self._repo.update_ttl(
-            store_name=store_name, key=key, ttl=new_ttl
-        )
+        self._store_service.update_ttl(self.store_name, key, new_ttl)
 
-    def set_permissions(self, store_name, permissions):
-        """Sets the permissions for the specified store.
+    def get_ttl(self, key: str) -> Optional[int]:
+        """Retrieves the TTL for a specific key.
 
         Args:
-            store_name: the name of the store
-            permissions: a permissions object
+            key (str): The key to get the TTL for.
 
         Returns:
-            a :class:`fiftyone.store.models.StoreDocument`
+            Optional[int]: The TTL in milliseconds, or None if the key does not have a TTL.
         """
-        return self._repo.update_permissions(
-            store_name=store_name, permissions=permissions
-        )
-
-    def list_stores(self, search=None, **kwargs):
-        """Lists all stores matching the given criteria.
-
-        Args:
-            search (None): optional search term dict
-
-        Returns:
-            a list of :class:`fiftyone.store.models.StoreDocument`
-        """
-        return self._repo.list_stores(search=search, **kwargs)
-
-    def delete_store(self, store_name):
-        """Deletes the specified store.
-
-        Args:
-            store_name: the name of the store
-
-        Returns:
-            a :class:`fiftyone.store.models.StoreDocument`
-        """
-        return self._repo.delete_store(store_name=store_name)
+        return self._store_service.get_ttl(self.store_name, key)

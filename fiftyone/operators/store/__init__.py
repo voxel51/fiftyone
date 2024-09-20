@@ -6,7 +6,8 @@ FiftyOne execution store module.
 |
 """
 
-from .store import ExecutionStoreService
+from .service import ExecutionStoreService
+from .store import ExecutionStore
 from .models import StoreDocument, KeyDocument
 from .permissions import StorePermissions
 
@@ -15,4 +16,5 @@ __all__ = [
     "StoreDocument",
     "KeyDocument",
     "StorePermissions",
+    "ExecutionStore",
 ]
