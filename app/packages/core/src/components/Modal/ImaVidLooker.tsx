@@ -153,7 +153,6 @@ export const ImaVidLookerReact = React.memo(
 
     const loadRange = React.useCallback(async (range: BufferRange) => {
       // no-op, resolve in 1 second
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }, []);
 
     const renderFrame = React.useCallback((frameNumber: number) => {
