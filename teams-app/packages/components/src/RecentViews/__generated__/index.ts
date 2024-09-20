@@ -1,0 +1,5 @@
+export type { RecentViewsListFragment$data as RecentViewsListFragment$dataT } from './RecentViewsListFragment.graphql'
+export type { RecentViewsListFragment$key as RecentViewsListFragment$keyT } from './RecentViewsListFragment.graphql'
+export type { RecentViewsListFragmentQuery$variables as RecentViewsListFragmentQuery$variablesT } from './RecentViewsListFragmentQuery.graphql'
+export type { RecentViewsListFragmentQuery$data as RecentViewsListFragmentQuery$dataT } from './RecentViewsListFragmentQuery.graphql'
+export type { RecentViewsListFragmentQuery as RecentViewsListFragmentQueryT } from './RecentViewsListFragmentQuery.graphql'
