@@ -1,6 +1,6 @@
 import { BufferManager } from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
-import { VIDEO_SHORTCUTS } from "../../elements/common";
+import { IMAVID_SHORTCUTS } from "../../elements/common/actions";
 import { ImaVidElement } from "../../elements/imavid";
 import {
   DEFAULT_BASE_OPTIONS,
@@ -113,7 +113,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       buffering: false,
       bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
-      SHORTCUTS: VIDEO_SHORTCUTS,
+      SHORTCUTS: IMAVID_SHORTCUTS,
     };
   }
 
