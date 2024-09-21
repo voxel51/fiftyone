@@ -1297,6 +1297,9 @@ class Segmentation(_HasID, _HasMedia, Label):
         Optionally converts the class integer values back to 3D pixel
         values.
 
+        If self.is_panoptic is False, the original mask is returned
+        as-is.
+
         Args:
             to_rgb (False): convert integer classes to RGB hex values
 
