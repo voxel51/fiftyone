@@ -2122,9 +2122,10 @@ class ListFiles(foo.Operator):
 
     def execute(self, ctx):
         path = ctx.params.get("path", None)
-        list_filesystems = ctx.params.get("list_filesystems", False)
-        if list_filesystems:
-            return {"filesystems": list_fileystems()}
+        list_fs = ctx.params.get("list_filesystems", False)
+
+        if list_fs:
+            return {"filesystems": list_filesystems()}
 
         if path:
             try:
@@ -2141,7 +2142,7 @@ def get_default_path_for_filesystem(fs):
         raise ValueError("Unsupported file system '%s'" % fs)
 
 
-def list_fileystems():
+def list_filesystems():
     filesystems = fos.list_available_file_systems()
     results = []
     for fs in fos.FileSystem:
