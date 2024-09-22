@@ -94,3 +94,11 @@ class ExecutionStore:
             Optional[int]: The TTL in milliseconds, or None if the key does not have a TTL.
         """
         return self._store_service.get_ttl(self.store_name, key)
+
+    def list_keys(self) -> list[str]:
+        """Lists all keys in the store.
+
+        Returns:
+            list: A list of keys in the store.
+        """
+        return self._store_service.list_keys(self.store_name)
