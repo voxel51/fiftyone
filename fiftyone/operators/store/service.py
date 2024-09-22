@@ -128,3 +128,11 @@ class ExecutionStoreService(object):
             a :class:`fiftyone.store.models.StoreDocument`
         """
         return self._repo.delete_store(store_name=store_name)
+
+    def list_keys(self, store_name):
+        """Lists all keys in the specified store.
+
+        Args:
+            store_name: the name of the store
+        """
+        return self._repo.list_keys(store_name)

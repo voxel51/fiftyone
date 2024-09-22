@@ -31,8 +31,12 @@ class ExecutionStoreRepo:
 
     def set_key(self, store_name, key, value, ttl=None) -> KeyDocument:
         """Sets or updates a key in the specified store."""
+        expiration = KeyDocument.get_expiration(ttl)
         key_doc = KeyDocument(
-            store_name=store_name, key=key, value=value, ttl=ttl
+            store_name=store_name,
+            key=key,
+            value=value,
+            expires_at=expiration if ttl else None,
         )
         # Update or insert the key
         self._collection.update_one(
@@ -46,10 +50,17 @@ class ExecutionStoreRepo:
         key_doc = KeyDocument(**raw_key_doc) if raw_key_doc else None
         return key_doc
 
+    def list_keys(self, store_name) -> list[str]:
+        """Lists all keys in the specified store."""
+        keys = self._collection.find(_where(store_name))
+        # TODO: redact non-key fields
+        return [key["key"] for key in keys]
+
     def update_ttl(self, store_name, key, ttl) -> bool:
         """Updates the TTL for a key."""
+        expiration = KeyDocument.get_expiration(ttl)
         result = self._collection.update_one(
-            _where(store_name, key), {"$set": {"ttl": ttl}}
+            _where(store_name, key), {"$set": {"expires_at": expiration}}
         )
         return result.modified_count > 0
 
@@ -71,3 +82,12 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
 
     def __init__(self, collection: Collection):
         super().__init__(collection)
+        self._create_indexes()
+
+    def _create_indexes(self):
+        indices = self._collection.list_indexes()
+        expires_at_name = "expires_at"
+        if expires_at_name not in indices:
+            self._collection.create_index(
+                expires_at_name, name=expires_at_name, expireAfterSeconds=0
+            )
