@@ -39,7 +39,7 @@ class ExecutionStoreService(object):
             store_name: the name of the store
             key: the key to set
             value: the value to set
-            ttl (None): an optional TTL in milliseconds
+            ttl (None): an optional TTL in seconds
 
         Returns:
             a :class:`fiftyone.store.models.KeyDocument`
@@ -68,7 +68,7 @@ class ExecutionStoreService(object):
             key: the key to delete
 
         Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            `True` if the key was deleted, `False` otherwise
         """
         return self._repo.delete_key(store_name=store_name, key=key)
 
