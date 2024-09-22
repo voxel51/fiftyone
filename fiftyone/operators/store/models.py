@@ -36,20 +36,3 @@ class StoreDocument(KeyDocument):
 
     key: str = "__store__"
     value: Optional[Dict[str, Any]] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "key": "__store__",
-                "store_name": "widget_store",
-                "permissions": {
-                    "roles": {"admin": ["read", "write"]},
-                    "users": {"user_1": ["read", "write"], "user_2": ["read"]},
-                    "groups": {"group_1": ["read", "write"]},
-                    "plugins": {
-                        "plugin_1_uri": ["read"],
-                        "plugin_2_uri": ["write"],
-                    },
-                },
-            }
-        }
