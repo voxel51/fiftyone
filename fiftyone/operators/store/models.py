@@ -14,13 +14,10 @@ class KeyDocument(BaseModel):
     key: str
     value: Any
     created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.utcnow
+        default_factory=datetime.datetime.now
     )
     updated_at: Optional[datetime.datetime] = None
     expires_at: Optional[datetime.datetime] = None
-    permissions: Optional[
-        Dict[str, Any]
-    ] = None  # Permissions can be a role/user/plugin map
 
     @staticmethod
     def get_expiration(ttl: Optional[int]) -> Optional[datetime.datetime]:
@@ -28,7 +25,7 @@ class KeyDocument(BaseModel):
         if ttl is None:
             return None
 
-        return datetime.datetime.now() + datetime.timedelta(milliseconds=ttl)
+        return datetime.datetime.now() + datetime.timedelta(seconds=ttl)
 
 
 class StoreDocument(KeyDocument):
