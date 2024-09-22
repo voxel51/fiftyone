@@ -1716,9 +1716,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 given ``path``
             sidebar_group (None): the name of a
                 :ref:`App sidebar group <app-sidebar-groups>` to which to add
-                the summary field, if necessary. By default, all summary fields
-                are added to a ``"summaries"`` group. You can pass ``False`` to
-                skip sidebar group modification
+                the summary field. By default, all summary fields are added to
+                a ``"summaries"`` group. You can pass ``False`` to skip sidebar
+                group modification
             include_counts (False): whether to include per-value counts when
                 summarizing categorical fields
             group_by (None): an optional attribute to group by when ``path``
@@ -1752,27 +1752,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 f"undeclared field '{path}'"
             )
 
-        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
-
         if field_name is None:
-            _chunks = _path.split(".")
-
-            chunks = []
-            if is_frame_field:
-                chunks.append("frames")
-
-            found_list = False
-            for i, _chunk in enumerate(_chunks, 1):
-                if ".".join(_chunks[:i]) in list_fields:
-                    found_list = True
-                    break
-                else:
-                    chunks.append(_chunk)
-
-            if found_list:
-                chunks.append(_chunks[-1])
-
-            field_name = "_".join(chunks)
+            field_name = self._get_default_summary_field_name(path)
 
         index_fields = []
         summary_info = {"path": path, "field_type": field_type}
@@ -1890,6 +1871,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._populate_summary_field(field_name, summary_info)
 
         return field_name
+
+    def _get_default_summary_field_name(self, path):
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+        _chunks = _path.split(".")
+
+        chunks = []
+        if is_frame_field:
+            chunks.append("frames")
+
+        found_list = False
+        for i, _chunk in enumerate(_chunks, 1):
+            if ".".join(_chunks[:i]) in list_fields:
+                found_list = True
+                break
+            else:
+                chunks.append(_chunk)
+
+        if found_list:
+            chunks.append(_chunks[-1])
+
+        return "_".join(chunks)
 
     def _populate_summary_field(self, field_name, summary_info):
         path = summary_info["path"]
