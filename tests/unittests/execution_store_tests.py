@@ -142,6 +142,13 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with({"store_name": "widgets"})
 
+    def test_list_stores(self):
+        self.mock_collection.distinct.return_value = ["widgets", "gadgets"]
+        stores = self.store_repo.list_stores()
+        assert stores == ["widgets", "gadgets"]
+        self.mock_collection.distinct.assert_called_once()
+        self.mock_collection.distinct.assert_called_with("store_name")
+
 
 class TestExecutionStoreIntegration(unittest.TestCase):
     def setUp(self) -> None:

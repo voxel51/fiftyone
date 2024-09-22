@@ -28,6 +28,14 @@ class ExecutionStore:
         self.store_name: str = store_name
         self._store_service: ExecutionStoreService = store_service
 
+    def list_all_stores(self) -> list[str]:
+        """Lists all stores in the execution store.
+
+        Returns:
+            list: A list of store names.
+        """
+        return self._store_service.list_stores()
+
     def get(self, key: str) -> Optional[Any]:
         """Retrieves a value from the store by its key.
 

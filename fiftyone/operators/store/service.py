@@ -87,16 +87,13 @@ class ExecutionStoreService(object):
             store_name=store_name, key=key, ttl=new_ttl
         )
 
-    def list_stores(self, search=None, **kwargs):
+    def list_stores(self):
         """Lists all stores matching the given criteria.
-
-        Args:
-            search (None): optional search term dict
 
         Returns:
             a list of :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.list_stores(search=search, **kwargs)
+        return self._repo.list_stores()
 
     def delete_store(self, store_name):
         """Deletes the specified store.
