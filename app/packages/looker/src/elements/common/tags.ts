@@ -54,6 +54,12 @@ interface TagData {
 const LINE_HEIGHT_COEFFICIENT = 1.15;
 const SPACING_COEFFICIENT = 0.25;
 
+type Renderer = (
+  path: string,
+  value: unknown
+) => { color: string; path: string; value: string; title: string };
+
+type Renderers = { [key: string]: Renderer };
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private attributeVisibility: object;
@@ -115,7 +121,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const elements: TagData[] = [];
 
-    const PRIMITIVE_RENDERERS = {
+    const PRIMITIVE_RENDERERS: Renderers = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
         let v: string;
         if (Array.isArray(value)) {
@@ -315,7 +321,39 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       };
     };
 
-    const LABEL_RENDERERS = {
+    const EMBEDDED_DOCUMENT_RENDERER = (
+      path: string,
+      values: { [key: string]: unknown }
+    ) => {
+      const results = [];
+      for (const [k, v] of Object.entries(values || {})) {
+        const field = getField([...path.split("."), k], fieldSchema);
+        const renderer = PRIMITIVE_RENDERERS[field.ftype];
+
+        if (!renderer) {
+          continue;
+        }
+
+        results.push(`${k}:${renderer(path, v).value}`);
+      }
+
+      const value = results.join(",");
+      console.log(results, value);
+      return {
+        color: getAssignedColor({
+          coloring,
+          path,
+          customizeColorSetting,
+          isValidColor,
+        }),
+        path,
+        title: `${path}: ${value}`,
+        value,
+      };
+    };
+
+    const LABEL_RENDERERS: Renderers = {
+      [DYNAMIC_EMBEDDED_DOCUMENT_PATH]: EMBEDDED_DOCUMENT_RENDERER,
       [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
       [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
@@ -375,9 +413,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
                 customizeColorSetting,
                 isValidColor,
               }),
+              path: v,
               title: value,
               value: value,
-              path: v,
             });
           }
         }
@@ -391,9 +429,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const pushList = (renderer, value: unknown[]) => {
           let count = 0;
           let rest = 0;
-
           for (let index = 0; index < value?.length; index++) {
             const result = renderer(path, value[index]);
+
             if (result && count < 3) {
               count++;
               elements.push(result);
@@ -414,18 +452,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           filter(path, values) &&
             pushList(LABEL_RENDERERS[field.embeddedDocType], values);
-
           continue;
-        }
-
-        if (field && field.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_PATH) {
-          for (const v of values) {
-            for (const k in v) {
-              const f = getField([...path.split("."), k], fieldSchema);
-              PRIMITIVE_RENDERERS[f?.ftype] &&
-                pushList(PRIMITIVE_RENDERERS[f.ftype], [v[k]]);
-            }
-          }
         }
 
         if (
