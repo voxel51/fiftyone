@@ -13,24 +13,22 @@ class KeyDocument(BaseModel):
     store_name: str
     key: str
     value: Any
-    ttl: Optional[int] = None  # Time To Live in milliseconds
     created_at: datetime.datetime = Field(
         default_factory=datetime.datetime.utcnow
     )
     updated_at: Optional[datetime.datetime] = None
+    expires_at: Optional[datetime.datetime] = None
     permissions: Optional[
         Dict[str, Any]
     ] = None  # Permissions can be a role/user/plugin map
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "store_name": "widget_store",
-                "key": "widgets_key",
-                "value": {"widget_1": "foo", "widget_2": "bar"},
-                "ttl": 600000,  # 10 minutes
-            }
-        }
+    @staticmethod
+    def get_expiration(ttl: Optional[int]) -> Optional[datetime.datetime]:
+        """Gets the expiration date for a key with the given TTL."""
+        if ttl is None:
+            return None
+
+        return datetime.datetime.now() + datetime.timedelta(milliseconds=ttl)
 
 
 class StoreDocument(KeyDocument):
