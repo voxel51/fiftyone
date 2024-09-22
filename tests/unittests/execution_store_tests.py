@@ -231,3 +231,10 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         self.mock_collection.delete_one.assert_called_with(
             {"store_name": "mock_store", "key": "widget_1"}
         )
+
+    def test_clear(self):
+        self.store.clear()
+        self.mock_collection.delete_many.assert_called_once()
+        self.mock_collection.delete_many.assert_called_with(
+            {"store_name": "mock_store"}
+        )
