@@ -11,13 +11,9 @@ import unittest
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
-import fiftyone
-from bson import ObjectId
-
 import fiftyone.operators as foo
 from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
-from fiftyone.operators.store.permissions import StorePermissions
 from fiftyone.factory.repo_factory import ExecutionStoreRepo
 from fiftyone.operators.operator import Operator
 from fiftyone.operators.store import ExecutionStoreService
@@ -46,11 +42,8 @@ class MockStoreRepo:
     def __init__(self):
         self.stores = {}
 
-    def create_store(self, store_name, permissions=None):
-        if isinstance(permissions, StorePermissions):
-            permissions = permissions.dict()
-
-        store = StoreDocument(store_name=store_name, permissions=permissions)
+    def create_store(self, store_name):
+        store = StoreDocument(store_name=store_name)
         self.stores[store_name] = store
         return store
 
@@ -93,16 +86,10 @@ class ExecutionStoreServiceTests(unittest.TestCase):
 
     def test_create_store(self):
         store_name = "test_store"
-        permissions = StorePermissions.default()
-
-        store = self.svc.create_store(
-            store_name=store_name, permissions=permissions
-        )
+        store = self.svc.create_store(store_name=store_name)
 
         self.assertIsNotNone(store)
         self.assertEqual(store.store_name, store_name)
-        # Now compare the dictionary instead of the attribute
-        self.assertEqual(store.permissions["roles"], permissions.roles)
 
     def test_set_and_get_key(self):
         store_name = "test_store"
@@ -179,14 +166,11 @@ class ExecutionStoreServiceTests(unittest.TestCase):
 
     def test_store_permissions(self):
         store_name = "test_store"
-        permissions = StorePermissions.default()
-        self.svc.create_store(store_name=store_name, permissions=permissions)
+        self.svc.create_store(store_name=store_name)
 
         # Check default permissions
         store = self.repo.stores.get(store_name)
         self.assertIsNotNone(store)
-        # Now compare the dictionary instead of the attribute
-        self.assertEqual(store.permissions["roles"], permissions.roles)
 
 
 class TestOperatorWithExecutionStore(Operator):

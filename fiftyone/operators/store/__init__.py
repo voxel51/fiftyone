@@ -9,12 +9,10 @@ FiftyOne execution store module.
 from .service import ExecutionStoreService
 from .store import ExecutionStore
 from .models import StoreDocument, KeyDocument
-from .permissions import StorePermissions
 
 __all__ = [
     "ExecutionStoreService",
     "StoreDocument",
     "KeyDocument",
-    "StorePermissions",
     "ExecutionStore",
 ]
