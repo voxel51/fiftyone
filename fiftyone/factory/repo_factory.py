@@ -69,7 +69,6 @@ class RepositoryFactory(object):
 
     def execution_store_repo() -> ExecutionStoreRepo:
         """Factory method for execution store repository."""
-        print("Factory method for execution store repository.")
         if (
             MongoExecutionStoreRepo.COLLECTION_NAME
             not in RepositoryFactory.repos

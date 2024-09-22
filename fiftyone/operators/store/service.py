@@ -7,9 +7,7 @@ FiftyOne execution store service.
 """
 
 import logging
-import traceback
 from fiftyone.factory.repo_factory import RepositoryFactory
-from fiftyone.operators.store.permissions import StorePermissions
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +21,16 @@ class ExecutionStoreService(object):
 
         self._repo = repo
 
-    def create_store(self, store_name, permissions=None):
-        """Creates a new store with the specified name and permissions.
+    def create_store(self, store_name):
+        """Creates a new store with the specified name.
 
         Args:
             store_name: the name of the store
-            permissions (None): an optional permissions dict
 
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(
-            store_name=store_name,
-            permissions=permissions or StorePermissions.default(),
-        )
+        return self._repo.create_store(store_name=store_name)
 
     def set_key(self, store_name, key, value, ttl=None):
         """Sets the value of a key in the specified store.
@@ -91,20 +85,6 @@ class ExecutionStoreService(object):
         """
         return self._repo.update_ttl(
             store_name=store_name, key=key, ttl=new_ttl
-        )
-
-    def set_permissions(self, store_name, permissions):
-        """Sets the permissions for the specified store.
-
-        Args:
-            store_name: the name of the store
-            permissions: a permissions object
-
-        Returns:
-            a :class:`fiftyone.store.models.StoreDocument`
-        """
-        return self._repo.update_permissions(
-            store_name=store_name, permissions=permissions
         )
 
     def list_stores(self, search=None, **kwargs):
