@@ -433,10 +433,10 @@ class RenameSampleField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.rename_sample_field(
-            ctx.params.get("field_name", None),
-            ctx.params.get("new_field_name", None),
-        )
+        field_name = ctx.params["field_name"]
+        new_field_name = ctx.params["new_field_name"]
+
+        ctx.dataset.rename_sample_field(field_name, new_field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -519,10 +519,10 @@ class RenameFrameField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.rename_frame_field(
-            ctx.params.get("field_name", None),
-            ctx.params.get("new_field_name", None),
-        )
+        field_name = ctx.params["field_name"]
+        new_field_name = ctx.params["new_field_name"]
+
+        ctx.dataset.rename_frame_field(field_name, new_field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -614,8 +614,9 @@ class ClearSampleField(foo.Operator):
         )
 
     def execute(self, ctx):
+        field_name = ctx.params["field_name"]
 
-        ctx.dataset.clear_sample_field(ctx.params.get("field_name", None))
+        ctx.dataset.clear_sample_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -704,7 +705,9 @@ class ClearFrameField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.clear_frame_field(ctx.params.get("field_name", None))
+        field_name = ctx.params["field_name"]
+
+        ctx.dataset.clear_frame_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -884,7 +887,9 @@ class DeleteSampleField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_sample_field(ctx.params.get("field_name", None))
+        field_name = ctx.params["field_name"]
+
+        ctx.dataset.delete_sample_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -942,7 +947,9 @@ class DeleteFrameField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_frame_field(ctx.params.get("field_name", None))
+        field_name = ctx.params["field_name"]
+
+        ctx.dataset.delete_frame_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -1091,7 +1098,9 @@ class DropIndex(foo.Operator):
         return types.Property(inputs, view=types.View(label="Drop index"))
 
     def execute(self, ctx):
-        ctx.dataset.drop_index(ctx.params["index_name"])
+        index_name = ctx.params["index_name"]
+
+        ctx.dataset.drop_index(index_name)
 
 
 class CreateSummaryField(foo.Operator):
@@ -1284,7 +1293,9 @@ class UpdateSummaryField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.update_summary_field(ctx.params["field_name"])
+        field_name = ctx.params["field_name"]
+
+        ctx.dataset.update_summary_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -1367,7 +1378,9 @@ class DeleteSummaryField(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_summary_field(ctx.params["field_name"])
+        field_name = ctx.params["field_name"]
+
+        ctx.dataset.delete_summary_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -1424,9 +1437,10 @@ class AddGroupSlice(foo.Operator):
         return types.Property(inputs, view=types.View(label="Add group slice"))
 
     def execute(self, ctx):
-        ctx.dataset.add_group_slice(
-            ctx.params["name"], ctx.params["media_type"]
-        )
+        name = ctx.params["name"]
+        media_type = ctx.params["media_type"]
+
+        ctx.dataset.add_group_slice(name, media_type)
         ctx.trigger("reload_dataset")
 
 
@@ -1485,9 +1499,10 @@ class RenameGroupSlice(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.rename_group_slice(
-            ctx.params["name"], ctx.params["new_name"]
-        )
+        name = ctx.params["name"]
+        new_name = ctx.params["new_name"]
+
+        ctx.dataset.rename_group_slice(name, new_name)
         ctx.trigger("reload_dataset")
 
 
@@ -1531,7 +1546,9 @@ class DeleteGroupSlice(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_group_slice(ctx.params["name"])
+        name = ctx.params["name"]
+
+        ctx.dataset.delete_group_slice(name)
         ctx.trigger("reload_dataset")
 
 
@@ -1587,7 +1604,9 @@ class LoadSavedView(foo.Operator):
         return types.Property(inputs, view=types.View(label="Load saved view"))
 
     def execute(self, ctx):
-        ctx.ops.set_view(name=ctx.params["name"])
+        name = ctx.params["name"]
+
+        ctx.ops.set_view(name=name)
 
 
 class SaveView(foo.Operator):
@@ -1794,7 +1813,9 @@ class DeleteSavedView(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_saved_view(ctx.params["name"])
+        name = ctx.params["name"]
+
+        ctx.dataset.delete_saved_view(name)
 
 
 class ListWorkspaces(foo.Operator):
@@ -1849,7 +1870,9 @@ class LoadWorkspace(foo.Operator):
         return types.Property(inputs, view=types.View(label="Load workspace"))
 
     def execute(self, ctx):
-        ctx.ops.set_spaces(name=ctx.params["name"])
+        name = ctx.params["name"]
+
+        ctx.ops.set_spaces(name=name)
 
 
 class SaveWorkspace(foo.Operator):
@@ -2083,7 +2106,9 @@ class DeleteWorkspace(foo.Operator):
         )
 
     def execute(self, ctx):
-        ctx.dataset.delete_workspace(ctx.params["name"])
+        name = ctx.params["name"]
+
+        ctx.dataset.delete_workspace(name)
 
 
 class ListFiles(foo.Operator):
