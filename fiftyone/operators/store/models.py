@@ -29,7 +29,7 @@ class KeyDocument(BaseModel):
 
 
 class StoreDocument(KeyDocument):
-    """Model representing a store in the execution store."""
+    """Model representing a Store."""
 
     key: str = "__store__"
     value: Optional[Dict[str, Any]] = None

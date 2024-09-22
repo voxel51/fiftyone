@@ -1,5 +1,5 @@
 """
-Execution store repository for handling storage and retrieval of stores.
+Execution store repository.
 """
 
 from pymongo.collection import Collection
@@ -28,6 +28,11 @@ class ExecutionStoreRepo:
         )
         self._collection.insert_one(store_doc.dict())
         return store_doc
+
+    def list_stores(self) -> list[str]:
+        """Lists all stores in the execution store."""
+        # ensure that only store_name is returned, and only unique values
+        return self._collection.distinct("store_name")
 
     def set_key(self, store_name, key, value, ttl=None) -> KeyDocument:
         """Sets or updates a key in the specified store."""
