@@ -76,7 +76,7 @@ class ExecutionStore:
 
     def clear(self) -> None:
         """Clears all the data in the store."""
-        self._store_service.clear_store(self.store_name)
+        self._store_service.delete_store(self.store_name)
 
     def update_ttl(self, key: str, new_ttl: int) -> None:
         """Updates the TTL for a specific key.
