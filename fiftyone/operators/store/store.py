@@ -48,7 +48,7 @@ class ExecutionStore:
         Args:
             key (str): The key to store the value under.
             value (Any): The value to store.
-            ttl (Optional[int], optional): The time-to-live in milliseconds. Defaults to None.
+            ttl (Optional[int], optional): The time-to-live in seconds. Defaults to None.
         """
         self._store_service.set_key(self.store_name, key, value, ttl)
 
@@ -57,8 +57,11 @@ class ExecutionStore:
 
         Args:
             key (str): The key to delete.
+
+        Returns:
+            bool: True if the key was deleted, False otherwise.
         """
-        self._store_service.delete_key(self.store_name, key)
+        return self._store_service.delete_key(self.store_name, key)
 
     def has(self, key: str) -> bool:
         """Checks if the store has a specific key.
