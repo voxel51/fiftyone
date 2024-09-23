@@ -1,12 +1,40 @@
 import {
   CONSTANT_VARIABLES,
-  recoilEnvironmentKey
-} from '@fiftyone/teams-state';
-import { graphql } from 'react-relay';
-import { atom } from 'recoil';
-import { graphQLSelector, graphQLSelectorFamily } from 'recoil-relay';
+  DatasetPermission,
+  recoilEnvironmentKey,
+} from "@fiftyone/teams-state";
+import { graphql } from "react-relay";
+import { atom } from "recoil";
+import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
+import { UserRole } from "./__generated__/manageDatasetGetAccessPageQuery.graphql";
 
 const { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } = CONSTANT_VARIABLES;
+
+interface ManageDatasetAccessBase {
+  readonly __typename: "DatasetUser" | "DatasetUserGroup";
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface ManageDatasetAccessUser extends ManageDatasetAccessBase {
+  activePermission: DatasetPermission;
+  email: string;
+  picture: string;
+  role: UserRole;
+  userId: string;
+  userPermission: DatasetPermission;
+}
+
+export interface ManageDatasetAccessGroup extends ManageDatasetAccessBase {
+  groupId: string;
+  permission: DatasetPermission;
+  slug: string;
+}
+
+export type ManageDatasetAccessTarget =
+  | ManageDatasetAccessUser
+  | ManageDatasetAccessGroup;
 
 export const manageDatasetDefaultAccessInfoQuery = graphql`
   query manageDatasetDefaultAccessInfoQuery($identifier: String!) {
@@ -99,14 +127,29 @@ export const manageDatasetGetAccessPageQuery = graphql`
     $pageSize: Int!
   ) {
     dataset(identifier: $datasetIdentifier) {
-      ...manageDatasetGetAccessPage_datasetFrag
       accessPage(
         userFilter: { userPermission: { ne: null } }
         page: $page
         pageSize: $pageSize
       ) {
         nodes {
-          ...manageDatasetGetAccessPage_accessFrag
+          __typename
+          ... on DatasetUser {
+            userId: id
+            email
+            name
+            role
+            picture
+            userPermission
+            activePermission
+          }
+          ... on DatasetUserGroup {
+            groupId: id
+            name
+            slug
+            permission
+            description
+          }
         }
         nodeTotal
         next
@@ -205,6 +248,14 @@ export const manageDatasetSetDatasetGroupPermissionMutation = graphql`
       userGroupIdentifier: $id
       permission: $permission
     ) {
+      userGroup(identifier: $id) {
+        id
+        __typename
+        name
+        permission
+        description
+        slug
+      }
       createdAt
       defaultPermission
       description
@@ -280,27 +331,27 @@ export const manageDatasetRemoveDatasetMutation = graphql`
 `;
 
 export const manageDatasetGrantUserAccessOpenState = atom({
-  key: 'manageDatasetGrantUserAccessOpenState',
-  default: false
+  key: "manageDatasetGrantUserAccessOpenState",
+  default: false,
 });
 
 export const manageDatasetGrantGroupAccessOpenState = atom({
-  key: 'manageDatasetGrantGroupAccessOpenState',
-  default: false
+  key: "manageDatasetGrantGroupAccessOpenState",
+  default: false,
 });
 
 export const manageDatasetUsersSuggestionTermState = atom({
-  key: 'manageDatasetUsersSuggestionTermState',
-  default: ''
+  key: "manageDatasetUsersSuggestionTermState",
+  default: "",
 });
 
 export const manageDatasetGroupsSuggestionTermState = atom({
-  key: 'manageDatasetGroupsSuggestionTermState',
-  default: ''
+  key: "manageDatasetGroupsSuggestionTermState",
+  default: "",
 });
 
 export const manageDatasetUsersSuggestion = graphQLSelector({
-  key: 'manageDatasetUsersSuggestion',
+  key: "manageDatasetUsersSuggestion",
   environment: recoilEnvironmentKey,
   query: manageDatasetUsersSuggestionQuery,
   variables: ({ get }) => {
@@ -310,11 +361,11 @@ export const manageDatasetUsersSuggestion = graphQLSelector({
   },
   mapResponse: (result) => {
     return result.users;
-  }
+  },
 });
 
 export const manageDatasetGroupsSuggestion = graphQLSelector({
-  key: 'manageDatasetGroupsSuggestion',
+  key: "manageDatasetGroupsSuggestion",
   environment: recoilEnvironmentKey,
   query: manageDatasetGroupsSuggestionQuery,
   variables: ({ get }) => {
@@ -324,27 +375,27 @@ export const manageDatasetGroupsSuggestion = graphQLSelector({
   },
   mapResponse: (result) => {
     return result.userGroups;
-  }
+  },
 });
 
 export const manageDatasetGetAccessPageState = atom({
-  key: 'manageDatasetGetAccessPageState',
+  key: "manageDatasetGetAccessPageState",
   default: {
     page: DEFAULT_PAGE,
-    pageSize: DEFAULT_PAGE_SIZE
-  }
+    pageSize: DEFAULT_PAGE_SIZE,
+  },
 });
 
 export const manageDatasetPeopleWithAccessPageState = atom({
-  key: 'manageDatasetPeopleWithAccessPageState',
+  key: "manageDatasetPeopleWithAccessPageState",
   default: {
     page: DEFAULT_PAGE,
-    pageSize: DEFAULT_PAGE_SIZE
-  }
+    pageSize: DEFAULT_PAGE_SIZE,
+  },
 });
 
 export const manageDatasetPeopleWithAccessSelector = graphQLSelectorFamily({
-  key: 'teamInvitationsSelector',
+  key: "teamInvitationsSelector",
   environment: recoilEnvironmentKey,
   query: manageDatasetPeopleWithAccessQuery,
   variables:
@@ -355,11 +406,11 @@ export const manageDatasetPeopleWithAccessSelector = graphQLSelectorFamily({
     },
   mapResponse: (result) => {
     return result?.dataset?.usersPage;
-  }
+  },
 });
 
 export const manageDatasetTargetsWithAccessSelector = graphQLSelectorFamily({
-  key: 'manageDatasetTargetsWithAccessSelector',
+  key: "manageDatasetTargetsWithAccessSelector",
   environment: recoilEnvironmentKey,
   query: manageDatasetGetAccessPageQuery,
   variables:
@@ -370,5 +421,39 @@ export const manageDatasetTargetsWithAccessSelector = graphQLSelectorFamily({
     },
   mapResponse: (result) => {
     return result?.dataset?.accessPage;
-  }
+  },
+});
+
+export const manageAccessItemsState = atom<
+  (ManageDatasetAccessUser | ManageDatasetAccessGroup)[]
+>({
+  key: "manageAccessItemsState",
+  default: [],
+  effects_UNSTABLE: [
+    ({ setSelf, onSet }) => {
+      onSet((newItems, _, isReset) => {
+        if (isReset) return;
+
+        const uniqueItems = newItems.reduce<
+          (ManageDatasetAccessUser | ManageDatasetAccessGroup)[]
+        >((acc, item) => {
+          const id = "groupId" in item ? item.groupId : item.userId;
+
+          if (
+            !acc.some(
+              (existingItem) =>
+                ("groupId" in existingItem
+                  ? existingItem.groupId
+                  : existingItem.userId) === id
+            )
+          ) {
+            acc.push(item);
+          }
+          return acc;
+        }, []);
+
+        setSelf(uniqueItems);
+      });
+    },
+  ],
 });

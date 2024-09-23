@@ -1,63 +1,36 @@
-import { useCacheStore, useMutation, withSuspense } from '@fiftyone/hooks';
-import { Dialog } from '@fiftyone/teams-components';
+import { withSuspense } from "@fiftyone/hooks";
+import { Dialog } from "@fiftyone/teams-components";
 import {
-  DATASET_SHARE_MODAL_INFO_CACHE_KEY,
   DatasetPermission,
   Group,
+  manageAccessItemsState,
+  ManageDatasetAccessGroup,
   manageDatasetGrantGroupAccessOpenState,
-  manageDatasetSetDatasetGroupPermissionMutation
-} from '@fiftyone/teams-state';
-import { Stack } from '@mui/material';
-import { capitalize } from 'lodash';
-import { useRouter } from 'next/router';
-import { Suspense, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import GrantDatasetAccessTitle from './GrantDatasetAccessTitle';
-import GroupInputSuggestion from './GroupInputSuggestion';
-import ManageGroup from './ManageGroup';
+} from "@fiftyone/teams-state";
+import { Stack } from "@mui/material";
+import { capitalize } from "lodash";
+import { Suspense, useCallback, useState } from "react";
+import { useRecoilState } from "recoil";
+import GrantDatasetAccessTitle from "./GrantDatasetAccessTitle";
+import GroupInputSuggestion from "./GroupInputSuggestion";
+import ManageGroup from "./ManageGroup";
+import useGrantGroupDatasetAccess from "@fiftyone/hooks/src/dataset/access/useGrantGroupDatasetAccess";
 
 function GrantGroupDatasetAccess() {
-  const router = useRouter();
-  const { slug: datasetIdentifier } = router.query;
   const [open, setOpen] = useRecoilState(
     manageDatasetGrantGroupAccessOpenState
   );
   const [group, setGroup] = useState<Group | null>(null);
-  const [groupStatePermission, setGroupStatePermission] =
-    useState<DatasetPermission>('VIEW');
-  const [setGroupPermission, mutationInProgress] = useMutation(
-    manageDatasetSetDatasetGroupPermissionMutation
-  );
-  const [_, setStale] = useCacheStore(DATASET_SHARE_MODAL_INFO_CACHE_KEY);
+  const [permission, setPermission] = useState<DatasetPermission>("VIEW");
 
-  function closeDialog() {
+  const [accessItems, setAccessItems] = useRecoilState(manageAccessItemsState);
+  const { grantGroupDatasetAccess, isGrantingDatasetGroupAccess } =
+    useGrantGroupDatasetAccess();
+
+  const closeDialog = useCallback(() => {
     setOpen(false);
     setGroup(null);
-    setGroupStatePermission('VIEW');
-  }
-
-  const handleSubmitGroup = async () => {
-    const { id, name, slug } = group as Group;
-    const variables: any = {
-      datasetIdentifier,
-      permission: groupStatePermission,
-      id: id
-    };
-    if (id) variables.id = id;
-
-    setGroupPermission({
-      successMessage: `Successfully granted special access on the dataset to group ${name}`,
-      errorMessage: `Failed to grant special access to group ${name}`,
-      variables,
-      onCompleted() {
-        if (id) {
-          setStale(true);
-          router.replace(router.asPath);
-        }
-        closeDialog();
-      }
-    });
-  };
+  }, [setOpen]);
 
   return (
     <Dialog
@@ -65,28 +38,42 @@ function GrantGroupDatasetAccess() {
       onClose={closeDialog}
       title={<GrantDatasetAccessTitle isGroup={true} />}
       fullWidth
-      disableConfirmationButton={!group || mutationInProgress}
+      disableConfirmationButton={!group || isGrantingDatasetGroupAccess}
       confirmationButtonText="Grant access"
-      loading={mutationInProgress}
+      loading={isGrantingDatasetGroupAccess}
       onConfirm={() => {
-        group && handleSubmitGroup();
+        if (group) {
+          closeDialog();
+          grantGroupDatasetAccess(
+            group,
+            permission,
+            (newGroup: ManageDatasetAccessGroup) => {
+              setAccessItems([
+                {
+                  ...newGroup,
+                  groupId: newGroup.id,
+                } as ManageDatasetAccessGroup,
+                ...accessItems,
+              ]);
+            }
+          );
+        }
       }}
     >
       <Stack spacing={2}>
-        {/* <Typography>Learn more about managing dataset access.</Typography> */}
         <Suspense>
           <GroupInputSuggestion group={group} onSelectGroup={setGroup} />
         </Suspense>
         {group && (
           <ManageGroup
             group={group}
-            permission={groupStatePermission}
+            permission={permission}
             cardProps={{ email: capitalize(group.description) }}
             onDelete={() => {
               setGroup(null);
             }}
             onPermissionChange={(permission: DatasetPermission) => {
-              setGroupStatePermission(permission);
+              setPermission(permission);
             }}
           />
         )}

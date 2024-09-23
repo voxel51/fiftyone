@@ -2,13 +2,13 @@ import {
   DatasetPermission,
   User,
   manageDatasetInviteUserToDatasetMutation,
-  manageDatasetSetDatasetUserPermissionMutation
-} from '@fiftyone/teams-state';
-import { useCallback } from 'react';
-import { useRouter } from 'next/router';
-import { manageDatasetInviteUserToDatasetMutation$variables } from '@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql';
-import { useMutation } from '../../common';
-import { UserRole } from '../../user/__generated__/CurrentUserFragment.graphql';
+  manageDatasetSetDatasetUserPermissionMutation,
+} from "@fiftyone/teams-state";
+import { useCallback } from "react";
+import { useRouter } from "next/router";
+import { manageDatasetInviteUserToDatasetMutation$variables } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql";
+import { useMutation } from "../../common";
+import { UserRole } from "../../user/__generated__/CurrentUserFragment.graphql";
 
 /**
  * useGrantUserDatasetAccess should be used to set a user's access/permission
@@ -32,7 +32,7 @@ export default function useGrantUserDatasetAccess() {
       user: User | null,
       permission: DatasetPermission,
       role: UserRole | null,
-      onComplete: () => void
+      onComplete: (accessItem: any) => void
     ) => {
       if (!user || !datasetIdentifier) return;
 
@@ -42,25 +42,35 @@ export default function useGrantUserDatasetAccess() {
         permission,
         email,
         role,
-        ...(id ? { userId: id } : { email })
+        ...(id ? { userId: id } : { email }),
       };
       const setDatasetPermission = id
         ? grantUserDatasetAccessMutation
         : inviteUser;
       setDatasetPermission({
         successMessage: id
-          ? 'Successfully granted special access on the dataset to user'
-          : 'Successfully invited user with a special access to the dataset',
+          ? "Successfully granted special access on the dataset to user"
+          : "Successfully invited user with a special access to the dataset",
         errorMessage: id
-          ? 'Failed to grant special access to user'
-          : 'Failed to invite user with a special access to the dataset',
+          ? "Failed to grant special access to user"
+          : "Failed to invite user with a special access to the dataset",
         variables,
-        onCompleted() {
+        onCompleted(result) {
           if (id) {
-            router.push(router.asPath);
-            onComplete && onComplete();
+            const { setDatasetUserPermission = {} } = result;
+            const { user: baseUser = {} } = setDatasetUserPermission;
+            const { user = {}, userPermission, activePermission } = baseUser;
+            const { id: userId } = user;
+
+            onComplete &&
+              onComplete({
+                ...user,
+                userId,
+                userPermission,
+                activePermission,
+              });
           }
-        }
+        },
       });
     },
     [datasetIdentifier]
@@ -68,6 +78,6 @@ export default function useGrantUserDatasetAccess() {
 
   return {
     grantUserDatasetAccess,
-    isGrantingUserDatasetAccess: isInvitingUser || isGrantingAccess
+    isGrantingUserDatasetAccess: isInvitingUser || isGrantingAccess,
   };
 }

@@ -2,49 +2,33 @@ import {
   useCurrentDatasetPermission,
   useCurrentOrganization,
   useCurrentUserPermission,
-  withPermissions
-} from '@fiftyone/hooks';
-import { Box, SectionHeader, TableSkeleton } from '@fiftyone/teams-components';
+  withPermissions,
+} from "@fiftyone/hooks";
+import { Box, SectionHeader, TableSkeleton } from "@fiftyone/teams-components";
 import {
   INVITE_PEOPLE_TO_DATASET,
   MANAGE_DATASET_ACCESS,
   MANAGE_ORGANIZATION,
   SET_DATASET_DEFAULT_PERMISSION,
-  manageDatasetGetAccessPageQuery,
-  manageDatasetGrantGroupAccessOpenState,
-  manageDatasetGrantUserAccessOpenState
-} from '@fiftyone/teams-state';
-import {
-  DEFAULT_PAGE,
-  DEFAULT_PAGE_SIZE,
-  LEARN_MORE_ABOUT_ROLES_LINK
-} from '@fiftyone/teams-state/src/constants';
-import { GroupAdd, PersonAddAlt } from '@mui/icons-material';
-import { Button, Link, Typography } from '@mui/material';
-import withRelay from 'lib/withRelay';
-import NextLink from 'next/link';
-import { useSetRecoilState } from 'recoil';
-import Layout from '../components/Layout';
-import GrantUserDatasetAccess from './components/GrantUserDatasetAccess';
-import ManageDefaultDatasetAccess from './components/ManageDefaultDatasetAccess';
-import ManagePeopleDatasetAccess from './components/ManagePeopleDatasetAccess';
-import GrantGroupDatasetAccess from './components/GrantGroupDatasetAccess';
-import { Suspense } from 'react';
+} from "@fiftyone/teams-state";
+import { LEARN_MORE_ABOUT_ROLES_LINK } from "@fiftyone/teams-state/src/constants";
+import { Link, Typography } from "@mui/material";
+import NextLink from "next/link";
+import Layout from "../components/Layout";
+import GrantUserDatasetAccess from "./components/GrantUserDatasetAccess";
+import ManageDefaultDatasetAccess from "./components/ManageDefaultDatasetAccess";
+import ManagePeopleDatasetAccess from "./components/ManagePeopleDatasetAccess";
+import GrantGroupDatasetAccess from "./components/GrantGroupDatasetAccess";
+import { Suspense } from "react";
+import InviteControls from "./components/InviteControls";
 
 function Access() {
-  const setManageDatasetGrantUserAccessOpenState = useSetRecoilState(
-    manageDatasetGrantUserAccessOpenState
-  );
-  const setManageDatasetGrantGroupAccessOpenState = useSetRecoilState(
-    manageDatasetGrantGroupAccessOpenState
-  );
   const canSetDefaultPermission = useCurrentDatasetPermission([
-    SET_DATASET_DEFAULT_PERMISSION
+    SET_DATASET_DEFAULT_PERMISSION,
   ]);
   const canInvite = useCurrentDatasetPermission([INVITE_PEOPLE_TO_DATASET]);
   const canManageOrganization = useCurrentUserPermission([MANAGE_ORGANIZATION]);
-  const currentOrganization = useCurrentOrganization();
-  const organizationDisplayName = currentOrganization?.displayName;
+  const { displayName } = useCurrentOrganization();
 
   return (
     <Layout>
@@ -53,11 +37,11 @@ function Access() {
           title="Default access"
           content={
             <Typography variant="body1">
-              {`Manage access for members at ${organizationDisplayName}. All admins will
+              {`Manage access for members at ${displayName}. All admins will
                 also have access; collaborators and guests will only have access if they're
                 specifically invited to a dataset.`}
               <br />
-              <Link href={LEARN_MORE_ABOUT_ROLES_LINK + '#default-access'}>
+              <Link href={LEARN_MORE_ABOUT_ROLES_LINK + "#default-access"}>
                 Learn more about default access.
               </Link>
             </Typography>
@@ -75,7 +59,7 @@ function Access() {
               These people and groups have specific access to this dataset.
               <br />
               <Link
-                href={LEARN_MORE_ABOUT_ROLES_LINK + '#teams-specifc-access'}
+                href={LEARN_MORE_ABOUT_ROLES_LINK + "#teams-specifc-access"}
               >
                 Learn more about specific access.
               </Link>
@@ -87,50 +71,28 @@ function Access() {
                   </NextLink>
                 </>
               ) : (
-                ''
+                ""
               )}
               .
             </Typography>
           }
         >
-          {canInvite ? (
-            <>
-              <Button
-                data-testid="dataset-access-add-user-btn"
-                startIcon={<PersonAddAlt />}
-                onClick={() => {
-                  setManageDatasetGrantUserAccessOpenState(true);
-                }}
-                variant="outlined"
-              >
-                Add User
-              </Button>
-              <Button
-                startIcon={<GroupAdd />}
-                onClick={() => {
-                  setManageDatasetGrantGroupAccessOpenState(true);
-                }}
-                sx={{ marginLeft: 1 }}
-                variant="outlined"
-              >
-                Add Group
-              </Button>
-            </>
-          ) : undefined}
+          {canInvite && <InviteControls />}
         </SectionHeader>
         <GrantUserDatasetAccess />
         <GrantGroupDatasetAccess />
         <Box paddingTop={2} paddingBottom={4}>
-          <ManagePeopleDatasetAccess />
+          <Suspense fallback={<TableSkeleton rows={12} />}>
+            <ManagePeopleDatasetAccess />
+          </Suspense>
         </Box>
       </Box>
     </Layout>
   );
 }
 
-export default withRelay(
-  withPermissions(Access, [MANAGE_DATASET_ACCESS], 'dataset'),
-  manageDatasetGetAccessPageQuery,
-  { getLayoutProps: () => ({ topNavProps: { noBorder: true } }) },
-  { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE }
-);
+export default withPermissions(Access, [MANAGE_DATASET_ACCESS], "dataset", {
+  getLayoutProps: () => ({ topNavProps: { noBorder: true } }),
+});
+
+export { getServerSideProps } from "lib/env";

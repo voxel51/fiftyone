@@ -1,24 +1,27 @@
 import {
   DatasetPermissionSelection,
-  UserCard
-} from '@fiftyone/teams-components';
-import { DatasetPermissionSelectionProps } from '@fiftyone/teams-components/src/DatasetPermissionSelection';
-import { UserCardProps } from '@fiftyone/teams-components/src/UserCard';
+  UserCard,
+} from "@fiftyone/teams-components";
+import { DatasetPermissionSelectionProps } from "@fiftyone/teams-components/src/DatasetPermissionSelection";
+import { UserCardProps } from "@fiftyone/teams-components/src/UserCard";
 import {
   DatasetPermission,
   Group,
+  ManageDatasetAccessGroup,
+  ManageDatasetAccessTarget,
+  ManageDatasetAccessUser,
   User,
-  User as UserType
-} from '@fiftyone/teams-state';
-import { DeleteOutline } from '@mui/icons-material';
-import { IconButton, TableCell, TableRow, Typography } from '@mui/material';
-import { capitalize } from 'lodash';
-import Link from 'next/link';
-import { getDisabledPermissions } from './ManageUser';
+  User as UserType,
+} from "@fiftyone/teams-state";
+import { DeleteOutline } from "@mui/icons-material";
+import { IconButton, TableCell, TableRow, Typography } from "@mui/material";
+import { capitalize } from "lodash";
+import Link from "next/link";
+import { getDisabledPermissions } from "./ManageUser";
 
 type PropTypes = {
   maxDatasetPermission: DatasetPermission | null; // Group doesn't have a role
-  target: UserType | Group;
+  target: ManageDatasetAccessGroup | roup;
   isGroup: boolean;
   permission: DatasetPermission;
   onPermissionChange?: (permission: DatasetPermission) => void;
@@ -37,15 +40,15 @@ export default function ManageGroupUserTableRow({
   onDelete,
   hideRole,
   userCardProps,
-  permissionSelectionProps
+  permissionSelectionProps,
 }: PropTypes) {
-  const { id, name, role, description, email, picture, slug } = isGroup
-    ? (target as Group)
-    : (target as User);
+  const { userId, groupId, name, role, description, email, picture, slug } =
+    target as ManageDatasetAccessTarget;
+  const id = userId || groupId;
 
   const renderTitleCell = () => {
     return (
-      <TableCell width="50%" sx={isGroup ? { cursor: 'pointer' } : {}}>
+      <TableCell width="50%" sx={isGroup ? { cursor: "pointer" } : {}}>
         <UserCard
           {...(userCardProps ?? {})}
           name={name}
@@ -59,7 +62,7 @@ export default function ManageGroupUserTableRow({
 
   const renderGroupTitleCell = () => {
     return (
-      <Link href={`/settings/team/groups/${slug}`} title={'See group'}>
+      <Link href={`/settings/team/groups/${slug}`} title={"See group"}>
         {renderTitleCell()}
       </Link>
     );
@@ -69,14 +72,14 @@ export default function ManageGroupUserTableRow({
     <TableRow key={id}>
       {isGroup ? renderGroupTitleCell() : renderTitleCell()}
       {!hideRole && (
-        <TableCell width="20%">
+        <TableCell width="20%" key="cell-label">
           <Typography variant="body1">
-            {isGroup ? 'Group' : capitalize(role)}
+            {isGroup ? "Group" : capitalize(role)}
           </Typography>
         </TableCell>
       )}
       {onPermissionChange && (
-        <TableCell width="20%">
+        <TableCell width="20%" key="cell-permission">
           <DatasetPermissionSelection
             {...(permissionSelectionProps ?? {})}
             defaultValue={permission}
@@ -90,7 +93,7 @@ export default function ManageGroupUserTableRow({
           />
         </TableCell>
       )}
-      <TableCell width="10%" align="right">
+      <TableCell width="10%" align="right" key="cell-action">
         <IconButton
           onClick={() => {
             onDelete(target);
