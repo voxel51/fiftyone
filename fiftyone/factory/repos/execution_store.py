@@ -2,6 +2,7 @@
 Execution store repository.
 """
 
+import datetime
 from pymongo.collection import Collection
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
@@ -35,18 +36,36 @@ class ExecutionStoreRepo:
         return self._collection.distinct("store_name")
 
     def set_key(self, store_name, key, value, ttl=None) -> KeyDocument:
-        """Sets or updates a key in the specified store."""
+        """Sets or updates a key in the specified store"""
+        now = datetime.datetime.now()
         expiration = KeyDocument.get_expiration(ttl)
         key_doc = KeyDocument(
-            store_name=store_name,
-            key=key,
-            value=value,
-            expires_at=expiration if ttl else None,
+            store_name=store_name, key=key, value=value, updated_at=now
         )
-        # Update or insert the key
-        self._collection.update_one(
-            _where(store_name, key), {"$set": key_doc.dict()}, upsert=True
+
+        # Prepare the update operations
+        update_fields = {
+            "$set": key_doc.dict(
+                exclude={"created_at", "expires_at", "store_name", "key"}
+            ),
+            "$setOnInsert": {
+                "store_name": store_name,
+                "key": key,
+                "created_at": now,
+                "expires_at": expiration if ttl else None,
+            },
+        }
+
+        # Perform the upsert operation
+        result = self._collection.update_one(
+            _where(store_name, key), update_fields, upsert=True
         )
+
+        if result.upserted_id:
+            key_doc.created_at = now
+        else:
+            key_doc.updated_at = now
+
         return key_doc
 
     def get_key(self, store_name, key) -> KeyDocument:
@@ -57,8 +76,7 @@ class ExecutionStoreRepo:
 
     def list_keys(self, store_name) -> list[str]:
         """Lists all keys in the specified store."""
-        keys = self._collection.find(_where(store_name))
-        # TODO: redact non-key fields
+        keys = self._collection.find(_where(store_name), {"key": 1})
         return [key["key"] for key in keys]
 
     def update_ttl(self, store_name, key, ttl) -> bool:
@@ -92,7 +110,19 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
     def _create_indexes(self):
         indices = self._collection.list_indexes()
         expires_at_name = "expires_at"
+        store_name_name = "store_name"
+        key_name = "key"
+        full_key_name = "store_name_and_key"
         if expires_at_name not in indices:
             self._collection.create_index(
                 expires_at_name, name=expires_at_name, expireAfterSeconds=0
             )
+        if full_key_name not in indices:
+            self._collection.create_index(
+                [(store_name_name, 1), (key_name, 1)],
+                name=full_key_name,
+                unique=True,
+            )
+        for name in [store_name_name, key_name]:
+            if name not in indices:
+                self._collection.create_index(name, name=name)
