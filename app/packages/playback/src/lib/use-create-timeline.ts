@@ -358,8 +358,6 @@ export const useCreateTimeline = (
     [timelineName]
   );
 
-  console.log(">>> on listen side, setFrameEventName", setFrameEventName);
-
   const setFrameNumberFromEventHandler = useCallback(
     (e: CustomEvent) => {
       pause();

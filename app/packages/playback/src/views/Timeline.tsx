@@ -3,6 +3,7 @@ import { SEEK_BAR_DEBOUNCE } from "../lib/constants";
 import { TimelineName } from "../lib/state";
 import { useFrameNumber } from "../lib/use-frame-number";
 import { useTimeline } from "../lib/use-timeline";
+import { useTimelineBuffers } from "../lib/use-timeline-buffers";
 import { useTimelineVizUtils } from "../lib/use-timeline-viz-utils";
 import {
   FoTimelineContainer,
@@ -34,6 +35,8 @@ export const Timeline = React.memo(
 
       const seekBarValue = React.useMemo(() => getSeekValue(), [frameNumber]);
 
+      const { loaded, loading } = useTimelineBuffers(name);
+
       const onChangeSeek = React.useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
           const newSeekBarValue = Number(e.target.value);
@@ -53,7 +56,9 @@ export const Timeline = React.memo(
         >
           <Seekbar
             value={seekBarValue}
-            bufferValue={0}
+            totalFrames={config.totalFrames}
+            loaded={loaded}
+            loading={loading}
             onChange={onChangeSeek}
             debounce={SEEK_BAR_DEBOUNCE}
           />
