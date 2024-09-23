@@ -52,7 +52,7 @@ interface TagData {
 }
 
 const LINE_HEIGHT_COEFFICIENT = 1.15;
-const SPACING_COEFFICIENT = 0.25;
+const SPACING_COEFFICIENT = 0.1;
 
 type Renderer = (
   path: string,
@@ -502,10 +502,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       })
     );
 
+    const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
     for (const { path, value, color, title } of elements.filter((e) =>
       Boolean(e)
     )) {
-      this.element.appendChild(applyTagValue(color, path, title, value));
+      this.element.appendChild(
+        applyTagValue(color, path, title, value, spacing)
+      );
     }
 
     return this.element;
@@ -520,10 +523,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         "line-height",
         `${fontSize * LINE_HEIGHT_COEFFICIENT}px`
       );
-
-      const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
-      this.element.style.setProperty("gap", spacing);
-      this.element.style.setProperty("padding", spacing);
     }
   }
 }
@@ -532,7 +531,8 @@ export const applyTagValue = (
   color: string,
   path: string,
   title: string,
-  value: string
+  value: string,
+  spacing: string
 ) => {
   const div = document.createElement("div");
   const child = prettify(value);
@@ -542,6 +542,8 @@ export const applyTagValue = (
   } else {
     div.textContent = child;
   }
+
+  div.style.setProperty("margin", spacing);
 
   div.title = title;
   div.style.backgroundColor = color;
