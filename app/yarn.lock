@@ -2107,7 +2107,7 @@ __metadata:
     prettier: ^3.3.3
     typescript: ^5.5.4
     typescript-eslint: ^7.17.0
-    vite: ^5.4.2
+    vite: ^5.4.6
     vite-plugin-svgr: ^4.2.0
   peerDependencies:
     "@fiftyone/spaces": "*"
@@ -17924,7 +17924,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.2.14":
+"vite@npm:^5.2.14, vite@npm:^5.4.6":
   version: 5.4.6
   resolution: "vite@npm:5.4.6"
   dependencies:
@@ -17964,49 +17964,6 @@ __metadata:
   bin:
     vite: bin/vite.js
   checksum: ea293748f624b3bb53e68d30ddc55e7addeaa38bbcde06d900e6d476bef3d0550de2a67f5316680dbeae483afedd3e735fb91b65004659f62bece537ed038a59
-  languageName: node
-  linkType: hard
-
-"vite@npm:^5.4.2":
-  version: 5.4.3
-  resolution: "vite@npm:5.4.3"
-  dependencies:
-    esbuild: ^0.21.3
-    fsevents: ~2.3.3
-    postcss: ^8.4.43
-    rollup: ^4.20.0
-  peerDependencies:
-    "@types/node": ^18.0.0 || >=20.0.0
-    less: "*"
-    lightningcss: ^1.21.0
-    sass: "*"
-    sass-embedded: "*"
-    stylus: "*"
-    sugarss: "*"
-    terser: ^5.4.0
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  peerDependenciesMeta:
-    "@types/node":
-      optional: true
-    less:
-      optional: true
-    lightningcss:
-      optional: true
-    sass:
-      optional: true
-    sass-embedded:
-      optional: true
-    stylus:
-      optional: true
-    sugarss:
-      optional: true
-    terser:
-      optional: true
-  bin:
-    vite: bin/vite.js
-  checksum: 3a28bcb09345030d2dba41b93b6b8a3aac8f19a9336c50e7e5f5e30931fbb16193cdd97814c5c0d1b5ade3b3e763b329eb881ea5cfe6e422c669d21a304f3295
   languageName: node
   linkType: hard
 
