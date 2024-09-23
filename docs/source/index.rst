@@ -472,6 +472,7 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
+   FiftyOne Teams 🚀<teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>
@@ -481,7 +482,6 @@ us at support@voxel51.com.
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
-   FiftyOne Teams <teams/index>
    Integrations <integrations/index>
    Plugins <plugins/index>
    CLI <cli/index>
