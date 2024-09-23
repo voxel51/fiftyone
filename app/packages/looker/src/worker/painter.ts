@@ -215,8 +215,9 @@ export const PainterFactory = (requestColor) => ({
 
           r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
+          const scoped = Math.min(Math.max(value, start), stop);
           const index = Math.round(
-            (Math.max(value - start, 0) / (stop - start)) * (scale.length - 1)
+            (Math.max(scoped - start, 0) / (stop - start)) * (scale.length - 1)
           );
           r = get32BitColor(scale[index]);
         }
