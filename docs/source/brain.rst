@@ -5,7 +5,7 @@ FiftyOne Brain
 
 .. default-role:: code
 
-The `FiftyOne Brain <https://github.com/voxel51/fiftyone-brain>` provides
+The `FiftyOne Brain <https://github.com/voxel51/fiftyone-brain>`_ provides
 powerful machine learning techniques that are designed to transform how you
 curate your data from an art into a measurable science.
 
