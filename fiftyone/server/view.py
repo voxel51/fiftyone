@@ -354,9 +354,18 @@ def _project_pagination_paths(
 def _make_match_stage(view, filters):
     queries = []
 
-    for path, _, args in _iter_paths(view, filters):
+    for path, parent_path, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
         path_field = view.get_field(path)
+
+        field = view.get_field(parent_path)
+        is_label_field = _is_label_type(field)
+        if (
+            is_label_field
+            and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
+            and isinstance(path_field, (fof.KeypointsField, fof.ListField))
+        ):
+            continue
 
         if args.get("exclude") and not is_matching:
             continue
@@ -405,6 +414,21 @@ def _make_label_filter_stages(
             continue
 
         field = view.get_field(path)
+        label_field = view.get_field(label_path)
+        if issubclass(
+            label_field.document_type, (fol.Keypoint, fol.Keypoints)
+        ) and isinstance(field, fof.ListField):
+            expr = _make_keypoint_list_filter(args, view, path, field)
+            if expr is not None:
+                stages.append(
+                    fosg.FilterKeypoints(
+                        label_path,
+                        only_matches=True,
+                        **expr,
+                    )
+                )
+                continue
+
         key = field.db_field if field.db_field else field.name
         expr = _make_scalar_expression(
             F(key),
