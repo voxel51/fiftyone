@@ -590,7 +590,7 @@ def _rename_frame_field_inputs(ctx, inputs):
             label="Error",
             view=types.Error(
                 label="Frame field already exists",
-                description=f"Frrame field '{new_field_name}' already exists",
+                description=f"Frame field '{new_field_name}' already exists",
             ),
         )
 
