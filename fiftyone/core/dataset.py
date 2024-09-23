@@ -4324,7 +4324,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload("saved_views")
 
         self._doc.saved_views.append(view_doc)
-        self.save()
+        self._doc.last_modified_at = now
+        self._doc.save(virtual=True)
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4625,7 +4626,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload("workspaces")
 
         self._doc.workspaces.append(workspace_doc)
-        self.save()
+        self._doc.last_modified_at = now
+        self._doc.save(virtual=True)
 
     def load_workspace(self, name):
         """Loads the saved workspace with the given name.
