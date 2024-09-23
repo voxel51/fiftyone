@@ -101,8 +101,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         errorMsg !== null ||
         (hasSeatsLeft && !hasSeatsLeft(role)) ||
         (currInvitee && currInvitee.role === role) ||
-        selectionNotValid ||
-        !url
+        selectionNotValid
       }
     >
       <Box>
