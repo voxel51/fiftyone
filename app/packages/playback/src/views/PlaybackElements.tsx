@@ -1,8 +1,11 @@
 import controlsStyles from "@fiftyone/looker/src/elements/common/controls.module.css";
 import videoStyles from "@fiftyone/looker/src/elements/video.module.css";
+import { BufferRange, Buffers } from "@fiftyone/utilities";
 import React from "react";
 import styled from "styled-components";
 import { PlayheadState, TimelineName } from "../lib/state";
+import { convertFrameNumberToPercentage } from "../lib/use-timeline-viz-utils";
+import { getGradientStringForSeekbar } from "../lib/utils";
 import BufferingIcon from "./svgs/buffering.svg?react";
 import PauseIcon from "./svgs/pause.svg?react";
 import PlayIcon from "./svgs/play.svg?react";
@@ -46,14 +49,18 @@ export const Playhead = React.forwardRef<
 export const Seekbar = React.forwardRef<
   HTMLInputElement,
   React.HTMLProps<HTMLInputElement> & {
-    bufferValue: number;
+    loaded: Buffers;
+    loading: BufferRange;
+    debounce?: number;
+    totalFrames: number;
     value: number;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    debounce?: number;
   }
 >(({ ...props }, ref) => {
   const {
-    bufferValue,
+    loaded,
+    loading,
+    totalFrames,
     value,
     onChange,
     debounce,
@@ -62,7 +69,33 @@ export const Seekbar = React.forwardRef<
     ...otherProps
   } = props;
 
-  // todo: consider debouncing onChange
+  // convert buffer ranges to 1-100 percentage
+  const loadedScaled = React.useMemo(() => {
+    return loaded.map((buffer) => {
+      return [
+        convertFrameNumberToPercentage(buffer[0], totalFrames),
+        convertFrameNumberToPercentage(buffer[1], totalFrames),
+      ] as BufferRange;
+    });
+  }, [loaded]);
+
+  const loadingScaled = React.useMemo(() => {
+    return [
+      convertFrameNumberToPercentage(loading[0], totalFrames),
+      convertFrameNumberToPercentage(loading[1], totalFrames),
+    ] as BufferRange;
+  }, [loading]);
+
+  const gradientString = React.useMemo(
+    () =>
+      getGradientStringForSeekbar(loadedScaled, loadingScaled, value, {
+        unBuffered: "var(--fo-palette-neutral-softBorder)",
+        currentProgress: "var(--fo-palette-primary-plainColor)",
+        buffered: "var(--fo-palette-secondary-main)",
+        loading: "red",
+      }),
+    [loadedScaled, loadingScaled, value]
+  );
 
   return (
     <input
@@ -72,16 +105,15 @@ export const Seekbar = React.forwardRef<
       ref={ref}
       type="range"
       value={value}
-      className={`${className ?? ""} ${videoStyles.lookerSeekBar} ${
+      className={`${className ?? ""} ${videoStyles.imaVidSeekBar} ${
         videoStyles.hideInputThumb
       }`}
       onChange={onChange}
       style={
         {
           appearance: "none",
-          "--progress": `${value}%`,
-          // todo: represent buffer in a range instead of percentage
-          "--buffer-progress": `${bufferValue}%`,
+          outline: "none",
+          background: gradientString,
           ...style,
         } as React.CSSProperties
       }

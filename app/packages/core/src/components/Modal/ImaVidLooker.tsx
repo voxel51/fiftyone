@@ -152,7 +152,7 @@ export const ImaVidLookerReact = React.memo(
     }, [ref]);
 
     const loadRange = React.useCallback(async (range: BufferRange) => {
-      // no-op, resolve in 1 second
+      // no-op
     }, []);
 
     const renderFrame = React.useCallback((frameNumber: number) => {

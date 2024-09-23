@@ -139,6 +139,10 @@ const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
   atom<FrameNumber>(DEFAULT_FRAME_NUMBER)
 );
 
+const _currentBufferingRange = atomFamily((_timelineName: TimelineName) =>
+  atom<BufferRange>([0, 0])
+);
+
 const _dataLoadedBuffers = atomFamily((_timelineName: TimelineName) =>
   atom<BufferManager>(new BufferManager())
 );
@@ -321,8 +325,11 @@ export const setFrameNumberAtom = atom(
         totalFrames
       );
       subscribers.forEach((subscriber) => {
+        console.log("New load range is ", newLoadRange);
         rangeLoadPromises.push(subscriber.loadRange(newLoadRange));
       });
+
+      set(_currentBufferingRange(name), newLoadRange);
 
       try {
         await Promise.all(rangeLoadPromises);
@@ -330,6 +337,8 @@ export const setFrameNumberAtom = atom(
       } catch (e) {
         // todo: handle error better
         console.error(e);
+      } finally {
+        set(_currentBufferingRange(name), [0, 0]);
       }
     }
 
@@ -385,6 +394,16 @@ export const updatePlayheadStateAtom = atom(
  * note: no need to set getters for timeline config, or subscribers
  * as they are not used directly.
  */
+
+export const getDataLoadedBuffersAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => get(_dataLoadedBuffers(_timelineName)))
+);
+
+export const getCurrentBufferingRangeAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => get(_currentBufferingRange(_timelineName)))
+);
 
 export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => {
