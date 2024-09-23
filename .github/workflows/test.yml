@@ -33,13 +33,10 @@ jobs:
           - ubuntu-latest-m
           - windows-latest
         python:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
         exclude:
-          - os: windows-latest
-            python: "3.8"
           - os: windows-latest
             python: "3.9"
           - os: windows-latest

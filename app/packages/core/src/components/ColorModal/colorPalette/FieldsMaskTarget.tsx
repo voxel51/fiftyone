@@ -83,7 +83,6 @@ const FieldsMaskTargets: React.FC = () => {
             onSyncUpdate={onSyncUpdate}
             shouldShowAddButton={useFieldMaskColors}
             min={1}
-            max={255}
             step={1}
           />
         </>

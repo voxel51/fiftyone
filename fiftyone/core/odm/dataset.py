@@ -9,6 +9,7 @@ Documents that track datasets and their sample schemas in the database.
 import logging
 
 from bson import DBRef, ObjectId
+from mongoengine.errors import ValidationError
 
 import eta.core.utils as etau
 
@@ -16,6 +17,7 @@ from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
     ColorField,
+    DateField,
     DateTimeField,
     DictField,
     EmbeddedDocumentField,
@@ -187,7 +189,7 @@ class ColorScheme(EmbeddedDocument):
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
-            color_by="field",
+            color_by="value",
             color_pool=[
                 "#ff0000",
                 "#00ff00",
@@ -261,14 +263,18 @@ class ColorScheme(EmbeddedDocument):
             -   ``valueColors`` (optional): a list of dicts specifying colors
                 to use for individual values of this field
             -   ``maskTargetsColors`` (optional): a list of dicts specifying
-                index and color for 2D masks
+                index and color for 2D masks in the same format as described
+                below for default mask targets
         default_mask_targets_colors (None): a list of dicts with the following
             keys specifying index and color for 2D masks of the dataset. If a
             field does not have field specific mask targets colors, this list
             will be used:
 
-            -   ``intTarget``: integer target value
+            -   ``intTarget``: an integer target value
             -   ``color``: a color string
+
+            Note that the pixel value ``0`` is a reserved "background" class
+            that is always rendered as invisible in the App
         default_colorscale (None): dataset default colorscale dict with the
             following keys:
 
@@ -278,7 +284,7 @@ class ColorScheme(EmbeddedDocument):
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1
-                -   ``color``: an rgb color string
+                -   ``color``: an RGB color string
         colorscales (None): an optional list of dicts of per-field custom
             colorscales with the following keys:
 
@@ -291,7 +297,7 @@ class ColorScheme(EmbeddedDocument):
 
                 -   ``value``: a float number between 0 and 1. A valid list
                     must have have colors defined for 0 and 1
-                -   ``color``: an rgb color string
+                -   ``color``: an RGB color string
         label_tags (None): an optional dict specifying custom colors for label
             tags with the following keys:
 
@@ -325,6 +331,137 @@ class ColorScheme(EmbeddedDocument):
     @_id.setter
     def _id(self, value):
         self.id = str(value)
+
+    def _validate(self):
+        self._validate_color_by()
+        self._validate_opacity()
+        self._validate_fields()
+        self._validate_default_mask_targets_colors()
+        self._validate_default_colorscale()
+        self._validate_colorscales()
+
+    def _validate_color_by(self):
+        if self.color_by not in [None, "field", "value", "instance"]:
+            raise ValidationError(
+                "color_by must be one of [None, 'field', 'value', 'instance']"
+            )
+
+    def _validate_opacity(self):
+        if self.opacity is not None and not 0 <= self.opacity <= 1:
+            raise ValidationError("opacity must be between 0 and 1")
+
+    def _validate_default_mask_targets_colors(self):
+        if self.default_mask_targets_colors:
+            self._validate_mask_targets(
+                self.default_mask_targets_colors, "default mask targets colors"
+            )
+
+    def _validate_fields(self):
+        if self.fields:
+            for field in self.fields:
+                path = field.get("path")
+                if not path:
+                    raise ValidationError(
+                        "path is required for each field in fields"
+                    )
+
+                mask_targets_colors = field.get("maskTargetsColors")
+                if mask_targets_colors:
+                    self._validate_mask_targets(
+                        mask_targets_colors, "mask target colors"
+                    )
+
+    def _validate_mask_targets(self, mask_targets, context):
+        for entry in mask_targets:
+            int_target_value = entry.get("intTarget")
+
+            if (
+                not isinstance(entry, dict)
+                or int_target_value is None
+                or not isinstance(int_target_value, int)
+                or int_target_value < 0
+            ):
+
+                raise ValidationError(
+                    f"Invalid intTarget in {context}."
+                    "intTarget must be a nonnegative integer."
+                    f"Invalid entry: {entry}"
+                )
+
+    def _validate_colorscales(self):
+        if self.colorscales is None:
+            return
+
+        if not isinstance(self.colorscales, list):
+            raise ValidationError("colorscales must be a list or None")
+
+        for scale in self.colorscales:
+            self._validate_single_colorscale(scale)
+
+    def _validate_default_colorscale(self):
+        if self.default_colorscale is None:
+            return
+
+        self._validate_single_colorscale(self.default_colorscale)
+
+    def _validate_single_colorscale(self, scale):
+        if not isinstance(scale, dict):
+            raise ValidationError(
+                f"Each colorscale entry must be a dict. Invalid entry: {scale}"
+            )
+
+        name = scale.get("name")
+        color_list = scale.get("list")
+
+        if name is None and color_list is None:
+            raise ValidationError(
+                "Each colorscale entry must have either a 'name' or a 'list'."
+                f"Invalid entry: {scale}"
+            )
+
+        if name is not None and not isinstance(name, str):
+            raise ValidationError(
+                "Invalid colorscale name."
+                "See https://plotly.com/python/colorscales for possible options."
+                f"Invalid name: {name}"
+            )
+
+        if color_list is not None:
+            if not isinstance(color_list, list):
+                raise ValidationError(
+                    "The 'list' field in colorscales must be a list."
+                    f"Invalid entry: {color_list}"
+                )
+
+            if len(color_list) == 0:
+                return
+
+            has_value_0 = False
+            has_value_1 = False
+
+            for entry in color_list:
+                value = entry.get("value")
+
+                if (
+                    value is None
+                    or not isinstance(value, (int, float))
+                    or not (0 <= value <= 1)
+                ):
+                    raise ValidationError(
+                        "Each entry in the 'list' must have a 'value'"
+                        f"between 0 and 1. Invalid entry: {entry}"
+                    )
+
+                if value == 0:
+                    has_value_0 = True
+                elif value == 1:
+                    has_value_1 = True
+
+            if not has_value_0 or not has_value_1:
+                raise ValidationError(
+                    "The colorscale 'list' must have colors defined for 0 and 1."
+                    f"Invalid list: {color_list}"
+                )
 
 
 class KeypointSkeleton(EmbeddedDocument):
@@ -583,7 +720,15 @@ def _parse_schema(
                     custom.append((name, paths))
         elif isinstance(
             field,
-            (ObjectIdField, IntField, FloatField, StringField, BooleanField),
+            (
+                ObjectIdField,
+                IntField,
+                FloatField,
+                StringField,
+                BooleanField,
+                DateField,
+                DateTimeField,
+            ),
         ):
             if frames:
                 other.append(name)

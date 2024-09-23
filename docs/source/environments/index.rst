@@ -415,14 +415,13 @@ Next, build the image:
 
     docker build -t voxel51/fiftyone .
 
-The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
+The default image uses Python 3.11, but you can customize these
 via optional build arguments:
 
 .. code:: shell
 
     docker build \
-        --build-arg BASE_IMAGE=ubuntu:18.04 \
-        --build-arg PYTHON_VERSION=3.9 \
+        --build-arg PYTHON_VERSION=3.10 \
         -t voxel51/fiftyone .
 
 Refer to the
