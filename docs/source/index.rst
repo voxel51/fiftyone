@@ -351,7 +351,7 @@ models.
 
 .. custombutton::
     :button_text: Learn more about the Brain
-    :button_link: user_guide/brain.html
+    :button_link: brain.html
 
 .. code-block:: python
    :linenos:
@@ -380,6 +380,71 @@ that execute on a connected workflow orchestration tool like Apache Airflow.
    :alt: fiftyone-plugins
    :align: center
 
+Dataset Zoo
+-----------
+
+The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
+and loading them into FiftyOne.
+
+It provides native access to dozens of popular benchmark datasets, and it als
+supports downloading arbitrary public or private datasets whose
+download/preparation methods are provided via GitHub repositories or URLs.
+
+.. custombutton::
+    :button_text: Check out the Dataset Zoo
+    :button_link: dataset_zoo/index.html
+
+.. code-block:: python
+   :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. image:: images/dataset_zoo_coco_2017.png
+   :alt: dataset-zoo
+   :align: center
+
+Model Zoo
+---------
+
+The FiftyOne Model Zoo provides a powerful interface for downloading models and
+applying them to your FiftyOne datasets.
+
+It provides native access to hundreds of pre-trained models, and it also
+supports downloading arbitrary public or private models whose definitions are
+provided via GitHub repositories or URLs.
+
+.. custombutton::
+    :button_text: Check out the Model Zoo
+    :button_link: model_zoo/index.html
+
+.. code-block:: python
+   :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        max_samples=50,
+        shuffle=True,
+    )
+
+    model = foz.load_zoo_model(
+        "clip-vit-base32-torch",
+        text_prompt="A photo of a",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+    )
+
+    dataset.apply_model(model, label_field="zero_shot_predictions")
+
+    session = fo.launch_app(dataset)
+
 What's Next?
 ____________
 
@@ -407,13 +472,16 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
+   FiftyOne Teams 🚀<teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   FiftyOne Teams <teams/index>
+   Dataset Zoo <dataset_zoo/index>
+   Model Zoo <model_zoo/index>
+   FiftyOne Brain <brain>
    Integrations <integrations/index>
    Plugins <plugins/index>
    CLI <cli/index>
