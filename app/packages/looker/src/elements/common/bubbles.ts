@@ -14,44 +14,13 @@ import type { Sample } from "../..";
 const FRAMES = "frames";
 const FRAMES_SAMPLE = "fiftyone.core.frames.FrameSample";
 
-const unwind = (name: string, value: Sample | Sample[], depth = 0) => {
-  if (Array.isArray(value)) {
-    return depth < 2 ? value.map((val) => unwind(name, val), depth + 1) : [];
-  }
-
-  const v = value[name];
-  if (v !== undefined && v !== null) {
-    return [v];
-  }
-
-  if (name === "_id" && value.id) {
-    return [value.id];
-  }
-
-  return [];
-};
-
-const parseSample = (keys: string[], sample: Sample, schema: Schema) => {
-  if (keys[0] === FRAMES && schema?.frames?.embeddedDocType === FRAMES_SAMPLE) {
-    return {
-      values: sample?.frames[0] as Sample[],
-      schema: schema.frames.fields,
-      keys: keys.slice(1),
-    };
-  }
-
-  return {
-    values: [sample],
-    schema,
-    keys,
-  };
-};
+type Data = { [key: string]: unknown };
 
 export const getBubbles = (
   path: string,
-  sample: Sample,
+  sample: Data,
   input: Schema
-): [Field, Sample[]] => {
+): [Field, unknown[]] => {
   const out = parseSample(path.split("."), sample, input);
 
   let field: Field = null;
@@ -99,14 +68,14 @@ export const getBubbles = (
     }
 
     if (out.values?.length && field) {
-      out.values = (unwind(field.dbField, out.values) || []).flat(2);
+      out.values = unwind(field.dbField, out.values) || [];
       break;
     }
 
     out.schema = field ? field.fields : null;
   }
 
-  return [field, out.values];
+  return [field, out.values as Sample[]];
 };
 
 export const getField = (keys: string[], schema: Schema) => {
@@ -121,4 +90,39 @@ export const getField = (keys: string[], schema: Schema) => {
   }
 
   return field.fields[keys[keys.length - 1]];
+};
+
+export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
+  if (keys[0] === FRAMES && schema?.frames?.embeddedDocType === FRAMES_SAMPLE) {
+    return {
+      values: sample?.frames[0] as Sample[],
+      schema: schema.frames.fields,
+      keys: keys.slice(1),
+    };
+  }
+
+  return {
+    values: [sample] as Data[],
+    schema,
+    keys,
+  };
+};
+
+export const unwind = (name: string, value: Data | Data[], depth = 0) => {
+  if (Array.isArray(value)) {
+    return depth < 2
+      ? value.map((val) => unwind(name, val), depth + 1).flat(3)
+      : [];
+  }
+
+  const v = value[name];
+  if (v !== undefined && v !== null) {
+    return [v].flat(3);
+  }
+
+  if (name === "_id" && value.id) {
+    return [value.id].flat(3);
+  }
+
+  return [];
 };

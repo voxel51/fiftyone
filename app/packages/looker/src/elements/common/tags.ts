@@ -338,7 +338,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
 
       const value = results.join(",");
-      console.log(results, value);
       return {
         color: getAssignedColor({
           coloring,
