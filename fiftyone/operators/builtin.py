@@ -2111,6 +2111,52 @@ class DeleteWorkspace(foo.Operator):
         ctx.dataset.delete_workspace(name)
 
 
+class SyncLastModifiedAt(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="sync_last_modified_at",
+            label="Sync last modified at",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        instructions = """
+This operation updates the `last_modified_at` property of the dataset if
+necessary to incorporate any modification timestamps to its samples.
+        """
+
+        inputs.str(
+            "instructions",
+            default=instructions.strip(),
+            view=types.MarkdownView(read_only=True),
+        )
+
+        if ctx.dataset._has_frame_fields():
+            inputs.bool(
+                "include_frames",
+                default=True,
+                required=False,
+                label="Include frames",
+                description=(
+                    "Whether to sync the `last_modified_at` property of each "
+                    "video sample first if necessary to incorporate any "
+                    "modification timestamps to its frames"
+                ),
+            )
+
+        return types.Property(
+            inputs, view=types.View(label="Sync last modified at")
+        )
+
+    def execute(self, ctx):
+        include_frames = ctx.params.get("include_frames", True)
+
+        ctx.dataset.sync_last_modified_at(include_frames=include_frames)
+
+
 class ListFiles(foo.Operator):
     @property
     def config(self):
@@ -2258,5 +2304,6 @@ BUILTIN_OPERATORS = [
     SaveWorkspace(_builtin=True),
     EditWorkspaceInfo(_builtin=True),
     DeleteWorkspace(_builtin=True),
+    SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
 ]
