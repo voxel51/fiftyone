@@ -18,10 +18,10 @@ type Data = { [key: string]: unknown };
 
 export const getBubbles = (
   path: string,
-  sample: Data,
+  data: Data,
   input: Schema
 ): [Field, unknown[]] => {
-  const out = parseSample(path.split("."), sample, input);
+  const out = parseSample(path.split("."), data, input);
 
   let field: Field = null;
   for (const key of out.keys.slice(0, 2)) {
@@ -69,7 +69,6 @@ export const getBubbles = (
 
     if (out.values?.length && field) {
       out.values = unwind(field.dbField, out.values) || [];
-      break;
     }
 
     out.schema = field ? field.fields : null;
