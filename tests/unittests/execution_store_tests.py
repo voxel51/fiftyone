@@ -64,13 +64,15 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
             {"store_name": "widgets", "key": "widget_1"},
             {
                 "$set": {
+                    "value": {"name": "Widget One", "value": 100},
+                    "updated_at": IsDateTime(),
+                },
+                "$setOnInsert": {
                     "store_name": "widgets",
                     "key": "widget_1",
-                    "value": {"name": "Widget One", "value": 100},
                     "created_at": IsDateTime(),
-                    "updated_at": None,
                     "expires_at": IsDateTime(),
-                }
+                },
             },
             upsert=True,
         )
@@ -140,7 +142,9 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         keys = self.store_repo.list_keys("widgets")
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
-        self.mock_collection.find.assert_called_with({"store_name": "widgets"})
+        self.mock_collection.find.assert_called_with(
+            {"store_name": "widgets"}, {"key": 1}
+        )
 
     def test_list_stores(self):
         self.mock_collection.distinct.return_value = ["widgets", "gadgets"]
@@ -166,41 +170,18 @@ class TestExecutionStoreIntegration(unittest.TestCase):
             {"store_name": "mock_store", "key": "widget_1"},
             {
                 "$set": {
+                    "updated_at": IsDateTime(),
+                    "value": {"name": "Widget One", "value": 100},
+                },
+                "$setOnInsert": {
                     "store_name": "mock_store",
                     "key": "widget_1",
-                    "value": {"name": "Widget One", "value": 100},
                     "created_at": IsDateTime(),
-                    "updated_at": None,
                     "expires_at": IsDateTime(),
-                }
+                },
             },
             upsert=True,
         )
-
-    # def test_update(self):
-    #     self.mock_collection.find_one.return_value = {
-    #         "store_name": "mock_store",
-    #         "key": "widget_1",
-    #         "value": {"name": "Widget One", "value": 100},
-    #         "created_at": time.time(),
-    #         "updated_at": time.time(),
-    #         "expires_at": time.time() + 60000
-    #     }
-    #     self.store.update_key("widget_1", {"name": "Widget One", "value": 200})
-    #     self.mock_collection.update_one.assert_called_once()
-    #     self.mock_collection.update_one.assert_called_with(
-    #         {"store_name": "mock_store", "key": "widget_1"},
-    #         {
-    #             "$set": {
-    #                 "store_name": "mock_store",
-    #                 "key": "widget_1",
-    #                 "value": {"name": "Widget One", "value": 200},
-    #                 "created_at": IsDateTime(),
-    #                 "updated_at": IsDateTime(),
-    #                 "expires_at": IsDateTime()
-    #             }
-    #         }
-    #     )
 
     def test_get(self):
         self.mock_collection.find_one.return_value = {
@@ -227,7 +208,7 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "mock_store"}
+            {"store_name": "mock_store"}, {"key": 1}
         )
 
     def test_delete(self):
