@@ -78,7 +78,7 @@ jobs:
           path: package/db/dist/*.whl
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: build
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -90,16 +90,20 @@ jobs:
         with:
           name: dist-sdist
           path: downloads
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
       - name: Install fiftyone-db
         run: |
-          pip3 install downloads/fiftyone_db-*.tar.gz
+          pip install downloads/fiftyone_db-*.tar.gz
       - name: Install test dependencies
         run: |
-          pip3 install pytest
+          pip install pytest
       - name: Run tests
         run: |
           cd package/db/
-          python3 -m pytest --verbose tests/
+          python -m pytest --verbose tests/
 
   publish:
     runs-on: ubuntu-latest

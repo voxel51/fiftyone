@@ -1042,7 +1042,7 @@ You can also programmatically configure a session's color scheme by creating
         ],
         color_by="value",
         opacity=0.5,
-        default_colorscale= { "name": "rdbu", "list": None },
+        default_colorscale= {"name": "rdbu", "list": None},
         colorscales=[
             {
                  # field definition overrides the default_colorscale

@@ -4155,52 +4155,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_ids=sample_ids
             )
 
-    @deprecated(reason="Use delete_samples() instead")
-    def remove_sample(self, sample_or_id):
-        """Removes the given sample from the dataset.
-
-        If reference to a sample exists in memory, the sample will be updated
-        such that ``sample.in_dataset`` is False.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`delete_samples` instead.
-
-        Args:
-            sample_or_id: the sample to remove. Can be any of the following:
-
-                -   a sample ID
-                -   a :class:`fiftyone.core.sample.Sample`
-                -   a :class:`fiftyone.core.sample.SampleView`
-        """
-        self.delete_samples(sample_or_id)
-
-    @deprecated(reason="Use delete_samples() instead")
-    def remove_samples(self, samples_or_ids):
-        """Removes the given samples from the dataset.
-
-        If reference to a sample exists in memory, the sample will be updated
-        such that ``sample.in_dataset`` is False.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`delete_samples` instead.
-
-        Args:
-            samples_or_ids: the samples to remove. Can be any of the following:
-
-                -   a sample ID
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.sample.Sample` or
-                    :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of :class:`fiftyone.core.sample.Sample` or
-                    :class:`fiftyone.core.sample.SampleView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`
-        """
-        self.delete_samples(samples_or_ids)
-
     def save(self):
         """Saves the dataset to the database.
 

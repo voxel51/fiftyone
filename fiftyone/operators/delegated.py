@@ -101,6 +101,17 @@ class DelegatedOperationService(object):
             progress=progress,
         )
 
+    def set_scheduled(self, doc_id):
+        """Sets the given delegated operation to scheduled state.
+        Args:
+            doc_id: the ID of the delegated operation
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.update_run_state(
+            _id=doc_id, run_state=ExecutionRunState.SCHEDULED
+        )
+
     def set_completed(
         self,
         doc_id,
@@ -232,6 +243,34 @@ class DelegatedOperationService(object):
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.get_queued_operations(
+            operator=operator, dataset_name=dataset_name
+        )
+
+    def get_scheduled_operations(self, operator=None, dataset_name=None):
+        """Returns all scheduled delegated operations.
+        Args:
+            operator (None): the optional name of the operator to return all
+                the scheduled delegated operations for
+            dataset_name (None): the optional name of the dataset to return all
+                the scheduled delegated operations for
+        Returns:
+            a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.get_scheduled_operations(
+            operator=operator, dataset_name=dataset_name
+        )
+
+    def get_running_operations(self, operator=None, dataset_name=None):
+        """Returns all running delegated operations.
+        Args:
+            operator (None): the optional name of the operator to return all
+                the running delegated operations for
+            dataset_name (None): the optional name of the dataset to return all
+                the running delegated operations for
+        Returns:
+            a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.get_running_operations(
             operator=operator, dataset_name=dataset_name
         )
 
