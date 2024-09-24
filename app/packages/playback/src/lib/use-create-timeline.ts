@@ -16,7 +16,7 @@ import {
   updatePlayheadStateAtom,
 } from "../lib/state";
 import { DEFAULT_FRAME_NUMBER } from "./constants";
-import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "./utils";
 
 /**
@@ -32,7 +32,7 @@ import { getTimelineSetFrameNumberEventName } from "./utils";
 export const useCreateTimeline = (
   newTimelineProps: Optional<CreateFoTimeline, "name">
 ) => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
   const { name: mayBeTimelineName } = newTimelineProps;
 
   const timelineName = useMemo(

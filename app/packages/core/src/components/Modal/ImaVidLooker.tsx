@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
-import { useDefaultTimelineName } from "@fiftyone/playback/src/lib/use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
@@ -163,7 +163,7 @@ export const ImaVidLookerReact = React.memo(
       );
     }, []);
 
-    const { getName } = useDefaultTimelineName();
+    const { getName } = useDefaultTimelineNameImperative();
     const timelineName = React.useMemo(() => getName(), [getName]);
 
     const [totalFrameCount, setTotalFrameCount] = useState<number | null>(null);
