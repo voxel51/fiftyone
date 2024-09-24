@@ -360,7 +360,6 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = formatPrimitive({ ftype, value, timeZone });
-  console.log(value, ftype, timeZone, formatted);
 
   return (
     <div

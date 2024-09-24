@@ -3,13 +3,13 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
-export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
 export * from "./paths";
+export * from "./Resource";
 export * from "./schema";
 export * as styles from "./styles";
 export * from "./type-check";
@@ -642,7 +642,6 @@ export const formatPrimitive = ({
     case DATE_TIME_FIELD:
       // @ts-ignore
       value = formatDateTime(value.datetime as number, timeZone);
-      console.log("HUH", value);
   }
 
   return prettify(value as string);
