@@ -14,8 +14,8 @@ def up(db, dataset_name):
 
     now = datetime.utcnow()
 
-    # Add `last_modified_at` property
-    if "last_modified_at" not in dataset_dict:
+    # Populate `Dataset.last_modified_at`
+    if dataset_dict.get("last_modified_at", None) is None:
         dataset_dict["last_modified_at"] = now
 
     added_created_at_samples = False
