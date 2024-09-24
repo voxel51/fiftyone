@@ -55,6 +55,8 @@ export const Seekbar = React.forwardRef<
     totalFrames: number;
     value: number;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onSeekStart: () => void;
+    onSeekEnd: () => void;
   }
 >(({ ...props }, ref) => {
   const {
@@ -63,6 +65,8 @@ export const Seekbar = React.forwardRef<
     totalFrames,
     value,
     onChange,
+    onSeekStart,
+    onSeekEnd,
     debounce,
     style,
     className,
@@ -109,6 +113,8 @@ export const Seekbar = React.forwardRef<
         videoStyles.hideInputThumb
       }`}
       onChange={onChange}
+      onMouseDown={onSeekStart}
+      onMouseUp={onSeekEnd}
       style={
         {
           appearance: "none",
