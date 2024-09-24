@@ -2,30 +2,32 @@ import {
   useCurrentUser,
   useSecurityRole,
   useUserAudit,
-  withSuspense
-} from '@fiftyone/hooks';
-import useGrantUserDatasetAccess from '@fiftyone/hooks/src/dataset/access/useGrantUserDatasetAccess';
-import { Dialog } from '@fiftyone/teams-components';
+  withSuspense,
+} from "@fiftyone/hooks";
+import useGrantUserDatasetAccess from "@fiftyone/hooks/src/dataset/access/useGrantUserDatasetAccess";
+import { Dialog } from "@fiftyone/teams-components";
 import {
   DatasetPermission,
-  manageDatasetGrantUserAccessOpenState
-} from '@fiftyone/teams-state';
-import { UserRole } from '@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql';
-import { Box, Stack, Typography } from '@mui/material';
-import { capitalize } from 'lodash';
-import LicenseAudit from 'pages/settings/team/users/components/LicenseAudit';
-import { Suspense, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import GrantDatasetAccessTitle from './GrantDatasetAccessTitle';
-import ManageUser from './ManageUser';
-import UserInputSuggestion from './UserInputSuggestion';
+  manageAccessItemsState,
+  ManageDatasetAccessUser,
+  manageDatasetGrantUserAccessOpenState,
+} from "@fiftyone/teams-state";
+import { UserRole } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql";
+import { Box, Stack, Typography } from "@mui/material";
+import { capitalize } from "lodash";
+import LicenseAudit from "pages/settings/team/users/components/LicenseAudit";
+import { Suspense, useCallback, useState } from "react";
+import { useRecoilState } from "recoil";
+import GrantDatasetAccessTitle from "./GrantDatasetAccessTitle";
+import ManageUser from "./ManageUser";
+import UserInputSuggestion from "./UserInputSuggestion";
 
 function GrantUserDatasetAccess() {
   const [open, setOpen] = useRecoilState(manageDatasetGrantUserAccessOpenState);
   const [user, setUser] = useState<any>();
   const { maxDatasetPermission } = useSecurityRole();
   const [userStatePermission, setUserStatePermission] =
-    useState<DatasetPermission>('VIEW');
+    useState<DatasetPermission>("VIEW");
   const [unregisteredUserRole, setUnregisteredUserRole] =
     useState<UserRole | null>(null);
   const { grantUserDatasetAccess, isGrantingUserDatasetAccess } =
@@ -39,14 +41,24 @@ function GrantUserDatasetAccess() {
     userStatePermission &&
     user &&
     !user.id &&
-    !hasSeatsLeft?.(unregisteredUserRole || '');
+    !hasSeatsLeft?.(unregisteredUserRole || "");
 
-  function closeDialog() {
+  const closeDialog = useCallback(() => {
     setOpen(false);
     setUser(null);
-    setUserStatePermission('VIEW');
+    setUserStatePermission("VIEW");
     setUnregisteredUserRole(null);
-  }
+  }, [setOpen]);
+
+  const [accessItems, setAccessItems] = useRecoilState(manageAccessItemsState);
+
+  const onGrantAccessComplete = useCallback(
+    (accessItem: ManageDatasetAccessUser) => {
+      setAccessItems([accessItem, ...accessItems]);
+      closeDialog();
+    },
+    [accessItems, closeDialog, setAccessItems]
+  );
 
   return (
     <Dialog
@@ -61,13 +73,14 @@ function GrantUserDatasetAccess() {
       confirmationButtonText="Grant access"
       loading={mutationInProgress}
       onConfirm={() => {
-        user &&
+        if (user) {
           grantUserDatasetAccess(
             user,
             userStatePermission,
             unregisteredUserRole,
-            closeDialog
+            onGrantAccessComplete
           );
+        }
       }}
     >
       <Stack spacing={2}>
@@ -99,9 +112,9 @@ function GrantUserDatasetAccess() {
       {shouldDisableSubmit && (
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'row-reverse',
-            marginTop: '0.3rem'
+            display: "flex",
+            flexDirection: "row-reverse",
+            marginTop: "0.3rem",
           }}
         >
           <Typography variant="subtitle1" color="error">

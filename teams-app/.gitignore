@@ -7,3 +7,4 @@ node_modules
 !.yarn/versions
 
 !app/packages/app/.env.local
+.env.local

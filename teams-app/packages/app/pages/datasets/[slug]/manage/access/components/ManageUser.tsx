@@ -1,25 +1,24 @@
-import { useUserRole } from '@fiftyone/hooks';
-import { RoleAttributesResults } from '@fiftyone/hooks/src/permission/useSecurityRole';
+import { isGroupType, useUserRole } from "@fiftyone/hooks";
+import { isGroup } from "@fiftyone/state";
 import {
   DatasetPermissionSelection,
   RoleSelection,
   UserCard,
-  WithTooltip
-} from '@fiftyone/teams-components';
-import { DatasetPermissionSelectionProps } from '@fiftyone/teams-components/src/DatasetPermissionSelection';
-import { UserCardProps } from '@fiftyone/teams-components/src/UserCard';
+  WithTooltip,
+} from "@fiftyone/teams-components";
+import { DatasetPermissionSelectionProps } from "@fiftyone/teams-components/src/DatasetPermissionSelection";
+import { UserCardProps } from "@fiftyone/teams-components/src/UserCard";
 import {
   DatasetPermission,
   Group,
   Role,
-  User as UserType
-} from '@fiftyone/teams-state';
-import { MANUAL_GROUP_MGMT_DISABLED_TEXT } from '@fiftyone/teams-state/src/constants';
-import { DeleteOutline } from '@mui/icons-material';
-import { IconButton, TableCell, TableRow, Typography } from '@mui/material';
-import { capitalize } from 'lodash';
-import { useEffect } from 'react';
-import { isGroup } from './ManagePeopleDatasetAccess';
+  User as UserType,
+} from "@fiftyone/teams-state";
+import { MANUAL_GROUP_MGMT_DISABLED_TEXT } from "@fiftyone/teams-state/src/constants";
+import { DeleteOutline } from "@mui/icons-material";
+import { IconButton, TableCell, TableRow, Typography } from "@mui/material";
+import { capitalize } from "lodash";
+import { useEffect } from "react";
 
 type PropTypes = {
   target: UserType | Group;
@@ -44,7 +43,7 @@ export default function ManageUser({
   hideRole,
   userCardProps = {},
   permissionSelectionProps = {},
-  readOnly = false
+  readOnly = false,
 }: PropTypes) {
   const { getRoles, getMinRequiredRole } = useUserRole();
   const items = getRoles(permission);
@@ -64,14 +63,14 @@ export default function ManageUser({
           email={target?.description ?? target?.email}
           src={target?.picture}
           detailed
-          titleSx={{ maxWidth: '150px' }}
+          titleSx={{ maxWidth: "150px" }}
           {...userCardProps}
         />
       </TableCell>
       {!hideRole && (
         <TableCell width="20%">
           <Typography variant="body1">
-            {isGroup(target)
+            {isGroupType(target)
               ? capitalize(target.usersCount)
               : capitalize(target.role)}
           </Typography>
@@ -83,7 +82,7 @@ export default function ManageUser({
             defaultValue={permission}
             onChange={onPermissionChange}
             disabledPermissions={
-              !isGroup(target)
+              !isGroupType(target)
                 ? getDisabledPermissions(
                     target.role,
                     target.id,
@@ -101,8 +100,8 @@ export default function ManageUser({
           <RoleSelection
             key={permission}
             items={items}
-            defaultValue={getMinRequiredRole(permission) || ''}
-            selectProps={{ fullWidth: true, size: 'small' }}
+            defaultValue={getMinRequiredRole(permission) || ""}
+            selectProps={{ fullWidth: true, size: "small" }}
             onChange={(role) => {
               onRoleSelectionChange(role as Role);
             }}
@@ -132,35 +131,35 @@ export function getDisabledPermissions(
   maxPermission: DatasetPermission
 ) {
   const disabledPermissions = [];
-  const canManage = maxPermission === 'MANAGE';
-  const canEdit = ['MANAGE', 'EDIT'].includes(maxPermission);
-  const canTag = ['MANAGE', 'EDIT', 'TAG'].includes(maxPermission);
-  const canView = ['MANAGE', 'EDIT', 'TAG', 'VIEW'].includes(maxPermission);
+  const canManage = maxPermission === "MANAGE";
+  const canEdit = ["MANAGE", "EDIT"].includes(maxPermission);
+  const canTag = ["MANAGE", "EDIT", "TAG"].includes(maxPermission);
+  const canView = ["MANAGE", "EDIT", "TAG", "VIEW"].includes(maxPermission);
   const roleLabel = capitalize(role);
 
   if (!canManage) {
-    const type = userId ? `${capitalize(role)}s` : 'Unregistered users';
+    const type = userId ? `${capitalize(role)}s` : "Unregistered users";
     disabledPermissions.push({
-      permission: 'MANAGE',
-      reason: `${type} cannot have manage permissions`
+      permission: "MANAGE",
+      reason: `${type} cannot have manage permissions`,
     });
   }
   if (!canEdit && userId) {
     disabledPermissions.push({
-      permission: 'EDIT',
-      reason: `${roleLabel}s cannot have edit permission`
+      permission: "EDIT",
+      reason: `${roleLabel}s cannot have edit permission`,
     });
   }
   if (!canTag && userId) {
     disabledPermissions.push({
-      permission: 'TAG',
-      reason: `${roleLabel}s cannot have tag permission`
+      permission: "TAG",
+      reason: `${roleLabel}s cannot have tag permission`,
     });
   }
   if (!canView && userId) {
     disabledPermissions.push({
-      permission: 'VIEW',
-      reason: `${roleLabel}s cannot have view permission`
+      permission: "VIEW",
+      reason: `${roleLabel}s cannot have view permission`,
     });
   }
 
