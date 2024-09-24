@@ -22,7 +22,7 @@ load into FiftyOne with a single command.
     :button_text: Explore the datasets in the zoo
     :button_link: datasets.html
 
-__SUB_NEW__ Remotely-sourced datasets
+Remotely-sourced datasets __SUB_NEW__
 -------------------------------------
 
 The Dataset Zoo also supports loading datasets whose download/preparation
