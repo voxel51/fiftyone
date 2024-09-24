@@ -46,18 +46,19 @@ const processSamplePageData = (
   });
 };
 
-const useSpotlightPager = (
-  {
-    pageSelector,
-    zoomSelector,
-  }: {
-    pageSelector: RecoilValueReadOnly<
-      (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
-    >;
-    zoomSelector: RecoilValueReadOnly<boolean>;
-  },
-  records: Records
-) => {
+const useSpotlightPager = ({
+  clearRecords,
+  pageSelector,
+  records,
+  zoomSelector,
+}: {
+  clearRecords: string;
+  pageSelector: RecoilValueReadOnly<
+    (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
+  >;
+  records: Records;
+  zoomSelector: RecoilValueReadOnly<boolean>;
+}) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
@@ -118,6 +119,7 @@ const useSpotlightPager = (
   const refresher = useRecoilValue(fos.refresher);
 
   useEffect(() => {
+    clearRecords;
     refresher;
     const clear = () => {
       commitLocalUpdate(fos.getCurrentEnvironment(), (store) => {
@@ -136,7 +138,7 @@ const useSpotlightPager = (
       clear();
       unsubscribe();
     };
-  }, [refresher]);
+  }, [clearRecords, refresher]);
 
   return { page, records, store };
 };

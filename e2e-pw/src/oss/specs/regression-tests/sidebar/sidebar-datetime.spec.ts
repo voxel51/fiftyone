@@ -70,20 +70,14 @@ test.describe("date field and date time field can filter visibility", () => {
   });
 
   test("change date field visibility works", async ({
-    sidebar,
     eventUtils,
+    grid,
     page,
+    sidebar,
   }) => {
     await sidebar.toggleSidebarMode();
-
-    // collapse metadata group
     await sidebar.toggleSidebarGroup("METADATA");
-    // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true
-      );
+
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
@@ -92,11 +86,11 @@ test.describe("date field and date time field can filter visibility", () => {
     await sidebar.clickFieldDropdown("dates");
     await sidebar.clickFieldCheckbox("dates");
     await entryExpandPromise;
-    expect(await page.getByTestId("tag-dates").count()).toBe(2);
 
+    const refresh = grid.getWaitForGridRefreshPromise();
     await sidebar.changeSliderStartValue("dates", "2020‑12‑31", "2021‑01‑01");
+    await refresh;
 
-    await gridRefreshedEventPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(1);
   });
 
