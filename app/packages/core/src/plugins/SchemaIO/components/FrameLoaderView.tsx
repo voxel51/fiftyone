@@ -91,7 +91,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     if (subscribed) return;
     if (isTimelineInitialized) {
       subscribe({
-        id: `sub1`,
+        id: timeline_id || GLOBAL_TIMELINE_ID,
         loadRange,
         renderFrame: myRenderFrame,
       });
@@ -99,5 +99,5 @@ export default function FrameLoaderView(props: ViewPropsType) {
     }
   }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
 
-  return <h1>{currentFrame}</h1>;
+  return null;
 }
