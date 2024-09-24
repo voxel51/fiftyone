@@ -446,7 +446,12 @@ export const playPause: Control<VideoState> = {
       if (state.config.thumbnail) {
         return {};
       }
+
       dispatchEvent("options", { showJSON: false });
+
+      if ((state.config as ImaVidConfig).frameStoreController) {
+        return {};
+      }
 
       const {
         playing,

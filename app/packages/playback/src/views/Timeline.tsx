@@ -70,6 +70,8 @@ export const Timeline = React.memo(
           style={style}
           onMouseEnter={() => setIsHoveringSeekBar(true)}
           onMouseLeave={() => setIsHoveringSeekBar(false)}
+          data-cy="imavid-container"
+          data-timeline-name={name}
         >
           <Seekbar
             value={seekBarValue}
@@ -80,22 +82,39 @@ export const Timeline = React.memo(
             onSeekStart={onSeekStart}
             onSeekEnd={onSeekEnd}
             debounce={SEEK_BAR_DEBOUNCE}
+            data-cy="imavid-seekbar"
+            data-timeline-name={name}
           />
           <SeekbarThumb
             shouldDisplayThumb={isHoveringSeekBar}
             value={seekBarValue}
+            data-cy="imavid-seekbar-thumb"
+            data-timeline-name={name}
           />
-          <FoTimelineControlsContainer style={controlsStyle}>
+          <FoTimelineControlsContainer
+            style={controlsStyle}
+            data-cy="imavid-timeline-controls"
+            data-timeline-name={name}
+          >
             <Playhead
               status={playHeadState}
               timelineName={name}
               play={play}
               pause={pause}
+              data-cy="imavid-playhead"
+              data-timeline-name={name}
             />
-            <Speed speed={config.speed ?? 1} setSpeed={setSpeed} />
+            <Speed
+              speed={config.speed ?? 1}
+              setSpeed={setSpeed}
+              data-cy="imavid-speed"
+              data-timeline-name={name}
+            />
             <StatusIndicator
               currentFrame={frameNumber}
               totalFrames={config.totalFrames}
+              data-cy="imavid-status-indicator"
+              data-timeline-name={name}
             />
           </FoTimelineControlsContainer>
         </FoTimelineContainer>

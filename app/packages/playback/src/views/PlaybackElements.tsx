@@ -38,6 +38,7 @@ export const Playhead = React.forwardRef<
       ref={ref}
       {...otherProps}
       className={`${className ?? ""} ${controlsStyles.lookerClickable}`}
+      data-playhead-state={status}
     >
       {status === "playing" && <PauseIcon onClick={pause} />}
       {status === "paused" && <PlayIcon onClick={play} />}

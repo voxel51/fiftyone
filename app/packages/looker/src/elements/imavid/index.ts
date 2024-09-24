@@ -479,16 +479,16 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     if (!playing && seeking) {
       this.waitingToPause = false;
-      this.drawFrame(currentFrameNumber, false);
+      this.drawFrameNoAnimation(currentFrameNumber);
       this.isAnimationActive = false;
     }
 
-    if (!playing && !seeking) {
+    if (!playing && !seeking && thumbnail) {
       // check if current frame number is what has been drawn
       // if they're different, then draw the frame
       if (this.frameNumber !== this.canvasFrameNumber) {
         this.waitingToPause = false;
-        this.drawFrame(this.frameNumber, false);
+        this.drawFrameNoAnimation(this.frameNumber);
         this.isAnimationActive = false;
       }
     }
@@ -500,7 +500,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 export * from "./frame-count";
 export * from "./iv-controls";
 export * from "./loader-bar";
-export * from "./play-button";
 export * from "./playback-rate";
 export * from "./seek-bar";
 export * from "./seek-bar-thumb";
