@@ -48,7 +48,7 @@ export const dispatchTimelineSetFrameNumberEvent = ({
     timelineName = mayBeTimelineName;
   }
 
-  document.getElementById("modal")!.dispatchEvent(
+  dispatchEvent(
     new CustomEvent(getTimelineSetFrameNumberEventName(timelineName), {
       detail: { frameNumber: Math.max(newFrameNumber, 1) },
     })
