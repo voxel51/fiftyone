@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
@@ -10,7 +11,7 @@ import {
   DEFAULT_FRAME_NUMBER,
   GLOBAL_TIMELINE_ID,
 } from "@fiftyone/playback/src/lib/constants";
-import { BufferRange } from "@fiftyone/utilities";
+import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import {
   usePanelId,
@@ -32,30 +33,49 @@ export default function FrameLoaderView(props: ViewPropsType) {
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
   const localIdRef = React.useRef<string>();
+  const bufm = useRef(new BufferManager());
 
   useEffect(() => {
     localIdRef.current = Math.random().toString(36).substring(7);
+    // console.log("localIdRef", localIdRef.current);
     if (data?.frames)
+      // console.log("dispatching frames-loaded", localIdRef.current);
       dispatchEvent(
         new CustomEvent(`frames-loaded`, {
           detail: { localId: localIdRef.current },
         })
       );
-  }, [JSON.stringify(data?.frames)]);
+  }, [data?.signature]); // remove this JSON.strignify
 
   const loadRange = React.useCallback(
     async (range: BufferRange) => {
       if (on_load_range) {
-        triggerEvent(panelId, {
-          params: { range },
-          operator: on_load_range,
-        });
+        // if (!bufm.current.containsRange(range)) {
+        //   // only trigger event if the range is not already in the buffer
+        //   await triggerEvent(panelId, {
+        //     params: { range },
+        //     operator: on_load_range,
+        //   });
+        // }
+        const unp = bufm.current.getUnprocessedBufferRange(range);
+        const isProcessed = unp === null;
+
+        if (!isProcessed) {
+          await triggerEvent(panelId, {
+            params: { range: unp },
+            operator: on_load_range,
+          });
+        }
+        console.log("loading range", range);
         return new Promise<void>((resolve) => {
           window.addEventListener(`frames-loaded`, (e) => {
+            // console.log("frames loaded", e, {'current': localIdRef.current, 'detail': e.detail.localId});
             if (
               e instanceof CustomEvent &&
               e.detail.localId === localIdRef.current
             ) {
+              // console.log("resolving");
+              bufm.current.addNewRange(range);
               resolve();
             }
           });
