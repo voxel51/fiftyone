@@ -875,6 +875,7 @@ class ServerViewTests(unittest.TestCase):
         )
         dataset.add_dynamic_sample_fields()
 
+        # match and filter
         view = fosv.get_view(
             dataset.name,
             filters={
@@ -890,6 +891,7 @@ class ServerViewTests(unittest.TestCase):
         self.assertEqual(len(sample.documents), 1)
         self.assertEqual(sample.documents[0].value, "two")
 
+        # matching
         view = fosv.get_view(
             dataset.name,
             filters={
@@ -904,6 +906,7 @@ class ServerViewTests(unittest.TestCase):
         sample = view.first()
         self.assertEqual(len(sample.documents), 2)
 
+        # excluded matching
         view = fosv.get_view(
             dataset.name,
             filters={
@@ -922,19 +925,20 @@ class ServerViewTests(unittest.TestCase):
                 "documents.value": {
                     "values": ["other"],
                     "exclude": True,
-                    "isMatching": False,
+                    "isMatching": True,
                 }
             },
         )
         self.assertEqual(len(view), 1)
 
+        # excluded filtering
         view = fosv.get_view(
             dataset.name,
             filters={
                 "documents.value": {
                     "values": ["other"],
                     "exclude": True,
-                    "isMatching": True,
+                    "isMatching": False,
                 }
             },
         )

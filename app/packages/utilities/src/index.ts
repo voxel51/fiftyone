@@ -627,9 +627,7 @@ export const formatPrimitive = ({
   timeZone: string;
   value: unknown;
 }) => {
-  if (value === undefined) return value;
-
-  if (value === null) return;
+  if (value === null || value === undefined) return undefined;
 
   switch (ftype) {
     case FRAME_SUPPORT_FIELD:
@@ -644,7 +642,7 @@ export const formatPrimitive = ({
       value = formatDateTime(value.datetime as number, timeZone);
   }
 
-  return prettify(value as string);
+  return prettify(String(value));
 };
 
 export const makePseudoField = (path: string): Field => ({

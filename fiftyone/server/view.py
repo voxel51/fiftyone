@@ -476,10 +476,7 @@ def _iter_paths(
 
         if label_types is not None:
             _is_label = _is_label_type(parent_field)
-            if label_types and not _is_label:
-                continue
-
-            elif not label_types and _is_label:
+            if label_types != _is_label:
                 continue
 
         yield path, parent_path, filters[path]

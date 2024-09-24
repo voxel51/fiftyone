@@ -80,7 +80,7 @@ export const getBubbles = (
 export const getField = (keys: string[], schema: Schema) => {
   let field: Field = schema[keys[0]];
   for (const key of keys.slice(1, -1)) {
-    const next = field.fields[key];
+    const next = field.fields?.[key];
     if (!next?.fields) {
       return null;
     }
@@ -88,7 +88,7 @@ export const getField = (keys: string[], schema: Schema) => {
     field = next;
   }
 
-  return field.fields[keys[keys.length - 1]];
+  return field.fields?.[keys[keys.length - 1]];
 };
 
 export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
@@ -109,9 +109,8 @@ export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
 
 export const unwind = (name: string, value: Data | Data[], depth = 0) => {
   if (Array.isArray(value)) {
-    return depth < 2
-      ? value.map((val) => unwind(name, val), depth + 1).flat(3)
-      : [];
+    const next = depth + 1;
+    return depth < 2 ? value.map((val) => unwind(name, val), next).flat(3) : [];
   }
 
   const v = value[name];
