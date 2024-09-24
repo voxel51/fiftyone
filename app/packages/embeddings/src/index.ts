@@ -16,8 +16,3 @@ registerComponent({
     priority: BUILT_IN_PANEL_PRIORITY_CONST,
   },
 });
-
-// registerOperator(new OpenEmbeddingsPanel());
-import { main } from "./Testing";
-
-main();
