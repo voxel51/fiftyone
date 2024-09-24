@@ -132,7 +132,8 @@ def _up_read_only_datetime_field(dataset_name, field):
         raise ValueError(
             f"Cannot migrate dataset '{dataset_name}' to v1.0.0 because it "
             f"has an existing '{field_name}' field of type "
-            f"{ftype} != {expected_ftype}"
+            f"{ftype} != {expected_ftype}. Please rename or delete the field "
+            "and try again"
         )
 
     field["read_only"] = True
