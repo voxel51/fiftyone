@@ -1,5 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
+import { BUFFERING_PAUSE_TIMEOUT } from "@fiftyone/looker/src/lookers/imavid/constants";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
@@ -152,7 +153,12 @@ export const ImaVidLookerReact = React.memo(
     }, [ref]);
 
     const loadRange = React.useCallback(async (range: BufferRange) => {
-      // no-op
+      // todo: implement
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, BUFFERING_PAUSE_TIMEOUT);
+      });
     }, []);
 
     const renderFrame = React.useCallback((frameNumber: number) => {
