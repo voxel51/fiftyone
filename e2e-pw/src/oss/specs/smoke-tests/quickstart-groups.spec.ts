@@ -92,6 +92,12 @@ test.describe("quickstart-groups", () => {
       expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
         FIRST_SAMPLE_FILENAME
       );
+
+      await modal.navigateSlice("group", "right");
+      await modal.navigateNextSample();
+      expect(await modal.sidebar.getSidebarEntryText("group.name")).toEqual(
+        "right"
+      );
     });
 
     test("group media visibility toggle works", async ({ modal }) => {
