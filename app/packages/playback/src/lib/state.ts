@@ -325,7 +325,6 @@ export const setFrameNumberAtom = atom(
         totalFrames
       );
       subscribers.forEach((subscriber) => {
-        console.log("New load range is ", newLoadRange);
         rangeLoadPromises.push(subscriber.loadRange(newLoadRange));
       });
 
