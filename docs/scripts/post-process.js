@@ -6,15 +6,14 @@ const buildPath = path.resolve(__dirname, "../build");
 const htmlFiles = findHTMLFiles(buildPath);
 
 const substitutions = {
-  __fo_doc_sub_new_badge__:
-    '<strong style="color: hsl(25, 100%, 51%)">NEW</strong>',
+  __SUB_NEW__: '<strong style="color: hsl(25, 100%, 51%)">NEW</strong>',
 };
 
 for (const file of htmlFiles) {
   let content = fs.readFileSync(file, "utf8");
-  if (content.includes("__fo_doc_sub")) {
+  if (content.includes("__SUB_")) {
     for (const [key, value] of Object.entries(substitutions)) {
-      content = content.replace(key, value);
+      content = content.replaceAll(key, value);
     }
     fs.writeFileSync(file, content);
   }
