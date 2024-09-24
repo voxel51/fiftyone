@@ -1,7 +1,9 @@
-import Jimp from "jimp";
+import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const fonts = require("jimp/fonts");
 
 export const createBlankImage = async (options: {
-  outputPath: string;
+  outputPath: `${string}.png`;
   width: number;
   height: number;
   fillColor?: string;
@@ -17,25 +19,25 @@ export const createBlankImage = async (options: {
     );
   }
 
-  const image = new Jimp(width, height, fillColor ?? "#00ddff");
+  const image = new Jimp({ width, height, color: fillColor ?? "#00ddff" });
 
   if (options.watermarkString) {
-    const font = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
-    image.print(
+    const font = await loadFont(fonts.SANS_10_BLACK);
+    image.print({
       font,
-      0,
-      0,
-      {
+      x: 0,
+      y: 0,
+      text: {
         text: options.watermarkString,
-        alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-        alignmentY: Jimp.VERTICAL_ALIGN_MIDDLE,
+        alignmentX: HorizontalAlign.CENTER,
+        alignmentY: VerticalAlign.MIDDLE,
       },
-      width,
-      height
-    );
+      maxWidth: width,
+      maxHeight: height,
+    });
   }
 
-  await image.writeAsync(outputPath);
+  await image.write(outputPath);
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
 
