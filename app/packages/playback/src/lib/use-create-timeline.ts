@@ -328,12 +328,14 @@ export const useCreateTimeline = (
         } else {
           pause();
         }
+        e.stopPropagation();
       } else if (key === ",") {
         pause();
         setFrameNumber({
           name: timelineName,
           newFrameNumber: Math.max(frameNumberRef.current - 1, 1),
         });
+        e.stopPropagation();
       } else if (key === ".") {
         pause();
         setFrameNumber({
@@ -343,10 +345,8 @@ export const useCreateTimeline = (
             configRef.current.totalFrames
           ),
         });
+        e.stopPropagation();
       }
-
-      e.stopPropagation();
-      e.preventDefault();
     },
     [play, pause, playHeadState]
   );
