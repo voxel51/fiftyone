@@ -244,12 +244,20 @@ export const addTimelineAtom = atom(
     set(_playHeadStates(timelineName), "paused");
 
     if (timeline.waitUntilInitialized) {
-      timeline.waitUntilInitialized().then(() => {
-        set(_timelineConfigs(timelineName), {
-          ...configWithImputedValues,
-          __internal_IsTimelineInitialized: true,
+      timeline
+        .waitUntilInitialized()
+        .then(() => {
+          set(_timelineConfigs(timelineName), {
+            ...configWithImputedValues,
+            __internal_IsTimelineInitialized: true,
+          });
+        })
+        .catch((error) => {
+          console.error(
+            `Failed to initialize timeline "${timelineName}":`,
+            error
+          );
         });
-      });
     } else {
       // mark timeline as initialized
       set(_timelineConfigs(timelineName), {
@@ -334,7 +342,7 @@ export const setFrameNumberAtom = atom(
         await Promise.all(rangeLoadPromises);
         bufferManager.addNewRange(newLoadRange);
       } catch (e) {
-        // todo: handle error better
+        // todo: handle error better, maybe retry
         console.error(e);
       } finally {
         set(_currentBufferingRange(name), [0, 0]);

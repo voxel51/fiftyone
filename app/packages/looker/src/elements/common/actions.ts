@@ -2,9 +2,9 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { dispatchTimelineSetFrameNumberEvent } from "@fiftyone/playback";
 import { SCALE_FACTOR } from "../../constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
-import { dispatchTimelineSetFrameNumberEvent } from "@fiftyone/playback";
 import {
   BaseState,
   Control,
@@ -620,10 +620,12 @@ const videoEscape: Control<VideoState | ImaVidState> = {
       }
 
       if (state[frameName] !== 1) {
-        // check if imavid and set timeline's
-        dispatchTimelineSetFrameNumberEvent({
-          newFrameNumber: 1,
-        });
+        if (isImavid) {
+          dispatchTimelineSetFrameNumberEvent({
+            newFrameNumber: 1,
+          });
+        }
+
         return {
           [frameName]: 1,
           playing: false,
