@@ -2,7 +2,7 @@ import { BufferRange } from "@fiftyone/utilities";
 import React from "react";
 import { DEFAULT_FRAME_NUMBER } from "../lib/constants";
 import { useCreateTimeline } from "../lib/use-create-timeline";
-import { useDefaultTimelineName } from "../lib/use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "../lib/use-default-timeline-name";
 import { useTimeline } from "../lib/use-timeline";
 import { Timeline } from "./Timeline";
 
@@ -57,7 +57,7 @@ registerComponent({
 export const TimelineCreator = () => {
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
     React.useState(DEFAULT_FRAME_NUMBER);
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
   const timelineName = React.useMemo(() => getName(), [getName]);
 
   const loadRange = React.useCallback(async (range: BufferRange) => {
@@ -107,7 +107,7 @@ export const TimelineCreator = () => {
 };
 
 export const TimelineSubscriber1 = () => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
   const timelineName = React.useMemo(() => getName(), [getName]);
 
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
@@ -150,7 +150,7 @@ export const TimelineSubscriber1 = () => {
 };
 
 export const TimelineSubscriber2 = () => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
   const timelineName = React.useMemo(() => getName(), [getName]);
 
   const [myLocalFrameNumber, setMyLocalFrameNumber] =

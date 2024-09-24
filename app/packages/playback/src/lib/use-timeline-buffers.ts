@@ -5,7 +5,7 @@ import {
   getDataLoadedBuffersAtom,
   TimelineName,
 } from "./state";
-import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**
  * This hook provides access to the range load buffers of a timeline.
@@ -15,7 +15,7 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
  * scoped to the current modal.
  */
 export const useTimelineBuffers = (name?: TimelineName) => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
 
   const timelineName = React.useMemo(() => name ?? getName(), [name, getName]);
 

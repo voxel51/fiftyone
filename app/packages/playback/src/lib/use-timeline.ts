@@ -14,7 +14,7 @@ import {
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
 } from "../lib/state";
-import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**
  * This hook provides access to the timeline with the given name.
@@ -26,7 +26,7 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
  * scoped to the current modal.
  */
 export const useTimeline = (name?: TimelineName) => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
 
   const timelineName = useMemo(() => name ?? getName(), [name, getName]);
 
