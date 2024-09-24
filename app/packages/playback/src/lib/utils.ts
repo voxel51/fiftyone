@@ -1,9 +1,28 @@
 import { BufferRange, Buffers } from "@fiftyone/utilities";
 import { getTimelineNameFromSampleAndGroupId } from "./use-default-timeline-name";
 
+/**
+ * Returns the event name for setting the frame number for a specific timeline.
+ *
+ * @param {string} timelineName - The name of the timeline.
+ */
 export const getTimelineSetFrameNumberEventName = (timelineName: string) =>
   `set-frame-number-${timelineName}`;
 
+/**
+ * Dispatches a custom event to set the frame number for a specific timeline.
+ *
+ * This function creates and dispatches a `CustomEvent` on the `#modal` DOM element.
+ *
+ * If the `timelineName` is not provided, the function attempts to derive it from the URL's query
+ * parameters `id` (sampleId) and `groupId` by using the `getTimelineNameFromSampleAndGroupId`
+ * function. If neither `sampleId` nor `groupId` is present in the URL, the function throws an error.
+ *
+ * @param {Object} options - The options object.
+ * @param {string} [options.timelineName] - The name of the timeline. If omitted, it will be derived from the URL parameters.
+ * @param {number} options.newFrameNumber - The new frame number to set (minimum value is 1).
+ *
+ */
 export const dispatchTimelineSetFrameNumberEvent = ({
   timelineName: mayBeTimelineName,
   newFrameNumber,
@@ -35,6 +54,53 @@ export const dispatchTimelineSetFrameNumberEvent = ({
     })
   );
 };
+
+/**
+ * Generates a CSS linear-gradient string for a seekbar based on buffered, loading, and current progress ranges.
+ *
+ * Runtime complexity = O(n log n), where n is the number of loaded ranges.
+ *
+ * This function calculates gradient stops for a seekbar component by considering the buffered ranges (`loadedRangesScaled`),
+ * the current loading range (`loadingRangeScaled`), and the user's current progress (`valueScaled`). It assigns colors
+ * to different segments of the seekbar according to their states and priorities defined in `colorMap`.
+ *
+ * **Color Priorities (Highest to Lowest):**
+ * 1. `currentProgress` - Represents the portion of the media that has been played.
+ * 2. `loading` - Represents the portion currently being loaded.
+ * 3. `buffered` - Represents the portions that are buffered and ready to play.
+ * 4. `unBuffered` - Represents the portions that are not yet buffered.
+ *
+ * @param {Buffers} loadedRangesScaled - An array of buffered ranges, each as a tuple `[start, end]` scaled between 0 and 100.
+ * @param {BufferRange} loadingRangeScaled - The current loading range as a tuple `[start, end]` scaled between 0 and 100.
+ * @param {number} valueScaled - The current progress value scaled between 0 and 100.
+ * @param {Object} colorMap - An object mapping state names to their corresponding color strings.
+ * @param {string} colorMap.unBuffered - Color for unbuffered segments.
+ * @param {string} colorMap.currentProgress - Color for the current progress segment.
+ * @param {string} colorMap.buffered - Color for buffered segments.
+ * @param {string} colorMap.loading - Color for the loading segment.
+ *
+ * @returns {string} A CSS `linear-gradient` string representing the seekbar's background.
+ *
+ * @example
+ * const loadedRanges = [[0, 30], [40, 70]]; // Buffered ranges from 0% to 30% and 40% to 70%
+ * const loadingRange = [30, 40];            // Currently loading from 30% to 40%
+ * const currentValue = 50;                  // Current progress at 50%
+ * const colors = {
+ *   unBuffered: 'gray',
+ *   currentProgress: 'blue',
+ *   buffered: 'green',
+ *   loading: 'red',
+ * };
+ *
+ * const gradient = getGradientStringForSeekbar(
+ *   loadedRanges,
+ *   loadingRange,
+ *   currentValue,
+ *   colors
+ * );
+ * // Returns:
+ * // "linear-gradient(to right, blue 0% 50%, green 50% 70%, gray 70% 100%)"
+ */
 
 export const getGradientStringForSeekbar = (
   loadedRangesScaled: Buffers,
@@ -100,7 +166,6 @@ export const getGradientStringForSeekbar = (
     priority: colorPriority[colorMap.currentProgress],
   });
 
-  // sort events
   events.sort((a, b) => {
     if (a.pos !== b.pos) {
       return a.pos - b.pos;
