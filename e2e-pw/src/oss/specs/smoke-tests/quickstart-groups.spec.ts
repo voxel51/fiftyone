@@ -93,7 +93,8 @@ test.describe("quickstart-groups", () => {
         FIRST_SAMPLE_FILENAME
       );
 
-      await modal.navigateSlice("group", "right");
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.navigateSlice("group.name", "right");
       await modal.navigateNextSample();
       expect(await modal.sidebar.getSidebarEntryText("group.name")).toEqual(
         "right"
