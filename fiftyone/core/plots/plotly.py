@@ -1521,6 +1521,7 @@ def _get_continuous_color(colorscale, value):
     # Returns a string like `rgb(float, float, float)`
 
     hex_to_rgb = lambda c: "rgb" + str(ImageColor.getcolor(c, "RGB"))
+    colorscale = sorted(colorscale, key=lambda x: x[0])
 
     if value <= 0 or len(colorscale) == 1:
         c = colorscale[0][1]

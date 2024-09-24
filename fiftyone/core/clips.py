@@ -838,6 +838,8 @@ def _write_support_clips(
         "filepath": True,
         "metadata": True,
         "tags": True,
+        "created_at": True,
+        "last_modified_at": True,
         "support": "$" + field.name,
     }
 
@@ -885,6 +887,8 @@ def _write_temporal_detection_clips(
         "filepath": True,
         "metadata": True,
         "tags": True,
+        "created_at": True,
+        "last_modified_at": True,
         field: True,
     }
 
@@ -956,6 +960,8 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
             "filepath": True,
             "metadata": True,
             "tags": True,
+            "created_at": True,
+            "last_modified_at": True,
             field: True,
         }
 
@@ -1040,6 +1046,8 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
             "support": "$" + _tmp_field,
             "metadata": True,
             "tags": True,
+            "created_at": True,
+            "last_modified_at": True,
         }
 
         if other_fields:

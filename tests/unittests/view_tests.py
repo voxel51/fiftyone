@@ -57,12 +57,21 @@ class DatasetViewTests(unittest.TestCase):
         first_sample = dataset.first()
         view = dataset.limit(50)
 
+        last_modified_at1 = view.values("last_modified_at")
+
         for idx, sample in enumerate(view):
             sample["int"] = idx + 1
             sample.save()
 
+        last_modified_at2 = view.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (1, 50))
         self.assertEqual(first_sample.int, 1)
+        self.assertTrue(
+            all(
+                m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
+            )
+        )
 
         for idx, sample in enumerate(view.iter_samples(progress=True)):
             sample["int"] = idx + 2
@@ -74,16 +83,30 @@ class DatasetViewTests(unittest.TestCase):
         for idx, sample in enumerate(view.iter_samples(autosave=True)):
             sample["int"] = idx + 3
 
+        last_modified_at3 = view.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
         self.assertEqual(first_sample.int, 3)
+        self.assertTrue(
+            all(
+                m2 < m3 for m2, m3 in zip(last_modified_at2, last_modified_at3)
+            )
+        )
 
         with view.save_context() as context:
             for idx, sample in enumerate(view):
                 sample["int"] = idx + 4
                 context.save(sample)
 
+        last_modified_at4 = view.values("last_modified_at")
+
         self.assertTupleEqual(dataset.bounds("int"), (4, 53))
         self.assertEqual(first_sample.int, 4)
+        self.assertTrue(
+            all(
+                m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
+            )
+        )
 
     @drop_datasets
     def test_view(self):
@@ -1706,6 +1729,88 @@ class SetLabelValuesTests(unittest.TestCase):
             ["cat"],
         )
 
+    def test_set_values_last_modified_at(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="test1.png", int_field=1),
+                fo.Sample(filepath="test2.png", int_field=2),
+                fo.Sample(filepath="test3.png", int_field=3),
+                fo.Sample(filepath="test4.png", int_field=4),
+            ]
+        )
+
+        # key_field
+
+        values = {1: "1", 3: "3"}
+        lma1 = dataset.values("last_modified_at")
+
+        dataset.set_values("str_field", values, key_field="int_field")
+
+        lma2 = dataset.values("last_modified_at")
+
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, True, False],
+        )
+
+        # view
+
+        lma1 = dataset.values("last_modified_at")
+
+        view = dataset.limit(2)
+        view.set_values("str_field", ["foo", "bar"])
+
+        lma2 = dataset.values("last_modified_at")
+
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, True, False, False],
+        )
+
+    def test_set_values_video_last_modified_at(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+        sample1.frames[2] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame()
+        sample3.frames[2] = fo.Frame()
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        # key_field
+
+        values = {sample1.id: {1: "1"}, sample3.id: {2: "2"}}
+        lma1 = dataset.values("frames.last_modified_at", unwind=True)
+
+        dataset.set_values("frames.str_field", values, key_field="id")
+
+        lma2 = dataset.values("frames.last_modified_at", unwind=True)
+
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
+
+        # view
+
+        lma1 = dataset.values("frames.last_modified_at", unwind=True)
+
+        view = dataset.match_frames(F("str_field").exists(), omit_empty=False)
+        view.set_values("frames.str_field", [["foo"], [], ["bar"]])
+
+        lma2 = dataset.values("frames.last_modified_at", unwind=True)
+
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False, False, True],
+        )
+
 
 def _make_classification_dataset():
     sample1 = fo.Sample(
@@ -2134,7 +2239,16 @@ class ViewStageTests(unittest.TestCase):
 
     def test_exclude_fields(self):
         self._exclude_fields_setup()
-        for default_field in ("id", "filepath", "tags", "metadata"):
+        default_fields = (
+            "id",
+            "filepath",
+            "tags",
+            "metadata",
+            "created_at",
+            "last_modified_at",
+        )
+
+        for default_field in default_fields:
             with self.assertRaises(ValueError):
                 self.dataset.exclude_fields(default_field)
 
@@ -3306,13 +3420,25 @@ class ViewStageTests(unittest.TestCase):
         tags = self.dataset.count_values("tags")
         self.assertDictEqual(tags, {})
 
+        lma1 = self.dataset.values("last_modified_at")
         view.tag_samples("test")
         tags = self.dataset.count_values("tags")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {"test": 1})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False],
+        )
 
+        lma1 = self.dataset.values("last_modified_at")
         view.untag_samples("test")
         tags = self.dataset.count_values("tags")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, False],
+        )
 
     def test_tag_samples_none(self):
         view = self.dataset[:2]
@@ -3347,13 +3473,25 @@ class ViewStageTests(unittest.TestCase):
         num_samples = len(view)
         self.assertEqual(num_samples, 1)
 
+        lma1 = self.dataset.values("last_modified_at")
         view.tag_labels("test", "test_clf")
         tags = self.dataset.count_label_tags("test_clf")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {"test": 1})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [False, True],
+        )
 
+        lma1 = self.dataset.values("last_modified_at")
         view.untag_labels("test", "test_clf")
         tags = self.dataset.count_label_tags("test_clf")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [False, True],
+        )
 
         view = self.dataset.filter_labels("test_dets", F("confidence") > 0.7)
         num_samples = len(view)
@@ -3361,13 +3499,25 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(num_samples, 2)
         self.assertEqual(num_labels, 3)
 
+        lma1 = self.dataset.values("last_modified_at")
         view.tag_labels("test", "test_dets")
         tags = self.dataset.count_label_tags("test_dets")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {"test": 3})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, True],
+        )
 
+        lma1 = self.dataset.values("last_modified_at")
         view.untag_labels("test", "test_dets")
         tags = self.dataset.count_label_tags("test_dets")
+        lma2 = self.dataset.values("last_modified_at")
         self.assertDictEqual(tags, {})
+        self.assertListEqual(
+            [i < j for i, j in zip(lma1, lma2)],
+            [True, True],
+        )
 
     def test_tag_labels_none(self):
         self._setUp_classification()

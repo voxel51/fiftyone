@@ -1,0 +1,5 @@
+export type { UuidExampleFragment_viewer$data as UuidExampleFragment_viewer$dataT } from './UuidExampleFragment_viewer.graphql'
+export type { UuidExampleFragment_viewer$key as UuidExampleFragment_viewer$keyT } from './UuidExampleFragment_viewer.graphql'
+export type { UuidExampleQuery$variables as UuidExampleQuery$variablesT } from './UuidExampleQuery.graphql'
+export type { UuidExampleQuery$data as UuidExampleQuery$dataT } from './UuidExampleQuery.graphql'
+export type { UuidExampleQuery as UuidExampleQueryT } from './UuidExampleQuery.graphql'

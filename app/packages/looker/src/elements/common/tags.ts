@@ -9,23 +9,23 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
-  Field,
   FLOAT_FIELD,
-  formatDate,
-  formatDateTime,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
-  getColor,
+  Field,
   INT_FIELD,
   LABELS_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   REGRESSION,
-  Schema,
   STRING_FIELD,
+  Schema,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
+  formatDate,
+  formatDateTime,
+  getColor,
   withPath,
 } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
@@ -54,15 +54,19 @@ interface TagData {
   value: string;
 }
 
+const LINE_HEIGHT_COEFFICIENT = 1.15;
+const SPACING_COEFFICIENT = 0.25;
+
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
-  private customizedColors: CustomizeColor[] = [];
-  private labelTagColors: LabelTagColor = {};
-  private colorPool: string[];
-  private colorBy: COLOR_BY.FIELD | COLOR_BY.VALUE | COLOR_BY.INSTANCE;
-  private colorSeed: number;
-  private playing = false;
   private attributeVisibility: object;
+  private colorBy: COLOR_BY.FIELD | COLOR_BY.VALUE | COLOR_BY.INSTANCE;
+  private colorPool: string[];
+  private colorSeed: number;
+  private customizedColors: CustomizeColor[] = [];
+  private fontSize?: number;
+  private labelTagColors: LabelTagColor = {};
+  private playing = false;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -79,18 +83,20 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       config: { fieldSchema, ...r },
       options: {
         activePaths,
+        attributeVisibility,
         coloring,
-        timeZone,
         customizeColorSetting,
+        fontSize,
+        filter,
         labelTagColors,
         selectedLabelTags,
-        filter,
-        attributeVisibility,
+        timeZone,
       },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
+    this.handleFont(fontSize);
     if (this.playing !== playing) {
       this.playing = playing;
       if (playing) {
@@ -478,6 +484,22 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       });
 
     return this.element;
+  }
+
+  private handleFont(fontSize?: number) {
+    if (this.fontSize !== fontSize) {
+      this.fontSize = fontSize;
+      this.element.style.setProperty("font-size", `${fontSize}px`);
+
+      this.element.style.setProperty(
+        "line-height",
+        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`
+      );
+
+      const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
+      this.element.style.setProperty("gap", spacing);
+      this.element.style.setProperty("padding", spacing);
+    }
   }
 }
 

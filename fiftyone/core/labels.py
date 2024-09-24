@@ -1909,7 +1909,7 @@ def _parse_stuff_instance(mask, offset=None, frame_size=None):
     h = (ymax - ymin + 1) / height
 
     bbox = [x, y, w, h]
-    instance_mask = mask[ymin:ymax, xmin:xmax]
+    instance_mask = mask[ymin : (ymax + 1), xmin : (xmax + 1)]
 
     return bbox, instance_mask
 
@@ -1927,23 +1927,23 @@ def _parse_thing_instances(mask, offset=None, frame_size=None):
 
     labeled = skm.label(mask)
     objects = _find_slices(labeled)
-
     instances = []
-    for idx, (yslice, xslice) in objects.items():
+    for target, slc in objects.items():
+        yslice, xslice = slc
         xmin = xslice.start
-        xmax = xslice.stop
         ymin = yslice.start
-        ymax = yslice.stop
+        instance_offset = (
+            offset[0] + xmin,
+            offset[1] + ymin,
+        )
 
-        x = (xmin + x_offset) / width
-        y = (ymin + y_offset) / height
-        w = (xmax - xmin) / width
-        h = (ymax - ymin) / height
-
-        bbox = [x, y, w, h]
-        instance_mask = mask[ymin:ymax, xmin:xmax]
-
-        instances.append((bbox, instance_mask))
+        # use the labeled image mask so `_parse_stuff_instance()`
+        # can be re-used here
+        instance_mask = labeled[slc] == target
+        instance = _parse_stuff_instance(
+            instance_mask, instance_offset, frame_size
+        )
+        instances.append(instance)
 
     return instances
 

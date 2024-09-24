@@ -99,16 +99,16 @@ class BatcherTests(unittest.TestCase):
 
     def test_inexhaustible_content_size_batcher(self):
         batcher = fou.ContentSizeDynamicBatcher(
-            None, init_batch_size=100, target_size=10
+            None, init_batch_size=100, target_size=1000
         )
-        measurements = [1, 20, 10, 0.1, 11, 0]
+        measurements = [500, 2000, 1000, 0.1, 1100, 0]
         expected_batches = [
             100,
-            1_000,
-            500,
-            500,
-            50_000,
-            int(round(10 / 11 * 50_000)),
+            200,
+            100,
+            100,
+            1000,  # capped at 1000 or 1B per object
+            int(round(10 / 11 * 1000)),
         ]
         batches = []
         for m in measurements:
@@ -474,8 +474,9 @@ class TestLoadDataset(unittest.TestCase):
     @patch("fiftyone.core.dataset.dataset_exists")
     @patch("fiftyone.core.odm.get_db_conn")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_id(self, mock_dataset, mock_get_db_conn,
-                                dataset_exists):
+    def test_load_dataset_by_id(
+        self, mock_dataset, mock_get_db_conn, dataset_exists
+    ):
         # Setup
         identifier = ObjectId()
         mock_db = MagicMock()
@@ -500,8 +501,9 @@ class TestLoadDataset(unittest.TestCase):
     @patch("fiftyone.core.dataset.dataset_exists")
     @patch("fiftyone.core.odm.get_db_conn")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_alt_id(self, mock_dataset, mock_get_db_conn,
-                                    dataset_exists):
+    def test_load_dataset_by_alt_id(
+        self, mock_dataset, mock_get_db_conn, dataset_exists
+    ):
         # Setup
         identifier = "alt_id"
         mock_db = MagicMock()

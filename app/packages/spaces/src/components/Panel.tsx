@@ -1,13 +1,36 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import { PanelContext } from "../contexts";
 import { useReactivePanel } from "../hooks";
+import SpaceNode from "../SpaceNode";
+import { panelIdToScopeAtom } from "../state";
 import { PanelProps } from "../types";
 import PanelNotFound from "./PanelNotFound";
 import PanelSkeleton from "./PanelSkeleton";
 import { StyledPanel } from "./StyledElements";
+
+function ModalPanelComponent({
+  component,
+  node,
+  dimensions,
+}: {
+  component: NonNullable<ReturnType<typeof useReactivePanel>>["component"];
+  node: SpaceNode;
+  dimensions: ReturnType<typeof fos.useDimensions>;
+}) {
+  const modalUniqueId = useRecoilValue(fos.currentModalUniqueId);
+
+  const panelId = useMemo(() => `panel-${modalUniqueId}`, [modalUniqueId]);
+
+  const ModalComponent = component;
+
+  return (
+    <ModalComponent panelNode={node} dimensions={dimensions} key={panelId} />
+  );
+}
 
 function Panel(props: PanelProps) {
   const { node, isModalPanel } = props;
@@ -15,6 +38,12 @@ function Panel(props: PanelProps) {
   const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
   const pending = fos.useTimeout(PANEL_LOADING_TIMEOUT);
+  const setPanelIdToScope = useSetRecoilState(panelIdToScopeAtom);
+  const scope = isModalPanel ? "modal" : "grid";
+
+  useEffect(() => {
+    setPanelIdToScope((ids) => ({ ...ids, [node.id]: scope }));
+  }, [scope, setPanelIdToScope, node.id]);
 
   const panelContentTestId = `panel-content-${panelName}`;
   if (!panel) {
@@ -41,8 +70,16 @@ function Panel(props: PanelProps) {
       className={scrollable}
       ref={dimensions.ref}
     >
-      <PanelContext.Provider value={{ node }}>
-        <Component panelNode={node} dimensions={dimensions} />
+      <PanelContext.Provider value={{ node, scope }}>
+        {isModalPanel ? (
+          <ModalPanelComponent
+            component={panel.component}
+            node={node}
+            dimensions={dimensions}
+          />
+        ) : (
+          <Component panelNode={node} dimensions={dimensions} />
+        )}
       </PanelContext.Provider>
     </StyledPanel>
   );

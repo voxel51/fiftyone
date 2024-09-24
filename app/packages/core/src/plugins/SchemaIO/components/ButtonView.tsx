@@ -4,7 +4,7 @@ import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
 import React from "react";
-import { getComponentProps, getColorByCode } from "../utils";
+import { getColorByCode, getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import Button from "./Button";
 import TooltipProvider from "./TooltipProvider";
@@ -92,6 +92,13 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
       "rgba(var(--fo-palette-common-onBackgroundChannel) / 0.23)";
     baseProps.sx.borderColor = borderColor;
     baseProps.sx.borderBottomColor = borderColor;
+  }
+  if (isNullish(variant)) {
+    baseProps.variant = "contained";
+    baseProps.color = "tertiary";
+    baseProps.sx["&:hover"] = {
+      backgroundColor: (theme) => theme.palette.tertiary.hover,
+    };
   }
 
   return baseProps;

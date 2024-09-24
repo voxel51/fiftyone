@@ -4,7 +4,7 @@ import {
   ModalSample,
 } from "@fiftyone/state";
 import { BufferManager } from "@fiftyone/utilities";
-import LRUCache from "lru-cache";
+import { LRUCache } from "lru-cache";
 import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
 import { SampleId } from "./types";
 
@@ -27,7 +27,7 @@ export class ImaVidFrameSamples {
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       max: MAX_FRAME_SAMPLES_CACHE_SIZE,
-      dispose: (sampleId) => {
+      dispose: (_modal, sampleId) => {
         // remove it from the frame index
         const frameNumber = this.reverseFrameIndex.get(sampleId);
         if (frameNumber !== undefined) {
@@ -122,7 +122,7 @@ export class ImaVidFrameSamples {
   reset() {
     this.frameIndex.clear();
     this.reverseFrameIndex.clear();
-    this.samples.reset();
+    this.samples.clear();
     this.storeBufferManager.reset();
   }
 }
