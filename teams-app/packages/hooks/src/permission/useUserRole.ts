@@ -4,6 +4,8 @@ import {
   useUserAudit
 } from '@fiftyone/hooks';
 import {
+  OrganizationFeatureFlagQueryT,
+  OrganizationFeatureFlagsQuery,
   securityRoleAttrFragment,
   securityRolesExecuteCustomPluginsQuery,
   securityRolesManageInvitationsQuery,
@@ -11,18 +13,20 @@ import {
 } from '@fiftyone/teams-state';
 import {
   DATASET_PERMISSIONS,
-  FEATURE_FLAG_ENABLE_INVITATIONS_ENV_KEY,
   OPERATOR_DATASET_PERMISSIONS,
   OPERATOR_USER_ROLES,
   USER_ROLES
 } from '@fiftyone/teams-state/src/constants';
 import { useCallback, useMemo } from 'react';
 import { useFragment } from 'react-relay';
-import { useBooleanEnv } from '../common/useEnv';
 
 export default function useUserRole() {
-  const enableInvitations = useBooleanEnv(
-    FEATURE_FLAG_ENABLE_INVITATIONS_ENV_KEY
+  const {
+    featureFlag: { invitationsEnabled: enableInvitations = false }
+  } = useLazyLoadLatestQuery<OrganizationFeatureFlagQueryT>(
+    OrganizationFeatureFlagsQuery,
+    {},
+    { fetchPolicy: 'store-or-network' }
   );
 
   const [currentUser] = useCurrentUser();
