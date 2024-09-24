@@ -156,11 +156,9 @@ export const ImaVidLookerReact = React.memo(
     }, []);
 
     const renderFrame = React.useCallback((frameNumber: number) => {
-      (activeLookerRef.current as unknown as ImaVidLooker)?.element.drawFrame(
-        frameNumber,
-        false,
-        true
-      );
+      (
+        activeLookerRef.current as unknown as ImaVidLooker
+      )?.element.drawFrameNoAnimation(frameNumber);
     }, []);
 
     const { getName } = useDefaultTimelineNameImperative();
@@ -196,7 +194,13 @@ export const ImaVidLookerReact = React.memo(
       });
     }, []);
 
-    const { isTimelineInitialized, subscribe } = useCreateTimeline({
+    const {
+      isTimelineInitialized,
+      registerOnPauseCallback,
+      registerOnPlayCallback,
+      registerOnSeekCallbacks,
+      subscribe,
+    } = useCreateTimeline({
       name: timelineName,
       config: timelineCreationConfig,
       waitUntilInitialized: readyWhen,
@@ -211,6 +215,39 @@ export const ImaVidLookerReact = React.memo(
           id: `imavid-${sample._id}`,
           loadRange,
           renderFrame,
+        });
+
+        registerOnPlayCallback(() => {
+          (activeLookerRef.current as unknown as ImaVidLooker).element.update(
+            () => ({
+              playing: true,
+            })
+          );
+        });
+
+        registerOnPauseCallback(() => {
+          (activeLookerRef.current as unknown as ImaVidLooker).element.update(
+            () => ({
+              playing: false,
+            })
+          );
+        });
+
+        registerOnSeekCallbacks({
+          start: () => {
+            (activeLookerRef.current as unknown as ImaVidLooker).element.update(
+              () => ({
+                seeking: true,
+              })
+            );
+          },
+          end: () => {
+            (activeLookerRef.current as unknown as ImaVidLooker).element.update(
+              () => ({
+                seeking: false,
+              })
+            );
+          },
         });
       }
     }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);

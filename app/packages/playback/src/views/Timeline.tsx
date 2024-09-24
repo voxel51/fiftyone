@@ -45,6 +45,23 @@ export const Timeline = React.memo(
         [seekTo]
       );
 
+      const onSeekStart = React.useCallback(() => {
+        pause();
+        dispatchEvent(
+          new CustomEvent("seek", {
+            detail: { timelineName: name, start: true },
+          })
+        );
+      }, [pause]);
+
+      const onSeekEnd = React.useCallback(() => {
+        dispatchEvent(
+          new CustomEvent("seek", {
+            detail: { timelineName: name, start: false },
+          })
+        );
+      }, []);
+
       const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
 
       return (
@@ -60,6 +77,8 @@ export const Timeline = React.memo(
             loaded={loaded}
             loading={loading}
             onChange={onChangeSeek}
+            onSeekStart={onSeekStart}
+            onSeekEnd={onSeekEnd}
             debounce={SEEK_BAR_DEBOUNCE}
           />
           <SeekbarThumb

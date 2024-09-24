@@ -139,6 +139,7 @@ export const useCreateTimeline = (
   const frameNumberRef = useRef(frameNumber);
   const onPlayListenerRef = useRef<() => void>();
   const onPauseListenerRef = useRef<() => void>();
+  const onSeekCallbackRefs = useRef<{ start: () => void; end: () => void }>();
   const lastDrawTime = useRef(-1);
   const playHeadStateRef = useRef(playHeadState);
   const updateFreqRef = useRef(updateFreq);
@@ -176,6 +177,24 @@ export const useCreateTimeline = (
       }
 
       pause();
+      e.stopPropagation();
+    },
+    [timelineName]
+  );
+
+  const onSeek = useCallback(
+    (e: CustomEvent) => {
+      if (e.detail.timelineName !== timelineName) {
+        return;
+      }
+
+      if (onSeekCallbackRefs.current) {
+        if (e.detail.start) {
+          onSeekCallbackRefs.current.start();
+        } else {
+          onSeekCallbackRefs.current.end();
+        }
+      }
       e.stopPropagation();
     },
     [timelineName]
@@ -277,6 +296,7 @@ export const useCreateTimeline = (
 
   useEventHandler(window, "play", onPlayEvent);
   useEventHandler(window, "pause", onPauseEvent);
+  useEventHandler(window, "seek", onSeek);
 
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
@@ -369,11 +389,7 @@ export const useCreateTimeline = (
     [timelineName]
   );
 
-  useEventHandler(
-    document.getElementById("modal")!,
-    setFrameEventName,
-    setFrameNumberFromEventHandler
-  );
+  useEventHandler(window, setFrameEventName, setFrameNumberFromEventHandler);
 
   const registerOnPlayCallback = useCallback((listener: () => void) => {
     onPlayListenerRef.current = listener;
@@ -382,6 +398,13 @@ export const useCreateTimeline = (
   const registerOnPauseCallback = useCallback((listener: () => void) => {
     onPauseListenerRef.current = listener;
   }, []);
+
+  const registerOnSeekCallbacks = useCallback(
+    ({ start, end }: { start: () => void; end: () => void }) => {
+      onSeekCallbackRefs.current = { start, end };
+    },
+    []
+  );
 
   return {
     /**
@@ -396,6 +419,10 @@ export const useCreateTimeline = (
      * Callback which is invoked when the timeline's playhead state is set to `paused`.
      */
     registerOnPauseCallback,
+    /**
+     * Callbacks which are invoked when seeking is being done (start, end).
+     */
+    registerOnSeekCallbacks,
     /**
      * Re-render all subscribers of the timeline with current frame number.
      */

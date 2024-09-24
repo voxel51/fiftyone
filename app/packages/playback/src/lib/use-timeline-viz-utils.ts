@@ -18,7 +18,7 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
 
   const timelineName = React.useMemo(() => name ?? getName(), [name, getName]);
 
-  const { config, pause } = useTimeline(timelineName);
+  const { config } = useTimeline(timelineName);
   const frameNumber = useFrameNumber(timelineName);
 
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
@@ -30,14 +30,13 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
 
   const seekTo = React.useCallback(
     (newSeekValue: number) => {
-      pause();
       const newFrameNumber = Math.max(
         Math.ceil((newSeekValue / 100) * config.totalFrames),
         1
       );
       setFrameNumber({ name: timelineName, newFrameNumber });
     },
-    [setFrameNumber, pause, timelineName, config?.totalFrames]
+    [setFrameNumber, timelineName, config?.totalFrames]
   );
 
   return {
