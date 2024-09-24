@@ -10,8 +10,6 @@ import commonControls from "../common/controls.module.css";
 export class ImaVidControlsElement<
   State extends BaseState
 > extends BaseElement<State> {
-  private showControls: boolean = false;
-
   getEvents(): Events<State> {
     return {
       mouseenter: ({ update }) => {
@@ -35,11 +33,7 @@ export class ImaVidControlsElement<
     return !thumbnail;
   }
 
-  renderSelf({ disableControls, error, loaded }: Readonly<State>) {
-    const showControls = !disableControls && !error && loaded;
-    if (this.showControls === showControls) {
-      return this.element;
-    }
+  renderSelf() {
     return this.element;
   }
 }
