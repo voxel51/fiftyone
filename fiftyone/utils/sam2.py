@@ -7,18 +7,19 @@ wrapper for the FiftyOne Model Zoo.
 |
 """
 
-import logging
-
 import cv2
-import eta.core.utils as etau
 import numpy as np
 
+import logging
+
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
-import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
-import fiftyone.utils.sam as fosam
 import fiftyone.utils.torch as fout
+import fiftyone.utils.sam as fosam
 import fiftyone.zoo.models as fozm
+import fiftyone.core.models as fom
 
 fou.ensure_torch()
 import torch

@@ -92,13 +92,6 @@ _MODEL_TEMPLATE = """
     from fiftyone import ViewField as F
 {% endif %}
 
-{% if 'med-sam' in name %}
-    from fiftyone import ViewField as F
-    from fiftyone.utils.huggingface import load_from_hub
-    
-    dataset = load_from_hub("Voxel51/BTCV-CT-as-video-MedSAM2-dataset")[:2]
-{% endif %}
-
 {% if 'imagenet' in name %}
     dataset = foz.load_zoo_dataset(
         "imagenet-sample",
@@ -116,17 +109,6 @@ _MODEL_TEMPLATE = """
         .set_field("frames.detections", None)
         .save()
     )
-{% elif 'med-sam' in name %}
-
-    # Retaining detections from a single frame in the middle
-    # Note that SAM2 only propagates segmentation masks forward in a video
-    (
-        dataset
-        .match_frames(F("frame_number") != 100)
-        .set_field("frames.gt_detections", None)
-        .save()
-    )
-
 {% else %}
     dataset = foz.load_zoo_dataset(
         "coco-2017",
@@ -151,7 +133,7 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="auto")
 
     session = fo.launch_app(dataset)
-{% elif 'segment-anything' in tags and 'video' in tags  and 'med-SAM' not in tags %}
+{% elif 'segment-anything' in tags and 'video' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
     # Segment inside boxes and propagate to all frames
@@ -159,17 +141,6 @@ _MODEL_TEMPLATE = """
         model,
         label_field="segmentations",
         prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
-{% elif 'med-sam' in name %}
-    model = foz.load_zoo_model("{{ name }}")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="pred_segmentations",
-        prompt_field="frames.gt_detections",
     )
 
     session = fo.launch_app(dataset)

@@ -449,44 +449,6 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "med-sam-2-video-torch",
-            "base_filename": "med-sam-2_pretrain.pth",
-            "version": null,
-            "description": "Fine-tuned SAM2-hiera-tiny model from paper: Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
-            "source": "https://github.com/MedicineToken/Medical-SAM2",
-            "size_bytes": 155906050,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {
-                    "url": "https://huggingface.co/jiayuanz3/MedSAM2_pretrain/resolve/main/MedSAM2_pretrain.pth?download=true"
-                }
-            },
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
-                "config": {
-                    "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": [
-                "segment-anything",
-                "torch",
-                "zero-shot",
-                "video",
-                "med-SAM"
-            ],
-            "date_added": "2024-08-17 14:48:00"
-        },
-        {
             "base_name": "deeplabv3-resnet50-coco-torch",
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
