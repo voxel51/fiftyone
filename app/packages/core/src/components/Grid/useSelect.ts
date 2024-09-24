@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 
 export default function useSelect(
+  getFontSize: () => number,
   options: ReturnType<typeof fos.useLookerOptions>,
   store: WeakMap<ID, fos.Lookers>,
   spotlight?: Spotlight<number, fos.Sample>
@@ -14,14 +15,16 @@ export default function useSelect(
   const selected = useRecoilValue(fos.selectedSamples);
   useEffect(() => {
     deferred(() => {
+      const fontSize = getFontSize();
       spotlight?.updateItems((id) => {
         store.get(id)?.updateOptions({
           ...options,
+          fontSize,
           selected: selected.has(id.description),
         });
       });
     });
-  }, [deferred, options, selected, spotlight, store]);
+  }, [deferred, getFontSize, options, selected, spotlight, store]);
 
   useEffect(() => {
     return spotlight ? init() : undefined;

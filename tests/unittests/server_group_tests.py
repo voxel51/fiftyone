@@ -90,3 +90,34 @@ class ServerGroupTests(unittest.TestCase):
             GroupElementFilter(),
         )
         self.assertEqual(view._all_stages, [fo.Select(first)])
+
+    @drop_datasets
+    def test_group_selection(self):
+        dataset: fo.Dataset = fo.Dataset()
+        group = fo.Group()
+        one = fo.Sample(
+            filepath="image.png",
+            group=group.element("one"),
+        )
+        two = fo.Sample(
+            filepath="image.png",
+            group=group.element("two"),
+        )
+
+        dataset.add_samples([one, two])
+
+        selection = dataset.select(one.id)
+
+        with_slices, _ = fosv.handle_group_filter(
+            dataset,
+            selection,
+            GroupElementFilter(id=group.id, slices=["one", "two"]),
+        )
+        self.assertEqual(len(with_slices), 2)
+
+        without_slices, _ = fosv.handle_group_filter(
+            dataset,
+            selection,
+            GroupElementFilter(id=group.id, slices=["one", "two"]),
+        )
+        self.assertEqual(len(without_slices), 2)

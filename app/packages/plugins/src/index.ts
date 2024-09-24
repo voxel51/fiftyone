@@ -113,7 +113,7 @@ export async function loadPlugins() {
     if (plugin.hasJS) {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
-      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : '';
+      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
       if (usingRegistry().hasScript(name)) {
         console.debug(`Plugin "${name}": already loaded`);
         continue;
@@ -157,11 +157,22 @@ async function loadScript(name, url) {
 export function usePlugins() {
   const datasetName = recoil.useRecoilValue(fos.datasetName);
   const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
-  const operatorsReady = useOperators(datasetName === null);
+  const notify = fos.useNotification();
+  const {
+    ready: operatorsReady,
+    hasError: operatorHasError,
+    isLoading: operatorIsLoading,
+  } = useOperators(datasetName === null);
 
   useEffect(() => {
     loadPlugins()
       .catch(() => {
+        notify({
+          msg:
+            "Failed to initialize Python plugins. You may not be able to use" +
+            " panels, operators, and other artifacts of plugins installed.",
+          variant: "error",
+        });
         setState("error");
       })
       .then(() => {
@@ -170,8 +181,8 @@ export function usePlugins() {
   }, [setState]);
 
   return {
-    isLoading: state === "loading" || !operatorsReady,
-    hasError: state === "error",
+    isLoading: state === "loading" || operatorIsLoading,
+    hasError: state === "error" || operatorHasError,
     ready: state === "ready" && operatorsReady,
   };
 }

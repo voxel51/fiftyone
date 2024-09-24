@@ -170,6 +170,25 @@ class RunTests(unittest.TestCase):
 
         self.assertListEqual(dataset.list_runs(), ["custom2"])
 
+    @drop_datasets
+    def test_run_timestamps(self):
+        dataset = fo.Dataset()
+        kwargs = {"foo": "bar", "spam": "eggs"}
+
+        config = dataset.init_run(**kwargs)
+        dataset.register_run("test", config)
+
+        results = dataset.init_run_results("test", **kwargs)
+        dataset.save_run_results("test", results)
+
+        # Cloning should bump timestamps
+        dataset2 = dataset.clone()
+
+        run_info1 = dataset.get_run_info("test")
+        run_info2 = dataset2.get_run_info("test")
+
+        self.assertTrue(run_info1.timestamp < run_info2.timestamp)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

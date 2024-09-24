@@ -81,7 +81,6 @@ const DefaultMaskTargets: React.FC = () => {
           onSyncUpdate={onSyncUpdate}
           shouldShowAddButton={shouldShowAddButton}
           min={1}
-          max={255}
           step={1}
         />
       )}

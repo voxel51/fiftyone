@@ -1960,18 +1960,20 @@ You can also view frame-level evaluation results as
     Media type:  image
     Num patches: 12112
     Patch fields:
-        id:           fiftyone.core.fields.ObjectIdField
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
-        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        sample_id:    fiftyone.core.fields.ObjectIdField
-        frame_id:     fiftyone.core.fields.ObjectIdField
-        frame_number: fiftyone.core.fields.FrameNumberField
-        type:         fiftyone.core.fields.StringField
-        iou:          fiftyone.core.fields.FloatField
-        crowd:        fiftyone.core.fields.BooleanField
+        id:               fiftyone.core.fields.ObjectIdField
+        sample_id:        fiftyone.core.fields.ObjectIdField
+        frame_id:         fiftyone.core.fields.ObjectIdField
+        filepath:         fiftyone.core.fields.StringField
+        frame_number:     fiftyone.core.fields.FrameNumberField
+        tags:             fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:         fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        created_at:       fiftyone.core.fields.DateTimeField
+        last_modified_at: fiftyone.core.fields.DateTimeField
+        predictions:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        detections:       fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        type:             fiftyone.core.fields.StringField
+        iou:              fiftyone.core.fields.FloatField
+        crowd:            fiftyone.core.fields.BooleanField
     View stages:
         1. ToFrames(config=None)
         2. ToEvaluationPatches(eval_key='eval', config=None)

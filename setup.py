@@ -40,7 +40,6 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pydash==8.0.1",
     "pymongo>=3.12,<4.9",
     "pytz",
     "PyYAML",
@@ -74,7 +73,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.17.0,<0.18",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.12.7,<0.13",
+    "voxel51-eta>=0.12.7,<0.14",
 ]
 
 
@@ -147,11 +146,10 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.8",
+    python_requires=">=3.9",
 )

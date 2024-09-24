@@ -69,7 +69,10 @@ export default <T extends AbstractLooker<BaseState>>(
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
-      ({ frameNumber, frameRate, sample, urls: rawUrls, symbol }): T => {
+      (
+        { frameNumber, frameRate, sample, urls: rawUrls, symbol },
+        extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
+      ): T => {
         let create:
           | typeof FrameLooker
           | typeof ImageLooker
@@ -236,6 +239,7 @@ export default <T extends AbstractLooker<BaseState>>(
           { ...config, symbol },
           {
             ...options,
+            ...extra,
             selected: selected.has(sample._id),
             highlight: highlight?.(sample),
           }

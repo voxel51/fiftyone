@@ -1,5 +1,6 @@
 import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import {
+  currentModalUniqueId,
   getBrowserStorageEffectForKey,
   groupId,
   modalSampleId,
@@ -17,10 +18,9 @@ const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
 export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogs",
   get: ({ get }) => {
-    const thisSampleId = get(modalSampleId);
-    const thisGroupId = get(groupId) ?? "";
+    const thisModalUniqueId = get(currentModalUniqueId);
 
-    return get(fo3dAssetsParseStatusLog(`${thisGroupId}/${thisSampleId}`));
+    return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
     const thisSampleId = get(modalSampleId);

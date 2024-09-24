@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 class ExecutionRunState(object):
     """Enumeration of the available operator run states."""
 
+    SCHEDULED = "scheduled"
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"

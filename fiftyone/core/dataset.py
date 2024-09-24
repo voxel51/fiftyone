@@ -38,13 +38,14 @@ import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.odm.dataset import DatasetAppConfig, SidebarGroupDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -63,6 +64,8 @@ from fiftyone.internal.dataset_permissions import (
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
+
+_SUMMARY_FIELD_KEY = "_summary_field"
 
 logger = logging.getLogger(__name__)
 
@@ -482,8 +485,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
 
-        doc = self._sample_dict_to_doc(d)
-        return fos.Sample.from_doc(doc, dataset=self)
+        return self._make_sample(d)
 
     def __delitem__(self, samples_or_ids):
         self.delete_samples(samples_or_ids)
@@ -595,6 +597,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=doc_type,
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
+            field_doc._set_created_at(datetime.utcnow())
+
             self._doc.sample_fields[idx] = field_doc
 
     def _init_frames(self):
@@ -823,6 +827,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def created_at(self):
         """The datetime that the dataset was created."""
         return self._doc.created_at
+
+    @property
+    def last_modified_at(self):
+        """The datetime that the dataset was last modified."""
+        return self._doc.last_modified_at
 
     @property
     def last_loaded_at(self):
@@ -1402,6 +1411,67 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sv in self[-num_samples:]
         ]
 
+    def one(self, expr, exact=False):
+        """Returns a single sample in this dataset matching the expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Get a sample by filepath
+            #
+
+            # A random filepath in the dataset
+            filepath = dataset.take(1).first().filepath
+
+            # Get sample by filepath
+            sample = dataset.one(F("filepath") == filepath)
+
+            #
+            # Dealing with multiple matches
+            #
+
+            # Get a sample whose image is JPEG
+            sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+            # Raises an error since there are multiple JPEGs
+            dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+        Args:
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that evaluates to ``True`` for the sample to match
+            exact (False): whether to raise an error if multiple samples match
+                the expression
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        view = self.match(expr)
+        matches = iter(view._aggregate())
+
+        try:
+            d = next(matches)
+        except StopIteration:
+            raise ValueError("No samples match the given expression")
+
+        if exact:
+            try:
+                next(matches)
+                raise ValueError(
+                    "Expected one matching sample, but found %d matches"
+                    % len(view)
+                )
+            except StopIteration:
+                pass
+
+        return self._make_sample(d)
+
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
@@ -1415,8 +1485,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
@@ -1429,36 +1503,46 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
-        schema = self._sample_doc_cls.get_field_schema(
+        return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
             include_private=include_private,
+            flat=flat,
+            mode=mode,
         )
-
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
 
     def get_frame_field_schema(
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the dataset.
@@ -1473,33 +1557,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if the
-            dataset does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the dataset does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
-        schema = self._frame_doc_cls.get_field_schema(
+        return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
+            info_keys=info_keys,
+            created_after=created_after,
             include_private=include_private,
+            flat=flat,
+            mode=mode,
         )
-
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
 
     @requires_can_edit
     def add_sample_field(
@@ -1511,6 +1600,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         description=None,
         info=None,
+        read_only=False,
         **kwargs,
     ):
         """Adds a new sample field or embedded field to the dataset, if
@@ -1534,6 +1624,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
             info (None): an optional info dict
+            read_only (False): whether the field should be read-only
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1543,7 +1634,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type, fog.Group
         ):
             expanded = self._add_group_field(
-                field_name, description=description, info=info
+                field_name,
+                description=description,
+                info=info,
+                read_only=read_only,
             )
         else:
             expanded = self._sample_doc_cls.add_field(
@@ -1554,6 +1648,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields=fields,
                 description=description,
                 info=info,
+                read_only=read_only,
                 **kwargs,
             )
 
@@ -1653,6 +1748,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         description=None,
         info=None,
+        read_only=False,
         **kwargs,
     ):
         """Adds a new frame-level field or embedded field to the dataset, if
@@ -1678,6 +1774,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             description (None): an optional description
             info (None): an optional info dict
+            read_only (False): whether the field should be read-only
 
         Raises:
             ValueError: if a field of the same name already exists and it is
@@ -1696,11 +1793,522 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             description=description,
             info=info,
+            read_only=read_only,
             **kwargs,
         )
 
         if expanded:
             self._reload()
+
+    def list_summary_fields(self):
+        """Lists the summary fields on the dataset.
+
+        Use :meth:`create_summary_field` to create summary fields, and use
+        :meth:`delete_summary_field` to delete them.
+
+        Returns:
+            a list of summary field names
+        """
+        return sorted(
+            self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
+        )
+
+    def create_summary_field(
+        self,
+        path,
+        field_name=None,
+        sidebar_group=None,
+        include_counts=False,
+        group_by=None,
+        read_only=True,
+        create_index=True,
+    ):
+        """Populates a sample-level field that records the unique values or
+        numeric ranges that appear in the specified field on each sample in
+        the dataset.
+
+        This method is particularly useful for summarizing frame-level fields
+        of video datasets, in which case the sample-level field records the
+        unique values or numeric ranges that appear in the specified
+        frame-level field across all frames of that sample. This summary field
+        can then be efficiently queried to retrieve samples that contain
+        specific values of interest in at least one frame.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+            dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
+
+            # Generate a summary field for object labels
+            dataset.create_summary_field("frames.detections.detections.label")
+
+            # Generate a summary field for [min, max] confidences
+            dataset.create_summary_field("frames.detections.detections.confidence")
+
+            # Generate a summary field for object labels and counts
+            dataset.create_summary_field(
+                "frames.detections.detections.label",
+                field_name="frames_detections_label2",
+                include_counts=True,
+            )
+
+            # Generate a summary field for per-label [min, max] confidences
+            dataset.create_summary_field(
+                "frames.detections.detections.confidence",
+                field_name="frames_detections_confidence2",
+                group_by="label",
+            )
+
+            print(dataset.list_summary_fields())
+
+        Args:
+            path: an input field path
+            field_name (None): the sample-level field in which to store the
+                summary data. By default, a suitable name is derived from the
+                given ``path``
+            sidebar_group (None): the name of a
+                :ref:`App sidebar group <app-sidebar-groups>` to which to add
+                the summary field, if necessary. By default, all summary fields
+                are added to a ``"summaries"`` group. You can pass ``False`` to
+                skip sidebar group modification
+            include_counts (False): whether to include per-value counts when
+                summarizing categorical fields
+            group_by (None): an optional attribute to group by when ``path``
+                is a numeric field to generate per-attribute ``[min, max]``
+                ranges. This may either be an absolute path or an attribute
+                name that is interpreted relative to ``path``
+            read_only (True): whether to mark the summary field as read-only
+            create_index (True): whether to create database index(es) for the
+                summary field
+
+        Returns:
+            the summary field name
+        """
+        _field = self.get_field(path)
+
+        if isinstance(_field, (fof.StringField, fof.BooleanField)):
+            field_type = "categorical"
+        elif isinstance(
+            _field,
+            (fof.FloatField, fof.IntField, fof.DateField, fof.DateTimeField),
+        ):
+            field_type = "numeric"
+        elif _field is not None:
+            raise ValueError(
+                f"Cannot generate a summary for field '{path}' of "
+                f"type {type(_field)}"
+            )
+        else:
+            raise ValueError(
+                "Cannot generate a summary field for non-existent or "
+                f"undeclared field '{path}'"
+            )
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+
+        if field_name is None:
+            _chunks = _path.split(".")
+
+            chunks = []
+            if is_frame_field:
+                chunks.append("frames")
+
+            found_list = False
+            for i, _chunk in enumerate(_chunks, 1):
+                if ".".join(_chunks[:i]) in list_fields:
+                    found_list = True
+                    break
+                else:
+                    chunks.append(_chunk)
+
+            if found_list:
+                chunks.append(_chunks[-1])
+
+            field_name = "_".join(chunks)
+
+        index_fields = []
+        summary_info = {"path": path, "field_type": field_type}
+        if field_type == "categorical":
+            summary_info["include_counts"] = include_counts
+            if include_counts:
+                label_field = field_name + ".label"
+                count_field = field_name + ".count"
+                index_fields.extend([label_field, count_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(label_field, type(_field))
+                self.add_sample_field(count_field, fof.IntField)
+            else:
+                index_fields.append(field_name)
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=type(_field),
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+        elif field_type == "numeric":
+            summary_info["group_by"] = group_by
+            if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_field = self.get_field(group_path)
+
+                value_field = field_name + f".{value}"
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([value_field, min_field, max_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.ListField,
+                    subfield=fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(value_field, type(_group_field))
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+            else:
+                min_field = field_name + ".min"
+                max_field = field_name + ".max"
+                index_fields.extend([min_field, max_field])
+
+                self.add_sample_field(
+                    field_name,
+                    fof.EmbeddedDocumentField,
+                    embedded_doc_type=foo.DynamicEmbeddedDocument,
+                    info={_SUMMARY_FIELD_KEY: summary_info},
+                )
+                self.add_sample_field(min_field, type(_field))
+                self.add_sample_field(max_field, type(_field))
+
+        if sidebar_group is not False:
+            if sidebar_group is None:
+                sidebar_group = "summaries"
+
+            if self.app_config.sidebar_groups is None:
+                sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
+                self.app_config.sidebar_groups = sidebar_groups
+            else:
+                sidebar_groups = self.app_config.sidebar_groups
+
+            index_group = None
+            for group in sidebar_groups:
+                if group.name == sidebar_group:
+                    index_group = group
+                else:
+                    if field_name in group.paths:
+                        group.paths.remove(field_name)
+
+            if index_group is None:
+                index_group = SidebarGroupDocument(name=sidebar_group)
+
+                insert_after = None
+                for i, group in enumerate(sidebar_groups):
+                    if group.name == "labels":
+                        insert_after = i
+
+                if insert_after is None:
+                    sidebar_groups.append(index_group)
+                else:
+                    sidebar_groups.insert(insert_after + 1, index_group)
+
+            if field_name not in index_group.paths:
+                index_group.paths.append(field_name)
+
+        if create_index:
+            for _field_name in index_fields:
+                self.create_index(_field_name)
+
+        field = self.get_field(field_name)
+        field.info[_SUMMARY_FIELD_KEY]["last_modified_at"] = field.created_at
+
+        if read_only:
+            field.read_only = True
+
+        field.save()
+
+        self._populate_summary_field(field_name, summary_info)
+
+        return field_name
+
+    def _populate_summary_field(self, field_name, summary_info):
+        path = summary_info["path"]
+        field_type = summary_info["field_type"]
+        include_counts = summary_info.get("include_counts", False)
+        group_by = summary_info.get("group_by", None)
+
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+
+        pipeline = []
+
+        if is_frame_field:
+            pipeline.extend(
+                [
+                    {"$unwind": "$frames"},
+                    {"$replaceRoot": {"newRoot": "$frames"}},
+                ]
+            )
+            _id = "_sample_id"
+        else:
+            _id = "_id"
+
+        if list_fields:
+            pipeline.append({"$unwind": "$" + list_fields[0]})
+
+        if field_type == "categorical":
+            if include_counts:
+                value = path.rsplit(".", 1)[-1]
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _path,
+                                },
+                                "count": {"$sum": 1},
+                            },
+                        },
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "count": "$count",
+                                    }
+                                },
+                            },
+                        },
+                    ]
+                )
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "values": {"$addToSet": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {
+                                    "$filter": {
+                                        "input": "$values",
+                                        "cond": {"$gt": ["$$this", None]},
+                                    }
+                                }
+                            }
+                        },
+                    ]
+                )
+        elif field_type == "numeric":
+            if group_by is not None:
+                if "." in group_by:
+                    value = group_by.rsplit(".", 1)[1]
+                    group_path = group_by
+                else:
+                    value = group_by
+                    group_path = path.rsplit(".", 1)[0] + "." + group_by
+
+                _group_path, _ = self._handle_frame_field(group_path)
+
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": {
+                                    "sample": "$" + _id,
+                                    "value": "$" + _group_path,
+                                },
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {"$match": {"$expr": {"$gt": ["$_id.value", None]}}},
+                        {
+                            "$group": {
+                                "_id": "$_id.sample",
+                                field_name: {
+                                    "$push": {
+                                        value: "$_id.value",
+                                        "min": "$min",
+                                        "max": "$max",
+                                    }
+                                },
+                            }
+                        },
+                    ]
+                )
+            else:
+                pipeline.extend(
+                    [
+                        {
+                            "$group": {
+                                "_id": "$" + _id,
+                                "min": {"$min": "$" + _path},
+                                "max": {"$max": "$" + _path},
+                            },
+                        },
+                        {
+                            "$project": {
+                                field_name: {"min": "$min", "max": "$max"}
+                            }
+                        },
+                    ]
+                )
+
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": self._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            }
+        )
+
+        self._aggregate(pipeline=pipeline, attach_frames=is_frame_field)
+
+        fos.Sample._reload_docs(self._sample_collection_name)
+
+    def check_summary_fields(self):
+        """Returns a list of summary fields that **may** need to be updated.
+
+        Summary fields may need to be updated whenever there have been
+        modifications to the dataset's samples since the summaries were last
+        generated.
+
+        Note that inclusion in this list is only a heuristic, as any sample
+        modifications may not have affected the summary's source field.
+
+        Returns:
+            list of summary field names
+        """
+        summary_schema = self.get_field_schema(
+            flat=True, info_keys=_SUMMARY_FIELD_KEY
+        )
+
+        update_indexes = []
+        samples_last_modified_at = None
+        frames_last_modified_at = None
+        for path, field in summary_schema.items():
+            summary_info = field.info[_SUMMARY_FIELD_KEY]
+            source_path = summary_info.get("path", None)
+            last_modified_at = summary_info.get("last_modified_at", None)
+
+            if source_path is None:
+                continue
+            elif last_modified_at is None:
+                update_indexes.append(path)
+            elif self._is_frame_field(source_path):
+                if frames_last_modified_at is None:
+                    frames_last_modified_at, _ = self.bounds(
+                        "frames.last_modified_at"
+                    )
+
+                if frames_last_modified_at > last_modified_at:
+                    update_indexes.append(path)
+            else:
+                if samples_last_modified_at is None:
+                    _, samples_last_modified_at = self.bounds(
+                        "last_modified_at"
+                    )
+
+                if samples_last_modified_at > last_modified_at:
+                    update_indexes.append(path)
+
+        return update_indexes
+
+    def update_summary_field(self, field_name):
+        """Updates the summary field based on the current values of its source
+        field.
+
+        Args:
+            field_name: the summary field
+        """
+
+        # This prevents a "weakly-referenced object no longer exists" error
+        # from occurring when updating multiple summary fields sequentially
+        # @todo diagnose and cure root cause so this isn't needed
+        self._reload(hard=True)
+
+        field = self.get_field(field_name)
+        if field is None or _SUMMARY_FIELD_KEY not in field.info:
+            raise ValueError(f"Field {field_name} is not a summary field")
+
+        summary_info = field.info[_SUMMARY_FIELD_KEY]
+        summary_info["last_modified_at"] = datetime.utcnow()
+        field.save(_enforce_read_only=False)
+
+        self._populate_summary_field(field_name, summary_info)
+
+    def delete_summary_field(self, field_name, error_level=0):
+        """Deletes the summary field from all samples in the dataset.
+
+        Args:
+            field_name: the summary field
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_name, error_level)
+
+    def delete_summary_fields(self, field_names, error_level=0):
+        """Deletes the summary fields from all samples in the dataset.
+
+        Args:
+            field_names: the summary field or iterable of summary fields
+            error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if a summary field cannot be deleted
+            -   1: log warning if a summary field cannot be deleted
+            -   2: ignore summary fields that cannot be deleted
+        """
+        self._delete_summary_fields(field_names, error_level)
+
+    def _delete_summary_fields(self, field_names, error_level):
+        field_names = _to_list(field_names)
+
+        _field_names = []
+        for field_name in field_names:
+            field = self.get_field(field_name)
+
+            if field is None or _SUMMARY_FIELD_KEY not in field.info:
+                fou.handle_error(
+                    ValueError(f"Field {field_name} is not a summary field"),
+                    error_level,
+                )
+            else:
+                if field.read_only:
+                    field.read_only = False
+                    field.save()
+
+                _field_names.append(field_name)
+
+        if _field_names:
+            self._delete_sample_fields(_field_names, error_level)
 
     def _add_implied_frame_field(
         self, field_name, value, dynamic=False, validate=True
@@ -1795,7 +2403,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @requires_can_edit
     def add_group_field(
-        self, field_name, default=None, description=None, info=None
+        self,
+        field_name,
+        default=None,
+        description=None,
+        info=None,
+        read_only=False,
     ):
         """Adds a group field to the dataset, if necessary.
 
@@ -1804,12 +2417,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             default (None): a default group slice for the field
             description (None): an optional description
             info (None): an optional info dict
+            read_only (False): whether the field should be read-only
 
         Raises:
             ValueError: if a group field with another name already exists
         """
         expanded = self._add_group_field(
-            field_name, default=default, description=description, info=info
+            field_name,
+            default=default,
+            description=description,
+            info=info,
+            read_only=read_only,
         )
 
         if expanded:
@@ -2236,14 +2854,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names, error_level=error_level
         )
 
-        fields, embedded_fields = _parse_fields(field_names)
+        fields, _ = _parse_fields(field_names)
 
         if fields:
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
-        if embedded_fields:
-            fos.Sample._reload_docs(self._sample_collection_name)
-
+        fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
 
     def _remove_dynamic_sample_fields(self, field_names, error_level):
@@ -2269,14 +2885,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_names, error_level=error_level
         )
 
-        fields, embedded_fields = _parse_fields(field_names)
+        fields, _ = _parse_fields(field_names)
 
         if fields:
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
-        if embedded_fields:
-            fofr.Frame._reload_docs(self._frame_collection_name)
-
+        fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
     def _remove_dynamic_frame_fields(self, field_names, error_level):
@@ -2518,7 +3132,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     save_context.save(sample)
 
     def _iter_samples(self, pipeline=None):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
@@ -2527,7 +3140,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 detach_frames=True,
                 detach_groups=True,
             ):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
                 index += 1
                 yield sample
 
@@ -2537,13 +3150,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             pipeline = [{"$skip": index}] + (pipeline or [])
             for sample in self._iter_samples(pipeline=pipeline):
                 yield sample
-
-    def _make_sample_fcn(self):
-        def make_sample(d):
-            doc = self._sample_dict_to_doc(d)
-            return fos.Sample.from_doc(doc, dataset=self)
-
-        return make_sample
 
     @requires_can_edit(condition_param="autosave")
     def iter_groups(
@@ -2654,7 +3260,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         save_context.save(sample)
 
     def _iter_groups(self, group_slices=None, pipeline=None):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         group_field = self.group_field
@@ -2668,7 +3273,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 group_slices=group_slices,
                 groups_only=True,
             ):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 group_id = sample[group_field].id
                 if curr_id is None:
@@ -2910,7 +3515,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
-        dicts = [self._make_dict(sample) for sample in samples]
+        now = datetime.utcnow()
+        dicts = [
+            self._make_dict(sample, created_at=now, last_modified_at=now)
+            for sample in samples
+        ]
 
         try:
             # adds `_id` to each dict
@@ -2963,10 +3572,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
+        now = datetime.utcnow()
+
         dicts = []
         ops = []
         for sample in samples:
-            d = self._make_dict(sample, include_id=True)
+            d = self._make_dict(
+                sample, include_id=True, created_at=now, last_modified_at=now
+            )
             dicts.append(d)
 
             if sample.id:
@@ -2992,7 +3605,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # @todo can we infer content size from bulk_write() above?
             batcher.apply_backpressure(dicts)
 
-    def _make_dict(self, sample, include_id=False):
+    def _make_dict(
+        self,
+        sample,
+        include_id=False,
+        created_at=None,
+        last_modified_at=None,
+    ):
         d = sample.to_mongo_dict(include_id=include_id)
 
         # We omit None here to allow samples with None-valued new fields to
@@ -3001,6 +3620,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = {k: v for k, v in d.items() if v is not None}
 
         d["_dataset_id"] = self._doc.id
+
+        if created_at is not None and not sample._in_db:
+            d["created_at"] = created_at
+
+        if last_modified_at is not None:
+            d["last_modified_at"] = last_modified_at
 
         return d
 
@@ -3134,7 +3759,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else:
                 view = self
 
-            F = foe.ViewField
             existing_sample = view.one(F(key_field) == sample[key_field])
         except ValueError:
             if insert_new:
@@ -3503,12 +4127,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         elif etau.is_str(fields):
             fields = [fields]
 
+        for field in fields:
+            if self._is_read_only_field(field):
+                raise ValueError("Cannot edit read-only field '%s'" % field)
+
+        now = datetime.utcnow()
+
         sample_ops = []
         frame_ops = []
         for field in fields:
             if view is not None:
                 _, id_path = view._get_label_field_path(field, "_id")
-                view_ids = view.values(id_path, unwind=True)
+                view_ids = _discard_none(view.values(id_path, unwind=True))
             else:
                 view_ids = None
 
@@ -3517,34 +4147,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             ops = []
             if is_list_field:
-                query = {root: {"$exists": True}}
-
                 if view_ids is not None:
                     ops.append(
                         UpdateMany(
-                            query,
-                            {"$pull": {root: {"_id": {"$in": view_ids}}}},
+                            {root + "._id": {"$in": view_ids}},
+                            {
+                                "$pull": {root: {"_id": {"$in": view_ids}}},
+                                "$set": {"last_modified_at": now},
+                            },
                         )
                     )
 
                 if ids is not None:
                     ops.append(
                         UpdateMany(
-                            query,
-                            {"$pull": {root: {"_id": {"$in": ids}}}},
+                            {root + "._id": {"$in": ids}},
+                            {
+                                "$pull": {root: {"_id": {"$in": ids}}},
+                                "$set": {"last_modified_at": now},
+                            },
                         )
                     )
 
                 if tags is not None:
                     ops.append(
                         UpdateMany(
-                            query,
+                            {root + ".tags": {"$elemMatch": {"$in": tags}}},
                             {
                                 "$pull": {
                                     root: {
                                         "tags": {"$elemMatch": {"$in": tags}}
                                     }
-                                }
+                                },
+                                "$set": {"last_modified_at": now},
                             },
                         )
                     )
@@ -3553,7 +4188,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": view_ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_modified_at": now}},
                         )
                     )
 
@@ -3561,7 +4196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_modified_at": now}},
                         )
                     )
 
@@ -3569,7 +4204,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + ".tags": {"$elemMatch": {"$in": tags}}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_modified_at": now}},
                         )
                     )
 
@@ -3597,12 +4232,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_ids.add(l["sample_id"])
             labels_map[l["field"]].append(l)
 
+        if fields is not None:
+            labels_map = {f: l for f, l in labels_map.items() if f in fields}
+
+        for field in labels_map.keys():
+            if self._is_read_only_field(field):
+                raise ValueError("Cannot edit read-only field '%s'" % field)
+
+        now = datetime.utcnow()
+
         sample_ops = []
         frame_ops = []
         for field, field_labels in labels_map.items():
-            if fields is not None and field not in fields:
-                continue
-
             root, is_list_field = self._get_label_field_root(field)
             root, is_frame_field = self._handle_frame_field(root)
 
@@ -3625,7 +4266,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                     "_sample_id": ObjectId(sample_id),
                                     "frame_number": frame_number,
                                 },
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_modified_at": now},
+                                },
                             )
                         )
                 else:
@@ -3646,7 +4292,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "frame_number": frame_number,
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_modified_at": now,
+                                        }
+                                    },
                                 )
                             )
             else:
@@ -3660,7 +4311,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         sample_ops.append(
                             UpdateOne(
                                 {"_id": ObjectId(sample_id)},
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_modified_at": now},
+                                },
                             )
                         )
                 else:
@@ -3677,7 +4333,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "_id": ObjectId(sample_id),
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_modified_at": now,
+                                        }
+                                    },
                                 )
                             )
 
@@ -3764,18 +4425,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._deleted = True
             raise ValueError("Dataset '%s' is deleted" % name)
 
-    def _save_field(self, field):
+    def _save_field(self, field, _enforce_read_only=True):
         if self._is_generated:
             raise ValueError(
                 "Cannot save fields on generated views. Use the dataset's "
                 "fields instead"
             )
 
+        is_default = self._is_default_field(field.path)
         path, is_frame_field = self._handle_frame_field(field.path)
+
         if is_frame_field:
-            field_doc = self._frame_doc_cls._get_field_doc(path, reload=True)
+            doc_cls = self._frame_doc_cls
         else:
-            field_doc = self._sample_doc_cls._get_field_doc(path, reload=True)
+            doc_cls = self._sample_doc_cls
+
+        field_doc = doc_cls._get_field_doc(path, reload=True)
+
+        if is_default and _enforce_read_only:
+            default_field = self._get_default_field(field.path)
+            if default_field.read_only and not field.read_only:
+                raise ValueError(
+                    "Read-only default field '%s' must remain read-only"
+                    % field.path
+                )
+
+        if "." in path and _enforce_read_only:
+            root = path.rsplit(".", 1)[0]
+            root_doc = doc_cls._get_field_doc(root)
+            if root_doc.read_only:
+                raise ValueError(
+                    "Cannot edit read-only field '%s'" % field.path
+                )
+
+        if field.read_only and field_doc.read_only and _enforce_read_only:
+            raise ValueError("Cannot edit read-only field '%s'" % field.path)
+
+        if field.read_only != field_doc.read_only:
+            _set_field_read_only(field_doc, field.read_only)
+            _reload = True
+        else:
+            _reload = False
 
         field_doc.description = field.description
         field_doc.info = field.info
@@ -3785,6 +4475,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self.reload()
             raise
+
+        if _reload:
+            self.reload()
 
     @property
     def has_saved_views(self):
@@ -3954,7 +4647,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 edited = True
 
         if edited:
-            view_doc.last_modified_at = datetime.utcnow()
             view_doc.save()
 
     def load_saved_view(self, name):
@@ -3982,10 +4674,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         view_doc = self._get_saved_view_doc(name)
         view = self._load_saved_view_from_doc(view_doc)
-
-        view_doc.last_loaded_at = datetime.utcnow()
-        view_doc.save()
-
+        view_doc._update_last_loaded_at()
         return view
 
     @requires_can_edit
@@ -4232,10 +4921,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         workspace_doc = self._get_workspace_doc(name)
         workspace = workspace_doc.child
-
-        workspace_doc.last_loaded_at = datetime.utcnow()
-        workspace_doc.save()
-
+        workspace_doc._update_last_loaded_at()
         return workspace
 
     def get_workspace_info(self, name):
@@ -4312,7 +4998,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 edited = True
 
         if edited:
-            workspace_doc.last_modified_at = datetime.utcnow()
             workspace_doc.save()
 
     def delete_workspace(self, name):
@@ -4432,7 +5117,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_dataset_or_view(sample_collection, name, persistent)
+        return _clone_collection(sample_collection, name, persistent)
 
     @requires_can_edit
     def clear(self):
@@ -4491,7 +5176,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if self.media_type != fom.GROUP:
                 raise ValueError("Dataset is not grouped")
 
-            F = foe.ViewField
             oids = [ObjectId(_id) for _id in group_ids]
             view = self.select_group_slices(_allow_mixed=True).match(
                 F(self.group_field + "._id").is_in(oids)
@@ -4685,6 +5369,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 media_type=fom.VIDEO
             )
 
+        now = datetime.utcnow()
+
         sample_collection.compute_metadata()
         sample_collection._aggregate(
             post_pipeline=[
@@ -4693,6 +5379,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "_id": False,
                         "_sample_id": "$_id",
                         "_dataset_id": self._doc.id,
+                        "created_at": now,
+                        "last_modified_at": now,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6922,7 +7610,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type is not None:
             dataset.media_type = media_type
 
-        dataset._apply_field_schema(d.get("sample_fields", {}))
+        dataset._apply_sample_field_schema(d.get("sample_fields", {}))
         dataset._apply_frame_field_schema(d.get("frame_fields", {}))
 
         dataset._doc.info = d.get("info", {})
@@ -7187,7 +7875,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foe.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -7228,7 +7915,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
-        F = foe.ViewField
         expr = F(id_field) == "$$group_id"
         if etau.is_container(group_slices):
             expr &= F(name_field).is_in(list(group_slices))
@@ -7337,25 +8023,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_info = frame_collection.index_information()
         return [k["key"][0][0] for k in index_info.values()]
 
-    def _apply_field_schema(self, new_fields):
-        for field_name, field_str in new_fields.items():
-            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
-            self.add_sample_field(
-                field_name,
-                ftype,
-                embedded_doc_type=embedded_doc_type,
-                subfield=subfield,
-            )
+    def _apply_sample_field_schema(self, schema):
+        for field_name, field_or_str in schema.items():
+            kwargs = foo.get_field_kwargs(field_or_str)
+            self.add_sample_field(field_name, **kwargs)
 
-    def _apply_frame_field_schema(self, new_fields):
-        for field_name, field_str in new_fields.items():
-            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
-            self.add_frame_field(
-                field_name,
-                ftype,
-                embedded_doc_type=embedded_doc_type,
-                subfield=subfield,
-            )
+    def _apply_frame_field_schema(self, schema):
+        for field_name, field_or_str in schema.items():
+            kwargs = foo.get_field_kwargs(field_or_str)
+            self.add_frame_field(field_name, **kwargs)
 
     def _ensure_label_field(self, label_field, label_cls):
         if label_field not in self.get_field_schema():
@@ -7454,19 +8130,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return expanded
 
+    def _make_sample(self, d):
+        doc = self._sample_dict_to_doc(d)
+        return fos.Sample.from_doc(doc, dataset=self)
+
     def _sample_dict_to_doc(self, d):
         try:
-            return self._sample_doc_cls.from_dict(d, extended=False)
+            return self._sample_doc_cls.from_dict(d)
         except:
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
             self.reload()
 
-            return self._sample_doc_cls.from_dict(d, extended=False)
+            return self._sample_doc_cls.from_dict(d)
+
+    def _make_frame(self, d):
+        doc = self._frame_dict_to_doc(d)
+        return fofr.Frame.from_doc(doc, dataset=self)
 
     def _frame_dict_to_doc(self, d):
         try:
-            return self._frame_doc_cls.from_dict(d, extended=False)
+            return self._frame_doc_cls.from_dict(d)
         except:
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
@@ -7490,7 +8174,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             non_existent_fields = None
             found_group = False
 
-            for field_name, value in sample.iter_fields():
+            for field_name, value in sample.iter_fields(
+                include_timestamps=True
+            ):
                 if isinstance(value, fog.Group):
                     if self.media_type != fom.GROUP:
                         raise ValueError(
@@ -7610,8 +8296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if os.environ.get("FIFTYONE_SERVER", False) and not force:
             return
 
-        self._doc.last_loaded_at = datetime.utcnow()
-        self._save()
+        self._doc._update_last_loaded_at()
 
 
 def _get_random_characters(n):
@@ -7644,6 +8329,7 @@ def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
         {
             "name": doc.get("name", None),
             "created_at": doc.get("created_at", None),
+            "last_modified_at": doc.get("last_modified_at", None),
             "last_loaded_at": doc.get("last_loaded_at", None),
             "version": doc.get("version", None),
             "persistent": doc.get("persistent", None),
@@ -7685,6 +8371,7 @@ def _create_dataset(
     slug = _validate_dataset_name(name)
 
     _id = ObjectId()
+    now = datetime.utcnow()
 
     sample_collection_name = _make_sample_collection_name(
         _id, patches=_patches, frames=_frames, clips=_clips
@@ -7713,7 +8400,8 @@ def _create_dataset(
         name=name,
         slug=slug,
         version=focn.VERSION,
-        created_at=datetime.utcnow(),
+        created_at=now,
+        last_modified_at=now,
         media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -7738,12 +8426,16 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     if sample_collection_name is not None:
         sample_collection = conn[sample_collection_name]
         sample_collection.create_index("filepath")
+        sample_collection.create_index("created_at")
+        sample_collection.create_index("last_modified_at")
 
     if frame_collection_name is not None:
         frame_collection = conn[frame_collection_name]
         frame_collection.create_index(
             [("_sample_id", 1), ("frame_number", 1)], unique=True
         )
+        frame_collection.create_index("created_at")
+        frame_collection.create_index("last_modified_at")
 
 
 def _create_group_indexes(sample_collection_name, group_field):
@@ -7883,7 +8575,13 @@ def _create_frame_document_cls(
 
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
-    for field_name in tuple(doc_cls._fields.keys()):
+    default_fields = set(doc_cls._fields.keys())
+    if field_docs is not None:
+        default_fields -= {field_doc.name for field_doc in field_docs}
+
+    # Declare default fields that don't already exist
+    now = datetime.utcnow()
+    for field_name in default_fields:
         field = doc_cls._fields[field_name]
 
         if isinstance(field, fof.EmbeddedDocumentField):
@@ -7891,8 +8589,10 @@ def _declare_fields(dataset, doc_cls, field_docs=None):
         else:
             field = field.copy()
 
+        field._set_created_at(now)
         doc_cls._declare_field(dataset, field_name, field)
 
+    # Declare existing fields
     if field_docs is not None:
         for field_doc in field_docs:
             doc_cls._declare_field(dataset, field_doc.name, field_doc)
@@ -8026,20 +8726,20 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_dataset_or_view(dataset_or_view, name, persistent):
+def _clone_collection(sample_collection, name, persistent):
     slug = _validate_dataset_name(name)
 
-    contains_videos = dataset_or_view._contains_videos(any_slice=True)
-    contains_groups = dataset_or_view.media_type == fom.GROUP
+    contains_videos = sample_collection._contains_videos(any_slice=True)
+    contains_groups = sample_collection.media_type == fom.GROUP
 
-    if isinstance(dataset_or_view, fov.DatasetView):
-        dataset = dataset_or_view._dataset
-        view = dataset_or_view
+    if isinstance(sample_collection, fov.DatasetView):
+        dataset = sample_collection._dataset
+        view = sample_collection
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
     else:
-        dataset = dataset_or_view
+        dataset = sample_collection
         view = None
 
     dataset._reload()
@@ -8049,7 +8749,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     #
 
     dataset_doc = dataset._doc.copy(new_id=True)
+
     _id = dataset_doc.id
+    now = datetime.utcnow()
 
     sample_collection_name = _make_sample_collection_name(_id)
 
@@ -8062,16 +8764,23 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.name = name
     dataset_doc.slug = slug
-    dataset_doc.created_at = datetime.utcnow()
+    dataset_doc.created_at = now
+    dataset_doc.last_modified_at = now
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
-    dataset_doc.media_type = dataset_or_view.media_type
+    dataset_doc.media_type = sample_collection.media_type
     if not contains_groups:
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
+
+    for field in dataset_doc.sample_fields:
+        field._set_created_at(now)
+
+    for field in dataset_doc.frame_fields or []:
+        field._set_created_at(now)
 
     # Runs/views get special treatment at the end
     dataset_doc.workspaces.clear()
@@ -8083,37 +8792,49 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     if view is not None:
         # Respect filtered sample fields, if any
-        schema = view.get_field_schema()
+        keep_fields = set(view.get_field_schema().keys())
         dataset_doc.sample_fields = [
-            f
-            for f in dataset_doc.sample_fields
-            if f.name in set(schema.keys())
+            f for f in dataset_doc.sample_fields if f.name in keep_fields
         ]
 
         # Respect filtered frame fields, if any
         if contains_videos:
-            frame_schema = view.get_frame_field_schema()
+            keep_fields = set(view.get_frame_field_schema().keys())
             dataset_doc.frame_fields = [
-                f
-                for f in dataset_doc.frame_fields
-                if f.name in set(frame_schema.keys())
+                f for f in dataset_doc.frame_fields if f.name in keep_fields
             ]
 
     dataset_doc.save(upsert=True)
 
     # Clone indexes
-    _clone_indexes(dataset_or_view, dataset_doc)
+    _clone_indexes(sample_collection, dataset_doc)
 
     # Clone samples
-    coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$addFields": {"_dataset_id": _id}})
+    coll, pipeline = _get_samples_pipeline(sample_collection)
+    pipeline.append(
+        {
+            "$addFields": {
+                "_dataset_id": _id,
+                "created_at": now,
+                "last_modified_at": now,
+            }
+        }
+    )
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
-        coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$addFields": {"_dataset_id": _id}})
+        coll, pipeline = _get_frames_pipeline(sample_collection)
+        pipeline.append(
+            {
+                "$addFields": {
+                    "_dataset_id": _id,
+                    "created_at": now,
+                    "last_modified_at": now,
+                }
+            }
+        )
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -8128,7 +8849,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         or dataset.has_evaluations
         or dataset.has_runs
     ):
-        _clone_extras(dataset, clone_dataset)
+        _clone_extras(dataset, clone_dataset, now)
 
     return clone_dataset
 
@@ -8197,6 +8918,20 @@ def _save_view(view, fields=None):
     if etau.is_str(fields):
         fields = [fields]
 
+    edited_fields = set(view._get_edited_fields() or [])
+    if contains_videos:
+        edited_fields.update(
+            dataset._FRAMES_PREFIX + f
+            for f in view._get_edited_fields(frames=True) or []
+        )
+
+    if not all_fields:
+        edited_fields &= set(fields)
+
+    for field in edited_fields:
+        if dataset._is_read_only_field(field):
+            raise ValueError("Cannot edit read-only field '%s'" % field)
+
     if contains_videos:
         sample_fields, frame_fields = fou.split_frame_fields(fields)
     else:
@@ -8215,6 +8950,8 @@ def _save_view(view, fields=None):
     # Must retrieve IDs now in case view changes after saving
     sample_ids = view.values("id")
 
+    now = datetime.utcnow()
+
     #
     # Save samples
     #
@@ -8222,10 +8959,13 @@ def _save_view(view, fields=None):
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
 
     if sample_fields:
-        pipeline.append({"$project": {f: True for f in sample_fields}})
+        project = {f: True for f in sample_fields}
+        project["last_modified_at"] = now
+        pipeline.append({"$project": project})
         pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
     elif save_samples:
+        pipeline.append({"$addFields": {"last_modified_at": now}})
         pipeline.append(
             {
                 "$merge": {
@@ -8256,10 +8996,13 @@ def _save_view(view, fields=None):
             )
 
         if frame_fields:
-            pipeline.append({"$project": {f: True for f in frame_fields}})
+            project = {f: True for f in frame_fields}
+            project["last_modified_at"] = now
+            pipeline.append({"$project": project})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
         else:
+            pipeline.append({"$addFields": {"last_modified_at": now}})
             pipeline.append(
                 {
                     "$merge": {
@@ -8464,7 +9207,7 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
-def _clone_extras(src_dataset, dst_dataset):
+def _clone_extras(src_dataset, dst_dataset, now):
     src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
 
@@ -8472,7 +9215,9 @@ def _clone_extras(src_dataset, dst_dataset):
     for _view_doc in src_doc.get_saved_views():
         view_doc = _clone_reference_doc(_view_doc)
         view_doc.dataset_id = dst_doc.id
-        view_doc.save(upsert=True)
+        view_doc.created_at = now
+        view_doc.last_modified_at = now
+        view_doc.save(upsert=True, virtual=True)
 
         dst_doc.saved_views.append(view_doc)
 
@@ -8480,7 +9225,9 @@ def _clone_extras(src_dataset, dst_dataset):
     for _workspace_doc in src_doc.get_workspaces():
         workspace_doc = _clone_reference_doc(_workspace_doc)
         workspace_doc.dataset_id = dst_doc.id
-        workspace_doc.save(upsert=True)
+        workspace_doc.created_at = now
+        workspace_doc.last_modified_at = now
+        workspace_doc.save(upsert=True, virtual=True)
 
         dst_doc.workspaces.append(workspace_doc)
 
@@ -8488,6 +9235,7 @@ def _clone_extras(src_dataset, dst_dataset):
     for anno_key, _run_doc in src_doc.get_annotation_runs().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
+        run_doc.timestamp = now
         run_doc.save(upsert=True)
 
         dst_doc.annotation_runs[anno_key] = run_doc
@@ -8496,6 +9244,7 @@ def _clone_extras(src_dataset, dst_dataset):
     for brain_key, _run_doc in src_doc.get_brain_methods().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
+        run_doc.timestamp = now
         run_doc.save(upsert=True)
 
         dst_doc.brain_methods[brain_key] = run_doc
@@ -8504,6 +9253,7 @@ def _clone_extras(src_dataset, dst_dataset):
     for eval_key, _run_doc in src_doc.get_evaluations().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
+        run_doc.timestamp = now
         run_doc.save(upsert=True)
 
         dst_doc.evaluations[eval_key] = run_doc
@@ -8512,6 +9262,7 @@ def _clone_extras(src_dataset, dst_dataset):
     for run_key, _run_doc in src_doc.get_runs().items():
         run_doc = _clone_run(_run_doc)
         run_doc.dataset_id = dst_doc.id
+        run_doc.timestamp = now
         run_doc.save(upsert=True)
 
         dst_doc.runs[run_key] = run_doc
@@ -8627,7 +9378,13 @@ def _add_collection_with_new_ids(
     else:
         num_ids = len(src_samples)
 
-    add_fields = {"_dataset_id": dataset._doc.id}
+    now = datetime.utcnow()
+
+    add_fields = {
+        "_dataset_id": dataset._doc.id,
+        "created_at": now,
+        "last_modified_at": now,
+    }
 
     if contains_groups:
         id_field = sample_collection.group_field + "._id"
@@ -8684,7 +9441,13 @@ def _add_collection_with_new_ids(
                 }
             },
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dataset._doc.id,
+                    "created_at": now,
+                    "last_modified_at": now,
+                }
+            },
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -8951,7 +9714,7 @@ def _merge_samples_pipeline(
         # We had to include all default fields since they are required if new
         # samples are inserted, but, when merging, the user may have wanted
         # them excluded
-        delete_fields = set()
+        delete_fields = {"created_at"}
         if insert_new:
             if fields is not None:
                 delete_fields.update(
@@ -8978,9 +9741,17 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
+    now = datetime.utcnow()
+
     sample_pipeline.extend(
         [
-            {"$addFields": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dst_dataset._doc.id,
+                    "created_at": now,  # only used when adding new samples
+                    "last_modified_at": now,
+                }
+            },
             {
                 "$merge": {
                     "into": dst_dataset._sample_collection_name,
@@ -9058,11 +9829,13 @@ def _merge_samples_pipeline(
         if skip_existing:
             when_frame_matched = "keepExisting"
         else:
+            delete_fields = {"created_at"}
             when_frame_matched = _merge_docs(
                 src_collection,
                 merge_lists=merge_lists,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
+                delete_fields=delete_fields,
                 overwrite=overwrite,
                 frames=True,
             )
@@ -9073,6 +9846,8 @@ def _merge_samples_pipeline(
                     "$addFields": {
                         "_dataset_id": dst_dataset._doc.id,
                         "_sample_id": "$" + frame_key_field,
+                        "created_at": now,  # only used when adding new frames
+                        "last_modified_at": now,
                     }
                 },
                 {
@@ -9246,7 +10021,12 @@ def _merge_docs(
                 "$filter": {
                     "input": {"$objectToArray": "$$ROOT"},
                     "as": "item",
-                    "cond": {"$ne": ["$$item.v", None]},
+                    "cond": {
+                        "$and": [
+                            {"$ne": ["$$item.k", "last_modified_at"]},
+                            {"$ne": ["$$item.v", None]},
+                        ]
+                    },
                 }
             }
         }
@@ -9582,6 +10362,12 @@ def _to_list(arg):
     return [arg]
 
 
+def _discard_none(values):
+    values = set(values)
+    values.discard(None)
+    return list(values)
+
+
 def _parse_fields(field_names):
     field_names = _to_list(field_names)
     fields = [f for f in field_names if "." not in f]
@@ -9625,6 +10411,13 @@ def _handle_nested_fields(schema):
             break
 
     return safe_schemas
+
+
+def _set_field_read_only(field_doc, read_only):
+    field_doc.read_only = read_only
+    if hasattr(field_doc, "fields"):
+        for _field_doc in field_doc.fields:
+            _set_field_read_only(_field_doc, read_only)
 
 
 def _extract_archive_if_necessary(archive_path, cleanup):

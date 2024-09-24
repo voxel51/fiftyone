@@ -154,6 +154,7 @@ export interface KeypointSkeleton {
 interface BaseOptions {
   highlight: boolean;
   activePaths: string[];
+  fontSize?: number;
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];

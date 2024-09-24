@@ -1421,7 +1421,11 @@ class GroupImportExportTests(unittest.TestCase):
         group_indexes = {
             "id",
             "filepath",
+            "created_at",
+            "last_modified_at",
             "frames.id",
+            "frames.created_at",
+            "frames.last_modified_at",
             "frames._sample_id_1_frame_number_1",
             "group_field.id",
             "group_field.name",
@@ -1663,6 +1667,9 @@ class DynamicGroupTests(unittest.TestCase):
     @drop_datasets
     def test_group_by(self):
         dataset = _make_group_by_dataset()
+
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
+
         sample_id1, sample_id2 = dataset.limit(2).values("sample_id")
         counts = dataset.count_values("sample_id")
 
@@ -1677,7 +1684,7 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(len(view1), 2)
         self.assertSetEqual(
             set(dataset.list_indexes()),
-            {"id", "filepath", "sample_id"},
+            default_indexes | {"sample_id"},
         )
 
         sample = view1.first()
@@ -1739,7 +1746,13 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(len(view1), 2)
         self.assertSetEqual(
             set(dataset.list_indexes()),
-            {"id", "filepath", "_sample_id_1_frame_number_-1"},
+            {
+                "id",
+                "filepath",
+                "created_at",
+                "last_modified_at",
+                "_sample_id_1_frame_number_-1",
+            },
         )
 
         sample = view1.first()
@@ -1823,12 +1836,14 @@ class DynamicGroupTests(unittest.TestCase):
         dataset.add_sample_field("sample_id", fo.ObjectIdField)
         dataset.add_samples(samples)
 
+        default_indexes = {"id", "filepath", "created_at", "last_modified_at"}
+
         view = dataset.group_by(("sample_id", "device_id"))
 
         self.assertEqual(len(view), 4)
         self.assertSetEqual(
             set(dataset.list_indexes()),
-            {"id", "filepath", "_sample_id_1_device_id_1"},
+            default_indexes | {"_sample_id_1_device_id_1"},
         )
 
         also_view = fo.DatasetView._build(dataset, view._serialize())
@@ -1842,7 +1857,7 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(len(view2), 4)
         self.assertSetEqual(
             set(dataset2.list_indexes()),
-            {"id", "filepath", "_sample_id_1_device_id_1"},
+            default_indexes | {"_sample_id_1_device_id_1"},
         )
 
         also_view2 = fo.DatasetView._build(dataset2, view2._serialize())
@@ -1850,7 +1865,7 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(len(also_view2), 4)
         self.assertSetEqual(
             set(dataset2.list_indexes()),
-            {"id", "filepath", "_sample_id_1_device_id_1"},
+            default_indexes | {"_sample_id_1_device_id_1"},
         )
 
     @drop_datasets
@@ -2210,6 +2225,9 @@ class DynamicGroupTests(unittest.TestCase):
             name,
             field,
         ) in fome.ImageMetadata._fields.items():  # pylint: disable=no-member
+            if name.startswith("_"):
+                continue
+
             self.assertIsInstance(
                 dataset.get_field(f"metadata.{name}", include_private=True),
                 field.__class__,
@@ -2219,6 +2237,9 @@ class DynamicGroupTests(unittest.TestCase):
             name,
             field,
         ) in fome.VideoMetadata._fields.items():  # pylint: disable=no-member
+            if name.startswith("_"):
+                continue
+
             self.assertIsInstance(
                 dataset.get_field(f"metadata.{name}", include_private=True),
                 field.__class__,

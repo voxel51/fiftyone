@@ -1,4 +1,4 @@
-import LRUCache from "lru-cache";
+import { LRUCache } from "lru-cache";
 import { ImaVidFramesController } from "./controller";
 import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 import { PartitionId } from "./types";
@@ -8,7 +8,7 @@ import { PartitionId } from "./types";
  */
 export const ImaVidStore = new LRUCache<PartitionId, ImaVidFrameSamples>({
   max: 20,
-  dispose: (_partitionId, sampleFrames) => {
+  dispose: (sampleFrames) => {
     sampleFrames.reset();
   },
 });
@@ -18,7 +18,7 @@ export const ImaVidFramesControllerStore = new LRUCache<
   ImaVidFramesController
 >({
   max: 20,
-  dispose: (_partitionId, framesController) => {
+  dispose: (framesController) => {
     framesController.destroy();
   },
 });

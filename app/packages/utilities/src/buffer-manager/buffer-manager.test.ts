@@ -159,6 +159,21 @@ describe("BufferManager class tests", () => {
     expect(bufferManager.getRangeIndexForFrame(27)).toBe(-1);
   });
 
+  test("isValueInBuffer method", async () => {
+    bufferManager.addNewRange([2, 10]);
+    bufferManager.addNewRange([12, 25]);
+
+    expect(bufferManager.isValueInBuffer(2)).toBe(true);
+    expect(bufferManager.isValueInBuffer(10)).toBe(true);
+    expect(bufferManager.isValueInBuffer(12)).toBe(true);
+    expect(bufferManager.isValueInBuffer(25)).toBe(true);
+    expect(bufferManager.isValueInBuffer(5)).toBe(true);
+    expect(bufferManager.isValueInBuffer(14)).toBe(true);
+    expect(bufferManager.isValueInBuffer(27)).toBe(false);
+    expect(bufferManager.isValueInBuffer(1)).toBe(false);
+    expect(bufferManager.isValueInBuffer(11)).toBe(false);
+  });
+
   test("removeRangeAtIndex method", async () => {
     bufferManager.addNewRange([2, 10]);
     bufferManager.addNewRange([12, 25]);

@@ -3,6 +3,15 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+
+FiftyOne 0.25.2
+---------------
+*Released September 19, 2024*
+
+* Require `pymongo<4.9` to fix database connections
+* Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
+
+
 FiftyOne Teams 2.0.1
 --------------------
 *Released September 6, 2024*

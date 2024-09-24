@@ -19,6 +19,7 @@ __pycache__
 build/
 dist/
 
+/fiftyone-brain/
 /eta/
 
 /docs/build/
