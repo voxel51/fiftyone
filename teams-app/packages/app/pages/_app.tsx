@@ -22,7 +22,8 @@ import {
   FIFTYONE_APP_DEMO_MODE,
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
   FIFTYONE_APP_SERVICE_WORKER_ENABLED,
-  FIFTYONE_DO_NOT_TRACK_LS
+  FIFTYONE_DO_NOT_TRACK_LS,
+  APP_SERVICE_WORKER_TOKEN_HEADER_KEY
 } from '@fiftyone/teams-state/src/constants';
 import { registerServiceWorker } from 'lib/serviceWorkerUtils';
 import { AppProps } from 'next/app';
@@ -104,11 +105,21 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const { asPath } = useRouter();
   const router = useRouter();
   const [loading, setLoading] = useRecoilState(loadingState);
+
   const isServiceWorkerEnabled =
     useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === 'true' ||
     localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === 'true';
-  const doNotTrackLocalStorage = localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === 'true';
-  const isAnonymousAnaltyicsEnabled = useBooleanEnv(FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED, true)
+
+  const serviceWorkerHeaderKey = useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
+
+  const doNotTrackLocalStorage =
+    localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === 'true';
+
+  const isAnonymousAnaltyicsEnabled = useBooleanEnv(
+    FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED,
+    true
+  );
+
   const doNotTrack = doNotTrackLocalStorage || !isAnonymousAnaltyicsEnabled;
 
   const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
@@ -124,7 +135,6 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const analytics = usingAnalytics(analyticsInfo);
   const demoMode = useBooleanEnv(FIFTYONE_APP_DEMO_MODE);
 
-
   useEffect(() => {
     window.FIFTYONE_SEGMENT_WRITE_KEY = SEGMENT_WRITE_KEY;
     setAnalyticsInfo({
@@ -138,13 +148,13 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
     });
     if (isServiceWorkerEnabled) {
       window.LOOKER_CROSS_ORIGIN_MEDIA = true;
-      registerServiceWorker(asPath, token).then(() => {
+      registerServiceWorker(asPath, token, serviceWorkerHeaderKey).then(() => {
         setIsServiceWorkerReady(true);
       });
     } else {
       window.LOOKER_CROSS_ORIGIN_MEDIA = false;
     }
-  }, [isServiceWorkerEnabled, asPath, token]);
+  }, [isServiceWorkerEnabled, asPath, token, serviceWorkerHeaderKey]);
 
   useEffect(() => {
     router.events.on('routeChangeStart', () => {

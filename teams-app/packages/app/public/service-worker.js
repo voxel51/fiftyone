@@ -39,10 +39,16 @@ const supportedMediaExtensions = [
 const supportedDestinations = ['image', 'video'];
 const fetchEvent = () => {
   let jwt = '';
+  let jwtKeyName = '';
   self.addEventListener('fetch', async (e) => {
     try {
       if (!jwt) {
         jwt = new URLSearchParams(location.search).get('token');
+      }
+
+      // modifiable token key name
+      if (!jwtKeyName) {
+        jwtKeyName = new URLSearchParams(location.search).get('tokenKey');
       }
 
       // better way to detect (media) image/video
@@ -62,7 +68,7 @@ const fetchEvent = () => {
 
       // Clone headers and add 'jwt' property
       const newHeaders = new Headers(e.request.headers);
-      newHeaders.append('jwt', jwt);
+      newHeaders.set(jwtKeyName, jwt);
 
       // Create a new request with the new headers
       const modifiedRequest = new Request(e.request, {
