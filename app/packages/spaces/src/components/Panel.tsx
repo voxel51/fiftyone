@@ -49,7 +49,7 @@ function Panel(props: PanelProps) {
       className={scrollable}
       ref={dimensions.ref}
     >
-      <PanelContext.Provider value={{ node }}>
+      <PanelContext.Provider value={{ node, scope }}>
         <Component panelNode={node} dimensions={dimensions} />
       </PanelContext.Provider>
     </StyledPanel>
