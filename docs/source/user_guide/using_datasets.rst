@@ -1635,16 +1635,14 @@ editable at any time:
 Summary fields
 --------------
 
-Summary fields allow you to efficiently perform queries where directly querying
-the underlying field is prohibitively slow due to the number of objects/frames
-in the field.
+Summary fields allow you to efficiently perform queries on large datasets where
+directly querying the underlying field is prohibitively slow due to the number
+of objects/frames in the field.
 
-For example, as we'll see below, summary fields are useful for retrieving
-samples in a video dataset that contain specific values of interest in at least
-one frame.
-
-Use :meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
-to create a summary field for a given input field path:
+For example, suppose you're working on a
+:ref:`video dataset <video-datasets>` with frame-level objects, and you're
+interested in finding videos that contain specific classes of interest, eg
+`person`, in at least one frame:
 
 .. code-block:: python
     :linenos:
@@ -1656,6 +1654,25 @@ to create a summary field for a given input field path:
     dataset = foz.load_zoo_dataset("quickstart-video")
     dataset.set_field("frames.detections.detections.confidence", F.rand()).save()
 
+    session = fo.launch_app(dataset)
+
+.. image:: /images/datasets/quickstart-video.gif
+   :alt: quickstart-video
+   :align: center
+
+One approach is to directly query the frame-level field (`frames.detections`
+in this case) in the App's sidebar. However, when the dataset is large, such
+queries are inefficient, as they cannot
+:ref:`leverage indexes <app-indexed-filtering>` and thus require full
+collection scans over all frames to retrieve the relevant samples.
+
+A more efficient approach is to first use
+:meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
+to summarize the relevant input field path(s):
+
+.. code-block:: python
+    :linenos:
+
     # Generate a summary field for object labels
     field_name = dataset.create_summary_field("frames.detections.detections.label")
 
@@ -1665,15 +1682,6 @@ to create a summary field for a given input field path:
 
     # Generate a summary field for [min, max] confidences
     dataset.create_summary_field("frames.detections.detections.confidence")
-
-.. note::
-
-    Summary fields are :ref:`read-only <read-only-fields>`, as they are
-    implicitly derived from the contents of their source field and are not
-    intended to be directly modified.
-
-    They are also :ref:`indexed <app-indexed-filtering>` by default, so
-    filtering them :ref:`in the App <app-indexed-filtering>` is performant.
 
 Summary fields can be generated for sample-level and frame-level fields, and
 the input fields can be either categorical or numeric:
@@ -1752,6 +1760,28 @@ the input fields can be either categorical or numeric:
                 <DynamicEmbeddedDocument: {'label': 'road sign', 'min': 0.01, 'max': 0.99}>,
             ]
             """
+
+As the above examples illustrate, summary fields allow you to encode various
+types of information at the sample-level that you can directly query to find
+samples that contain specific values.
+
+Moreover, summary fields are :ref:`indexed <app-indexed-filtering>` by default
+and the App can natively leverage these indexes to provide performant
+filtering:
+
+.. image:: /images/datasets/quickstart-video-summary-fields.gif
+   :alt: quickstart-video-summary-fields
+   :align: center
+
+.. note::
+
+    Summary fields are automatically added to a `summaries`
+    :ref:`sidebar group <dataset-app-config-sidebar-groups>` in the App for
+    easy access and organization.
+
+    They are also :ref:`read-only <read-only-fields>` by default, as they are
+    implicitly derived from the contents of their source field and are not
+    intended to be directly modified.
 
 You can use
 :meth:`list_summary_fields() <fiftyone.core.dataset.Dataset.list_summary_fields>`
