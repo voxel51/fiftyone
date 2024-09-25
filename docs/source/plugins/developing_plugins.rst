@@ -1837,9 +1837,10 @@ subsequent sections.
                 # Whether to allow multiple instances of the panel to be opened
                 allow_multiple=False,
 
-                # Whether the panel should be made available in the grid, or
-                # the modal, or both (default = grid only)
-                surfaces="grid modal"
+                # Whether the panel should be available in the grid view
+                # modal view, or both
+                # Possible values: "grid", "modal", "grid modal"       
+                surfaces="grid modal" # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
                 # rendererd in a tooltip when the help icon in the panel
