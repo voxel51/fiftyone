@@ -31,6 +31,8 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+import { useAtomValue } from "jotai";
+import * as fop from "@fiftyone/playback";
 
 //
 // BUILT-IN OPERATORS
@@ -1211,6 +1213,56 @@ export class SetPanelTitle extends Operator {
   }
 }
 
+type SetPlayheadStateHooks = {
+  setPlayheadState: ReturnType<typeof fop.useUpdatePlayheadState>;
+};
+type SetPlayheadStateParams = { state: any; timeline_name?: string };
+export class SetPlayheadState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_playhead_state",
+      label: "Set playhead state",
+      unlisted: true,
+    });
+  }
+  useHooks(): SetPlayheadStateHooks {
+    const timeline = fop.useTimeline();
+    return {
+      setPlayheadState: (state: fop.PlayheadState) => {
+        timeline.setPlayHeadState(state);
+      },
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext): Promise<void> {
+    const { setPlayheadState } = hooks as SetPlayheadStateHooks;
+    const { state, timeline_name } = params as SetPlayheadStateParams;
+    setPlayheadState(state, timeline_name);
+  }
+}
+
+type SetFrameNumberParams = { timeline_name?: string; frame_number: number };
+class SetFrameNumber extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_frame_number",
+      label: "Set frame number",
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("timeline_name", { label: "Timeline name" });
+    inputs.int("frame_number", { label: "Frame number", required: true });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { frame_number, timeline_name } = ctx.params as SetFrameNumberParams;
+    fop.dispatchTimelineSetFrameNumberEvent({
+      timelineName: timeline_name,
+      newFrameNumber: frame_number,
+    });
+  }
+}
+
 export class ApplyPanelStatePath extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -1271,6 +1323,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
     _registerBuiltInOperator(ApplyPanelStatePath);
+    _registerBuiltInOperator(SetPlayheadState);
+    _registerBuiltInOperator(SetFrameNumber);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
