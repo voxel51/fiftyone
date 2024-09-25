@@ -1240,7 +1240,7 @@ export class SetPlayheadState extends Operator {
   }
   async execute({ hooks, params }: ExecutionContext): Promise<void> {
     const { setPlayheadState } = hooks as SetPlayheadStateHooks;
-    const { state, timeline_name } = params as SetPlayheadStateParams;
+    const { state } = params as SetPlayheadStateParams;
     setPlayheadState(state);
   }
 }
@@ -1256,7 +1256,11 @@ class SetFrameNumber extends Operator {
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("timeline_name", { label: "Timeline name" });
-    inputs.int("frame_number", { label: "Frame number", required: true });
+    inputs.int("frame_number", {
+      label: "Frame number",
+      required: true,
+      min: 0,
+    });
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
