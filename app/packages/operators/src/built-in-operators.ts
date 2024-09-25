@@ -1225,6 +1225,29 @@ export class ApplyPanelStatePath extends Operator {
   }
 }
 
+export class SetGroupSlice extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_group_slice",
+      label: "Set group slice",
+      // unlisted: true,
+    });
+  }
+  useHooks() {
+    const setSlice = fos.useSetGroupSlice();
+    return { setSlice };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("slice", { label: "Group slice", required: true });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { slice } = ctx.params;
+    ctx.hooks.setSlice(slice);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1271,6 +1294,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
     _registerBuiltInOperator(ApplyPanelStatePath);
+    _registerBuiltInOperator(SetGroupSlice);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

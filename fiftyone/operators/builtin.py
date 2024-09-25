@@ -1518,7 +1518,8 @@ class RenameGroupSlice(foo.Operator):
         new_name = ctx.params["new_name"]
 
         ctx.dataset.rename_group_slice(name, new_name)
-        ctx.trigger("reload_dataset")
+        ctx.ops.set_group_slice(new_name)
+        ctx.ops.reload_dataset()
 
 
 class DeleteGroupSlice(foo.Operator):
@@ -1564,7 +1565,17 @@ class DeleteGroupSlice(foo.Operator):
         name = ctx.params["name"]
 
         ctx.dataset.delete_group_slice(name)
-        ctx.trigger("reload_dataset")
+        group_slices = ctx.dataset.group_slices
+        selected_group_slice = next(
+            (
+                group_slice
+                for group_slice in group_slices
+                if group_slice != name
+            ),
+            None,
+        )
+        ctx.ops.set_group_slice(selected_group_slice)
+        ctx.ops.reload_dataset()
 
 
 class ListSavedViews(foo.Operator):
