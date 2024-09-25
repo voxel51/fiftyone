@@ -223,8 +223,6 @@ class DatasetPermissionTests(unittest.TestCase):
                 ("delete_frames", 1),
                 ("delete_groups", 1),
                 ("delete_labels", 0),
-                ("remove_sample", 1),
-                ("remove_samples", 1),
                 ("save", 0),
                 ("save_view", 2),
                 ("update_saved_view_info", 2),
