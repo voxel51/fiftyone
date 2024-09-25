@@ -1215,7 +1215,11 @@ export class SetPanelTitle extends Operator {
 type SetPlayheadStateHooks = {
   setPlayheadState: (state: fop.PlayheadState, timeline_name?: string) => void;
 };
-type SetPlayheadStateParams = { state: any; timeline_name?: string };
+type SetPlayheadStateParams = {
+  state: fop.PlayheadState;
+  timeline_name?: string;
+};
+
 export class SetPlayheadState extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
