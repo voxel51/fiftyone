@@ -4357,6 +4357,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_ids=sample_ids
             )
 
+    @requires_can_edit
     def save(self):
         """Saves the dataset to the database.
 
