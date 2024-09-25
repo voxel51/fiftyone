@@ -1,14 +1,16 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
-import { RecoilState, useRecoilValue } from "recoil";
+import type { RecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
 import Checkboxes from "./Checkboxes";
 import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
-import useSelected, { ResultsAtom } from "./useSelected";
+import type { ResultsAtom } from "./useSelected";
+import useSelected from "./useSelected";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -32,13 +34,14 @@ const NamedStringFilterHeader = styled.div`
 `;
 
 interface Props {
-  selectedAtom: RecoilState<(string | null)[]>;
+  color: string;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
-  resultsAtom: ResultsAtom;
   modal: boolean;
   path: string;
   named?: boolean;
+  resultsAtom: ResultsAtom;
+  selectedAtom: RecoilState<(string | null)[]>;
 }
 
 const useName = (path: string) => {
@@ -53,13 +56,14 @@ const useName = (path: string) => {
 };
 
 const StringFilter = ({
-  resultsAtom,
-  selectedAtom,
+  color,
   excludeAtom,
   isMatchingAtom,
-  path,
   modal,
   named = true,
+  path,
+  resultsAtom,
+  selectedAtom,
 }: Props) => {
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
@@ -73,7 +77,6 @@ const StringFilter = ({
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
   const theme = useTheme();
-  const color = useRecoilValue(fos.pathColor(path));
   const lightningOn = useRecoilValue(fos.lightning);
   const lightningPath = useRecoilValue(fos.isLightningPath(path));
   const lightning = lightningOn && lightningPath && !modal;
@@ -121,12 +124,13 @@ const StringFilter = ({
           />
         )}
         <Checkboxes
+          color={color}
+          excludeAtom={excludeAtom}
+          modal={modal}
+          isMatchingAtom={isMatchingAtom}
           path={path}
           results={results?.results || null}
           selectedAtom={selectedAtom}
-          excludeAtom={excludeAtom}
-          isMatchingAtom={isMatchingAtom}
-          modal={modal}
         />
       </StringFilterContainer>
     </NamedStringFilterContainer>

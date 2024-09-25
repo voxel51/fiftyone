@@ -1,4 +1,3 @@
-import { Field } from "@fiftyone/utilities";
 import styled from "styled-components";
 
 export const InputDiv = styled.div`
@@ -52,15 +51,3 @@ export const FilterInputDiv = styled.div`
     padding: 3px;
   }
 `;
-
-export const makePseudoField = (path: string): Field => ({
-  name: path.split(".").slice(1).join("."),
-  ftype: "",
-  subfield: null,
-  description: "",
-  info: null,
-  fields: {},
-  dbField: null,
-  path: path,
-  embeddedDocType: null,
-});

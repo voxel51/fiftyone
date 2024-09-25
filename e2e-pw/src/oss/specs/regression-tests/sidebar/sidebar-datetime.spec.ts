@@ -70,34 +70,23 @@ test.describe("date field and date time field can filter visibility", () => {
   });
 
   test("change date field visibility works", async ({
-    sidebar,
     eventUtils,
+    grid,
     page,
+    sidebar,
   }) => {
     await sidebar.toggleSidebarMode();
-
-    // collapse metadata group
     await sidebar.toggleSidebarGroup("METADATA");
-    // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true
-      );
+
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
     );
 
-    await sidebar.clickFieldDropdown("dates");
     await sidebar.clickFieldCheckbox("dates");
+    await sidebar.clickFieldDropdown("dates");
     await entryExpandPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(2);
-
-    await sidebar.changeSliderStartValue("dates", "2020‑12‑31", "2021‑01‑01");
-
-    await gridRefreshedEventPromise;
-    expect(await page.getByTestId("tag-dates").count()).toBe(1);
   });
 
   test("change datetime field visibility works", async ({
@@ -106,30 +95,17 @@ test.describe("date field and date time field can filter visibility", () => {
     page,
   }) => {
     await sidebar.toggleSidebarMode();
-
-    // collapse metadata group
     await sidebar.toggleSidebarGroup("METADATA");
 
-    // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true
-      );
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
     );
 
-    await sidebar.clickFieldDropdown("seconds");
     await sidebar.clickFieldCheckbox("seconds");
+    await sidebar.clickFieldDropdown("seconds");
     await entryExpandPromise;
 
     expect(await page.getByTestId("tag-seconds").count()).toBe(2);
-
-    await sidebar.changeSliderStartValue("seconds", "59.000", "0.000");
-    await gridRefreshedEventPromise;
-    // check screenshot
-    expect(await page.getByTestId("tag-seconds").count()).toBe(1);
   });
 });

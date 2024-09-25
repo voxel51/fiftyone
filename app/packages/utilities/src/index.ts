@@ -618,6 +618,45 @@ export const formatDate = (timeStamp: number): string => {
     .replaceAll("/", "-");
 };
 
+export const formatPrimitive = ({
+  ftype,
+  timeZone,
+  value,
+}: {
+  ftype: string;
+  timeZone: string;
+  value: unknown;
+}) => {
+  if (value === null || value === undefined) return undefined;
+
+  switch (ftype) {
+    case FRAME_SUPPORT_FIELD:
+      value = `[${value[0]}, ${value[1]}]`;
+      break;
+    case DATE_FIELD:
+      // @ts-ignore
+      value = formatDate(value.datetime as number);
+      break;
+    case DATE_TIME_FIELD:
+      // @ts-ignore
+      value = formatDateTime(value.datetime as number, timeZone);
+  }
+
+  return prettify(String(value));
+};
+
+export const makePseudoField = (path: string): Field => ({
+  name: path.split(".").slice(1).join("."),
+  ftype: "",
+  subfield: null,
+  description: "",
+  info: null,
+  fields: {},
+  dbField: null,
+  path: path,
+  embeddedDocType: null,
+});
+
 type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;
 };

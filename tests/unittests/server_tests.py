@@ -5,6 +5,7 @@ FiftyOne server-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import math
 import unittest
 
@@ -854,6 +855,89 @@ class ServerViewTests(unittest.TestCase):
                 "predictions.detections.label": {
                     "values": ["carrot"],
                     "exclude": False,
+                    "isMatching": False,
+                }
+            },
+        )
+        self.assertEqual(len(view), 1)
+
+    @drop_datasets
+    def test_filter_embedded_documents(self):
+        dataset = fod.Dataset("test")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                documents=[
+                    fo.DynamicEmbeddedDocument(value="one"),
+                    fo.DynamicEmbeddedDocument(value="two"),
+                ],
+            )
+        )
+        dataset.add_dynamic_sample_fields()
+
+        # match and filter
+        view = fosv.get_view(
+            dataset.name,
+            filters={
+                "documents.value": {
+                    "values": ["two"],
+                    "exclude": False,
+                    "isMatching": False,
+                }
+            },
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+        self.assertEqual(len(sample.documents), 1)
+        self.assertEqual(sample.documents[0].value, "two")
+
+        # matching
+        view = fosv.get_view(
+            dataset.name,
+            filters={
+                "documents.value": {
+                    "values": ["two"],
+                    "exclude": False,
+                    "isMatching": True,
+                }
+            },
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+        self.assertEqual(len(sample.documents), 2)
+
+        # excluded matching
+        view = fosv.get_view(
+            dataset.name,
+            filters={
+                "documents.value": {
+                    "values": ["two"],
+                    "exclude": True,
+                    "isMatching": True,
+                }
+            },
+        )
+        self.assertEqual(len(view), 0)
+
+        view = fosv.get_view(
+            dataset.name,
+            filters={
+                "documents.value": {
+                    "values": ["other"],
+                    "exclude": True,
+                    "isMatching": True,
+                }
+            },
+        )
+        self.assertEqual(len(view), 1)
+
+        # excluded filtering
+        view = fosv.get_view(
+            dataset.name,
+            filters={
+                "documents.value": {
+                    "values": ["other"],
+                    "exclude": True,
                     "isMatching": False,
                 }
             },

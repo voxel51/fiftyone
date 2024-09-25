@@ -1,9 +1,10 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { Tune } from "@mui/icons-material";
 import React from "react";
-import { RecoilState, useSetRecoilState } from "recoil";
-import DisabledReason from "./DisabledReason";
+import type { RecoilState } from "recoil";
+import { useSetRecoilState } from "recoil";
 import { LIGHTNING_MODE } from "../../../../utils/links";
+import DisabledReason from "./DisabledReason";
 
 export default ({
   color,
