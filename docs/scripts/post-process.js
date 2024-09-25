@@ -7,7 +7,7 @@ const htmlFiles = findHTMLFiles(buildPath);
 
 const substitutions = {
   __SUB_NEW__:
-    '<strong style="color: hsl(25, 100%, 51%); font-size: 12px">NEW</strong>',
+    '<strong style="color: hsl(25, 100%, 51%); font-size: 0.85em; vertical-align: top">NEW</strong>',
 };
 
 for (const file of htmlFiles) {
