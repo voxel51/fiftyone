@@ -269,6 +269,8 @@ class PlyMesh(Mesh):
             absolute or relative to the directory containing the ``.fo3d`` file
         is_point_cloud (bool): whether the PLY file is a point cloud. Defaults
             to ``False``
+        center_geometry (bool): whether to center the geometry. Defaults to
+            ``True``
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             default material for the mesh if PLY file does not contain
             vertex colors. Defaults to
