@@ -472,15 +472,15 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
-   FiftyOne Teams 🚀<teams/index>
+   FiftyOne Teams 🚀 <teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   Dataset Zoo <dataset_zoo/index>
-   Model Zoo <model_zoo/index>
+   Dataset Zoo __SUB_NEW__ <dataset_zoo/index>
+   Model Zoo __SUB_NEW__ <model_zoo/index>
    FiftyOne Brain <brain>
    Integrations <integrations/index>
    Plugins <plugins/index>
