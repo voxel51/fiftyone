@@ -1148,6 +1148,31 @@ class CreateSummaryField(foo.Operator):
 
 def _create_summary_field_inputs(ctx, inputs):
     schema = ctx.dataset.get_field_schema(flat=True)
+    if ctx.dataset._has_frame_fields():
+        frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
+        schema.update(
+            {
+                ctx.dataset._FRAMES_PREFIX + path: field
+                for path, field in frame_schema.items()
+            }
+        )
+
+    categorical_field_types = (fo.StringField, fo.BooleanField)
+    numeric_field_types = (
+        fo.FloatField,
+        fo.IntField,
+        fo.DateField,
+        fo.DateTimeField,
+    )
+
+    schema = {
+        p: f
+        for p, f in schema.items()
+        if (
+            isinstance(f, categorical_field_types)
+            or isinstance(f, numeric_field_types)
+        )
+    }
 
     path_keys = list(schema.keys())
     path_selector = types.AutocompleteView()
@@ -1215,17 +1240,7 @@ def _create_summary_field_inputs(ctx, inputs):
     )
 
     field = schema.get(path, None)
-    if isinstance(field, (fo.StringField, fo.BooleanField)):
-        field_type = "categorical"
-    elif isinstance(
-        field,
-        (fo.FloatField, fo.IntField, fo.DateField, fo.DateTimeField),
-    ):
-        field_type = "numeric"
-    else:
-        field_type = None
-
-    if field_type == "categorical":
+    if isinstance(field, categorical_field_types):
         inputs.bool(
             "include_counts",
             label="Include counts",
@@ -1235,7 +1250,7 @@ def _create_summary_field_inputs(ctx, inputs):
             ),
             default=False,
         )
-    elif field_type == "numeric":
+    elif isinstance(field, numeric_field_types):
         group_prefix = path.rsplit(".", 1)[0] + "."
         group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
         group_by_selector = types.AutocompleteView()
