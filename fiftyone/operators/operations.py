@@ -630,10 +630,10 @@ class Operations(object):
         )
 
     def set_group_slice(self, slice):
-        """Set the group slices in the App.
+        """Set the active group slice in the App.
 
         Args:
-            slice: the group slice to set
+            slice: the group slice to activate
         """
         return self._ctx.trigger("set_group_slice", {"slice": slice})
 
