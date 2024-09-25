@@ -5,6 +5,7 @@ import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
+import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
@@ -21,6 +22,7 @@ export class ModalPom {
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
+  readonly imavid: ModalImaAsVideoControlsPom;
   readonly video: ModalVideoControlsPom;
   readonly looker3dControls: Looker3DControlsPom;
 
@@ -40,6 +42,7 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.sidebar = new ModalSidebarPom(page);
     this.url = new UrlPom(page, eventUtils);
+    this.imavid = new ModalImaAsVideoControlsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
   }

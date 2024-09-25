@@ -6,17 +6,17 @@ import {
   FrameState,
   ImaVidState,
   ImageState,
-  ThreeDState,
   StateUpdate,
+  ThreeDState,
   VideoState,
 } from "../state";
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
+import * as imavid from "./imavid";
 import * as pcd from "./three-d";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
-import * as imavid from "./imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
@@ -207,33 +207,34 @@ export const getImaVidElements: GetElements<ImaVidState> = (
   dispatchEvent,
   batchUpdate
 ) => {
-  const elements = {
-    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
-    children: [
+  const isThumbnail = config.thumbnail;
+  const children: Array<unknown> = [
+    {
+      node: imavid.ImaVidElement,
+    },
+    {
+      node: common.CanvasElement,
+    },
+    {
+      node: common.ErrorElement,
+    },
+    { node: common.TagsElement },
+    {
+      node: common.ThumbnailSelectorElement,
+    },
+  ];
+
+  if (isThumbnail) {
+    children.push({
+      node: imavid.LoaderBar,
+    });
+  }
+
+  children.push(
+    ...[
       {
-        node: imavid.ImaVidElement,
-      },
-      {
-        node: common.CanvasElement,
-      },
-      {
-        node: common.ErrorElement,
-      },
-      { node: common.TagsElement },
-      {
-        node: common.ThumbnailSelectorElement,
-      },
-      {
-        node: imavid.LoaderBar,
-      },
-      {
-        node: common.ControlsElement,
+        node: imavid.ImaVidControlsElement,
         children: [
-          { node: imavid.SeekBarElement },
-          { node: imavid.SeekBarThumbElement },
-          { node: imavid.PlayButtonElement },
-          { node: imavid.FrameCountElement },
-          imavid.IMAVID_PLAYBACK_RATE,
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
@@ -254,7 +255,12 @@ export const getImaVidElements: GetElements<ImaVidState> = (
           { node: common.ShowTooltipOptionElement },
         ],
       },
-    ],
+    ]
+  );
+
+  const elements = {
+    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
+    children,
   };
 
   return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(

@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
+import { AbstractLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
@@ -7,9 +7,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
+import { useModalContext } from "./hooks";
+import { ImaVidLookerReact } from "./ImaVidLooker";
 
-const useLookerOptionsUpdate = () => {
+export const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async (update: object, updater?: (updated: {}) => void) => {
@@ -30,13 +31,13 @@ const useLookerOptionsUpdate = () => {
   );
 };
 
-const useShowOverlays = () => {
+export const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
     set(fos.showOverlays, event.detail);
   });
 };
 
-const useClearSelectedLabels = () => {
+export const useClearSelectedLabels = () => {
   return useRecoilCallback(
     ({ set }) =>
       async () =>
@@ -50,37 +51,19 @@ interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export const ModalLooker = React.memo(
-  ({ sample: propsSampleData }: LookerProps) => {
+const ModalLookerNoTimeline = React.memo(
+  ({ sample: sampleDataWithExtraParams }: LookerProps) => {
     const [id] = useState(() => uuid());
-
-    const modalSampleData = useRecoilValue(fos.modalSample);
     const colorScheme = useRecoilValue(fos.colorScheme);
 
-    const sampleData = useMemo(() => {
-      if (propsSampleData) {
-        return {
-          ...modalSampleData,
-          ...propsSampleData,
-        };
-      }
-
-      return modalSampleData;
-    }, [propsSampleData, modalSampleData]);
-
-    const { sample } = sampleData;
+    const { sample } = sampleDataWithExtraParams;
 
     const theme = useTheme();
     const initialRef = useRef<boolean>(true);
     const lookerOptions = fos.useLookerOptions(true);
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
-    const shouldRenderImaVidLooker = useRecoilValue(
-      fos.shouldRenderImaVidLooker(true)
-    );
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const { subscribeToImaVidStateChanges } =
-      useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -89,16 +72,13 @@ export const ModalLooker = React.memo(
     const { setActiveLookerRef } = useModalContext();
 
     const looker = React.useMemo(
-      () => createLooker.current(sampleData),
-      [reset, createLooker, selectedMediaField, shouldRenderImaVidLooker]
+      () => createLooker.current(sampleDataWithExtraParams),
+      [reset, createLooker, selectedMediaField]
     ) as AbstractLooker<BaseState>;
 
     useEffect(() => {
       setModalLooker(looker);
-      if (looker instanceof ImaVidLooker) {
-        subscribeToImaVidStateChanges();
-      }
-    }, [looker, subscribeToImaVidStateChanges]);
+    }, [looker]);
 
     useEffect(() => {
       if (looker) {
@@ -137,12 +117,7 @@ export const ModalLooker = React.memo(
       "panels",
       async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
         if (showJSON) {
-          if (shouldRenderImaVidLooker) {
-            const imaVidFrameSample = (looker as ImaVidLooker).thisFrameSample;
-            jsonPanel[showJSON](imaVidFrameSample);
-          } else {
-            jsonPanel[showJSON](sample);
-          }
+          jsonPanel[showJSON](sample);
         }
         if (showHelp) {
           if (showHelp == "close") {
@@ -174,14 +149,12 @@ export const ModalLooker = React.memo(
       const hoveredSampleId = hoveredSample?._id;
       looker.updater((state) => ({
         ...state,
-        // todo: `|| shouldRenderImaVidLooker` is a hack until hoveredSample works for imavid looker
-        shouldHandleKeyEvents:
-          hoveredSampleId === sample._id || shouldRenderImaVidLooker,
+        shouldHandleKeyEvents: hoveredSampleId === sample._id,
         options: {
           ...state.options,
         },
       }));
-    }, [hoveredSample, sample, looker, shouldRenderImaVidLooker]);
+    }, [hoveredSample, sample, looker]);
 
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -206,7 +179,34 @@ export const ModalLooker = React.memo(
   }
 );
 
-function shortcutToHelpItems(SHORTCUTS) {
+export const ModalLooker = React.memo(
+  ({ sample: propsSampleData }: LookerProps) => {
+    const modalSampleData = useRecoilValue(fos.modalSample);
+
+    const sample = useMemo(() => {
+      if (propsSampleData) {
+        return {
+          ...modalSampleData,
+          ...propsSampleData,
+        };
+      }
+
+      return modalSampleData;
+    }, [propsSampleData, modalSampleData]);
+
+    const shouldRenderImavid = useRecoilValue(
+      fos.shouldRenderImaVidLooker(true)
+    );
+
+    if (shouldRenderImavid) {
+      return <ImaVidLookerReact sample={sample} />;
+    }
+
+    return <ModalLookerNoTimeline sample={sample} />;
+  }
+);
+
+export function shortcutToHelpItems(SHORTCUTS) {
   return Object.values(
     Object.values(SHORTCUTS).reduce((acc, v) => {
       acc[v.shortcut] = v;
