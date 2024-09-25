@@ -16,7 +16,6 @@ import {
 import {
   MANAGE_ORGANIZATION,
   mainTitleSelector,
-  securityDisplayRolesQuery,
   settingsTeamInviteTeammateOpen,
   settingsTeamSelectedUserId,
   teamUsersListQuery,

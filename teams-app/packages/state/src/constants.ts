@@ -391,3 +391,6 @@ export const EXPORT_OPTIONS = {
 };
 
 export const SALES_CONTACT = 'mailto:sales@voxel51.com';
+export const INVITE_URL_HELPER_TEXT = `
+  Share this link with your teammate and instruct them to login using the
+  email address you provided above.`;
