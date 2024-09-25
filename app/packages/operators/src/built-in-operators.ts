@@ -12,6 +12,7 @@ import * as types from "./types";
 
 import { useTrackEvent } from "@fiftyone/analytics";
 import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
+import * as fop from "@fiftyone/playback";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
@@ -31,8 +32,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { useAtomValue } from "jotai";
-import * as fop from "@fiftyone/playback";
 
 //
 // BUILT-IN OPERATORS
