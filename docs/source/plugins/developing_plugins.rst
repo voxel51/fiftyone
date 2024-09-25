@@ -1774,10 +1774,11 @@ Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
 Depending on the ``surfaces`` panel config, panels can be scoped to either
-the grid or the modal, and can be opened from the "+" menu - available both
-in the grid and the modal. Whereas grid panels unlock extensibility in the
-macro level of datasets, modal panels unlock extensibility in the micro level
-of samples.
+the grid or the modal. You can open these panels from the "+" menu, which
+is available in both the grid and modal views. Whereas grid panels enable
+extensibility at the macro level, allowing you to work with entire datasets,
+modal panels provide extensibility at the micro level, focusing on individual
+samples and scenarios.
 
 Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
