@@ -56,10 +56,11 @@ class ReloadDataset extends Operator {
       label: "Reload the dataset",
     });
   }
-  async execute() {
-    // TODO - improve this... this is a temp. workaround for the fact that
-    // there is no way to force reload just the dataset
-    window.location.reload();
+  useHooks() {
+    return { refresh: fos.useRefresh() };
+  }
+  async execute({ hooks }) {
+    hooks.refresh();
   }
 }
 class ClearSelectedSamples extends Operator {

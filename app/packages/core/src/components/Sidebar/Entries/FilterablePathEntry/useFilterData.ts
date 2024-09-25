@@ -1,10 +1,10 @@
-import { KeypointSkeleton } from "@fiftyone/looker/src/state";
+import type { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { getSkeleton } from "@fiftyone/state";
+import type { Field } from "@fiftyone/utilities";
 import {
   DETECTION,
   DETECTIONS,
-  Field,
   KEYPOINTS,
   LABELS,
   LABELS_PATH,
@@ -17,7 +17,7 @@ import {
 } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import FilterItem from "./FilterItem";
+import type FilterItem from "./FilterItem";
 
 const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
@@ -25,6 +25,7 @@ const EXCLUDED = {
 };
 
 export const getFilterItemsProps = (
+  color: string,
   path: string,
   modal: boolean,
   parent: Field | null,
@@ -34,11 +35,12 @@ export const getFilterItemsProps = (
   if (path === "_label_tags") {
     return [
       {
+        color,
         ftype: "_LABEL_TAGS",
-        title: `${LIST_FIELD}(${STRING_FIELD})`,
-        path: path,
-        modal: modal,
         listField: false,
+        modal: modal,
+        path: path,
+        title: `${LIST_FIELD}(${STRING_FIELD})`,
       },
     ];
   }
@@ -55,11 +57,12 @@ export const getFilterItemsProps = (
 
     return [
       {
+        color,
         ftype,
-        path,
+        listField,
         modal,
         named: false,
-        listField,
+        path,
       },
     ];
   }
@@ -77,6 +80,7 @@ export const getFilterItemsProps = (
 
     if (skeleton(p)) {
       extra.push({
+        color,
         path: [path, "points"].join("."),
         modal,
         named: true,
@@ -105,6 +109,7 @@ export const getFilterItemsProps = (
       }
 
       return {
+        color,
         path: [path, name].join("."),
         modal,
         ftype,
@@ -121,6 +126,7 @@ const useFilterData = (
   filter?: (path: string) => boolean
 ) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
+  const color = useRecoilValue(fos.pathColor(path));
   const field = useRecoilValue(fos.field(path));
   const fields = useRecoilValue(
     fos.fields({
@@ -132,6 +138,7 @@ const useFilterData = (
   const skeleton = useRecoilValue(getSkeleton);
   return useMemo(() => {
     const data = getFilterItemsProps(
+      color,
       expandedPath,
       modal,
       field,
@@ -144,7 +151,7 @@ const useFilterData = (
       data: filtered,
       removed: rest,
     };
-  }, [field, fields, filter, expandedPath, modal, skeleton]);
+  }, [color, expandedPath, field, fields, filter, modal, skeleton]);
 };
 
 export default useFilterData;

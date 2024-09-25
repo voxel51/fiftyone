@@ -1,7 +1,7 @@
-import { Optional, useEventHandler } from "@fiftyone/state";
+import { Optional, useEventHandler, useKeydownHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
@@ -16,12 +16,13 @@ import {
   updatePlayheadStateAtom,
 } from "../lib/state";
 import { DEFAULT_FRAME_NUMBER } from "./constants";
-import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
+import { getTimelineSetFrameNumberEventName } from "./utils";
 
 /**
  * This hook creates a new timeline with the given configuration.
  *
- * @param newTimelineConfig - The configuration for the new timeline. `name` is
+ * @param newTimelineProps - The configuration for the new timeline. `name` is
  * optional and defaults to an internal global timeline ID scoped to the current modal.
  *
  * @returns An object with the following properties:
@@ -29,19 +30,19 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
  * - `subscribe`: A function that subscribes to the timeline.
  */
 export const useCreateTimeline = (
-  newTimelineConfig: Optional<CreateFoTimeline, "name">
+  newTimelineProps: Optional<CreateFoTimeline, "name">
 ) => {
-  const { getName } = useDefaultTimelineName();
-  const { name: mayBeTimelineName } = newTimelineConfig;
+  const { getName } = useDefaultTimelineNameImperative();
+  const { name: mayBeTimelineName } = newTimelineProps;
 
   const timelineName = useMemo(
     () => mayBeTimelineName ?? getName(),
     [mayBeTimelineName, getName]
   );
 
-  const [isTimelineInitialized, setIsTimelineInitialized] = useState(false);
+  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
+    useAtomValue(getTimelineConfigAtom(timelineName));
 
-  const config = useAtomValue(getTimelineConfigAtom(timelineName));
   const frameNumber = useAtomValue(getFrameNumberAtom(timelineName));
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const updateFreq = useAtomValue(getTimelineUpdateFreqAtom(timelineName));
@@ -55,28 +56,45 @@ export const useCreateTimeline = (
    * this effect creates the timeline
    */
   useEffect(() => {
-    addTimeline({ name: timelineName, config: newTimelineConfig.config });
+    // missing config might be used as a technique to delay the initialization of the timeline
+    if (!newTimelineProps.config) {
+      return;
+    }
+
+    addTimeline({ name: timelineName, config: newTimelineProps.config });
 
     // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
 
-    setIsTimelineInitialized(true);
-
     return () => {
       // when component using this hook unmounts, pause animation
-      // pause();
+      pause();
+      // timeline cleanup is handled by `_INTERNAL_timelineConfigsLruCache::dispose()`
     };
+
     // note: we're not using newTimelineConfig.config as a dependency
     // because it's not guaranteed to be referentially stable.
     // that would require caller to memoize the passed config object.
-    // using just the timelineName as a dependency is fine.
-  }, [addTimeline, timelineName]);
+    // instead use constituent properties of the config object that are primitives
+    // or referentially stable
+  }, [
+    addTimeline,
+    timelineName,
+    newTimelineProps.waitUntilInitialized,
+    newTimelineProps.optOutOfAnimation,
+    newTimelineProps.config?.loop,
+    newTimelineProps.config?.totalFrames,
+  ]);
 
   /**
    * this effect starts or stops the animation
    * based on the playhead state
    */
   useEffect(() => {
+    if (!isTimelineInitialized || newTimelineProps.optOutOfAnimation) {
+      return;
+    }
+
     if (playHeadState === "playing") {
       startAnimation();
     }
@@ -86,7 +104,11 @@ export const useCreateTimeline = (
     }
 
     playHeadStateRef.current = playHeadState;
-  }, [playHeadState]);
+  }, [
+    isTimelineInitialized,
+    playHeadState,
+    newTimelineProps.optOutOfAnimation,
+  ]);
 
   /**
    * this effect establishes a binding with externally
@@ -115,17 +137,26 @@ export const useCreateTimeline = (
   const isAnimationActiveRef = useRef(false);
   const isLastDrawFinishedRef = useRef(true);
   const frameNumberRef = useRef(frameNumber);
+  const onPlayListenerRef = useRef<() => void>();
+  const onPauseListenerRef = useRef<() => void>();
+  const onSeekCallbackRefs = useRef<{ start: () => void; end: () => void }>();
   const lastDrawTime = useRef(-1);
   const playHeadStateRef = useRef(playHeadState);
   const updateFreqRef = useRef(updateFreq);
 
   const play = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "playing" });
+    if (onPlayListenerRef.current) {
+      onPlayListenerRef.current();
+    }
   }, [timelineName]);
 
   const pause = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "paused" });
     cancelAnimation();
+    if (onPauseListenerRef.current) {
+      onPauseListenerRef.current();
+    }
   }, [timelineName]);
 
   const onPlayEvent = useCallback(
@@ -133,7 +164,6 @@ export const useCreateTimeline = (
       if (e.detail.timelineName !== timelineName) {
         return;
       }
-
       play();
       e.stopPropagation();
     },
@@ -147,6 +177,24 @@ export const useCreateTimeline = (
       }
 
       pause();
+      e.stopPropagation();
+    },
+    [timelineName]
+  );
+
+  const onSeek = useCallback(
+    (e: CustomEvent) => {
+      if (e.detail.timelineName !== timelineName) {
+        return;
+      }
+
+      if (onSeekCallbackRefs.current) {
+        if (e.detail.start) {
+          onSeekCallbackRefs.current.start();
+        } else {
+          onSeekCallbackRefs.current.end();
+        }
+      }
       e.stopPropagation();
     },
     [timelineName]
@@ -248,6 +296,7 @@ export const useCreateTimeline = (
 
   useEventHandler(window, "play", onPlayEvent);
   useEventHandler(window, "pause", onPauseEvent);
+  useEventHandler(window, "seek", onSeek);
 
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
@@ -270,6 +319,10 @@ export const useCreateTimeline = (
     )
   );
 
+  /**
+   * This effect synchronizes all timelines with the frame number
+   * on load.
+   */
   useEffect(() => {
     if (!isTimelineInitialized) {
       return;
@@ -280,5 +333,103 @@ export const useCreateTimeline = (
     });
   }, [isTimelineInitialized, refresh]);
 
-  return { isTimelineInitialized, refresh, subscribe };
+  const keyDownHandler = useCallback(
+    (e: KeyboardEvent) => {
+      // skip if we're in an input field
+      if (e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      if (key === " ") {
+        if (playHeadState === "paused") {
+          play();
+        } else {
+          pause();
+        }
+        e.stopPropagation();
+      } else if (key === ",") {
+        pause();
+        setFrameNumber({
+          name: timelineName,
+          newFrameNumber: Math.max(frameNumberRef.current - 1, 1),
+        });
+        e.stopPropagation();
+      } else if (key === ".") {
+        pause();
+        setFrameNumber({
+          name: timelineName,
+          newFrameNumber: Math.min(
+            frameNumberRef.current + 1,
+            configRef.current.totalFrames
+          ),
+        });
+        e.stopPropagation();
+      }
+    },
+    [play, pause, playHeadState]
+  );
+
+  useKeydownHandler(keyDownHandler);
+
+  const setFrameEventName = useMemo(
+    () => getTimelineSetFrameNumberEventName(timelineName),
+    [timelineName]
+  );
+
+  const setFrameNumberFromEventHandler = useCallback(
+    (e: CustomEvent) => {
+      pause();
+      setFrameNumber({
+        name: timelineName,
+        newFrameNumber: e.detail.frameNumber,
+      });
+    },
+    [timelineName]
+  );
+
+  useEventHandler(window, setFrameEventName, setFrameNumberFromEventHandler);
+
+  const registerOnPlayCallback = useCallback((listener: () => void) => {
+    onPlayListenerRef.current = listener;
+  }, []);
+
+  const registerOnPauseCallback = useCallback((listener: () => void) => {
+    onPauseListenerRef.current = listener;
+  }, []);
+
+  const registerOnSeekCallbacks = useCallback(
+    ({ start, end }: { start: () => void; end: () => void }) => {
+      onSeekCallbackRefs.current = { start, end };
+    },
+    []
+  );
+
+  return {
+    /**
+     * Whether the timeline has been initialized.
+     */
+    isTimelineInitialized,
+    /**
+     * Callback which is invoked when the timeline's playhead state is set to `playing`.
+     */
+    registerOnPlayCallback,
+    /**
+     * Callback which is invoked when the timeline's playhead state is set to `paused`.
+     */
+    registerOnPauseCallback,
+    /**
+     * Callbacks which are invoked when seeking is being done (start, end).
+     */
+    registerOnSeekCallbacks,
+    /**
+     * Re-render all subscribers of the timeline with current frame number.
+     */
+    refresh,
+    /**
+     * Subscribe to the timeline.
+     */
+    subscribe,
+  };
 };

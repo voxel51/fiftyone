@@ -192,7 +192,10 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
 
   const fetch = useCallback(
     debounce(async (ctxOverride = null) => {
-      if (!isRemote) return;
+      if (!isRemote) {
+        setExecutionOptions({ allowImmediateExecution: true });
+        return;
+      }
       if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
       const options = await resolveExecutionOptions(
         operatorURI,

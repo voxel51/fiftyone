@@ -1872,9 +1872,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 given ``path``
             sidebar_group (None): the name of a
                 :ref:`App sidebar group <app-sidebar-groups>` to which to add
-                the summary field, if necessary. By default, all summary fields
-                are added to a ``"summaries"`` group. You can pass ``False`` to
-                skip sidebar group modification
+                the summary field. By default, all summary fields are added to
+                a ``"summaries"`` group. You can pass ``False`` to skip sidebar
+                group modification
             include_counts (False): whether to include per-value counts when
                 summarizing categorical fields
             group_by (None): an optional attribute to group by when ``path``
@@ -1908,27 +1908,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 f"undeclared field '{path}'"
             )
 
-        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
-
         if field_name is None:
-            _chunks = _path.split(".")
-
-            chunks = []
-            if is_frame_field:
-                chunks.append("frames")
-
-            found_list = False
-            for i, _chunk in enumerate(_chunks, 1):
-                if ".".join(_chunks[:i]) in list_fields:
-                    found_list = True
-                    break
-                else:
-                    chunks.append(_chunk)
-
-            if found_list:
-                chunks.append(_chunks[-1])
-
-            field_name = "_".join(chunks)
+            field_name = self._get_default_summary_field_name(path)
 
         index_fields = []
         summary_info = {"path": path, "field_type": field_type}
@@ -2046,6 +2027,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._populate_summary_field(field_name, summary_info)
 
         return field_name
+
+    def _get_default_summary_field_name(self, path):
+        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+        _chunks = _path.split(".")
+
+        chunks = []
+        if is_frame_field:
+            chunks.append("frames")
+
+        found_list = False
+        for i, _chunk in enumerate(_chunks, 1):
+            if ".".join(_chunks[:i]) in list_fields:
+                found_list = True
+                break
+            else:
+                chunks.append(_chunk)
+
+        if found_list:
+            chunks.append(_chunks[-1])
+
+        return "_".join(chunks)
 
     def _populate_summary_field(self, field_name, summary_info):
         path = summary_info["path"]
@@ -2222,17 +2224,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 update_indexes.append(path)
             elif self._is_frame_field(source_path):
                 if frames_last_modified_at is None:
-                    frames_last_modified_at, _ = self.bounds(
-                        "frames.last_modified_at"
+                    frames_last_modified_at = self._get_last_modified_at(
+                        frames=True
                     )
 
                 if frames_last_modified_at > last_modified_at:
                     update_indexes.append(path)
             else:
                 if samples_last_modified_at is None:
-                    _, samples_last_modified_at = self.bounds(
-                        "last_modified_at"
-                    )
+                    samples_last_modified_at = self._get_last_modified_at()
 
                 if samples_last_modified_at > last_modified_at:
                     update_indexes.append(path)
@@ -4357,55 +4357,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_ids=sample_ids
             )
 
-    @deprecated(reason="Use delete_samples() instead")
-    @requires_can_edit
-    def remove_sample(self, sample_or_id):
-        """Removes the given sample from the dataset.
-
-        If reference to a sample exists in memory, the sample will be updated
-        such that ``sample.in_dataset`` is False.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`delete_samples` instead.
-
-        Args:
-            sample_or_id: the sample to remove. Can be any of the following:
-
-                -   a sample ID
-                -   a :class:`fiftyone.core.sample.Sample`
-                -   a :class:`fiftyone.core.sample.SampleView`
-        """
-        self.delete_samples(sample_or_id)
-
-    @deprecated(reason="Use delete_samples() instead")
-    @requires_can_edit
-    def remove_samples(self, samples_or_ids):
-        """Removes the given samples from the dataset.
-
-        If reference to a sample exists in memory, the sample will be updated
-        such that ``sample.in_dataset`` is False.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`delete_samples` instead.
-
-        Args:
-            samples_or_ids: the samples to remove. Can be any of the following:
-
-                -   a sample ID
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.sample.Sample` or
-                    :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of :class:`fiftyone.core.sample.Sample` or
-                    :class:`fiftyone.core.sample.SampleView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`
-        """
-        self.delete_samples(samples_or_ids)
-
-    @requires_can_edit
     def save(self):
         """Saves the dataset to the database.
 
@@ -4576,7 +4527,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload("saved_views")
 
         self._doc.saved_views.append(view_doc)
-        self.save()
+        self._doc.last_modified_at = now
+        self._doc.save(virtual=True)
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4880,7 +4832,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload("workspaces")
 
         self._doc.workspaces.append(workspace_doc)
-        self.save()
+        self._doc.last_modified_at = now
+        self._doc.save(virtual=True)
 
     def load_workspace(self, name):
         """Loads the saved workspace with the given name.

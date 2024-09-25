@@ -109,11 +109,9 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         <Arrow
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
+          onClick={navigatePrevious}
         >
-          <LookerArrowLeftIcon
-            data-cy="nav-left-button"
-            onClick={navigatePrevious}
-          />
+          <LookerArrowLeftIcon data-cy="nav-left-button" />
         </Arrow>
       )}
       {showModalNavigationControls && modal.hasNext && (
@@ -121,11 +119,9 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           $isRight
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
+          onClick={navigateNext}
         >
-          <LookerArrowRightIcon
-            data-cy="nav-right-button"
-            onClick={navigateNext}
-          />
+          <LookerArrowRightIcon data-cy="nav-right-button" />
         </Arrow>
       )}
     </>

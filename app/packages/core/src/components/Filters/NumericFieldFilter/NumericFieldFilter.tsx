@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { formatPrimitive } from "@fiftyone/utilities";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -29,17 +30,16 @@ const RangeSliderContainer = styled.div`
 `;
 
 type Props = {
-  modal: boolean;
-  path: string;
-  named?: boolean;
   color: string;
+  modal: boolean;
+  named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  path: string;
 };
 
-const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
+const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const color = useRecoilValue(fos.pathColor(path));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
@@ -49,6 +49,7 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
   const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
   const one = useRecoilValue(state.oneBound({ path, modal }));
+  const timeZone = useRecoilValue(fos.timeZone);
 
   if (named && !lightning && !hasBounds) {
     return null;
@@ -76,7 +77,7 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
         {hasBounds &&
           !(excluded && defaultRange) &&
           (one !== null ? (
-            one
+            formatPrimitive({ ftype, timeZone, value: one })?.toString()
           ) : (
             <RangeSlider
               showBounds={false}
@@ -94,8 +95,8 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
             />
           ))}
         {defaultRange && <Nonfinites modal={modal} path={path} />}
-        <FilterOption modal={modal} path={path} />
-        <Reset modal={modal} path={path} />
+        <FilterOption color={color} modal={modal} path={path} />
+        <Reset color={color} modal={modal} path={path} />
         {!lightning && !hasBounds && <>No results</>}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>
