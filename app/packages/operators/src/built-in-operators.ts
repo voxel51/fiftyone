@@ -1213,7 +1213,7 @@ export class SetPanelTitle extends Operator {
 }
 
 type SetPlayheadStateHooks = {
-  setPlayheadState: ReturnType<typeof fop.useUpdatePlayheadState>;
+  setPlayheadState: (state: fop.PlayheadState, timeline_name?: string) => void;
 };
 type SetPlayheadStateParams = { state: any; timeline_name?: string };
 export class SetPlayheadState extends Operator {
