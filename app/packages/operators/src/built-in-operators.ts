@@ -1224,8 +1224,14 @@ export class SetPlayheadState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(): SetPlayheadStateHooks {
-    const timeline = fop.useTimeline();
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.enum("state", ["playing", "paused"], { label: "State" });
+    inputs.str("timeline_name", { label: "Timeline name" });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): SetPlayheadStateHooks {
+    const timeline = fop.useTimeline(ctx.params.timeline_name);
     return {
       setPlayheadState: (state: fop.PlayheadState) => {
         timeline.setPlayHeadState(state);
@@ -1235,7 +1241,7 @@ export class SetPlayheadState extends Operator {
   async execute({ hooks, params }: ExecutionContext): Promise<void> {
     const { setPlayheadState } = hooks as SetPlayheadStateHooks;
     const { state, timeline_name } = params as SetPlayheadStateParams;
-    setPlayheadState(state, timeline_name);
+    setPlayheadState(state);
   }
 }
 
