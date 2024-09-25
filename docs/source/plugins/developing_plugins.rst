@@ -1773,6 +1773,12 @@ in the App.
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
+Depending on the ``surfaces`` panel config, panels can be scoped to either
+the grid or the modal, and can be opened from the "+" menu - available both
+in the grid and the modal. Whereas grid panels unlock extensibility in the
+macro level of datasets, modal panels unlock extensibility in the micro level
+of samples.
+
 Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
@@ -1829,6 +1835,15 @@ subsequent sections.
 
                 # Whether to allow multiple instances of the panel to be opened
                 allow_multiple=False,
+
+                # Whether the panel should be made available in the grid, or
+                # the modal, or both (default = grid only)
+                surfaces="grid modal"
+
+                # Markdown-formatted text that describes the panel. This is
+                # rendererd in a tooltip when the help icon in the panel
+                # title is hovered over
+                help_markdown="A description of the panel",
             )
 
         def render(self, ctx):
