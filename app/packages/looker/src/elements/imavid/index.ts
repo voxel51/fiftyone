@@ -477,12 +477,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.isAnimationActive = false;
     }
 
-    if (!playing && seeking) {
-      this.waitingToPause = false;
-      this.drawFrameNoAnimation(currentFrameNumber);
-      this.isAnimationActive = false;
-    }
-
     if (!playing && !seeking && thumbnail) {
       // check if current frame number is what has been drawn
       // if they're different, then draw the frame
