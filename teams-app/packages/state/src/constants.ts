@@ -328,8 +328,6 @@ dataset = fo.load_dataset(...)`;
 export const API_CONNECTION =
   'https://docs.voxel51.com/teams/api_connection.html';
 export const FIFTYONE_API_URI = 'FIFTYONE_API_URI';
-export const FEATURE_FLAG_ENABLE_INVITATIONS_ENV_KEY =
-  'FEATURE_FLAG_ENABLE_INVITATIONS';
 export const FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT_ENV_KEY =
   'FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT';
 export const SIGN_IN_ENDPOINT = '/cas/api/auth/signin?callbackUrl=/datasets';
