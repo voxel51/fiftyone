@@ -4,12 +4,7 @@ import {
   useUserAudit,
   useUserRole
 } from '@fiftyone/hooks';
-import {
-  CodeTabs,
-  Dialog,
-  RoleSelection,
-  TextInput
-} from '@fiftyone/teams-components';
+import { Dialog, RoleSelection, TextInput } from '@fiftyone/teams-components';
 import {
   currentInviteeState,
   settingsTeamInviteTeammateOpen,
@@ -21,6 +16,7 @@ import { teamSendUserInvitationMutation as teamSendUserInvitationMutationType } 
 import { useState } from 'react';
 import { useRecoilState, useRecoilValue, useResetRecoilState } from 'recoil';
 import LicenseAudit from './LicenseAudit';
+import InviteUrl from './invitationUrl';
 
 type InviteTeammateProps = {
   onInvite?: Function;
@@ -132,21 +128,6 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
       </Box>
       {hasInvitationLink && <InviteUrl url={url} />}
     </Dialog>
-  );
-}
-
-function InviteUrl({ url }) {
-  return (
-    <CodeTabs
-      tabs={[
-        {
-          id: 'invitee-url',
-          label: 'Invitee URL',
-          code: url,
-          customStyle: { height: '4rem', overflow: 'auto' }
-        }
-      ]}
-    />
   );
 }
 

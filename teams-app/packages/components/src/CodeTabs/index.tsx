@@ -1,5 +1,5 @@
 import { Box, CodeBlock } from '@fiftyone/teams-components';
-import { Tab, Tabs } from '@mui/material';
+import { Tab, Tabs, Typography } from '@mui/material';
 import { CSSProperties, useMemo, useState } from 'react';
 import { CodeBlockProps } from '../CodeBlock';
 
@@ -14,10 +14,11 @@ type CodeTabsProps = {
   tabs: Array<CodeTab>;
   selected?: string;
   onChange?: (tabId: string) => void;
+  description?: string;
 };
 
 export default function CodeTabs(props: CodeTabsProps) {
-  const { tabs, selected, onChange } = props;
+  const { tabs, selected, onChange, description } = props;
   const [tab, setTab] = useState(tabs[0].id);
 
   const tabsById = useMemo(
@@ -53,6 +54,7 @@ export default function CodeTabs(props: CodeTabsProps) {
           ))}
         </Tabs>
       </Box>
+      {Boolean(description) && <Typography py={2}>{description}</Typography>}
       <Box mt={1} sx={{ cursor: 'pointer' }}>
         <CodeBlock {...tabProps} text={tabProps.code} />
       </Box>
