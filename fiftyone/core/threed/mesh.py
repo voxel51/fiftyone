@@ -291,6 +291,7 @@ class PlyMesh(Mesh):
         name: str,
         ply_path: str,
         is_point_cloud: bool = False,
+        center_geometry: bool = True,
         default_material: Optional[MeshMaterial] = None,
         visible=True,
         position: Optional[Vec3UnionType] = None,
@@ -309,13 +310,18 @@ class PlyMesh(Mesh):
         if not ply_path.lower().endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
 
+        self.center_geometry = center_geometry
         self.ply_path = ply_path
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
         r = {
             **super()._to_dict_extra(),
-            **{"plyPath": self.ply_path, "isPointCloud": self.is_point_cloud},
+            **{
+                "centerGeometry": self.center_geometry,
+                "plyPath": self.ply_path,
+                "isPointCloud": self.is_point_cloud,
+            },
         }
 
         if hasattr(self, "_pre_transformed_ply_path"):

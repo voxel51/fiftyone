@@ -94,7 +94,8 @@ export class PcdAsset {
   constructor(
     readonly pcdPath?: string,
     readonly preTransformedPcdPath?: string,
-    readonly defaultMaterial?: FoPointcloudMaterialProps
+    readonly defaultMaterial?: FoPointcloudMaterialProps,
+    readonly centerGeometry?: boolean
   ) {}
 }
 
@@ -103,7 +104,8 @@ export class PlyAsset {
     readonly plyPath?: string,
     readonly preTransformedPlyPath?: string,
     readonly defaultMaterial?: FoMeshMaterial,
-    readonly isPcd?: boolean
+    readonly isPcd?: boolean,
+    readonly centerGeometry?: boolean
   ) {}
 }
 
@@ -306,7 +308,8 @@ export const useFo3d = (
               node["plyPath"],
               node["preTransformedPlyPath"],
               material as FoMeshMaterial,
-              node["isPointCloud"] ?? false
+              node["isPointCloud"] ?? false,
+              node["centerGeometry"] ?? true
             );
           }
         }
@@ -315,7 +318,8 @@ export const useFo3d = (
           asset = new PcdAsset(
             node["pcdPath"],
             node["preTransformedPcdPath"],
-            material as FoPointcloudMaterialProps
+            material as FoPointcloudMaterialProps,
+            node["centerGeometry"] ?? false
           );
         }
       } else if (node["_type"].endsWith("Geometry")) {

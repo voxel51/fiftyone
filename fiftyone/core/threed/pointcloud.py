@@ -44,6 +44,7 @@ class PointCloud(Object3D):
         self,
         name: str,
         pcd_path: str,
+        center_geometry: bool = False,
         material: Optional[PointCloudMaterial] = None,
         flag_for_projection: bool = False,
         visible=True,
@@ -67,6 +68,7 @@ class PointCloud(Object3D):
         if isinstance(material, dict):
             material = PointCloudMaterial._from_dict(material)
 
+        self.center_geometry = center_geometry
         self.default_material = material or PointCloudMaterial()
         self.flag_for_projection = flag_for_projection
 
@@ -84,6 +86,7 @@ class PointCloud(Object3D):
     def _to_dict_extra(self):
         """Extra properties to include in dictionary representation."""
         r = {
+            "centerGeometry": self.center_geometry,
             "pcdPath": self.pcd_path,
             "defaultMaterial": self.default_material.as_dict(),
             "flagForProjection": self.flag_for_projection,
