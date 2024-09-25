@@ -43,10 +43,7 @@ const imagePaths = [1, 2, 3, 4]
     `g${groupNum}sl2sc${idx > 1 ? "2" : "1"}`,
   ])
   .flat()
-  .map(
-    (imgName) =>
-      `/tmp/${imgName}o${orderGen.next().value}.png` as `${string}.png`
-  );
+  .map((imgName) => `/tmp/${imgName}o${orderGen.next().value}.png`);
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
   // create a dataset with two groups, each with 2 image samples

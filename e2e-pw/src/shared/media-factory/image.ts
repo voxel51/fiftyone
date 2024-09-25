@@ -3,7 +3,7 @@ import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
 const fonts = require("jimp/fonts");
 
 export const createBlankImage = async (options: {
-  outputPath: `${string}.png`;
+  outputPath: string;
   width: number;
   height: number;
   fillColor?: string;
@@ -37,7 +37,7 @@ export const createBlankImage = async (options: {
     });
   }
 
-  await image.write(outputPath);
+  await image.write(outputPath as `${string}.${string}`);
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
 
