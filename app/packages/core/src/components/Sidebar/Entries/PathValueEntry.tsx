@@ -227,7 +227,6 @@ const SlicesLengthLoadable = ({ path }: { path: string }) => {
 
 const LengthLoadable = ({ path }: { path: string }) => {
   const data = useData<unknown[]>(path);
-  console.log(path, data);
   return <>{data?.length || 0}</>;
 };
 
