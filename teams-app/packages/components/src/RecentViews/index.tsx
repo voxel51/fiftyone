@@ -66,8 +66,8 @@ export default function RecentViews(props: Props) {
       <List dense={true}>
         {userViews
           .filter(
-            (view) =>
-              view && view.dataset?.id && view.name && view.slug && view.id
+            ({ view, dataset }) =>
+              view && dataset?.id && view.name && view.slug && view.id
           )
           .map((userView, index) => (
             <RecentView key={index} {...userView} />
