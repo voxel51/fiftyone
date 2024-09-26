@@ -636,24 +636,19 @@ export const formatPrimitive = ({
 }) => {
   if (value === null || value === undefined) return null;
 
-  let parsed: string;
   switch (ftype) {
     case FRAME_SUPPORT_FIELD:
-      parsed = `[${value[0]}, ${value[1]}]`;
-      break;
+      return `[${value[0]}, ${value[1]}]`;
     case DATE_FIELD:
       // @ts-ignore
-      parsed = formatDate(value.datetime as number);
-      break;
+      return formatDate(value?.datetime as number);
     case DATE_TIME_FIELD:
       // @ts-ignore
-      parsed = formatDateTime(value.datetime as number, timeZone);
-      break;
-    default:
-      parsed = value.toString();
+      return formatDateTime(value?.datetime as number, timeZone);
   }
 
-  return prettify(parsed).toString();
+  // @ts-ignore
+  return prettify(value);
 };
 
 export const makePseudoField = (path: string): Field => ({

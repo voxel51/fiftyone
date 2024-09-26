@@ -56,6 +56,10 @@ const ScalarDiv = styled.div`
   &.expanded > div {
     white-space: unset;
   }
+
+  & a {
+    color: ${({ theme }) => theme.text.primary};
+  }
 `;
 
 const ScalarValueEntry = ({
@@ -299,7 +303,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
     <>
       {Object.entries(values).map(([slice, value], i) => {
         const none = value === null || value === undefined;
-        const formatted = formatPrimitive({ ftype, value, timeZone });
+        const formatted = format({ ftype, value, timeZone });
 
         const add = none ? { color } : {};
         return (
@@ -478,7 +482,25 @@ const format = ({
   if (ftype === EMBEDDED_DOCUMENT_FIELD && typeof value === "object") {
     return formatObject({ fields, timeZone, value: value as object });
   }
-  return formatPrimitive({ ftype, value: value as Primitive, timeZone });
+
+  return formatPrimitiveOrURL({ ftype, value: value as Primitive, timeZone });
+};
+
+const formatPrimitiveOrURL = (params: {
+  fields?: Schema;
+  ftype: string;
+  timeZone: string;
+  value: Primitive;
+}) => {
+  const result = formatPrimitive(params);
+
+  return result instanceof URL ? (
+    <a href={result.toString()} target="_blank" rel="noreferrer">
+      {result.toString()}
+    </a>
+  ) : (
+    result
+  );
 };
 
 const formatObject = ({
@@ -503,7 +525,7 @@ const formatObject = ({
         >
           <span>{k}</span>
           <span>
-            {formatPrimitive({
+            {formatPrimitiveOrURL({
               ftype: fields?.[k]?.ftype,
               timeZone,
               value: v,
