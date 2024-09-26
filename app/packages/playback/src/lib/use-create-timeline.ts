@@ -145,11 +145,15 @@ export const useCreateTimeline = (
   const updateFreqRef = useRef(updateFreq);
 
   const play = useCallback(() => {
+    if (!isTimelineInitialized) {
+      return;
+    }
+
     setPlayHeadState({ name: timelineName, state: "playing" });
     if (onPlayListenerRef.current) {
       onPlayListenerRef.current();
     }
-  }, [timelineName]);
+  }, [timelineName, isTimelineInitialized]);
 
   const pause = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "paused" });
