@@ -17,6 +17,7 @@ from typing import Optional
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -507,11 +508,13 @@ class ExecutionContext(object):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
             return self._dataset
+
         # Since dataset may have been renamed, always resolve the dataset by
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
             self._dataset = focu.load_dataset(id=uid)
+
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
             self.request_params["dataset_name"] = self._dataset.name
@@ -519,10 +522,18 @@ class ExecutionContext(object):
             uid = self.request_params.get("dataset_name", None)
             if uid:
                 self._dataset = focu.load_dataset(name=uid)
+
         # TODO: refactor so that this additional reload post-load is not
         #  required
         if self._dataset is not None:
             self._dataset.reload()
+
+        if (
+            self.group_slice is not None
+            and self._dataset.media_type == fom.GROUP
+        ):
+            self._dataset.group_slice = self.group_slice
+
         return self._dataset
 
     @property
@@ -699,7 +710,7 @@ class ExecutionContext(object):
 
     @property
     def group_slice(self):
-        """The group slice of the view."""
+        """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
 
     def prompt(

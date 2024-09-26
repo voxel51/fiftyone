@@ -354,7 +354,8 @@ class Operations(object):
                 current selected labels changes
             on_change_extended_selection (None): an operator to invoke when the
                 current extended selection changes
-            on_change_group_slice (None): an operator to invoke when the group slice changes
+            on_change_group_slice (None): an operator to invoke when the group
+                slice changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
         """
