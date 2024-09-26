@@ -1,10 +1,10 @@
-import { useMutation } from '@fiftyone/hooks';
-import { Box, ColorCircle, Timestamp } from '@fiftyone/teams-components';
+import { useMutation } from "@fiftyone/hooks";
+import { Box, ColorCircle, Timestamp } from "@fiftyone/teams-components";
 import {
   RecentView as RecentViewType,
   RecentViewsListFragment$dataT,
-  updateDatasetViewLastLoadedAtMutation
-} from '@fiftyone/teams-state';
+  updateDatasetViewLastLoadedAtMutation,
+} from "@fiftyone/teams-state";
 import {
   Divider,
   List,
@@ -13,10 +13,10 @@ import {
   ListItemIcon,
   ListItemText,
   Tooltip,
-  Typography
-} from '@mui/material';
-import { useRouter } from 'next/router';
-import { graphql } from 'react-relay/hooks';
+  Typography,
+} from "@mui/material";
+import { useRouter } from "next/router";
+import { graphql } from "react-relay/hooks";
 
 export const RECENT_VIEWS_DEFAULT_LIMIT = 5;
 export const RecentViewsListFragment = graphql`
@@ -42,7 +42,7 @@ export const RecentViewsListFragment = graphql`
 `;
 
 interface Props {
-  userViews: RecentViewsListFragment$dataT['userViews'];
+  userViews: RecentViewsListFragment$dataT["userViews"];
 }
 
 export default function RecentViews(props: Props) {
@@ -64,9 +64,14 @@ export default function RecentViews(props: Props) {
         </Typography>
       )}
       <List dense={true}>
-        {userViews.map((userView, index) => (
-          <RecentView key={index} {...userView} />
-        ))}
+        {userViews
+          .filter(
+            (view) =>
+              view && view.dataset?.id && view.name && view.slug && view.id
+          )
+          .map((userView, index) => (
+            <RecentView key={index} {...userView} />
+          ))}
       </List>
     </Box>
   );
@@ -88,19 +93,19 @@ function RecentView({ view, lastLoadedAt, dataset }: RecentViewType) {
               variables: {
                 viewName: view.name,
                 viewId: view.id,
-                datasetId: dataset.id
+                datasetId: dataset.id,
               },
               onCompleted(data) {
                 push(`/datasets/${dataset.slug}/samples?view=${view.slug}`);
               },
               onError(error) {
                 console.error(error);
-              }
+              },
             });
           }}
           sx={{ borderRadius: 1, padding: 0 }}
         >
-          <ListItemIcon sx={{ minWidth: 'auto', pr: 2, pl: 0 }}>
+          <ListItemIcon sx={{ minWidth: "auto", pr: 2, pl: 0 }}>
             <ColorCircle color={view.color} style={{ marginLeft: 4 }} />
           </ListItemIcon>
           <ListItemText>
@@ -108,9 +113,9 @@ function RecentView({ view, lastLoadedAt, dataset }: RecentViewType) {
               variant="body2"
               fontWeight="medium"
               sx={{
-                whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis',
-                overflow: 'hidden'
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                overflow: "hidden",
               }}
             >
               {view.name}
