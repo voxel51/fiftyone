@@ -6,7 +6,8 @@ import ImageIcon from "@mui/icons-material/Image";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import IconButton from "@mui/material/IconButton";
-import React, { ForwardedRef } from "react";
+import type { ForwardedRef } from "react";
+import React from "react";
 import styled from "styled-components";
 
 type ItemProp = {
@@ -30,7 +31,6 @@ const StyledPanelItem = styled.div<{ color?: string }>`
 const Text = styled.div`
   font-size: 1rem;
   margin: auto auto auto 5px;
-  ${({ theme }) => theme.text.secondary};
 `;
 
 export const getIcon = (icon: string) => {

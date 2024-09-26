@@ -167,7 +167,6 @@ describe("Analytics", () => {
     });
     analytics.track("random_event", { uri: "@my_name/my_plugin/my_operator" });
     // segment should be called with properties.uri = "<redacted>"
-    console.log(mockSegment.track.mock.calls[0]);
     expect(mockSegment.track).toHaveBeenCalledWith(
       "random_event",
       { uri: "<redacted>" },
@@ -207,6 +206,32 @@ describe("Analytics", () => {
     analytics.track("custom_event");
     expect(mockSegment.track).toHaveBeenCalledWith("custom_event", undefined, {
       version: "1.0.0",
+    });
+  });
+  
+  describe("analytics.page()", () => {
+    it("should call segment.page()", () => {
+      analytics = new Analytics();
+      analytics.load({
+        writeKey: "test",
+        userId: "user",
+        userGroup: "group",
+        debug: false,
+      });
+      analytics.page("my_page");
+      expect(mockSegment.page).toHaveBeenCalled();
+    });
+    it("should be a no-op if disableUrlTracking is set to true", () => {
+      analytics = new Analytics();
+      analytics.load({
+        writeKey: "test",
+        userId: "user",
+        userGroup: "group",
+        debug: false,
+        disableUrlTracking: true,
+      });
+      analytics.page("my_page");
+      expect(mockSegment.page).not.toHaveBeenCalled();
     });
   });
 });

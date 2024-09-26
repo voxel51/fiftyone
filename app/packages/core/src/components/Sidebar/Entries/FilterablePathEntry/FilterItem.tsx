@@ -1,15 +1,14 @@
-import { pathColor } from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import React from "react";
-import { useRecoilValue } from "recoil";
 import * as filters from "../../../Filters";
 
 interface FilterItem {
+  color: string;
   ftype: string;
-  path: string;
+  listField: boolean;
   modal: boolean;
   named?: boolean;
-  listField: boolean;
+  path: string;
   title?: string;
 }
 
@@ -33,10 +32,8 @@ const FilterItem = ({
   title,
   ...rest
 }: FilterItem & { onBlur?: () => void; onFocus?: () => void }) => {
-  const color = useRecoilValue(pathColor(path));
   return React.createElement(FILTERS[ftype], {
     key: path,
-    color,
     path,
     title: title || (listField ? `${fou.LIST_FIELD}(${ftype})` : ftype),
     ...rest,

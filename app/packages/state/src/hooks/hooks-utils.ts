@@ -66,7 +66,7 @@ export const useScrollHandler = (handler) =>
 export const useHashChangeHandler = (handler) =>
   useEventHandler(window, "hashchange", handler);
 
-export const useKeydownHandler = (handler: React.KeyboardEventHandler) =>
+export const useKeydownHandler = (handler: (e: KeyboardEvent) => void) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (

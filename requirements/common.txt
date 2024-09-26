@@ -28,6 +28,6 @@ setuptools>=45.2.0,<71
 sseclient-py>=1.7.2
 sse-starlette>=0.10.3
 starlette==0.36.2
-strawberry-graphql==0.138.1
+strawberry-graphql==0.243.0
 tabulate==0.8.10
 xmltodict==0.12.0

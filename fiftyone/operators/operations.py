@@ -305,6 +305,7 @@ class Operations(object):
         light_icon=None,
         dark_icon=None,
         surfaces="grid",
+        reload_on_navigation=False,
         on_load=None,
         on_unload=None,
         on_change=None,
@@ -331,6 +332,9 @@ class Operations(object):
                 is in dark mode
             surfaces ('grid'): surfaces in which to show the panel. Must be
                 one of 'grid', 'modal', or 'grid modal'
+            reload_on_navigation (False): whether to reload the panel when the
+                user navigates to a new page. This is only applicable to panels
+                that are not shown in a modal
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
@@ -360,6 +364,7 @@ class Operations(object):
             "light_icon": light_icon,
             "dark_icon": dark_icon,
             "surfaces": surfaces,
+            "reload_on_navigation": reload_on_navigation,
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
@@ -628,6 +633,14 @@ class Operations(object):
         return self._ctx.trigger(
             "set_panel_title", params={"id": id, "title": title}
         )
+
+    def set_group_slice(self, slice):
+        """Set the active group slice in the App.
+
+        Args:
+            slice: the group slice to activate
+        """
+        return self._ctx.trigger("set_group_slice", {"slice": slice})
 
 
 def _serialize_view(view):

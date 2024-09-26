@@ -5,6 +5,7 @@ import {
   fields,
   getSkeleton,
   lightningPaths,
+  pathColor,
 } from "@fiftyone/state";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
@@ -20,6 +21,7 @@ export const hasMoreFilters = selectorFamily({
       const expanded = get(expandPath(path));
       const skeleton = get(getSkeleton);
       const parent = get(field(expanded));
+      const color = get(pathColor(path));
 
       const children = get(
         fields({
@@ -28,7 +30,14 @@ export const hasMoreFilters = selectorFamily({
         })
       );
 
-      return getFilterItemsProps(expanded, false, parent, children, skeleton)
+      return getFilterItemsProps(
+        color,
+        expanded,
+        false,
+        parent,
+        children,
+        skeleton
+      )
         .map(({ path }) => path)
         .filter((p) => !paths.has(p))
         .some(

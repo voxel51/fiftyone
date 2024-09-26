@@ -1,13 +1,14 @@
 import * as foq from "@fiftyone/relay";
 import {
   BOOLEAN_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-import { ResponseFrom } from "../utils";
+import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
@@ -158,7 +159,11 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
         return get(indexesByPath);
       }
 
-      if (get(isLabelPath(path))) {
+      if (
+        get(isLabelPath(path)) ||
+        get(schemaAtoms.field(path))?.embeddedDocType ===
+          DYNAMIC_EMBEDDED_DOCUMENT_PATH
+      ) {
         const expanded = get(schemaAtoms.expandPath(path));
         const indexes = get(indexesByPath);
         return new Set(

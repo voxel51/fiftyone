@@ -12,8 +12,9 @@ import {
   setFrameNumberAtom,
   TimelineName,
   updatePlayheadStateAtom,
+  updateTimelineConfigAtom,
 } from "../lib/state";
-import { useDefaultTimelineName } from "./use-default-timeline-name";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**
  * This hook provides access to the timeline with the given name.
@@ -25,15 +26,25 @@ import { useDefaultTimelineName } from "./use-default-timeline-name";
  * scoped to the current modal.
  */
 export const useTimeline = (name?: TimelineName) => {
-  const { getName } = useDefaultTimelineName();
+  const { getName } = useDefaultTimelineNameImperative();
 
   const timelineName = useMemo(() => name ?? getName(), [name, getName]);
 
-  const { __internal_IsTimelineInitialized: isTimelineInitialized, ...config } =
-    useAtomValue(getTimelineConfigAtom(timelineName));
+  const config = useAtomValue(getTimelineConfigAtom(timelineName));
+
+  const isTimelineInitialized = useMemo(() => {
+    return config.__internal_IsTimelineInitialized;
+  }, [config]);
+
+  const leanConfig = useMemo(() => {
+    const { __internal_IsTimelineInitialized: _, ...rest } = config;
+    return rest;
+  }, [config]);
+
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const subscribeImpl = useSetAtom(addSubscriberAtom);
+  const updateConfig = useSetAtom(updateTimelineConfigAtom);
 
   useEffect(() => {
     // this is so that this timeline is brought to the front of the cache
@@ -93,6 +104,16 @@ export const useTimeline = (name?: TimelineName) => {
     [timelineName]
   );
 
+  const setSpeed = useCallback(
+    (speed: number) => {
+      updateConfig({
+        name: timelineName,
+        configDelta: { speed },
+      });
+    },
+    [updateConfig, timelineName]
+  );
+
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
@@ -101,7 +122,7 @@ export const useTimeline = (name?: TimelineName) => {
   );
 
   return {
-    config,
+    config: leanConfig,
     isTimelineInitialized,
     playHeadState,
 
@@ -127,6 +148,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Set the playhead state of the timeline.
      */
     setPlayHeadState,
+    /**
+     * Set the speed of the timeline.
+     */
+    setSpeed,
     /**
      * Subscribe to the timeline for frame updates.
      */

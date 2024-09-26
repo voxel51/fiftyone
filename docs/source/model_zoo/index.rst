@@ -43,8 +43,8 @@ you can apply to your datasets with a few simple commands.
     :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
     and :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`!
 
-Remotely-sourced models
------------------------
+Remotely-sourced models __SUB_NEW__
+-----------------------------------
 
 The Model Zoo also supports downloading and applying models whose definitions
 are provided via GitHub repositories or URLs.
