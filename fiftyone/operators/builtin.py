@@ -1519,9 +1519,8 @@ class RenameGroupSlice(foo.Operator):
 
         ctx.dataset.rename_group_slice(name, new_name)
 
-        # @todo ideally we would only set this if the group slice we renamed is
-        # currently loaded in the App
-        ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
 
         ctx.ops.reload_dataset()
 
@@ -1567,13 +1566,9 @@ class DeleteGroupSlice(foo.Operator):
 
     def execute(self, ctx):
         name = ctx.params["name"]
-
         ctx.dataset.delete_group_slice(name)
-
-        # @todo ideally we would only set this if the group slice we deleted is
-        # currently loaded in the App
-        ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
-
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
         ctx.ops.reload_dataset()
 
 
