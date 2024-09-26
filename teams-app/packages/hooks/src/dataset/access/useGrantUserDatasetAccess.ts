@@ -1,5 +1,6 @@
 import {
   DatasetPermission,
+  ManageDatasetAccessUser,
   User,
   manageDatasetInviteUserToDatasetMutation,
   manageDatasetSetDatasetUserPermissionMutation,
@@ -32,7 +33,8 @@ export default function useGrantUserDatasetAccess() {
       user: User | null,
       permission: DatasetPermission,
       role: UserRole | null,
-      onComplete: (accessItem: any) => void
+      onComplete: (accessItem: ManageDatasetAccessUser) => void,
+      onGrantAccessByInviteComplete: () => void
     ) => {
       if (!user || !datasetIdentifier) return;
 
@@ -69,6 +71,9 @@ export default function useGrantUserDatasetAccess() {
                 userPermission,
                 activePermission,
               });
+          } else {
+            // granting access with an invite
+            onGrantAccessByInviteComplete && onGrantAccessByInviteComplete();
           }
         },
       });

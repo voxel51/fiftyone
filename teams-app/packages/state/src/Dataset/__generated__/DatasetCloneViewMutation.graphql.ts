@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<08cd9570d065868a6c8c638b1212b22c>>
+ * @generated SignedSource<<793662071e50a8b3388eb9b9f114f55c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ViewSelectors = {
   filters?: any | null;
   sampleIds?: ReadonlyArray<string> | null;
-  viewStages?: ReadonlyArray<any> | null;
+  viewStages?: any | null;
 };
 export type DatasetCloneViewMutation$variables = {
   name: string;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<579582f26bf904c466ed6093e50217ef>>
+ * @generated SignedSource<<92db7aca4445b3f4303b3da29d0fd201>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type OrganizationFeatureFlagQuery$variables = {};
 export type OrganizationFeatureFlagQuery$data = {
   readonly featureFlag: {
     readonly invitationsEnabled: boolean;
+    readonly sendEmailInvitations: boolean;
   };
 };
 export type OrganizationFeatureFlagQuery = {
@@ -35,6 +36,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "invitationsEnabled",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "sendEmailInvitations",
         "storageKey": null
       }
     ],
@@ -59,16 +67,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "456327711af7b9c3815abb363d50a53b",
+    "cacheID": "270a0316e222ce31e76a273adc9d2c78",
     "id": null,
     "metadata": {},
     "name": "OrganizationFeatureFlagQuery",
     "operationKind": "query",
-    "text": "query OrganizationFeatureFlagQuery {\n  featureFlag {\n    invitationsEnabled\n  }\n}\n"
+    "text": "query OrganizationFeatureFlagQuery {\n  featureFlag {\n    invitationsEnabled\n    sendEmailInvitations\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "efb6cc70fd5807b84bffde160853851f";
+(node as any).hash = "92746b5b9b0ef060b17aa6cd4e69f205";
 
 export default node;

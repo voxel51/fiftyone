@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f1a905b39dd3f0f73fe7f32dd299241f>>
+ * @generated SignedSource<<9546115a97cdfec1d3cda550cd9abec6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type ViewSelectors = {
   filters?: any | null;
   sampleIds?: ReadonlyArray<string> | null;
-  viewStages?: ReadonlyArray<any> | null;
+  viewStages?: any | null;
 };
 export type DatasetExportEstimateQuery$variables = {
   datasetIdentifier: string;
