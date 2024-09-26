@@ -679,7 +679,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if slice_name is None:
             slice_name = self._doc.default_group_slice
 
-        if slice_name not in self._doc.group_media_types:
+        if (
+            slice_name is not None
+            and slice_name not in self._doc.group_media_types
+        ):
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._group_slice = slice_name
