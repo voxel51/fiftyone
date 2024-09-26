@@ -1,6 +1,11 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { formatPrimitive, makePseudoField } from "@fiftyone/utilities";
+import type { Primitive, Schema } from "@fiftyone/utilities";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  formatPrimitive,
+  makePseudoField,
+} from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
@@ -222,24 +227,33 @@ const SlicesLengthLoadable = ({ path }: { path: string }) => {
 
 const LengthLoadable = ({ path }: { path: string }) => {
   const data = useData<unknown[]>(path);
+  console.log(path, data);
   return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
-  const data = useData<unknown[]>(path);
+  const data = useData<Primitive[]>(path);
+  const { fields, subfield } = fos.useAssertedRecoilValue(fos.field(path));
+  const timeZone = useRecoilValue(fos.timeZone);
+
+  if (!subfield) {
+    throw new Error(`expected a subfield for ${path}`);
+  }
+
   const values = useMemo(() => {
-    return data
-      ? Array.from(data).map((value) => prettify(value as string))
-      : [];
-  }, [data]);
+    return Array.from(data || []).map((value) =>
+      format({ fields, ftype: subfield, value, timeZone })
+    );
+  }, [data, fields, subfield, timeZone]);
+
   return (
     <ListContainer>
       {values.map((v, i) => (
-        <div key={i} title={typeof v === "string" ? v : undefined}>
+        <div key={i.toString()} title={typeof v === "string" ? v : undefined}>
           {v}
         </div>
       ))}
-      {values.length === 0 && <>No results</>}
+      {values.length === 0 && "No results"}
     </ListContainer>
   );
 };
@@ -263,9 +277,9 @@ const SlicesListLoadable = ({ path }: { path: string }) => {
               {slice}
             </div>
             {(data || []).map((value, i) => (
-              <div key={i}>{prettify(value as string)}</div>
+              <div key={i.toString()}>{prettify(value as string)}</div>
             ))}
-            {(!data || !data.length) && <>No results</>}
+            {(!data || !data.length) && "No results"}
           </ListContainer>
         );
       })}
@@ -297,7 +311,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
               columnGap: "0.5rem",
               marginBottom: "0.5rem",
             }}
-            key={i}
+            key={i.toString()}
           >
             <div style={{ color: theme.text.secondary }}>{slice}</div>
             <div
@@ -356,14 +370,20 @@ const useSlicesData = <T,>(path: string) => {
 const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
-  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+  const { fields, ftype } =
+    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
-  const formatted = formatPrimitive({ ftype, value, timeZone });
+
+  const formatted = useMemo(
+    () => format({ fields, ftype, timeZone, value }),
+    [fields, ftype, timeZone, value]
+  );
 
   return (
     <div
       data-cy={`sidebar-entry-${path}`}
+      onKeyDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       style={none ? { color } : {}}
       title={typeof formatted === "string" ? formatted : undefined}
@@ -437,6 +457,63 @@ const PathValueEntry = ({
       slices={slices}
     />
   );
+};
+
+interface PrimitivesObject {
+  [key: string]: Primitive;
+}
+
+type Primitives = Primitive | PrimitivesObject;
+
+const format = ({
+  fields,
+  ftype,
+  timeZone,
+  value,
+}: {
+  fields?: Schema;
+  ftype: string;
+  timeZone: string;
+  value: Primitives;
+}) => {
+  if (ftype === EMBEDDED_DOCUMENT_FIELD && typeof value === "object") {
+    return formatObject({ fields, timeZone, value: value as object });
+  }
+  return formatPrimitive({ ftype, value: value as Primitive, timeZone });
+};
+
+const formatObject = ({
+  fields,
+  timeZone,
+  value,
+}: {
+  fields?: Schema;
+  timeZone: string;
+  value: object;
+}) => {
+  return Object.entries(value)
+    .map(([k, v]) => {
+      if (!fields?.[k]?.ftype) {
+        return null;
+      }
+
+      return (
+        <div
+          key={k}
+          style={{ display: "flex", justifyContent: "space-between" }}
+        >
+          <span>{k}</span>
+          <span>
+            {formatPrimitive({
+              ftype: fields?.[k]?.ftype,
+              timeZone,
+              value: v,
+            })}
+          </span>
+        </div>
+      );
+    })
+    .filter((entry) => Boolean(entry));
 };
 
 export default React.memo(PathValueEntry);

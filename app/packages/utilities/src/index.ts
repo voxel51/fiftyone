@@ -3,13 +3,13 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
+export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
 export * from "./paths";
-export * from "./Resource";
 export * from "./schema";
 export * as styles from "./styles";
 export * from "./type-check";
@@ -618,6 +618,13 @@ export const formatDate = (timeStamp: number): string => {
     .replaceAll("/", "-");
 };
 
+export type Primitive =
+  | number
+  | null
+  | string
+  | undefined
+  | { datetime: number };
+
 export const formatPrimitive = ({
   ftype,
   timeZone,
@@ -625,24 +632,28 @@ export const formatPrimitive = ({
 }: {
   ftype: string;
   timeZone: string;
-  value: unknown;
+  value: Primitive;
 }) => {
-  if (value === null || value === undefined) return undefined;
+  if (value === null || value === undefined) return null;
 
+  let parsed: string;
   switch (ftype) {
     case FRAME_SUPPORT_FIELD:
-      value = `[${value[0]}, ${value[1]}]`;
+      parsed = `[${value[0]}, ${value[1]}]`;
       break;
     case DATE_FIELD:
       // @ts-ignore
-      value = formatDate(value.datetime as number);
+      parsed = formatDate(value.datetime as number);
       break;
     case DATE_TIME_FIELD:
       // @ts-ignore
-      value = formatDateTime(value.datetime as number, timeZone);
+      parsed = formatDateTime(value.datetime as number, timeZone);
+      break;
+    default:
+      parsed = value.toString();
   }
 
-  return prettify(String(value));
+  return prettify(parsed).toString();
 };
 
 export const makePseudoField = (path: string): Field => ({
