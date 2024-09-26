@@ -1487,7 +1487,7 @@ class RenameGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to rename",
@@ -1552,7 +1552,7 @@ class DeleteGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to delete",
