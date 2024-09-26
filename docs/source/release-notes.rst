@@ -28,8 +28,8 @@ What's New
 
 - The `FiftyOne Brain <https://github.com/voxel51/fiftyone-brain>`_ is now
   fully open source. Contributions are welcome!
-- Introducing Modal Panels, bringing the ability to develop and use panels in
-  the App's sample modal
+- Added :ref:`Modal Panels <panel-config>`, bringing the ability to develop and
+  use panels in the App's sample modal
   `#4625 <https://github.com/voxel51/fiftyone/pull/4625>`_
 - All datasets now have :ref:`automatically populated <default-sample-fields>`
   `created_at` and `last_modified_at` fields on their samples and frames
