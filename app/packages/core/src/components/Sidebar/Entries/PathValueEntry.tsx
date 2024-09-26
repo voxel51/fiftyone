@@ -1,12 +1,6 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  FRAME_SUPPORT_FIELD,
-  formatDate,
-  formatDateTime,
-} from "@fiftyone/utilities";
+import { formatPrimitive, makePseudoField } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
@@ -22,7 +16,6 @@ import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
-import { makePseudoField } from "./utils";
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -60,35 +53,6 @@ const ScalarDiv = styled.div`
   }
 `;
 
-const format = ({
-  ftype,
-  timeZone,
-  value,
-}: {
-  ftype: string;
-  timeZone: string;
-  value: unknown;
-}) => {
-  if (value === undefined) return value;
-
-  if (value === null) return;
-
-  switch (ftype) {
-    case FRAME_SUPPORT_FIELD:
-      value = `[${value[0]}, ${value[1]}]`;
-      break;
-    case DATE_FIELD:
-      // @ts-ignore
-      value = formatDate(value.datetime as number);
-      break;
-    case DATE_TIME_FIELD:
-      // @ts-ignore
-      value = formatDateTime(value.datetime as number, timeZone);
-  }
-
-  return prettify(value as string);
-};
-
 const ScalarValueEntry = ({
   entryKey,
   path,
@@ -109,7 +73,6 @@ const ScalarValueEntry = ({
     backgroundColor: theme.background.level1,
   });
   const color = useRecoilValue(fos.pathColor(path));
-
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
   const [expanded, setExpanded] = useRecoilState(expandedPathValueEntry(path));
@@ -252,18 +215,18 @@ const ListValueEntry = ({
 };
 
 const SlicesLengthLoadable = ({ path }: { path: string }) => {
-  const data = useSlicesData<any[]>(path);
+  const data = useSlicesData<unknown[]>(path);
 
   return <>{Object.entries(data).filter(([_, v]) => v).length || 0}</>;
 };
 
 const LengthLoadable = ({ path }: { path: string }) => {
-  const data = useData<any[]>(path);
+  const data = useData<unknown[]>(path);
   return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
-  const data = useData<any[]>(path);
+  const data = useData<unknown[]>(path);
   const values = useMemo(() => {
     return data
       ? Array.from(data).map((value) => prettify(value as string))
@@ -276,7 +239,7 @@ const ListLoadable = ({ path }: { path: string }) => {
           {v}
         </div>
       ))}
-      {values.length == 0 && <>No results</>}
+      {values.length === 0 && <>No results</>}
     </ListContainer>
   );
 };
@@ -323,7 +286,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
     <>
       {Object.entries(values).map(([slice, value], i) => {
         const none = value === null || value === undefined;
-        const formatted = format({ ftype, value, timeZone });
+        const formatted = formatPrimitive({ ftype, value, timeZone });
 
         const add = none ? { color } : {};
         return (
@@ -378,14 +341,14 @@ const useSlicesData = <T,>(path: string) => {
 
   const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
   const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
-  slices.forEach((slice) => {
+  for (const slice of slices) {
     data[slice] = fos.pullSidebarValue(
       target,
       keys,
       data[slice].sample,
       isList
     );
-  });
+  }
 
   return data as { [slice: string]: T };
 };
@@ -396,7 +359,7 @@ const Loadable = ({ path }: { path: string }) => {
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
-  const formatted = format({ ftype, value, timeZone });
+  const formatted = formatPrimitive({ ftype, value, timeZone });
 
   return (
     <div

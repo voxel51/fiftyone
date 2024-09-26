@@ -939,33 +939,58 @@ class SampleCollection(object):
 
     def _sync_dataset_last_modified_at(self):
         dataset = self._root_dataset
-        if self.media_type == fom.GROUP:
-            samples = self.select_group_slices(media_type=fom.VIDEO)
-        else:
-            samples = self
+        curr_lma = dataset.last_modified_at
+        lma = self._get_last_modified_at()
 
-        results = samples._aggregate(
-            post_pipeline=[
+        if lma is not None and (curr_lma is None or lma > curr_lma):
+            dataset._doc.last_modified_at = lma
+            dataset._doc.save(virtual=True)
+
+    def _get_last_modified_at(self, frames=False):
+        if frames and not self._contains_videos(any_slice=True):
+            return
+
+        if isinstance(self, fod.Dataset):
+            # pylint:disable=no-member
+            dataset = self
+            if frames:
+                coll = dataset._frame_collection
+            else:
+                coll = dataset._sample_collection
+
+            pipeline = [
                 {"$sort": {"last_modified_at": -1}},
                 {"$limit": 1},
                 {"$project": {"last_modified_at": True}},
             ]
-        )
+
+            results = foo.aggregate(coll, pipeline)
+        else:
+            if self.media_type == fom.GROUP:
+                if frames:
+                    view = self.select_group_slices(media_type=fom.VIDEO)
+                else:
+                    view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
+            pipeline = [
+                {
+                    "$group": {
+                        "_id": None,
+                        "last_modified_at": {"$max": "$last_modified_at"},
+                    }
+                }
+            ]
+
+            results = view._aggregate(
+                frames_only=frames, post_pipeline=pipeline
+            )
 
         try:
-            last_modified_at = next(iter(results))["last_modified_at"]
+            return next(iter(results))["last_modified_at"]
         except:
-            last_modified_at = None
-
-        if last_modified_at is None:
-            return
-
-        if (
-            dataset.last_modified_at is None
-            or last_modified_at > dataset.last_modified_at
-        ):
-            dataset._doc.last_modified_at = last_modified_at
-            dataset._doc.save(virtual=True)
+            return None
 
     def stats(
         self,

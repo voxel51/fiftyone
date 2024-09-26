@@ -4,7 +4,15 @@ import { useRecoilValue } from "recoil";
 import Option from "../FilterOption";
 import * as state from "./state";
 
-function FilterOption({ modal, path }: { modal: boolean; path: string }) {
+function FilterOption({
+  color,
+  modal,
+  path,
+}: {
+  color: string;
+  modal: boolean;
+  path: string;
+}) {
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
   const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
@@ -15,6 +23,7 @@ function FilterOption({ modal, path }: { modal: boolean; path: string }) {
 
   return (
     <Option
+      color={color}
       excludeAtom={fos.numericExcludeAtom({ modal, path })}
       isMatchingAtom={fos.numericIsMatchingAtom({
         modal,

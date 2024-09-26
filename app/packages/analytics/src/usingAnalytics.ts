@@ -8,6 +8,7 @@ export type AnalyticsInfo = {
   debug: boolean;
   disableUrlTracking?: boolean;
   redact?: string[];
+  version?: string;
 };
 
 export type AnalyticsConfig = {
@@ -31,8 +32,9 @@ export class Analytics {
   private _debug = false;
   private _lastEventTimestamps: Record<string, number> = {}; // Tracks last event times
   private _debounceInterval = 1000; // Default debounce interval in milliseconds (5 seconds)
-  private _disableUrlTracking = false;
+  private _disableUrlTracking = false; // Disable tracking page URL and .page() calls
   private _redactedProperties: string[] = [];
+  private _version?: string;
 
   constructor(config?: AnalyticsConfig) {
     if (config?.debounceInterval) {
@@ -75,6 +77,9 @@ export class Analytics {
     this._segment = AnalyticsBrowser.load({
       writeKey: info.writeKey,
     });
+    if (info.version) {
+      this._version = info.version;
+    }
     if (info.userId) {
       this.identify(info.userId);
     }
@@ -88,7 +93,7 @@ export class Analytics {
   }
 
   page(name?: string, properties?: {}) {
-    if (!this._segment) return;
+    if (!this._segment || this._disableUrlTracking) return;
     properties = this.redact(properties);
     this._segment.page(name, properties);
   }
@@ -115,6 +120,9 @@ export class Analytics {
     let opts;
     if (this._disableUrlTracking) {
       opts = { context: { page: { url: undefined } } };
+    }
+    if (this._version) {
+      opts = { ...opts, version: this._version };
     }
     this._segment.track(name, properties, opts);
   }

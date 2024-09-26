@@ -133,5 +133,8 @@ if [[ -n "${PATH_TO_TEAMS}" ]]; then
     unlink "$PATH_TO_FIFTYONE_DIR/api"
 fi
 
+echo "Post-processing docs"
+node ./scripts/post-process.js
+
 echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

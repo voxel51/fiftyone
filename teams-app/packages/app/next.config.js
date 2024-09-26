@@ -3,7 +3,6 @@ const path = require('path');
 const withTM = require('next-transpile-modules')([
   '@fiftyone/analytics',
   '@fiftyone/aggregations',
-  '@fiftyone/analytics',
   '@fiftyone/components',
   '@fiftyone/embeddings',
   '@fiftyone/core',
@@ -20,7 +19,8 @@ const withTM = require('next-transpile-modules')([
   '@fiftyone/teams-components',
   '@fiftyone/teams-state',
   '@fiftyone/hooks',
-  '@fiftyone/teams-utilities'
+  '@fiftyone/teams-utilities',
+  '@fiftyone/playback',
   // "@fiftyone/lib" @TODO:MANI do we want the lib here too
 ]);
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');

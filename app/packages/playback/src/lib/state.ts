@@ -123,11 +123,24 @@ export type CreateFoTimeline = {
   /**
    * Configuration for the timeline.
    */
-  config: FoTimelineConfig;
+  config?: FoTimelineConfig;
+  /**
+   * An optional function that returns a promise that resolves when the timeline is ready to be marked as initialized.
+   * If this function is not provided, the timeline is declared to be initialized immediately upon creation.
+   */
+  waitUntilInitialized?: () => Promise<void>;
+  /**
+   * If true, the creator will be responsible for managing the animation loop.
+   */
+  optOutOfAnimation?: boolean;
 };
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
   atom<FrameNumber>(DEFAULT_FRAME_NUMBER)
+);
+
+const _currentBufferingRange = atomFamily((_timelineName: TimelineName) =>
+  atom<BufferRange>([0, 0])
 );
 
 const _dataLoadedBuffers = atomFamily((_timelineName: TimelineName) =>
@@ -174,13 +187,17 @@ export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
 export const addTimelineAtom = atom(
   null,
   (get, set, timeline: CreateFoTimeline) => {
-    const timelineName = timeline.name;
-
-    if (get(_timelineConfigs(timelineName)).__internal_IsTimelineInitialized) {
+    // null config means skip timeline creation
+    if (!timeline.config) {
       return;
     }
 
-    const configWithImputedValues: Required<FoTimelineConfig> = {
+    const timelineName = timeline.name;
+
+    const configWithImputedValues: Omit<
+      Required<FoTimelineConfig>,
+      "__internal_IsTimelineInitialized"
+    > = {
       totalFrames: timeline.config.totalFrames,
 
       defaultFrameNumber: Math.max(
@@ -193,8 +210,20 @@ export const addTimelineAtom = atom(
         timeline.config.targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE,
       useTimeIndicator:
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
-      __internal_IsTimelineInitialized: true,
     };
+
+    const isTimelineAlreadyInitialized = get(
+      _timelineConfigs(timelineName)
+    ).__internal_IsTimelineInitialized;
+
+    if (isTimelineAlreadyInitialized) {
+      // update config and return
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
+      return;
+    }
 
     if (
       configWithImputedValues.defaultFrameNumber >
@@ -214,6 +243,29 @@ export const addTimelineAtom = atom(
     set(_dataLoadedBuffers(timelineName), new BufferManager());
     set(_playHeadStates(timelineName), "paused");
 
+    if (timeline.waitUntilInitialized) {
+      timeline
+        .waitUntilInitialized()
+        .then(() => {
+          set(_timelineConfigs(timelineName), {
+            ...configWithImputedValues,
+            __internal_IsTimelineInitialized: true,
+          });
+        })
+        .catch((error) => {
+          console.error(
+            `Failed to initialize timeline "${timelineName}":`,
+            error
+          );
+        });
+    } else {
+      // mark timeline as initialized
+      set(_timelineConfigs(timelineName), {
+        ...configWithImputedValues,
+        __internal_IsTimelineInitialized: true,
+      });
+    }
+
     // 'true' is a placeholder value, since we're just using the cache for disposing
     _INTERNAL_timelineConfigsLruCache.set(timelineName, timelineName);
   }
@@ -222,15 +274,25 @@ export const addTimelineAtom = atom(
 export const addSubscriberAtom = atom(
   null,
   (
-    _get,
+    get,
     set,
     {
       name,
       subscription,
     }: { name: TimelineName; subscription: SequenceTimelineSubscription }
   ) => {
+    // warn if subscription with this id already exists
+    if (get(_subscribers(name)).has(subscription.id)) {
+      console.warn(
+        `Subscription with ${subscription.id} already exists for timeline ${name}. Replacing old subscription. Make sure this is an intentional behavior.`
+      );
+    }
+
+    const bufferManager = get(_dataLoadedBuffers(name));
+
     set(_subscribers(name), (prev) => {
       prev.set(subscription.id, subscription);
+      bufferManager.reset();
       return prev;
     });
   }
@@ -274,12 +336,16 @@ export const setFrameNumberAtom = atom(
         rangeLoadPromises.push(subscriber.loadRange(newLoadRange));
       });
 
+      set(_currentBufferingRange(name), newLoadRange);
+
       try {
         await Promise.all(rangeLoadPromises);
         bufferManager.addNewRange(newLoadRange);
       } catch (e) {
-        // todo: handle error better
+        // todo: handle error better, maybe retry
         console.error(e);
+      } finally {
+        set(_currentBufferingRange(name), [0, 0]);
       }
     }
 
@@ -305,16 +371,16 @@ export const updateTimelineConfigAtom = atom(
     set,
     {
       name,
-      config,
+      configDelta,
     }: {
       name: TimelineName;
-      config: Partial<
+      configDelta: Partial<
         Omit<FoTimelineConfig, "totalFrames" | "defaultFrameNumber">
       >;
     }
   ) => {
     const oldConfig = get(_timelineConfigs(name));
-    set(_timelineConfigs(name), { ...oldConfig, ...config });
+    set(_timelineConfigs(name), { ...oldConfig, ...configDelta });
   }
 );
 
@@ -336,22 +402,33 @@ export const updatePlayheadStateAtom = atom(
  * as they are not used directly.
  */
 
+export const getDataLoadedBuffersAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => get(_dataLoadedBuffers(_timelineName)))
+);
+
+export const getCurrentBufferingRangeAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => get(_currentBufferingRange(_timelineName)))
+);
+
 export const getFrameNumberAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => {
-    // // update age of timeline config in cache by calling `.has`
-    // _timelineConfigsLruCache.has(_timelineName);
-    // console.log(
-    //   ">>>has",
-    //   _timelineName,
-    //   "in cache",
-    //   _timelineConfigsLruCache.has(_timelineName)
-    // );
     return get(_frameNumbers(_timelineName));
   })
 );
 
 export const getPlayheadStateAtom = atomFamily((_timelineName: TimelineName) =>
   atom((get) => get(_playHeadStates(_timelineName)))
+);
+
+export const getIsTimelineInitializedAtom = atomFamily(
+  (_timelineName: TimelineName) =>
+    atom((get) => {
+      return Boolean(
+        get(_timelineConfigs(_timelineName)).__internal_IsTimelineInitialized
+      );
+    })
 );
 
 export const getTimelineConfigAtom = atomFamily((_timelineName: TimelineName) =>
