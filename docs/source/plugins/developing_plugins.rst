@@ -2047,6 +2047,19 @@ subsequent sections.
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
             ctx.panel.set_data("event_data", event)
+        
+        def on_change_group_slice(self, ctx):
+            """Implement this method to set panel state/data when the current
+            group slice changes.
+
+            The current group slice will be available via ``ctx.group_slice``.
+            """
+            event = {
+                "data": ctx.group_slice,
+                "description": "the current group slice",
+            }
+            ctx.panel.set_state("event", "on_change_group_slice")
+            ctx.panel.set_data("event_data", event)
 
         #######################################################################
         # Custom events

@@ -93,6 +93,7 @@ const globalContextSelector = selector({
     const selectedLabels = get(fos.selectedLabels);
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
+    const groupSlice = get(fos.groupSlice);
 
     return {
       datasetName,
@@ -103,6 +104,7 @@ const globalContextSelector = selector({
       selectedLabels,
       viewName,
       extendedSelection,
+      groupSlice,
     };
   },
 });
@@ -142,6 +144,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedLabels,
     viewName,
     extendedSelection,
+    groupSlice,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
@@ -158,6 +161,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         viewName,
         extendedSelection,
         analyticsInfo,
+        groupSlice,
       },
       hooks
     );
@@ -172,6 +176,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     hooks,
     viewName,
     currentSample,
+    groupSlice,
   ]);
 
   return ctx;

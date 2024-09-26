@@ -697,6 +697,11 @@ class ExecutionContext(object):
         """
         return self._ops
 
+    @property
+    def group_slice(self):
+        """The group slice of the view."""
+        return self.request_params.get("group_slice", None)
+
     def prompt(
         self,
         operator_uri,
