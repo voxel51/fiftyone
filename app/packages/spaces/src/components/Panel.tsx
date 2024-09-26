@@ -1,7 +1,7 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
-import { useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import { PanelContext } from "../contexts";
 import { useReactivePanel } from "../hooks";
@@ -20,14 +20,17 @@ function Panel(props: PanelProps) {
   const setPanelIdToScope = useSetRecoilState(panelIdToScopeAtom);
   const scope = isModalPanel ? "modal" : "grid";
 
+  const thisModalUniqueId = useRecoilValue(fos.currentModalUniqueId);
+
   useEffect(() => {
     setPanelIdToScope((ids) => ({ ...ids, [node.id]: scope }));
   }, [scope, setPanelIdToScope, node.id]);
 
   const panelContentTestId = `panel-content-${panelName}`;
+
   if (!panel) {
     return (
-      <StyledPanel data-cy={panelContentTestId} $isModalPanel={isModalPanel}>
+      <StyledPanel data-cy={panelContentTestId}>
         <CenteredStack>
           {pending ? (
             <PanelSkeleton />
@@ -39,7 +42,9 @@ function Panel(props: PanelProps) {
     );
   }
 
-  const { component: Component } = panel;
+  const { component: Component, panelOptions } = panel;
+
+  const shouldKeyComponent = isModalPanel && panelOptions?.reloadOnNavigation;
 
   return (
     <StyledPanel
@@ -50,7 +55,11 @@ function Panel(props: PanelProps) {
       ref={dimensions.ref}
     >
       <PanelContext.Provider value={{ node, scope }}>
-        <Component panelNode={node} dimensions={dimensions} />
+        <Component
+          key={shouldKeyComponent ? thisModalUniqueId : panelName}
+          panelNode={node}
+          dimensions={dimensions}
+        />
       </PanelContext.Provider>
     </StyledPanel>
   );
