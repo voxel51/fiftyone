@@ -95,6 +95,10 @@ Core
 
 Plugins
 
+- Added
+  :meth:`set_group_slice() <fiftyone.operators.operations.Operations.set_group_slice>`
+  to the operator execution context
+  `#4844 <https://github.com/voxel51/fiftyone/pull/4844>`_
 - Improved styling for :class:`GridView <fiftyone.operators.types.GridView>`
   components
   `#4764 <https://github.com/voxel51/fiftyone/pull/4764>`_
