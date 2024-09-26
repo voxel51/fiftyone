@@ -20,17 +20,12 @@ const withTM = require('next-transpile-modules')([
   '@fiftyone/teams-state',
   '@fiftyone/hooks',
   '@fiftyone/teams-utilities',
-  '@fiftyone/playback',
+  '@fiftyone/playback'
   // "@fiftyone/lib" @TODO:MANI do we want the lib here too
 ]);
 const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
 
 const nextConfig = withTM({
-  api: {
-    bodyParser: {
-      sizeLimit: '64mb'
-    }
-  },
   reactStrictMode: getBoolean('REACT_STRICT_MODE', true),
   swcMinify: true,
   output: 'standalone',
