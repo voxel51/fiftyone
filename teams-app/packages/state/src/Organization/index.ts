@@ -8,3 +8,11 @@ export const currentOrganizationQuery = graphql`
     }
   }
 `;
+
+export const OrganizationFeatureFlagsQuery = graphql`
+  query OrganizationFeatureFlagQuery {
+    featureFlag {
+      invitationsEnabled
+    }
+  }
+`;
