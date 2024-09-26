@@ -634,6 +634,14 @@ class Operations(object):
             "set_panel_title", params={"id": id, "title": title}
         )
 
+    def set_group_slice(self, slice):
+        """Set the active group slice in the App.
+
+        Args:
+            slice: the group slice to activate
+        """
+        return self._ctx.trigger("set_group_slice", {"slice": slice})
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
