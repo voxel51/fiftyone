@@ -13,7 +13,7 @@ export const OrganizationFeatureFlagsQuery = graphql`
   query OrganizationFeatureFlagQuery {
     featureFlag {
       invitationsEnabled
-      sendEmailInvitations
+      invitationEmailsEnabled
     }
   }
 `;

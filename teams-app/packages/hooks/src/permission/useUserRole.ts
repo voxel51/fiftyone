@@ -24,7 +24,7 @@ export default function useUserRole() {
   const {
     featureFlag: {
       invitationsEnabled: enableInvitations = false,
-      sendEmailInvitations: canSendEmailInvitations,
+      invitationEmailsEnabled: canSendEmailInvitations,
     },
   } = useLazyLoadLatestQuery<OrganizationFeatureFlagQueryT>(
     OrganizationFeatureFlagsQuery,
