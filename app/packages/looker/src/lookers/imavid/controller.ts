@@ -123,8 +123,8 @@ export class ImaVidFramesController {
         BUFFER_METADATA_FETCHING
       );
 
-      // subtract by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
-      return this.fetchMore(range[0] - 2, range[1] - range[0] || 2).finally(
+      // subtract/add by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
+      return this.fetchMore(range[0] - 2, range[1] - range[0] + 2 || 2).finally(
         () => {
           this.fetchBufferManager.removeMetadataFromBufferRange(index);
         }
@@ -165,7 +165,7 @@ export class ImaVidFramesController {
     return this.config.page;
   }
 
-  private get key() {
+  public get key() {
     return this.config.key;
   }
 
@@ -257,23 +257,36 @@ export class ImaVidFramesController {
             const frameIndices = imageFetchPromisesMap.keys();
             const imageFetchPromises = imageFetchPromisesMap.values();
 
-            Promise.all(imageFetchPromises).then((sampleIds) => {
-              for (let i = 0; i < sampleIds.length; i++) {
-                const frameIndex = frameIndices.next().value;
-                const sampleId = sampleIds[i];
-                this.store.frameIndex.set(frameIndex, sampleId);
-                this.store.reverseFrameIndex.set(sampleId, frameIndex);
+            Promise.all(imageFetchPromises)
+              .then((sampleIds) => {
+                for (let i = 0; i < sampleIds.length; i++) {
+                  const frameIndex = frameIndices.next().value;
+                  const sampleId = sampleIds[i];
+                  this.store.frameIndex.set(frameIndex, sampleId);
+                  this.store.reverseFrameIndex.set(sampleId, frameIndex);
 
-                this.storeBufferManager.addNewRange([
+                  resolve();
+                }
+              })
+              .then(() => {
+                const newRange = [
                   Number(data.samples.edges[0].cursor) + 1,
                   Number(
                     data.samples.edges[data.samples.edges.length - 1].cursor
                   ) + 1,
-                ]);
+                ] as BufferRange;
 
-                resolve();
-              }
-            });
+                this.storeBufferManager.addNewRange(newRange);
+
+                window.dispatchEvent(
+                  new CustomEvent("fetchMore", {
+                    detail: {
+                      id: this.key,
+                    },
+                    bubbles: false,
+                  })
+                );
+              });
           }
         },
       });
