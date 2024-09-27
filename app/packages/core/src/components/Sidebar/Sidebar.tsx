@@ -11,6 +11,7 @@ import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
 import style from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
+import { useTheme as useMUITheme } from "@mui/material";
 
 const MARGIN = 3;
 
@@ -693,6 +694,7 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
+  const muiTheme = useMUITheme();
 
   return shown ? (
     <Resizable
@@ -705,7 +707,10 @@ const InteractiveSidebar = ({
         setWidth(width + delta);
       }}
       onResizeReset={resetWidth}
-      style={{ borderTopRightRadius: 8 }}
+      style={{
+        borderTopRightRadius: 8,
+        zIndex: modal ? muiTheme.zIndex.tooltip + 1 : undefined,
+      }}
     >
       <SchemaSettings />
       {!modal && (
