@@ -172,7 +172,7 @@ export const useCreateTimeline = (
       play();
       e.stopPropagation();
     },
-    [timelineName]
+    [timelineName, play]
   );
 
   const onPauseEvent = useCallback(
@@ -184,7 +184,7 @@ export const useCreateTimeline = (
       pause();
       e.stopPropagation();
     },
-    [timelineName]
+    [timelineName, pause]
   );
 
   const onSeek = useCallback(
