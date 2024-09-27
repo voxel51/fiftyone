@@ -1,10 +1,10 @@
 module.exports = {
-  src: '../',
-  schema: '../../../api/schema.graphql',
-  exclude: ['**/node_modules/**', '**/__mocks__/**', '**/__generated__/**'],
-  language: 'typescript',
+  src: "../",
+  schema: "../../../../voxel-hub/api/schema.graphql",
+  exclude: ["**/node_modules/**", "**/__mocks__/**", "**/__generated__/**"],
+  language: "typescript",
   customScalars: {
-    date: 'string',
-    datetime: 'string'
-  }
+    date: "string",
+    datetime: "string",
+  },
 };
