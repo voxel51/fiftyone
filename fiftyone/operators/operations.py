@@ -316,6 +316,7 @@ class Operations(object):
         on_change_selected=None,
         on_change_selected_labels=None,
         on_change_extended_selection=None,
+        on_change_group_slice=None,
         allow_duplicates=False,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
@@ -353,6 +354,8 @@ class Operations(object):
                 current selected labels changes
             on_change_extended_selection (None): an operator to invoke when the
                 current extended selection changes
+            on_change_group_slice (None): an operator to invoke when the group
+                slice changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
         """
@@ -375,6 +378,7 @@ class Operations(object):
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,
             "on_change_extended_selection": on_change_extended_selection,
+            "on_change_group_slice": on_change_group_slice,
             "allow_duplicates": allow_duplicates,
         }
         return self._ctx.trigger("register_panel", params=params)
