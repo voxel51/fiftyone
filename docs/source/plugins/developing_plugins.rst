@@ -979,6 +979,7 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
@@ -1773,6 +1774,13 @@ in the App.
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
+Depending on the ``surfaces`` panel config, panels can be scoped to either
+the grid or the modal. You can open these panels from the "+" menu, which
+is available in both the grid and modal views. Whereas grid panels enable
+extensibility at the macro level, allowing you to work with entire datasets,
+modal panels provide extensibility at the micro level, focusing on individual
+samples and scenarios.
+
 Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
@@ -1829,6 +1837,16 @@ subsequent sections.
 
                 # Whether to allow multiple instances of the panel to be opened
                 allow_multiple=False,
+
+                # Whether the panel should be available in the grid view
+                # modal view, or both
+                # Possible values: "grid", "modal", "grid modal"       
+                surfaces="grid modal" # default = "grid"
+
+                # Markdown-formatted text that describes the panel. This is
+                # rendererd in a tooltip when the help icon in the panel
+                # title is hovered over
+                help_markdown="A description of the panel",
             )
 
         def render(self, ctx):
@@ -2029,6 +2047,19 @@ subsequent sections.
                 "description": "the current extended selection",
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
+            ctx.panel.set_data("event_data", event)
+        
+        def on_change_group_slice(self, ctx):
+            """Implement this method to set panel state/data when the current
+            group slice changes.
+
+            The current group slice will be available via ``ctx.group_slice``.
+            """
+            event = {
+                "data": ctx.group_slice,
+                "description": "the current group slice",
+            }
+            ctx.panel.set_state("event", "on_change_group_slice")
             ctx.panel.set_data("event_data", event)
 
         #######################################################################

@@ -1487,7 +1487,7 @@ class RenameGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to rename",
@@ -1518,7 +1518,10 @@ class RenameGroupSlice(foo.Operator):
         new_name = ctx.params["new_name"]
 
         ctx.dataset.rename_group_slice(name, new_name)
-        ctx.trigger("reload_dataset")
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(new_name)
+
+        ctx.ops.reload_dataset()
 
 
 class DeleteGroupSlice(foo.Operator):
@@ -1549,7 +1552,7 @@ class DeleteGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to delete",
@@ -1564,7 +1567,10 @@ class DeleteGroupSlice(foo.Operator):
         name = ctx.params["name"]
 
         ctx.dataset.delete_group_slice(name)
-        ctx.trigger("reload_dataset")
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
+
+        ctx.ops.reload_dataset()
 
 
 class ListSavedViews(foo.Operator):
