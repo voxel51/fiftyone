@@ -97,7 +97,7 @@ export const Seekbar = React.forwardRef<
         unBuffered: "var(--fo-palette-neutral-softBorder)",
         currentProgress: "var(--fo-palette-primary-plainColor)",
         buffered: "var(--fo-palette-secondary-main)",
-        loading: "#ca6116",
+        loading: "#a86738",
       }),
     [loadedScaled, loadingScaled, value]
   );
