@@ -23,7 +23,7 @@ export const DynamicGroupCarousel = React.memo(() => {
    * Problem = flashlight is not re-rendering when group by field changes.
    * Solution was to key it by groupByValue, but when the component
    * subscribes to the groupByFieldValue using useRecoilValue(fos.groupByFieldValue),
-   * while it solves the problem,it causes flashlight to behave weirdly.
+   * while it solves the problem, it causes flashlight to behave weirdly.
    * (try scrolling carousel and selecting samples, flashlight will reset to the front)
    *
    */
@@ -47,7 +47,6 @@ export const DynamicGroupCarousel = React.memo(() => {
     return () => window.clearInterval(intervalId);
   }, []);
 
-  console.log("Group by value is ", groupByValueRef.current);
   return (
     <Resizable
       size={{ height, width: "100%" }}
