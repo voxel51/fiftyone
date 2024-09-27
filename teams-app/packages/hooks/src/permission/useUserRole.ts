@@ -1,32 +1,35 @@
 import {
   useCurrentUser,
   useLazyLoadLatestQuery,
-  useUserAudit
-} from '@fiftyone/hooks';
+  useUserAudit,
+} from "@fiftyone/hooks";
 import {
   OrganizationFeatureFlagQueryT,
   OrganizationFeatureFlagsQuery,
   securityRoleAttrFragment,
   securityRolesExecuteCustomPluginsQuery,
   securityRolesManageInvitationsQuery,
-  securityRolesMaxDatasetPermissionQuery
-} from '@fiftyone/teams-state';
+  securityRolesMaxDatasetPermissionQuery,
+} from "@fiftyone/teams-state";
 import {
   DATASET_PERMISSIONS,
   OPERATOR_DATASET_PERMISSIONS,
   OPERATOR_USER_ROLES,
-  USER_ROLES
-} from '@fiftyone/teams-state/src/constants';
-import { useCallback, useMemo } from 'react';
-import { useFragment } from 'react-relay';
+  USER_ROLES,
+} from "@fiftyone/teams-state/src/constants";
+import { useCallback, useMemo } from "react";
+import { useFragment } from "react-relay";
 
 export default function useUserRole() {
   const {
-    featureFlag: { invitationsEnabled: enableInvitations = false }
+    featureFlag: {
+      invitationsEnabled: enableInvitations = false,
+      invitationEmailsEnabled: canSendEmailInvitations,
+    },
   } = useLazyLoadLatestQuery<OrganizationFeatureFlagQueryT>(
     OrganizationFeatureFlagsQuery,
     {},
-    { fetchPolicy: 'store-or-network' }
+    { fetchPolicy: "store-or-network" }
   );
 
   const [currentUser] = useCurrentUser();
@@ -36,20 +39,20 @@ export default function useUserRole() {
   const { roles } = useLazyLoadLatestQuery(
     securityRolesMaxDatasetPermissionQuery,
     {},
-    { fetchPolicy: 'store-and-network' }
+    { fetchPolicy: "store-and-network" }
   );
 
   const { roles: rolesWithExecuteCustomPluginsPermission } =
     useLazyLoadLatestQuery(
       securityRolesExecuteCustomPluginsQuery,
       {},
-      { fetchPolicy: 'store-and-network' }
+      { fetchPolicy: "store-and-network" }
     );
 
   const { roles: rolesWithInvitations } = useLazyLoadLatestQuery(
     securityRolesManageInvitationsQuery,
     {},
-    { fetchPolicy: 'store-and-network' }
+    { fetchPolicy: "store-and-network" }
   );
 
   const rolePermissions = roles.reduce((acc, { role, attribute }) => {
@@ -111,29 +114,29 @@ export default function useUserRole() {
 
         const messageList = [];
         if (userAuditError) {
-          messageList.push('Failed to get license data.');
+          messageList.push("Failed to get license data.");
         } else if (isNoSeat) {
-          messageList.push('No seats available');
+          messageList.push("No seats available");
         }
 
         if (!isHigherRole) {
           messageList.push(
-            'You can not set a role higher than your current role'
+            "You can not set a role higher than your current role"
           );
         }
         if (!isHigherPermission) {
-          messageList.push('The role does not allow selected permission');
+          messageList.push("The role does not allow selected permission");
         }
         if (inviteeRole && role.id === inviteeRole) {
-          messageList.push('currently assigned role');
+          messageList.push("currently assigned role");
         }
 
-        const messages = messageList.join('; ');
+        const messages = messageList.join("; ");
 
         return {
           ...role,
           disabled,
-          disabledInfo: disabled ? `Disabled: ${messages}` : undefined
+          disabledInfo: disabled ? `Disabled: ${messages}` : undefined,
         };
       });
     },
@@ -170,7 +173,7 @@ export default function useUserRole() {
   const operatorMinRoleOptions = useMemo(() => {
     return OPERATOR_USER_ROLES.map((role) => {
       let disabled;
-      let disabledInfo = '';
+      let disabledInfo = "";
 
       if (rolePluginPermissions[role.id.toUpperCase()]) {
         disabled = false;
@@ -181,7 +184,7 @@ export default function useUserRole() {
       return {
         ...role,
         disabled,
-        disabledInfo
+        disabledInfo,
       };
     });
   }, [OPERATOR_USER_ROLES, rolePluginPermissions]);
@@ -202,7 +205,7 @@ export default function useUserRole() {
             disabled: true,
             disabledInfo: `${capitalizeFirstLetter(
               minimumRole
-            )} cannot have ${perm.id.toLowerCase()} permission. `
+            )} cannot have ${perm.id.toLowerCase()} permission. `,
           };
         } else {
           return perm;
@@ -217,8 +220,9 @@ export default function useUserRole() {
     getMinRequiredRole,
     getInviteRoles,
     canInvite: enableInvitations && roleInvitations[currentRole],
+    canSendEmailInvitations,
     getPlugInPermissionOptions,
-    operatorMinRoleOptions
+    operatorMinRoleOptions,
   };
 }
 

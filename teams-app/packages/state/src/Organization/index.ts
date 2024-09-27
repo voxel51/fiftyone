@@ -1,4 +1,4 @@
-import { graphql } from 'react-relay/hooks';
+import { graphql } from "react-relay/hooks";
 
 export const currentOrganizationQuery = graphql`
   query OrganizationQuery {
@@ -13,6 +13,7 @@ export const OrganizationFeatureFlagsQuery = graphql`
   query OrganizationFeatureFlagQuery {
     featureFlag {
       invitationsEnabled
+      invitationEmailsEnabled
     }
   }
 `;
