@@ -96,6 +96,10 @@ Core
 Plugins
 
 - Added
+  :meth:`ctx.group_slice <fiftyone.operators.executor.ExecutionContext.group_slice>`
+  to the operator execution context
+  `#4850 <https://github.com/voxel51/fiftyone/pull/4850>`_
+- Added
   :meth:`set_group_slice() <fiftyone.operators.operations.Operations.set_group_slice>`
   to the operator execution context
   `#4844 <https://github.com/voxel51/fiftyone/pull/4844>`_
