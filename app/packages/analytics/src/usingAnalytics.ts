@@ -56,8 +56,10 @@ export class Analytics {
     if (this._segment) return;
     this._debug = info?.debug;
     if (!info || info.doNotTrack) {
-      console.warn("Analytics disabled");
-      console.log(info);
+      if (this._debug) {
+        console.warn("Analytics disabled");
+        console.log(info);
+      }
       this.disable();
       return;
     }
@@ -66,7 +68,9 @@ export class Analytics {
     }
     this._disableUrlTracking = info.disableUrlTracking;
     if (!info.writeKey) {
-      console.warn("Analytics disabled (no write key)");
+      if (this._debug) {
+        console.warn("Analytics disabled (no write key)");
+      }
       this.disable();
       return;
     }
