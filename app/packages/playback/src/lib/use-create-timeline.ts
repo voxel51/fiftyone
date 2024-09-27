@@ -53,6 +53,13 @@ export const useCreateTimeline = (
   const setPlayHeadState = useSetAtom(updatePlayheadStateAtom);
 
   /**
+   * this effect syncs onAnimationStutter ref from props
+   */
+  useEffect(() => {
+    onAnimationStutterRef.current = newTimelineProps.onAnimationStutter;
+  }, [newTimelineProps.onAnimationStutter]);
+
+  /**
    * this effect creates the timeline
    */
   useEffect(() => {
@@ -137,6 +144,7 @@ export const useCreateTimeline = (
   const isAnimationActiveRef = useRef(false);
   const isLastDrawFinishedRef = useRef(true);
   const frameNumberRef = useRef(frameNumber);
+  const onAnimationStutterRef = useRef(newTimelineProps.onAnimationStutter);
   const onPlayListenerRef = useRef<() => void>();
   const onPauseListenerRef = useRef<() => void>();
   const onSeekCallbackRefs = useRef<{ start: () => void; end: () => void }>();
@@ -145,11 +153,15 @@ export const useCreateTimeline = (
   const updateFreqRef = useRef(updateFreq);
 
   const play = useCallback(() => {
+    if (!isTimelineInitialized) {
+      return;
+    }
+
     setPlayHeadState({ name: timelineName, state: "playing" });
     if (onPlayListenerRef.current) {
       onPlayListenerRef.current();
     }
-  }, [timelineName]);
+  }, [timelineName, isTimelineInitialized]);
 
   const pause = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "paused" });
@@ -167,7 +179,7 @@ export const useCreateTimeline = (
       play();
       e.stopPropagation();
     },
-    [timelineName]
+    [timelineName, play]
   );
 
   const onPauseEvent = useCallback(
@@ -179,7 +191,7 @@ export const useCreateTimeline = (
       pause();
       e.stopPropagation();
     },
-    [timelineName]
+    [timelineName, pause]
   );
 
   const onSeek = useCallback(
@@ -258,19 +270,27 @@ export const useCreateTimeline = (
       // queue next animation before draw
       animationId.current = requestAnimationFrame(animate);
 
+      // usually happens when we're out of frames in store
       if (!isLastDrawFinishedRef.current) {
+        queueMicrotask(() => {
+          onAnimationStutterRef.current?.();
+        });
         return;
       }
 
       // drawing logic is owned by subscribers and invoked by setFrameNumber
       // we don't increase frame number until the draw is complete
       isLastDrawFinishedRef.current = false;
+
       setFrameNumber({
         name: timelineName,
         newFrameNumber: targetFrameNumber,
       })
         .then(() => {
           frameNumberRef.current = targetFrameNumber;
+        })
+        .catch((e) => {
+          console.error("error setting frame number", e);
         })
         .finally(() => {
           isLastDrawFinishedRef.current = true;
@@ -292,6 +312,7 @@ export const useCreateTimeline = (
   const cancelAnimation = useCallback(() => {
     cancelAnimationFrame(animationId.current);
     isAnimationActiveRef.current = false;
+    lastDrawTime.current = -1;
   }, []);
 
   useEventHandler(window, "play", onPlayEvent);
