@@ -161,9 +161,6 @@ export const Speed = React.forwardRef<
 >(({ speed, setSpeed, ...props }, ref) => {
   const { style, className, ...otherProps } = props;
 
-  const [isPlaybackConfigurerOpen, setIsPlaybackConfigurerOpen] =
-    React.useState(false);
-
   const onChangeSpeed = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSpeed(parseFloat(e.target.value));
@@ -172,6 +169,10 @@ export const Speed = React.forwardRef<
   );
 
   const rangeValue = React.useMemo(() => (speed / 2) * 100, [speed]);
+
+  const resetSpeed = React.useCallback(() => {
+    setSpeed(1);
+  }, []);
 
   return (
     <TimelineElementContainer
@@ -186,15 +187,11 @@ export const Speed = React.forwardRef<
           gap: "0.25em",
         },
       }}
-      onMouseLeave={() => {
-        setIsPlaybackConfigurerOpen(false);
-      }}
+      title={`${speed}x (click to reset)`}
     >
       <SpeedIcon
         className={controlsStyles.lookerClickable}
-        onMouseEnter={() => {
-          setIsPlaybackConfigurerOpen(true);
-        }}
+        onClick={resetSpeed}
       />
       <input
         type="range"
@@ -203,6 +200,7 @@ export const Speed = React.forwardRef<
         step="0.1"
         value={speed.toFixed(4)}
         className={videoStyles.hideInputThumb}
+        title={`${speed}x`}
         style={
           {
             "--playback": `${rangeValue}%`,
