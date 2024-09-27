@@ -1049,7 +1049,8 @@ class PromptUserForOperation extends Operator {
       operator: operator_uri,
       params,
       prompt: shouldPrompt,
-      callback: (result: OperatorResult) => {
+      callback: (result: OperatorResult, opts: { ctx: ExecutionContext }) => {
+        const ctx = opts.ctx;
         if (result.error) {
           if (on_error) {
             triggerEvent(panelId, {
@@ -1061,7 +1062,7 @@ class PromptUserForOperation extends Operator {
           if (on_success) {
             triggerEvent(panelId, {
               operator: on_success,
-              params: { result: result.result },
+              params: { result: result.result, original_params: ctx.params },
             });
           }
         }
