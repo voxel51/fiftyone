@@ -979,6 +979,7 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
@@ -2046,6 +2047,19 @@ subsequent sections.
                 "description": "the current extended selection",
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
+            ctx.panel.set_data("event_data", event)
+        
+        def on_change_group_slice(self, ctx):
+            """Implement this method to set panel state/data when the current
+            group slice changes.
+
+            The current group slice will be available via ``ctx.group_slice``.
+            """
+            event = {
+                "data": ctx.group_slice,
+                "description": "the current group slice",
+            }
+            ctx.panel.set_state("event", "on_change_group_slice")
             ctx.panel.set_data("event_data", event)
 
         #######################################################################
