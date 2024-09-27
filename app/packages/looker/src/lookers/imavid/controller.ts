@@ -124,7 +124,7 @@ export class ImaVidFramesController {
       );
 
       // subtract/add by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
-      return this.fetchMore(range[0] - 2, range[1] - range[0] + 2 || 2).finally(
+      return this.fetchMore(range[0] - 2, range[1] - range[0] + 2).finally(
         () => {
           this.fetchBufferManager.removeMetadataFromBufferRange(index);
         }
@@ -264,9 +264,8 @@ export class ImaVidFramesController {
                   const sampleId = sampleIds[i];
                   this.store.frameIndex.set(frameIndex, sampleId);
                   this.store.reverseFrameIndex.set(sampleId, frameIndex);
-
-                  resolve();
                 }
+                resolve();
               })
               .then(() => {
                 const newRange = [

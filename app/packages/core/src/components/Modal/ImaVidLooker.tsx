@@ -155,19 +155,20 @@ export const ImaVidLookerReact = React.memo(
 
     const loadRange = React.useCallback(
       async (range: Readonly<BufferRange>) => {
-        if (
-          imaVidLookerRef.current.frameStoreController.storeBufferManager.containsRange(
-            range
-          )
-        ) {
+        const storeBufferManager =
+          imaVidLookerRef.current.frameStoreController.storeBufferManager;
+        const fetchBufferManager =
+          imaVidLookerRef.current.frameStoreController.fetchBufferManager;
+
+        if (storeBufferManager.containsRange(range)) {
           return;
         }
 
+        const unprocessedStoreBufferRange =
+          storeBufferManager.getUnprocessedBufferRange(range);
         const unprocessedBufferRange =
-          imaVidLookerRef.current.frameStoreController.fetchBufferManager.getUnprocessedBufferRange(
-            imaVidLookerRef.current.frameStoreController.storeBufferManager.getUnprocessedBufferRange(
-              range
-            )
+          fetchBufferManager.getUnprocessedBufferRange(
+            unprocessedStoreBufferRange
           );
 
         if (!unprocessedBufferRange) {
@@ -183,11 +184,7 @@ export const ImaVidLookerReact = React.memo(
             if (
               e.detail.id === imaVidLookerRef.current.frameStoreController.key
             ) {
-              if (
-                imaVidLookerRef.current.frameStoreController.storeBufferManager.containsRange(
-                  unprocessedBufferRange
-                )
-              ) {
+              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
                 resolve();
                 window.removeEventListener(
                   "fetchMore",
@@ -199,7 +196,8 @@ export const ImaVidLookerReact = React.memo(
 
           window.addEventListener(
             "fetchMore",
-            fetchMoreListener as EventListener
+            fetchMoreListener as EventListener,
+            { once: true }
           );
         });
       },
@@ -275,25 +273,25 @@ export const ImaVidLookerReact = React.memo(
         });
 
         registerOnPlayCallback(() => {
-          imaVidLookerRef.current.element.update(() => ({
+          imaVidLookerRef.current?.element?.update(() => ({
             playing: true,
           }));
         });
 
         registerOnPauseCallback(() => {
-          imaVidLookerRef.current.element.update(() => ({
+          imaVidLookerRef.current?.element?.update(() => ({
             playing: false,
           }));
         });
 
         registerOnSeekCallbacks({
           start: () => {
-            imaVidLookerRef.current.element.update(() => ({
+            imaVidLookerRef.current?.element?.update(() => ({
               seeking: true,
             }));
           },
           end: () => {
-            imaVidLookerRef.current.element.update(() => ({
+            imaVidLookerRef.current?.element?.update(() => ({
               seeking: false,
             }));
           },

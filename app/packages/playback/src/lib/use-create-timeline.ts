@@ -53,6 +53,13 @@ export const useCreateTimeline = (
   const setPlayHeadState = useSetAtom(updatePlayheadStateAtom);
 
   /**
+   * this effect syncs onAnimationStutter ref from props
+   */
+  useEffect(() => {
+    onAnimationStutterRef.current = newTimelineProps.onAnimationStutter;
+  }, [newTimelineProps.onAnimationStutter]);
+
+  /**
    * this effect creates the timeline
    */
   useEffect(() => {
