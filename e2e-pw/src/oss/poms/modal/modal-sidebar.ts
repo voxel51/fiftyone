@@ -126,6 +126,18 @@ class SidebarAsserter {
     );
   }
 
+  async verifyObject(key: string, obj: { [key: string]: string }) {
+    const locator = this.modalSidebarPom.getSidebarEntry(key);
+
+    for (const k in obj) {
+      const v = obj[k];
+      const entry = locator.getByTestId(`${k}-${v}`);
+
+      await expect(entry.getByTestId(k)).toHaveText(k);
+      await expect(entry.getByTestId(v)).toHaveText(v);
+    }
+  }
+
   async verifyLabelTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {

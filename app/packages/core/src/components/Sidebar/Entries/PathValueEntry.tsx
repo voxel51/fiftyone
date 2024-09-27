@@ -125,9 +125,11 @@ const ListContainer = styled(ScalarDiv)`
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
 
   & > div {
-    margin-bottom: 0.5rem;
     white-space: unset;
   }
 `;
@@ -236,24 +238,27 @@ const LengthLoadable = ({ path }: { path: string }) => {
 
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useData<Primitive[]>(path);
-  const { fields, subfield } = fos.useAssertedRecoilValue(fos.field(path));
+  const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
+    fos.field(path)
+  );
   const timeZone = useRecoilValue(fos.timeZone);
 
-  if (!subfield) {
-    throw new Error(`expected a subfield for ${path}`);
+  const field = subfield || ftype;
+  if (!field) {
+    throw new Error(`expected an ftype for ${path}`);
   }
 
   const values = useMemo(() => {
     return Array.from(data || []).map((value) =>
-      format({ fields, ftype: subfield, value, timeZone })
+      format({ fields, ftype: field, value, timeZone })
     );
-  }, [data, fields, subfield, timeZone]);
+  }, [data, field, fields, timeZone]);
 
   return (
     <ListContainer>
       {values.map((v, i) => (
         <div key={i.toString()} title={typeof v === "string" ? v : undefined}>
-          {v}
+          {v === null ? "None" : v}
         </div>
       ))}
       {values.length === 0 && "No results"}
@@ -518,19 +523,20 @@ const formatObject = ({
         return null;
       }
 
+      const text = formatPrimitiveOrURL({
+        ftype: fields?.[k]?.ftype,
+        timeZone,
+        value: v,
+      });
+
       return (
         <div
+          data-cy={`${k}-${text}`}
           key={k}
           style={{ display: "flex", justifyContent: "space-between" }}
         >
-          <span>{k}</span>
-          <span>
-            {formatPrimitiveOrURL({
-              ftype: fields?.[k]?.ftype,
-              timeZone,
-              value: v,
-            })}
-          </span>
+          <span data-cy={k}>{k}</span>
+          <span data-cy={text}>{text}</span>
         </div>
       );
     })
