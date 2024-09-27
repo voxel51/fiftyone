@@ -36,8 +36,6 @@ def up(db, dataset_name):
             added_last_modified_at_frames,
         ) = _up_fields(dataset_name, frame_fields)
 
-    db.datasets.replace_one(match_d, dataset_dict)
-
     # Populate `Sample.created_at` values
     sample_collection_name = dataset_dict.get("sample_collection_name", None)
     if sample_collection_name:
@@ -61,6 +59,8 @@ def up(db, dataset_name):
             added_last_modified_at_frames,
             now,
         )
+
+    db.datasets.replace_one(match_d, dataset_dict)
 
 
 def down(db, dataset_name):
