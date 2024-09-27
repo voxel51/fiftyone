@@ -316,8 +316,6 @@ export const setFrameNumberAtom = atom(
       newFrameNumber: FrameNumber;
     }
   ) => {
-    console.log(">>>SFNATOM SUGGESTION", newFrameNumber);
-
     const subscribers = get(_subscribers(name));
 
     if (!subscribers) {
@@ -366,7 +364,6 @@ export const setFrameNumberAtom = atom(
     });
 
     await Promise.allSettled(renderPromises);
-    console.log(">>>SFNATOM FINAL", newFrameNumber);
     set(_frameNumbers(name), newFrameNumber);
   }
 );
