@@ -91,6 +91,18 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers[0][1]).toBe(20);
   });
 
+  test("addBufferRangeToBuffer method - same ranges", async () => {
+    bufferManager.addNewRange([1, 10]);
+    bufferManager.addNewRange([1, 10]);
+
+    const mergedBuffers = bufferManager.buffers;
+
+    // we expect [1, 10]
+    expect(mergedBuffers.length).toBe(1);
+    expect(mergedBuffers[0][0]).toBe(1);
+    expect(mergedBuffers[0][1]).toBe(10);
+  });
+
   test("addBufferRangeToBuffer method - multiple merges", async () => {
     bufferManager.addNewRange([1, 4]);
     bufferManager.addNewRange([5, 7]);

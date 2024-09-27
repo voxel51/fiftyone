@@ -133,6 +133,11 @@ export type CreateFoTimeline = {
    * If true, the creator will be responsible for managing the animation loop.
    */
   optOutOfAnimation?: boolean;
+
+  /**
+   * Callback to be called when the animation stutters.
+   */
+  onAnimationStutter?: () => void;
 };
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
@@ -339,7 +344,7 @@ export const setFrameNumberAtom = atom(
       set(_currentBufferingRange(name), newLoadRange);
 
       try {
-        await Promise.all(rangeLoadPromises);
+        await Promise.allSettled(rangeLoadPromises);
         bufferManager.addNewRange(newLoadRange);
       } catch (e) {
         // todo: handle error better, maybe retry
@@ -358,9 +363,8 @@ export const setFrameNumberAtom = atom(
       renderPromises.push(subscriber.renderFrame(newFrameNumber));
     });
 
-    Promise.all(renderPromises).then(() => {
-      set(_frameNumbers(name), newFrameNumber);
-    });
+    await Promise.allSettled(renderPromises);
+    set(_frameNumbers(name), newFrameNumber);
   }
 );
 
