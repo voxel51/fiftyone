@@ -113,7 +113,7 @@ const nextConfig = withTM({
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule.issuer,
-        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] }, // exclude if *.svg?url
+        resourceQuery: { not: [/url/] }, // exclude if *.svg?url
         use: ['@svgr/webpack'],
       },
     )
