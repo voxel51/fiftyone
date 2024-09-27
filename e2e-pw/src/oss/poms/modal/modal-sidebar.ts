@@ -131,10 +131,10 @@ class SidebarAsserter {
 
     for (const k in obj) {
       const v = obj[k];
-      const entry = locator.getByTestId(`${k}-${v}`);
+      const entry = locator.getByTestId(`key-value-${k}-${v}`);
 
-      await expect(entry.getByTestId(k)).toHaveText(k);
-      await expect(entry.getByTestId(v)).toHaveText(v);
+      await expect(entry.getByTestId(`key-${k}`)).toHaveText(k);
+      await expect(entry.getByTestId(`value-${v}`)).toHaveText(v);
     }
   }
 

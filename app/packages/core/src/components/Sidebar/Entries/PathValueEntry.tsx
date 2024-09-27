@@ -197,6 +197,7 @@ const ListValueEntry = ({
           </span>
           <Arrow
             key="arrow"
+            data-cy={`sidebar-field-arrow-enabled-${path}`}
             style={{ cursor: "pointer", margin: 0 }}
             onClick={(event) => {
               event.preventDefault();
@@ -255,7 +256,7 @@ const ListLoadable = ({ path }: { path: string }) => {
   }, [data, field, fields, timeZone]);
 
   return (
-    <ListContainer>
+    <ListContainer data-cy={`sidebar-entry-${path}`}>
       {values.map((v, i) => (
         <div key={i.toString()} title={typeof v === "string" ? v : undefined}>
           {v === null ? "None" : v}
@@ -531,12 +532,12 @@ const formatObject = ({
 
       return (
         <div
-          data-cy={`${k}-${text}`}
+          data-cy={`key-value-${k}-${text}`}
           key={k}
           style={{ display: "flex", justifyContent: "space-between" }}
         >
-          <span data-cy={k}>{k}</span>
-          <span data-cy={text}>{text}</span>
+          <span data-cy={`key-${k}`}>{k}</span>
+          <span data-cy={`value-${text}`}>{text}</span>
         </div>
       );
     })

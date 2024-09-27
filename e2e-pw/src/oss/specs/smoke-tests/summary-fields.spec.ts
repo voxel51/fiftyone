@@ -42,6 +42,7 @@ test.describe("summary fields", () => {
   });
 
   test("modal sidebar summary fields render", async ({
+    eventUtils,
     fiftyoneLoader,
     grid,
     modal,
@@ -54,7 +55,12 @@ test.describe("summary fields", () => {
       one: "two",
       three: "four",
     });
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
     await modal.sidebar.clickFieldDropdown("summaries");
+    await entryExpandPromise;
     await modal.sidebar.assert.verifyObject("summaries", {
       five: "six",
       seven: "eight",
