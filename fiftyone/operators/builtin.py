@@ -1255,7 +1255,7 @@ def _create_summary_field_inputs(ctx, inputs):
         group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
         group_by_selector = types.AutocompleteView()
         for group in group_by_keys:
-            group_by_selector.add_choice(group.name, label=group.name)
+            group_by_selector.add_choice(group, label=group)
 
         inputs.enum(
             "group_by",
