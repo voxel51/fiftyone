@@ -215,10 +215,11 @@ export const PainterFactory = (requestColor) => ({
 
           r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
-          const scoped = Math.min(Math.max(value, start), stop);
-          const index = Math.round(
-            (Math.max(scoped - start, 0) / (stop - start)) * (scale.length - 1)
-          );
+          const index = clampedIndex(value, start, stop, scale.length);
+          if (value < 0) {
+            // values less than range start are background
+            continue;
+          }
           r = get32BitColor(scale[index]);
         }
 
@@ -391,4 +392,19 @@ const convertMaskColorsToObject = (array: MaskColorInput[]) => {
     result[item.intTarget.toString()] = item.color;
   });
   return result;
+};
+
+export const clampedIndex = (
+  value: number,
+  start: number,
+  stop: number,
+  length: number
+) => {
+  if (value < start) {
+    return -1;
+  }
+  const clamped = Math.min(Math.max(value, start), stop);
+  return Math.round(
+    (Math.max(clamped - start, 0) / (stop - start)) * (length - 1)
+  );
 };
