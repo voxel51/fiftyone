@@ -123,7 +123,7 @@ export class Analytics {
     if (!this._segment) return;
     let opts;
     if (this._disableUrlTracking) {
-      opts = { context: { page: { url: undefined } } };
+      opts = { context: { page: { url: null, path: null, title: null } } };
     }
     if (this._version) {
       opts = { ...opts, version: this._version };

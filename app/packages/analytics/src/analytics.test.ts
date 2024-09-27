@@ -151,7 +151,7 @@ describe("Analytics", () => {
     // segment should be called with context.page.url = undefined
     expect(mockSegment.track).toHaveBeenCalledWith("custom_event", undefined, {
       context: {
-        page: { url: undefined },
+        page: { url: null, path: null, title: null },
       },
     });
   });
@@ -208,7 +208,7 @@ describe("Analytics", () => {
       version: "1.0.0",
     });
   });
-  
+
   describe("analytics.page()", () => {
     it("should call segment.page()", () => {
       analytics = new Analytics();
