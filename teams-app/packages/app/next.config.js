@@ -103,17 +103,12 @@ const nextConfig = withTM({
     )
 
     config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports ending in ?url
-      {
-        ...fileLoaderRule,
-        test: /\.svg$/i,
-        resourceQuery: /url/, // *.svg?url
-      },
-      // Convert all other *.svg imports to React components
+      // Convert only ?react resource queries to React components
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule.issuer,
-        resourceQuery: { not: [/url/] }, // exclude if *.svg?url
+        // only include if *.svg?react
+        resourceQuery: /react/, 
         use: ['@svgr/webpack'],
       },
     )
