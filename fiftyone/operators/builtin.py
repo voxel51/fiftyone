@@ -1940,8 +1940,9 @@ class SaveWorkspace(foo.Operator):
         )
 
         # @todo infer this automatically from current App spaces
-        spaces_prop = inputs.str(
+        spaces_prop = inputs.oneof(
             "spaces",
+            [types.String(), types.Object()],
             default=None,
             required=True,
             label="Spaces",
@@ -1955,7 +1956,7 @@ class SaveWorkspace(foo.Operator):
         spaces = ctx.params.get("spaces", None)
         if spaces is not None:
             try:
-                fo.Space.from_json(spaces)
+                _parse_spaces(spaces)
             except:
                 spaces_prop.invalid = True
                 spaces_prop.error_message = "Invalid workspace definition"
@@ -1978,10 +1979,7 @@ class SaveWorkspace(foo.Operator):
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
 
-        if isinstance(spaces, dict):
-            spaces = fo.Space.from_dict(spaces)
-        else:
-            spaces = fo.Space.from_json(spaces)
+        spaces = _parse_spaces(spaces)
 
         ctx.dataset.save_workspace(
             name,
@@ -2292,6 +2290,12 @@ def _get_non_default_frame_fields(dataset):
         schema.pop(path, None)
 
     return schema
+
+
+def _parse_spaces(spaces):
+    if isinstance(spaces, dict):
+        return fo.Space.from_dict(spaces)
+    return fo.Space.from_json(spaces)
 
 
 BUILTIN_OPERATORS = [
