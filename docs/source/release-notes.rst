@@ -67,6 +67,8 @@ App
   `#4836 <https://github.com/voxel51/fiftyone/pull/4836>`_
 - Fixed a bug when selecting samples in grouped datasets in the modal
   `#4789 <https://github.com/voxel51/fiftyone/pull/4789>`_
+- Fixed :ref:`heatmaps <heatmaps>` rendering for values outside of the `range`
+  attribute `#4865 <https://github.com/voxel51/fiftyone/pull/4865>`_
 
 Core
 
