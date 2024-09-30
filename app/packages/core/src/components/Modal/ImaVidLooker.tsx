@@ -1,10 +1,7 @@
 import { useTheme } from "@fiftyone/components";
 import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
-import {
-  FoTimelineConfig,
-  useCreateTimeline
-} from "@fiftyone/playback";
+import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
@@ -27,6 +24,9 @@ import {
   useLookerOptionsUpdate,
   useShowOverlays,
 } from "./ModalLooker";
+
+interface ImaVidLookerReactProps {
+  sample: fos.ModalSample;
 }
 
 /**
@@ -45,16 +45,16 @@ export const ImaVidLookerReact = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const {
-      subscribeToImaVidStateChanges,
-    } = useInitializeImaVidSubscriptions();
+    const { subscribeToImaVidStateChanges } =
+      useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
     });
 
     const { activeLookerRef, setActiveLookerRef } = useModalContext();
-    const imaVidLookerRef = (activeLookerRef as unknown) as React.MutableRefObject<ImaVidLooker>;
+    const imaVidLookerRef =
+      activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
@@ -164,12 +164,12 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        const unprocessedStoreBufferRange = storeBufferManager.getUnprocessedBufferRange(
-          range
-        );
-        const unprocessedBufferRange = fetchBufferManager.getUnprocessedBufferRange(
-          unprocessedStoreBufferRange
-        );
+        const unprocessedStoreBufferRange =
+          storeBufferManager.getUnprocessedBufferRange(range);
+        const unprocessedBufferRange =
+          fetchBufferManager.getUnprocessedBufferRange(
+            unprocessedStoreBufferRange
+          );
 
         if (!unprocessedBufferRange) {
           return;
