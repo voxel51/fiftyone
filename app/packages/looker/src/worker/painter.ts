@@ -206,25 +206,28 @@ export const PainterFactory = (requestColor) => ({
       }
 
       // 0 is background image
-      if (value !== 0) {
-        let r;
-        if (coloring.by === COLOR_BY.FIELD) {
-          color =
-            fieldSetting?.fieldColor ??
-            (await requestColor(coloring.pool, coloring.seed, field));
+      if (value === 0) {
+        continue;
+      }
+      let r: number;
+      if (coloring.by === COLOR_BY.FIELD) {
+        color =
+          fieldSetting?.fieldColor ??
+          (await requestColor(coloring.pool, coloring.seed, field));
 
-          r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-        } else {
-          const index = clampedIndex(value, start, stop, scale.length);
-          if (value < 0) {
-            // values less than range start are background
-            continue;
-          }
-          r = get32BitColor(scale[index]);
+        r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
+      } else {
+        const index = clampedIndex(value, start, stop, scale.length);
+
+        if (index < 0) {
+          // values less than range start are background
+          continue;
         }
 
-        overlay[i] = r;
+        r = get32BitColor(scale[index]);
       }
+
+      overlay[i] = r;
     }
   },
   Segmentation: async (
@@ -388,9 +391,9 @@ export const convertToHex = (color: string) =>
 const convertMaskColorsToObject = (array: MaskColorInput[]) => {
   const result = {};
   if (!array) return {};
-  array.forEach((item) => {
+  for (const item of array) {
     result[item.intTarget.toString()] = item.color;
-  });
+  }
   return result;
 };
 
@@ -403,7 +406,7 @@ export const clampedIndex = (
   if (value < start) {
     return -1;
   }
-  const clamped = Math.min(Math.max(value, start), stop);
+  const clamped = Math.min(value, stop);
   return Math.round(
     (Math.max(clamped - start, 0) / (stop - start)) * (length - 1)
   );
