@@ -66,7 +66,7 @@ LINUX_DOWNLOADS = {
         },
     },
     "fedora": {
-        "40": {
+        "4": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
         },
