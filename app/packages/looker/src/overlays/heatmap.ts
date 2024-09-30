@@ -10,13 +10,14 @@ import {
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
+import { clampedIndex } from "../worker/painter";
 import {
   BaseLabel,
   CONTAINS,
-  isShown,
   Overlay,
   PointInfo,
   SelectData,
+  isShown,
 } from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
@@ -204,12 +205,13 @@ export default class HeatmapOverlay<State extends BaseState>
     }
 
     if (state.options.coloring.by === "value") {
-      const index = Math.round(
-        (Math.max(value - start, 0) / (stop - start)) *
-          (state.options.coloring.scale.length - 1)
+      const index = clampedIndex(
+        value,
+        start,
+        stop,
+        state.options.coloring.scale.length
       );
-
-      return get32BitColor(state.options.coloring.scale[index]);
+      return index < 0 ? 0 : get32BitColor(state.options.coloring.scale[index]);
     }
 
     const color = getColor(
@@ -219,9 +221,9 @@ export default class HeatmapOverlay<State extends BaseState>
     );
     const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    value = Math.min(max, Math.abs(value)) / max;
+    const result = Math.min(max, Math.abs(value)) / max;
 
-    return get32BitColor(color, value / max);
+    return get32BitColor(color, result / max);
   }
 
   private getTarget(state: Readonly<State>): number {
