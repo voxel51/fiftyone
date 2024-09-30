@@ -203,11 +203,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   paintImageOnCanvas(image: HTMLImageElement) {
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx?.setTransform(1, 0, 0, 1, 0, 0);
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.ctx.drawImage(image, 0, 0);
+    this.ctx?.drawImage(image, 0, 0);
   }
 
   async skipAndTryAgain(frameNumberToDraw: number, animate: boolean) {
