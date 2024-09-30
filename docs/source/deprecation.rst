@@ -5,19 +5,23 @@ FiftyOne Deprecation Notices
 
 .. default-role:: code
 
+.. _deprecation-fiftyone-desktop:
+
 FiftyOne Desktop
 ----------------
-*Support ended with 0.25.0*
+*Support ended with FiftyOne 0.25.0*
 
-A compatible `fiftyone-desktop https://pypi.org/project/fiftyone-desktop/`_
+A compatible `fiftyone-desktop <https://pypi.org/project/fiftyone-desktop>`_
 package is no longer available as of `fiftyone==0.25.0`.
 
 Chromium-based browsers, Firefox, or a :ref:`notebook <notebooks>` environment
 are recommended for the best FiftyOne experience.
 
+.. _deprecation-python-3.8:
+
 Python 3.8
 ----------
-*Support Ended October 2024*
+*Support ended October 1, 2024*
 
 `Python 3.8 <https://devguide.python.org/versions/>`_
 transitions to `end-of-life` effective October of 2024. FiftyOne releases after
