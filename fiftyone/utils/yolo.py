@@ -5,6 +5,7 @@ Utilities for working with datasets in YOLO format.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import os

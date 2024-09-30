@@ -10,6 +10,9 @@ import pydash
 
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import OperatorConfig, Operator
+from typing_extensions import Literal
+
+PANEL_SURFACE = Literal["grid", "modal", "grid modal"]
 
 
 class PanelConfig(OperatorConfig):
@@ -25,39 +28,54 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
+        reload_on_navigation (False): whether to reload the panel when the
+            user navigates to a new page. This is only applicable to panels
+            that are not shown in a modal
+        surfaces ("grid"): the surfaces on which the panel can be displayed
+        help_markdown (None): a markdown string to display in the panel's help
+            tooltip
     """
 
     def __init__(
         self,
         name,
         label,
+        help_markdown=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
         allow_multiple=False,
+        surfaces: PANEL_SURFACE = "grid",
+        reload_on_navigation=False,
         **kwargs
     ):
         super().__init__(name)
         self.name = name
         self.label = label
+        self.help_markdown = help_markdown
         self.icon = icon
         self.light_icon = light_icon
         self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
+        self.reload_on_navigation = reload_on_navigation
+        self.surfaces = surfaces
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
         return {
             "name": self.name,
             "label": self.label,
+            "help_markdown": self.help_markdown,
             "icon": self.icon,
             "light_icon": self.light_icon,
             "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
+            "reload_on_navigation": self.reload_on_navigation,
+            "surfaces": self.surfaces,
         }
 
 
@@ -91,9 +109,12 @@ class Panel(Operator):
             "name": self.config.name,
             "label": self.config.label,
             "allow_duplicates": self.config.allow_multiple,
+            "help_markdown": self.config.help_markdown,
             "icon": self.config.icon,
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
+            "surfaces": self.config.surfaces,
+            "reload_on_navigation": self.config.reload_on_navigation,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [

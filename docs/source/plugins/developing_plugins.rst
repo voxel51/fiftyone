@@ -193,17 +193,37 @@ used to define the plugin's metadata, declare any operators and panels that it
 exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
--   `name` **(required)**: the name of the plugin
--   `author`: the author of the plugin
--   `version`: the version of the plugin
--   `url`: the page (eg GitHub repository) where the plugin's code lives
--   `license`: the license under which the plugin is distributed
--   `description`: a brief description of the plugin
--   `fiftyone.version`: a semver version specifier (or `*`) describing the
-    required FiftyOne version for the plugin to work properly
--   `operators`: a list of operator names registered by the plugin
--   `panels`: a list of panel names registred by the plugin
--   `secrets`: a list of secret keys that may be used by the plugin
+.. table::
+    :widths: 20,10,70
+
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | Field                        | Required? | Description                                                                 |
+    +==============================+===========+=============================================================================+
+    | `name`                       | **yes**   | The name of the plugin                                                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `type`                       |           | Declare that the directory defines a `plugin`. This can be omitted for      |
+    |                              |           | backwards compatibility, but it is recommended to specify this              |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `author`                     |           | The author of the plugin                                                    |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `version`                    |           | The version of the plugin                                                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `url`                        |           | The remote source (eg GitHub repository) where the directory containing     |
+    |                              |           | this file is hosted                                                         |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `license`                    |           | The license under which the plugin is distributed                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `description`                |           | A brief description of the plugin                                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `fiftyone.version`           |           | A semver version specifier (or `*`) describing the required                 |
+    |                              |           | FiftyOne version for the plugin to work properly                            |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `panels`                     |           | A list of panel names registred by the plugin, if any                       |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
 
 For example, the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml>`_
@@ -213,12 +233,14 @@ plugin's `fiftyone.yml` looks like this:
     :linenos:
 
     name: "@voxel51/annotation"
-    description: Utilities for integrating FiftyOne with annotation tools
+    type: plugin
+    author: Voxel51
     version: 1.0.0
-    fiftyone:
-      version: ">=0.22"
     url: https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation
     license: Apache 2.0
+    description: Utilities for integrating FiftyOne with annotation tools
+    fiftyone:
+      version: ">=0.22"
     operators:
       - request_annotations
       - load_annotations
@@ -331,12 +353,14 @@ defines both a JS Panel and a Python operator:
         :linenos:
 
         name: "@voxel51/hello-world"
-        description: An example of JS and Python components in a single plugin
+        type: plugin
+        author: Voxel51
         version: 1.0.0
-        fiftyone:
-          version: "*"
         url: https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/hello-world/README.md
         license: Apache 2.0
+        description: An example of JS and Python components in a single plugin
+        fiftyone:
+          version: "*"
         operators:
           - count_samples
           - show_alert
@@ -1749,6 +1773,13 @@ in the App.
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
+Depending on the ``surfaces`` panel config, panels can be scoped to either
+the grid or the modal. You can open these panels from the "+" menu, which
+is available in both the grid and modal views. Whereas grid panels enable
+extensibility at the macro level, allowing you to work with entire datasets,
+modal panels provide extensibility at the micro level, focusing on individual
+samples and scenarios.
+
 Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
@@ -1805,6 +1836,16 @@ subsequent sections.
 
                 # Whether to allow multiple instances of the panel to be opened
                 allow_multiple=False,
+
+                # Whether the panel should be available in the grid view
+                # modal view, or both
+                # Possible values: "grid", "modal", "grid modal"       
+                surfaces="grid modal" # default = "grid"
+
+                # Markdown-formatted text that describes the panel. This is
+                # rendererd in a tooltip when the help icon in the panel
+                # title is hovered over
+                help_markdown="A description of the panel",
             )
 
         def render(self, ctx):
@@ -3010,15 +3051,13 @@ returns `true`:
 
 -   **Panel**: JS plugins can register panel components that can be opened by
     clicking the `+` next to any existing panel's tab
--   **Visualizer**: JS plugins can register a component that will override the
-    builtin :ref:`Sample visualizer <app-sample-view>`
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, visualizers, and components
------------------------------------
+Panels and Components
+---------------------
 
-Here's some examples of using panels, visualizers, and components to add your
+Here's some examples of using panels and components to add your
 own custom user interface and components to the FiftyOne App.
 
 Hello world panel
@@ -3043,48 +3082,9 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: jsx
     :linenos:
 
-    import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/state";
-
-    function PointCloud({ src }) {
-        // TODO: implement your visualizer using React
-    }
-
-    // this separate components shows where the FiftyOne plugin
-    // dependent code ends and the pure react code begins
-    function CustomVisualizer({ sample }) {
-        const src = fos.getSampleSrc(sample.filepath);
-
-        // now that we have all the data we need
-        // we can delegate to code that doesn't depend
-        // on the FiftyOne plugin API
-        return <PointCloud src={src} />;
-    }
-
-    function myActivator({ dataset }) {
-        return dataset.mediaType ??
-            dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-            undefined
-    }
-
-    fop.registerComponent({
-        // component to delegate to
-        component: CustomVisualizer,
-
-        // tell FiftyOne you want to provide a Visualizer
-        type: PluginComponentType.Visualizer,
-
-        // activate this plugin when the mediaType is PointCloud
-        activator: myActivator,
-    });
-
-Adding a custom panel
+Adding a custom Panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx

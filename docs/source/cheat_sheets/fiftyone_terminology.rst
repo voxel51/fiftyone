@@ -19,7 +19,7 @@ __________
    * - FiftyOne App
      - The :ref:`provided user interface <fiftyone-app>` for graphically
        viewing, filtering, and understanding your datasets. Can be launched in
-       the browser, within notebooks, or as a standalone desktop app.
+       the browser or within notebooks.
    * - FiftyOne Teams
      - `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_
        built on top of FiftyOne for collaboration, permissioning, and working

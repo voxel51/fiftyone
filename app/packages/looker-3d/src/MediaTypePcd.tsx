@@ -15,17 +15,14 @@ import {
   Vector3,
   type Vector3Tuple,
 } from "three";
-import { CAMERA_POSITION_KEY, Environment } from "./Environment";
-import {
-  type Looker3dPluginSettings,
-  defaultPluginSettings,
-} from "./Looker3dPlugin";
 import { Screenshot } from "./action-bar/Screenshot";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "./constants";
 import { Container } from "./containers";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
 import { PointCloudMesh } from "./renderables";
+import { type Looker3dSettings, defaultPluginSettings } from "./settings";
 import {
   currentActionAtom,
   currentPointSizeAtom,
@@ -45,7 +42,7 @@ const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
  * This component renders the legacy point_cloud media type.
  */
 export const MediaTypePcdComponent = () => {
-  const settings = fop.usePluginSettings<Looker3dPluginSettings>(
+  const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
     defaultPluginSettings
   );

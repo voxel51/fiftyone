@@ -24,6 +24,8 @@ class PointCloud(Object3D):
             the material of the point cloud. If not specified, defaults to a
             new instance of :class:`fiftyone.core.threed.PointCloudMaterial`
             with its default parameters
+        center_geometry (bool): whether to center the geometry of the point
+            cloud. Defaults to ``False``
         flag_for_projection (bool): whether to flag the point cloud for
             usage in orthographic projection. Each
             :class:`fiftyone.core.threed.Scene` can have at most one asset
@@ -45,6 +47,7 @@ class PointCloud(Object3D):
         name: str,
         pcd_path: str,
         material: Optional[PointCloudMaterial] = None,
+        center_geometry: bool = False,
         flag_for_projection: bool = False,
         visible=True,
         position: Optional[Vec3UnionType] = None,
@@ -67,6 +70,7 @@ class PointCloud(Object3D):
         if isinstance(material, dict):
             material = PointCloudMaterial._from_dict(material)
 
+        self.center_geometry = center_geometry
         self.default_material = material or PointCloudMaterial()
         self.flag_for_projection = flag_for_projection
 
@@ -84,6 +88,7 @@ class PointCloud(Object3D):
     def _to_dict_extra(self):
         """Extra properties to include in dictionary representation."""
         r = {
+            "centerGeometry": self.center_geometry,
             "pcdPath": self.pcd_path,
             "defaultMaterial": self.default_material.as_dict(),
             "flagForProjection": self.flag_for_projection,

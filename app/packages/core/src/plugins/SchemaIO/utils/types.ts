@@ -3,6 +3,7 @@ export type SchemaViewType = { [key: string]: any };
 export type BaseSchemaType = {
   type: string;
   view: SchemaViewType;
+  default?: unknown;
 };
 
 export type ArraySchemaType = BaseSchemaType & {
@@ -24,6 +25,8 @@ export type SchemaType =
   | ArraySchemaType
   | ObjectSchemaType
   | NumberSchemaType;
+
+export type PropertyType = SchemaType & { id: string };
 
 export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   root_id?: string;

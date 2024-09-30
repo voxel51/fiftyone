@@ -464,40 +464,39 @@ to:
     `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
 -   You're all set. Schedule those operations!
 
-The required environment variables are:
+There are some required configurations. For information on other optional
+configurations, see :ref:`Configuring FiftyOne <configuring-fiftyone>`.
 
-.. code-block:: bash
-
-    # Configure where plugins source lives
-    export FIFTYONE_PLUGINS_DIR=...  # eg /mnt/nfs/shared/plugins
-
-    # Configure where media and models will be downloaded
-    export FIFTYONE_MEDIA_CACHE_DIR=...
-    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=...
-    export FIFTYONE_MODEL_ZOO_DIR=...
-
-    #
-    # Copy the values below from your Teams deployment
-    #
-
-    # Provide your encryption key so the orchestrator can access secrets
-    export FIFTYONE_ENCRYPTION_KEY=...
-    export FIFTYONE_INTERNAL_SERVICE=1
-
-    # If your deployment uses API connections
-    export FIFTYONE_API_KEY=...
-    export FIFTYONE_API_URL=...
-
-    # If your deployment uses direct mongo connections
-    export FIFTYONE_DATABASE_NAME=...
-    export FIFTYONE_DATABASE_URI=...
-    export FIFTYONE_API_KEY=...
-    export API_URL=...
++---------------------------+----------------------+--------------------------------------------------------------------+
+| Environment Variable      | JSON Config Variable | Purpose                                                            |
++===========================+======================+====================================================================+
+| API_URL                   | N/A                  | The URL of the :ref:`API endpoint <configuring-an-api-connection>` |
+|                           |                      |                                                                    |
+|                           |                      | Note this is distinct from the `FIFTYONE_API_URL` variable which   |
+|                           |                      | will make FiftyOne use API connection mode for all operations.     |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_API_KEY          | api_key              | The API key of an admin user that is used like a service account,  |
+|                           |                      | to resolve secrets and check permissions                           |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_DATABASE_URI     | database_uri         | The MongoDB database URI. Should match the deployment value.       |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_DATABASE_NAME    | database_name        | Optional. The MongoDB database name, if different from the         |
+|                           |                      | default `fiftyone`.                                                |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_ENCRYPTION_KEY   | N/A                  | Encryption key used for decrypting and injecting secrets into      |
+|                           |                      | operator runs. Must match the deployment's value.                  |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_INTERNAL_SERVICE | N/A                  | Set to 1 always. ``export FIFTYONE_INTERNAL_SERVICE=1``            |
++---------------------------+----------------------+--------------------------------------------------------------------+
+| FIFTYONE_PLUGINS_DIR      | plugins_dir          | Path to plugins source code directory.                             |
++---------------------------+----------------------+--------------------------------------------------------------------+
 
 .. note::
 
     Refer to :ref:`this section <teams-media-cache-config>` for more
-    information on media caching in FiftyOne Teams.
+    information on media caching and access in FiftyOne Teams. Make sure that
+    cloud storage permissions are configured if some operators will access
+    media.
 
 .. note::
 
@@ -648,11 +647,6 @@ the appropriate values for your deployment.
     # Configure where plugins source lives
     export FIFTYONE_PLUGINS_DIR=...  # eg /mnt/nfs/shared/plugins
 
-    # Configure where media and models will be downloaded
-    export FIFTYONE_MEDIA_CACHE_DIR=...
-    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=...
-    export FIFTYONE_MODEL_ZOO_DIR=...
-
     #
     # Copy the values below from your Teams deployment
     #
@@ -661,13 +655,11 @@ the appropriate values for your deployment.
     export FIFTYONE_ENCRYPTION_KEY=...
     export FIFTYONE_INTERNAL_SERVICE=1
 
-    # If your deployment uses API connections
-    export FIFTYONE_API_KEY=...
-    export FIFTYONE_API_URL=...
-
-    # If your deployment uses direct mongo connections
+    # Direct mongo connection for database operations
     export FIFTYONE_DATABASE_NAME=...
     export FIFTYONE_DATABASE_URI=...
+
+    # Admin API connection for resolving secrets and permissions
     export FIFTYONE_API_KEY=...
     export API_URL=...
 

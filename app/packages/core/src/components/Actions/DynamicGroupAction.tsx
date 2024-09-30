@@ -15,7 +15,7 @@ import React, {
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import DynamicGroup from "./DynamicGroup";
-import { ActionDiv } from "./utils";
+import { ActionDiv, getStringAndNumberProps } from "./utils";
 
 const DYNAMIC_GROUP_PILL_BUTTON_ID = "dynamic-group-pill-button";
 
@@ -61,7 +61,10 @@ export const DynamicGroupAction = ({
   }, []);
 
   return (
-    <ActionDiv {...(adaptiveMenuItemProps || {})} ref={ref}>
+    <ActionDiv
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+      ref={ref}
+    >
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}

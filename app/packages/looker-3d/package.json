@@ -12,7 +12,7 @@
     "files": [
         "dist"
     ],
-    "main": "src/Looker3dPlugin.tsx",
+    "main": "src/Looker3d.tsx",
     "dependencies": {
         "@emotion/react": "^11.11.3",
         "@emotion/styled": "^11.11.0",
@@ -36,7 +36,7 @@
         "nodemon": "^3.0.3",
         "rollup-plugin-external-globals": "^0.6.1",
         "typescript": "^5.4.5",
-        "vite": "^5.2.12",
+        "vite": "^5.2.14",
         "vite-plugin-externals": "^0.5.0"
     },
     "peerDependencies": {

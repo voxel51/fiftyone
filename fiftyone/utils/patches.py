@@ -39,8 +39,8 @@ class ImagePatchesExtractor(object):
             before extracting them, in ``[-1, inf)``. If provided, the length
             and width of the box are expanded (or contracted, when
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
-            ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
-            to contract the boxes by 10%
+            ``alpha = 0.1`` to expand the boxes by 10%, and set
+            ``alpha = -0.1`` to contract the boxes by 10%
     """
 
     def __init__(
@@ -158,8 +158,8 @@ def extract_patch(img, detection, force_square=False, alpha=None):
         alpha (None): an optional expansion/contraction to apply to the patch
             before extracting it, in ``[-1, inf)``. If provided, the length and
             width of the box are expanded (or contracted, when ``alpha < 0``)
-            by ``(100 * alpha)%``. For example, set ``alpha = 1.1`` to expand
-            the box by 10%, and set ``alpha = 0.9`` to contract the box by 10%
+            by ``(100 * alpha)%``. For example, set ``alpha = 0.1`` to expand
+            the box by 10%, and set ``alpha = -0.1`` to contract the box by 10%
 
     Returns:
         the image patch

@@ -16,7 +16,7 @@ import {
 import { StrictField } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
-import { SPACES_DEFAULT, sessionAtom } from "../session";
+import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
@@ -76,11 +76,24 @@ export const cropToContent = atomFamily<boolean, boolean>({
 export const fullscreen = atom<boolean>({
   key: "fullscreen",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fullscreen", { valueClass: "boolean" }),
+  ],
 });
 
 export const showOverlays = atom<boolean>({
   key: "showOverlays",
   default: true,
+});
+
+export const showModalNavigationControls = atom<boolean>({
+  key: "showModalNavigationControls",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("showModalNavigationControls", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const activePlot = atom<string>({
@@ -340,7 +353,7 @@ export const readOnly = sessionAtom({
 
 export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
-  default: SPACES_DEFAULT,
+  default: GRID_SPACES_DEFAULT,
 });
 
 export const colorScheme = sessionAtom({

@@ -2,6 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { dispatchTimelineSetFrameNumberEvent } from "@fiftyone/playback";
 import { SCALE_FACTOR } from "../../constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import {
@@ -43,12 +44,7 @@ const escape: Control = {
       ({
         hasDefaultZoom,
         showOptions,
-        options: {
-          fullscreen: fullscreenSetting,
-          showJSON,
-          showHelp,
-          selectedLabels,
-        },
+        options: { showJSON, showHelp, selectedLabels },
       }) => {
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
@@ -69,11 +65,6 @@ const escape: Control = {
           return {
             setZoom: true,
           };
-        }
-
-        if (fullscreenSetting) {
-          fullscreen.action(update, dispatchEvent, eventKey);
-          return {};
         }
 
         if (selectedLabels.length) {
@@ -297,9 +288,9 @@ export const resetZoom: Control = {
 };
 
 export const settings: Control = {
-  title: "Settings",
-  shortcut: "s",
-  detail: "Toggle the settings panel",
+  title: "Preferences",
+  shortcut: "p",
+  detail: "Toggle the preferences panel",
   action: (update, dispatchEvent) => {
     update(
       ({ showOptions, config: { thumbnail }, options: { showControls } }) => {
@@ -345,23 +336,6 @@ export const controlsToggle: Control = {
   },
 };
 
-export const fullscreen: Control = {
-  title: "Fullscreen",
-  shortcut: "f",
-  detail: "Toggle fullscreen mode",
-  action: (update, dispatchEvent) => {
-    update(
-      ({ config: { thumbnail }, options: { fullscreen } }) =>
-        thumbnail ? {} : { options: { fullscreen: !fullscreen } },
-      ({ config: { thumbnail }, options: { fullscreen } }) => {
-        if (!thumbnail) {
-          dispatchEvent("fullscreen", fullscreen);
-        }
-      }
-    );
-  },
-};
-
 export const json: Control = {
   title: "JSON",
   shortcut: "j",
@@ -390,7 +364,6 @@ export const COMMON = {
   resetZoom,
   controlsToggle,
   settings,
-  fullscreen,
   json,
   wheel,
   toggleOverlays,
@@ -399,7 +372,7 @@ export const COMMON = {
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
 
-export const nextFrame: Control<VideoState | ImaVidState> = {
+export const nextFrame: Control<VideoState> = {
   title: "Next frame",
   eventKeys: [".", ">"],
   shortcut: ">",
@@ -407,21 +380,9 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      (state: ImaVidState | VideoState) => {
-        const imavidController = (state.config as ImaVidConfig)
-          .frameStoreController as ImaVidFramesController;
-
+      (state: VideoState) => {
         if (state.playing || state.config.thumbnail) {
           return {};
-        }
-
-        if (imavidController) {
-          return {
-            currentFrameNumber: Math.min(
-              imavidController.totalFrameCount,
-              (state as ImaVidState).currentFrameNumber + 1
-            ),
-          };
         }
 
         const {
@@ -444,7 +405,7 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const previousFrame: Control<VideoState | ImaVidState> = {
+export const previousFrame: Control<VideoState> = {
   title: "Previous frame",
   eventKeys: [",", "<"],
   shortcut: "<",
@@ -452,21 +413,9 @@ export const previousFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      (state: ImaVidState | VideoState) => {
-        const imavidController = (state.config as ImaVidConfig)
-          .frameStoreController as ImaVidFramesController;
-
+      (state: VideoState) => {
         if (state.playing || state.config.thumbnail) {
           return {};
-        }
-
-        if (imavidController) {
-          return {
-            currentFrameNumber: Math.max(
-              1,
-              (state as ImaVidState).currentFrameNumber - 1
-            ),
-          };
         }
 
         const {
@@ -493,35 +442,37 @@ export const playPause: Control<VideoState> = {
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update(
-      ({
-        frameNumber,
+    update((state: VideoState) => {
+      if (state.config.thumbnail) {
+        return {};
+      }
+
+      dispatchEvent("options", { showJSON: false });
+
+      if ((state.config as ImaVidConfig).frameStoreController) {
+        return {};
+      }
+
+      const {
         playing,
         duration,
-        config: { frameRate, support, thumbnail },
+        frameNumber,
         lockedToSupport,
-      }) => {
-        if (thumbnail) {
-          return {};
-        }
-        const start = lockedToSupport ? support[0] : 1;
-        const end = lockedToSupport
-          ? support[1]
-          : getFrameNumber(duration, duration, frameRate);
-
-        dispatchEvent("options", { showJSON: false });
-        return {
-          playing: !playing && start !== end,
-          frameNumber:
-            end === frameNumber
-              ? lockedToSupport
-                ? support[0]
-                : 1
-              : frameNumber,
-          options: { showJSON: false },
-        };
-      }
-    );
+        config: { support, frameRate },
+      } = state as VideoState;
+      const start = lockedToSupport ? support[0] : 1;
+      const end = lockedToSupport
+        ? support[1]
+        : getFrameNumber(duration, duration, frameRate);
+      const frame =
+        end === frameNumber ? (lockedToSupport ? support[0] : 1) : frameNumber;
+      return {
+        playing: !playing && start !== end,
+        frameNumber: frame,
+        currentFrameNumber: frame,
+        options: { showJSON: false },
+      };
+    });
   },
 };
 
@@ -565,23 +516,41 @@ export const resetPlaybackRate: Control<VideoState> = {
   },
 };
 
-const seekTo: Control<VideoState> = {
+const seekTo: Control<VideoState | ImaVidState> = {
   title: "Seek to",
   detail: "Seek to 0%, 10%, 20%... of the video",
   shortcut: "0-9",
   eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
   action: (update, dispatchEvent, eventKey) => {
-    update(({ duration, config: { frameRate, support }, lockedToSupport }) => {
-      const frameCount = getFrameNumber(duration, duration, frameRate);
-      const total = lockedToSupport ? support[1] - support[0] : frameCount;
-      const base = lockedToSupport ? support[0] : 1;
-
+    update((state: ImaVidState | VideoState) => {
+      const isImavid = (state.config as ImaVidConfig)
+        .frameStoreController as ImaVidFramesController;
+      const frameName = isImavid ? "currentFrameNumber" : "frameNumber";
+      let total = 0;
+      let base = 0;
+      if (isImavid) {
+        const {
+          config: {
+            frameStoreController: { totalFrameCount },
+          },
+          currentFrameNumber,
+        } = state as ImaVidState;
+        total = totalFrameCount;
+        base = currentFrameNumber < totalFrameCount ? currentFrameNumber : 1;
+      } else {
+        const {
+          lockedToSupport,
+          config: { support, frameRate },
+          duration,
+        } = state as VideoState;
+        const frameCount = getFrameNumber(duration, duration, frameRate);
+        total = lockedToSupport ? support[1] - support[0] : frameCount;
+        base = lockedToSupport ? support[0] : 1;
+      }
+      const position = Math.round((parseInt(eventKey, 10) / 10) * total) + base;
       dispatchEvent("options", { showJSON: false });
       return {
-        frameNumber: Math.max(
-          1,
-          Math.round((parseInt(eventKey, 10) / 10) * total) + base
-        ),
+        [frameName]: Math.min(total, Math.max(1, position)),
         options: { showJSON: false },
       };
     });
@@ -606,80 +575,80 @@ export const supportLock: Control<VideoState> = {
   },
 };
 
-const videoEscape: Control<VideoState> = {
+const videoEscape: Control<VideoState | ImaVidState> = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
   detail: "Escape the current context",
   alwaysHandle: true,
-  action: (update, dispatchEvent, eventKey) => {
-    update(
-      ({
+  action: (update, dispatchEvent) => {
+    update((state: ImaVidState | VideoState) => {
+      const isImavid = (state.config as ImaVidConfig)
+        .frameStoreController as ImaVidFramesController;
+
+      const frameName = isImavid ? "currentFrameNumber" : "frameNumber";
+
+      const {
         hasDefaultZoom,
         showOptions,
-        frameNumber,
         config: { support },
-        options: {
-          fullscreen: fullscreenSetting,
-          showHelp,
-          showJSON,
-          selectedLabels,
-        },
+        options: { showHelp, showJSON, selectedLabels },
         lockedToSupport,
-      }) => {
-        if (showHelp) {
-          dispatchEvent("panels", { showHelp: "close" });
-          return { showHelp: "close" };
+      } = state as VideoState;
+
+      if (showHelp) {
+        dispatchEvent("panels", { showHelp: "close" });
+        return { showHelp: "close" };
+      }
+
+      if (showOptions) {
+        return { showOptions: false };
+      }
+
+      if (showJSON) {
+        dispatchEvent("panels", { showJSON: "close" });
+        dispatchEvent("options", { showJSON: false });
+        return { options: { showJSON: false } };
+      }
+
+      if (!lockedToSupport && Boolean(support) && !isImavid) {
+        return {
+          frameNumber: support[0],
+          lockedToSupport: true,
+        };
+      }
+
+      if (!hasDefaultZoom) {
+        return {
+          setZoom: true,
+        };
+      }
+
+      if (state[frameName] !== 1) {
+        if (isImavid) {
+          dispatchTimelineSetFrameNumberEvent({
+            newFrameNumber: 1,
+          });
         }
 
-        if (showOptions) {
-          return { showOptions: false };
-        }
+        return {
+          [frameName]: 1,
+          playing: false,
+        };
+      }
 
-        if (showJSON) {
-          dispatchEvent("panels", { showJSON: "close" });
-          dispatchEvent("options", { showJSON: false });
-          return { options: { showJSON: false } };
-        }
-
-        if (!lockedToSupport && Boolean(support)) {
-          return {
-            frameNumber: support[0],
-            lockedToSupport: true,
-          };
-        }
-
-        if (!hasDefaultZoom) {
-          return {
-            setZoom: true,
-          };
-        }
-
-        if (frameNumber !== 1) {
-          return {
-            frameNumber: 1,
-            playing: false,
-          };
-        }
-
-        if (fullscreenSetting) {
-          fullscreen.action(update, dispatchEvent, eventKey);
-          return {};
-        }
-
-        if (selectedLabels.length) {
-          dispatchEvent("clear");
-          return {};
-        }
-
-        dispatchEvent("close");
+      if (selectedLabels.length) {
+        dispatchEvent("clear");
         return {};
       }
-    );
+
+      dispatchEvent("close");
+      return {};
+    });
   },
 };
 
-export const VIDEO = {
+const VIDEO = {
   ...COMMON,
   escape: videoEscape,
   muteUnmute,
@@ -690,4 +659,10 @@ export const VIDEO = {
   supportLock,
 };
 
+const IMAVID = {
+  ...COMMON,
+  escape: videoEscape,
+};
+
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
+export const IMAVID_SHORTCUTS = readActions(IMAVID);

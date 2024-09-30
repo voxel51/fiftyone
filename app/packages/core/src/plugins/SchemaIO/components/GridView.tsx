@@ -2,11 +2,12 @@ import { Box, BoxProps } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
 import {
+  getAdjustedLayoutWidth,
   getComponentProps,
-  getMarginSx,
-  getPaddingSx,
+  getGridSx,
   getPath,
   getProps,
+  parseGap,
   spaceToHeight,
 } from "../utils";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
@@ -15,33 +16,20 @@ import DynamicIO from "./DynamicIO";
 export default function GridView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { properties, view = {} } = schema as ObjectSchemaType;
-  const { alignX, alignY, align_x, align_y, gap = 1, orientation } = view;
-  const direction = orientation === "horizontal" ? "row" : "column";
+  const { gap = 1, orientation } = view;
 
-  const propertiesAsArray = [];
-
-  for (const property in properties) {
-    propertiesAsArray.push({ id: property, ...properties[property] });
-  }
-
-  const layoutHeight = props?.layout?.height;
+  const propertiesAsArray = Object.entries(properties).map(([id, property]) => {
+    return { id, ...property };
+  });
+  const height = props?.layout?.height as number;
   const parsedGap = parseGap(gap);
-  const adjustedLayoutWidth = getAdjustedLayoutWidth(
+  const width = getAdjustedLayoutWidth(
     props?.layout?.width,
     parsedGap
-  );
+  ) as number;
 
   const baseGridProps: BoxProps = {
-    sx: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: parsedGap,
-      justifyContent: alignX || align_x || "start",
-      alignItems: alignY || align_y || "start",
-      flexDirection: direction,
-      ...getPaddingSx(view),
-      ...getMarginSx(view),
-    },
+    sx: { gap: parsedGap, ...getGridSx(view) },
   };
 
   return (
@@ -58,9 +46,9 @@ export default function GridView(props: ViewPropsType) {
               alignSelf: alignY || align_y || "unset",
               maxHeight:
                 orientation === "vertical"
-                  ? spaceToHeight(space, layoutHeight)
+                  ? spaceToHeight(space, height)
                   : undefined,
-              overflow: "hidden",
+              width: "100%",
             },
             key: id,
           };
@@ -71,7 +59,7 @@ export default function GridView(props: ViewPropsType) {
                 {
                   ...props,
                   schema: property,
-                  layout: { width: adjustedLayoutWidth, height: layoutHeight },
+                  layout: { width, height },
                 },
                 "item",
                 baseItemProps
@@ -91,26 +79,4 @@ export default function GridView(props: ViewPropsType) {
       </Box>
     </Box>
   );
-}
-
-function parseGap(gap: number | string) {
-  if (typeof gap === "string") {
-    const gapStr = gap.trim().replace("px", "");
-    if (isNaN(gapStr)) {
-      console.warn("Ignored invalid gap value " + gap);
-      return 0;
-    }
-    const gapInt = parseInt(gapStr);
-    return gap.includes("px") ? gapInt / 8 : gapInt;
-  } else if (typeof gap === "number") {
-    return gap;
-  }
-  return 0;
-}
-
-function getAdjustedLayoutWidth(layoutWidth?: number, gap?: number) {
-  if (typeof gap === "number" && typeof layoutWidth === "number") {
-    return layoutWidth - gap * 8;
-  }
-  return layoutWidth;
 }

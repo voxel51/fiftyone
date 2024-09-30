@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.25.2"
+VERSION = "1.0.0"
 
 
 def get_version():
@@ -67,7 +67,7 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql==0.138.1",
+    "strawberry-graphql",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
@@ -75,7 +75,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.17.0,<0.18",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.12.7,<0.13",
+    "voxel51-eta>=0.13.0,<0.14",
 ]
 
 
@@ -112,9 +112,6 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.35.0"]}
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -129,7 +126,6 @@ setup(
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
-    extras_require=EXTRAS_REQUIREMENTS,
     license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -154,11 +150,10 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.8",
+    python_requires=">=3.9",
 )

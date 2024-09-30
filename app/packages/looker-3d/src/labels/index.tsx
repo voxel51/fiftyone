@@ -9,12 +9,9 @@ import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import {
-  type Looker3dPluginSettings,
-  defaultPluginSettings,
-} from "../Looker3dPlugin";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
+import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
@@ -30,7 +27,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
 
-  const settings = fop.usePluginSettings<Looker3dPluginSettings>(
+  const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
     defaultPluginSettings
   );

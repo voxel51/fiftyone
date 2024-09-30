@@ -19,6 +19,8 @@ dataset permissions *are enforced*.
    is to use your Teams deployment's
    :ref:`MongoDB connection <configuring-mongodb-connection>`.
 
+.. _configuring-an-api-connection:
+
 Configuring an API connection
 -----------------------------
 

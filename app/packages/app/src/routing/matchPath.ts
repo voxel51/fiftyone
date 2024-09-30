@@ -1,30 +1,13 @@
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import type { ModalSelector, State } from "@fiftyone/state";
-import { type Key, pathToRegexp } from "path-to-regexp";
+import { pathToRegexp } from "path-to-regexp";
 import type { OperationType, VariablesOf } from "relay-runtime";
 
-interface StringKey<T extends OperationType> extends Key {
-  name: Exclude<keyof LocationState<T>, symbol | number>;
-}
-
-interface CompilePathResult<T extends OperationType> {
-  regexp: RegExp;
-  keys: StringKey<T>[];
-}
-
-const compilePath = <T extends OperationType>(
-  path: string
-): CompilePathResult<T> => {
-  const keys: StringKey<T>[] = [];
-  const regexp = pathToRegexp(path, keys, {
+const compilePath = (path: string) =>
+  pathToRegexp(path, {
     end: true,
-    strict: false,
     sensitive: false,
   });
-  const result = { regexp, keys };
-
-  return result;
-};
 
 export type LocationState<T extends OperationType = OperationType> = {
   event?: "modal";

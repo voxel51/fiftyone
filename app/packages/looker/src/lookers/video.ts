@@ -21,7 +21,7 @@ import {
 import { addToBuffers, createWorker, removeFromBuffers } from "../util";
 
 import { Schema } from "@fiftyone/utilities";
-import LRUCache from "lru-cache";
+import { LRUCache } from "lru-cache";
 import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getFrameNumber } from "../elements/util";
 import { AbstractLooker } from "./abstract";
@@ -55,15 +55,15 @@ interface AcquireReaderOptions {
 const { acquireReader, addFrame } = (() => {
   const createCache = () =>
     new LRUCache<WeakRef<RemoveFrame>, Frame>({
-      max: MAX_FRAME_CACHE_SIZE_BYTES,
-      length: (frame) => {
+      maxSize: MAX_FRAME_CACHE_SIZE_BYTES,
+      sizeCalculation: (frame) => {
         let size = 1;
         frame.overlays.forEach((overlay) => {
           size += overlay.getSizeBytes();
         });
         return size;
       },
-      dispose: (removeFrameRef, frame) => {
+      dispose: (frame, removeFrameRef) => {
         const removeFrame = removeFrameRef.deref();
         removeFrame && removeFrame(frame.sample.frame_number);
       },
@@ -183,7 +183,7 @@ const { acquireReader, addFrame } = (() => {
           !nextRange ||
           (frameNumber < nextRange[0] && frameNumber > nextRange[1])
         ) {
-          force && frameCache.reset();
+          force && frameCache.clear();
           nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {

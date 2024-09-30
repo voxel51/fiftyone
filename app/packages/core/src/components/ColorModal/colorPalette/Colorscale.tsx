@@ -9,6 +9,7 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
+import { NAME_COLORSCALE } from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
@@ -24,7 +25,6 @@ import {
   isValidFloatInput,
   namedColorScales,
 } from "../utils";
-import { NAME_COLORSCALE } from "../../../utils/links";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -115,10 +115,16 @@ const Colorscale: React.FC = () => {
       : null
   );
 
-  const defaultValue = {
-    value: 0,
-    color: getRGBColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = [
+    {
+      value: 0,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+    {
+      value: 1,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+  ];
 
   const onBlurName = useCallback(
     (value: string) => {
@@ -153,6 +159,14 @@ const Colorscale: React.FC = () => {
         const list = copy.sort(
           (a, b) => (a.value as number) - (b.value as number)
         );
+        // a valid list must include 0 and 1
+        // if not, we will insert the missing value
+        if (list[0].value !== 0) {
+          list.unshift({ value: 0, color: list[0].color });
+        }
+        if (list[list.length - 1].value !== 1) {
+          list.push({ value: 1, color: list[list.length - 1].color });
+        }
         const newSetting = cloneDeep(colorScheme.colorscales ?? []);
         const idx = colorScheme.colorscales?.findIndex(
           (s) => s.path == activePath
@@ -176,7 +190,7 @@ const Colorscale: React.FC = () => {
       setSetting((prev) => ({
         ...prev,
         name: null,
-        list: prev?.list?.length ? prev.list : [defaultValue],
+        list: prev?.list?.length ? prev.list : defaultValue,
       }));
     }
     if (tab === "name") {
@@ -209,7 +223,7 @@ const Colorscale: React.FC = () => {
               setSetting({
                 ...colorscaleValues,
                 name: null,
-                list: [defaultValue],
+                list: defaultValue,
               });
             }
           } else {
@@ -258,16 +272,19 @@ const Colorscale: React.FC = () => {
           )}
           {tab === "list" && (
             <div>
-              Define a custom colorscale (range between 0 and 1):
+              Define a custom colorscale (range between 0 and 1): <br />
+              * must include 0 and 1
               <ManualColorScaleList
                 initialValue={
                   setting?.list && setting?.list.length > 0
                     ? setting.list
-                    : ([defaultValue] as ColorscaleListInput[])
+                    : (defaultValue as ColorscaleListInput[])
                 }
                 values={setting?.list as ColorscaleListInput[]}
                 style={FieldCHILD_STYLE}
-                onValidate={validateFloat}
+                min={0}
+                max={1}
+                onValidate={validateUnitInterval}
                 onSyncUpdate={onSyncUpdate}
                 shouldShowAddButton={shouldShowAddButton}
                 step={0.01}
@@ -282,7 +299,7 @@ const Colorscale: React.FC = () => {
 
 export default Colorscale;
 
-const validateFloat = (n: number) => {
+const validateUnitInterval = (n: number) => {
   // 1 and 1.0 should both pass
-  return Number.isFinite(n);
+  return Number.isFinite(n) && n >= 0 && n <= 1;
 };

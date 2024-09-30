@@ -101,6 +101,8 @@ class E2ECounterPythonPanel(foo.Panel):
             name="e2e_counter_python_panel",
             label="E2E: Counter Python Panel",
             allow_multiple=True,
+            help_markdown="A simple counter panel implemented in Python",
+            surfaces="grid modal",
         )
 
     def on_load(self, ctx):

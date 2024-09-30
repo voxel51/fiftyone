@@ -36,7 +36,9 @@ export function joinPaths(...paths: string[]): string {
     return url.toString();
   }
   if (pathType === PathType.WINDOWS) {
-    return pathUtils.win32.join(...paths);
+    // pathUtils.win32 doesn't handle backslashes w/ relative paths properly
+    const convertedPaths = paths.map((p) => p.replace(/\\/g, "/"));
+    return pathUtils.join(...convertedPaths).replace(/\//g, "\\");
   }
   return pathUtils.join(...paths);
 }

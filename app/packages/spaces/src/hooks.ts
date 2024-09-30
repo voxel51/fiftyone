@@ -1,4 +1,5 @@
 import {
+  PluginComponentRegistration,
   PluginComponentType,
   subscribeToRegistry,
   useActivePlugins,
@@ -22,6 +23,7 @@ import {
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
 import {
+  panelIdToScopeAtom,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
@@ -48,18 +50,21 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
     }
   }, [state, setState, defaultState]);
 
-  const spaces = new SpaceTree(state, (spaces: SpaceNodeJSON) => {
-    setState(spaces);
-  });
+  const spaces = useMemo(
+    () =>
+      new SpaceTree(state, (spaces: SpaceNodeJSON) => {
+        setState(spaces);
+      }),
+    [state]
+  );
 
   const clearSpaces = useCallback(() => {
     setState(undefined);
   }, [setState]);
 
-  return {
-    spaces,
-    updateSpaces: (
-      serializedTreeOrUpdater: (spaces: SpaceTree) => void | SpaceNodeJSON
+  const updateSpaces = useCallback(
+    (
+      serializedTreeOrUpdater: ((spaces: SpaceTree) => void) | SpaceNodeJSON
     ) => {
       if (typeof serializedTreeOrUpdater === "function") {
         setState((latestSpaces) => {
@@ -71,7 +76,13 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
         setState(serializedTreeOrUpdater);
       }
     },
+    []
+  );
+
+  return {
+    spaces,
     clearSpaces,
+    updateSpaces,
   };
 }
 
@@ -101,18 +112,48 @@ export function useSpaceNodes(spaceId: string) {
   }, [spaces]);
 }
 
-export function usePanels() {
+/**
+ * Hook to get all panels registered in the app, optionally filtered by a
+ * predicate.
+ *
+ * @param predicate - A function that takes a panel and returns `true` if
+ * the panel should be included in the result. It is important for the predicate
+ * to be memoized using `useCallback` to avoid unnecessary re-renders.
+ */
+export function usePanels(
+  predicate?: (panel: PluginComponentRegistration) => boolean
+) {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const plots = useActivePlugins(PluginComponentType.Plot, { schema });
-  const panels = useActivePlugins(PluginComponentType.Panel, { schema });
-  return panels.concat(plots);
+  const ctx = useMemo(() => ({ schema }), [schema]);
+  const plots = useActivePlugins(PluginComponentType.Plot, ctx);
+  const panels = useActivePlugins(PluginComponentType.Panel, ctx);
+
+  const panelsToReturn = useMemo(() => {
+    const allPanels = plots.concat(panels);
+    if (predicate) {
+      return allPanels.filter(predicate);
+    }
+    return allPanels;
+  }, [plots, panels, predicate]) as PluginComponentRegistration[];
+
+  return panelsToReturn;
 }
 
-export function usePanel(name: SpaceNodeType) {
-  const panels = usePanels();
-  return panels.find((panel) => panel.name === name);
+export function usePanel(
+  name: SpaceNodeType,
+  predicate?: (panel: PluginComponentRegistration) => boolean
+) {
+  const combinedPredicate = useMemo(() => {
+    if (predicate) {
+      return (panel: PluginComponentRegistration) =>
+        panel.name === name && predicate(panel);
+    }
+    return (panel: PluginComponentRegistration) => panel.name === name;
+  }, [predicate]);
+  const panels = usePanels(combinedPredicate);
+  return panels.at(0);
 }
 
 export function useReactivePanel(name: SpaceNodeType) {
@@ -122,8 +163,15 @@ export function useReactivePanel(name: SpaceNodeType) {
       setCount((count) => count + 1); // trigger re-resolution of panels
     });
   }, []);
-  const panels = usePanels();
-  return panels.find((panel) => panel.name === name);
+  const predicate = useCallback(
+    (panel: PluginComponentRegistration) => {
+      return panel.name === name;
+    },
+    [name]
+  );
+  const panels = usePanels(predicate);
+
+  return panels.at(0);
 }
 
 /**
@@ -131,19 +179,29 @@ export function useReactivePanel(name: SpaceNodeType) {
  *
  * Note: `id` is optional if hook is used within the component of a panel.
  */
-export function usePanelTitle(id?: string): [string, (title: string) => void] {
+export function usePanelTitle(id?: string) {
   const panelContext = useContext(PanelContext);
   const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
 
   const panelId = id || panelContext?.node?.id;
   const panelTitle = panelTitles.get(panelId);
 
-  function setPanelTitle(title: string, id?: string) {
+  const setPanelTitle = useCallback(
+    (title: string, id?: string) => {
+      const updatedPanelTitles = new Map(panelTitles);
+      updatedPanelTitles.set(id || panelId, title);
+      setPanelTitles(updatedPanelTitles);
+    },
+    [panelTitles, panelId]
+  );
+
+  const resetPanelTitle = useCallback(() => {
     const updatedPanelTitles = new Map(panelTitles);
-    updatedPanelTitles.set(id || panelId, title);
+    updatedPanelTitles.delete(id || panelId);
     setPanelTitles(updatedPanelTitles);
-  }
-  return [panelTitle, setPanelTitle];
+  }, [panelTitles, panelId]);
+
+  return [panelTitle, setPanelTitle, resetPanelTitle] as const;
 }
 
 /**
@@ -188,27 +246,35 @@ export function usePanelContext() {
 export function usePanelState<T>(
   defaultState?: T,
   id?: string,
-  local?: boolean
+  local?: boolean,
+  scope?: string
 ) {
+  const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = id || (panelContext?.node?.id as string);
   const [state, setState] = useRecoilState<T>(
-    panelStateSelector({ panelId, local })
+    panelStateSelector({ panelId, local, scope: panelScope })
   );
   const computedState = state || defaultState;
 
   return [computedState, setState];
 }
 
-export function useSetPanelStateById<T>(local?: boolean) {
+export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
+  const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ set, snapshot }) =>
       async (panelId: string, fn: (state: any) => any) => {
+        const panelIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
+        const computedScope = panelScope || panelIdToScope?.[panelId];
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local })
+          panelStateSelector({ panelId, local, scope: computedScope })
         );
         const updatedValue = fn(panelState);
-        set(panelStateSelector({ panelId, local }), updatedValue);
+        set(
+          panelStateSelector({ panelId, local, scope: computedScope }),
+          updatedValue
+        );
       },
     []
   );
@@ -236,15 +302,17 @@ export function useSetCustomPanelState<T>(local?: boolean) {
  */
 export function usePanelStateCallback<T>(
   callback: (panelState: T) => void,
-  local?: boolean
+  local?: boolean,
+  scope?: string
 ) {
+  const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   return useRecoilCallback(
     ({ snapshot }) =>
       async () => {
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local })
+          panelStateSelector({ panelId, local, scope: panelScope })
         );
         callback(panelState);
       },
@@ -254,13 +322,15 @@ export function usePanelStateCallback<T>(
 
 export function usePanelStateByIdCallback<T>(
   callback: (panelId: string, panelState: T, args: any[]) => void,
-  local?: boolean
+  local?: boolean,
+  scope?: string
 ) {
+  const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ snapshot }) =>
       async (panelId: string, ...args) => {
         const panelState = await snapshot.getPromise(
-          panelStateSelector({ panelId, local })
+          panelStateSelector({ panelId, local, scope: panelScope })
         );
         callback(panelId, panelState, args as any[]);
       },
@@ -273,14 +343,17 @@ export function usePanelStateByIdCallback<T>(
  * @returns a state resolver function which return promise that resolves to the
  * current state of a panel
  */
-export function usePanelStateLazy(local?: boolean) {
+export function usePanelStateLazy(local?: boolean, scope?: string) {
+  const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
 
   const resolvePanelState = useRecoilCallback(
     ({ snapshot }) =>
       async () =>
-        snapshot.getPromise(panelStateSelector({ panelId, local }))
+        snapshot.getPromise(
+          panelStateSelector({ panelId, local, scope: panelScope })
+        )
   );
 
   return () => resolvePanelState();
@@ -295,12 +368,14 @@ export function usePanelStateLazy(local?: boolean) {
 export function usePanelStatePartial<T>(
   key: string,
   defaultState: T,
-  local?: boolean
+  local?: boolean,
+  scope?: string
 ) {
+  const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
   const [state, setState] = useRecoilState<T>(
-    panelStatePartialSelector({ panelId, key, local })
+    panelStatePartialSelector({ panelId, key, local, scope: panelScope })
   );
   const computedState = useComputedState(state, defaultState);
   return [computedState, setState];
@@ -378,4 +453,10 @@ export function usePanelCloseEffect(panelId?: string) {
       panelCloseEffect();
     }
   };
+}
+
+function useScope(scope?: string) {
+  const panelContext = usePanelContext();
+  if (typeof scope === "string") return scope;
+  return panelContext?.scope;
 }

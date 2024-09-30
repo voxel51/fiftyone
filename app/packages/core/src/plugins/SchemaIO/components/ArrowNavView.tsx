@@ -37,7 +37,7 @@ export default function ArrowNavView(props: ViewPropsType) {
       )}
       {forward && (
         <Arrow
-          isRight
+          $isRight
           style={positionBasedStyleForward[position]}
           onClick={() => {
             if (on_forward) {

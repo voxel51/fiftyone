@@ -8,6 +8,7 @@ Interface for sample collections.
 
 from collections import defaultdict
 from copy import copy
+from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -19,7 +20,7 @@ import timeit
 import warnings
 
 from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany
+from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -575,6 +576,125 @@ class SampleCollection(object):
             a string summary
         """
         raise NotImplementedError("Subclass must implement summary()")
+
+    def sync_last_modified_at(self, include_frames=True):
+        """Syncs the ``last_modified_at`` property(s) of the dataset.
+
+        Updates the :attr:`last_modified_at` property of the dataset if
+        necessary to incorporate any modification timestamps to its samples.
+
+        If ``include_frames==True``, the ``last_modified_at`` property of
+        each video sample is first updated if necessary to incorporate any
+        modification timestamps to its frames.
+
+        Args:
+            include_frames (True): whether to update the ``last_modified_at``
+                property of video samples. Only applicable to datasets that
+                contain videos
+        """
+        if include_frames:
+            self._sync_samples_last_modified_at()
+
+        self._sync_dataset_last_modified_at()
+
+    def _sync_samples_last_modified_at(self):
+        if not self._contains_videos(any_slice=True):
+            return
+
+        full_dataset = isinstance(self, fod.Dataset)
+        dataset = self._root_dataset
+        if self.media_type == fom.GROUP and not full_dataset:
+            view = self.select_group_slices(media_type=fom.VIDEO)
+        else:
+            view = self
+
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$_sample_id",
+                    "last_modified_at": {"$max": "$last_modified_at"},
+                }
+            },
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": "_id",
+                    "whenMatched": [
+                        {
+                            "$set": {
+                                "last_modified_at": {
+                                    "$max": [
+                                        "$last_modified_at",
+                                        "$$new.last_modified_at",
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "whenNotMatched": "discard",
+                }
+            },
+        ]
+
+        if full_dataset:
+            foo.aggregate(dataset._frame_collection, pipeline)
+        else:
+            view._aggregate(frames_only=True, post_pipeline=pipeline)
+
+    def _sync_dataset_last_modified_at(self):
+        dataset = self._root_dataset
+        curr_lma = dataset.last_modified_at
+        lma = self._get_last_modified_at()
+
+        if lma is not None and (curr_lma is None or lma > curr_lma):
+            dataset._doc.last_modified_at = lma
+            dataset._doc.save(virtual=True)
+
+    def _get_last_modified_at(self, frames=False):
+        if frames and not self._contains_videos(any_slice=True):
+            return
+
+        if isinstance(self, fod.Dataset):
+            # pylint:disable=no-member
+            dataset = self
+            if frames:
+                coll = dataset._frame_collection
+            else:
+                coll = dataset._sample_collection
+
+            pipeline = [
+                {"$sort": {"last_modified_at": -1}},
+                {"$limit": 1},
+                {"$project": {"last_modified_at": True}},
+            ]
+
+            results = foo.aggregate(coll, pipeline)
+        else:
+            if self.media_type == fom.GROUP:
+                if frames:
+                    view = self.select_group_slices(media_type=fom.VIDEO)
+                else:
+                    view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
+            pipeline = [
+                {
+                    "$group": {
+                        "_id": None,
+                        "last_modified_at": {"$max": "$last_modified_at"},
+                    }
+                }
+            ]
+
+            results = view._aggregate(
+                frames_only=frames, post_pipeline=pipeline
+            )
+
+        try:
+            return next(iter(results))["last_modified_at"]
+        except:
+            return None
 
     def stats(
         self,
@@ -1172,11 +1292,35 @@ class SampleCollection(object):
 
         return path in default_fields
 
+    def _is_read_only_field(self, path):
+        _, _, read_only = self._parse_field(path, include_private=True)
+        return read_only
+
+    def _get_default_field(self, path):
+        _path, is_frame_field = self._handle_frame_field(path)
+
+        if "." in _path:
+            root, leaf = path.rsplit(".", 1)
+            root_field = self.get_field(root, leaf=True)
+            if root_field is None:
+                return None
+
+            root_type = root_field.document_type
+        elif is_frame_field:
+            leaf = _path
+            root_type = foo.DatasetFrameDocument
+        else:
+            leaf = _path
+            root_type = foo.DatasetSampleDocument
+
+        return root_type._fields.get(leaf, None)
+
     def get_field(
         self,
         path,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
         include_private=False,
         leaf=False,
     ):
@@ -1190,6 +1334,8 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 enforce. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to optionally enforce that the field is
+                read-only (True) or not read-only (False)
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
@@ -1198,18 +1344,24 @@ class SampleCollection(object):
             a :class:`fiftyone.core.fields.Field` instance or ``None``
 
         Raises:
-            ValueError: if the field does not match provided type constraints
+            ValueError: if the field does not match provided constraints
         """
-        fof.validate_type_constraints(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+        fof.validate_constraints(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
         )
 
-        _, field = self._parse_field(
+        _, field, _ = self._parse_field(
             path, include_private=include_private, leaf=leaf
         )
 
         fof.validate_field(
-            field, path=path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            field,
+            path=path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            read_only=read_only,
         )
 
         return field
@@ -1218,7 +1370,7 @@ class SampleCollection(object):
         keys = path.split(".")
 
         if not keys:
-            return None, None
+            return None, None, None
 
         resolved_keys = []
 
@@ -1240,6 +1392,7 @@ class SampleCollection(object):
             schema = self.get_field_schema(include_private=include_private)
 
         field = None
+        read_only = None
 
         for idx, field_name in enumerate(keys):
             field_name = _handle_id_field(
@@ -1249,9 +1402,10 @@ class SampleCollection(object):
             field = schema.get(field_name, None)
 
             if field is None:
-                return None, None
+                return None, None, read_only
 
             resolved_keys.append(field.db_field or field.name)
+            read_only = field.read_only
             last_key = idx == len(keys) - 1
 
             if last_key and not leaf:
@@ -1267,14 +1421,18 @@ class SampleCollection(object):
 
         resolved_path = ".".join(resolved_keys)
 
-        return resolved_path, field
+        return resolved_path, field, read_only
 
     def get_field_schema(
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
@@ -1287,13 +1445,24 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
@@ -1301,11 +1470,15 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        read_only=None,
+        info_keys=None,
+        created_after=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
-        """Returns a schema dictionary describing the fields of the frames of
-        the samples in the collection.
+        """Returns a schema dictionary describing the fields of the frames in
+        the collection.
 
         Only applicable for collections that contain videos.
 
@@ -1316,14 +1489,24 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            read_only (None): whether to restrict to (True) or exclude (False)
+                read-only fields. By default, all fields are included
+            info_keys (None): an optional key or list of keys that must be in
+                the field's ``info`` dict
+            created_after (None): an optional ``datetime`` specifying a minimum
+                creation date
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the above constraints before and/or
+                after flattening the schema. Only applicable when ``flat`` is
+                True. Supported values are ``("before", "after", "both")``.
+                The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the collection does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the collection does not contain videos
         """
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
@@ -1343,8 +1526,8 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them
         """
         return self._get_dynamic_field_schema(
             fields=fields, recursive=recursive
@@ -1352,7 +1535,7 @@ class SampleCollection(object):
 
     def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
-        frames of the samples in the collection.
+        frames in the collection.
 
         Dynamic fields are embedded document fields with at least one non-None
         value that have not been declared on the dataset's schema.
@@ -1364,8 +1547,9 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types, or ``None`` if the collection does not contain videos
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them, or ``None`` if the collection does not
+            contain videos
         """
         if not self._has_frame_fields():
             return None
@@ -1696,6 +1880,11 @@ class SampleCollection(object):
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
+        if self._is_read_only_field("tags"):
+            raise ValueError("Cannot edit read-only field 'tags'")
+
+        update["$set"] = {"last_modified_at": datetime.utcnow()}
+
         ids = []
         ops = []
         batch_size = fou.recommend_batch_size_for_value(
@@ -1733,6 +1922,13 @@ class SampleCollection(object):
 
         missing_tags = ~F("tags").contains(tags, all=True)
         match_expr = (F("tags") != None).if_else(missing_tags, True)
+
+        for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            if self._is_read_only_field(tags_path):
+                raise ValueError(
+                    "Cannot edit read-only field '%s'" % tags_path
+                )
 
         for label_field in label_fields:
             # We only need to process labels that are missing a tag of interest
@@ -1788,6 +1984,13 @@ class SampleCollection(object):
             label_fields = [label_fields]
 
         for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            if self._is_read_only_field(tags_path):
+                raise ValueError(
+                    "Cannot edit read-only field '%s'" % tags_path
+                )
+
+        for label_field in label_fields:
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
             view._untag_labels(tags, label_field)
@@ -1806,6 +2009,12 @@ class SampleCollection(object):
     def _edit_label_tags(
         self, update_fcn, label_field, ids=None, label_ids=None
     ):
+        _, tags_path = self._get_label_field_path(label_field, "tags")
+        if self._is_read_only_field(tags_path):
+            raise ValueError("Cannot edit read-only field '%s'" % tags_path)
+
+        now = datetime.utcnow()
+
         root, is_list_field = self._get_label_field_root(label_field)
         _root, is_frame_field = self._handle_frame_field(root)
 
@@ -1815,6 +2024,7 @@ class SampleCollection(object):
             id_path = root + "._id"
             tags_path = _root + ".$[label].tags"
             update = update_fcn(tags_path)
+            update["$set"] = {"last_modified_at": now}
 
             if ids is None or label_ids is None:
                 if is_frame_field:
@@ -1828,17 +2038,19 @@ class SampleCollection(object):
                 if not _label_ids:
                     continue
 
-                op = UpdateOne(
-                    {"_id": _id},
-                    update,
-                    array_filters=[{"label._id": {"$in": _label_ids}}],
+                ops.append(
+                    UpdateOne(
+                        {"_id": _id},
+                        update,
+                        array_filters=[{"label._id": {"$in": _label_ids}}],
+                    )
                 )
-                ops.append(op)
         else:
             _id_path = _root + "._id"
             id_path = root + "._id"
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
+            update["$set"] = {"last_modified_at": now}
 
             if label_ids is None:
                 if is_frame_field:
@@ -2267,6 +2479,9 @@ class SampleCollection(object):
         if field is None:
             field = self.get_field(field_name)
 
+        if field is not None and field.read_only:
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
+
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
@@ -2422,6 +2637,9 @@ class SampleCollection(object):
 
         if field is None:
             field = self.get_field(field_name)
+
+        if field is not None and field.read_only:
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True
@@ -2772,6 +2990,11 @@ class SampleCollection(object):
         frames=False,
         progress=False,
     ):
+        if self._is_read_only_field(field_name):
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
+
+        now = datetime.utcnow()
+
         ops = []
         for _id, value in zip(ids, values):
             if value is None and skip_none:
@@ -2785,7 +3008,12 @@ class SampleCollection(object):
                     field_name, field, value, validate=validate
                 )
 
-            ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    {"$set": {field_name: value, "last_modified_at": now}},
+                )
+            )
 
         if ops:
             self._dataset._bulk_write(
@@ -2805,6 +3033,11 @@ class SampleCollection(object):
         frames=False,
         progress=False,
     ):
+        if self._is_read_only_field(field_name):
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
+
+        now = datetime.utcnow()
+
         root = list_field
         leaf = field_name[len(root) + 1 :]
         elem_id = root + "._id"
@@ -2841,7 +3074,7 @@ class SampleCollection(object):
                 ops.append(
                     UpdateOne(
                         {"_id": _id, elem_id: _elem_id},
-                        {"$set": {elem: value}},
+                        {"$set": {elem: value, "last_modified_at": now}},
                     )
                 )
 
@@ -2862,6 +3095,11 @@ class SampleCollection(object):
         frames=False,
         progress=False,
     ):
+        if self._is_read_only_field(field_name):
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
+
+        now = datetime.utcnow()
+
         root = list_field
         leaf = field_name[len(root) + 1 :]
         path = root + ".$[label]." + leaf
@@ -2882,7 +3120,7 @@ class SampleCollection(object):
             ops.append(
                 UpdateOne(
                     {"_id": _id},
-                    {"$set": {path: value}},
+                    {"$set": {path: value, "last_modified_at": now}},
                     array_filters=[{"label._id": ObjectId(label_id)}],
                 )
             )
@@ -2893,11 +3131,16 @@ class SampleCollection(object):
             )
 
     def _set_labels(self, field_name, sample_ids, label_docs, progress=False):
+        if self._is_read_only_field(field_name):
+            raise ValueError("Cannot edit read-only field '%s'" % field_name)
+
         if self._is_group_field(field_name):
             raise ValueError(
                 "This method does not support setting attached group fields "
                 "(found: '%s')" % field_name
             )
+
+        now = datetime.utcnow()
 
         root, is_list_field = self._get_label_field_root(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
@@ -2923,7 +3166,7 @@ class SampleCollection(object):
                     ops.append(
                         UpdateOne(
                             {"_id": _id, elem_id: doc["_id"]},
-                            {"$set": {set_path: doc}},
+                            {"$set": {set_path: doc, "last_modified_at": now}},
                         )
                     )
         else:
@@ -2937,7 +3180,7 @@ class SampleCollection(object):
                 ops.append(
                     UpdateOne(
                         {"_id": _id, elem_id: doc["_id"]},
-                        {"$set": {field_name: doc}},
+                        {"$set": {field_name: doc, "last_modified_at": now}},
                     )
                 )
 
@@ -3184,8 +3427,8 @@ class SampleCollection(object):
                 patches before extracting them, in ``[-1, inf)``. If provided,
                 the length and width of the box are expanded (or contracted,
                 when ``alpha < 0``) by ``(100 * alpha)%``. For example, set
-                ``alpha = 1.1`` to expand the boxes by 10%, and set
-                ``alpha = 0.9`` to contract the boxes by 10%
+                ``alpha = 0.1`` to expand the boxes by 10%, and set
+                ``alpha = -0.1`` to contract the boxes by 10%
             handle_missing ("skip"): how to handle images with no patches.
                 Supported values are:
 
@@ -9091,7 +9334,7 @@ class SampleCollection(object):
                 if key in sample_info:
                     sample_info[key]["size"] = size
 
-            for key in cs["indexBuilds"]:
+            for key in cs.get("indexBuilds", []):
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
 
@@ -9113,7 +9356,7 @@ class SampleCollection(object):
                     if key in frame_info:
                         frame_info[key]["size"] = size
 
-                for key in cs["indexBuilds"]:
+                for key in cs.get("indexBuilds", []):
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
 
@@ -9126,7 +9369,7 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, **kwargs):
+    def create_index(self, field_or_spec, unique=False, wait=True, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -9160,6 +9403,7 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            wait (True): whether to wait for index creation to finish
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
 
@@ -9238,10 +9482,17 @@ class SampleCollection(object):
             # Satisfactory index already exists
             return index_name
 
+        # Setting `w=0` sets `acknowledged=False` in pymongo
+        write_concern = None if wait else WriteConcern(w=0)
+
         if is_frame_index:
-            coll = self._dataset._frame_collection
+            coll = self._dataset._get_frame_collection(
+                write_concern=write_concern
+            )
         else:
-            coll = self._dataset._sample_collection
+            coll = self._dataset._get_sample_collection(
+                write_concern=write_concern
+            )
 
         name = coll.create_index(index_spec, unique=unique, **kwargs)
 
@@ -9253,7 +9504,7 @@ class SampleCollection(object):
         return name
 
     def drop_index(self, field_or_name):
-        """Drops the index for the given field or name.
+        """Drops the index for the given field or name, if necessary.
 
         Args:
             field_or_name: a field name, ``embedded.field.name``, or compound
@@ -9285,23 +9536,29 @@ class SampleCollection(object):
             else:
                 index_map[key] = key
 
-        if name not in index_map:
-            itype = "frame index" if is_frame_index else "index"
-            raise ValueError(
-                "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
-            )
-
-        coll.drop_index(index_map[name])
+        if name in index_map:
+            coll.drop_index(index_map[name])
 
     def _get_default_indexes(self, frames=False):
         if frames:
             if self._has_frame_fields():
-                return ["id", "_sample_id_1_frame_number_1"]
+                return [
+                    "id",
+                    "created_at",
+                    "last_modified_at",
+                    "_sample_id_1_frame_number_1",
+                ]
 
             return []
 
         if self._is_patches:
-            names = ["id", "filepath", "sample_id"]
+            names = [
+                "id",
+                "filepath",
+                "created_at",
+                "last_modified_at",
+                "sample_id",
+            ]
             if self._is_frames:
                 names.extend(["frame_id", "_sample_id_1_frame_number_1"])
 
@@ -9311,18 +9568,38 @@ class SampleCollection(object):
             return [
                 "id",
                 "filepath",
+                "created_at",
+                "last_modified_at",
                 "sample_id",
                 "_sample_id_1_frame_number_1",
             ]
 
         if self._is_clips:
-            return ["id", "filepath", "sample_id"]
+            return [
+                "id",
+                "filepath",
+                "created_at",
+                "last_modified_at",
+                "sample_id",
+            ]
 
         if self.media_type == fom.GROUP:
             gf = self.group_field
-            return ["id", "filepath", gf + ".id", gf + ".name"]
+            return [
+                "id",
+                "filepath",
+                "created_at",
+                "last_modified_at",
+                gf + ".id",
+                gf + ".name",
+            ]
 
-        return ["id", "filepath"]
+        return [
+            "id",
+            "filepath",
+            "created_at",
+            "last_modified_at",
+        ]
 
     def reload(self):
         """Reloads the collection from the database."""
@@ -10880,6 +11157,8 @@ def _parse_values_dict(sample_collection, key_field, values):
 
 
 def _parse_frame_values_dicts(sample_collection, sample_ids, values):
+    now = datetime.utcnow()
+
     value = _get_non_none_value(values)
     if not isinstance(value, dict):
         return None, values
@@ -10903,7 +11182,13 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
             id_map[(_id, fn)] = _fid
 
         for fn in set(_vals.keys()) - set(_fns):
-            dicts.append({"_sample_id": ObjectId(_id), "frame_number": fn})
+            dicts.append(
+                {
+                    "_sample_id": ObjectId(_id),
+                    "frame_number": fn,
+                    "last_modified_at": now,
+                }
+            )
 
     # Insert frame documents for new frame numbers
     if dicts:

@@ -91,6 +91,17 @@
   width: 100%;
 }
 
+.imaVidSeekBar {
+  grid-area: 1 / 1 / 1 / 18;
+  margin-top: -5px;
+  width: 100%;
+}
+
+.hideInputThumb {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .lookerThumb {
   --progress: 0%;
   width: 0;

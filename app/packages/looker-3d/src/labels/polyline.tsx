@@ -26,7 +26,7 @@ export const Polyline = ({
     () =>
       points3d.map((points) => (
         <Line
-          key={`polyline-${label}-${points3d[0][0]}`}
+          key={`polyline-${label._id}-${points3d[0][0]}`}
           rotation={rotation}
           points={points}
           opacity={opacity}

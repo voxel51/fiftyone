@@ -1,6 +1,3 @@
-import numeral from "numeral";
-import React from "react";
-
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -8,6 +5,8 @@ import {
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
 } from "@fiftyone/utilities";
+import numeral from "numeral";
+import React from "react";
 
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 
@@ -72,6 +71,8 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
       return numeral(v).format(
         [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
           ? "0a"
+          : bounds[1] - bounds[0] < 0.1
+          ? "0.0000a"
           : "0.00a"
       );
     },

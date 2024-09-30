@@ -618,22 +618,16 @@ def make_patches_dataset(
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
     keys = field.split(".")
-    if len(keys) > 2:
-        raise ValueError(
-            f"Cannot create nested patches field of depth greater than 1: {field}"
-        )
-
     if len(keys) == 2:
-        parent = sample_collection.get_field(keys[0])
-        if not isinstance(parent, fof.EmbeddedDocumentField):
-            raise ValueError(
-                f"Cannot create nested patches field of parent: {parent.ftype}"
-            )
-
         dataset.add_sample_field(
             keys[0],
             fof.EmbeddedDocumentField,
             embedded_doc_type=foo.DynamicEmbeddedDocument,
+        )
+    elif len(keys) > 2:
+        raise ValueError(
+            "Cannot create patches from nested field '%s' of depth %d > 2"
+            % (field, len(keys))
         )
 
     dataset.add_sample_field(field, **foo.get_field_kwargs(patches_field))
@@ -864,6 +858,8 @@ def _make_patches_view(
         "filepath": True,
         "metadata": True,
         "tags": True,
+        "created_at": True,
+        "last_modified_at": True,
         field + "._cls": True,
         root: True,
     }

@@ -7,7 +7,7 @@ import {
   useTheme,
 } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
-import { isElectron, styles } from "@fiftyone/utilities";
+import { styles } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -44,10 +44,6 @@ const Code = styled.pre`
 `;
 
 const port = (() => {
-  if (isElectron()) {
-    return Number.parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
-  }
-
   if (typeof window !== "undefined" && window.location.port !== undefined) {
     return Number.parseInt(window.location.port);
   }

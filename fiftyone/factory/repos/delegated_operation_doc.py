@@ -46,6 +46,7 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
+        self.scheduled_at = None
         self.result = None
         self.id = None
         self._doc = None
@@ -53,25 +54,28 @@ class DelegatedOperationDocument(object):
 
     def from_pymongo(self, doc: dict):
         # required fields
-        self.operator = doc["operator"]
-        self.queued_at = doc["queued_at"]
-        self.run_state = doc["run_state"]
-        self.label = doc["label"] if "label" in doc else None
-        self.updated_at = doc["updated_at"] if "updated_at" in doc else None
+        self.operator = doc.get("operator")
+        self.queued_at = doc.get("queued_at")
+        self.run_state = doc.get("run_state")
 
         # optional fields
-        self.delegation_target = (
-            doc["delegation_target"] if "delegation_target" in doc else None
-        )
-        self.started_at = doc["started_at"] if "started_at" in doc else None
-        self.completed_at = (
-            doc["completed_at"] if "completed_at" in doc else None
-        )
-        self.failed_at = doc["failed_at"] if "failed_at" in doc else None
-        self.pinned = doc["pinned"] if "pinned" in doc else None
-        self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
-        self.run_link = doc["run_link"] if "run_link" in doc else None
+        self.delegation_target = doc.get("delegation_target", None)
+        self.started_at = doc.get("started_at", None)
+        self.completed_at = doc.get("completed_at", None)
+        self.failed_at = doc.get("failed_at", None)
+        self.scheduled_at = doc.get("scheduled_at", None)
+        self.pinned = doc.get("pinned", None)
+        self.dataset_id = doc.get("dataset_id", None)
+        self.run_link = doc.get("run_link", None)
+        self.metadata = doc.get("metadata", None)
+        self.label = doc.get("label", None)
+        self.updated_at = doc.get("updated_at", None)
 
+        # internal fields
+        self.id = doc["_id"]
+        self._doc = doc
+
+        # nested fields
         if (
             "context" in doc
             and doc["context"] is not None
@@ -99,12 +103,6 @@ class DelegatedOperationDocument(object):
                 self.status.label = doc["status"]["label"]
             if "updated_at" in doc["status"]:
                 self.status.updated_at = doc["status"]["updated_at"]
-
-        # internal fields
-        self.id = doc["_id"]
-        self._doc = doc
-
-        self.metadata = doc["metadata"] if "metadata" in doc else None
 
         return self
 

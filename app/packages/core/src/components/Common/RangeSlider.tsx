@@ -1,17 +1,12 @@
-import { Slider as SliderUnstyled } from "@mui/material";
-import React, { ChangeEvent, useLayoutEffect, useState } from "react";
-import {
-  RecoilState,
-  RecoilValueReadOnly,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
-import styled from "styled-components";
-
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
+import { Slider as SliderUnstyled } from "@mui/material";
+import type { ChangeEvent } from "react";
+import React, { useLayoutEffect, useState } from "react";
+import type { RecoilState, RecoilValueReadOnly } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { getFormatter, getStep } from "./utils";
 

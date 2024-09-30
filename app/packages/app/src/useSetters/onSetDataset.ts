@@ -4,7 +4,7 @@ import {
   subscribeBefore,
 } from "@fiftyone/relay";
 import {
-  SPACES_DEFAULT,
+  GRID_SPACES_DEFAULT,
   ensureColorScheme,
   stateSubscription,
 } from "@fiftyone/state";
@@ -29,7 +29,7 @@ const onSetDataset: RegisteredSetter =
     const unsubscribe = subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
-      sessionRef.current.sessionSpaces = SPACES_DEFAULT;
+      sessionRef.current.sessionSpaces = GRID_SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = ensureColorScheme(
         entry.data.dataset?.appConfig,
