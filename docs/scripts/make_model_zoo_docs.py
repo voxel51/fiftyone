@@ -90,13 +90,9 @@ _MODEL_TEMPLATE = """
     import fiftyone.zoo as foz
 {% if 'segment-anything' in name and 'video' in name %}
     from fiftyone import ViewField as F
-{% endif %}
-
-{% if 'med-sam' in name %}
+{% elif 'med-sam' in name %}
     from fiftyone import ViewField as F
     from fiftyone.utils.huggingface import load_from_hub
-    
-    dataset = load_from_hub("Voxel51/BTCV-CT-as-video-MedSAM2-dataset")[:2]
 {% endif %}
 
 {% if 'imagenet' in name %}
@@ -117,6 +113,7 @@ _MODEL_TEMPLATE = """
         .save()
     )
 {% elif 'med-sam' in name %}
+    dataset = load_from_hub("Voxel51/BTCV-CT-as-video-MedSAM2-dataset")[:2]
 
     # Retaining detections from a single frame in the middle
     # Note that SAM2 only propagates segmentation masks forward in a video
@@ -126,7 +123,6 @@ _MODEL_TEMPLATE = """
         .set_field("frames.gt_detections", None)
         .save()
     )
-
 {% else %}
     dataset = foz.load_zoo_dataset(
         "coco-2017",
