@@ -8,6 +8,7 @@ FiftyOne delegated operation repository document.
 
 import logging
 from datetime import datetime
+from fiftyone.internal.util import is_internal_service
 
 from fiftyone.operators.executor import (
     ExecutionContext,
@@ -36,7 +37,9 @@ class DelegatedOperationDocument(object):
         )
         self.run_state = (
             ExecutionRunState.QUEUED
-        )  # default to queued state on create
+            if is_internal_service()
+            else ExecutionRunState.SCHEDULED
+        )  # if running locally use SCHEDULED otherwises QUEUED
         self.run_link = None
         self.queued_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
