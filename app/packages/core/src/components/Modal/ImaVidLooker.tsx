@@ -175,9 +175,13 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
+        setPlayHeadState({ name: timelineName, state: "buffering" });
+
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
           unprocessedBufferRange
         );
+
+        imaVidLookerRef.current.frameStoreController.resumeFetch();
 
         return new Promise<void>((resolve) => {
           const fetchMoreListener = (e: CustomEvent) => {
@@ -185,6 +189,9 @@ export const ImaVidLookerReact = React.memo(
               e.detail.id === imaVidLookerRef.current.frameStoreController.key
             ) {
               if (storeBufferManager.containsRange(unprocessedBufferRange)) {
+                // todo: change playhead state in setFrameNumberAtom and not here
+                // if done here, store ref to last playhead status
+                setPlayHeadState({ name: timelineName, state: "paused" });
                 resolve();
                 window.removeEventListener(
                   "fetchMore",
@@ -250,6 +257,7 @@ export const ImaVidLookerReact = React.memo(
       registerOnPauseCallback,
       registerOnPlayCallback,
       registerOnSeekCallbacks,
+      setPlayHeadState,
       subscribe,
     } = useCreateTimeline({
       name: timelineName,
@@ -325,6 +333,7 @@ export const ImaVidLookerReact = React.memo(
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          overflowX: "hidden",
         }}
       >
         <div
