@@ -3,14 +3,125 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.1.0
+--------------------
+*Released October 1, 2024*
+
+Includes all updates from :ref:`FiftyOne 1.0.0 <release-notes-v1.0.0>`, plus:
+
+- Super admins can now migrate their deployments to
+  :ref:`Internal Mode <internal-mode>` via the
+  :ref:`Super Admin UI <super-admin-ui>`
+- Added support for sending user invitations in
+  :ref:`Internal Mode <internal-mode>`
+- Optimized performance of the :ref:`dataset page <teams-homepage>`
+- Fixed a BSON serialization bug that could cause errors when cloning or
+  exporting certain dataset views from the Teams UI
+
+.. _release-notes-v1.0.0:
+
+FiftyOne 1.0.0
+--------------
+*Released October 1, 2024*
+
+What's New
+
+- The `FiftyOne Brain <https://github.com/voxel51/fiftyone-brain>`_ is now
+  fully open source. Contributions are welcome!
+- Added :ref:`Modal Panels <panel-config>`, bringing the ability to develop and
+  use panels in the App's sample modal
+  `#4625 <https://github.com/voxel51/fiftyone/pull/4625>`_
+- All datasets now have :ref:`automatically populated <default-sample-fields>`
+  `created_at` and `last_modified_at` fields on their samples and frames
+  `#4597 <https://github.com/voxel51/fiftyone/pull/4597>`_
+- Added support for loading
+  :ref:`remotely-sourced zoo datasets <dataset-zoo-remote>` whose
+  download/preparation instructions are stored in GitHub or public URLs
+  `#4752 <https://github.com/voxel51/fiftyone/pull/4752>`_
+- Added support for loading
+  :ref:`remotely-sourced zoo models <model-zoo-remote>` whose definitions are
+  stored in GitHub or public URLs
+  `#4786 <https://github.com/voxel51/fiftyone/pull/4786>`_
+- Added `Med-SAM2 <https://arxiv.org/abs/2408.00874>`_ to the
+  :ref:`model zoo <model-zoo-med-sam-2-video-torch>`!
+  `#4733 <https://github.com/voxel51/fiftyone/pull/4733>`_,
+  `#4828 <https://github.com/voxel51/fiftyone/pull/4828>`_
+
+App
+
+- Added dozens of :ref:`builtin operators <using-operators>` for performing
+  common operations directly from the App
+  `#4830 <https://github.com/voxel51/fiftyone/pull/4830>`_
+- Label overlays in the grid are now scaled proportionally to grid zoom
+  `#4747 <https://github.com/voxel51/fiftyone/pull/4747>`_
+- Improved support for visualizing and filtering |DynamicEmbeddedDocument| list
+  fields
+  `#4833 <https://github.com/voxel51/fiftyone/pull/4833>`_
+- Added a new timeline API for synchronizing playback of multiple modal panels
+  `#4772 <https://github.com/voxel51/fiftyone/pull/4772>`_
+- Improved UI, documentation, and robustness when working with
+  :ref:`custom color schemes <app-color-schemes-app>`
+  `#4763 <https://github.com/voxel51/fiftyone/pull/4763>`_
+- Fixed a bug where the active group slice was not being persisted when
+  navigating between groups in the modal
+  `#4836 <https://github.com/voxel51/fiftyone/pull/4836>`_
+- Fixed a bug when selecting samples in grouped datasets in the modal
+  `#4789 <https://github.com/voxel51/fiftyone/pull/4789>`_
+- Fixed :ref:`heatmaps <heatmaps>` rendering for values outside of the `range`
+  attribute `#4865 <https://github.com/voxel51/fiftyone/pull/4865>`_
+
+Core
+
+- Added support for creating :ref:`summary fields <summary-fields>` to optimize
+  queries on large datasets with many objects
+  `#4765 <https://github.com/voxel51/fiftyone/pull/4765>`_
+- Dataset fields now have automatically populated `created_at` attributes
+  `#4730 <https://github.com/voxel51/fiftyone/pull/4730>`_
+- Upgraded the
+  :meth:`delete_samples() <fiftyone.core.dataset.Dataset.delete_samples>`
+  and :meth:`clear_frames() <fiftyone.core.dataset.Dataset.clear_frames>`
+  methods to support bulk deletions of 100k+ samples/frames
+  `#4787 <https://github.com/voxel51/fiftyone/pull/4787>`_
+- The :meth:`default_sidebar_groups() <fiftyone.core.odm.dataset.DatasetAppConfig.default_sidebar_groups>`
+  method now correctly handles datetime fields
+  `#4815 <https://github.com/voxel51/fiftyone/pull/4815>`_
+- Fixed an off-by-one error when converting semantic segmentations to/from
+  instance segmentations
+  `#4826 <https://github.com/voxel51/fiftyone/pull/4826>`_
+- Protect against infinitely growing content size batchers
+  `#4806 <https://github.com/voxel51/fiftyone/pull/4806>`_
+- Removed the deprecated `remove_sample()` and `remove_samples()` methods from
+  the |Dataset| class
+  `#4832 <https://github.com/voxel51/fiftyone/pull/4832>`_
+- Deprecated :ref:`Python 3.8 support <deprecation-python-3.8>`
+
+Plugins
+
+- Added
+  :meth:`ctx.group_slice <fiftyone.operators.executor.ExecutionContext.group_slice>`
+  to the operator execution context
+  `#4850 <https://github.com/voxel51/fiftyone/pull/4850>`_
+- Added
+  :meth:`set_group_slice() <fiftyone.operators.operations.Operations.set_group_slice>`
+  to the operator execution context
+  `#4844 <https://github.com/voxel51/fiftyone/pull/4844>`_
+- Improved styling for :class:`GridView <fiftyone.operators.types.GridView>`
+  components
+  `#4764 <https://github.com/voxel51/fiftyone/pull/4764>`_
+- A loading error is now displayed in the actions row when operators with
+  :ref:`placements <operator-placement>` fail to load
+  `#4714 <https://github.com/voxel51/fiftyone/pull/4714>`_
+- Ensure the App loads when plugins fail to load
+  `#4769 <https://github.com/voxel51/fiftyone/pull/4769>`_
+
+.. _release-notes-v0.25.2:
 
 FiftyOne 0.25.2
 ---------------
 *Released September 19, 2024*
 
-* Require `pymongo<4.9` to fix database connections
-* Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
-
+- Require `pymongo<4.9` to fix database connections
+- Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
 
 FiftyOne Teams 2.0.1
 --------------------
