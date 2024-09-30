@@ -87,34 +87,13 @@ const nextConfig = withTM({
     );
     config.plugins.push(new CaseSensitivePathsPlugin());
 
-    // adapted from https://react-svgr.com/docs/next/
-
-    // Grab the existing rule that handles SVG imports
-    const fileLoaderRule = config.module.rules.find((rule) =>
-      rule.test?.test?.('.svg'),
-    )
-
-    config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports that don't end in ?react
-      {
-        ...fileLoaderRule,
-        test: /\.svg$/i,
-        resourceQuery: { not: [/react/] },
-        options: {
-          outputPath: 'static/images'
-        }
-      },
-      // Convert all other *.svg that end in ?react to React components
-      {
-        test: /\.svg$/i,
-        issuer: fileLoaderRule.issuer,
-        resourceQuery: /react/, // *.svg?react
-        use: ['@svgr/webpack'],
-      },
-    )
-
-    // Modify the file loader rule to ignore *.svg, since we have it handled now.
-    fileLoaderRule.exclude = /\.svg$/i
+    config.module.rules.push({
+      test: /\.svg$/,
+      loader: 'file-loader',
+      options: {
+        outputPath: 'static/images'
+      }
+    });
 
     return config;
   },
