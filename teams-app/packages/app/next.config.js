@@ -95,27 +95,6 @@ const nextConfig = withTM({
       }
     });
 
-    // adapted from https://react-svgr.com/docs/next/
-
-    // Grab the existing rule that handles SVG imports
-    const fileLoaderRule = config.module.rules.find((rule) =>
-      rule.test?.test?.('.svg'),
-    )
-
-    config.module.rules.push(
-      // Convert only ?react resource queries to React components
-      {
-        test: /\.svg$/i,
-        issuer: fileLoaderRule.issuer,
-        // only include if *.svg?react
-        resourceQuery: /react/, 
-        use: ['@svgr/webpack'],
-      },
-    )
-
-    // Modify the file loader rule to ignore *.svg, since we have it handled now.
-    fileLoaderRule.exclude = /\.svg$/i
-
     return config;
   },
   eslint: {

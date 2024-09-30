@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" height="24px" width="24px" viewBox="12 12 24 24">
-    <circle cx="24" cy="24" r="9" stroke-width="2" stroke="rgb(238, 238, 238)" fill="none"></circle>
+    <circle cx="24" cy="24" r="9" stroke-width="2" stroke="rgb(238, 238, 238)" fill="#b3b3b3"></circle>
 </svg>
