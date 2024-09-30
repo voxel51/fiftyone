@@ -6,5 +6,6 @@ node_modules
 !.yarn/sdks
 !.yarn/versions
 
-!app/packages/app/.env.local
+.env
 .env.local
+!packages/app/.env.local
