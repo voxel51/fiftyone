@@ -325,6 +325,7 @@ export const ImaVidLookerReact = React.memo(
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          overflowX: "hidden"
         }}
       >
         <div
