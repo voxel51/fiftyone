@@ -8,7 +8,8 @@ COPY app/ app/
 COPY teams-app/ teams-app/
 COPY deployment/docker/yarnrc.yml ~/.yarnrc.yml
 
-RUN cd app/ && yarn install --silent && cd - \
+RUN rm -f teams-app/packages/app/.env.local \
+    && cd app/ && yarn install --silent && cd - \
     && cd teams-app/ && yarn install --silent --immutable && yarn build \
     && DEPS_TO_REMOVE="\
     @esbuild \
