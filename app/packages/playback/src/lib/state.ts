@@ -13,6 +13,7 @@ import {
 } from "./constants";
 
 export type PlayheadState =
+  | "buffering"
   | "playing"
   | "paused"
   | "waitingToPlay"
