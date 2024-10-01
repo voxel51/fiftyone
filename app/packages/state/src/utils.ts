@@ -18,7 +18,7 @@ import {
   RecordSource,
   Store,
 } from "relay-runtime";
-import { State } from "./recoil";
+import { ModalSample, State } from "./recoil";
 
 export const deferrer =
   (initialized: MutableRefObject<boolean>) =>
@@ -105,6 +105,7 @@ export const getStandardizedUrls = (
   urls:
     | readonly { readonly field: string; readonly url: string }[]
     | { [field: string]: string }
+    | ModalSample["urls"]
 ) => {
   if (!Array.isArray(urls)) {
     return urls;
