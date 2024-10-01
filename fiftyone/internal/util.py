@@ -16,22 +16,13 @@ def is_remote_service():
     return has_encryption_key() and has_api_key()
 
 
-def is_internal_service():
-    """Whether the SDK is running in an internal service context.
-
-    Returns:
-        True/False
-    """
-    return False
-
-
 def has_encryption_key():
     """Whether the current environment has an encryption key.
 
     Returns:
         True/False
     """
-    return is_internal_service()
+    return False
 
 
 def has_api_key():
