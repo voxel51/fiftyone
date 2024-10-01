@@ -24,14 +24,14 @@ import { ContentDiv, ContentHeader } from "../utils";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
-const TooltipDiv = animated(styled(ContentDiv)<{ isTooltipLocked: boolean }>`
+const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
   position: absolute;
   margin-top: 0;
   left: -1000;
   top: -1000;
   z-index: 20000;
   min-width: 13rem;
-  pointer-events: ${(props) => (props.isTooltipLocked ? "auto" : "none")};
+  pointer-events: ${(props) => (props.$isTooltipLocked ? "auto" : "none")};
 `);
 
 const TooltipContentDiv = styled.div`
@@ -321,7 +321,7 @@ export const TooltipInfo = React.memo(() => {
 
     return (
       <TooltipDiv
-        isTooltipLocked={isTooltipLocked}
+        $isTooltipLocked={isTooltipLocked}
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
@@ -475,7 +475,7 @@ const Header = ({ title }: { title: string }) => {
 
   return (
     <ContentHeader
-      isTooltipLocked={isTooltipLocked}
+      $isTooltipLocked={isTooltipLocked}
       key="header"
       id={TOOLTIP_HEADER_ID}
     >

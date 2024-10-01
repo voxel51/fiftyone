@@ -94,8 +94,8 @@ Next, install the
     operator, selecting the Albumentations plugin from the community dropdown menu.
 
 You will also need to load (and download if necessary) a dataset to apply the
-augmentations to. For this guide, we'll use the the
-`quickstart dataset <https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#quickstart>`_:
+augmentations to. For this guide, we'll use the
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
 

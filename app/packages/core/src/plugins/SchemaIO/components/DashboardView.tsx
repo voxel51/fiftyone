@@ -22,7 +22,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -99,7 +99,6 @@ const LayoutPopover = ({
 }) => {
   const open = Boolean(anchorEl);
   const id = open ? "simple-popover" : undefined;
-  const theme = useTheme();
 
   return (
     <Popover
@@ -111,6 +110,7 @@ const LayoutPopover = ({
         vertical: "bottom",
         horizontal: "left",
       }}
+      sx={{ zIndex: (theme) => theme.zIndex.tooltip }}
     >
       <Box
         sx={{

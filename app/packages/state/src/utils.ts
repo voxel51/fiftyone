@@ -102,35 +102,33 @@ export const collapseFields = (paths): StrictField[] => {
 };
 
 export const getStandardizedUrls = (
-  urls: Array<{ field: string; url: string }> | { [field: string]: string }
+  urls:
+    | readonly { readonly field: string; readonly url: string }[]
+    | { [field: string]: string }
 ) => {
-  let standardizedUrls: { [field: string]: string } = {};
-  if (Array.isArray(urls)) {
-    for (const { field, url } of urls) {
-      standardizedUrls[field] = url;
-    }
-  } else {
-    standardizedUrls = urls;
+  if (!Array.isArray(urls)) {
+    return urls;
   }
-  return standardizedUrls;
+
+  return Object.fromEntries(urls.map(({ field, url }) => [field, url]));
 };
 
-const convertTargets = (
+export const convertTargets = (
   targets: {
     target: string;
     value: string;
   }[]
-) => {
+): { [key: string]: { label: string; intTarget: number } | string } => {
   return Object.fromEntries(
     (targets || []).map(({ target, value }, i) => {
-      if (!isNaN(Number(target))) {
+      if (!Number.isNaN(Number(target))) {
         // masks targets is for non-rgb masks
         return [target, value];
       }
 
       // convert into RGB mask representation
       // offset of 1 in intTarget because 0 has a special significance
-      return [target, { label: value, intTarget: i + 1 }];
+      return [target.toUpperCase(), { label: value, intTarget: i + 1 }];
     })
   );
 };

@@ -37,6 +37,22 @@ export class SavedViewsPom {
     this.dialogLocator = page.getByTestId("saved-views-modal-body-container");
   }
 
+  get selector() {
+    return this.locator.getByTestId("saved-views-selection");
+  }
+
+  get clearViewBtn() {
+    return this.locator.getByTestId("saved-views-btn-selection-clear").first();
+  }
+
+  get closeModalBtn() {
+    return this.dialogLocator.getByTestId("saved-views-btn-close");
+  }
+
+  get saveNewViewBtn() {
+    return this.page.getByTestId("saved-views-create-new");
+  }
+
   async clickEditRaw(slug: string) {
     await this.locator.click();
     await this.clickOptionEdit(slug);
@@ -110,7 +126,7 @@ export class SavedViewsPom {
   async clearView() {
     if (await this.canClearView()) {
       const urlBeforeClear = this.page.url();
-      await this.clearViewBtn().click();
+      await this.clearViewBtn.click();
       await this.page.waitForFunction((urlBeforeClear) => {
         return window.location.href !== urlBeforeClear;
       }, urlBeforeClear);
@@ -118,37 +134,28 @@ export class SavedViewsPom {
   }
 
   async clickCloseModal() {
-    await this.closeModalBtn().click();
-  }
-
-  selector() {
-    return this.locator.getByTestId("saved-views-selection");
-  }
-
-  clearViewBtn() {
-    return this.locator.getByTestId("saved-views-btn-selection-clear").first();
-  }
-
-  closeModalBtn() {
-    return this.dialogLocator.getByTestId("saved-views-btn-close");
-  }
-
-  saveNewViewBtn() {
-    return this.page.getByTestId("saved-views-create-new");
+    // forcing since sometimes MUI backdrop intercepts the click
+    await this.closeModalBtn.click({ force: true, clickCount: 2 });
   }
 
   canClearView() {
-    return this.clearViewBtn().isVisible();
+    return this.clearViewBtn.isVisible();
   }
 
   async openSelect() {
     // need to force click otherwise intercepted by material-ui backdrop
-    await this.selector().click({ timeout: 2000, force: true });
+    await this.selector.click({ timeout: 2000, force: true });
   }
 
-  async openCreateModal() {
-    await this.openSelect();
-    await this.saveNewViewBtn().click({ timeout: 2000 });
+  async openCreateModal(
+    { isSelectAlreadyOpen }: { isSelectAlreadyOpen?: boolean } = {
+      isSelectAlreadyOpen: false,
+    }
+  ) {
+    if (!isSelectAlreadyOpen) {
+      await this.openSelect();
+    }
+    await this.saveNewViewBtn.click({ timeout: 2000 });
   }
 
   async savedViewCount(name: string) {
@@ -282,11 +289,11 @@ class SavedViewAsserter {
 
   async verifyUnsavedView(name: string = "test") {
     await expect(this.svp.page).not.toHaveURL(new RegExp(`view=${name}`));
-    await expect(this.svp.selector()).toBeVisible();
+    await expect(this.svp.selector).toBeVisible();
   }
 
   async verifyModalClosed() {
-    await expect(this.svp.closeModalBtn()).toBeHidden();
+    await expect(this.svp.closeModalBtn).toBeHidden();
   }
 
   async verifyDefaultColors(colorList: string[]) {
@@ -310,7 +317,7 @@ class SavedViewAsserter {
 
   async verifySelectionHasNewOption(name: string = "test") {
     await this.svp.clearView();
-    await this.svp.selector().click();
+    await this.svp.selector.click();
     await expect(this.svp.savedViewOption(name)).toBeVisible();
   }
 

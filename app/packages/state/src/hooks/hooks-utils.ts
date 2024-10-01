@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import debounce from "lodash/debounce";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ResizeObserver from "resize-observer-polyfill";
 
 interface EventTarget {
@@ -10,22 +18,26 @@ export const useEventHandler = (
   target: EventTarget,
   eventType: string,
   handler: React.EventHandler<any>,
-  useCapture = false
+  options?: boolean | AddEventListenerOptions
 ) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+
+  useLayoutEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     if (!target) return;
 
-    const wrapper = (e) => handlerRef.current(e);
-    target && target.addEventListener(eventType, wrapper, useCapture);
+    const wrapper: typeof handler = (e) => handlerRef.current(e);
+
+    target.addEventListener(eventType, wrapper, options);
 
     return () => {
-      target && target.removeEventListener(eventType, wrapper);
+      target && target.removeEventListener(eventType, wrapper, options);
     };
-  }, [target, eventType, useCapture]);
+  }, [target, eventType, options]);
 };
 
 export const useObserve = (target, handler) => {
@@ -54,7 +66,7 @@ export const useScrollHandler = (handler) =>
 export const useHashChangeHandler = (handler) =>
   useEventHandler(window, "hashchange", handler);
 
-export const useKeydownHandler = (handler: React.KeyboardEventHandler) =>
+export const useKeydownHandler = (handler: (e: KeyboardEvent) => void) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (
@@ -121,4 +133,77 @@ export const useWindowSize = () => {
   }, []);
 
   return windowSize;
+};
+
+/**
+ * useDebounceCallback
+ * riffed from https://usehooks-ts.com
+ */
+type DebounceOptions = NonNullable<Parameters<typeof debounce>[2]>;
+
+type ControlFunctions = {
+  cancel: () => void;
+  flush: () => void;
+  isPending: () => boolean;
+};
+
+export type DebouncedState<T extends (...args: any) => ReturnType<T>> = ((
+  ...args: Parameters<T>
+) => ReturnType<T> | undefined) &
+  ControlFunctions;
+
+export const useDebounceCallback = <T extends (...args: any) => ReturnType<T>>(
+  func: T,
+  delay = 500,
+  options?: DebounceOptions
+): DebouncedState<T> => {
+  const debouncedFunc = useRef<ReturnType<typeof debounce>>();
+
+  useUnmount(() => {
+    if (debouncedFunc.current) {
+      debouncedFunc.current.cancel();
+    }
+  });
+
+  const debounced = useMemo(() => {
+    const debouncedFuncInstance = debounce(func, delay, options);
+
+    const wrappedFunc: DebouncedState<T> = (...args: Parameters<T>) => {
+      return debouncedFuncInstance(...args);
+    };
+
+    wrappedFunc.cancel = () => {
+      debouncedFuncInstance.cancel();
+    };
+
+    wrappedFunc.isPending = () => {
+      return !!debouncedFunc.current;
+    };
+
+    wrappedFunc.flush = () => {
+      return debouncedFuncInstance.flush();
+    };
+
+    return wrappedFunc;
+  }, [func, delay, options]);
+
+  // Update the debounced function ref whenever func, wait, or options change
+  useEffect(() => {
+    debouncedFunc.current = debounce(func, delay, options);
+  }, [func, delay, options]);
+
+  return debounced;
+};
+
+const useUnmount = (func: () => void) => {
+  const funcRef = useRef(func);
+
+  funcRef.current = func;
+
+  useEffect(
+    () => () => {
+      funcRef.current();
+    },
+    []
+  );
 };

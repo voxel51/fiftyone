@@ -24,9 +24,14 @@ import { useWorkspaces } from "./hooks";
 
 export default function Workspaces() {
   const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
-  const { workspaces, loadWorkspace, initialized, listWorkspace } =
-    useWorkspaces();
+  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    workspaces,
+    loadWorkspace,
+    initialized,
+    listWorkspace,
+    canInitialize,
+  } = useWorkspaces();
   const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
   const canEditWorkSpace = useRecoilValue(canEditWorkspaces);
   const disabled = canEditWorkSpace.enabled !== true;
@@ -38,17 +43,19 @@ export default function Workspaces() {
     return workspaces.find((space) => space.name === currentWorkspaceName);
   }, [workspaces, currentWorkspaceName]);
 
-  const items = useMemo(() => {
+  const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((space) =>
-      space.name.toLowerCase().includes(input.toLowerCase())
+      space.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [workspaces, input]);
+  }, [workspaces, searchTerm]);
 
   useEffect(() => {
-    if (!initialized) {
+    if (!initialized && canInitialize) {
       listWorkspace();
     }
-  }, [open, initialized, listWorkspace]);
+  }, [open, initialized, listWorkspace, canInitialize]);
+
+  if (!canInitialize) return null;
 
   return (
     <Box>
@@ -92,10 +99,10 @@ export default function Workspaces() {
               fullWidth
               placeholder="Search workspaces.."
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setInput(e.target.value)
+                setSearchTerm(e.target.value)
               }
               sx={{ p: 1 }}
-              value={input}
+              value={searchTerm}
             />
             {!initialized && (
               <Stack spacing={1} sx={{ px: 2, pb: 1 }}>
@@ -106,12 +113,12 @@ export default function Workspaces() {
             )}
             {initialized && (
               <Box>
-                {items.length > 0 && (
+                {filteredWorkspaces.length > 0 && (
                   <List
                     sx={{ py: 0, maxHeight: "40vh", overflow: "auto" }}
                     className={scrollable}
                   >
-                    {items.map((space) => (
+                    {filteredWorkspaces.map((space) => (
                       <Workspace
                         key={space.id}
                         onEdit={() => {
@@ -147,7 +154,7 @@ export default function Workspaces() {
                         setOpen(false);
                         setWorkspaceEditorState((state) => ({
                           ...state,
-                          name: input,
+                          name: searchTerm,
                           open: true,
                         }));
                       }}

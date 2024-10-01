@@ -1,6 +1,6 @@
-import React from "react";
+import { HelpTooltip } from "@fiftyone/components";
 import { Box, Stack, Typography } from "@mui/material";
-import HelpTooltip from "./HelpTooltip";
+import React from "react";
 
 type RoundedTabsProps = {
   tabs: Array<{ id: string; label: string }>;

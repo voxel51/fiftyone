@@ -1,5 +1,5 @@
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import LRUCache from "lru-cache";
+import { LRUCache } from "lru-cache";
 import { useState } from "react";
 import { ModalSample } from "../recoil";
 
@@ -8,7 +8,7 @@ export type Lookers = FrameLooker | ImageLooker | VideoLooker;
 const createLookerCache = <T extends Lookers>() => {
   return new LRUCache<string, T>({
     max: 500,
-    dispose: (id, looker) => looker.destroy(),
+    dispose: (looker) => looker.destroy(),
   });
 };
 
@@ -46,7 +46,7 @@ const create = <T extends Lookers>(): LookerStore<T> => {
     indices,
     lookers,
     reset: () => {
-      lookers.reset();
+      lookers.clear();
       samples.clear();
       indices.clear();
     },

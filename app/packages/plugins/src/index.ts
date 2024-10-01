@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo } from "react";
+import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -80,6 +80,7 @@ class PluginDefinition {
   pyEntry: string | null;
   jsBundleExists: boolean;
   jsBundleServerPath: string | null;
+  jsBundleHash: string | null;
   serverPath: string;
   hasPy: boolean;
   hasJS: boolean;
@@ -97,6 +98,7 @@ class PluginDefinition {
 
     this.jsBundleExists = json.js_bundle_exists;
     this.jsBundleServerPath = `${serverPathPrefix}${json.js_bundle_server_path}`;
+    this.jsBundleHash = json.js_bundle_hash;
     this.hasPy = json.has_py;
     this.hasJS = json.has_js;
     this.serverPath = `${serverPathPrefix}${json.server_path}`;
@@ -111,12 +113,13 @@ export async function loadPlugins() {
     if (plugin.hasJS) {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
+      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
       if (usingRegistry().hasScript(name)) {
         console.debug(`Plugin "${name}": already loaded`);
         continue;
       }
       try {
-        await loadScript(name, pathPrefix + scriptPath);
+        await loadScript(name, pathPrefix + scriptPath + cacheKey);
       } catch (e) {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);
@@ -154,11 +157,22 @@ async function loadScript(name, url) {
 export function usePlugins() {
   const datasetName = recoil.useRecoilValue(fos.datasetName);
   const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
-  const operatorsReady = useOperators(datasetName === null);
+  const notify = fos.useNotification();
+  const {
+    ready: operatorsReady,
+    hasError: operatorHasError,
+    isLoading: operatorIsLoading,
+  } = useOperators(datasetName === null);
 
   useEffect(() => {
     loadPlugins()
       .catch(() => {
+        notify({
+          msg:
+            "Failed to initialize Python plugins. You may not be able to use" +
+            " panels, operators, and other artifacts of plugins installed.",
+          variant: "error",
+        });
         setState("error");
       })
       .then(() => {
@@ -167,8 +181,8 @@ export function usePlugins() {
   }, [setState]);
 
   return {
-    isLoading: state === "loading" || !operatorsReady,
-    hasError: state === "error",
+    isLoading: state === "loading" || operatorIsLoading,
+    hasError: state === "error" || operatorHasError,
     ready: state === "ready" && operatorsReady,
   };
 }
@@ -222,12 +236,37 @@ export function getAbsolutePluginPath(name: string, path: string): string {
  * @returns A list of active plugins
  */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  return usePlugin(type).filter((p) => {
-    if (typeof p.activator === "function") {
-      return p.activator(ctx);
-    }
-    return false;
-  });
+  const [plugins, setPlugins] = useState<PluginComponentRegistration[]>(
+    usingRegistry()
+      .getByType(type)
+      .filter((p) => {
+        if (typeof p.activator === "function") {
+          return p.activator(ctx);
+        }
+        return false;
+      })
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRegistry(() => {
+      const refreshedPlugins = usingRegistry()
+        .getByType(type)
+        .filter((p) => {
+          if (typeof p.activator === "function") {
+            return p.activator(ctx);
+          }
+          return false;
+        });
+
+      setPlugins(refreshedPlugins);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [type, ctx]);
+
+  return plugins;
 }
 
 /**
@@ -246,21 +285,52 @@ export function usePluginComponent(name: string, ctx?: unknown) {
  *
  * - `Panel` - A panel that can be added to `@fiftyone/spaces`
  * - `Plot` - **deprecated** - A plot that can be added as a panel
- * - `Visualizer` - Visualizes sample data
  */
 export enum PluginComponentType {
-  Visualizer,
-  Plot,
-  Panel,
-  Component,
+  Plot = 1,
+  Panel = 2,
+  Component = 3,
+
+  /**
+   * DO NOT CHANGE THE VALUES OF THESE ENUMS for backward compatibility.
+   * Changing these values WILL break existing plugins.
+   */
 }
 
 type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
+  /**
+   * Whether to allow multiple instances of the plugin
+   */
   allowDuplicates?: boolean;
-  TabIndicator?: React.ComponentType;
+
+  /**
+   * Priority of the panel as it shows up in panel selector dropdown.
+   * Panels are sorted by priority in ascending order.
+   */
   priority?: number;
+
+  /**
+   * Markdown help text for the plugin
+   */
+  helpMarkdown?: string;
+
+  /** Surfaces where plugin is made available.
+   * If this is not provided, the plugin will be available in grid only.
+   */
+  surfaces?: "grid" | "modal" | "grid modal";
+
+  /**
+   * Content displayed on the right side of the label in the panel title bar.
+   */
+  TabIndicator?: React.ComponentType;
+
+  /**
+   * If true, the plugin will be remounted when the user navigates to a different sample or group.
+   * This is only applicable to plugins that are in a modal.
+   */
+  reloadOnNavigation?: boolean;
 };
 
 type PluginComponentProps<T> = T & {
@@ -276,21 +346,33 @@ export interface PluginComponentRegistration<T extends {} = {}> {
    * The name of the plugin
    */
   name: string;
+
   /**
    * The optional label of the plugin to display to the user
    */
   label: string;
-  Icon?: React.ComponentType;
+
   /**
-   * The React component to render
+   * Primary icon for the plugin, also used in panel title bar
+   */
+  Icon?: React.ComponentType;
+
+  /**
+   * The React component to render for the plugin
    */
   component: FunctionComponent<PluginComponentProps<T>>;
+
   /** The plugin type */
   type: PluginComponentType;
+
   /**
    * A function that returns true if the plugin should be active
    */
   activator: PluginActivator;
+
+  /**
+   * Options for the panel
+   */
   panelOptions?: PanelOptions;
 }
 
@@ -324,7 +406,6 @@ class PluginComponentRegistry {
   }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
-    this.notifyAllSubscribers("register");
 
     if (typeof registration.activator !== "function") {
       registration.activator = DEFAULT_ACTIVATOR;
@@ -351,9 +432,11 @@ class PluginComponentRegistry {
     };
 
     this.data.set(name, wrappedRegistration);
+
+    this.notifyAllSubscribers("register");
   }
   unregister(name: string): boolean {
-    this.notifyAllSubscribers("register");
+    this.notifyAllSubscribers("unregister");
     return this.data.delete(name);
   }
   getByType(type: PluginComponentType) {

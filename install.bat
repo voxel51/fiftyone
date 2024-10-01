@@ -9,28 +9,28 @@
 ::
 :: Commands:
 :: -h      Display help message
+:: -b      Source install of fiftyone-brain
 :: -d      Install developer dependencies.
 :: -e      Source install of voxel51-eta.
 :: -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 :: -p      Install only the core python package, not the App.
-:: -v      Voxel51 developer install (don't install fiftyone-brain).
 
 set SHOW_HELP=false
+set SOURCE_BRAIN_INSTALL=false
 set DEV_INSTALL=false
 set SOURCE_ETA_INSTALL=false
 set SCRATCH_MONGODB_INSTALL=false
 set BUILD_APP=true
-set VOXEL51_INSTALL=false
 set USE_FIFTY_ONE_DB=true
 
 :parse
 IF "%~1"=="" GOTO endparse
 IF "%~1"=="-h" GOTO helpmessage
+IF "%~1"=="-b" set SOURCE_BRAIN_INSTALL=true
 IF "%~1"=="-d" set DEV_INSTALL=true
 IF "%~1"=="-e" set SOURCE_ETA_INSTALL=true
 IF "%~1"=="-m" set USE_FIFTY_ONE_DB=false
 IF "%~1"=="-p" set BUILD_APP=false
-IF "%~1"=="-v" set VOXEL51_INSTALL=true
 SHIFT
 GOTO parse
 :endparse
@@ -42,17 +42,23 @@ IF %USE_FIFTY_ONE_DB%==true (
   echo ***** USING LOCAL MONGODB *****
 )
 
-IF %VOXEL51_INSTALL%==false (
-  echo ***** INSTALLING FIFTYONE-BRAIN *****
+echo ***** INSTALLING FIFTYONE-BRAIN *****
+IF %SOURCE_BRAIN_INSTALL%==true (
+  echo Cloning FiftyOne Brain repository
+  git clone https://github.com/voxel51/fiftyone-brain
+  cd fiftyone-brain
+  IF %DEV_INSTALL%==true (
+    CALL install.bat -d
+  ) else (
+    pip install .
+  )
+  cd ..
+) else (
   pip install --upgrade fiftyone-brain
 )
 
 echo ***** INSTALLING FIFTYONE *****
-set IS_DEV_INSTALL_FLAG=false
-IF %DEV_INSTALL%==true set IS_DEV_INSTALL_FLAG=true
-IF %VOXEL51_INSTALL%==true set IS_DEV_INSTALL_FLAG=true
-
-IF %IS_DEV_INSTALL_FLAG%==true (
+IF %DEV_INSTALL%==true (
   echo Performing dev install
   pip install -r requirements/dev.txt
   pre-commit install
@@ -93,9 +99,9 @@ exit /b
 :helpmessage
 echo Additional Arguments:
 echo -h      Display help message
+echo -b      Source install of fiftyone-brain.
 echo -d      Install developer dependencies.
 echo -e      Source install of voxel51-eta.
 echo -m      Use local mongodb instead of installing fiftyone-db.
 echo -p      Install only the core python package, not the App.
-echo -v      Voxel51 developer install (don't install fiftyone-brain).
 exit /b

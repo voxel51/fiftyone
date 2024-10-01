@@ -27,9 +27,9 @@ export default () => {
             .filter(({ mediaType }) => !THREE_D.has(mediaType))
             .map(({ name }) => name)
             .sort()[0];
-        }
 
-        set(groupAtoms.modalGroupSlice, fallback);
+          set(groupAtoms.modalGroupSlice, fallback);
+        }
       },
     []
   );

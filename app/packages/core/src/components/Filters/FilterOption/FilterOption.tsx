@@ -1,9 +1,8 @@
 import { Tooltip } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { IconButton } from "@mui/material";
 import Color from "color";
 import React from "react";
-import { RecoilState, useRecoilValue } from "recoil";
+import type { RecoilState } from "recoil";
 import styled from "styled-components";
 import Item from "./FilterItem";
 import Popout from "./Popout";
@@ -34,6 +33,7 @@ const FilterMode = styled.div`
 `;
 
 interface Props {
+  color: string;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   valueName: string;
@@ -42,14 +42,13 @@ interface Props {
 }
 
 const FilterOption: React.FC<Props> = ({
-  path,
-  modal,
+  color,
   excludeAtom,
   isMatchingAtom,
+  modal,
+  path,
 }) => {
   const [open, setOpen] = React.useState(false);
-
-  const color = useRecoilValue(fos.pathColor(path));
   const highlightedBGColor = Color(color).alpha(0.25).string();
 
   const options = useOptions(modal, path);

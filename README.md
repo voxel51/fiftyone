@@ -116,7 +116,8 @@ FiftyOne.
 
 ## Contributing to FiftyOne
 
-FiftyOne is open source and community contributions are welcome!
+FiftyOne and [FiftyOne Brain](https://github.com/voxel51/fiftyone-brain) are
+open source and community contributions are welcome!
 
 Check out the
 [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
@@ -132,12 +133,12 @@ to make adjustments. If you are working in Google Colab,
 
 You will need:
 
--   [Python](https://www.python.org) (3.8 - 3.11)
+-   [Python](https://www.python.org) (3.9 - 3.11)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
     [enable Yarn](https://yarnpkg.com/getting-started/install) via
-	`corepack enable`
+    `corepack enable`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
     `libcurl3` instead of `libcurl`, depending on the age of your distribution.
@@ -245,22 +246,6 @@ Refer to
 to see how to build and run Docker images containing source or release builds
 of FiftyOne.
 
-### UI Development on Storybook
-
-Voxel51 is currently in the process of implementing a
-[Storybook](https://storybook.js.org/) which contains examples of its basic UI
-components. You can access the current storybook instances by running **yarn
-storybook** in **/app/packages/components**. While the storybook instance is
-running, any changes to the component will trigger a refresh in the storybook
-app.
-
-```shell
-%%shell
-
-cd /app/packages/components
-yarn storybook
-```
-
 ### Generating documentation
 
 See the
@@ -272,7 +257,7 @@ for information on building and contributing to the documentation.
 You can uninstall FiftyOne as follows:
 
 ```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
+pip uninstall fiftyone fiftyone-brain fiftyone-db
 ```
 
 ## Contributors

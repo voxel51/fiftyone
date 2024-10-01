@@ -40,10 +40,9 @@ class Frames(HTTPEndpoint):
         support = None if stages else [start_frame, end_frame]
 
         def run(view):
-            view = fov.make_optimized_select_view(view, sample_id)
-
-            if view.media_type == fom.GROUP and group_slice is not None:
-                view.group_slice = group_slice
+            view = fov.make_optimized_select_view(
+                view, sample_id, flatten=True
+            )
 
             if not support:
                 view = view.set_field(

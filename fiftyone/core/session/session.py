@@ -77,10 +77,6 @@ _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
-_APP_DESKTOP_MESSAGE = """
-Desktop App launched.
-"""
-
 _APP_WEB_MESSAGE = """
 App launched. Point your web browser to http://localhost:{0}
 """
@@ -145,7 +141,6 @@ def launch_app(
     port: int = None,
     address: str = None,
     remote: bool = False,
-    desktop: bool = None,
     browser: str = None,
     height: int = None,
     auto: bool = True,
@@ -179,9 +174,6 @@ def launch_app(
             ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts
         browser (None): an optional browser to use to open the App. If None,
             the default browser will be used. Refer to list of supported
             browsers at https://docs.python.org/3/library/webbrowser.html
@@ -208,7 +200,6 @@ def launch_app(
         port=port,
         address=address,
         remote=remote,
-        desktop=desktop,
         browser=browser,
         height=height,
         auto=auto,
@@ -217,8 +208,6 @@ def launch_app(
 
     if _session.remote:
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
-    elif _session.desktop:
-        logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx.is_notebook_context():
         if not auto:
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
@@ -340,9 +329,6 @@ class Session(object):
             ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
         browser (None): an optional browser to use to open the App. If None,
             the default browser will be used. Refer to list of supported
             browsers at https://docs.python.org/3/library/webbrowser.html
@@ -367,7 +353,6 @@ class Session(object):
         port: int = None,
         address: str = None,
         remote: bool = False,
-        desktop: bool = None,
         browser: str = None,
         height: int = None,
         auto: bool = True,
@@ -415,13 +400,6 @@ class Session(object):
         self._disable_wait_warning = False
         self._notebook_cells: t.Dict[str, fosn.NotebookCell] = {}
 
-        if desktop is None:
-            desktop = (
-                fo.config.desktop_app
-                if not focx.is_notebook_context()
-                else False
-            )
-
         self.plots = plots
 
         final_view_name = view_name
@@ -445,7 +423,6 @@ class Session(object):
         self._client = fosc.Client(
             address=address,
             auto=auto,
-            desktop=desktop,
             port=port,
             remote=remote,
             start_time=self._get_time(),
@@ -465,21 +442,6 @@ class Session(object):
                     "Remote sessions cannot be run from a notebook"
                 )
 
-            return
-
-        if self.desktop:
-            if focx.is_notebook_context():
-                raise ValueError(
-                    "Cannot open a Desktop App instance from a %s notebook"
-                    % focx._get_context()
-                )
-
-            if not focn.DEV_INSTALL:
-                import_desktop()
-
-            self._app_service = fos.AppService(
-                server_port=port, server_address=address
-            )
             return
 
         if not focx.is_notebook_context():
@@ -574,11 +536,6 @@ class Session(object):
     def remote(self) -> bool:
         """Whether the session is remote."""
         return self._client.remote
-
-    @property
-    def desktop(self) -> bool:
-        """Whether the session is connected to a desktop App."""
-        return self._client.desktop
 
     @property
     def url(self) -> str:
@@ -1017,8 +974,6 @@ class Session(object):
             type_ = "colab"
         elif focx.is_databricks_context():
             type_ = "databricks"
-        elif self.desktop:
-            type_ = "desktop"
         else:
             type_ = None
 
@@ -1050,7 +1005,6 @@ class Session(object):
 
         -   Notebooks: calls :meth:`Session.show` to open a new App window in
             the output of your current cell
-        -   Desktop: opens the desktop App, if necessary
         -   Other (non-remote): opens the App in a new browser tab
         """
         _register_session(self)
@@ -1065,17 +1019,13 @@ class Session(object):
             self.show()
             return
 
-        if self.desktop:
-            self._app_service.start()
-            return
-
         self.open_tab()
 
     def open_tab(self) -> None:
         """Opens the App in a new tab of your browser.
 
-        This method can be called from Jupyter notebooks and in desktop App
-        mode to override the default location of the App.
+        This method can be called from Jupyter notebooks to override the
+        default location of the App.
         """
         if self.remote:
             logger.warning("Remote sessions cannot open new App windows")
@@ -1104,7 +1054,7 @@ class Session(object):
         Args:
             height (None): a height, in pixels, for the App
         """
-        if not focx.is_notebook_context() or self.desktop:
+        if not focx.is_notebook_context():
             return
 
         self.freeze()
@@ -1159,11 +1109,8 @@ class Session(object):
     def wait(self, wait: float = 3) -> None:
         """Blocks execution until the App is closed by the user.
 
-        For browser Apps, all connected windows (tabs) must be closed before
-        this method will unblock.
-
-        For desktop Apps, all positive ``wait`` values are equivalent;
-        execution will immediately unblock when the App is closed.
+        All connected windows (tabs) must be closed before this method will
+        unblock.
 
         Args:
             wait (3): the number of seconds to wait for a new App connection
@@ -1178,21 +1125,16 @@ class Session(object):
             if wait < 0:
                 while True:
                     time.sleep(10)
-            elif self.remote or not self._client.desktop:
+            elif self.remote:
                 self._wait_closed = False
                 while not self._wait_closed:
                     time.sleep(wait)
-            else:
-                self._app_service.wait()
         except KeyboardInterrupt:
             self._disable_wait_warning = True
             raise
 
     def close(self) -> None:
         """Closes the session and terminates the App, if necessary."""
-        if self.desktop:
-            self._app_service.stop()
-
         if self._client.is_open and focx.is_notebook_context():
             self.freeze()
 
@@ -1292,47 +1234,6 @@ def _attach_listeners(session: "Session"):
 
         session._client.add_event_listener(
             "reactivate_notebook_cell", on_reactivate_notebook_cell
-        )
-
-
-def import_desktop() -> None:
-    """Imports :mod:`fiftyone.desktop`.
-
-    Raises:
-        RuntimeError: if a matching ``fiftyone-desktop`` version is not
-            installed
-    """
-    try:
-        # pylint: disable=unused-import
-        import fiftyone.desktop
-    except ImportError as e:
-        raise RuntimeError(
-            "You must `pip install fiftyone[desktop]` in order to launch the "
-            "desktop App"
-        ) from e
-
-    fiftyone_dist = metadata.distribution("fiftyone")
-    desktop_dist = metadata.distribution("fiftyone-desktop")
-
-    # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    desktop_req = [
-        req
-        for req in fiftyone_dist.requires
-        if req.startswith("fiftyone-desktop")
-    ][0]
-    desktop_req = Requirement(desktop_req.split(";")[0])
-
-    if not desktop_req.specifier.contains(desktop_dist.version):
-        raise RuntimeError(
-            "fiftyone==%s requires fiftyone-desktop%s, but you have "
-            "fiftyone-desktop==%s installed.\n"
-            "Run `pip install fiftyone[desktop]` to install the proper "
-            "desktop package version"
-            % (
-                fiftyone_dist.version,
-                desktop_req.specifier,
-                desktop_dist.version,
-            )
         )
 
 

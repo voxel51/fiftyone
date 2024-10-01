@@ -26,7 +26,7 @@ jobs:
           git checkout develop
           git pull origin merge/${{ inputs.ref_name || github.ref_name }} --no-rebase
           git pull origin ${{ inputs.ref_name || github.ref_name }} --no-rebase
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
           author: voxel51-bot <bot@voxel51.com>
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}

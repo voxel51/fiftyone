@@ -1,13 +1,33 @@
 import type { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
-import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { atom, atomFamily } from "recoil";
+import {
+  currentModalUniqueId,
+  getBrowserStorageEffectForKey,
+  groupId,
+  modalSampleId,
+} from "@fiftyone/state";
+import { atom, atomFamily, selector } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type { Actions, AssetLoadingLog, ShadeBy } from "./types";
 
-export const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
-  key: "fo3d-assetsParseStatusLog",
+const fo3dAssetsParseStatusLog = atomFamily<AssetLoadingLog[], string>({
+  key: "fo3d-assetsParseStatusLogs",
   default: [],
+});
+
+export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
+  key: "fo3d-assetsParseStatusLogs",
+  get: ({ get }) => {
+    const thisModalUniqueId = get(currentModalUniqueId);
+
+    return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
+  },
+  set: ({ get, set }, newValue) => {
+    const thisSampleId = get(modalSampleId);
+    const thisGroupId = get(groupId) ?? "";
+
+    set(fo3dAssetsParseStatusLog(`${thisGroupId}/${thisSampleId}`), newValue);
+  },
 });
 
 export const cameraPositionAtom = atom<[number, number, number] | null>({
@@ -65,6 +85,11 @@ export const isGridOnAtom = atom<boolean>({
       valueClass: "boolean",
     }),
   ],
+});
+
+export const isLevaConfigPanelOnAtom = atom<boolean>({
+  key: "fo3d-isLevaConfigPanelOn",
+  default: false,
 });
 
 export const gridCellSizeAtom = atom<number>({

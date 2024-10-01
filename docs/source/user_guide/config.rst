@@ -89,10 +89,6 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
 |                               |                                     |                               | for more information.                                                                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
-|                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
-|                               |                                     |                               | must be installed.                                                                     |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
@@ -174,7 +170,6 @@ and the CLI:
             "default_ml_backend": "torch",
             "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
-            "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
             "max_process_pool_workers": null,
@@ -224,7 +219,6 @@ and the CLI:
             "default_ml_backend": "torch",
             "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
-            "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
             "max_process_pool_workers": null,

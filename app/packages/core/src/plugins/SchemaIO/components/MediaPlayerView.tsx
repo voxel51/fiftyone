@@ -2,7 +2,6 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { snakeCase } from "lodash";
-import React from "react";
 import ReactPlayer from "react-player";
 import { getComponentProps } from "../utils";
 import HeaderView from "./HeaderView";
@@ -53,6 +52,8 @@ export default function MediaPlayerView(props) {
     onProgress: handleEvent("onProgress"),
   };
 
+  const baseProps = { width: "100%" };
+
   return (
     <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} nested />
@@ -60,7 +61,7 @@ export default function MediaPlayerView(props) {
         url={mediaUrl}
         {...view}
         {...eventHandlers}
-        {...getComponentProps(props, "react-player")}
+        {...getComponentProps(props, "react-player", baseProps)}
       />
     </Box>
   );

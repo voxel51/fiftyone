@@ -42,7 +42,6 @@ def _ping(url: str) -> None:
 class Client:
     address: str
     auto: bool
-    desktop: bool
     port: int
     remote: bool
     start_time: float
