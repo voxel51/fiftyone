@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<56f16e0deb3e8c136e29c89af768bca3>>
+ * @generated SignedSource<<d47360d12e6274e83452c33210017a97>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,7 @@ export type LabelFormatOptionsEnum = "COCODetectionDataset" | "CSVDataset" | "CV
 export type ViewSelectors = {
   filters?: any | null;
   sampleIds?: ReadonlyArray<string> | null;
-  viewStages?: ReadonlyArray<any> | null;
+  viewStages?: any | null;
 };
 export type LabelFormatOptions = {
   fields: ReadonlyArray<string>;

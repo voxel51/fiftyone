@@ -389,7 +389,7 @@ export const groupField = selector<string>({
 
 export const groupId = selector<string>({
   key: "groupId",
-  get: ({ get }) => get(modalSelector).groupId || null,
+  get: ({ get }) => get(modalSelector)?.groupId || null,
 });
 
 export const refreshGroupQuery = atom<number>({

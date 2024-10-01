@@ -10,7 +10,7 @@ import { usePcdMaterial } from "./use-pcd-material";
 
 export const Pcd = ({
   name,
-  pcd: { pcdPath, preTransformedPcdPath, defaultMaterial },
+  pcd: { pcdPath, preTransformedPcdPath, defaultMaterial, centerGeometry },
   position,
   quaternion,
   scale,
@@ -37,12 +37,11 @@ export const Pcd = ({
   // todo: hack until https://github.com/pmndrs/react-three-fiber/issues/245 is fixed
   const points = useMemo(() => points_.clone(false), [points_]);
 
-  // todo: expose centering of points as an opt-in behavior from the sdk
-  // useEffect(() => {
-  //   if (points) {
-  //     points.geometry.center();
-  //   }
-  // }, [points]);
+  useEffect(() => {
+    if (points && centerGeometry) {
+      points.geometry.center();
+    }
+  }, [points, centerGeometry]);
 
   const pcdContainerRef = useRef();
 

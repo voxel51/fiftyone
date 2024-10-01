@@ -679,7 +679,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if slice_name is None:
             slice_name = self._doc.default_group_slice
 
-        if slice_name not in self._doc.group_media_types:
+        if (
+            slice_name is not None
+            and slice_name not in self._doc.group_media_types
+        ):
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._group_slice = slice_name
@@ -1813,6 +1816,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
         )
 
+    @requires_can_edit
     def create_summary_field(
         self,
         path,
@@ -2239,6 +2243,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return update_indexes
 
+    @requires_can_edit
     def update_summary_field(self, field_name):
         """Updates the summary field based on the current values of its source
         field.
@@ -2262,6 +2267,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._populate_summary_field(field_name, summary_info)
 
+    @requires_can_edit
     def delete_summary_field(self, field_name, error_level=0):
         """Deletes the summary field from all samples in the dataset.
 
@@ -2275,6 +2281,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_summary_fields(field_name, error_level)
 
+    @requires_can_edit
     def delete_summary_fields(self, field_names, error_level=0):
         """Deletes the summary fields from all samples in the dataset.
 

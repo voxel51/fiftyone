@@ -63,3 +63,13 @@ describe("filter resolves correctly", () => {
     ).toBeUndefined();
   });
 });
+
+describe("heatmap utils", () => {
+  it("clamps for heatmaps", async () => {
+    // A value below a heatmap range returns -1
+    expect(painter.clampedIndex(1, 2, 3, 4)).toBe(-1);
+
+    // A value above a heatmap range return the max
+    expect(painter.clampedIndex(4, 2, 3, 4)).toBe(3);
+  });
+});

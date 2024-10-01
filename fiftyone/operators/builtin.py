@@ -1255,7 +1255,7 @@ def _create_summary_field_inputs(ctx, inputs):
         group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
         group_by_selector = types.AutocompleteView()
         for group in group_by_keys:
-            group_by_selector.add_choice(group.name, label=group.name)
+            group_by_selector.add_choice(group, label=group)
 
         inputs.enum(
             "group_by",
@@ -1487,7 +1487,7 @@ class RenameGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to rename",
@@ -1518,7 +1518,10 @@ class RenameGroupSlice(foo.Operator):
         new_name = ctx.params["new_name"]
 
         ctx.dataset.rename_group_slice(name, new_name)
-        ctx.trigger("reload_dataset")
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(new_name)
+
+        ctx.ops.reload_dataset()
 
 
 class DeleteGroupSlice(foo.Operator):
@@ -1549,7 +1552,7 @@ class DeleteGroupSlice(foo.Operator):
             inputs.enum(
                 "name",
                 slice_selector.values(),
-                default=None,
+                default=ctx.group_slice,
                 required=True,
                 label="Group slice",
                 description="The group slice to delete",
@@ -1564,7 +1567,10 @@ class DeleteGroupSlice(foo.Operator):
         name = ctx.params["name"]
 
         ctx.dataset.delete_group_slice(name)
-        ctx.trigger("reload_dataset")
+        if ctx.group_slice == name:
+            ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
+
+        ctx.ops.reload_dataset()
 
 
 class ListSavedViews(foo.Operator):
@@ -1934,8 +1940,9 @@ class SaveWorkspace(foo.Operator):
         )
 
         # @todo infer this automatically from current App spaces
-        spaces_prop = inputs.str(
+        spaces_prop = inputs.oneof(
             "spaces",
+            [types.String(), types.Object()],
             default=None,
             required=True,
             label="Spaces",
@@ -1949,7 +1956,7 @@ class SaveWorkspace(foo.Operator):
         spaces = ctx.params.get("spaces", None)
         if spaces is not None:
             try:
-                fo.Space.from_json(spaces)
+                _parse_spaces(spaces)
             except:
                 spaces_prop.invalid = True
                 spaces_prop.error_message = "Invalid workspace definition"
@@ -1972,10 +1979,7 @@ class SaveWorkspace(foo.Operator):
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
 
-        if isinstance(spaces, dict):
-            spaces = fo.Space.from_dict(spaces)
-        else:
-            spaces = fo.Space.from_json(spaces)
+        spaces = _parse_spaces(spaces)
 
         ctx.dataset.save_workspace(
             name,
@@ -2313,6 +2317,12 @@ def _get_non_default_frame_fields(dataset):
         schema.pop(path, None)
 
     return schema
+
+
+def _parse_spaces(spaces):
+    if isinstance(spaces, dict):
+        return fo.Space.from_dict(spaces)
+    return fo.Space.from_json(spaces)
 
 
 BUILTIN_OPERATORS = [

@@ -203,11 +203,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   paintImageOnCanvas(image: HTMLImageElement) {
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx?.setTransform(1, 0, 0, 1, 0, 0);
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.ctx.drawImage(image, 0, 0);
+    this.ctx?.drawImage(image, 0, 0);
   }
 
   async skipAndTryAgain(frameNumberToDraw: number, animate: boolean) {
@@ -362,6 +362,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   /**
    * Queue up frames to be fetched if necessary.
    * This method is not blocking, it merely enqueues a fetch job.
+   *
+   * This is for legacy imavid, which is used for thumbnail imavid.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
     if (!this.framesController.totalFrameCount) {
@@ -407,6 +409,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
   }
 
+  /**
+   * Starts fetch if there are buffers in the fetch buffer manager
+   */
+  public checkFetchBufferManager() {
+    if (!this.framesController.totalFrameCount) {
+      return;
+    }
+
+    if (this.framesController.fetchBufferManager.buffers.length > 0) {
+      this.framesController.resumeFetch();
+    }
+  }
+
   renderSelf(state: Readonly<ImaVidState>) {
     const {
       options: { playbackRate, loop },
@@ -443,7 +458,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.framesController.destroy();
     }
 
-    this.ensureBuffers(state);
+    if (this.isThumbnail) {
+      this.ensureBuffers(state);
+    } else {
+      this.checkFetchBufferManager();
+    }
 
     if (!playing && this.isAnimationActive) {
       // this flag will be picked up in `drawFrame`, that in turn will call `pause`

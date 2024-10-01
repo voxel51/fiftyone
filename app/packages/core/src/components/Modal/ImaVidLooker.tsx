@@ -1,6 +1,5 @@
 import { useTheme } from "@fiftyone/components";
 import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
-import { BUFFERING_PAUSE_TIMEOUT } from "@fiftyone/looker/src/lookers/imavid/constants";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
@@ -54,6 +53,8 @@ export const ImaVidLookerReact = React.memo(
     });
 
     const { activeLookerRef, setActiveLookerRef } = useModalContext();
+    const imaVidLookerRef =
+      activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
@@ -152,19 +153,66 @@ export const ImaVidLookerReact = React.memo(
       );
     }, [ref]);
 
-    const loadRange = React.useCallback(async (range: BufferRange) => {
-      // todo: implement
-      return new Promise<void>((resolve) => {
-        setTimeout(() => {
-          resolve();
-        }, BUFFERING_PAUSE_TIMEOUT);
-      });
-    }, []);
+    const loadRange = React.useCallback(
+      async (range: Readonly<BufferRange>) => {
+        const storeBufferManager =
+          imaVidLookerRef.current.frameStoreController.storeBufferManager;
+        const fetchBufferManager =
+          imaVidLookerRef.current.frameStoreController.fetchBufferManager;
+
+        if (storeBufferManager.containsRange(range)) {
+          return;
+        }
+
+        const unprocessedStoreBufferRange =
+          storeBufferManager.getUnprocessedBufferRange(range);
+        const unprocessedBufferRange =
+          fetchBufferManager.getUnprocessedBufferRange(
+            unprocessedStoreBufferRange
+          );
+
+        if (!unprocessedBufferRange) {
+          return;
+        }
+
+        setPlayHeadState({ name: timelineName, state: "buffering" });
+
+        imaVidLookerRef.current.frameStoreController.enqueueFetch(
+          unprocessedBufferRange
+        );
+
+        imaVidLookerRef.current.frameStoreController.resumeFetch();
+
+        return new Promise<void>((resolve) => {
+          const fetchMoreListener = (e: CustomEvent) => {
+            if (
+              e.detail.id === imaVidLookerRef.current.frameStoreController.key
+            ) {
+              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
+                // todo: change playhead state in setFrameNumberAtom and not here
+                // if done here, store ref to last playhead status
+                setPlayHeadState({ name: timelineName, state: "paused" });
+                resolve();
+                window.removeEventListener(
+                  "fetchMore",
+                  fetchMoreListener as EventListener
+                );
+              }
+            }
+          };
+
+          window.addEventListener(
+            "fetchMore",
+            fetchMoreListener as EventListener,
+            { once: true }
+          );
+        });
+      },
+      []
+    );
 
     const renderFrame = React.useCallback((frameNumber: number) => {
-      (
-        activeLookerRef.current as unknown as ImaVidLooker
-      )?.element.drawFrameNoAnimation(frameNumber);
+      imaVidLookerRef.current?.element.drawFrameNoAnimation(frameNumber);
     }, []);
 
     const { getName } = useDefaultTimelineNameImperative();
@@ -189,7 +237,7 @@ export const ImaVidLookerReact = React.memo(
 
     const readyWhen = useCallback(async () => {
       return new Promise<void>((resolve) => {
-        // wait for total frame count to be resolved
+        // hack: wait for total frame count to be resolved
         let intervalId;
         intervalId = setInterval(() => {
           if (totalFrameCountRef.current) {
@@ -200,16 +248,25 @@ export const ImaVidLookerReact = React.memo(
       });
     }, []);
 
+    const onAnimationStutter = useCallback(() => {
+      imaVidLookerRef.current?.element.checkFetchBufferManager();
+    }, []);
+
     const {
       isTimelineInitialized,
       registerOnPauseCallback,
       registerOnPlayCallback,
       registerOnSeekCallbacks,
+      setPlayHeadState,
       subscribe,
     } = useCreateTimeline({
       name: timelineName,
       config: timelineCreationConfig,
       waitUntilInitialized: readyWhen,
+      // using this mechanism to resume fetch if it was paused
+      // ideally we have control of fetch in this component but can't do that yet
+      // since imavid is part of the grid too
+      onAnimationStutter,
     });
 
     /**
@@ -224,35 +281,27 @@ export const ImaVidLookerReact = React.memo(
         });
 
         registerOnPlayCallback(() => {
-          (activeLookerRef.current as unknown as ImaVidLooker).element.update(
-            () => ({
-              playing: true,
-            })
-          );
+          imaVidLookerRef.current?.element?.update(() => ({
+            playing: true,
+          }));
         });
 
         registerOnPauseCallback(() => {
-          (activeLookerRef.current as unknown as ImaVidLooker).element.update(
-            () => ({
-              playing: false,
-            })
-          );
+          imaVidLookerRef.current?.element?.update(() => ({
+            playing: false,
+          }));
         });
 
         registerOnSeekCallbacks({
           start: () => {
-            (activeLookerRef.current as unknown as ImaVidLooker).element.update(
-              () => ({
-                seeking: true,
-              })
-            );
+            imaVidLookerRef.current?.element?.update(() => ({
+              seeking: true,
+            }));
           },
           end: () => {
-            (activeLookerRef.current as unknown as ImaVidLooker).element.update(
-              () => ({
-                seeking: false,
-              })
-            );
+            imaVidLookerRef.current?.element?.update(() => ({
+              seeking: false,
+            }));
           },
         });
       }
@@ -265,9 +314,8 @@ export const ImaVidLookerReact = React.memo(
       // hack: poll every 10ms for total frame count
       // replace with event listener or callback
       let intervalId = setInterval(() => {
-        const totalFrameCount = (
-          activeLookerRef.current as unknown as ImaVidLooker
-        ).frameStoreController.totalFrameCount;
+        const totalFrameCount =
+          imaVidLookerRef.current.frameStoreController.totalFrameCount;
         if (totalFrameCount) {
           setTotalFrameCount(totalFrameCount);
           clearInterval(intervalId);
@@ -285,6 +333,7 @@ export const ImaVidLookerReact = React.memo(
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          overflowX: "hidden",
         }}
       >
         <div
