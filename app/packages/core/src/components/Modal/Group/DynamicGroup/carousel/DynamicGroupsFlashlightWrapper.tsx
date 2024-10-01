@@ -3,7 +3,7 @@ import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import { get } from "lodash";
-import {
+import React, {
   useCallback,
   useEffect,
   useId,
@@ -46,7 +46,7 @@ const pageParams = selector({
   },
 });
 
-export const DynamicGroupsFlashlightWrapper = () => {
+export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   const id = useId();
 
   const store = fos.useLookerStore();
@@ -175,4 +175,4 @@ export const DynamicGroupsFlashlightWrapper = () => {
       id={id}
     ></div>
   );
-};
+});

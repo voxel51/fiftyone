@@ -90,6 +90,7 @@ export type RawContext = {
     selection: string[] | null;
     scope: string;
   };
+  groupSlice: string;
 };
 
 export class ExecutionContext {
@@ -131,6 +132,9 @@ export class ExecutionContext {
   }
   public get extendedSelection(): any {
     return this._currentContext.extendedSelection;
+  }
+  public get groupSlice(): any {
+    return this._currentContext.groupSlice;
   }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
@@ -542,6 +546,7 @@ async function executeOperatorAsGenerator(
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
+      group_slice: currentContext.groupSlice,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -707,6 +712,7 @@ export async function executeOperatorWithContext(
           selected_labels: formatSelectedLabels(currentContext.selectedLabels),
           view: currentContext.view,
           view_name: currentContext.viewName,
+          group_slice: currentContext.groupSlice,
 
           // Teams only
           dataset_head_name: currentContext.datasetHeadName,
@@ -812,6 +818,7 @@ export async function resolveRemoteType(
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
+      group_slice: currentContext.groupSlice,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -888,6 +895,7 @@ export async function resolveExecutionOptions(
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       view: currentContext.view,
       view_name: currentContext.viewName,
+      group_slice: currentContext.groupSlice,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -921,6 +929,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
+      group_slice: currentContext.groupSlice,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,

@@ -28,6 +28,12 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
+        reload_on_navigation (False): whether to reload the panel when the
+            user navigates to a new page. This is only applicable to panels
+            that are not shown in a modal
+        surfaces ("grid"): the surfaces on which the panel can be displayed
+        help_markdown (None): a markdown string to display in the panel's help
+            tooltip
     """
 
     def __init__(
@@ -40,6 +46,7 @@ class PanelConfig(OperatorConfig):
         dark_icon=None,
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
+        reload_on_navigation=False,
         **kwargs
     ):
         super().__init__(name)
@@ -52,6 +59,7 @@ class PanelConfig(OperatorConfig):
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
+        self.reload_on_navigation = reload_on_navigation
         self.surfaces = surfaces
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
@@ -66,6 +74,7 @@ class PanelConfig(OperatorConfig):
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
+            "reload_on_navigation": self.reload_on_navigation,
             "surfaces": self.surfaces,
         }
 
@@ -105,6 +114,7 @@ class Panel(Operator):
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
             "surfaces": self.config.surfaces,
+            "reload_on_navigation": self.config.reload_on_navigation,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
@@ -115,6 +125,7 @@ class Panel(Operator):
             "on_change_selected",
             "on_change_selected_labels",
             "on_change_extended_selection",
+            "on_change_group_slice",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):

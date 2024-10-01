@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<579582f26bf904c466ed6093e50217ef>>
+ * @generated SignedSource<<6dfdf39642a684ba575bf681408d5f9f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type OrganizationFeatureFlagQuery$variables = {};
 export type OrganizationFeatureFlagQuery$data = {
   readonly featureFlag: {
+    readonly invitationEmailsEnabled: boolean;
     readonly invitationsEnabled: boolean;
   };
 };
@@ -36,6 +37,13 @@ var v0 = [
         "kind": "ScalarField",
         "name": "invitationsEnabled",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "invitationEmailsEnabled",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -59,16 +67,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "456327711af7b9c3815abb363d50a53b",
+    "cacheID": "a3322f9b59fff62f7d73610ef11572f5",
     "id": null,
     "metadata": {},
     "name": "OrganizationFeatureFlagQuery",
     "operationKind": "query",
-    "text": "query OrganizationFeatureFlagQuery {\n  featureFlag {\n    invitationsEnabled\n  }\n}\n"
+    "text": "query OrganizationFeatureFlagQuery {\n  featureFlag {\n    invitationsEnabled\n    invitationEmailsEnabled\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "efb6cc70fd5807b84bffde160853851f";
+(node as any).hash = "2785a3b002046a42dc69ae3927ac8c4d";
 
 export default node;

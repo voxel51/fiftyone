@@ -1,17 +1,23 @@
 import {
   useCurrentUser,
+  useCurrentUserPermission,
   useSecurityRole,
   useUserAudit,
+  useUserRole,
   withSuspense,
 } from "@fiftyone/hooks";
+import NextLink from "next/link";
 import useGrantUserDatasetAccess from "@fiftyone/hooks/src/dataset/access/useGrantUserDatasetAccess";
 import { Dialog } from "@fiftyone/teams-components";
 import {
   DatasetPermission,
+  MANAGE_DATASET_ACCESS,
+  MANAGE_ORGANIZATION,
   manageAccessItemsState,
   ManageDatasetAccessUser,
   manageDatasetGrantUserAccessOpenState,
 } from "@fiftyone/teams-state";
+import { Link } from "@mui/material";
 import { UserRole } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql";
 import { Box, Stack, Typography } from "@mui/material";
 import { capitalize } from "lodash";
@@ -21,6 +27,11 @@ import { useRecoilState } from "recoil";
 import GrantDatasetAccessTitle from "./GrantDatasetAccessTitle";
 import ManageUser from "./ManageUser";
 import UserInputSuggestion from "./UserInputSuggestion";
+import {
+  INVITE_HELPER_TEXT_DATASET_ACCESS,
+  INVITE_HELPER_TEXT_DATASET_ACCESS_CAN_MANAGE_DATASET,
+  TEAM_USERS_PATH,
+} from "@fiftyone/teams-state/src/constants";
 
 function GrantUserDatasetAccess() {
   const [open, setOpen] = useRecoilState(manageDatasetGrantUserAccessOpenState);
@@ -33,9 +44,17 @@ function GrantUserDatasetAccess() {
   const { grantUserDatasetAccess, isGrantingUserDatasetAccess } =
     useGrantUserDatasetAccess();
   const mutationInProgress = isGrantingUserDatasetAccess;
+
   const [currentUser] = useCurrentUser();
+  const canManageOrg = useCurrentUserPermission([MANAGE_ORGANIZATION]);
+  const canManageDatasetAccess = useCurrentUserPermission([
+    MANAGE_DATASET_ACCESS,
+  ]);
+  const [showInvitationHelperText, setShowInvitationHelperText] =
+    useState(false);
 
   const { hasSeatsLeft } = useUserAudit();
+  const { canSendEmailInvitations } = useUserRole();
 
   const shouldDisableSubmit =
     userStatePermission &&
@@ -48,6 +67,7 @@ function GrantUserDatasetAccess() {
     setUser(null);
     setUserStatePermission("VIEW");
     setUnregisteredUserRole(null);
+    setShowInvitationHelperText(false);
   }, [setOpen]);
 
   const [accessItems, setAccessItems] = useRecoilState(manageAccessItemsState);
@@ -57,8 +77,19 @@ function GrantUserDatasetAccess() {
       setAccessItems([accessItem, ...accessItems]);
       closeDialog();
     },
-    [accessItems, closeDialog, setAccessItems]
+    [setAccessItems, accessItems, closeDialog]
   );
+
+  const onGrantAccessByInviteComplete = useCallback(() => {
+    // don't close the modal if false so user can see helper text
+    if (!canSendEmailInvitations) {
+      setShowInvitationHelperText(true);
+    }
+  }, [canSendEmailInvitations]);
+
+  const showTextForCanManageOrg = showInvitationHelperText && canManageOrg;
+  const showTextForCanManageDataset =
+    showInvitationHelperText && !canManageOrg && canManageDatasetAccess;
 
   return (
     <Dialog
@@ -78,7 +109,8 @@ function GrantUserDatasetAccess() {
             user,
             userStatePermission,
             unregisteredUserRole,
-            onGrantAccessComplete
+            onGrantAccessComplete,
+            onGrantAccessByInviteComplete
           );
         }
       }}
@@ -108,7 +140,21 @@ function GrantUserDatasetAccess() {
             }}
           />
         )}
+        {showTextForCanManageOrg && (
+          <Typography variant="body1">
+            <NextLink href={TEAM_USERS_PATH} passHref>
+              <Link>Click here</Link>
+            </NextLink>
+            {` ${INVITE_HELPER_TEXT_DATASET_ACCESS}`}
+          </Typography>
+        )}
+        {showTextForCanManageDataset && (
+          <Typography variant="body1">
+            {INVITE_HELPER_TEXT_DATASET_ACCESS_CAN_MANAGE_DATASET}
+          </Typography>
+        )}
       </Stack>
+
       {shouldDisableSubmit && (
         <Box
           sx={{
