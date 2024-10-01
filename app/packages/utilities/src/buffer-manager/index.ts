@@ -11,8 +11,8 @@ export class BufferManager {
     [rangeIndex: number]: string;
   };
 
-  constructor(buffers: Buffers = []) {
-    this.buffers = buffers;
+  constructor(buffers: Readonly<Buffers> = []) {
+    this.buffers = [...buffers];
     this.bufferMetadata = {};
   }
 
@@ -53,21 +53,21 @@ export class BufferManager {
    * Time complexity: O(nlogn)
    */
   public addNewRange(
-    range: Readonly<BufferRange>,
+    newRange: Readonly<BufferRange>,
     ignoreRangesWithMetadata = true
   ): void {
-    if (!range) {
+    if (!newRange) {
       return;
     }
 
-    if (range[1] < range[0]) {
+    if (newRange[1] < newRange[0]) {
       throw new Error(
-        `invalid range: range[1] (value = ${range[1]}) must be >= range[0] (value = ${range[0]})`
+        `invalid range: range[1] (value = ${newRange[1]}) must be >= range[0] (value = ${newRange[0]})`
       );
     }
 
     // add the new range to the buffer
-    this.buffers.push(range);
+    this.buffers.push(newRange);
 
     // sort the buffers based on their start value
     this.buffers.sort((a, b) => a[0] - b[0]);
@@ -106,7 +106,7 @@ export class BufferManager {
       // if current interval is not overlapping with stack top,
       // push it to the stack
       if (!areTwoRangesConsecutive && top[1] < rangesWithoutMetadata[i][0]) {
-        stack.push(rangesWithoutMetadata[i]);
+        stack.push([...rangesWithoutMetadata[i]]);
       }
       // else if end of current interval is more than the
       // end of stack top interval, update the stack top
@@ -207,7 +207,11 @@ export class BufferManager {
    * input range: [5, 105]
    * output: [101-105]
    */
-  public getUnprocessedBufferRange(range: Readonly<BufferRange>) {
+  public getUnprocessedBufferRange(range: Readonly<BufferRange> | null) {
+    if (!range) {
+      return null;
+    }
+
     const startContainedInRangeIndex = this.getRangeIndexForFrame(range[0]);
 
     if (startContainedInRangeIndex === -1) {

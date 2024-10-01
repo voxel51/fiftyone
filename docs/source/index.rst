@@ -182,6 +182,11 @@ learn how:
     :image_title: V7
 
 .. customimagelink::
+    :image_link: https://github.com/segments-ai/segments-voxel51-plugin
+    :image_src: https://voxel51.com/images/integrations/segments-128.png
+    :image_title: Segments
+
+.. customimagelink::
     :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
