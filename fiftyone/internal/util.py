@@ -7,6 +7,15 @@ FiftyOne internal utilities.
 """
 
 
+def is_remote_service():
+    """Whether the SDK is running in a remote service context.
+
+    Returns:
+        True/False
+    """
+    return has_encryption_key() and has_api_key()
+
+
 def is_internal_service():
     """Whether the SDK is running in an internal service context.
 
@@ -18,6 +27,15 @@ def is_internal_service():
 
 def has_encryption_key():
     """Whether the current environment has an encryption key.
+
+    Returns:
+        True/False
+    """
+    return is_internal_service()
+
+
+def has_api_key():
+    """Whether the current environment has an API key.
 
     Returns:
         True/False
