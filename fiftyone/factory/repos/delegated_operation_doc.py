@@ -41,7 +41,7 @@ class DelegatedOperationDocument(object):
             else ExecutionRunState.SCHEDULED
         )  # if running locally use SCHEDULED otherwise QUEUED
         self.run_link = None
-        self.queued_at = datetime.utcnow() if not is_remote_service() else None
+        self.queued_at = datetime.utcnow() if is_remote_service() else None
         self.updated_at = datetime.utcnow()
         self.status = None
         self.dataset_id = None
@@ -49,7 +49,9 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.scheduled_at = datetime.utcnow() if is_remote_service() else None
+        self.scheduled_at = (
+            datetime.utcnow() if not is_remote_service() else None
+        )
         self.result = None
         self.id = None
         self._doc = None
