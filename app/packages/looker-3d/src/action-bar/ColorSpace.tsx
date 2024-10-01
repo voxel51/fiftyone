@@ -84,11 +84,11 @@ const ChromePickerContainer = styled.div`
   margin: 0.5em auto;
 `;
 
-const ColorPickerBox = styled.div<{ backgroundColor: string }>`
+const ColorPickerBox = styled.div<{ $backgroundColor: string }>`
   width: 100%;
   min-height: 2rem;
   margin: 0.5em 0.5em 0.25em 0.5em;
-  background-color: ${(props) => props.backgroundColor};
+  background-color: ${(props) => props.$backgroundColor};
 `;
 
 const MultiPcdColorPickerContainer = styled.div`
@@ -133,7 +133,7 @@ const CustomColorSpace = () => {
     return (
       <animated.div style={{ display: "flex", ...springProps }}>
         <ColorPickerBox
-          backgroundColor={customColorMap[slice]}
+          $backgroundColor={customColorMap[slice]}
           onClick={() => setIsColorPickerOn((prev) => !prev)}
         />
         {isColorPickerOn && (
@@ -172,7 +172,7 @@ const CustomColorSpace = () => {
           <MultiPcdColorPickerContainer key={slice}>
             <span>{slice} </span>
             <ColorPickerBox
-              backgroundColor={customColorMap[slice]}
+              $backgroundColor={customColorMap[slice]}
               onClick={() => {
                 setColorPickerSlice((prev) => (prev === slice ? "" : slice));
               }}

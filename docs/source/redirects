@@ -6,6 +6,15 @@
 #   from/broken/page2.ext to/existing/page2.ext
 #
 
+# Introduced in v1.0.0
+user_guide/brain.rst  brain.rst
+user_guide/dataset_zoo/index.rst  dataset_zoo/index.rst
+user_guide/dataset_zoo/datasets.rst  dataset_zoo/datasets.rst
+user_guide/dataset_zoo/api.rst  dataset_zoo/api.rst
+user_guide/model_zoo/index.rst  model_zoo/index.rst
+user_guide/model_zoo/models.rst  model_zoo/models.rst
+user_guide/model_zoo/api.rst  model_zoo/api.rst
+
 # Introduced in v0.7.4
 tutorials/label_mistakes.html  tutorials/classification_mistakes.html
 recipes/detection_mistakenness.html  tutorials/detection_mistakes.html

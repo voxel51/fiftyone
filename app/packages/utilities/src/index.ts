@@ -1,16 +1,15 @@
 import { Sample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
-import { isElectron } from "./electron";
 import { Field } from "./schema";
 
+export * from "./Resource";
+export * from "./buffer-manager";
 export * from "./color";
-export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
 export * from "./paths";
-export * from "./Resource";
 export * from "./schema";
 export * as styles from "./styles";
 export * from "./type-check";
@@ -499,20 +498,7 @@ export const isNotebook = () => {
 };
 
 export const useExternalLink = (href) => {
-  let openExternal;
-  if (isElectron()) {
-    try {
-      openExternal = require("electron").shell.openExternal;
-    } catch {}
-  }
-
-  return openExternal
-    ? (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openExternal(href);
-      }
-    : (e) => e.stopPropagation();
+  return (e) => e.stopPropagation();
 };
 
 const isURL = (() => {
@@ -631,6 +617,51 @@ export const formatDate = (timeStamp: number): string => {
     .format(timeStamp)
     .replaceAll("/", "-");
 };
+
+export type Primitive =
+  | number
+  | null
+  | string
+  | undefined
+  | { datetime: number };
+
+export const formatPrimitive = ({
+  ftype,
+  timeZone,
+  value,
+}: {
+  ftype: string;
+  timeZone: string;
+  value: Primitive;
+}) => {
+  if (value === null || value === undefined) return null;
+
+  switch (ftype) {
+    case FRAME_SUPPORT_FIELD:
+      return `[${value[0]}, ${value[1]}]`;
+    case DATE_FIELD:
+      // @ts-ignore
+      return formatDate(value?.datetime as number);
+    case DATE_TIME_FIELD:
+      // @ts-ignore
+      return formatDateTime(value?.datetime as number, timeZone);
+  }
+
+  // @ts-ignore
+  return prettify(value);
+};
+
+export const makePseudoField = (path: string): Field => ({
+  name: path.split(".").slice(1).join("."),
+  ftype: "",
+  subfield: null,
+  description: "",
+  info: null,
+  fields: {},
+  dbField: null,
+  path: path,
+  embeddedDocType: null,
+});
 
 type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;

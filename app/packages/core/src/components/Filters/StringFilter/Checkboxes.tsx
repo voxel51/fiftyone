@@ -1,8 +1,8 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
+import type { RecoilState } from "recoil";
 import {
-  RecoilState,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
@@ -13,17 +13,18 @@ import FilterOption from "../FilterOption/FilterOption";
 import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
-import { Result } from "./Result";
+import type { Result } from "./Result";
 import { pathSearchCount } from "./state";
 import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
-  results: Result[] | null;
-  selectedAtom: RecoilState<(string | null)[]>;
+  color: string;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   modal: boolean;
   path: string;
+  results: Result[] | null;
+  selectedAtom: RecoilState<(string | null)[]>;
 }
 
 const isSkeleton = selectorFamily({
@@ -72,11 +73,17 @@ const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
       : new Map<string | null, number | null>();
 
   const loading = loadable.state === "loading";
-  results?.forEach(({ value, count }) => {
-    if (!data.has(value)) {
-      data.set(value, loading || (lightning && !unlocked) ? count : count ?? 0);
+
+  if (results) {
+    for (const { count, value } of results) {
+      if (!data.has(value)) {
+        data.set(
+          value,
+          loading || (lightning && !unlocked) ? count : count ?? 0
+        );
+      }
     }
-  });
+  }
 
   return { counts: data, loading };
 };
@@ -160,15 +167,15 @@ const useGetCount = (modal: boolean, path: string) => {
 };
 
 const Checkboxes = ({
-  results,
-  selectedAtom,
+  color,
   excludeAtom,
   isMatchingAtom,
   modal,
   path,
+  results,
+  selectedAtom,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
-  const color = useRecoilValue(fos.pathColor(path));
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
@@ -180,7 +187,8 @@ const Checkboxes = ({
   const show = useRecoilValue(showSearchSelector({ modal, path }));
   const getCount = useGetCount(modal, path);
 
-  if (loading) {
+  // if results are null, and show is false, values are loading
+  if (loading || (!show && results === null)) {
     return <LoadingDots text={"Loading"} />;
   }
 
@@ -224,13 +232,14 @@ const Checkboxes = ({
       {!!selectedSet.size && (
         <>
           <FilterOption
+            color={color}
             excludeAtom={excludeAtom}
             isMatchingAtom={isMatchingAtom}
-            valueName={name}
             modal={modal}
             path={path}
+            valueName={name}
           />
-          <Reset modal={modal} path={path} />
+          <Reset color={color} modal={modal} path={path} />
         </>
       )}
     </>

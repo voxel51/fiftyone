@@ -33,7 +33,7 @@ type IdxColorProp = {
   initialValue: MaskColorInput[];
   values: MaskColorInput[];
   style: React.CSSProperties;
-  onValidate?: (value: number) => boolean;
+  onValidate: (value: number) => boolean;
   onSyncUpdate: (input: MaskColorInput[]) => void;
   shouldShowAddButton: boolean;
   min?: number;
@@ -167,7 +167,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       {input?.map((v, index) => (
         <RowContainer key={index}>
           <NumberInput
-            placeholder="integer (1 to 255)"
+            placeholder="integer"
             value={input[index].intTarget}
             setter={(v) =>
               setInput((p) => {
@@ -177,7 +177,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
               })
             }
             onBlur={() => {
-              if (input[index].intTarget !== undefined) {
+              if (onValidate(input[index].intTarget)) {
                 onSyncIdx(input[index].intTarget!, index);
               }
             }}
@@ -186,6 +186,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
             max={max}
             step={step}
             key={"int-input-" + index}
+            validator={onValidate}
           />
           :
           <ColorSquare

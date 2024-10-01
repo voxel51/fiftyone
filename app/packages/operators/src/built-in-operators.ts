@@ -1,7 +1,6 @@
 import {
   Layout,
   SpaceNode,
-  usePanelState,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -12,6 +11,8 @@ import * as fos from "@fiftyone/state";
 import * as types from "./types";
 
 import { useTrackEvent } from "@fiftyone/analytics";
+import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
+import * as fop from "@fiftyone/playback";
 import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspaces/constants";
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
@@ -31,7 +32,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { setPathUserUnchanged } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 
 //
 // BUILT-IN OPERATORS
@@ -57,10 +57,11 @@ class ReloadDataset extends Operator {
       label: "Reload the dataset",
     });
   }
-  async execute() {
-    // TODO - improve this... this is a temp. workaround for the fact that
-    // there is no way to force reload just the dataset
-    window.location.reload();
+  useHooks() {
+    return { refresh: fos.useRefresh() };
+  }
+  async execute({ hooks }) {
+    hooks.refresh();
   }
 }
 class ClearSelectedSamples extends Operator {
@@ -146,10 +147,10 @@ class OpenPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks() {
-    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const availablePanels = usePanels();
-    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { availablePanels, openedPanels, spaces };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -200,9 +201,9 @@ class OpenAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_SPACE_ID } = fos.constants;
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const availablePanels = usePanels();
-    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openPanelOperator = useOperatorExecutor("open_panel");
     return { availablePanels, openedPanels, openPanelOperator };
   }
@@ -243,9 +244,9 @@ class ClosePanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_SPACE_ID } = fos.constants;
-    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { openedPanels, spaces };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -273,8 +274,8 @@ class CloseAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_SPACE_ID } = fos.constants;
-    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const closePanel = useOperatorExecutor("close_panel");
     return { openedPanels, closePanel };
   }
@@ -304,9 +305,9 @@ class SplitPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_SPACE_ID } = fos.constants;
-    const { spaces } = useSpaces(FIFTYONE_SPACE_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_SPACE_ID);
+    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { spaces, openedPanels };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -1029,8 +1030,6 @@ class PromptUserForOperation extends Operator {
     return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
-    const panelId = ctx.getCurrentPanelId();
-    const [panelState] = usePanelState(panelId);
     const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
@@ -1213,6 +1212,70 @@ export class SetPanelTitle extends Operator {
   }
 }
 
+type SetPlayheadStateHooks = {
+  setPlayheadState: (state: fop.PlayheadState, timeline_name?: string) => void;
+};
+type SetPlayheadStateParams = {
+  state: fop.PlayheadState;
+  timeline_name?: string;
+};
+
+export class SetPlayheadState extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_playhead_state",
+      label: "Set playhead state",
+      unlisted: true,
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.enum("state", ["playing", "paused"], { label: "State" });
+    inputs.str("timeline_name", { label: "Timeline name" });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): SetPlayheadStateHooks {
+    const timeline = fop.useTimeline(ctx.params.timeline_name);
+    return {
+      setPlayheadState: (state: fop.PlayheadState) => {
+        timeline.setPlayHeadState(state);
+      },
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext): Promise<void> {
+    const { setPlayheadState } = hooks as SetPlayheadStateHooks;
+    const { state } = params as SetPlayheadStateParams;
+    setPlayheadState(state);
+  }
+}
+
+type SetFrameNumberParams = { timeline_name?: string; frame_number: number };
+class SetFrameNumber extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_frame_number",
+      label: "Set frame number",
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("timeline_name", { label: "Timeline name" });
+    inputs.int("frame_number", {
+      label: "Frame number",
+      required: true,
+      min: 0,
+    });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { frame_number, timeline_name } = ctx.params as SetFrameNumberParams;
+    fop.dispatchTimelineSetFrameNumberEvent({
+      timelineName: timeline_name,
+      newFrameNumber: frame_number,
+    });
+  }
+}
+
 export class ApplyPanelStatePath extends Operator {
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -1224,6 +1287,29 @@ export class ApplyPanelStatePath extends Operator {
   async execute(ctx: ExecutionContext): Promise<void> {
     const { panel_id, path } = ctx.params;
     setPathUserUnchanged(path, panel_id);
+  }
+}
+
+export class SetGroupSlice extends Operator {
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_group_slice",
+      label: "Set group slice",
+      // unlisted: true,
+    });
+  }
+  useHooks() {
+    const setSlice = fos.useSetGroupSlice();
+    return { setSlice };
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("slice", { label: "Group slice", required: true });
+    return new types.Property(inputs);
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    const { slice } = ctx.params;
+    ctx.hooks.setSlice(slice);
   }
 }
 
@@ -1273,6 +1359,9 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(TrackEvent);
     _registerBuiltInOperator(SetPanelTitle);
     _registerBuiltInOperator(ApplyPanelStatePath);
+    _registerBuiltInOperator(SetGroupSlice);
+    _registerBuiltInOperator(SetPlayheadState);
+    _registerBuiltInOperator(SetFrameNumber);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

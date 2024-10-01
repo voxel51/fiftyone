@@ -1,11 +1,10 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import type { Primitive, Schema } from "@fiftyone/utilities";
 import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  FRAME_SUPPORT_FIELD,
-  formatDate,
-  formatDateTime,
+  EMBEDDED_DOCUMENT_FIELD,
+  formatPrimitive,
+  makePseudoField,
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
@@ -22,7 +21,6 @@ import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
-import { makePseudoField } from "./utils";
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -58,36 +56,11 @@ const ScalarDiv = styled.div`
   &.expanded > div {
     white-space: unset;
   }
-`;
 
-const format = ({
-  ftype,
-  timeZone,
-  value,
-}: {
-  ftype: string;
-  timeZone: string;
-  value: unknown;
-}) => {
-  if (value === undefined) return value;
-
-  if (value === null) return;
-
-  switch (ftype) {
-    case FRAME_SUPPORT_FIELD:
-      value = `[${value[0]}, ${value[1]}]`;
-      break;
-    case DATE_FIELD:
-      // @ts-ignore
-      value = formatDate(value.datetime as number);
-      break;
-    case DATE_TIME_FIELD:
-      // @ts-ignore
-      value = formatDateTime(value.datetime as number, timeZone);
+  & a {
+    color: ${({ theme }) => theme.text.primary};
   }
-
-  return prettify(value as string);
-};
+`;
 
 const ScalarValueEntry = ({
   entryKey,
@@ -109,7 +82,6 @@ const ScalarValueEntry = ({
     backgroundColor: theme.background.level1,
   });
   const color = useRecoilValue(fos.pathColor(path));
-
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
   const [expanded, setExpanded] = useRecoilState(expandedPathValueEntry(path));
@@ -153,9 +125,11 @@ const ListContainer = styled(ScalarDiv)`
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
 
   & > div {
-    margin-bottom: 0.5rem;
     white-space: unset;
   }
 `;
@@ -223,6 +197,7 @@ const ListValueEntry = ({
           </span>
           <Arrow
             key="arrow"
+            data-cy={`sidebar-field-arrow-enabled-${path}`}
             style={{ cursor: "pointer", margin: 0 }}
             onClick={(event) => {
               event.preventDefault();
@@ -252,31 +227,42 @@ const ListValueEntry = ({
 };
 
 const SlicesLengthLoadable = ({ path }: { path: string }) => {
-  const data = useSlicesData<any[]>(path);
+  const data = useSlicesData<unknown[]>(path);
 
   return <>{Object.entries(data).filter(([_, v]) => v).length || 0}</>;
 };
 
 const LengthLoadable = ({ path }: { path: string }) => {
-  const data = useData<any[]>(path);
+  const data = useData<unknown[]>(path);
   return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
-  const data = useData<any[]>(path);
+  const data = useData<Primitive[]>(path);
+  const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
+    fos.field(path)
+  );
+  const timeZone = useRecoilValue(fos.timeZone);
+
+  const field = subfield || ftype;
+  if (!field) {
+    throw new Error(`expected an ftype for ${path}`);
+  }
+
   const values = useMemo(() => {
-    return data
-      ? Array.from(data).map((value) => prettify(value as string))
-      : [];
-  }, [data]);
+    return Array.from(data || []).map((value) =>
+      format({ fields, ftype: field, value, timeZone })
+    );
+  }, [data, field, fields, timeZone]);
+
   return (
-    <ListContainer>
+    <ListContainer data-cy={`sidebar-entry-${path}`}>
       {values.map((v, i) => (
-        <div key={i} title={typeof v === "string" ? v : undefined}>
-          {v}
+        <div key={i.toString()} title={typeof v === "string" ? v : undefined}>
+          {v === null ? "None" : v}
         </div>
       ))}
-      {values.length == 0 && <>No results</>}
+      {values.length === 0 && "No results"}
     </ListContainer>
   );
 };
@@ -300,9 +286,9 @@ const SlicesListLoadable = ({ path }: { path: string }) => {
               {slice}
             </div>
             {(data || []).map((value, i) => (
-              <div key={i}>{prettify(value as string)}</div>
+              <div key={i.toString()}>{prettify(value as string)}</div>
             ))}
-            {(!data || !data.length) && <>No results</>}
+            {(!data || !data.length) && "No results"}
           </ListContainer>
         );
       })}
@@ -334,7 +320,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
               columnGap: "0.5rem",
               marginBottom: "0.5rem",
             }}
-            key={i}
+            key={i.toString()}
           >
             <div style={{ color: theme.text.secondary }}>{slice}</div>
             <div
@@ -378,14 +364,14 @@ const useSlicesData = <T,>(path: string) => {
 
   const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
   const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
-  slices.forEach((slice) => {
+  for (const slice of slices) {
     data[slice] = fos.pullSidebarValue(
       target,
       keys,
       data[slice].sample,
       isList
     );
-  });
+  }
 
   return data as { [slice: string]: T };
 };
@@ -393,14 +379,20 @@ const useSlicesData = <T,>(path: string) => {
 const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
-  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+  const { fields, ftype } =
+    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
-  const formatted = format({ ftype, value, timeZone });
+
+  const formatted = useMemo(
+    () => format({ fields, ftype, timeZone, value }),
+    [fields, ftype, timeZone, value]
+  );
 
   return (
     <div
       data-cy={`sidebar-entry-${path}`}
+      onKeyDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       style={none ? { color } : {}}
       title={typeof formatted === "string" ? formatted : undefined}
@@ -474,6 +466,82 @@ const PathValueEntry = ({
       slices={slices}
     />
   );
+};
+
+interface PrimitivesObject {
+  [key: string]: Primitive;
+}
+
+type Primitives = Primitive | PrimitivesObject;
+
+const format = ({
+  fields,
+  ftype,
+  timeZone,
+  value,
+}: {
+  fields?: Schema;
+  ftype: string;
+  timeZone: string;
+  value: Primitives;
+}) => {
+  if (ftype === EMBEDDED_DOCUMENT_FIELD && typeof value === "object") {
+    return formatObject({ fields, timeZone, value: value as object });
+  }
+
+  return formatPrimitiveOrURL({ ftype, value: value as Primitive, timeZone });
+};
+
+const formatPrimitiveOrURL = (params: {
+  fields?: Schema;
+  ftype: string;
+  timeZone: string;
+  value: Primitive;
+}) => {
+  const result = formatPrimitive(params);
+
+  return result instanceof URL ? (
+    <a href={result.toString()} target="_blank" rel="noreferrer">
+      {result.toString()}
+    </a>
+  ) : (
+    result
+  );
+};
+
+const formatObject = ({
+  fields,
+  timeZone,
+  value,
+}: {
+  fields?: Schema;
+  timeZone: string;
+  value: object;
+}) => {
+  return Object.entries(value)
+    .map(([k, v]) => {
+      if (!fields?.[k]?.ftype) {
+        return null;
+      }
+
+      const text = formatPrimitiveOrURL({
+        ftype: fields?.[k]?.ftype,
+        timeZone,
+        value: v,
+      });
+
+      return (
+        <div
+          data-cy={`key-value-${k}-${text}`}
+          key={k}
+          style={{ display: "flex", justifyContent: "space-between" }}
+        >
+          <span data-cy={`key-${k}`}>{k}</span>
+          <span data-cy={`value-${text}`}>{text}</span>
+        </div>
+      );
+    })
+    .filter((entry) => Boolean(entry));
 };
 
 export default React.memo(PathValueEntry);

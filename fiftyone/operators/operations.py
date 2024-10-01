@@ -300,9 +300,12 @@ class Operations(object):
         self,
         name,
         label,
+        help_markdown=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
+        surfaces="grid",
+        reload_on_navigation=False,
         on_load=None,
         on_unload=None,
         on_change=None,
@@ -313,18 +316,26 @@ class Operations(object):
         on_change_selected=None,
         on_change_selected_labels=None,
         on_change_extended_selection=None,
+        on_change_group_slice=None,
         allow_duplicates=False,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
 
         Args:
             name: the name of the panel
+            help_markdown (None): help text associated with the panel in
+                markdown format
             label: the display name of the panel
             icon (None): the icon to show in the panel's tab
             light_icon (None): the icon to show in the panel's tab when the App
                 is in light mode
             dark_icon (None): the icon to show in the panel's tab when the App
                 is in dark mode
+            surfaces ('grid'): surfaces in which to show the panel. Must be
+                one of 'grid', 'modal', or 'grid modal'
+            reload_on_navigation (False): whether to reload the panel when the
+                user navigates to a new page. This is only applicable to panels
+                that are not shown in a modal
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
@@ -343,15 +354,20 @@ class Operations(object):
                 current selected labels changes
             on_change_extended_selection (None): an operator to invoke when the
                 current extended selection changes
+            on_change_group_slice (None): an operator to invoke when the group
+                slice changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
         """
         params = {
             "panel_name": name,
             "panel_label": label,
+            "help_markdown": help_markdown,
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
+            "surfaces": surfaces,
+            "reload_on_navigation": reload_on_navigation,
             "on_load": on_load,
             "on_unload": on_unload,
             "on_change": on_change,
@@ -362,6 +378,7 @@ class Operations(object):
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,
             "on_change_extended_selection": on_change_extended_selection,
+            "on_change_group_slice": on_change_group_slice,
             "allow_duplicates": allow_duplicates,
         }
         return self._ctx.trigger("register_panel", params=params)
@@ -620,6 +637,14 @@ class Operations(object):
         return self._ctx.trigger(
             "set_panel_title", params={"id": id, "title": title}
         )
+
+    def set_group_slice(self, slice):
+        """Set the active group slice in the App.
+
+        Args:
+            slice: the group slice to activate
+        """
+        return self._ctx.trigger("set_group_slice", {"slice": slice})
 
 
 def _serialize_view(view):

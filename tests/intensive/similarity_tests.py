@@ -9,6 +9,7 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 
 import fiftyone as fo
@@ -24,7 +25,7 @@ def test_image_similarity():
     img_similarity = dataset.sort_by_similarity(dataset.first().id)
     print(img_similarity)
 
-    session = fo.launch_app(view=img_similarity, desktop=True)
+    session = fo.launch_app(view=img_similarity)
     session.wait()
 
 
@@ -39,7 +40,7 @@ def test_object_similarity():
     obj_similarity = patches.sort_by_similarity(patches.first().id)
     print(obj_similarity)
 
-    session = fo.launch_app(view=obj_similarity, desktop=True)
+    session = fo.launch_app(view=obj_similarity)
     session.wait()
 
 

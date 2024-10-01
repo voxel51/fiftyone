@@ -3,7 +3,7 @@ import { useRecoilState } from "recoil";
 import { useOutsideClick } from "@fiftyone/state";
 
 export default function usePanel(name, atom) {
-  const containerRef = useRef<HTMLElement>();
+  const containerRef = useRef<HTMLDivElement>();
   const [state, setFullState] = useRecoilState(atom);
   const setState = (update) =>
     setFullState((fullState) => ({

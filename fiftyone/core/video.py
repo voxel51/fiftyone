@@ -190,6 +190,7 @@ class FramesView(fov.DatasetView):
                 include_private=include_private, use_db_fields=use_db_fields
             )
         )
+        sample_only_fields.discard("last_modified_at")
 
         # If sample_frames != dynamic, `filepath` can be synced
         config = self._frames_stage.config or {}
@@ -401,6 +402,7 @@ class FramesView(fov.DatasetView):
                 project["_id"] = True
                 project["_sample_id"] = True
                 project["frame_number"] = True
+                project["last_modified_at"] = True
                 pipeline.append({"$project": project})
 
             pipeline.append(
@@ -658,7 +660,7 @@ def make_frames_dataset(
     dataset.add_sample_field("sample_id", fof.ObjectIdField)
 
     frame_schema = sample_collection.get_frame_field_schema()
-    dataset._sample_doc_cls.merge_field_schema(frame_schema)
+    dataset._sample_doc_cls.merge_field_schema(frame_schema, overwrite=True)
 
     dataset.create_index("sample_id")
 

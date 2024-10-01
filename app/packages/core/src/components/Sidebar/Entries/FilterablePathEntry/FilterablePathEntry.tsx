@@ -1,12 +1,12 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { makePseudoField } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import Color from "color";
 import React, { Suspense } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
-import { makePseudoField } from "../utils";
 import FilterablePathEntries from "./FilterablePathEntries";
 import LightningFilterablePathEntries from "./LightningFilterablePathEntries";
 import Loading from "./Loading";

@@ -20,8 +20,15 @@ const useReset = (options: { modal: boolean; path: string }) => {
   );
 };
 
-function Reset({ modal, path }: { modal: boolean; path: string }) {
-  const color = useRecoilValue(fos.pathColor(path));
+function Reset({
+  color,
+  modal,
+  path,
+}: {
+  color: string;
+  modal: boolean;
+  path: string;
+}) {
   const hasVisibilitySetting = useRecoilValue(
     fos.fieldHasVisibilitySetting({ modal, path })
   );

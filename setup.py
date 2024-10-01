@@ -8,7 +8,6 @@ Installs FiftyOne Teams.
 """
 
 from importlib import metadata
-import os
 import re
 from setuptools import setup, find_packages
 
@@ -41,8 +40,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pydash==8.0.1",
-    "pymongo>=3.12",
+    "pymongo>=3.12,<4.9",
     "pytz",
     "PyYAML",
     "regex",
@@ -54,7 +52,7 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql==0.138.1",
+    "strawberry-graphql",
     "tabulate",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
@@ -75,7 +73,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.17.0,<0.18",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.12.7,<0.13",
+    "voxel51-eta>=0.12.7,<0.14",
 ]
 
 
@@ -112,23 +110,19 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.24.1"]}
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
 setup(
     name="fiftyone",
-    version="2.0.1",
+    version="2.1.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    extras_require=EXTRAS_REQUIREMENTS,
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(
@@ -152,11 +146,10 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.8",
+    python_requires=">=3.9",
 )

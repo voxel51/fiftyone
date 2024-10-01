@@ -7,12 +7,12 @@ import { initializationErrors } from "./operators";
 import { useOperatorBrowser } from "./state";
 
 // todo: use plugin component
+import { useTrackEvent } from "@fiftyone/analytics";
 import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorIcon, { CustomIconPropsType } from "./OperatorIcon";
 import OperatorPalette from "./OperatorPalette";
 import { PaletteContentContainer } from "./styled-components";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 const QueryInput = styled.input`
   width: 100%;
@@ -21,7 +21,7 @@ const QueryInput = styled.input`
   border: none;
   padding: 0.5rem 1rem;
 `;
-const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
+const ChoiceContainer = styled.div<{ $disabled: boolean; $selected?: boolean }>`
   display: flex;
   height: 2.5rem;
   line-height: 2.5rem;
@@ -30,8 +30,9 @@ const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
     background: ${({ theme }) => theme.background.level1};
     cursor: pointer;
   }
-  opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
-  background: ${({ selected, theme }) => selected && theme.primary.plainColor};
+  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
+  background: ${({ $selected, theme }) =>
+    $selected && theme.primary.plainColor};
 `;
 
 const ChoiceDescription = styled.div`
@@ -69,9 +70,9 @@ const Choice = (props: ChoicePropsType) => {
 
   return (
     <ChoiceContainer
-      disabled={disabled}
+      $disabled={disabled}
       onClick={onClick}
-      selected={selected}
+      $selected={selected}
       ref={containerRef}
     >
       <ChoiceIcon>

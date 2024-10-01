@@ -317,23 +317,6 @@ call :meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
     session = fo.launch_app(dataset, auto=False)
     session.open_tab()
 
-Using the desktop App
-~~~~~~~~~~~~~~~~~~~~~
-
-If you are working from a Jupyter notebook on a machine with the
-:ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` installed, you can
-optionally open the desktop App rather than working with the App in cell
-output(s).
-
-To do this, pass the ``desktop=True`` flag to
-:meth:`launch_app() <fiftyone.core.session.launch_app>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Creates a session and launches the desktop App
-    session = fo.launch_app(dataset, desktop=True)
-
 .. _remote-notebooks:
 
 Remote notebooks
@@ -432,14 +415,13 @@ Next, build the image:
 
     docker build -t voxel51/fiftyone .
 
-The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
+The default image uses Python 3.11, but you can customize these
 via optional build arguments:
 
 .. code:: shell
 
     docker build \
-        --build-arg BASE_IMAGE=ubuntu:18.04 \
-        --build-arg PYTHON_VERSION=3.9 \
+        --build-arg PYTHON_VERSION=3.10 \
         -t voxel51/fiftyone .
 
 Refer to the

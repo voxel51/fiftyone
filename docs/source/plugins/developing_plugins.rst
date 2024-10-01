@@ -193,17 +193,37 @@ used to define the plugin's metadata, declare any operators and panels that it
 exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
--   `name` **(required)**: the name of the plugin
--   `author`: the author of the plugin
--   `version`: the version of the plugin
--   `url`: the page (eg GitHub repository) where the plugin's code lives
--   `license`: the license under which the plugin is distributed
--   `description`: a brief description of the plugin
--   `fiftyone.version`: a semver version specifier (or `*`) describing the
-    required FiftyOne version for the plugin to work properly
--   `operators`: a list of operator names registered by the plugin
--   `panels`: a list of panel names registred by the plugin
--   `secrets`: a list of secret keys that may be used by the plugin
+.. table::
+    :widths: 20,10,70
+
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | Field                        | Required? | Description                                                                 |
+    +==============================+===========+=============================================================================+
+    | `name`                       | **yes**   | The name of the plugin                                                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `type`                       |           | Declare that the directory defines a `plugin`. This can be omitted for      |
+    |                              |           | backwards compatibility, but it is recommended to specify this              |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `author`                     |           | The author of the plugin                                                    |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `version`                    |           | The version of the plugin                                                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `url`                        |           | The remote source (eg GitHub repository) where the directory containing     |
+    |                              |           | this file is hosted                                                         |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `license`                    |           | The license under which the plugin is distributed                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `description`                |           | A brief description of the plugin                                           |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `fiftyone.version`           |           | A semver version specifier (or `*`) describing the required                 |
+    |                              |           | FiftyOne version for the plugin to work properly                            |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `panels`                     |           | A list of panel names registred by the plugin, if any                       |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
 
 For example, the
 `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml>`_
@@ -213,12 +233,14 @@ plugin's `fiftyone.yml` looks like this:
     :linenos:
 
     name: "@voxel51/annotation"
-    description: Utilities for integrating FiftyOne with annotation tools
+    type: plugin
+    author: Voxel51
     version: 1.0.0
-    fiftyone:
-      version: ">=0.22"
     url: https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation
     license: Apache 2.0
+    description: Utilities for integrating FiftyOne with annotation tools
+    fiftyone:
+      version: ">=0.22"
     operators:
       - request_annotations
       - load_annotations
@@ -331,12 +353,14 @@ defines both a JS Panel and a Python operator:
         :linenos:
 
         name: "@voxel51/hello-world"
-        description: An example of JS and Python components in a single plugin
+        type: plugin
+        author: Voxel51
         version: 1.0.0
-        fiftyone:
-          version: "*"
         url: https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/hello-world/README.md
         license: Apache 2.0
+        description: An example of JS and Python components in a single plugin
+        fiftyone:
+          version: "*"
         operators:
           - count_samples
           - show_alert
@@ -955,6 +979,7 @@ contains the following properties:
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any
 -   `ctx.extended_selection` - the extended selection of the view, if any
+-   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
@@ -1749,6 +1774,12 @@ in the App.
 Panels can be defined in either Python or JS, and FiftyOne comes with a
 number of :ref:`builtin panels <plugins-design-panels>` for common tasks.
 
+Panels can be scoped to the App's grid view or modal view via their
+:ref:`config <panel-config>`. Grid panels enable extensibility at the macro
+level, allowing you to work with entire datasets or views, while modal panels
+provide extensibility at the micro level, focusing on individual samples and
+scenarios.
+
 Panels, like :ref:`operators <developing-operators>`, can make use of the
 :mod:`fiftyone.operators.types` module and the
 :js:mod:`@fiftyone/operators <@fiftyone/operators>` package, which define a
@@ -1805,6 +1836,15 @@ subsequent sections.
 
                 # Whether to allow multiple instances of the panel to be opened
                 allow_multiple=False,
+
+                # Whether the panel should be available in the grid, modal, or both
+                # Possible values: "grid", "modal", "grid modal"       
+                surfaces="grid",  # default = "grid"
+
+                # Markdown-formatted text that describes the panel. This is
+                # rendererd in a tooltip when the help icon in the panel
+                # title is hovered over
+                help_markdown="A description of the panel",
             )
 
         def render(self, ctx):
@@ -1837,10 +1877,14 @@ subsequent sections.
 
             # Define components that appear in the panel's main body
             panel.str("event", label="The last event", view=types.LabelValueView())
-            panel.obj("event_data", label="The last event data", view=types.JSONView())
+            panel.obj(
+                "event_data", label="The last event data", view=types.JSONView()
+            )
 
             # Display a checkbox to toggle between plot and compute visualization button
-            show_compute_visualization_btn = ctx.panel.get_state("show_start_button", True)
+            show_compute_visualization_btn = ctx.panel.get_state(
+                "show_start_button", True
+            )
             panel.bool(
                 "show_start_button",
                 label="Show compute visualization button",
@@ -1867,7 +1911,9 @@ subsequent sections.
                     height="400px",
                 )
 
-            return types.Property(panel, view=types.GridView(orientation="vertical"))
+            return types.Property(
+                panel, view=types.GridView(orientation="vertical")
+            )
 
         #######################################################################
         # Builtin events
@@ -2000,6 +2046,19 @@ subsequent sections.
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
             ctx.panel.set_data("event_data", event)
+        
+        def on_change_group_slice(self, ctx):
+            """Implement this method to set panel state/data when the current
+            group slice changes.
+
+            The current group slice will be available via ``ctx.group_slice``.
+            """
+            event = {
+                "data": ctx.group_slice,
+                "description": "the current group slice",
+            }
+            ctx.panel.set_state("event", "on_change_group_slice")
+            ctx.panel.set_data("event_data", event)
 
         #######################################################################
         # Custom events
@@ -2014,7 +2073,11 @@ subsequent sections.
 
             # Format results for plotly
             x, y = zip(*results.points.tolist())
-            plot_data = [{"x": x, "y": y, "type": "scatter", "mode": "markers"}]
+            ids = results.sample_ids
+
+            plot_data = [
+                {"x": x, "y": y, "ids": ids, "type": "scatter", "mode": "markers"}
+            ]
 
             # Store large content as panel data for efficiency
             ctx.panel.set_data("embeddings", plot_data)
@@ -2035,8 +2098,8 @@ subsequent sections.
             ctx.ops.notify(f"Check out {url} for more information")
 
         def on_selected_embeddings(self, ctx):
-            # Retrieve data from plot
-            selected_points = ctx.panel.state.embeddings.get("data", [])
+            # Get selected points from event params
+            selected_points = ctx.params.get("data", [])
             selected_sample_ids = [d.get("id", None) for d in selected_points]
 
             # Conditionally trigger a builtin operation via `ctx.ops`
@@ -2073,7 +2136,7 @@ Panel config
 
 Every panel must define a
 :meth:`config <fiftyone.operators.panel.Panel.config>` property that
-defines its name, display name, and other optional metadata about its
+defines its name, display name, surfaces, and other optional metadata about its
 behavior:
 
 .. code-block:: python
@@ -2097,7 +2160,25 @@ behavior:
 
             # Whether to allow multiple instances of the panel to be opened
             allow_multiple=False,
+
+            # Whether the panel should be available in the grid, modal, or both
+            # Possible values: "grid", "modal", "grid modal"
+            surfaces="grid",  # default = "grid"
+
+            # Markdown-formatted text that describes the panel. This is
+            # rendererd in a tooltip when the help icon in the panel
+            # title is hovered over
+            help_markdown="A description of the panel",
         )
+
+The ``surfaces`` key defines the panel's scope:
+
+-   Grid panels can be accessed from the ``+`` button in the App's
+    :ref:`grid view <app-fields-sidebar>`, which allows you to build macro
+    experiences that work with entire datasets or views
+-   Modal panels can be accessed from the ``+`` button in the App's
+    :ref:`modal view <app-sample-view>`, which allows you to build interactions
+    that focus on individual samples and scenarios
 
 .. _panel-execution-context:
 
@@ -3000,15 +3081,13 @@ returns `true`:
 
 -   **Panel**: JS plugins can register panel components that can be opened by
     clicking the `+` next to any existing panel's tab
--   **Visualizer**: JS plugins can register a component that will override the
-    builtin :ref:`Sample visualizer <app-sample-view>`
 -   **Component**: JS plugins can register generic components that can be used
     to render operator input and output
 
-Panels, visualizers, and components
------------------------------------
+Panels and Components
+---------------------
 
-Here's some examples of using panels, visualizers, and components to add your
+Here's some examples of using panels and components to add your
 own custom user interface and components to the FiftyOne App.
 
 Hello world panel
@@ -3033,48 +3112,9 @@ A simple plugin that renders "Hello world" in a panel would look like this:
         activator: () => true
     });
 
-Adding a custom visualizer
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: jsx
     :linenos:
 
-    import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/state";
-
-    function PointCloud({ src }) {
-        // TODO: implement your visualizer using React
-    }
-
-    // this separate components shows where the FiftyOne plugin
-    // dependent code ends and the pure react code begins
-    function CustomVisualizer({ sample }) {
-        const src = fos.getSampleSrc(sample.filepath);
-
-        // now that we have all the data we need
-        // we can delegate to code that doesn't depend
-        // on the FiftyOne plugin API
-        return <PointCloud src={src} />;
-    }
-
-    function myActivator({ dataset }) {
-        return dataset.mediaType ??
-            dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-            undefined
-    }
-
-    fop.registerComponent({
-        // component to delegate to
-        component: CustomVisualizer,
-
-        // tell FiftyOne you want to provide a Visualizer
-        type: PluginComponentType.Visualizer,
-
-        // activate this plugin when the mediaType is PointCloud
-        activator: myActivator,
-    });
-
-Adding a custom panel
+Adding a custom Panel
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx

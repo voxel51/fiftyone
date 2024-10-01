@@ -1,0 +1,6 @@
+export type { OrganizationFeatureFlagQuery$variables as OrganizationFeatureFlagQuery$variablesT } from './OrganizationFeatureFlagQuery.graphql'
+export type { OrganizationFeatureFlagQuery$data as OrganizationFeatureFlagQuery$dataT } from './OrganizationFeatureFlagQuery.graphql'
+export type { OrganizationFeatureFlagQuery as OrganizationFeatureFlagQueryT } from './OrganizationFeatureFlagQuery.graphql'
+export type { OrganizationQuery$variables as OrganizationQuery$variablesT } from './OrganizationQuery.graphql'
+export type { OrganizationQuery$data as OrganizationQuery$dataT } from './OrganizationQuery.graphql'
+export type { OrganizationQuery as OrganizationQueryT } from './OrganizationQuery.graphql'

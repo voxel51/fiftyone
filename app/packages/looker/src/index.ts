@@ -14,6 +14,7 @@ export type {
   FrameOptions,
   ImageConfig,
   ImageOptions,
+  KeypointSkeleton,
   LabelData,
   Point,
   Sample,

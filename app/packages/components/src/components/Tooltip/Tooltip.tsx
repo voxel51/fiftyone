@@ -19,19 +19,24 @@ const Tooltip: React.FC<{
     triggerOffset: 8,
   });
 
-  let trigger;
-  if (isReactText(children)) {
-    trigger = (
-      <span className="tooltip-text-wrapper" {...triggerProps} {...hoverProps}>
-        {children}
-      </span>
-    );
-  } else {
-    trigger = React.cloneElement(children, {
-      ...triggerProps,
-      ...hoverProps,
-    });
-  }
+  const trigger = React.useMemo(() => {
+    if (isReactText(children)) {
+      return (
+        <span
+          className="tooltip-text-wrapper"
+          {...triggerProps}
+          {...hoverProps}
+        >
+          {children}
+        </span>
+      );
+    } else {
+      return React.cloneElement(children, {
+        ...triggerProps,
+        ...hoverProps,
+      });
+    }
+  }, [children, triggerProps, hoverProps]);
 
   return (
     <>

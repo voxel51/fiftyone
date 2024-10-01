@@ -1,81 +1,45 @@
-# Dockerfile for building an image with a source FiftyOne Teams install atop a
-# Debian-based Linux distribution.
+# Copyright 2017-2024, Voxel51, Inc.
+# voxel51.com
 #
-# By default, Ubuntu 20.04 and Python 3.9 are used, but these can be customized
-# via ARGs.
+# Dockerfile for building an image with source FiftyOne atop a Python 3.11
+#  base image
 #
 # ARGs::
 #
-#   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
-#   PYTHON_VERSION (3.9): The Python version to install
+#   PIP_INDEX_URL (https://pypi.org/simple): Allow the use of caching proxies
+#   PYTHON_VERSION (3.11): The Python base image to use
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
 #       should be mounted when running
 #
 # Example usage::
 #
 #   # Build
-#   make python
-#   docker build -t voxel51/fiftyone-teams .
+#   make docker
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
 #   docker run \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
-#       -it voxel51/fiftyone-teams
-#
-# Copyright 2017-2023, Voxel51, Inc.
-# voxel51.com
+#       -it local/fiftyone
 #
 
-# The base image to build from; must be Debian-based (eg Ubuntu)
-ARG BASE_IMAGE=ubuntu:20.04
-FROM $BASE_IMAGE
+# The base python image to build from
+ARG PYTHON_VERSION=3.11
 
-# The Python version to install
-ARG PYTHON_VERSION=3.9
+# Collect wheels for future installation
+FROM python:${PYTHON_VERSION} AS builder
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
-#
-# Install system packages
-#
+COPY dist dist
 
-RUN apt -y update \
-    && apt -y --no-install-recommends install software-properties-common \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt -y update \
-    && apt -y upgrade \
-    && apt -y --no-install-recommends install tzdata \
-    && TZ=Etc/UTC \
-    && apt -y --no-install-recommends install \
-        build-essential \
-        ca-certificates \
-        cmake \
-        cmake-data \
-        pkg-config \
-        libcurl4 \
-        libsm6 \
-        libxext6 \
-        libssl-dev \
-        libffi-dev \
-        libxml2-dev \
-        libxslt1-dev \
-        zlib1g-dev \
-        unzip \
-        curl \
-        wget \
-        python${PYTHON_VERSION} \
-        python${PYTHON_VERSION}-dev \
-        python${PYTHON_VERSION}-distutils \
-        ffmpeg \
-    && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
-    && ln -s /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python \
-    && curl https://bootstrap.pypa.io/get-pip.py | python \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip --no-cache-dir install -q -U pip setuptools wheel \
+    && pip wheel --wheel-dir=/wheels \
+        dist/*.whl \
+        ipython
 
 #
-# Install Python dependencies
-#
-# Other packages you might want:
+# Other packages you might want to add to the list above:
 #   torch torchvision: Torch model training/zoo datasets
 #   tensorflow tensorflow-datasets: TF model training/zoo datasets
 #   pycocotools: COCO-style evaluation
@@ -88,37 +52,51 @@ RUN apt -y update \
 #   pydicom: DICOM images
 #
 
-RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 
-#
-# Install FiftyOne Teams from source
-#
-
-COPY dist dist
-RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
-
-# Use this instead if you want the latest FiftyOne release
-# RUN pip --no-cache-dir install fiftyone
-
-#
-# Configure shared storage
-#
+# Create a smaller image with wheels installed
+FROM python:${PYTHON_VERSION}-slim AS final
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 # The name of the shared directory in the container that should be
 # volume-mounted by users to persist data loaded into FiftyOne
 ARG ROOT_DIR=/fiftyone
 
-ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
-    FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
+WORKDIR /opt
+
+ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
+    FIFTYONE_DEFAULT_APP_ADDRESS='0.0.0.0' \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
     FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
-    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
+    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models \
+    VIRTUAL_ENV=/opt/.fiftyone-venv
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Update the base image and install ffmpeg
+RUN apt-get -qq -y update && apt-get -qq -y upgrade \
+    && apt-get -qq install -y --no-install-recommends ffmpeg libcurl4 php-curl \
+    && apt clean && rm -rf /var/lib/apt/lists/*
+
+# Create Virtual Env
+RUN python -m venv "${VIRTUAL_ENV}"
+
+# Install wheels from builder stage
+RUN --mount=type=cache,from=builder,target=/builder,ro \
+    pip --no-cache-dir install -q -U pip setuptools wheel \
+    && pip --no-cache-dir install -q --pre --no-index \
+    --find-links=/builder/wheels \
+    /builder/wheels/*
 
 #
-# Default behavior
+# Default, interactive, behavior
 #
 
-CMD ipython
+CMD [ "ipython" ]
 
-# Use this if you want the default behavior to instead be to launch the App
-# CMD python /usr/local/lib/python/dist-packages/fiftyone/server/main.py --port 5151
+# Use this if want the default behavior to launch the App instead
+# EXPOSE 5151
+# CMD [ \
+#     "python", \
+#     ".fiftyone-venv/lib/python3.11/site-packages/fiftyone/server/main.py", \
+#     "--port", \
+#     "5151" \
+#     ]

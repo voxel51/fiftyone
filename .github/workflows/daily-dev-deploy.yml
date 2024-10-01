@@ -18,3 +18,4 @@ jobs:
     secrets:
       ORG_GOOGLE_WORKLOAD_IDP: ${{ secrets.ORG_GOOGLE_WORKLOAD_IDP }}
       RO_CBAD_FG_PAT: ${{ secrets.RO_CBAD_FG_PAT }}
+      FIFTYONE_SEGMENT_WRITE_KEY: ${{ secrets.FIFTYONE_SEGMENT_WRITE_KEY }}

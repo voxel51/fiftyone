@@ -212,12 +212,6 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
         )
-        self.desktop_app = self.parse_bool(
-            d,
-            "desktop_app",
-            env_var="FIFTYONE_DESKTOP_APP",
-            default=False,
-        )
         self.logging_level = self.parse_string(
             d,
             "logging_level",

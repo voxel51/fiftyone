@@ -10,10 +10,8 @@
         "build": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python",
         "build:win32": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python:win32",
         "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build",
-        "build-desktop": "NODE_OPTIONS=--max-old-space-size=4096 && tsc && vite build --mode desktop",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
-        "copy-to-python:win32": "robocopy './dist' '../../../fiftyone/server/static' /MIR",
-        "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
+        "copy-to-python:win32": "robocopy './dist' '../../../fiftyone/server/static' /MIR"
     },
     "dependencies": {
         "@fiftyone/analytics": "*",
@@ -29,7 +27,7 @@
         "lodash": "^4.17.21",
         "notistack": "^3.0.1",
         "numeral": "^2.0.6",
-        "path-to-regexp": "^6.2.0",
+        "path-to-regexp": "^8.0.0",
         "react": "18.2.0",
         "react-dom": "18.2.0",
         "react-error-boundary": "^3.1.4",
@@ -57,9 +55,10 @@
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript": "^5.3.2",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^5.2.12",
+        "vite": "^5.2.14",
         "vite-plugin-relay": "^1.0.7",
-        "vite-plugin-rewrite-all": "^1.0.2"
+        "vite-plugin-rewrite-all": "^1.0.2",
+        "vite-plugin-svgr": "^4.2.0"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",

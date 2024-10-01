@@ -65,6 +65,22 @@ class DelegatedOperationRepo(object):
             "subclass must implement get_queued_operations()"
         )
 
+    def get_scheduled_operations(
+        self, operator: str = None, dataset_name=None
+    ) -> List[DelegatedOperationDocument]:
+        """Get all scheduled operations."""
+        raise NotImplementedError(
+            "subclass must implement get_scheduled_operations()"
+        )
+
+    def get_running_operations(
+        self, operator: str = None, dataset_name=None
+    ) -> List[DelegatedOperationDocument]:
+        """Get all running operations."""
+        raise NotImplementedError(
+            "subclass must implement get_running_operations()"
+        )
+
     def list_operations(
         self,
         operator: str = None,
@@ -285,6 +301,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "updated_at": datetime.utcnow(),
                 }
             }
+        elif run_state == ExecutionRunState.SCHEDULED:
+            update = {
+                "$set": {
+                    "run_state": run_state,
+                    "scheduled_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+            }
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link
@@ -349,6 +373,28 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             operator=operator,
             dataset_name=dataset_name,
             run_state=ExecutionRunState.QUEUED,
+        )
+
+    def get_scheduled_operations(
+        self,
+        operator: str = None,
+        dataset_name: ObjectId = None,
+    ) -> List[DelegatedOperationDocument]:
+        return self.list_operations(
+            operator=operator,
+            dataset_name=dataset_name,
+            run_state=ExecutionRunState.SCHEDULED,
+        )
+
+    def get_running_operations(
+        self,
+        operator: str = None,
+        dataset_name: ObjectId = None,
+    ) -> List[DelegatedOperationDocument]:
+        return self.list_operations(
+            operator=operator,
+            dataset_name=dataset_name,
+            run_state=ExecutionRunState.RUNNING,
         )
 
     def list_operations(

@@ -1483,10 +1483,63 @@ class PlotlyView(View):
         See https://github.com/plotly/react-plotly.js/#basic-props for
         documentation.
 
+    All event handlers have the following default params:
+
+    - ``id``: the corresponding data.ids[idx]
+    - ``path``: the path of the property
+    - ``relative_path``: the relative path of the property
+    - ``schema``: the schema of the property
+    - ``view``: the value of the PlotlyView
+    - ``event``: the event name (eg. onClick, onSelected, onDoubleClick)
+    - ``value``: the value of the clicked point (only pie chart-like plots)
+    - ``label``: the label of the clicked point (only pie chart-like plots)
+    - ``shift_pressed``: whether the shift key was pressed
+
+    Examples::
+
+        def render(self, ctx):
+            panel.plot("my_plot", on_click=self.on_click, on_selected=self.on_selected)
+
+        def print_params(self, ctx, params):
+            for key, value in params.items():
+                ctx.print(f"{key}: {value}")
+
+        def on_click(self, ctx):
+            # available params
+            self.print_prams(ctx, {
+                "id": "id", # the corresponding data.ids[idx]
+                "idx": 1, # the index of the clicked point
+                "label": "label", # label (eg. on pie charts)
+                "shift_pressed": false, # whether the shift key was pressed
+                "trace": "my_trace", # data[trace_idx].name
+                "trace_idx": 0,
+                "value": "my_value", # data[trace_idx].values[idx] (eg. on a pie chart)
+                "x": 2, # data[trace_idx].x[idx] (the x value on most plot types)
+                "y": 3, # data[trace_idx].y[idx] (the y value on most plot types)
+                "z": 4, # data[trace_idx].z[idx] (the z value on 3d plots eg. heatmap)
+            })
+
+        def on_selected(self, ctx):
+            prin(ctx.params['data'])
+            # [
+            #     {
+            #       "trace": "trace 0", # data[trace_idx].name
+            #       "trace_idx": 0, # the index of the trace
+            #       "idx": 1, # the index of the selected point
+            #       "id": "one", # the corresponding data.ids[idx]
+            #       "x": 2, # the x value of the selected point
+            #       "y": 15, # the y value of the selected point
+            #       "z": 22 # the z value of the selected point
+            #     }
+            # ]
+
     Args:
         data (None): the chart data
         config (None): the chart config
         layout (None): the chart layout
+        on_click (None): event handler for click events
+        on_selected (None): event handler for selected events
+        on_double_click (None): event handler for double click events
     """
 
     def __init__(self, **kwargs):
@@ -2101,7 +2154,7 @@ class GridView(View):
         Must be used with :class:`Object` properties.
 
     Args:
-        orientation ("horizontal"): the orientation of the stack. Can be either
+        orientation ("2d"): the orientation of the stack. Can be either ``"2d"``,
             ``"horizontal"`` or ``"vertical"``
         gap (1): the gap between the components
         align_x ("left"): the alignment of the components. Can be either ``"left"``, ``"center"``,
@@ -2114,7 +2167,7 @@ class GridView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.orientation = kwargs.get("orientation", "horizontal")
+        self.orientation = kwargs.get("orientation", None)
         self.gap = kwargs.get("gap", 1)
         self.align_x = kwargs.get("align_x", "left")
         self.align_y = kwargs.get("align_y", "top")
@@ -2344,6 +2397,20 @@ class ArrowNavView(View):
             "backward": self.backward,
             "position": self.position,
         }
+
+
+class FrameLoaderView(View):
+    """Utility for loading frames and animated panels.
+
+    Args:
+        timeline_id (None): the ID of the timeline to load
+        on_load (None): the operator to execute when the frame is loaded
+        on_error (None): the operator to execute when the frame fails to load
+        on_load_range (None): the operator to execute when the frame is loading
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class Container(BaseType):

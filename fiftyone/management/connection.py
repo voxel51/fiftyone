@@ -7,8 +7,8 @@ API connection.
 """
 import requests.exceptions
 
-import fiftyone.core.config as foc
 import fiftyone.api
+import fiftyone.core.config as foc
 
 
 class APIClientConnection(object):
@@ -89,8 +89,8 @@ def test_api_connection():
     """
     client = APIClientConnection().client
     try:
-        status = client.get("health").json().get("status")
-        if status != "available":
+        status = client.get("health").status_code
+        if status != 200:
             raise requests.exceptions.ConnectionError(
                 f"Bad server status: '{status}'"
             )

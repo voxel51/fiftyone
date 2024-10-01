@@ -1,3 +1,0 @@
-# Desktop
-
-FiftyOne Desktop App

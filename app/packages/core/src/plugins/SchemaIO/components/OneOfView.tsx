@@ -1,9 +1,9 @@
+import { HelpTooltip } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
 import React, { useState } from "react";
 import { HeaderView } from ".";
-import DynamicIO from "./DynamicIO";
-import HelpTooltip from "./HelpTooltip";
 import { getComponentProps } from "../utils";
+import DynamicIO from "./DynamicIO";
 
 export default function OneOfView(props) {
   const { schema, path, onChange, data, errors } = props;

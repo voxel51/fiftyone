@@ -65,6 +65,12 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
         },
     },
+    "fedora": {
+        "4": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
+    },
     "pop": {
         "18": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
@@ -165,7 +171,7 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.1.5"
+VERSION = "1.1.6"
 
 
 def get_version():
@@ -320,11 +326,10 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     cmdclass=cmdclass,
 )

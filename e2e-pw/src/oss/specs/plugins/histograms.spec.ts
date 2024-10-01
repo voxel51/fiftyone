@@ -1,12 +1,12 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
-import { PanelPom } from "src/oss/poms/panels/panel";
+import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`histograms`);
-const test = base.extend<{ histogram: HistogramPom; panel: PanelPom }>({
+const test = base.extend<{ histogram: HistogramPom; panel: GridPanelPom }>({
   panel: async ({ page }, use) => {
-    await use(new PanelPom(page));
+    await use(new GridPanelPom(page));
   },
   histogram: async ({ page, eventUtils }, use) => {
     await use(new HistogramPom(page, eventUtils));
@@ -52,6 +52,7 @@ test("histograms panel", async ({ histogram, panel }) => {
   await histogram.selector.openResults();
   await histogram.assert.verifyFields([
     "bool",
+    "created_at",
     "classification.confidence",
     "classification.label",
     "classification.tags",
@@ -61,6 +62,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.tags",
     "float",
     "int",
+    "last_modified_at",
     "list_bool",
     "list_float",
     "list_int",

@@ -1,4 +1,4 @@
-import { CenteredStack, CodeBlock } from "@fiftyone/components";
+import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
@@ -68,20 +68,27 @@ export function CustomPanel(props: CustomPanelProps) {
 
   return (
     <Box
-      sx={{ height: "100%", width: "100%", position: "relative" }}
-      ref={dimensions.widthRef}
+      className={scrollable}
+      sx={{
+        height: "100%",
+        width: "100%",
+        position: "relative",
+        overflow: "auto",
+      }}
     >
-      <DimensionRefresher dimensions={dimensions}>
-        <OperatorIO
-          id={panelId}
-          schema={schema}
-          onChange={handlePanelStateChange}
-          data={data}
-          layout={{ height, width }}
-          onPathChange={handlePanelStatePathChange}
-          shouldClearUseKeyStores={false}
-        />
-      </DimensionRefresher>
+      <Box ref={dimensions.widthRef}>
+        <DimensionRefresher dimensions={dimensions}>
+          <OperatorIO
+            id={panelId}
+            schema={schema}
+            onChange={handlePanelStateChange}
+            data={data}
+            layout={{ height, width }}
+            onPathChange={handlePanelStatePathChange}
+            shouldClearUseKeyStores={false}
+          />
+        </DimensionRefresher>
+      </Box>
     </Box>
   );
 }
@@ -107,6 +114,7 @@ export function defineCustomPanel({
   on_change_selected,
   on_change_selected_labels,
   on_change_extended_selection,
+  on_change_group_slice,
   panel_name,
   panel_label,
 }) {
@@ -123,6 +131,7 @@ export function defineCustomPanel({
       onChangeSelected={on_change_selected}
       onChangeSelectedLabels={on_change_selected_labels}
       onChangeExtendedSelection={on_change_extended_selection}
+      onChangeGroupSlice={on_change_group_slice}
       dimensions={dimensions}
       panelName={panel_name}
       panelLabel={panel_label}

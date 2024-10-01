@@ -27,9 +27,9 @@ export const spaceSelector = selectorFamily({
     (spaceId: string) =>
     ({ get, set }, spaceState) => {
       const spaces = get(spacesAtom);
-      const updateSpaces = { ...spaces };
-      updateSpaces[spaceId] = spaceState as SpaceNodeJSON;
-      set(spacesAtom, updateSpaces);
+      const updatedSpaces = { ...spaces };
+      updatedSpaces[spaceId] = spaceState as SpaceNodeJSON;
+      set(spacesAtom, updatedSpaces);
     },
 });
 
@@ -58,15 +58,19 @@ export const panelStateSelector = selectorFamily({
   get:
     (params: PanelStateParameter) =>
     ({ get }) => {
-      const { panelId, local } = params;
-      const stateAtom = getStateAtom(local);
+      const { panelId, local, scope } = params;
+      const fallbackScope = get(panelIdToScopeAtom)[panelId];
+      const computedScope = scope ?? fallbackScope;
+      const stateAtom = getStateAtom(local, computedScope);
       return get(stateAtom).get(panelId);
     },
   set:
     (params: PanelStateParameter) =>
     ({ get, set }, newValue) => {
-      const { panelId, local } = params;
-      const stateAtom = getStateAtom(local);
+      const { panelId, local, scope } = params;
+      const fallbackScope = get(panelIdToScopeAtom)[panelId];
+      const computedScope = scope ?? fallbackScope;
+      const stateAtom = getStateAtom(local, computedScope);
       const newState = new Map(get(stateAtom));
       newState.set(panelId, newValue);
       set(stateAtom, newState);
@@ -125,6 +129,16 @@ export const savedWorkspacesAtom = atom({
   },
 });
 
-function getStateAtom(local?: boolean) {
-  return local ? panelsLocalStateAtom : panelsStateAtom;
+export const panelIdToScopeAtom = atom<PanelIdToScopeType>({
+  key: "panelIdToScopeAtom",
+  default: {},
+});
+
+function getStateAtom(local?: boolean, scope?: string) {
+  const nonGridScope = scope !== "grid";
+  return local || nonGridScope ? panelsLocalStateAtom : panelsStateAtom;
 }
+
+type PanelIdToScopeType = {
+  [panelId: string]: string;
+};

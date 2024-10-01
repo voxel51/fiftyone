@@ -12,8 +12,9 @@ import re
 from setuptools import setup
 
 INSTALL_REQUIRES = [
+    "fiftyone>2.0,<2.2",
     "python-jose>=3.3.0,<4",
-    "fiftyone~=2.0.1",
+    "strawberry-graphql==0.138.1",
 ]
 
 
@@ -47,7 +48,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-teams-app",
-    version="2.0.1",
+    version="2.1.0",
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -73,10 +74,9 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.9",
 )

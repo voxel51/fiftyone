@@ -12,7 +12,7 @@ python: app clean
 	@python -Im build
 
 docker: python
-	@docker build -t voxel51/fiftyone-teams .
+	@docker build -t local/fiftyone-teams .
 
 docker-export: docker
 	@docker save voxel51/fiftyone-teams:latest | gzip > fiftyone-teams.tar.gz

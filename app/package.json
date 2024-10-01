@@ -16,7 +16,6 @@
         "doc": "./gen-docs.sh",
         "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
         "start": "yarn workspace @fiftyone/app start",
-        "start-desktop": "yarn workspace FiftyOne start-desktop",
         "test": "yarn vitest run",
         "test-ui": "yarn vitest --ui --coverage",
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
@@ -43,7 +42,7 @@
         "typedoc": "^0.23.21",
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^5.2.12",
+        "vite": "^5.2.14",
         "vite-plugin-eslint": "^1.8.1",
         "vite-plugin-relay": "^2.0.0",
         "vitest": "^2.0.5"

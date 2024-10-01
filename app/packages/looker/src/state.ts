@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { BufferManager } from "@fiftyone/utilities";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
@@ -154,6 +154,7 @@ export interface KeypointSkeleton {
 interface BaseOptions {
   highlight: boolean;
   activePaths: string[];
+  fontSize?: number;
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
@@ -172,7 +173,6 @@ interface BaseOptions {
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
-  fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
   inSelectionMode: boolean;
@@ -378,11 +378,6 @@ export interface ImaVidState extends BaseState {
    */
   currentFrameNumber: number;
   /**
-   * current frame number is usually synced from the player's state,
-   * if this flag is true, then the sync happens in the opposite direction
-   */
-  isCurrentFrameNumberAuthoritative: boolean;
-  /**
    * total number of frames
    */
   totalFrames: number;
@@ -450,7 +445,6 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   },
   customizeColorSetting: [],
   smoothMasks: true,
-  fullscreen: false,
   zoomPad: 0.2,
   selected: false,
   inSelectionMode: false,

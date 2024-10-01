@@ -1,30 +1,31 @@
-import {
-  datasetFragment,
-  frameFieldsFragment,
+import type {
   frameFieldsFragment$key,
-  graphQLSyncFragmentAtomFamily,
-  readFragment,
-  sampleFieldsFragment,
   sampleFieldsFragment$key,
-  setSidebarGroups,
   setSidebarGroupsMutation,
-  sidebarGroupsFragment,
   sidebarGroupsFragment$key,
 } from "@fiftyone/relay";
 import {
+  datasetFragment,
+  frameFieldsFragment,
+  graphQLSyncFragmentAtomFamily,
+  readFragment,
+  sampleFieldsFragment,
+  setSidebarGroups,
+  sidebarGroupsFragment,
+} from "@fiftyone/relay";
+import type { Field, Schema, StrictField } from "@fiftyone/utilities";
+import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
-  Field,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
-  Schema,
-  StrictField,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { VariablesOf, commitMutation } from "react-relay";
+import type { VariablesOf } from "react-relay";
+import { commitMutation } from "react-relay";
 import {
   DefaultValue,
   atomFamily,
@@ -35,6 +36,7 @@ import {
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
@@ -52,7 +54,7 @@ import {
   isOfDocumentFieldList,
   pathIsShown,
 } from "./schema";
-import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
+import { isFieldVisibilityActive } from "./schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
@@ -236,7 +238,7 @@ export const resolveGroups = (
     paths: [],
   });
 
-  const present = new Set<string>(groups.map(({ paths }) => paths).flat());
+  const present = new Set<string>(groups.flatMap(({ paths }) => paths));
   const updater = groupUpdater(
     groups,
     buildSchema(sampleFields, frameFields),
@@ -262,22 +264,27 @@ export const resolveGroups = (
     true
   );
 
-  sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+  for (const { fields, name } of sampleFields
+    .filter(groupFilter)
+    .filter(({ name }) => !present.has(name))) {
     updater(
       name,
       fieldsMatcher(fields || [], () => true, present, `${name}.`)
     );
-  });
+  }
 
-  frameFields.length &&
-    frameFields.filter(groupFilter).forEach(({ fields, name }) => {
+  if (frameFields.length) {
+    for (const { fields, name } of frameFields
+      .filter(groupFilter)
+      .filter(({ name }) => !present.has(name))) {
       present.add(`frames.${name}`);
       updater(
         `frames.${name}`,
         fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
         true
       );
-    });
+    }
+  }
 
   updater("other", fieldsMatcher(sampleFields, unsupportedMatcher, present));
 
@@ -302,7 +309,7 @@ const groupUpdater = (
 
   return (name: string, paths: string[], expanded = false) => {
     if (paths.length === 0) return;
-    paths.forEach((path) => present.add(path));
+    for (const path of paths) present.add(path);
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
@@ -368,7 +375,7 @@ export const sidebarGroupsDefinition = (() => {
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
 >({
   key: "sidebarGroups",
   get:
@@ -392,7 +399,6 @@ export const sidebarGroups = selectorFamily<
 
       const groupNames = groups.map(({ name }) => name);
 
-      // if the data migration did not happen, we want to make sure the frontend still renders in the new format
       if (groupNames.includes("_label_tags")) {
         groups = groups.filter(({ name }) => name !== "_label_tags");
       }
@@ -434,12 +440,12 @@ export const sidebarGroups = selectorFamily<
     },
   set:
     ({ modal, persist = true }) =>
-    ({ set, get }, groups) => {
-      if (groups instanceof DefaultValue) return;
+    ({ set, get }, newGroups) => {
+      if (newGroups instanceof DefaultValue) return;
 
-      const allPaths = new Set(groups.map(({ paths }) => paths).flat());
+      const allPaths = new Set(newGroups.flatMap(({ paths }) => paths));
 
-      groups = groups.map(({ name, paths, expanded }) => {
+      const groups = newGroups.map(({ name, paths, expanded }) => {
         if (["tags"].includes(name)) {
           return { name, paths: [], expanded };
         }
@@ -470,14 +476,14 @@ export const sidebarGroups = selectorFamily<
           }
         };
 
-        paths.forEach((path) => {
+        for (const path of paths) {
           result.push(path);
           if (!current.includes(path)) {
-            return;
+            continue;
           }
 
           fill(path);
-        });
+        }
 
         fill();
 
@@ -521,57 +527,58 @@ export const sidebarEntries = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
+      const isFieldVisibility = get(isFieldVisibilityActive);
       const hidden =
         params.modal && !params.loading
           ? get(hiddenNoneGroups)
           : { groups: new Set<string>(), paths: new Set<string>() };
-      const entries = [
-        ...get(sidebarGroups(params))
-          .map(({ name, paths }) => {
-            // if field visibility is active, return a hidden group
-            if (isFieldVisibilityActive && paths?.length === 0) {
-              return {
-                kind: EntryKind.EMPTY,
-                shown: false,
-              };
-            }
-
-            const group: GroupEntry = {
-              name: name,
-              kind: EntryKind.GROUP,
+      const entries: SidebarEntry[] = get(sidebarGroups(params)).flatMap(
+        ({ name, paths }) => {
+          // if field visibility is active, return a hidden group
+          if (isFieldVisibility && paths?.length === 0) {
+            return {
+              group: name,
+              kind: EntryKind.EMPTY,
+              shown: false,
             };
+          }
 
-            const shown = get(
-              groupShown({
-                group: name,
-                modal: params.modal,
-                loading: params.loading,
-              })
-            );
+          const group: GroupEntry = {
+            name: name,
+            kind: EntryKind.GROUP,
+          };
 
-            return [
-              group,
-              {
-                kind: EntryKind.EMPTY,
-                shown: paths.length === 0 && shown,
-                group: name,
-              } as EmptyEntry,
-              ...paths.map<PathEntry>((path) => ({
-                path,
-                kind: EntryKind.PATH,
-                shown: shown && !hidden.paths.has(path),
-              })),
-            ];
-          })
-          .flat(),
-      ];
+          const shown = get(
+            groupShown({
+              group: name,
+              modal: params.modal,
+              loading: params.loading,
+            })
+          );
+
+          return [
+            group,
+            {
+              kind: EntryKind.EMPTY,
+              shown: paths.length === 0 && shown,
+              group: name,
+            } as EmptyEntry,
+            ...paths.map<PathEntry>((path) => ({
+              path,
+              kind: EntryKind.PATH,
+              shown: shown && !hidden.paths.has(path),
+            })),
+          ];
+        }
+      );
 
       // switch position of labelTag and sampleTag
       const labelTagId = entries.findIndex(
-        (entry) => entry?.path === "_label_tags"
+        (entry) => entry.kind === EntryKind.PATH && entry.path === "_label_tags"
       );
-      const sampleTagId = entries.findIndex((entry) => entry?.path === "tags");
+      const sampleTagId = entries.findIndex(
+        (entry) => entry.kind === EntryKind.PATH && entry.path === "tags"
+      );
       [entries[labelTagId], entries[sampleTagId]] = [
         entries[sampleTagId],
         entries[labelTagId],
@@ -592,20 +599,18 @@ export const sidebarEntries = selectorFamily<
         sidebarGroups(params),
         value.reduce((result, entry) => {
           if (entry.kind === EntryKind.GROUP) {
-            return [
-              ...result,
-              {
-                name: entry.name,
-                expanded: get(
-                  groupShown({
-                    modal: params.modal,
-                    group: entry.name,
-                    loading: params.loading,
-                  })
-                ),
-                paths: [],
-              },
-            ];
+            result.push({
+              name: entry.name,
+              expanded: get(
+                groupShown({
+                  modal: params.modal,
+                  group: entry.name,
+                  loading: params.loading,
+                })
+              ),
+              paths: [],
+            });
+            return result;
           }
 
           if (entry.kind !== EntryKind.PATH) {
@@ -655,9 +660,9 @@ export const disabledFrameFilterPaths = selector<Set<string>>({
     const disableFrames = Boolean(get(disableFrameFiltering));
     const frameFields = get(atoms.frameFields);
     if (disableFrames) {
-      frameFields.forEach((frame) => {
+      for (const frame of frameFields) {
         paths.add(`frames.${frame.path}`);
-      });
+      }
     }
     return new Set(paths);
   },
@@ -672,8 +677,9 @@ export const fullyDisabledPaths = selector({
   get: ({ get }) => {
     const sampleFields = get(atoms.sampleFields);
     const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
-    sampleFields.filter(groupFilter).forEach((parent) => {
-      fieldsMatcher(
+
+    for (const parent of sampleFields.filter(groupFilter)) {
+      for (const path of fieldsMatcher(
         parent.fields || [],
         (field) => {
           if (field.ftype === LIST_FIELD) {
@@ -691,16 +697,23 @@ export const fullyDisabledPaths = selector({
         },
         undefined,
         `${parent.name}.`
-      ).forEach((path) => paths.add(path));
-    });
+      )) {
+        paths.add(path);
+      }
+    }
 
     const frameFields = get(atoms.frameFields);
-    fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
-      (path) => paths.add(path)
-    );
+    for (const path of fieldsMatcher(
+      frameFields,
+      primitivesMatcher,
+      undefined,
+      "frames."
+    )) {
+      paths.add(path);
+    }
 
-    frameFields.filter(groupFilter).forEach((parent) => {
-      fieldsMatcher(
+    for (const parent of frameFields.filter(groupFilter)) {
+      for (const path of fieldsMatcher(
         parent.fields || [],
         (field) => {
           if (parent.ftype === LIST_FIELD) {
@@ -715,8 +728,10 @@ export const fullyDisabledPaths = selector({
         },
         undefined,
         `frames.${parent.name}.`
-      ).forEach((path) => paths.add(path));
-    });
+      )) {
+        paths.add(path);
+      }
+    }
 
     return paths;
   },
@@ -752,28 +767,28 @@ const collapsedPaths = selector<Set<string>>({
     let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
     paths = [...paths, ...get(fieldPaths({ ftype: LIST_FIELD }))];
 
-    get(
+    for (const { fields: fieldsData, name: prefix } of get(
       fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
-    ).forEach(({ fields, name: prefix }) => {
-      Object.values(fields)
-        .filter(
-          ({ ftype, subfield }) =>
-            ftype === DICT_FIELD ||
-            subfield === DICT_FIELD ||
-            (ftype === LIST_FIELD && !subfield)
-        )
-        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
-    });
-
-    get(fields({ space: State.SPACE.FRAME })).forEach(
-      ({ name, embeddedDocType }) => {
-        if (LABELS.includes(embeddedDocType)) {
-          return;
-        }
-
-        paths.push(`frames.${name}`);
+    )) {
+      for (const { name } of Object.values(fieldsData).filter(
+        ({ ftype, subfield }) =>
+          ftype === DICT_FIELD ||
+          subfield === DICT_FIELD ||
+          (ftype === LIST_FIELD && !subfield)
+      )) {
+        paths.push(`${prefix}.${name}`);
       }
-    );
+    }
+
+    for (const { name, embeddedDocType } of get(
+      fields({ space: State.SPACE.FRAME })
+    )) {
+      if (LABELS.includes(embeddedDocType)) {
+        continue;
+      }
+
+      paths.push(`frames.${name}`);
+    }
 
     return new Set(paths);
   },
@@ -840,7 +855,7 @@ export const groupIsEmpty = selectorFamily<
     ({ get }) => {
       return Boolean(
         get(sidebarGroup({ ...params, loading: true, filtered: false }))
-          .length == 0
+          .length === 0
       );
     },
   cachePolicy_UNSTABLE: {
@@ -893,6 +908,11 @@ export const textFilter = atomFamily<string, boolean>({
 export const sidebarVisible = atomFamily<boolean, boolean>({
   key: "sidebarVisible",
   default: true,
+  effects: (isModal) => [
+    getBrowserStorageEffectForKey(`sidebarVisible-modal-${isModal}`, {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const sidebarWidth = atomFamily<number, boolean>({
@@ -924,9 +944,9 @@ export const hiddenNoneGroups = selector({
       slices = Array.from(get(active3dSlices) || []).sort();
     }
 
-    const items = groups
-      .map(({ name: group, paths }) => paths.map((path) => ({ group, path })))
-      .flat();
+    const items = groups.flatMap(({ name: group, paths }) =>
+      paths.map((path) => ({ group, path }))
+    );
 
     const result = {
       groups: new Set(groups.map(({ name }) => name)),
@@ -956,11 +976,13 @@ export const hiddenNoneGroups = selector({
 });
 
 export const pullSidebarValue = (
-  field: Pick<Field, "dbField" | "fields">,
+  inputField: Pick<Field, "dbField" | "fields">,
   keys: string[],
-  data: null | object | undefined,
+  input: null | object | undefined,
   isList: boolean
 ) => {
+  let data = input;
+  let field = inputField;
   if (isList) {
     data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
   } else {
