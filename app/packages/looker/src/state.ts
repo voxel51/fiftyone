@@ -175,6 +175,7 @@ interface BaseOptions {
   smoothMasks: boolean;
   zoomPad: number;
   selected: boolean;
+  shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
@@ -208,7 +209,6 @@ export interface BaseConfig {
     id: string;
     name: string;
   };
-  shouldHandleKeyEvents?: boolean;
 }
 
 export interface FrameConfig extends BaseConfig {

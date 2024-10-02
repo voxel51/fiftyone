@@ -8,7 +8,7 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo, useState } from "react";
-import useLooker from "./useLooker";
+import useLooker from "./use-looker";
 
 interface VideoLookerReactProps {
   sample: fos.ModalSample;
@@ -71,8 +71,7 @@ const TimelineController = ({
     optOutOfAnimation: true,
   });
 
-  const { playHeadState, config, pause, play, setSpeed } =
-    useTimeline(timelineName);
+  const { pause, play } = useTimeline(timelineName);
 
   fos.useEventHandler(looker, "pause", pause);
   fos.useEventHandler(looker, "play", play);

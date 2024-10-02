@@ -1,13 +1,20 @@
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue } from "recoil";
+import { selector, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import {
-  useClearSelectedLabels,
-  useLookerOptionsUpdate,
-  useShowOverlays,
-} from "./ModalLooker";
+import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
+import { useLookerOptionsUpdate } from "./hooks";
+import { shortcutToHelpItems } from "./utils";
+
+export const hoveredSampleId = selector<string>({
+  key: "hoveredSampleId",
+  get: ({ get }) => {
+    return get(fos.hoveredSample)?._id;
+  },
+});
+
+const CLOSE = "close";
 
 function useLooker<L extends fos.Lookers>({
   sample,
@@ -57,12 +64,43 @@ function useLooker<L extends fos.Lookers>({
   }, []);
 
   useEffect(() => {
+    looker.attach(id);
+  }, [looker, id]);
+
+  useEffect(() => {
     return () => looker?.destroy();
   }, [looker]);
 
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+
+  fos.useEventHandler(
+    looker,
+    "panels",
+    async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      if (showJSON) {
+        jsonPanel[showJSON](sample);
+      }
+      if (showHelp) {
+        if (showHelp === CLOSE) {
+          helpPanel.close();
+        } else {
+          helpPanel[showHelp](shortcutToHelpItems(SHORTCUTS));
+        }
+      }
+
+      updateLookerOptions({}, (updatedOptions) =>
+        looker.updateOptions(updatedOptions)
+      );
+    }
+  );
+  const hoveredId = useRecoilValue(hoveredSampleId);
+
   useEffect(() => {
-    looker.attach(id);
-  }, [looker, id]);
+    looker.updateOptions({
+      shouldHandleKeyEvents: sample.sample._id === hoveredId,
+    });
+  }, [hoveredId, sample, looker]);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }

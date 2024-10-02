@@ -3,8 +3,10 @@
  */
 
 import { SELECTION_TEXT } from "../../constants";
-import { BaseState, Control, ControlEventKeyType } from "../../state";
-import { BaseElement, Events } from "../base";
+import type { BaseState, Control } from "../../state";
+import { ControlEventKeyType } from "../../state";
+import type { Events } from "../base";
+import { BaseElement } from "../base";
 
 import { looker, lookerError, lookerHighlight } from "./looker.module.css";
 
@@ -27,7 +29,8 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           const {
             SHORTCUTS,
             error,
-            config: { shouldHandleKeyEvents },
+
+            options: { shouldHandleKeyEvents },
           } = state;
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
@@ -47,7 +50,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS, error, config: { shouldHandleKeyEvents } }) => {
+        update(({ SHORTCUTS, error, options: { shouldHandleKeyEvents } }) => {
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
 

@@ -2,8 +2,6 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { setFrameNumberAtom } from "@fiftyone/playback";
-import { getDefaultStore } from "jotai";
 import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
@@ -459,7 +457,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               duration,
               playing,
               options: { loop },
-              config: { thumbnail, frameRate, support, sampleId },
+              config: { frameRate, support },
               lockedToSupport,
             }) => {
               let newFrameNumber = getFrameNumber(time, duration, frameRate);
@@ -474,12 +472,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               } else {
                 this.frameNumber = newFrameNumber;
               }
-
-              !thumbnail &&
-                getDefaultStore().set(setFrameNumberAtom, {
-                  name: `timeline-${sampleId}`,
-                  newFrameNumber,
-                });
 
               return {
                 frameNumber: newFrameNumber,

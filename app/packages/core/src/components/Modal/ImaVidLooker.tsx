@@ -17,13 +17,9 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
-import {
-  shortcutToHelpItems,
-  useClearSelectedLabels,
-  useLookerOptionsUpdate,
-  useShowOverlays,
-} from "./ModalLooker";
+import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;

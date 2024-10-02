@@ -132,6 +132,7 @@ export default <T extends AbstractLooker<BaseState>>(
           mediaField,
           thumbnail,
           view,
+          shouldHandleKeyEvents: isModal,
         };
 
         let sampleMediaFilePath = urls[mediaField];
