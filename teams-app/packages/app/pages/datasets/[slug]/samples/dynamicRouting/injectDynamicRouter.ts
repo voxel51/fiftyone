@@ -1,13 +1,13 @@
-import { PageQuery, datasetQuery } from '@fiftyone/relay';
-import { useCurrentDataset } from '@fiftyone/teams-state';
-import { toSlug } from '@fiftyone/utilities';
-import { NextRouter, useRouter } from 'next/router';
-import { useMemo } from 'react';
-import glueHistory from './glueHistory';
-import type { Page } from './loadPageQuery';
-import type { DatasetData } from './transition';
-import usePage from './usePage';
-import useSetters from './useSetters/useSetters';
+import { PageQuery, datasetQuery } from "@fiftyone/relay";
+import { useCurrentDataset } from "@fiftyone/teams-state";
+import { toSlug } from "@fiftyone/utilities";
+import { NextRouter, useRouter } from "next/router";
+import { useMemo } from "react";
+import glueHistory from "./glueHistory";
+import type { Page } from "./loadPageQuery";
+import type { DatasetData } from "./transition";
+import usePage from "./usePage";
+import useSetters from "./useSetters/useSetters";
 
 function injectDynamicRouter() {
   const router: { ref?: NextRouter } = { ref: undefined };
@@ -39,21 +39,21 @@ function injectDynamicRouter() {
     const nextRouter = useRouter();
     const slug = nextRouter.query.slug as string;
     nextRouter.beforePopState(({ as }) => {
-      if (as.split('?')[0] === router.ref?.asPath.split('?')[0]) return false;
+      if (as.split("?")[0] === router.ref?.asPath.split("?")[0]) return false;
       return true;
     });
     router.ref = nextRouter;
 
     const current = useCurrentDataset(slug);
     if (!current) {
-      throw new Error('no current dataset');
+      throw new Error("no current dataset");
     }
 
     const dataset = useMemo(() => {
       return {
         datasetId: current.id,
         datasetName: current.name,
-        datasetSlug: slug
+        datasetSlug: slug,
       };
     }, [current.id, current.name, slug]);
 
@@ -74,8 +74,8 @@ function injectDynamicRouter() {
       state: {
         page,
         setters,
-        subscribe
-      }
+        subscribe,
+      },
     };
   };
 }

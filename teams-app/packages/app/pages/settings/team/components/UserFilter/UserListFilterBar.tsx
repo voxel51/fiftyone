@@ -1,7 +1,7 @@
-import Box from '@mui/material/Box';
-import UserSort from './UserSort';
-import UserSearchBar from './UserSearchBar';
-import LicenseAudit from '../../users/components/LicenseAudit';
+import Box from "@mui/material/Box";
+import UserSort from "./UserSort";
+import UserSearchBar from "./UserSearchBar";
+import LicenseAudit from "../../users/components/LicenseAudit";
 
 export default function UserListFilterBar() {
   return (

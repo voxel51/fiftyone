@@ -1,5 +1,5 @@
-import { Avatar, AvatarProps } from '@fiftyone/teams-components';
-import { getInitials } from '../utils';
+import { Avatar, AvatarProps } from "@fiftyone/teams-components";
+import { getInitials } from "../utils";
 
 export type UserCardProps = AvatarProps & {
   name: string;
@@ -7,7 +7,7 @@ export type UserCardProps = AvatarProps & {
   src?: string;
   detailed?: boolean;
   compact?: boolean;
-  color?: 'primary' | 'secondary';
+  color?: "primary" | "secondary";
 };
 
 export default function UserCard({
@@ -17,7 +17,7 @@ export default function UserCard({
   detailed,
   ...props
 }: UserCardProps) {
-  const initial = getInitials(name?.toLocaleUpperCase() ?? '');
+  const initial = getInitials(name?.toLocaleUpperCase() ?? "");
   return (
     <Avatar
       src={src}

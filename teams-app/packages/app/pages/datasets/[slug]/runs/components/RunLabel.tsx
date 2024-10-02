@@ -1,16 +1,16 @@
-import { useMutation } from '@fiftyone/hooks';
-import { Box, TextInput } from '@fiftyone/teams-components';
+import { useMutation } from "@fiftyone/hooks";
+import { Box, TextInput } from "@fiftyone/teams-components";
 import {
   runsRenameRunMutation,
-  runsRenameRunMutationT
-} from '@fiftyone/teams-state';
+  runsRenameRunMutationT,
+} from "@fiftyone/teams-state";
 import {
   DEFAULT_ANIMATION_DURATION,
-  DEFAULT_SECONDARY_ANIMATION_DURATION
-} from '@fiftyone/teams-state/src/constants';
-import { Cancel, Edit, Save } from '@mui/icons-material';
-import { CircularProgress, IconButton, Stack, Typography } from '@mui/material';
-import { useCallback, useEffect, useRef, useState } from 'react';
+  DEFAULT_SECONDARY_ANIMATION_DURATION,
+} from "@fiftyone/teams-state/src/constants";
+import { Cancel, Edit, Save } from "@mui/icons-material";
+import { CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function RunLabel(props: RunLabelPropsType) {
   const { id, label, isHovering, refresh, pinned } = props;
@@ -29,14 +29,14 @@ export default function RunLabel(props: RunLabelPropsType) {
     rename({
       variables: {
         operationId: id,
-        label: labelInputRef.current?.value as string
+        label: labelInputRef.current?.value as string,
       },
       onSuccess() {
         setEditing(false);
         if (refresh) refresh();
       },
-      successMessage: 'Successfully renamed the run',
-      errorMessage: 'Failed to rename the run'
+      successMessage: "Successfully renamed the run",
+      errorMessage: "Failed to rename the run",
     });
   }, [rename, id, refresh]);
 
@@ -50,10 +50,10 @@ export default function RunLabel(props: RunLabelPropsType) {
           e.stopPropagation();
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') {
+          if (e.key === "Escape") {
             setEditing(false);
           }
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             handleSave();
           }
         }}
@@ -79,7 +79,7 @@ export default function RunLabel(props: RunLabelPropsType) {
                 <Save />
               </IconButton>
             </Stack>
-          )
+          ),
         }}
       />
     );
@@ -92,12 +92,12 @@ export default function RunLabel(props: RunLabelPropsType) {
       <Typography variant="body2">{label}</Typography>
       <Box
         sx={{
-          visibility: !isHovering ? 'hidden' : 'visible',
-          opacity: !isHovering ? '0' : '1',
+          visibility: !isHovering ? "hidden" : "visible",
+          opacity: !isHovering ? "0" : "1",
           transition:
             `visibility 0s, opacity ${duration}s linear, margin` +
             ` ${durationSecondary}s linear`,
-          marginLeft: pinned && !isHovering ? '-24px!important' : undefined
+          marginLeft: pinned && !isHovering ? "-24px!important" : undefined,
         }}
       >
         <IconButton

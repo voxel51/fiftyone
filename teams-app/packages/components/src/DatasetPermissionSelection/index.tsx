@@ -1,21 +1,21 @@
-import { Selection } from '@fiftyone/teams-components';
+import { Selection } from "@fiftyone/teams-components";
 import {
   DATASET_PERMISSIONS,
-  DATASET_PERMISSION_NO_ACCESS_ID
-} from '@fiftyone/teams-state/src/constants';
-import { SelectProps } from '@mui/material';
-import { merge } from 'lodash';
-import { SelectionProps } from '../Selection';
+  DATASET_PERMISSION_NO_ACCESS_ID,
+} from "@fiftyone/teams-state/src/constants";
+import { SelectProps } from "@mui/material";
+import { merge } from "lodash";
+import { SelectionProps } from "../Selection";
 
-type Permission = 'NO_ACCESS' | 'VIEW' | 'TAG' | 'EDIT' | 'MANAGE';
+type Permission = "NO_ACCESS" | "VIEW" | "TAG" | "EDIT" | "MANAGE";
 
 type DisabledPermission = {
   permission: Permission;
   reason?: string;
 };
 
-export type DatasetPermissionSelectionProps = Omit<SelectionProps, 'items'> & {
-  items?: SelectionProps['items'];
+export type DatasetPermissionSelectionProps = Omit<SelectionProps, "items"> & {
+  items?: SelectionProps["items"];
   defaultValue: Permission;
   value?: Permission;
   onChange?: (permission: Permission) => void;
@@ -42,7 +42,7 @@ export default function DatasetPermissionSelection({
   const disabledPermissionsMap = {};
   for (const disabledPermission of disabledPermissions) {
     disabledPermissionsMap[disabledPermission.permission] =
-      disabledPermission.reason || '';
+      disabledPermission.reason || "";
   }
 
   const items = [];
@@ -53,7 +53,7 @@ export default function DatasetPermissionSelection({
       ...permissionProps,
       id,
       disabled: disabledPermissionsMap.hasOwnProperty(id),
-      disabledInfo: disabledPermissionsMap[id]
+      disabledInfo: disabledPermissionsMap[id],
     });
   }
 
@@ -63,7 +63,7 @@ export default function DatasetPermissionSelection({
       defaultValue={defaultValue}
       value={value}
       onChange={onChange}
-      selectProps={merge({ sx: { width: '9rem' } }, selectProps)}
+      selectProps={merge({ sx: { width: "9rem" } }, selectProps)}
       disabled={disabled}
       readOnly={readOnly}
       menuSize="large"

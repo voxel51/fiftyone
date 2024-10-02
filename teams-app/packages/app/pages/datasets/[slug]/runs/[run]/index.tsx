@@ -1,43 +1,43 @@
-import { withPermissions } from '@fiftyone/hooks';
-import { useBooleanEnv } from '@fiftyone/hooks/src/common/useEnv';
+import { withPermissions } from "@fiftyone/hooks";
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 import {
   ExecutionContext,
-  resolveRemoteType
-} from '@fiftyone/operators/src/operators';
-import { Property } from '@fiftyone/operators/src/types';
+  resolveRemoteType,
+} from "@fiftyone/operators/src/operators";
+import { Property } from "@fiftyone/operators/src/types";
 import {
   AutoRefresh,
   BackButton,
   Box,
   CodeBlock,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   VIEW_DATASET,
   runsItemQuery,
-  runsItemQueryT
-} from '@fiftyone/teams-state';
+  runsItemQueryT,
+} from "@fiftyone/teams-state";
 import {
   AUTO_REFRESH_INTERVAL_IN_SECONDS,
   ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY,
   FIFTYONE_TEAMS_PROXY_ENDPOINT,
-  OPERATOR_RUN_STATES
-} from '@fiftyone/teams-state/src/constants';
-import * as fou from '@fiftyone/utilities';
-import { Link, Stack, Tab, TabProps, Tabs, Typography } from '@mui/material';
-import withRelay from 'lib/withRelay';
-import { capitalize, get, omit } from 'lodash';
-import { useEffect, useState } from 'react';
-import { usePreloadedQuery } from 'react-relay';
-import DatasetNavigation from '../../components/navigation';
-import RunActions from '../components/RunActions';
-import RunLabel from '../components/RunLabel';
-import RunStatus from '../components/RunStatus';
-import RunsPin from '../components/RunsPin';
-import formatCtx from '../utils/formatCtx';
-import getTimestamp from '../utils/getTimestamp';
-import RunIO, { IOType } from './components/RunIO';
-import RunView from './components/RunView';
+  OPERATOR_RUN_STATES,
+} from "@fiftyone/teams-state/src/constants";
+import * as fou from "@fiftyone/utilities";
+import { Link, Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
+import withRelay from "lib/withRelay";
+import { capitalize, get, omit } from "lodash";
+import { useEffect, useState } from "react";
+import { usePreloadedQuery } from "react-relay";
+import DatasetNavigation from "../../components/navigation";
+import RunActions from "../components/RunActions";
+import RunLabel from "../components/RunLabel";
+import RunStatus from "../components/RunStatus";
+import RunsPin from "../components/RunsPin";
+import formatCtx from "../utils/formatCtx";
+import getTimestamp from "../utils/getTimestamp";
+import RunIO, { IOType } from "./components/RunIO";
+import RunView from "./components/RunView";
 
 const { QUEUED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -49,7 +49,7 @@ function Run(props) {
   );
   const runData = result.delegatedOperation;
   const timestamp = getTimestamp(runData);
-  const [tab, setTab] = useState('inputs');
+  const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
   const [errors, setErrors] = useState<{ inputs?: Error; outputs?: Error }>({});
 
@@ -66,13 +66,13 @@ function Run(props) {
     id,
     pinned,
     runLink,
-    metadata
+    metadata,
   } = runData;
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
   const { inputs: inputError, outputs: outputError } = errors;
-  const runResultData = get(runResult, 'result');
-  const runErrorData = get(runResult, 'error');
+  const runResultData = get(runResult, "result");
+  const runErrorData = get(runResult, "error");
   const showProgress =
     status !== null && runState === OPERATOR_RUN_STATES.RUNNING;
   const showOrchestrators = useBooleanEnv(
@@ -81,7 +81,7 @@ function Run(props) {
   const { inputs_schema, outputs_schema } = metadata || {};
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       fou.setFetchFunction(
         window.location.origin,
         {},
@@ -89,7 +89,7 @@ function Run(props) {
       );
     }
     async function fetchIO(target: IOType) {
-      setSchemas((schemas) => ({ ...schemas, [target]: 'loading' }));
+      setSchemas((schemas) => ({ ...schemas, [target]: "loading" }));
       const ctx = new ExecutionContext(params, formatCtx(ctxData));
       try {
         const io = await resolveRemoteType(operator_uri, ctx, target);
@@ -104,13 +104,13 @@ function Run(props) {
       const inputs = Property.fromJSON(inputs_schema).toProps();
       setSchemas((schemas) => ({ ...schemas, inputs }));
     } catch (e) {
-      fetchIO('inputs');
+      fetchIO("inputs");
     }
     try {
       const outputs = Property.fromJSON(outputs_schema).toProps();
       setSchemas((schemas) => ({ ...schemas, outputs }));
     } catch (e) {
-      fetchIO('outputs');
+      fetchIO("outputs");
     }
   }, []);
 
@@ -135,9 +135,9 @@ function Run(props) {
                 isHovering
                 pinProps={{
                   styles: {
-                    pr: '5px',
-                    pt: '3px'
-                  }
+                    pr: "5px",
+                    pt: "3px",
+                  },
                 }}
               />
               <RunStatus
@@ -148,7 +148,7 @@ function Run(props) {
                 <AutoRefresh
                   refresh={refresh}
                   title={
-                    'Auto refresh progress every' +
+                    "Auto refresh progress every" +
                     ` ${AUTO_REFRESH_INTERVAL_IN_SECONDS} seconds`
                   }
                   persistanceKey="auto_refresh_run_status"
@@ -165,18 +165,18 @@ function Run(props) {
                 <Typography color="secondary">Run by {runByName}</Typography>
               )}
               <Typography color="secondary">
-                {runState === RUNNING ? 'Started' : capitalize(runState)}{' '}
+                {runState === RUNNING ? "Started" : capitalize(runState)}{" "}
                 <Timestamp timestamp={timestamp} />
               </Typography>
               {runState !== QUEUED && (
                 <Typography color="text.tertiary">
-                  Queued{' '}
+                  Queued{" "}
                   <Timestamp timestamp={queuedAt} color="text.tertiary" />
                 </Typography>
               )}
               {EXITED_STATES.includes(runState) && (
                 <Typography color="text.tertiary">
-                  Started{' '}
+                  Started{" "}
                   <Timestamp timestamp={startedAt} color="text.tertiary" />
                 </Typography>
               )}
@@ -187,17 +187,17 @@ function Run(props) {
                 target="_blank"
                 color="secondary"
                 sx={{
-                  maxWidth: '80vw',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis'
+                  maxWidth: "80vw",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
                 }}
               >
                 {runLink}
               </Link>
             )}
           </Stack>
-          <Box style={{ marginLeft: 'auto' }}>
+          <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />
           </Box>
         </Stack>
@@ -213,7 +213,7 @@ function Run(props) {
         </Tabs>
       </Box>
       <Box p={2}>
-        {tab === 'inputs' && (
+        {tab === "inputs" && (
           <RunIO
             property={inputs}
             data={params}
@@ -221,7 +221,7 @@ function Run(props) {
             type="inputs"
           />
         )}
-        {tab === 'outputs' && (
+        {tab === "outputs" && (
           <RunIO
             property={outputs}
             data={runResultData}
@@ -229,10 +229,10 @@ function Run(props) {
             type="outputs"
           />
         )}
-        {tab === 'errors' && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === 'view' && (
+        {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
+        {tab === "view" && (
           <RunView
-            view={omit(ctxData, ['operator_uri', 'params', 'dataset_name'])}
+            view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}
           />
         )}
       </Box>
@@ -241,16 +241,16 @@ function Run(props) {
 }
 
 export default withRelay(
-  withPermissions(Run, [VIEW_DATASET], 'dataset'),
+  withPermissions(Run, [VIEW_DATASET], "dataset"),
   runsItemQuery,
   { getLayoutProps: () => ({ topNavProps: { noBorder: true } }) }
 );
 
-const TAB_SX: TabProps['sx'] = {
-  textTransform: 'none',
-  minWidth: 'auto',
+const TAB_SX: TabProps["sx"] = {
+  textTransform: "none",
+  minWidth: "auto",
   px: 0,
-  ml: 4
+  ml: 4,
 };
 
 const EXITED_STATES = [COMPLETED, FAILED];

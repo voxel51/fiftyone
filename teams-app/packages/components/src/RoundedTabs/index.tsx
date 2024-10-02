@@ -1,4 +1,4 @@
-import { Box, BoxProps, Typography } from '@mui/material';
+import { Box, BoxProps, Typography } from "@mui/material";
 
 type RoundedTabsProps = {
   tabs: Array<{ id: string; label: string; sx?: BoxProps }>;
@@ -9,22 +9,22 @@ type RoundedTabsProps = {
 export default function RoundedTabs({
   tabs,
   selected,
-  onChange
+  onChange,
 }: RoundedTabsProps) {
   return (
     <Box
       sx={{
-        display: 'flex',
+        display: "flex",
         background: (theme) => theme.palette.background.secondary,
         borderRadius: 1,
-        p: 0.5
+        p: 0.5,
       }}
     >
       {tabs.map(({ label, id, sx = {} }, i) => {
         const active = selected === id;
         return (
           <Box
-            className={active ? 'active' : ''}
+            className={active ? "active" : ""}
             key={id}
             onClick={() => {
               onChange(id);
@@ -35,17 +35,17 @@ export default function RoundedTabs({
               py: 1,
               px: 2,
               mr: i === tabs.length - 1 ? 0 : 0.5,
-              cursor: 'pointer',
-              textAlign: 'center',
+              cursor: "pointer",
+              textAlign: "center",
               color: (theme) => theme.palette.text.secondary,
-              '&:hover,&.active': {
-                background: (theme) => theme.palette.background.secondaryHover
+              "&:hover,&.active": {
+                background: (theme) => theme.palette.background.secondaryHover,
               },
-              '&.active': {
+              "&.active": {
                 color: (theme) => theme.palette.text.primary,
-                boxShadow: (theme) => theme.voxelShadows.sm
+                boxShadow: (theme) => theme.voxelShadows.sm,
               },
-              ...sx
+              ...sx,
             }}
           >
             <Typography variant="body1" color="inherit">

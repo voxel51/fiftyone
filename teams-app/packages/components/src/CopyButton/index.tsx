@@ -1,6 +1,6 @@
-import { ContentCopy, DoneOutlined } from '@mui/icons-material';
-import { Button, ButtonProps } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { ContentCopy, DoneOutlined } from "@mui/icons-material";
+import { Button, ButtonProps } from "@mui/material";
+import { useEffect, useState } from "react";
 
 type CopyButtonProps = ButtonProps & {
   text: string;
@@ -8,8 +8,8 @@ type CopyButtonProps = ButtonProps & {
 };
 
 export default function CopyButton({
-  text = '',
-  label = 'Copy',
+  text = "",
+  label = "Copy",
   ...props
 }: CopyButtonProps) {
   const [copied, setCopied] = useState<boolean>(false);
@@ -38,7 +38,7 @@ export default function CopyButton({
       }}
       {...props}
     >
-      {copied ? 'Copied!' : label}
+      {copied ? "Copied!" : label}
     </Button>
   );
 }

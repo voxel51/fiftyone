@@ -1,8 +1,8 @@
-import { useCurrentDatasetPermission, useMutation } from '@fiftyone/hooks';
-import { Pin } from '@fiftyone/teams-components';
-import { CAN_PIN_UNPIN_RUN, runsPinMutation } from '@fiftyone/teams-state';
-import useRefresher, { PINNED_RUNS_REFRESHER_ID } from '../utils/useRefresher';
-import { PinPropsType } from '@fiftyone/teams-components/src/Pin';
+import { useCurrentDatasetPermission, useMutation } from "@fiftyone/hooks";
+import { Pin } from "@fiftyone/teams-components";
+import { CAN_PIN_UNPIN_RUN, runsPinMutation } from "@fiftyone/teams-state";
+import useRefresher, { PINNED_RUNS_REFRESHER_ID } from "../utils/useRefresher";
+import { PinPropsType } from "@fiftyone/teams-components/src/Pin";
 
 export default function RunsPin(props: RunsPinPropsType) {
   const { id, pinned, isHovering, onToggle, pinProps = {} } = props;
@@ -19,17 +19,17 @@ export default function RunsPin(props: RunsPinPropsType) {
       handleTogglePin={(e, pinned) => {
         togglePin({
           variables: { operationId: id, pinned },
-          successMessage: `Successfully ${pinned ? 'pinned' : 'unpinned'} run`,
-          errorMessage: 'Failed to pin run',
+          successMessage: `Successfully ${pinned ? "pinned" : "unpinned"} run`,
+          errorMessage: "Failed to pin run",
           onSuccess: () => {
             if (onToggle) onToggle();
             if (refresh) refresh();
-          }
+          },
         });
       }}
       loading={togglingPin}
       resource="run"
-      styles={{ cursor: 'pointer' }}
+      styles={{ cursor: "pointer" }}
       {...pinProps}
     />
   );

@@ -1,26 +1,26 @@
-import { useUserRole } from '@fiftyone/hooks';
-import { Box, UserCard } from '@fiftyone/teams-components';
+import { useUserRole } from "@fiftyone/hooks";
+import { Box, UserCard } from "@fiftyone/teams-components";
 import {
   User,
   manageDatasetUsersSuggestion,
-  manageDatasetUsersSuggestionTermState
-} from '@fiftyone/teams-state';
-import { manageDatasetUsersSuggestionQuery$data } from '@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetUsersSuggestionQuery.graphql';
+  manageDatasetUsersSuggestionTermState,
+} from "@fiftyone/teams-state";
+import { manageDatasetUsersSuggestionQuery$data } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetUsersSuggestionQuery.graphql";
 import {
   DEBOUNCE_TIME,
-  MIN_CHARACTER_TO_SEARCH
-} from '@fiftyone/teams-state/src/constants';
+  MIN_CHARACTER_TO_SEARCH,
+} from "@fiftyone/teams-state/src/constants";
 import {
   Autocomplete,
   CircularProgress,
   TextField,
-  Typography
-} from '@mui/material';
-import { capitalize, debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRecoilState, useRecoilValueLoadable } from 'recoil';
+  Typography,
+} from "@mui/material";
+import { capitalize, debounce } from "lodash";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRecoilState, useRecoilValueLoadable } from "recoil";
 
-type UsersType = manageDatasetUsersSuggestionQuery$data['users'];
+type UsersType = manageDatasetUsersSuggestionQuery$data["users"];
 interface Props {
   onSelectUser: (user: User) => any;
   user: null | User;
@@ -29,10 +29,10 @@ interface Props {
 export default function UserInputSuggestion({
   user,
   onSelectUser,
-  onlyExistingUsers = false
+  onlyExistingUsers = false,
 }: Props) {
   const [term, setTerm] = useRecoilState(manageDatasetUsersSuggestionTermState);
-  const [termLocal, setTermLocal] = useState('');
+  const [termLocal, setTermLocal] = useState("");
   const [users, setUsers] = useState<UsersType>([]);
   const [showNotice, setShowNotice] = useState(false);
   const { canInvite } = useUserRole();
@@ -52,8 +52,8 @@ export default function UserInputSuggestion({
   }, [termLocal, isTermEmail, contents]);
 
   useEffect(() => {
-    if (state === 'hasValue' || !term) setUsers(options);
-    if (state !== 'loading' || !term) {
+    if (state === "hasValue" || !term) setUsers(options);
+    if (state !== "loading" || !term) {
       setShowNotice(
         !!term && options.length === 0 && !isTextEmail(term, canInvite)
       );
@@ -91,8 +91,8 @@ export default function UserInputSuggestion({
         if (user?.id || canInvite) {
           onSelectUser(user);
         }
-        setTerm('');
-        setTermLocal('');
+        setTerm("");
+        setTermLocal("");
       }}
       filterOptions={(options: UsersType[]) =>
         onlyExistingUsers ? options.filter((option) => !!option?.id) : options
@@ -101,7 +101,7 @@ export default function UserInputSuggestion({
       onInputChange={onInputChangeHandler}
       value=""
       disabled={Boolean(user)}
-      getOptionLabel={() => ''}
+      getOptionLabel={() => ""}
       renderInput={(params) => {
         return (
           <Box>
@@ -111,12 +111,12 @@ export default function UserInputSuggestion({
                 ...params.InputProps,
                 endAdornment: (
                   <>
-                    {state === 'loading' && term && (
+                    {state === "loading" && term && (
                       <CircularProgress size={16} />
                     )}
                     {term && params.InputProps.endAdornment}
                   </>
-                )
+                ),
               }}
               placeholder="Type name or email..."
             />
@@ -125,8 +125,8 @@ export default function UserInputSuggestion({
               component="div"
               sx={{
                 height: showNotice ? 21 : 0,
-                transition: 'height 0.3s ease-in',
-                overflow: 'hidden'
+                transition: "height 0.3s ease-in",
+                overflow: "hidden",
               }}
             >
               This person does not have an account
@@ -152,5 +152,5 @@ export default function UserInputSuggestion({
 
 // Note: check is intentionally simple to be non-restrictive
 function isTextEmail(text: string, enableInvitation: boolean) {
-  return enableInvitation && text.includes('@');
+  return enableInvitation && text.includes("@");
 }

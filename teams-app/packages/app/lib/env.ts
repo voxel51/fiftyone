@@ -1,11 +1,11 @@
-const appEnvsPrefix = 'FIFTYONE_APP_';
+const appEnvsPrefix = "FIFTYONE_APP_";
 const appEnvsNames = [
-  'FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION',
-  'FIFTYONE_SNAPSHOTS_ARCHIVE_PATH',
-  'FIFTYONE_API_URI',
-  'API_URL',
-  'FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT',
-  'APP_SERVICE_WORKER_TOKEN_HEADER_KEY'
+  "FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION",
+  "FIFTYONE_SNAPSHOTS_ARCHIVE_PATH",
+  "FIFTYONE_API_URI",
+  "API_URL",
+  "FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT",
+  "APP_SERVICE_WORKER_TOKEN_HEADER_KEY",
 ];
 
 export function getEnv() {
@@ -28,6 +28,6 @@ export function getServerSideProps() {
 const transformers = {
   // to prevent leaking the path to client-side
   FIFTYONE_SNAPSHOTS_ARCHIVE_PATH: (value: string) => {
-    return typeof value === 'string' && value.trim().length > 0;
-  }
+    return typeof value === "string" && value.trim().length > 0;
+  },
 };

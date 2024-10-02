@@ -2,18 +2,18 @@ import {
   useExportVariables,
   useExportView,
   useMutation,
-  useURLInfo
-} from '@fiftyone/hooks';
-import { Box, Button } from '@fiftyone/teams-components';
+  useURLInfo,
+} from "@fiftyone/hooks";
+import { Box, Button } from "@fiftyone/teams-components";
 import {
   CONSTANT_VARIABLES,
   DatasetExportMutation,
-  exportViewForceClosePopoverCount
-} from '@fiftyone/teams-state';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import { Link } from '@mui/material';
-import { useMemo, useRef } from 'react';
-import { useRecoilState } from 'recoil';
+  exportViewForceClosePopoverCount,
+} from "@fiftyone/teams-state";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import { Link } from "@mui/material";
+import { useMemo, useRef } from "react";
+import { useRecoilState } from "recoil";
 const { EXPORTED_FILE_BASE_PATH, EXPORT_DATA_ITEMS } = CONSTANT_VARIABLES;
 
 export default function DirectExportButton() {
@@ -44,13 +44,13 @@ export default function DirectExportButton() {
               if (exportView) {
                 const downloadLinkElem = downloadLink.current as HTMLElement;
                 const exportURL = host + EXPORTED_FILE_BASE_PATH + exportView;
-                downloadLinkElem.setAttribute('href', exportURL);
+                downloadLinkElem.setAttribute("href", exportURL);
                 downloadLinkElem.click();
               }
               reset();
               // force close popover
               setCount(count + 1);
-            }
+            },
           });
         }}
         disabled={!canExport || !selectionIsValid || loading}

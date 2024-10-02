@@ -1,23 +1,23 @@
 import {
   useCurrentOrganization,
   useCurrentUserHasMinimumRole,
-  useCurrentUserPermission
-} from '@fiftyone/hooks';
+  useCurrentUserPermission,
+} from "@fiftyone/hooks";
 import {
   CONSTANT_VARIABLES,
   MANAGE_ORGANIZATION,
-  Role
-} from '@fiftyone/teams-state';
+  Role,
+} from "@fiftyone/teams-state";
 import {
   Box,
   List,
   ListItem,
   ListItemButton,
   ListItemText,
-  ListSubheader
-} from '@mui/material';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+  ListSubheader,
+} from "@mui/material";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
 const { SETTINGS_NAV_ITEMS } = CONSTANT_VARIABLES;
 
@@ -87,7 +87,7 @@ function SettingsNavItems({ currentPath, items }) {
 
 function SettingsNavItem({ selected, href, id, label, isSubItem }) {
   return (
-    <ListItem sx={isSubItem ? { paddingLeft: '4rem' } : {}}>
+    <ListItem sx={isSubItem ? { paddingLeft: "4rem" } : {}}>
       <Link href={href}>
         <ListItemButton selected={selected}>
           <ListItemText id={id} primary={label} />

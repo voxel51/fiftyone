@@ -1,7 +1,7 @@
-import { toSearchGroupFilter } from '@fiftyone/teams-state/src/Settings/groups';
-import { PARAMS, QParamT } from '@fiftyone/teams-state/src/urlSyncCommon';
-import { ParsedUrlQuery } from 'querystring';
-import { commonQueryParams, normalizeQueryParams } from './urlSyncCommon';
+import { toSearchGroupFilter } from "@fiftyone/teams-state/src/Settings/groups";
+import { PARAMS, QParamT } from "@fiftyone/teams-state/src/urlSyncCommon";
+import { ParsedUrlQuery } from "querystring";
+import { commonQueryParams, normalizeQueryParams } from "./urlSyncCommon";
 
 // known query parameters
 const settingsGroupQueryParams: { [key: string]: QParamT } = {
@@ -11,11 +11,11 @@ const settingsGroupQueryParams: { [key: string]: QParamT } = {
       input
         ? toSearchGroupFilter({
             fields: [],
-            term: encodeURIComponent(input as string)
+            term: encodeURIComponent(input as string),
           })
         : null,
-    topKey: 'search'
-  }
+    topKey: "search",
+  },
 };
 
 export const normalizeSettingsGroupListQueryParams = (

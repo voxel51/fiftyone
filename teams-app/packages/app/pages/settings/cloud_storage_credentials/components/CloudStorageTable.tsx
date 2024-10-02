@@ -1,22 +1,22 @@
-import { useLazyLoadLatestQuery, withSuspense } from '@fiftyone/hooks';
+import { useLazyLoadLatestQuery, withSuspense } from "@fiftyone/hooks";
 import {
   BasicTable,
   Box,
   EmptyState,
-  TableSkeleton
-} from '@fiftyone/teams-components';
+  TableSkeleton,
+} from "@fiftyone/teams-components";
 import {
   CLOUD_STORAGE_CREDENTIALS_CACHE_KEY,
   CONSTANT_VARIABLES,
   cloudStorageCredentialsQuery,
   cloudStorageCredentialsQueryT,
-  manageCloudStorageAtom
-} from '@fiftyone/teams-state';
-import { pluralize } from '@fiftyone/teams-utilities';
-import { Button } from '@mui/material';
-import { useEffect, useMemo } from 'react';
-import { useSetRecoilState } from 'recoil';
-import ProviderIcon from './ProviderIcon';
+  manageCloudStorageAtom,
+} from "@fiftyone/teams-state";
+import { pluralize } from "@fiftyone/teams-utilities";
+import { Button } from "@mui/material";
+import { useEffect, useMemo } from "react";
+import { useSetRecoilState } from "recoil";
+import ProviderIcon from "./ProviderIcon";
 
 const { CLOUD_STORAGE_PROVIDERS } = CONSTANT_VARIABLES;
 
@@ -66,30 +66,30 @@ function CloudStorageTable() {
       id,
       cells: [
         {
-          id: 'icon',
+          id: "icon",
           Component: <ProviderIcon provider={id} />,
-          sx: { verticalAlign: 'middle', width: 24, pr: 0 }
+          sx: { verticalAlign: "middle", width: 24, pr: 0 },
         },
-        { id: 'label', value: label },
+        { id: "label", value: label },
         {
-          id: 'manage-credentials',
+          id: "manage-credentials",
           Component: (
-            <Box sx={{ textAlign: 'right' }}>
+            <Box sx={{ textAlign: "right" }}>
               <Button
                 onClick={() => {
                   setManageCloudStorageState({
                     open: true,
                     provider: id,
-                    credentials
+                    credentials,
                   });
                 }}
               >
-                {count} {pluralize(count, 'Credential')}
+                {count} {pluralize(count, "Credential")}
               </Button>
             </Box>
-          )
-        }
-      ]
+          ),
+        },
+      ],
     };
   });
 

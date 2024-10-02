@@ -1,19 +1,19 @@
-import { useCurrentUser } from '@fiftyone/hooks';
-import { AutoRefresh, RadioGroup, Selection } from '@fiftyone/teams-components';
+import { useCurrentUser } from "@fiftyone/hooks";
+import { AutoRefresh, RadioGroup, Selection } from "@fiftyone/teams-components";
 import {
   autoRefreshRunsStatus,
   runsPageQueryDefaultVariables,
-  runsPageQueryDynamicVariables
-} from '@fiftyone/teams-state';
-import { AUTO_REFRESH_INTERVAL_IN_SECONDS } from '@fiftyone/teams-state/src/constants';
-import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Stack, TextField } from '@mui/material';
-import { throttle } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import useRefresher, { RUNS_STATUS_REFRESHER_ID } from '../utils/useRefresher';
-import RunStatus from './RunStatus';
+  runsPageQueryDynamicVariables,
+} from "@fiftyone/teams-state";
+import { AUTO_REFRESH_INTERVAL_IN_SECONDS } from "@fiftyone/teams-state/src/constants";
+import CloseIcon from "@mui/icons-material/Close";
+import SearchIcon from "@mui/icons-material/Search";
+import { IconButton, Stack, TextField } from "@mui/material";
+import { throttle } from "lodash";
+import { useCallback, useEffect, useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
+import RunStatus from "./RunStatus";
 
 export default function RunsFilterSortSearch() {
   const [user] = useCurrentUser();
@@ -21,9 +21,9 @@ export default function RunsFilterSortSearch() {
   const setVars = useSetRecoilState(runsPageQueryDynamicVariables);
   const [filter, setFilter] = useState(runsPageQueryDefaultVariables.filter);
   const [order, setOrder] = useState(runsPageQueryDefaultVariables.order);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState(null);
-  const [statusSelections, setStatusSelections] = useState(['all']);
+  const [statusSelections, setStatusSelections] = useState(["all"]);
   const shouldAutoRefresh = useRecoilValue(autoRefreshRunsStatus);
   const [refresh] = useRefresher(RUNS_STATUS_REFRESHER_ID);
 
@@ -32,7 +32,7 @@ export default function RunsFilterSortSearch() {
       const sanitizedTerm = term.trim();
       setSearchField(
         sanitizedTerm
-          ? { fields: ['operator', 'label'], term: sanitizedTerm }
+          ? { fields: ["operator", "label"], term: sanitizedTerm }
           : null
       );
     }, 500),
@@ -67,12 +67,12 @@ export default function RunsFilterSortSearch() {
               <IconButton
                 size="small"
                 onClick={() => {
-                  handleSearch('');
+                  handleSearch("");
                 }}
               >
                 <CloseIcon color="secondary" />
               </IconButton>
-            ) : null
+            ) : null,
           }}
           sx={{ minWidth: 250 }}
           onChange={(e) => {
@@ -84,21 +84,21 @@ export default function RunsFilterSortSearch() {
             id,
             label,
             IconComponent:
-              id === 'all' ? null : <RunStatus variant="circle" status={id} />
+              id === "all" ? null : <RunStatus variant="circle" status={id} />,
           }))}
           menuSize="small"
           placeholder="Filter by status"
           onChange={(items) => {
             const itemsArray = items as string[];
             const lastItem = itemsArray[itemsArray.length - 1];
-            if (lastItem === 'all' || itemsArray.length === 0) {
-              setStatusSelections(['all']);
+            if (lastItem === "all" || itemsArray.length === 0) {
+              setStatusSelections(["all"]);
               setFilter({ ...filter, runState: null });
             } else {
-              const statuses = itemsArray.filter((status) => status !== 'all');
+              const statuses = itemsArray.filter((status) => status !== "all");
               setFilter({
                 ...filter,
-                runState: { regexp: statuses.join('|') }
+                runState: { regexp: statuses.join("|") },
               });
               setStatusSelections(statuses);
             }
@@ -106,7 +106,7 @@ export default function RunsFilterSortSearch() {
           selectProps={{
             sx: { color: (theme) => theme.palette.text.secondary },
             multiple: true,
-            inputProps: { sx: { maxWidth: 100 } }
+            inputProps: { sx: { maxWidth: 100 } },
           }}
           labelPrefix="Status: "
           value={statusSelections}
@@ -114,11 +114,11 @@ export default function RunsFilterSortSearch() {
         <RadioGroup
           defaultValue="all"
           items={[
-            { value: 'all', label: 'All runs' },
-            { value: 'my', label: 'My runs' }
+            { value: "all", label: "All runs" },
+            { value: "my", label: "My runs" },
           ]}
           onChange={(e, value) => {
-            setFilter({ ...filter, runBy: value === 'my' ? { eq: id } : null });
+            setFilter({ ...filter, runBy: value === "my" ? { eq: id } : null });
           }}
           row
         />
@@ -128,23 +128,23 @@ export default function RunsFilterSortSearch() {
           refresh={refresh}
           paused={!shouldAutoRefresh}
           title={
-            'Auto refresh progress of running operators every' +
+            "Auto refresh progress of running operators every" +
             ` ${AUTO_REFRESH_INTERVAL_IN_SECONDS} seconds`
           }
           persistanceKey="auto_refresh_runs_list"
         />
         <Selection
           items={[
-            { id: 'newest', label: 'Newest' },
-            { id: 'oldest', label: 'Oldest' },
-            { id: 'operator', label: 'Operator name' }
+            { id: "newest", label: "Newest" },
+            { id: "oldest", label: "Oldest" },
+            { id: "operator", label: "Operator name" },
           ]}
           defaultValue="newest"
           labelPrefix="Sort by: "
           selectProps={{
             sx: {
-              color: (theme) => theme.palette.text.secondary
-            }
+              color: (theme) => theme.palette.text.secondary,
+            },
           }}
           onChange={(value) => {
             setOrder(sortingMap[value as SortingMode]);
@@ -156,17 +156,17 @@ export default function RunsFilterSortSearch() {
 }
 
 const sortingMap = {
-  newest: { direction: 'DESC', field: 'updatedAt' },
-  oldest: { direction: 'ASC', field: 'updatedAt' },
-  operator: { direction: 'ASC', field: 'operator' }
+  newest: { direction: "DESC", field: "updatedAt" },
+  oldest: { direction: "ASC", field: "updatedAt" },
+  operator: { direction: "ASC", field: "operator" },
 };
 
 const statusFilterItems = [
-  { id: 'all', label: 'All' },
-  { id: 'completed', label: 'Completed' },
-  { id: 'failed', label: 'Failed' },
-  { id: 'queued', label: 'Queued' },
-  { id: 'running', label: 'Running' }
+  { id: "all", label: "All" },
+  { id: "completed", label: "Completed" },
+  { id: "failed", label: "Failed" },
+  { id: "queued", label: "Queued" },
+  { id: "running", label: "Running" },
 ];
 
-type SortingMode = 'newest' | 'oldest' | 'operator';
+type SortingMode = "newest" | "oldest" | "operator";

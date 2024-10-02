@@ -1,8 +1,8 @@
-import { Setter } from '@fiftyone/relay';
-import { useSessionSetter } from '@fiftyone/state';
-import { Environment } from 'react-relay';
-import { Page } from '../loadPageQuery';
-import { DatasetData } from '../transition';
+import { Setter } from "@fiftyone/relay";
+import { useSessionSetter } from "@fiftyone/state";
+import { Environment } from "react-relay";
+import { Page } from "../loadPageQuery";
+import { DatasetData } from "../transition";
 
 type SetterContext = {
   dataset: DatasetData;

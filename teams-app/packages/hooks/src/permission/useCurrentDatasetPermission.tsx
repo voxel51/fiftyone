@@ -1,5 +1,5 @@
-import { canMutateDataset, useCurrentDataset } from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
+import { canMutateDataset, useCurrentDataset } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
 
 export default function useCurrentDatasetPermission(actions) {
   const router = useRouter();

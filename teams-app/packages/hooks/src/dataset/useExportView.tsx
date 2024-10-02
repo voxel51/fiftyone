@@ -1,7 +1,11 @@
-import { CONSTANT_VARIABLES, exportSelection, exportType } from '@fiftyone/teams-state';
-import bytes from 'bytes';
-import { useEffect, useMemo } from 'react';
-import { useRecoilState, useResetRecoilState } from 'recoil';
+import {
+  CONSTANT_VARIABLES,
+  exportSelection,
+  exportType,
+} from "@fiftyone/teams-state";
+import bytes from "bytes";
+import { useEffect, useMemo } from "react";
+import { useRecoilState, useResetRecoilState } from "recoil";
 const { MAX_EXPORT_SIZE } = CONSTANT_VARIABLES;
 
 const maxExportSizeInBytes = bytes(MAX_EXPORT_SIZE);
@@ -15,11 +19,11 @@ export function useExportView() {
     setState({
       ...state,
       data,
-      format: '',
-      field: '',
+      format: "",
+      field: "",
       fieldsAvailable: undefined,
       token: undefined,
-      size: undefined
+      size: undefined,
     });
   }
 
@@ -27,10 +31,10 @@ export function useExportView() {
     setState({
       ...state,
       format,
-      field: '',
+      field: "",
       fieldsAvailable: undefined,
       token: undefined,
-      size: undefined
+      size: undefined,
     });
   }
 
@@ -56,8 +60,8 @@ export function useExportView() {
 
   const computedState = useMemo(() => {
     const { fieldsAvailable, field, size, data, path } = state;
-    const hasLabels = data?.includes('labels');
-    const hasMedia = data?.includes('media');
+    const hasLabels = data?.includes("labels");
+    const hasMedia = data?.includes("media");
     const fieldIsNonEmpty = Array.isArray(field)
       ? field.length > 0
       : Boolean(field);
@@ -66,19 +70,19 @@ export function useExportView() {
     return {
       ...state,
       selectionIsValid,
-      canExport: typeof size === 'number' && size <= maxExportSizeInBytes,
-      canCloudExport: typeof size === 'number' && path,
+      canExport: typeof size === "number" && size <= maxExportSizeInBytes,
+      canCloudExport: typeof size === "number" && path,
       hasLabels,
-      hasMedia
+      hasMedia,
     };
   }, [state]);
 
   useEffect(() => {
     setState((prev) => ({
       ...prev,
-      view: type
+      view: type,
     }));
-  }, [type])
+  }, [type]);
 
   return {
     ...computedState,
@@ -89,6 +93,6 @@ export function useExportView() {
     setSize,
     setExportToken,
     setFieldsAvailable,
-    setCloudStoragePath
+    setCloudStoragePath,
   };
 }

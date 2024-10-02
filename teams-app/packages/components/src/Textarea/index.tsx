@@ -1,7 +1,7 @@
-import React from 'react';
+import React from "react";
 
-import { useTheme } from '@mui/material/styles';
-import { Box } from '@mui/material';
+import { useTheme } from "@mui/material/styles";
+import { Box } from "@mui/material";
 
 interface PropsType {
   value: string;
@@ -18,15 +18,15 @@ export default function Textarea(props: PropsType) {
         value={props.value}
         onChange={props.onChange}
         style={{
-          padding: '0.65rem',
-          paddingLeft: '1.2rem',
-          paddingRight: '1.2rem',
-          borderRadius: '8px',
+          padding: "0.65rem",
+          paddingLeft: "1.2rem",
+          paddingRight: "1.2rem",
+          borderRadius: "8px",
           border: `1px solid ${theme.palette.grey[300]}`,
-          resize: 'none',
-          fontSize: 'medium'
+          resize: "none",
+          fontSize: "medium",
         }}
-        placeholder={props.placeholder || ''}
+        placeholder={props.placeholder || ""}
         rows={7}
       />
     </Box>

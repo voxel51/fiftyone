@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import Link from 'next/link';
-import { useFragment } from 'react-relay';
+import React, { useMemo } from "react";
+import Link from "next/link";
+import { useFragment } from "react-relay";
 import {
   ResizableTagList,
   DatasetPin,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   Box,
   IconButton,
@@ -13,21 +13,21 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  ListItemText
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { CopyAllOutlined, MoreVert } from '@mui/icons-material';
+  ListItemText,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { CopyAllOutlined, MoreVert } from "@mui/icons-material";
 
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import {
   canMutateDataset,
   DatasetFragment,
-  EDIT_DATASET
-} from '@fiftyone/teams-state';
+  EDIT_DATASET,
+} from "@fiftyone/teams-state";
 
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
-import { useHover } from '@fiftyone/hooks';
-import { DatasetFrag$key } from '@fiftyone/teams-state/src/Dataset/__generated__/DatasetFrag.graphql';
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
+import { useHover } from "@fiftyone/hooks";
+import { DatasetFrag$key } from "@fiftyone/teams-state/src/Dataset/__generated__/DatasetFrag.graphql";
 
 interface DatalistTableRowProps {
   rowFragment: DatasetFrag$key;
@@ -50,11 +50,11 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
     lastLoadedAt,
     createdAt,
     slug,
-    id
+    id,
   } = row;
   const { noBorder } = props;
-  const dateFieldText = field === 'createdAt' ? 'Created' : 'Last loaded';
-  const timeColumn = field === 'createdAt' ? createdAt : lastLoadedAt;
+  const dateFieldText = field === "createdAt" ? "Created" : "Last loaded";
+  const timeColumn = field === "createdAt" ? createdAt : lastLoadedAt;
 
   const isEditable = canMutateDataset(EDIT_DATASET, row);
 
@@ -65,14 +65,14 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
 
   const mediaType = useMemo(() => {
     switch (datasetMediaType) {
-      case 'group':
-        return 'sample';
-      case 'point_cloud':
-        return 'point cloud';
-      case 'three_d':
-        return 'scene';
+      case "group":
+        return "sample";
+      case "point_cloud":
+        return "point cloud";
+      case "three_d":
+        return "scene";
       default:
-        return datasetMediaType || 'sample';
+        return datasetMediaType || "sample";
     }
   }, [datasetMediaType]);
 
@@ -94,20 +94,20 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
             pl: 3,
             pr: 1.25,
             borderBottom: !noBorder && `1px solid ${theme.palette.divider}`,
-            display: 'flex',
-            alignItems: 'baseline',
-            cursor: 'pointer',
+            display: "flex",
+            alignItems: "baseline",
+            cursor: "pointer",
 
-            '&:hover': {
-              background: theme.palette.background.primaryHover
-            }
+            "&:hover": {
+              background: theme.palette.background.primaryHover,
+            },
           }}
         >
           <Box
             flexGrow="1"
             sx={{
-              maxWidth: '30%',
-              minWidth: '30%'
+              maxWidth: "30%",
+              minWidth: "30%",
             }}
             display="flex"
             flexDirection="row"
@@ -130,25 +130,25 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
           <Box
             flexGrow="1"
             sx={{
-              maxWidth: '20%',
-              minWidth: '20%',
-              paddingLeft: 1
+              maxWidth: "20%",
+              minWidth: "20%",
+              paddingLeft: 1,
             }}
           >
             <Box display="flex" alignItems="center">
               <Typography variant="body1" noWrap>
                 {samplesCount
                   ? `${samplesCount?.toLocaleString()}
-              ${mediaType}${samplesCount > 1 ? 's' : ''}`
-                  : 'No samples'}
+              ${mediaType}${samplesCount > 1 ? "s" : ""}`
+                  : "No samples"}
               </Typography>
               {!!sampleFieldsCount && (
                 <Typography variant="body1" noWrap paddingLeft={0.5}>
                   {<>&#183; </>}
                   {samplesCount
                     ? `${sampleFieldsCount?.toLocaleString()}
-                field${sampleFieldsCount > 1 ? 's' : ''}`
-                    : 'No samples'}
+                field${sampleFieldsCount > 1 ? "s" : ""}`
+                    : "No samples"}
                 </Typography>
               )}
             </Box>
@@ -157,13 +157,13 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
             flexGrow="1"
             flexDirection="row"
             sx={{
-              maxWidth: '15%',
-              minWidth: '15%',
-              paddingLeft: 1
+              maxWidth: "15%",
+              minWidth: "15%",
+              paddingLeft: 1,
             }}
           >
             <Typography variant="body1" noWrap>
-              {dateFieldText}{' '}
+              {dateFieldText}{" "}
               <Timestamp timestamp={timeColumn} variant="body1" noWrap />
             </Typography>
           </Box>
@@ -182,9 +182,9 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
                   aria-label="more"
                   id="actions-button"
                   aria-controls={
-                    isDatasetActionsMenuOpen ? 'actions-menu' : undefined
+                    isDatasetActionsMenuOpen ? "actions-menu" : undefined
                   }
-                  aria-expanded={isDatasetActionsMenuOpen ? 'true' : undefined}
+                  aria-expanded={isDatasetActionsMenuOpen ? "true" : undefined}
                   aria-haspopup="true"
                   onClick={toggleDatasetActionsMenu}
                 >
@@ -196,7 +196,7 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
                   open={isDatasetActionsMenuOpen}
                   onClose={closeDatasetActionsMenu}
                   MenuListProps={{
-                    'aria-labelledby': 'actions-button'
+                    "aria-labelledby": "actions-button",
                   }}
                 >
                   <Link href={`/datasets/${slug}/manage/basic_info`}>

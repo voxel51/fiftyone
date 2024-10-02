@@ -3,21 +3,21 @@ import React, {
   useCallback,
   useEffect,
   useRef,
-  useState
-} from 'react';
-import { useSetRecoilState } from 'recoil';
-import Box from '@mui/joy/Box';
-import { useTheme } from '@mui/material/styles';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+  useState,
+} from "react";
+import { useSetRecoilState } from "recoil";
+import Box from "@mui/joy/Box";
+import { useTheme } from "@mui/material/styles";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 
-import { TableSkeleton, SearchSuggestion } from '@fiftyone/teams-components';
-import { datasetSearchTermState } from '@fiftyone/teams-state';
-import TextField from '@mui/material/TextField';
-import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
+import { TableSkeleton, SearchSuggestion } from "@fiftyone/teams-components";
+import { datasetSearchTermState } from "@fiftyone/teams-state";
+import TextField from "@mui/material/TextField";
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 
-import { DatasetSearchFields } from '@fiftyone/teams-state/src/Datasets/__generated__/DatasetsListQuery.graphql';
-import { IconButton } from '@mui/material';
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
+import { DatasetSearchFields } from "@fiftyone/teams-state/src/Datasets/__generated__/DatasetsListQuery.graphql";
+import { IconButton } from "@mui/material";
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
 
 const SEARCH_INPUT_DEBOUNCE = 500; // ms
 
@@ -34,7 +34,7 @@ export default function Search() {
   // TODO:MANI - bad hack to clear input on "Reset search" click
   useEffect(() => {
     if (!searchTerm) {
-      setLocalSearchTerm('');
+      setLocalSearchTerm("");
     }
   }, [searchTerm]);
 
@@ -61,7 +61,7 @@ export default function Search() {
       <TextField
         size="small"
         onKeyDown={(ev) => {
-          if (ev.key === 'Enter') {
+          if (ev.key === "Enter") {
             ev.preventDefault();
             setDatasetSearchTerm(searchTerm);
           }
@@ -78,36 +78,36 @@ export default function Search() {
                 sx={{ fontSize: 20 }}
                 onClick={() => {
                   setDatasetSearchTerm({
-                    fields: ['name'],
-                    term: ''
+                    fields: ["name"],
+                    term: "",
                   });
-                  setLocalSearchTerm('');
+                  setLocalSearchTerm("");
                 }}
               />
             </IconButton>
-          )
+          ),
         }}
         value={localSearchTerm}
         onChange={handleChange}
         autoComplete="off"
         sx={{
-          '&::placeholder': {
-            textOverflow: 'ellipsis !important',
-            color: 'blue'
+          "&::placeholder": {
+            textOverflow: "ellipsis !important",
+            color: "blue",
           },
-          width: 260
+          width: 260,
         }}
       />
       <Suspense
         fallback={
           <Box
             sx={{
-              position: 'absolute',
+              position: "absolute",
               width: 260,
               background: theme.palette.background.default,
               border: `1px solid ${theme.palette.divider}`,
               padding: 1,
-              zIndex: theme.zIndex.tooltip + 1
+              zIndex: theme.zIndex.tooltip + 1,
             }}
           >
             <TableSkeleton rows={5} skeletonProps={{ height: 48 }} />

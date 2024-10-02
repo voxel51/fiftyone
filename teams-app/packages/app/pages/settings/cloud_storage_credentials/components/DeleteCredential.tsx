@@ -1,15 +1,15 @@
-import { useCacheStore, useMutation } from '@fiftyone/hooks';
-import { Dialog } from '@fiftyone/teams-components';
+import { useCacheStore, useMutation } from "@fiftyone/hooks";
+import { Dialog } from "@fiftyone/teams-components";
 import {
   CLOUD_STORAGE_CREDENTIALS_CACHE_KEY,
   CONSTANT_VARIABLES,
   cloudStorageRemoveCredentialMutation,
-  deleteCredentialAtom
-} from '@fiftyone/teams-state';
-import { pluralize } from '@fiftyone/teams-utilities';
-import { Typography } from '@mui/material';
-import { useCallback } from 'react';
-import { useRecoilState } from 'recoil';
+  deleteCredentialAtom,
+} from "@fiftyone/teams-state";
+import { pluralize } from "@fiftyone/teams-utilities";
+import { Typography } from "@mui/material";
+import { useCallback } from "react";
+import { useRecoilState } from "recoil";
 const { CLOUD_STORAGE_PROVIDERS } = CONSTANT_VARIABLES;
 
 export default function DeleteCredential() {
@@ -41,21 +41,21 @@ export default function DeleteCredential() {
           onCompleted() {
             handleClose();
             setStale(true);
-          }
+          },
         });
       }}
       confirmationButtonColor="error"
       loading={loading}
       disableConfirmationButton={loading}
     >
-      <Typography sx={{ '& .MuiTypography-root': { display: 'inline' } }}>
+      <Typography sx={{ "& .MuiTypography-root": { display: "inline" } }}>
         Are you sure you want to delete&nbsp;
         {prefixesCount > 0 ? (
           <Typography>
-            credential for {pluralize(prefixesCount, 'bucket')}&nbsp;
+            credential for {pluralize(prefixesCount, "bucket")}&nbsp;
             <Typography fontWeight={360}>
-              {prefixes?.join(', ')}
-            </Typography>{' '}
+              {prefixes?.join(", ")}
+            </Typography>{" "}
             in&nbsp;
           </Typography>
         ) : (

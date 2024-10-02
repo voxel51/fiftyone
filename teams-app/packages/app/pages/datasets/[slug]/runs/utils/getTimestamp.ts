@@ -1,9 +1,9 @@
-import { runsPageQuery$dataT } from '@fiftyone/teams-state';
-import { OPERATOR_RUN_STATES } from '@fiftyone/teams-state/src/constants';
+import { runsPageQuery$dataT } from "@fiftyone/teams-state";
+import { OPERATOR_RUN_STATES } from "@fiftyone/teams-state/src/constants";
 const { QUEUED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
 export default function getTimestamp(
-  run: runsPageQuery$dataT['delegatedOperationsPage']['nodes'][number]
+  run: runsPageQuery$dataT["delegatedOperationsPage"]["nodes"][number]
 ) {
   const { runState, queuedAt, startedAt, completedAt, failedAt } = run;
 

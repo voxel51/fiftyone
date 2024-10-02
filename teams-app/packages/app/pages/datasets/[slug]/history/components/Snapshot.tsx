@@ -1,26 +1,41 @@
-import { IconButton } from '@fiftyone/components';
+import { IconButton } from "@fiftyone/components";
 import {
   useCacheStore,
   useCurrentDataset,
   useCurrentDatasetPermission,
-  useMutation
-} from '@fiftyone/hooks';
-import { Box, Button, CopyButton, Timestamp, UserCard } from '@fiftyone/teams-components';
+  useMutation,
+} from "@fiftyone/hooks";
+import {
+  Box,
+  Button,
+  CopyButton,
+  Timestamp,
+  UserCard,
+} from "@fiftyone/teams-components";
 import {
   Dataset,
   historyLoadDatasetSnapshotMutation,
   SNAPSHOT_BANNER_QUERY_CACHE_KEY,
-  UNARCHIVE_DATASET_SNAPSHOT
-} from '@fiftyone/teams-state';
-import { parentPath } from '@fiftyone/teams-utilities';
-import { MoreHoriz, UnarchiveOutlined, VisibilityOutlined } from '@mui/icons-material';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { TimelineConnector, TimelineContent, TimelineItem, TimelineSeparator } from '@mui/lab';
-import { CircularProgress, Grid, Stack, Typography } from '@mui/material';
-import { useRouter } from 'next/router';
-import { useLayoutEffect, useRef, useState } from 'react';
-import { SnapshotActionsMenu } from './SnapshotActions';
-import SnapshotStats from './SnapshotStats';
+  UNARCHIVE_DATASET_SNAPSHOT,
+} from "@fiftyone/teams-state";
+import { parentPath } from "@fiftyone/teams-utilities";
+import {
+  MoreHoriz,
+  UnarchiveOutlined,
+  VisibilityOutlined,
+} from "@mui/icons-material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import {
+  TimelineConnector,
+  TimelineContent,
+  TimelineItem,
+  TimelineSeparator,
+} from "@mui/lab";
+import { CircularProgress, Grid, Stack, Typography } from "@mui/material";
+import { useRouter } from "next/router";
+import { useLayoutEffect, useRef, useState } from "react";
+import { SnapshotActionsMenu } from "./SnapshotActions";
+import SnapshotStats from "./SnapshotStats";
 
 export default function Snapshot(props: SnapshotProps) {
   const { pathname, query, push } = useRouter();
@@ -30,12 +45,12 @@ export default function Snapshot(props: SnapshotProps) {
   const { name: datasetIdentifier } = useCurrentDataset() as Dataset;
   const [_, setStale] = useCacheStore(SNAPSHOT_BANNER_QUERY_CACHE_KEY);
   const canUnarchive = useCurrentDatasetPermission([
-    UNARCHIVE_DATASET_SNAPSHOT
+    UNARCHIVE_DATASET_SNAPSHOT,
   ]);
 
-  const isLoaded = loadStatus === 'LOADED' && !archiving;
-  const isLoading = loadStatus === 'LOADING' || loading;
-  const isUnloaded = loadStatus === 'UNLOADED';
+  const isLoaded = loadStatus === "LOADED" && !archiving;
+  const isLoading = loadStatus === "LOADING" || loading;
+  const isUnloaded = loadStatus === "UNLOADED";
   const isUnloading = archiving;
   const showUnarchive = isUnloaded && !isLoading;
 
@@ -46,7 +61,7 @@ export default function Snapshot(props: SnapshotProps) {
           sx={{
             color: (theme) => theme.palette.text.tertiary,
             my: 0.5,
-            fontSize: 20
+            fontSize: 20,
           }}
         />
         {!last && (
@@ -56,7 +71,7 @@ export default function Snapshot(props: SnapshotProps) {
         )}
       </TimelineSeparator>
       <TimelineContent sx={{ pt: 0.25, pb: 2 }}>
-        <Grid container sx={{ alignItems: 'center' }} spacing={4}>
+        <Grid container sx={{ alignItems: "center" }} spacing={4}>
           <Grid item xs>
             <SnapshotSummary {...props} />
           </Grid>
@@ -69,8 +84,8 @@ export default function Snapshot(props: SnapshotProps) {
                   size="small"
                   onClick={() => {
                     push({
-                      pathname: parentPath(pathname) + '/samples',
-                      query: { ...query, snapshot: name }
+                      pathname: parentPath(pathname) + "/samples",
+                      query: { ...query, snapshot: name },
                     });
                   }}
                 >
@@ -81,10 +96,10 @@ export default function Snapshot(props: SnapshotProps) {
                 <Box
                   title={
                     !canUnarchive
-                      ? 'You do not have permission to unarchive snapshot'
+                      ? "You do not have permission to unarchive snapshot"
                       : undefined
                   }
-                  sx={{ cursor: !canUnarchive ? 'not-allowed' : undefined }}
+                  sx={{ cursor: !canUnarchive ? "not-allowed" : undefined }}
                 >
                   <Button
                     startIcon={<UnarchiveOutlined />}
@@ -94,11 +109,11 @@ export default function Snapshot(props: SnapshotProps) {
                       load({
                         variables: { datasetIdentifier, snapshotName: name },
                         successMessage:
-                          'Successfully unarchived snapshot ' + name,
+                          "Successfully unarchived snapshot " + name,
                         onSuccess() {
                           setStale(true);
                           if (refresh) refresh();
-                        }
+                        },
                       });
                     }}
                   >
@@ -110,7 +125,7 @@ export default function Snapshot(props: SnapshotProps) {
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <CircularProgress size={16} />
                   <Typography variant="body2" fontSize={14}>
-                    {isLoading ? 'Unarchiving' : 'Archiving'}
+                    {isLoading ? "Unarchiving" : "Archiving"}
                   </Typography>
                 </Stack>
               )}
@@ -122,7 +137,7 @@ export default function Snapshot(props: SnapshotProps) {
                 createdBy={createdBy}
                 loadStatus={loadStatus}
                 onArchive={(state) => {
-                  setArchiving(state === 'loading');
+                  setArchiving(state === "loading");
                 }}
               />
             </Stack>
@@ -151,15 +166,17 @@ export function SnapshotSummary(props: SnapshotSummaryProps) {
         </Typography>
       )}
       <SnapshotDescription content={description} />
-      {createdBy && (<Box pt={0.25}>
-        <UserCard
-          name={createdBy?.name}
-          src={createdBy?.picture || ""}
-          color="secondary"
-          detailed
-          compact
-        />
-      </Box>)}
+      {createdBy && (
+        <Box pt={0.25}>
+          <UserCard
+            name={createdBy?.name}
+            src={createdBy?.picture || ""}
+            color="secondary"
+            detailed
+            compact
+          />
+        </Box>
+      )}
     </Box>
   );
 }
@@ -176,15 +193,15 @@ function SnapshotDescription(props) {
     }
   }, []);
 
-  if (typeof content !== 'string') return null;
-  const [firstLine] = content.split('\n');
+  if (typeof content !== "string") return null;
+  const [firstLine] = content.split("\n");
   const characterToShow = Math.floor(width / AVERAGE_CHARACTER_WIDTH);
   const canOverflow = firstLine.length > characterToShow;
   const previewTextPattern = new RegExp(`^.{${characterToShow}}\\w*`);
   const previewText = canOverflow
     ? firstLine.match(previewTextPattern)
     : firstLine;
-  const showExpandIcon = canOverflow || content.includes('\n');
+  const showExpandIcon = canOverflow || content.includes("\n");
 
   return (
     <Typography pb={1} color="text.tertiary" whiteSpace="pre-line" ref={elem}>
@@ -197,12 +214,12 @@ function SnapshotDescription(props) {
             e.stopPropagation();
             setExpanded(!expanded);
           }}
-          title={`Show ${expanded ? 'less' : 'more'}`}
+          title={`Show ${expanded ? "less" : "more"}`}
           sx={{
             ml: 1,
             backgroundColor: (theme) => theme.palette.background.secondary,
             borderRadius: 1,
-            height: 14
+            height: 14,
           }}
         >
           <MoreHoriz />
@@ -229,7 +246,7 @@ export type SnapshotSummaryProps = {
     numSamplesChanged: number;
     numSamplesDeleted: number;
   };
-  loadStatus: 'LOADED' | 'LOADING' | 'UNLOADED';
+  loadStatus: "LOADED" | "LOADING" | "UNLOADED";
 };
 
 export type SnapshotProps = SnapshotSummaryProps & {

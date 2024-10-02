@@ -1,5 +1,5 @@
-import { appEnvs } from '@fiftyone/teams-state';
-import { useRecoilValue } from 'recoil';
+import { appEnvs } from "@fiftyone/teams-state";
+import { useRecoilValue } from "recoil";
 
 export default function useEnv(env?: string) {
   const envs = useRecoilValue(appEnvs);
@@ -10,5 +10,5 @@ export default function useEnv(env?: string) {
 export function useBooleanEnv(env: string, defaultTrue?: boolean) {
   const value = useEnv(env) as string;
   if (!value && defaultTrue) return true;
-  return typeof value === 'string' && value.toLowerCase() === 'true';
+  return typeof value === "string" && value.toLowerCase() === "true";
 }

@@ -1,73 +1,73 @@
-import { useMutation, withPermissions } from '@fiftyone/hooks';
-import { SettingsLayout } from '@fiftyone/teams-components';
+import { useMutation, withPermissions } from "@fiftyone/hooks";
+import { SettingsLayout } from "@fiftyone/teams-components";
 import {
   MANAGE_ORGANIZATION,
   mainTitleSelector,
   securityOrganizationSettingsQuery,
-  securitySetOrganizationSettingsMutation
-} from '@fiftyone/teams-state';
-import withRelay from 'lib/withRelay';
-import { useEffect, useState } from 'react';
-import { usePreloadedQuery } from 'react-relay';
-import { useSetRecoilState } from 'recoil';
-import DatasetPermissionSetting from '../components/DatasetPermissionSetting';
-import OperatorDatasetPermissionSetting from '../components/OperatorDatasetPermissionSetting';
-import OperatorRoleSetting from '../components/OperatorRoleSetting';
-import RoleSetting from '../components/RoleSetting';
-import SettingsGroup from '../components/SettingsGroup';
+  securitySetOrganizationSettingsMutation,
+} from "@fiftyone/teams-state";
+import withRelay from "lib/withRelay";
+import { useEffect, useState } from "react";
+import { usePreloadedQuery } from "react-relay";
+import { useSetRecoilState } from "recoil";
+import DatasetPermissionSetting from "../components/DatasetPermissionSetting";
+import OperatorDatasetPermissionSetting from "../components/OperatorDatasetPermissionSetting";
+import OperatorRoleSetting from "../components/OperatorRoleSetting";
+import RoleSetting from "../components/RoleSetting";
+import SettingsGroup from "../components/SettingsGroup";
 
 const pluginCaption =
-  'Changing this setting will only effect plugins installed in the future.';
+  "Changing this setting will only effect plugins installed in the future.";
 const organizationSettingGroups = [
   {
-    title: 'Users',
+    title: "Users",
     description:
-      'You can configure organization-wide settings for new and existing users.',
+      "You can configure organization-wide settings for new and existing users.",
     settings: [
       {
-        id: 'defaultUserRole',
+        id: "defaultUserRole",
         Component: RoleSetting,
-        label: 'Default role for new users'
-      }
-    ]
+        label: "Default role for new users",
+      },
+    ],
   },
   {
-    title: 'Datasets',
-    description: 'You can configure organization-wide settings for datasets.',
+    title: "Datasets",
+    description: "You can configure organization-wide settings for datasets.",
     settings: [
       {
-        id: 'defaultDatasetPermission',
+        id: "defaultDatasetPermission",
         Component: DatasetPermissionSetting,
-        label: 'Default member access for new datasets',
+        label: "Default member access for new datasets",
         caption:
-          'Changing this setting will only effect datasets created in the future.'
-      }
-    ]
+          "Changing this setting will only effect datasets created in the future.",
+      },
+    ],
   },
   {
-    title: 'Plugins',
-    description: 'You can configure organization-wide settings for plugins.',
+    title: "Plugins",
+    description: "You can configure organization-wide settings for plugins.",
     settings: [
       {
-        id: 'defaultOperatorMinimumRole',
+        id: "defaultOperatorMinimumRole",
         Component: OperatorRoleSetting,
-        label: 'Default minimum role for operator',
-        caption: pluginCaption
+        label: "Default minimum role for operator",
+        caption: pluginCaption,
       },
       {
-        id: 'defaultOperatorMinimumDatasetPermission',
+        id: "defaultOperatorMinimumDatasetPermission",
         Component: OperatorDatasetPermissionSetting,
-        label: 'Default minimum dataset permission for operator',
-        caption: pluginCaption
-      }
-    ]
-  }
+        label: "Default minimum dataset permission for operator",
+        caption: pluginCaption,
+      },
+    ],
+  },
 ];
 
 function Security({ preloadedQuery }) {
   const setPageTitle = useSetRecoilState(mainTitleSelector);
   useEffect(() => {
-    setPageTitle('Settings');
+    setPageTitle("Settings");
   }, []);
   const { organizationSettings } = usePreloadedQuery(
     securityOrganizationSettingsQuery,
@@ -80,15 +80,15 @@ function Security({ preloadedQuery }) {
     setUpdatesInProgress((state) => new Set(state).add(id));
     setOrgSettings({
       variables: settings,
-      successMessage: 'Successfully updated the setting',
-      errorMessage: 'Failed to update the setting',
+      successMessage: "Successfully updated the setting",
+      errorMessage: "Failed to update the setting",
       onCompleted() {
         setUpdatesInProgress((state) => {
           const updatedState = new Set(state);
           updatedState.delete(id);
           return updatedState;
         });
-      }
+      },
     });
   }
 
@@ -111,7 +111,7 @@ function Security({ preloadedQuery }) {
             id,
             ...props,
             value: organizationSettings[id],
-            updating: isUpdating(id)
+            updating: isUpdating(id),
           }))}
           onChange={handleSettingChange}
           sx={i > 0 ? { pt: 4 } : {}}
@@ -122,7 +122,7 @@ function Security({ preloadedQuery }) {
 }
 
 export default withRelay(
-  withPermissions(Security, [MANAGE_ORGANIZATION], 'user'),
+  withPermissions(Security, [MANAGE_ORGANIZATION], "user"),
   securityOrganizationSettingsQuery,
   {}
 );

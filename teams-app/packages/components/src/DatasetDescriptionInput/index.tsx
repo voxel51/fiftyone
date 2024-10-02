@@ -1,20 +1,20 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from "react";
 
-import { useTheme } from '@mui/material/styles';
-import { Box, TextField, Typography } from '@mui/material';
+import { useTheme } from "@mui/material/styles";
+import { Box, TextField, Typography } from "@mui/material";
 
 interface PropsType {
   value: string;
   onChange: (e: any) => void;
-  direction?: 'h' | 'v';
+  direction?: "h" | "v";
   disabled?: boolean;
   autosave?: boolean;
 }
 
 export default function DatasetDescriptionInput(props: PropsType) {
   const theme = useTheme();
-  const dir = props.direction || 'v';
-  const isVertical = dir === 'v';
+  const dir = props.direction || "v";
+  const isVertical = dir === "v";
   const { autosave, disabled, value } = props;
 
   const isDisabled = !!disabled;
@@ -29,8 +29,8 @@ export default function DatasetDescriptionInput(props: PropsType) {
   return (
     <Box
       display="flex"
-      flexDirection={isVertical ? 'column' : 'row'}
-      justifyContent={isVertical ? 'space-between' : 'center'}
+      flexDirection={isVertical ? "column" : "row"}
+      justifyContent={isVertical ? "space-between" : "center"}
       width="100%"
     >
       <Typography
@@ -50,9 +50,9 @@ export default function DatasetDescriptionInput(props: PropsType) {
           <Box display="flex" pt={1} pb={1}>
             <Typography
               variant="body1"
-              sx={{ display: 'flex', alignItems: 'center' }}
+              sx={{ display: "flex", alignItems: "center" }}
             >
-              {value || 'No description'}
+              {value || "No description"}
             </Typography>
           </Box>
         )}

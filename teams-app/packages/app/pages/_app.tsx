@@ -1,53 +1,53 @@
-import { useAnalyticsInfo, usingAnalytics } from '@fiftyone/analytics';
-import { ErrorBoundary, Pending } from '@fiftyone/components';
+import { useAnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
+import { ErrorBoundary, Pending } from "@fiftyone/components";
 import {
   useBooleanEnv,
   useCurrentOrganization,
   useCurrentUser,
   useEnv,
   useInitializeApp,
-  useProductVersion
-} from '@fiftyone/hooks';
+  useProductVersion,
+} from "@fiftyone/hooks";
 import {
   AnalyticsConsent,
   AppAlert,
   Box,
   Footer,
   MainTitle,
-  layout
-} from '@fiftyone/teams-components';
-import { getTeamsClientEnvironment } from '@fiftyone/teams-state';
+  layout,
+} from "@fiftyone/teams-components";
+import { getTeamsClientEnvironment } from "@fiftyone/teams-state";
 import {
   FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED,
   FIFTYONE_APP_DEMO_MODE,
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
   FIFTYONE_APP_SERVICE_WORKER_ENABLED,
   FIFTYONE_DO_NOT_TRACK_LS,
-  APP_SERVICE_WORKER_TOKEN_HEADER_KEY
-} from '@fiftyone/teams-state/src/constants';
-import { registerServiceWorker } from 'lib/serviceWorkerUtils';
-import { AppProps } from 'next/app';
-import { useRouter } from 'next/router';
-import { PropsWithChildren, useEffect, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import { getInitialPreloadedQuery, getRelayProps } from 'relay-nextjs/app';
-import '../styles/globals.css';
-import Providers from './Providers';
-import { resetPage } from './datasets/[slug]/samples/dynamicRouting/usePage';
-import { loading as loadingState } from './state';
+  APP_SERVICE_WORKER_TOKEN_HEADER_KEY,
+} from "@fiftyone/teams-state/src/constants";
+import { registerServiceWorker } from "lib/serviceWorkerUtils";
+import { AppProps } from "next/app";
+import { useRouter } from "next/router";
+import { PropsWithChildren, useEffect, useState } from "react";
+import { useRecoilState } from "recoil";
+import { getInitialPreloadedQuery, getRelayProps } from "relay-nextjs/app";
+import "../styles/globals.css";
+import Providers from "./Providers";
+import { resetPage } from "./datasets/[slug]/samples/dynamicRouting/usePage";
+import { loading as loadingState } from "./state";
 
 // only import global-agent on the server
-if (typeof window === 'undefined') {
-  require('global-agent').bootstrap();
+if (typeof window === "undefined") {
+  require("global-agent").bootstrap();
 }
 
 const { MainLayout, MainColumn, MainBar } = layout;
 
 const initialPreloadedQuery = getInitialPreloadedQuery({
-  createClientEnvironment: getTeamsClientEnvironment
+  createClientEnvironment: getTeamsClientEnvironment,
 });
 
-const match = RegExp('/datasets/.*/samples');
+const match = RegExp("/datasets/.*/samples");
 
 function MyApp({ Component, ...props }: AppProps) {
   const relayProps = getRelayProps(props.pageProps, initialPreloadedQuery);
@@ -56,7 +56,7 @@ function MyApp({ Component, ...props }: AppProps) {
     hideFooter,
     containerProps = {},
     topNavProps = {},
-    signOutPage
+    signOutPage,
   } = Component.getLayoutProps ? Component.getLayoutProps() : {};
 
   if (signOutPage) return <Component />;
@@ -107,13 +107,13 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const [loading, setLoading] = useRecoilState(loadingState);
 
   const isServiceWorkerEnabled =
-    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === 'true' ||
-    localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === 'true';
+    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" ||
+    localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true";
 
   const serviceWorkerHeaderKey = useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
 
   const doNotTrackLocalStorage =
-    localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === 'true';
+    localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === "true";
 
   const isAnonymousAnaltyicsEnabled = useBooleanEnv(
     FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED,
@@ -141,10 +141,10 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       writeKey: SEGMENT_WRITE_KEY,
       userId: demoMode ? user?.id : undefined,
       userGroup: demoMode ? org?.displayName : undefined,
-      redact: !demoMode ? ['uri'] : undefined,
+      redact: !demoMode ? ["uri"] : undefined,
       disableUrlTracking: !demoMode,
       version,
-      doNotTrack
+      doNotTrack,
     });
     if (isServiceWorkerEnabled) {
       window.LOOKER_CROSS_ORIGIN_MEDIA = true;
@@ -157,10 +157,10 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   }, [isServiceWorkerEnabled, asPath, token, serviceWorkerHeaderKey]);
 
   useEffect(() => {
-    router.events.on('routeChangeStart', () => {
+    router.events.on("routeChangeStart", () => {
       setLoading(true);
     });
-    router.events.on('routeChangeComplete', () => {
+    router.events.on("routeChangeComplete", () => {
       analytics.page();
       setLoading(false);
       const onSamplesPage = match.test(window.location.pathname);
@@ -180,9 +180,9 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       {loading && (
         <Box
           sx={{
-            position: 'fixed',
-            width: '100%',
-            zIndex: (theme) => theme.zIndex.tooltip * 2
+            position: "fixed",
+            width: "100%",
+            zIndex: (theme) => theme.zIndex.tooltip * 2,
           }}
         >
           <Pending />

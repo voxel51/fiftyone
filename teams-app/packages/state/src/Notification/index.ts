@@ -1,4 +1,4 @@
-import { graphql } from 'react-relay/hooks';
+import { graphql } from "react-relay/hooks";
 
 export const notificationFrag = graphql`
   fragment NotificationFrag on Notification {

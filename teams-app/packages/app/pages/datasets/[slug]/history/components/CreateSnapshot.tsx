@@ -1,4 +1,4 @@
-import { useCurrentDataset, useMutation } from '@fiftyone/hooks';
+import { useCurrentDataset, useMutation } from "@fiftyone/hooks";
 import {
   Box,
   Button,
@@ -6,19 +6,19 @@ import {
   SectionHeader,
   TableSkeleton,
   TextInput,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   Dataset,
   historyCalculateDatasetLatestChangesMutation,
   historyCreateSnapshotMutation,
-  historySnapshotsQuery
-} from '@fiftyone/teams-state';
-import SyncIcon from '@mui/icons-material/Sync';
-import { Grid, Stack, Typography } from '@mui/material';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePreloadedQuery } from 'react-relay';
-import SnapshotStats from './SnapshotStats';
+  historySnapshotsQuery,
+} from "@fiftyone/teams-state";
+import SyncIcon from "@mui/icons-material/Sync";
+import { Grid, Stack, Typography } from "@mui/material";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePreloadedQuery } from "react-relay";
+import SnapshotStats from "./SnapshotStats";
 
 export default function CreateSnapshot(props) {
   const { queryRef, refresh } = props;
@@ -41,9 +41,9 @@ export default function CreateSnapshot(props) {
 
   const calculateChanges = useCallback(() => {
     calculateLatestChanges({
-      errorMessage: 'Failed to calculate latest dataset changes',
+      errorMessage: "Failed to calculate latest dataset changes",
       variables: { datasetIdentifier },
-      onSuccess: refresh
+      onSuccess: refresh,
     });
   }, [calculateLatestChanges, datasetIdentifier, refresh]);
 
@@ -66,20 +66,20 @@ export default function CreateSnapshot(props) {
             <SectionHeader
               title="Create snapshot"
               description={
-                'Creating a new snapshot creates a permanent record of your ' +
+                "Creating a new snapshot creates a permanent record of your " +
                 "dataset's current contents."
               }
               containerProps={{ sx: { pb: 0 } }}
             />
             {showSkeleton ? (
-              <TableSkeleton rows={1} skeletonProps={{ width: '75%' }} />
+              <TableSkeleton rows={1} skeletonProps={{ width: "75%" }} />
             ) : (
               <Stack>
                 {latestChanges && <SnapshotStats {...latestChanges} />}
                 <Stack direction="row" spacing={1}>
                   {updatedAt && (
                     <Typography color="text.tertiary">
-                      Updated{' '}
+                      Updated{" "}
                       <Timestamp timestamp={updatedAt} color="inherit" />
                     </Typography>
                   )}
@@ -93,9 +93,9 @@ export default function CreateSnapshot(props) {
                       py: 0,
                       px: 0.5,
                       fontSize: 14,
-                      color: (theme) => theme.palette.text.tertiary
+                      color: (theme) => theme.palette.text.tertiary,
                     }}
-                    startIcon={<SyncIcon sx={{ fontSize: '16px!important' }} />}
+                    startIcon={<SyncIcon sx={{ fontSize: "16px!important" }} />}
                     onClick={calculateChanges}
                   >
                     Refresh
@@ -111,7 +111,7 @@ export default function CreateSnapshot(props) {
               fieldLabel="Name"
               fullWidth
               size="small"
-              onChange={(e) => setField('snapshotName', e.target.value)}
+              onChange={(e) => setField("snapshotName", e.target.value)}
               placeholder="Snapshot name"
             />
             <TextInput
@@ -120,22 +120,22 @@ export default function CreateSnapshot(props) {
               size="small"
               rows={5}
               multiline
-              onChange={(e) => setField('description', e.target.value)}
+              onChange={(e) => setField("description", e.target.value)}
               placeholder="Snapshot description"
             />
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <Button
                 variant="contained"
                 onClick={() => {
                   createSnapshot({
                     variables: { ...state, datasetIdentifier },
-                    successMessage: 'Successfully created a new snapshot.',
+                    successMessage: "Successfully created a new snapshot.",
                     onSuccess() {
                       setState((state) => ({
-                        refreshCount: state.refreshCount + 1
+                        refreshCount: state.refreshCount + 1,
                       }));
                       refresh();
-                    }
+                    },
                   });
                 }}
                 loading={creatingSnapshot}

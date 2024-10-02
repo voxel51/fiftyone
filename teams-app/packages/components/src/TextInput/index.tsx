@@ -1,4 +1,4 @@
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
   Box,
   BoxProps,
@@ -7,10 +7,10 @@ import {
   Stack,
   TextField,
   TextFieldProps,
-  Typography
-} from '@mui/material';
-import { useState } from 'react';
-import StringElementNullish from '../StringElementNullish';
+  Typography,
+} from "@mui/material";
+import { useState } from "react";
+import StringElementNullish from "../StringElementNullish";
 
 type TextInputProps = TextFieldProps & {
   fieldLabel?: string;
@@ -32,7 +32,7 @@ export default function TextInput(props: TextInputProps) {
   } = props;
   let computedInputProps = {};
   let computedType = type;
-  if (type === 'password') {
+  if (type === "password") {
     computedInputProps = {
       endAdornment: (
         <InputAdornment position="end">
@@ -40,17 +40,17 @@ export default function TextInput(props: TextInputProps) {
             aria-label="toggle password visibility"
             onClick={() => setShowPassword(!showPassword)}
             edge="end"
-            title={showPassword ? 'Hide content' : 'Show content'}
+            title={showPassword ? "Hide content" : "Show content"}
             sx={{
-              color: (theme) => theme.palette.text.tertiary
+              color: (theme) => theme.palette.text.tertiary,
             }}
           >
             {showPassword ? <VisibilityOff /> : <Visibility />}
           </IconButton>
         </InputAdornment>
-      )
+      ),
     };
-    if (showPassword) computedType = 'text';
+    if (showPassword) computedType = "text";
   }
   computedInputProps = { ...computedInputProps, ...InputProps };
 

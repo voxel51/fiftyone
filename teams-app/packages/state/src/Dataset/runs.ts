@@ -1,35 +1,35 @@
-import { graphql } from 'react-relay';
-import { atom } from 'recoil';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '../constants';
+import { graphql } from "react-relay";
+import { atom } from "recoil";
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
 
 export const runsPageQueryDefaultVariables = {
   filter: {},
-  order: { direction: 'DESC', field: 'updatedAt' },
+  order: { direction: "DESC", field: "updatedAt" },
   page: DEFAULT_PAGE,
   pageSize: DEFAULT_PAGE_SIZE,
-  search: null
+  search: null,
 };
 
 export const runsPageQueryDynamicVariables = atom({
-  key: 'runsPageQueryDynamicVariables',
-  default: runsPageQueryDefaultVariables
+  key: "runsPageQueryDynamicVariables",
+  default: runsPageQueryDefaultVariables,
 });
 
 export const orchestratorDialogAtom = atom({
-  key: 'orchestratorDialogAtom',
+  key: "orchestratorDialogAtom",
   default: {
-    description: '',
-    id: '',
+    description: "",
+    id: "",
     open: false,
-    createdAt: '',
-    deactivatedAt: '',
-    updatedAt: ''
-  }
+    createdAt: "",
+    deactivatedAt: "",
+    updatedAt: "",
+  },
 });
 
 export const autoRefreshRunsStatus = atom({
-  key: 'autoRefreshRunsStatus',
-  default: false
+  key: "autoRefreshRunsStatus",
+  default: false,
 });
 
 export const runsPageQuery = graphql`

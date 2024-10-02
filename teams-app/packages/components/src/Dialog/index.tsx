@@ -6,11 +6,11 @@ import {
   Grid,
   Typography,
   Button,
-  CircularProgress
-} from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+  CircularProgress,
+} from "@mui/material";
+import { Close as CloseIcon } from "@mui/icons-material";
 
-type DialogProps = Omit<MUIDialogProps, 'open' | 'title'> & {
+type DialogProps = Omit<MUIDialogProps, "open" | "title"> & {
   cancelButtonText?: string;
   confirmationButtonColor?: any;
   confirmationButtonText?: string;
@@ -50,13 +50,13 @@ export default function Dialog(props: DialogProps) {
         <IconButton
           data-testid="close"
           aria-label="close"
-          onClick={(e) => onClose(e, 'escapeKeyDown')}
-          sx={{ position: 'absolute', right: 32 }}
+          onClick={(e) => onClose(e, "escapeKeyDown")}
+          sx={{ position: "absolute", right: 32 }}
         >
           <CloseIcon />
         </IconButton>
-        {typeof title === 'string' ? (
-          <Typography variant="h6" sx={{ pb: 2, width: '95%' }} noWrap>
+        {typeof title === "string" ? (
+          <Typography variant="h6" sx={{ pb: 2, width: "95%" }} noWrap>
             {title}
           </Typography>
         ) : (
@@ -67,8 +67,8 @@ export default function Dialog(props: DialogProps) {
           <Box
             paddingTop={2}
             sx={{
-              display: 'flex',
-              justifyContent: 'flex-end'
+              display: "flex",
+              justifyContent: "flex-end",
             }}
           >
             <Button
@@ -79,7 +79,7 @@ export default function Dialog(props: DialogProps) {
               }}
               variant="outlined"
             >
-              {cancelButtonText || 'Cancel'}
+              {cancelButtonText || "Cancel"}
             </Button>
             <Button
               data-testid="dialog-confirm"
@@ -91,9 +91,9 @@ export default function Dialog(props: DialogProps) {
               color={confirmationButtonColor}
               disabled={disableConfirmationButton}
             >
-              {confirmationButtonText || 'Confirm'}
+              {confirmationButtonText || "Confirm"}
               {loading && (
-                <CircularProgress size={16} sx={{ position: 'absolute' }} />
+                <CircularProgress size={16} sx={{ position: "absolute" }} />
               )}
             </Button>
           </Box>

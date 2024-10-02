@@ -1,5 +1,5 @@
-import { useExportView } from '@fiftyone/hooks';
-import { TextInput } from '@fiftyone/teams-components';
+import { useExportView } from "@fiftyone/hooks";
+import { TextInput } from "@fiftyone/teams-components";
 
 export default function CloudStoragePathInput() {
   const { setCloudStoragePath, path } = useExportView();

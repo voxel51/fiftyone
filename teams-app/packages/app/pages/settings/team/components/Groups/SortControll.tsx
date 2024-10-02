@@ -1,7 +1,7 @@
-import useGroupsSearch from '@fiftyone/hooks/src/group/useSearchGroup';
-import { Selection } from '@fiftyone/teams-components';
-import { GROUPS_SORT_OPTIONS, SortT } from '@fiftyone/teams-state';
-import { useMemo } from 'react';
+import useGroupsSearch from "@fiftyone/hooks/src/group/useSearchGroup";
+import { Selection } from "@fiftyone/teams-components";
+import { GROUPS_SORT_OPTIONS, SortT } from "@fiftyone/teams-state";
+import { useMemo } from "react";
 
 export default function SortControll() {
   const { field, direction, setSort } = useGroupsSearch();
@@ -15,7 +15,7 @@ export default function SortControll() {
           label: displayName,
           field,
           direction,
-          displayName
+          displayName,
         };
         return items;
       },
@@ -36,11 +36,11 @@ export default function SortControll() {
         },
         sx: {
           minWidth: 150,
-          color: (theme) => theme.palette.text.secondary
+          color: (theme) => theme.palette.text.secondary,
         },
         MenuProps: {
-          anchorOrigin: { horizontal: 75, vertical: 'bottom' }
-        }
+          anchorOrigin: { horizontal: 75, vertical: "bottom" },
+        },
       }}
       onChange={(id) => {
         setSort(sortOptions[id as string]);

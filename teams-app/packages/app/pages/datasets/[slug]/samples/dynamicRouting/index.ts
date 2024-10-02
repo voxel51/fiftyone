@@ -1,1 +1,1 @@
-export { default as injectDynamicRouter } from './injectDynamicRouter';
+export { default as injectDynamicRouter } from "./injectDynamicRouter";

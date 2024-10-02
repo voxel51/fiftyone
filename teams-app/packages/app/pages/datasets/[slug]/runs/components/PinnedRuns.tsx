@@ -1,19 +1,19 @@
-import { useCurrentDataset } from '@fiftyone/hooks';
+import { useCurrentDataset } from "@fiftyone/hooks";
 import {
   Box,
   DatasetHighlightsWidget,
-  Timestamp
-} from '@fiftyone/teams-components';
-import { Dataset, runsPageQuery, runsPageQueryT } from '@fiftyone/teams-state';
-import { INITIAL_PINNED_RUNS_LIMIT } from '@fiftyone/teams-state/src/constants';
-import { Button } from '@mui/material';
-import { useRouter } from 'next/router';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { usePreloadedQuery, useQueryLoader } from 'react-relay';
-import getTimestamp from '../utils/getTimestamp';
-import useRefresher, { PINNED_RUNS_REFRESHER_ID } from '../utils/useRefresher';
-import RunStatus from './RunStatus';
-import RunsPin from './RunsPin';
+  Timestamp,
+} from "@fiftyone/teams-components";
+import { Dataset, runsPageQuery, runsPageQueryT } from "@fiftyone/teams-state";
+import { INITIAL_PINNED_RUNS_LIMIT } from "@fiftyone/teams-state/src/constants";
+import { Button } from "@mui/material";
+import { useRouter } from "next/router";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import getTimestamp from "../utils/getTimestamp";
+import useRefresher, { PINNED_RUNS_REFRESHER_ID } from "../utils/useRefresher";
+import RunStatus from "./RunStatus";
+import RunsPin from "./RunsPin";
 
 function PinnedRunsWithQuery(props) {
   const { queryRef, pageSize, setPageSize } = props;
@@ -28,12 +28,12 @@ function PinnedRunsWithQuery(props) {
     return {
       title: label || operator,
       subtitle: [
-        <Timestamp key={id + '-timestamp'} timestamp={timestamp} />,
-        ...(runByName ? [runByName] : [])
+        <Timestamp key={id + "-timestamp"} timestamp={timestamp} />,
+        ...(runByName ? [runByName] : []),
       ],
       Icon: <RunStatus status={runState} variant="circle" />,
       SecondaryAction: <RunsPin id={id} pinned isHovering />,
-      link: `${asPath}/${id}`
+      link: `${asPath}/${id}`,
     };
   });
   const leftoverPinnedRuns = nodeTotal - pageSize;
@@ -71,7 +71,7 @@ export default function PinnedRuns() {
     () => ({
       filter: { datasetIdentifier: { eq: id }, pinned: true },
       page: 1,
-      pageSize
+      pageSize,
     }),
     [id, pageSize]
   );
@@ -81,7 +81,7 @@ export default function PinnedRuns() {
   }, [loadQuery, loadQueryOptions]);
 
   const refresh = useCallback(() => {
-    loadQuery(loadQueryOptions, { fetchPolicy: 'store-and-network' });
+    loadQuery(loadQueryOptions, { fetchPolicy: "store-and-network" });
   }, [loadQuery, loadQueryOptions]);
 
   const [refresher, setRefresher] = useRefresher(PINNED_RUNS_REFRESHER_ID);

@@ -1,12 +1,12 @@
-import React from 'react';
-import Box from '@mui/material/Box';
+import React from "react";
+import Box from "@mui/material/Box";
 
 import {
   DatasetSort,
   SearchDatasets,
   MediaTypeSelection,
-  UserRadioSelection
-} from '@fiftyone/teams-components';
+  UserRadioSelection,
+} from "@fiftyone/teams-components";
 
 export default function DatasetListFilterBar() {
   return (

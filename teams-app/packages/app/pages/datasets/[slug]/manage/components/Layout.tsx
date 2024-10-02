@@ -1,7 +1,7 @@
-import { Box, layout } from '@fiftyone/teams-components';
-import Nav from '../components/Nav';
-import DatasetNavigation from '../../components/navigation';
-import React from 'react';
+import { Box, layout } from "@fiftyone/teams-components";
+import Nav from "../components/Nav";
+import DatasetNavigation from "../../components/navigation";
+import React from "react";
 
 const { SidePanelLayout } = layout;
 

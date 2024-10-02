@@ -1,9 +1,9 @@
-import { USER_ROLES } from '@fiftyone/teams-state/src/constants';
-import { pluralize } from '@fiftyone/teams-utilities';
-import { Box, Typography } from '@mui/material';
-import { useCallback, useMemo } from 'react';
-import { RoleData, hasSeatsForRoleChange } from './auditUtils';
-import useUserAuditData from './useUserAuditData';
+import { USER_ROLES } from "@fiftyone/teams-state/src/constants";
+import { pluralize } from "@fiftyone/teams-utilities";
+import { Box, Typography } from "@mui/material";
+import { useCallback, useMemo } from "react";
+import { RoleData, hasSeatsForRoleChange } from "./auditUtils";
+import useUserAuditData from "./useUserAuditData";
 
 const useUserAudit = () => {
   const { audit, refetch, hasCollaborators, fetchError } = useUserAuditData();
@@ -18,32 +18,32 @@ const useUserAudit = () => {
 
     return {
       USERS: {
-        role: 'Users',
+        role: "Users",
         current: users.current,
         remaining: users.remaining,
         text: hasUserCount
-          ? `${users.remaining} ${pluralize(users.remaining, 'user')}`
-          : ''
+          ? `${users.remaining} ${pluralize(users.remaining, "user")}`
+          : "",
       },
       COLLABORATORS: {
-        role: 'Collaborator',
+        role: "Collaborator",
         current: cCurrent,
         remaining: cRemaining,
         text: hasCollaborators
           ? `${collaborators.current} ${pluralize(
               collaborators.remaining,
-              'collaborator'
+              "collaborator"
             )}`
-          : ''
+          : "",
       },
       GUESTS: {
-        role: 'Guest',
+        role: "Guest",
         current: guests.current,
         remaining: guests.remaining,
         text: hasGuestCount
-          ? `${guests.remaining} ${pluralize(guests.remaining, 'guest')}`
-          : ''
-      }
+          ? `${guests.remaining} ${pluralize(guests.remaining, "guest")}`
+          : "",
+      },
     };
   }, [audit]);
 
@@ -55,23 +55,23 @@ const useUserAudit = () => {
     return remaining ? (
       <Box display="flex" width="100%">
         <Typography
-          color={uCount === 0 ? 'orange' : uCount > 0 ? 'green' : 'red'}
+          color={uCount === 0 ? "orange" : uCount > 0 ? "green" : "red"}
           sx={{ mr: 0.5 }}
         >
           {remaining.USERS.text}
-          {', '}
+          {", "}
         </Typography>
         {remaining?.COLLABORATORS?.text && (
           <Typography
-            color={cCount === 0 ? 'orange' : cCount > 0 ? 'green' : 'red'}
+            color={cCount === 0 ? "orange" : cCount > 0 ? "green" : "red"}
             sx={{ mr: 0.5 }}
           >
             {remaining.COLLABORATORS.text}
-            {', '}
+            {", "}
           </Typography>
         )}
         <Typography
-          color={gCount === 0 ? 'orange' : gCount > 0 ? 'green' : 'red'}
+          color={gCount === 0 ? "orange" : gCount > 0 ? "green" : "red"}
           sx={{ mr: 0.5 }}
         >
           {remaining.GUESTS.text}
@@ -79,7 +79,7 @@ const useUserAudit = () => {
         <Typography sx={{ mr: 1 }}>seats left.</Typography>
       </Box>
     ) : (
-      ''
+      ""
     );
   }, [remaining]);
 
@@ -90,8 +90,8 @@ const useUserAudit = () => {
     return remaining.USERS.remaining < 0 ||
       (hasCollaborators && remaining.COLLABORATORS.remaining < 0) ||
       remaining.GUESTS.remaining < 0
-      ? 'Organization is in violation of License and must delete/downgrade users to regain compliance before you can add/upgrade users.'
-      : '';
+      ? "Organization is in violation of License and must delete/downgrade users to regain compliance before you can add/upgrade users."
+      : "";
   }, [remaining]);
 
   const hasSeatsLeft = useCallback(
@@ -106,15 +106,15 @@ const useUserAudit = () => {
       return USER_ROLES.map((r) => {
         const hasNoSeatsLeft = !hasSeatsLeft(r.id, currentRole);
         const disabledInfo = fetchError
-          ? 'Failed to load license data'
+          ? "Failed to load license data"
           : hasNoSeatsLeft
-            ? 'No seats available'
-            : undefined;
+          ? "No seats available"
+          : undefined;
 
         return {
           ...r,
           disabled: hasNoSeatsLeft,
-          disabledInfo
+          disabledInfo,
         };
       });
     },
@@ -129,7 +129,7 @@ const useUserAudit = () => {
     getOpenRoles,
     notInComplianceText,
     refetch,
-    error: fetchError
+    error: fetchError,
   };
 };
 

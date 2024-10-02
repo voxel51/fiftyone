@@ -1,17 +1,17 @@
-import { useMutation, useNotification } from '@fiftyone/hooks';
-import { Box, Dialog, FileDrop } from '@fiftyone/teams-components';
+import { useMutation, useNotification } from "@fiftyone/hooks";
+import { Box, Dialog, FileDrop } from "@fiftyone/teams-components";
 import {
   UPLOAD_PLUGIN_MODE,
   uploadPluginAtom,
   uploadPluginMutation,
-  upgradePluginMutation
-} from '@fiftyone/teams-state';
-import { FILE_REST_ENDPOINT } from '@fiftyone/teams-state/src/constants';
-import { fetch } from '@fiftyone/teams-utilities';
-import { Typography } from '@mui/material';
-import { useCallback, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import { PluginsRefreshProps } from './types';
+  upgradePluginMutation,
+} from "@fiftyone/teams-state";
+import { FILE_REST_ENDPOINT } from "@fiftyone/teams-state/src/constants";
+import { fetch } from "@fiftyone/teams-utilities";
+import { Typography } from "@mui/material";
+import { useCallback, useState } from "react";
+import { useRecoilState } from "recoil";
+import { PluginsRefreshProps } from "./types";
 
 export default function UploadPlugin({ refresh }: PluginsRefreshProps) {
   const [state, setState] = useRecoilState(uploadPluginAtom);
@@ -40,40 +40,40 @@ export default function UploadPlugin({ refresh }: PluginsRefreshProps) {
       onClose={handleClose}
       onConfirm={async () => {
         const formData = new FormData();
-        formData.append('file', file as File);
+        formData.append("file", file as File);
         setUploadingFile(true);
         const { result, error } = await fetch(FILE_REST_ENDPOINT, {
-          method: 'POST',
-          body: formData
+          method: "POST",
+          body: formData,
         });
         setUploadingFile(false);
         if (error) {
           sendNotification({
-            variant: 'error',
-            msg: error.message || 'Failed to upload plugin'
+            variant: "error",
+            msg: error.message || "Failed to upload plugin",
           });
         } else {
           const fileUploadToken = result?.file_token;
           if (!fileUploadToken) {
             sendNotification({
-              variant: 'error',
-              msg: 'Failed to upload plugin. Something went wrong.'
+              variant: "error",
+              msg: "Failed to upload plugin. Something went wrong.",
             });
           }
           uploadPlugin({
             variables: { fileUploadToken, pluginName },
             successMessage: `Successfully ${
-              isInstall ? 'installed' : 'upgraded'
+              isInstall ? "installed" : "upgraded"
             } the plugin`,
             onSuccess() {
               handleClose();
               refresh();
-            }
+            },
           });
         }
       }}
       disableConfirmationButton={!Boolean(file) || loading}
-      confirmationButtonText={isInstall ? 'Install' : 'Upgrade'}
+      confirmationButtonText={isInstall ? "Install" : "Upgrade"}
       loading={loading}
     >
       <Typography variant="body1"></Typography>
@@ -94,10 +94,10 @@ function Title(props) {
   return (
     <Box sx={{ pb: 2 }}>
       <Typography variant="h6">
-        {isInstall ? 'Install' : 'Upgrade'} plugin
+        {isInstall ? "Install" : "Upgrade"} plugin
       </Typography>
       <Typography>
-        You can {isInstall ? 'install a new' : 'upgrade a'} plugin by uploading
+        You can {isInstall ? "install a new" : "upgrade a"} plugin by uploading
         the zip of FiftyOne plugin directory.
       </Typography>
     </Box>

@@ -1,14 +1,14 @@
-import { ThemeProvider } from '@fiftyone/teams-components';
+import { ThemeProvider } from "@fiftyone/teams-components";
 import {
   getTeamsClientEnvironment,
   recoilEnvironmentKey,
-  TeamsRelayEnvironment
-} from '@fiftyone/teams-state';
-import { SnackbarProvider } from 'notistack';
-import React from 'react';
-import { Environment } from 'react-relay';
-import { RecoilRoot } from 'recoil';
-import { RecoilRelayEnvironmentProvider } from 'recoil-relay';
+  TeamsRelayEnvironment,
+} from "@fiftyone/teams-state";
+import { SnackbarProvider } from "notistack";
+import React from "react";
+import { Environment } from "react-relay";
+import { RecoilRoot } from "recoil";
+import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 
 const clientEnvironment = getTeamsClientEnvironment();
 

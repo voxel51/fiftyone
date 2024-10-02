@@ -1,20 +1,28 @@
-import { gridAt, gridOffset, gridPage } from '@fiftyone/core/src/components/Grid/recoil';
-import { subscribe } from '@fiftyone/relay';
-import type { SpaceNodeJSON } from '@fiftyone/spaces';
-import { ensureColorScheme, getSessionRef, SPACES_DEFAULT } from '@fiftyone/state';
-import { toSlug } from '@fiftyone/utilities';
-import { loading } from 'pages/state';
-import { useRecoilCallback } from 'recoil';
-import loadPageQuery, { type Page } from './loadPageQuery';
+import {
+  gridAt,
+  gridOffset,
+  gridPage,
+} from "@fiftyone/core/src/components/Grid/recoil";
+import { subscribe } from "@fiftyone/relay";
+import type { SpaceNodeJSON } from "@fiftyone/spaces";
+import {
+  ensureColorScheme,
+  getSessionRef,
+  SPACES_DEFAULT,
+} from "@fiftyone/state";
+import { toSlug } from "@fiftyone/utilities";
+import { loading } from "pages/state";
+import { useRecoilCallback } from "recoil";
+import loadPageQuery, { type Page } from "./loadPageQuery";
 import {
   CONST_EVENTS,
   getHistoryState,
   type HistoryState,
   MODAL_EVENT,
-  replaceHistoryState
-} from './state';
-import { type TeamsSession, writeSession } from './useLocalSession';
-import { datasetPage, pageRunner } from './usePage';
+  replaceHistoryState,
+} from "./state";
+import { type TeamsSession, writeSession } from "./useLocalSession";
+import { datasetPage, pageRunner } from "./usePage";
 
 export interface DatasetData {
   datasetId: string;
@@ -22,11 +30,11 @@ export interface DatasetData {
   datasetSlug: string;
 }
 
-export type Session = Omit<TeamsSession, 'datasetIdentifier'>;
+export type Session = Omit<TeamsSession, "datasetIdentifier">;
 
 export const initializeSession = (session: Session, search: string) => {
   const params = new URLSearchParams(search);
-  const share = params.get('share');
+  const share = params.get("share");
   if (share) {
     const data = JSON.parse(decodeURIComponent(share));
     if (data.filters) {
@@ -39,27 +47,27 @@ export const initializeSession = (session: Session, search: string) => {
 
     session.fieldVisibilityStage = data.fieldVisibilityStage;
     session.modalSelector =
-      params.get('id') || params.get('groupId')
+      params.get("id") || params.get("groupId")
         ? {
-            id: params.get('id') || undefined,
-            groupId: params.get('groupId') || undefined
+            id: params.get("id") || undefined,
+            groupId: params.get("groupId") || undefined,
           }
         : undefined;
     session.selectedLabels = [];
     session.selectedSamples = new Set();
-    session.sessionGroupSlice = params.get('slice') || undefined;
+    session.sessionGroupSlice = params.get("slice") || undefined;
     session.sessionSpaces = SPACES_DEFAULT;
-    session.snapshot = params.get('snapshot') || undefined;
-    session.view = params.get('view') || data.view || undefined;
+    session.snapshot = params.get("snapshot") || undefined;
+    session.view = params.get("view") || data.view || undefined;
 
     return {
-      workspaceSlug: params.get('workspace') || undefined
+      workspaceSlug: params.get("workspace") || undefined,
     };
   }
 
-  session.sessionGroupSlice = params.get('slice') || session.sessionGroupSlice;
+  session.sessionGroupSlice = params.get("slice") || session.sessionGroupSlice;
 
-  const snapshot = params.get('snapshot') || undefined;
+  const snapshot = params.get("snapshot") || undefined;
   if (snapshot && session.snapshot !== snapshot) {
     session.fieldVisibilityStage = undefined;
     session.modalSelector = undefined;
@@ -69,11 +77,11 @@ export const initializeSession = (session: Session, search: string) => {
     session.sessionSpaces = SPACES_DEFAULT;
     session.snapshot = snapshot;
     session.view = [];
-    params.delete('id');
-    params.delete('workspace');
+    params.delete("id");
+    params.delete("workspace");
   }
 
-  const view = params.get('view');
+  const view = params.get("view");
   if (view && session.view !== view) {
     session.fieldVisibilityStage = undefined;
     session.modalSelector = undefined;
@@ -81,34 +89,34 @@ export const initializeSession = (session: Session, search: string) => {
     session.selectedSamples = new Set();
     session.sessionGroupSlice = undefined;
     session.view = view;
-    params.delete('id');
+    params.delete("id");
   }
 
-  let workspace = params.get('workspace');
+  let workspace = params.get("workspace");
   if (!workspace && session.sessionSpaces?._name) {
     // if a 'workspace' parameter is not present, use the session value
     workspace = toSlug(session.sessionSpaces._name);
   }
 
-  if (params.has('groupId')) {
+  if (params.has("groupId")) {
     session.modalSelector = {
-      groupId: params.get('groupId') || undefined
+      groupId: params.get("groupId") || undefined,
     };
-  } else if (params.has('id')) {
+  } else if (params.has("id")) {
     session.modalSelector = {
-      id: params.get('id') || undefined
+      id: params.get("id") || undefined,
     };
   }
 
   if (session.modalSelector) {
     session.modalSelector = {
       id: session.modalSelector?.id,
-      groupId: session.modalSelector?.groupId
+      groupId: session.modalSelector?.groupId,
     };
   }
 
   return {
-    workspaceSlug: workspace || undefined
+    workspaceSlug: workspace || undefined,
   };
 };
 
@@ -119,8 +127,8 @@ const assignSession = (state: HistoryState, session: Session) => {
   session.snapshot = state.snapshot;
   session.view = state.view;
 
-  const currentEvent = getHistoryState().event || '';
-  const nextEvent = state.event || '';
+  const currentEvent = getHistoryState().event || "";
+  const nextEvent = state.event || "";
   if (CONST_EVENTS.has(nextEvent) && !CONST_EVENTS.has(currentEvent)) {
     session.fieldVisibilityStage = undefined;
     session.selectedSamples = new Set<string>();
@@ -129,7 +137,7 @@ const assignSession = (state: HistoryState, session: Session) => {
   return {
     workspaceSlug: session.sessionSpaces?._name
       ? toSlug(session.sessionSpaces._name)
-      : undefined
+      : undefined,
   };
 };
 
@@ -154,14 +162,14 @@ export const load = async (
           ...dataset,
           view: session.view || [],
           snapshot: session.snapshot,
-          workspaceSlug: data?.workspaceSlug
+          workspaceSlug: data?.workspaceSlug,
         },
         session.fieldVisibilityStage,
         hard
       );
 
       if (
-        typeof session.view === 'string' &&
+        typeof session.view === "string" &&
         entry.data.dataset?.savedViewSlug !== session.view
       ) {
         // only necessary because the query may not return
@@ -193,7 +201,7 @@ export const load = async (
         {
           ...dataset,
           snapshot: session.snapshot,
-          view: []
+          view: [],
         },
         undefined,
         hard
@@ -219,12 +227,12 @@ export const load = async (
         view: session.view || [],
         workspaceSlug: session.sessionSpaces?._name
           ? toSlug(session.sessionSpaces._name)
-          : undefined
+          : undefined,
       });
   });
 
   if (!entry) {
-    throw new Error('no entry');
+    throw new Error("no entry");
   }
 
   return entry;

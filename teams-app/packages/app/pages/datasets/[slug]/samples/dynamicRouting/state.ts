@@ -1,10 +1,10 @@
-import type { ModalSelector, State } from '@fiftyone/state';
-import { setPending } from 'pages/state';
-import { v4 } from 'uuid';
-import { transition } from './transition';
+import type { ModalSelector, State } from "@fiftyone/state";
+import { setPending } from "pages/state";
+import { v4 } from "uuid";
+import { transition } from "./transition";
 
-export const FIELD_VISIBILITY_EVENT = 'fieldVisibility';
-export const MODAL_EVENT = 'modal';
+export const FIELD_VISIBILITY_EVENT = "fieldVisibility";
+export const MODAL_EVENT = "modal";
 
 export const CONST_EVENTS = new Set([FIELD_VISIBILITY_EVENT, MODAL_EVENT]);
 
@@ -29,7 +29,7 @@ export const getHistoryState = () => {
     | undefined;
 
   if (!state) {
-    throw new Error('no dataset history state');
+    throw new Error("no dataset history state");
   }
 
   return state;
@@ -51,15 +51,15 @@ export const pushHistoryState = (
         options: {
           locale: undefined,
           _shouldResolveHref: false,
-          fiftyone: { ...next }
+          fiftyone: { ...next },
         },
         as: href,
         url: `/datasets/[slug]/samples${resolveSearchParameters(next, {
-          slug: next.datasetSlug
+          slug: next.datasetSlug,
         })}`,
-        __N: false
+        __N: false,
       },
-      '',
+      "",
       href
     );
     transition(next);
@@ -71,42 +71,42 @@ const resolveSearchParameters = (
   extra?: { [key: string]: string }
 ) => {
   const params = new URLSearchParams(window.location.search);
-  params.delete('share');
+  params.delete("share");
 
   if (state.slice) {
-    params.set('slice', state.slice);
+    params.set("slice", state.slice);
   } else {
-    params.delete('slice');
+    params.delete("slice");
   }
 
   if (state.modalSelector?.groupId) {
-    params.set('groupId', state.modalSelector.groupId);
+    params.set("groupId", state.modalSelector.groupId);
   } else {
-    params.delete('groupId');
+    params.delete("groupId");
 
     if (state.modalSelector?.id) {
-      params.set('id', state.modalSelector.id);
+      params.set("id", state.modalSelector.id);
     } else {
-      params.delete('id');
+      params.delete("id");
     }
   }
 
   if (state.snapshot) {
-    params.set('snapshot', state.snapshot);
+    params.set("snapshot", state.snapshot);
   } else {
-    params.delete('snapshot');
+    params.delete("snapshot");
   }
 
-  if (typeof state.view === 'string') {
-    params.set('view', state.view);
+  if (typeof state.view === "string") {
+    params.set("view", state.view);
   } else {
-    params.delete('view');
+    params.delete("view");
   }
 
   if (state.workspaceSlug) {
-    params.set('workspace', state.workspaceSlug);
+    params.set("workspace", state.workspaceSlug);
   } else {
-    params.delete('workspace');
+    params.delete("workspace");
   }
 
   if (extra) {
@@ -121,7 +121,7 @@ const resolveSearchParameters = (
     return `?${search}`;
   }
 
-  return '';
+  return "";
 };
 
 export const replaceHistoryState = (
@@ -136,14 +136,14 @@ export const replaceHistoryState = (
       ...window.history.state,
       options: {
         ...window.history.state.options,
-        fiftyone: { ...next }
+        fiftyone: { ...next },
       },
       as: href,
       url: `/datasets/[slug]/samples${resolveSearchParameters(next, {
-        slug: next.datasetSlug
-      })}`
+        slug: next.datasetSlug,
+      })}`,
     },
-    '',
+    "",
     href
   );
 };

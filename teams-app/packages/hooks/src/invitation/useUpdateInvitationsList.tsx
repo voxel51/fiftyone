@@ -1,8 +1,8 @@
-import { teamInvitationsSelector } from '@fiftyone/teams-state';
-import { useRecoilStateLoadable } from 'recoil';
-import { teamInvitationsQuery$data } from '@fiftyone/teams-state/src/Settings/__generated__//teamInvitationsQuery.graphql';
+import { teamInvitationsSelector } from "@fiftyone/teams-state";
+import { useRecoilStateLoadable } from "recoil";
+import { teamInvitationsQuery$data } from "@fiftyone/teams-state/src/Settings/__generated__//teamInvitationsQuery.graphql";
 
-type Invitations = teamInvitationsQuery$data['invitations'];
+type Invitations = teamInvitationsQuery$data["invitations"];
 type Invitation = Invitations[number];
 type CommitInvitationUpdateProps = {
   id?: string;

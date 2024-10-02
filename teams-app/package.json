@@ -14,6 +14,7 @@
         "start": "",
         "format": "npx prettier --write .",
         "pretty-quick": "pretty-quick",
+        "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
         "prepare": "cd .. && husky install app/.husky",
         "test": "vitest",
         "dev:app": "yarn workspace @fiftyone/teams-app dev",

@@ -1,5 +1,5 @@
-import { SESSION_ENDPOINT } from '@fiftyone/teams-state/src/constants';
-import { useCallback, useEffect, useRef } from 'react';
+import { SESSION_ENDPOINT } from "@fiftyone/teams-state/src/constants";
+import { useCallback, useEffect, useRef } from "react";
 
 const EARLY_REFRESH_WINDOW = 60 * 1000; // 60 seconds
 const REFRESH_INTERVAL = 30 * 1000; // 30 seconds
@@ -17,7 +17,7 @@ export default function useSessionRefresher() {
   const getLatestSession = useCallback(async () => {
     const sessionExp = sessionExpRef.current;
     if (
-      typeof sessionExp === 'number' &&
+      typeof sessionExp === "number" &&
       sessionExp - Date.now() > EARLY_REFRESH_WINDOW
     ) {
       return; // no need to refresh just yet

@@ -34,4 +34,4 @@ scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
 }
 `;
 
-export { scrollable, scrollableSm } from './scrollable.module.css';
+export { scrollable, scrollableSm } from "./scrollable.module.css";

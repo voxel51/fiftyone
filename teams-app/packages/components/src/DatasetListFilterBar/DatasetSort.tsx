@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
-import { Selection } from '@fiftyone/teams-components';
-import { SORT_OPTIONS, sortOptionType } from './constants';
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
+import React, { useCallback, useMemo } from "react";
+import { Selection } from "@fiftyone/teams-components";
+import { SORT_OPTIONS, sortOptionType } from "./constants";
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
 
 export default function DatasetSort() {
   const { field, direction, setSort } = useDatasetsFilter();
@@ -17,7 +17,7 @@ export default function DatasetSort() {
         label: displayName,
         field,
         direction,
-        displayName
+        displayName,
       };
       return items;
     }, {});
@@ -36,11 +36,11 @@ export default function DatasetSort() {
         },
         sx: {
           minWidth: 150,
-          color: (theme) => theme.palette.text.secondary
+          color: (theme) => theme.palette.text.secondary,
         },
         MenuProps: {
-          anchorOrigin: { horizontal: 75, vertical: 'bottom' }
-        }
+          anchorOrigin: { horizontal: 75, vertical: "bottom" },
+        },
       }}
       onChange={(id) => {
         const sortOption = sortOptions[id as string];

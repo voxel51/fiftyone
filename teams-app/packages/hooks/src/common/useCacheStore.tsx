@@ -1,6 +1,6 @@
-import { staleCacheStore } from '@fiftyone/teams-state';
-import { useCallback, useMemo } from 'react';
-import { useRecoilState } from 'recoil';
+import { staleCacheStore } from "@fiftyone/teams-state";
+import { useCallback, useMemo } from "react";
+import { useRecoilState } from "recoil";
 
 // This is a workaround hook for on-demand cache refresh
 export default function useCacheStore(

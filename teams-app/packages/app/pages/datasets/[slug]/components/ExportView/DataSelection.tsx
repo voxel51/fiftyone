@@ -1,6 +1,6 @@
-import { useEnv, useExportView } from '@fiftyone/hooks';
-import { Selection } from '@fiftyone/teams-components';
-import { CONSTANT_VARIABLES } from '@fiftyone/teams-state';
+import { useEnv, useExportView } from "@fiftyone/hooks";
+import { Selection } from "@fiftyone/teams-components";
+import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
 const { EXPORT_DATA_ITEMS, ALLOW_MEDIA_EXPORT_ENV_KEY } = CONSTANT_VARIABLES;
 
 export default function DataSelection() {
@@ -9,8 +9,8 @@ export default function DataSelection() {
 
   const items = Object.values(EXPORT_DATA_ITEMS);
   const filteredItems =
-    allowMediaExport === 'false'
-      ? items.filter(({ label }) => !label.includes('Media'))
+    allowMediaExport === "false"
+      ? items.filter(({ label }) => !label.includes("Media"))
       : items;
 
   return (
@@ -19,7 +19,7 @@ export default function DataSelection() {
       items={filteredItems}
       value={data}
       selectProps={{
-        fullWidth: true
+        fullWidth: true,
       }}
       containerProps={{ sx: { mt: 1 } }}
       onChange={(selectedType) => {

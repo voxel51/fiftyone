@@ -1,10 +1,10 @@
-import { graphql } from 'react-relay';
-import { atom } from 'recoil';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '../constants';
-import Router from 'next/router';
-import { changeRoute } from '../routing.utils';
-import { PARAMS } from '../urlSyncCommon';
-import { User } from '../User';
+import { graphql } from "react-relay";
+import { atom } from "recoil";
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
+import Router from "next/router";
+import { changeRoute } from "../routing.utils";
+import { PARAMS } from "../urlSyncCommon";
+import { User } from "../User";
 
 export interface UserGroup {
   id: string;
@@ -88,24 +88,24 @@ export const groupRemoveUsersMutation = graphql`
 `;
 
 export const multiUserSearchSelectModalOpenState = atom<boolean>({
-  key: 'multiUserSearchSelectModalOpenState',
-  default: false
+  key: "multiUserSearchSelectModalOpenState",
+  default: false,
 });
 
 export const currentUserGroup = atom<UserGroup | null>({
-  key: 'currentUserGroup',
-  default: null
+  key: "currentUserGroup",
+  default: null,
 });
 
 export const groupUsersPageInfo = atom({
-  key: 'groupUsersPageInfo',
+  key: "groupUsersPageInfo",
   default: { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE },
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf({
           page: Number(Router.query?.page || DEFAULT_PAGE),
-          pageSize: Number(Router.query?.pageSize || DEFAULT_PAGE_SIZE)
+          pageSize: Number(Router.query?.pageSize || DEFAULT_PAGE_SIZE),
         });
       }
       onSet((newValue, oldValue) => {
@@ -114,11 +114,11 @@ export const groupUsersPageInfo = atom({
             pathname: `/settings/team/groups/${Router.query.slug}`,
             params: newValue,
             resetPage: false,
-            deleteParams: new Set(['slug'])
+            deleteParams: new Set(["slug"]),
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const pageSize = Number(
@@ -127,6 +127,6 @@ export const groupUsersPageInfo = atom({
         const page = Number(urlPram.get(PARAMS.PAGE) || DEFAULT_PAGE);
         setSelf({ page, pageSize });
       });
-    }
-  ]
+    },
+  ],
 });

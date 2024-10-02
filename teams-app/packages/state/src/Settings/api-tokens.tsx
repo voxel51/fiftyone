@@ -1,9 +1,9 @@
-import { atom } from 'recoil';
-import { graphql } from 'react-relay';
+import { atom } from "recoil";
+import { graphql } from "react-relay";
 
 export const showGenerateAPITokenDialog = atom({
-  key: 'showGenerateAPITokenDialog',
-  default: false
+  key: "showGenerateAPITokenDialog",
+  default: false,
 });
 
 export const apiTokensGenerateMutation = graphql`

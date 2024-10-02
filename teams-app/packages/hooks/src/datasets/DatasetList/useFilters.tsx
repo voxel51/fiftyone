@@ -1,6 +1,6 @@
-import * as state from '@fiftyone/teams-state';
-import { useMemo } from 'react';
-import { useRecoilState, useRecoilValue, useResetRecoilState } from 'recoil';
+import * as state from "@fiftyone/teams-state";
+import { useMemo } from "react";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 /**
  * Custom hook to be connected to the URL params as well
@@ -44,7 +44,7 @@ const useDatasetsFilter = () => {
       mediaTypes,
       setMediaTypes,
       resetCreatedByUser,
-      searchHelpText
+      searchHelpText,
     };
   }, [
     page,
@@ -63,7 +63,7 @@ const useDatasetsFilter = () => {
     createdByUser,
     setCreatedByUser,
     resetCreatedByUser,
-    searchHelpText
+    searchHelpText,
   ]);
 };
 

@@ -1,14 +1,14 @@
-import { useLazyLoadQuery } from 'react-relay';
+import { useLazyLoadQuery } from "react-relay";
 import {
   CacheConfig,
   FetchPolicy,
   GraphQLTaggedNode,
   OperationType,
   RenderPolicy,
-  VariablesOf
-} from 'relay-runtime';
-import { useCacheStore } from '@fiftyone/hooks';
-import { useEffect } from 'react';
+  VariablesOf,
+} from "relay-runtime";
+import { useCacheStore } from "@fiftyone/hooks";
+import { useEffect } from "react";
 
 export default function useLazyLoadLatestQuery<TQuery extends OperationType>(
   gqlQuery: GraphQLTaggedNode,
@@ -20,11 +20,11 @@ export default function useLazyLoadLatestQuery<TQuery extends OperationType>(
     UNSTABLE_renderPolicy?: RenderPolicy | undefined;
     cacheKey?: string;
   }
-): TQuery['response'] {
-  const [stale, setStale] = useCacheStore(options.cacheKey || '');
+): TQuery["response"] {
+  const [stale, setStale] = useCacheStore(options.cacheKey || "");
   const computedOptions = options || {};
 
-  if (stale) computedOptions.fetchPolicy = 'network-only';
+  if (stale) computedOptions.fetchPolicy = "network-only";
   const data = useLazyLoadQuery(gqlQuery, variables, computedOptions);
 
   useEffect(() => {

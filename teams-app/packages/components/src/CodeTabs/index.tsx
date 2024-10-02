@@ -1,9 +1,9 @@
-import { Box, CodeBlock } from '@fiftyone/teams-components';
-import { Tab, Tabs, Typography } from '@mui/material';
-import { CSSProperties, useMemo, useState } from 'react';
-import { CodeBlockProps } from '../CodeBlock';
+import { Box, CodeBlock } from "@fiftyone/teams-components";
+import { Tab, Tabs, Typography } from "@mui/material";
+import { CSSProperties, useMemo, useState } from "react";
+import { CodeBlockProps } from "../CodeBlock";
 
-type CodeTab = Omit<CodeBlockProps, 'text'> & {
+type CodeTab = Omit<CodeBlockProps, "text"> & {
   id: string;
   code: string;
   label: string;
@@ -33,13 +33,13 @@ export default function CodeTabs(props: CodeTabsProps) {
   const tabProps = tabsById?.[computedTab] || {};
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={computedTab}
           onChange={(e, value) => {
             setTab(value);
-            if (typeof onChange === 'function') onChange(value);
+            if (typeof onChange === "function") onChange(value);
           }}
           aria-label={computedTab}
           sx={{ padding: 0 }}
@@ -49,13 +49,13 @@ export default function CodeTabs(props: CodeTabsProps) {
               key={id}
               label={label}
               value={id}
-              sx={{ padding: 0, alignItems: 'center' }}
+              sx={{ padding: 0, alignItems: "center" }}
             />
           ))}
         </Tabs>
       </Box>
       {Boolean(description) && <Typography py={2}>{description}</Typography>}
-      <Box mt={1} sx={{ cursor: 'pointer' }}>
+      <Box mt={1} sx={{ cursor: "pointer" }}>
         <CodeBlock {...tabProps} text={tabProps.code} />
       </Box>
     </Box>

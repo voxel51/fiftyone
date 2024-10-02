@@ -1,14 +1,14 @@
-import { TableContainer } from '@fiftyone/teams-components';
+import { TableContainer } from "@fiftyone/teams-components";
 import {
   Table,
   TableBody,
   TableCell,
   TableRow,
   Typography,
-  TableCellProps
-} from '@mui/material';
-import Link from 'next/link';
-import { ReactNode, Fragment } from 'react';
+  TableCellProps,
+} from "@mui/material";
+import Link from "next/link";
+import { ReactNode, Fragment } from "react";
 
 type Cell = TableCellProps & {
   id: string;
@@ -27,7 +27,7 @@ type BasicTableProps = { rows: Array<Row>; excludeContainer?: boolean };
 
 export default function BasicTable({
   rows,
-  excludeContainer
+  excludeContainer,
 }: BasicTableProps) {
   const Wrapper = excludeContainer ? Fragment : TableContainer;
   return (
@@ -38,15 +38,15 @@ export default function BasicTable({
             const { id, cells, link, onClick, onHover } = row;
             const Wrapper = link ? Link : Fragment;
             const wrapperProps = link ? { href: link } : {};
-            const hasOnClick = typeof onClick === 'function';
-            const hasOnHover = typeof onHover === 'function';
-            const clickable = typeof link === 'string' || hasOnClick;
+            const hasOnClick = typeof onClick === "function";
+            const hasOnHover = typeof onHover === "function";
+            const clickable = typeof link === "string" || hasOnClick;
             return (
               <Wrapper {...wrapperProps}>
                 <TableRow
                   key={id}
                   hover={clickable}
-                  sx={{ cursor: clickable ? 'pointer' : 'default' }}
+                  sx={{ cursor: clickable ? "pointer" : "default" }}
                   onClick={(e) => {
                     if (hasOnClick) onClick(e, row);
                   }}

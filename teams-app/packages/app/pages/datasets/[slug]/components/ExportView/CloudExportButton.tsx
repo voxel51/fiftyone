@@ -1,17 +1,17 @@
 import {
   useExportVariables,
   useExportView,
-  useMutation
-} from '@fiftyone/hooks';
-import { Button } from '@fiftyone/teams-components';
+  useMutation,
+} from "@fiftyone/hooks";
+import { Button } from "@fiftyone/teams-components";
 import {
   CONSTANT_VARIABLES,
   DatasetExportMutation,
-  exportViewForceClosePopoverCount
-} from '@fiftyone/teams-state';
-import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
-import { useMemo } from 'react';
-import { useRecoilState } from 'recoil';
+  exportViewForceClosePopoverCount,
+} from "@fiftyone/teams-state";
+import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
+import { useMemo } from "react";
+import { useRecoilState } from "recoil";
 const { EXPORT_DATA_ITEMS } = CONSTANT_VARIABLES;
 
 export default function CloudExportButton() {
@@ -37,7 +37,7 @@ export default function CloudExportButton() {
             reset();
             // force close popover
             setCount(count + 1);
-          }
+          },
         });
       }}
       disabled={!canCloudExport || !selectionIsValid || loading}

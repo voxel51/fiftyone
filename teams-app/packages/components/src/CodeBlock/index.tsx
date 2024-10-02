@@ -1,10 +1,10 @@
-import { Box, useColorScheme } from '@mui/material';
+import { Box, useColorScheme } from "@mui/material";
 import {
   a11yDark,
   a11yLight,
-  CodeBlock as ReactCodeBlock
-} from 'react-code-blocks';
-import { CopyButton } from '@fiftyone/teams-components';
+  CodeBlock as ReactCodeBlock,
+} from "react-code-blocks";
+import { CopyButton } from "@fiftyone/teams-components";
 
 export default function CodeBlock({ text, ...props }: CodeBlockProps) {
   const { mode } = useColorScheme();
@@ -13,25 +13,25 @@ export default function CodeBlock({ text, ...props }: CodeBlockProps) {
     <Box
       data-testid="code"
       sx={{
-        position: 'relative',
-        fontFamily: 'Roboto Mono',
+        position: "relative",
+        fontFamily: "Roboto Mono",
         fontSize: 14,
-        '&:hover': {
-          '& > button': {
-            opacity: 1
-          }
-        }
+        "&:hover": {
+          "& > button": {
+            opacity: 1,
+          },
+        },
       }}
     >
       <CopyButton
         variant="contained"
         text={text}
         sx={{
-          position: 'absolute',
+          position: "absolute",
           top: 3,
           right: 3,
           opacity: 0,
-          transition: 'opacity 0.3s'
+          transition: "opacity 0.3s",
         }}
         color="secondary"
         size="small"
@@ -40,7 +40,7 @@ export default function CodeBlock({ text, ...props }: CodeBlockProps) {
         text={text}
         language="Python"
         showLineNumbers={true}
-        theme={mode === 'dark' ? a11yDark : a11yLight}
+        theme={mode === "dark" ? a11yDark : a11yLight}
         codeBlock
         {...props}
       />

@@ -1,11 +1,11 @@
 import {
   useCurrentDatasetPermission,
-  useCurrentUserPermission
-} from '@fiftyone/hooks';
-import Custom404 from '@fiftyone/teams-app/pages/404';
-import { PermissionResolver } from '@fiftyone/teams-state';
+  useCurrentUserPermission,
+} from "@fiftyone/hooks";
+import Custom404 from "@fiftyone/teams-app/pages/404";
+import { PermissionResolver } from "@fiftyone/teams-state";
 
-type Scope = 'user' | 'dataset';
+type Scope = "user" | "dataset";
 
 export default function withPermissions<ComponentProps>(
   Component: React.ComponentType<ComponentProps>,
@@ -15,7 +15,7 @@ export default function withPermissions<ComponentProps>(
 ): React.ComponentType<ComponentProps> {
   const ComponentWithPermission = (props: ComponentProps & {}) => {
     const permissionHook =
-      scope === 'user' ? useCurrentUserPermission : useCurrentDatasetPermission;
+      scope === "user" ? useCurrentUserPermission : useCurrentDatasetPermission;
     const allowed = permissionHook(permissions);
     return allowed ? <Component {...props} /> : <Custom404 />;
   };

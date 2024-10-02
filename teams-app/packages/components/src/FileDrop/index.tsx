@@ -1,7 +1,7 @@
-import { Box, UploadIcon } from '@fiftyone/teams-components';
-import { Chip, Typography } from '@mui/material';
-import { useEffect, useRef, useState } from 'react';
-import { FileDrop as ReactFileDrop } from 'react-file-drop';
+import { Box, UploadIcon } from "@fiftyone/teams-components";
+import { Chip, Typography } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
+import { FileDrop as ReactFileDrop } from "react-file-drop";
 
 type FileDropProps = {
   label?: string;
@@ -17,7 +17,7 @@ export default function FileDrop({
   caption,
   onChange,
   types,
-  allowMultiple
+  allowMultiple,
 }: FileDropProps) {
   const [active, setActive] = useState(false);
   const [files, setFiles] = useState<Array<File>>([]);
@@ -67,31 +67,31 @@ export default function FileDrop({
         }}
       >
         <Box
-          className={active ? 'active' : ''}
+          className={active ? "active" : ""}
           sx={{
             p: 2,
             mb: 2,
             border: (theme) => `1px solid ${theme.palette.divider}`,
-            textAlign: 'center',
+            textAlign: "center",
             borderRadius: 1,
-            cursor: 'pointer',
-            '&:hover, &.active': {
-              background: (theme) => theme.palette.background.secondary
-            }
+            cursor: "pointer",
+            "&:hover, &.active": {
+              background: (theme) => theme.palette.background.secondary,
+            },
           }}
         >
           <Box>
             <UploadIcon
               sx={{
-                fill: 'none',
+                fill: "none",
                 stroke: (theme) => theme.palette.text.secondary,
-                fontSize: 24
+                fontSize: 24,
               }}
             />
           </Box>
           <Typography
             component="span"
-            sx={{ fontWeight: 600, textDecoration: 'underline' }}
+            sx={{ fontWeight: 600, textDecoration: "underline" }}
           >
             Click to upload
           </Typography>
@@ -133,7 +133,7 @@ type FileListProps = {
 function FileList({ files, onUpdateFiles }: FileListProps) {
   if (files.length === 0) return null;
   return (
-    <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap' }}>
+    <Box sx={{ mb: 1, display: "flex", flexWrap: "wrap" }}>
       {files.map(({ name }) => {
         return (
           <Chip
@@ -152,9 +152,9 @@ function FileList({ files, onUpdateFiles }: FileListProps) {
   );
 }
 
-function filterFiles(files: Array<File>, types: FileDropProps['types']) {
-  if (typeof types !== 'string' || types.trim().length === 0) return files;
-  const typesArray = types.split(',');
+function filterFiles(files: Array<File>, types: FileDropProps["types"]) {
+  if (typeof types !== "string" || types.trim().length === 0) return files;
+  const typesArray = types.split(",");
   return files.filter((file) =>
     typesArray.some((type) => file.name.endsWith(type))
   );

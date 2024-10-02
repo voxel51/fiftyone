@@ -1,6 +1,6 @@
-import { atom } from 'recoil';
+import { atom } from "recoil";
 
 export const hideHeaders = atom({
-  key: 'hideHeaders',
-  default: false
+  key: "hideHeaders",
+  default: false,
 });

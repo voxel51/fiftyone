@@ -2,21 +2,21 @@ import {
   useMutation,
   useUpdateInvitationsList,
   useUserAudit,
-  useUserRole
-} from '@fiftyone/hooks';
-import { Dialog, RoleSelection, TextInput } from '@fiftyone/teams-components';
+  useUserRole,
+} from "@fiftyone/hooks";
+import { Dialog, RoleSelection, TextInput } from "@fiftyone/teams-components";
 import {
   currentInviteeState,
   settingsTeamInviteTeammateOpen,
   teamInvitationFormState,
-  teamSendUserInvitationMutation
-} from '@fiftyone/teams-state';
-import { Alert, AlertTitle, Box, InputLabel, Typography } from '@mui/material';
-import { teamSendUserInvitationMutation as teamSendUserInvitationMutationType } from 'queries/__generated__/teamSendUserInvitationMutation.graphql';
-import { useState } from 'react';
-import { useRecoilState, useRecoilValue, useResetRecoilState } from 'recoil';
-import LicenseAudit from './LicenseAudit';
-import InviteUrl from './invitationUrl';
+  teamSendUserInvitationMutation,
+} from "@fiftyone/teams-state";
+import { Alert, AlertTitle, Box, InputLabel, Typography } from "@mui/material";
+import { teamSendUserInvitationMutation as teamSendUserInvitationMutationType } from "queries/__generated__/teamSendUserInvitationMutation.graphql";
+import { useState } from "react";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import LicenseAudit from "./LicenseAudit";
+import InviteUrl from "./invitationUrl";
 
 type InviteTeammateProps = {
   onInvite?: Function;
@@ -26,7 +26,7 @@ type InviteTeammateProps = {
 export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   const { hasSeatsLeft } = useUserAudit();
   const [errorMsg, setErrorMsg] = useState(null);
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
   const [sendInvite, sendInviteInProgress] =
     useMutation<teamSendUserInvitationMutationType>(
       teamSendUserInvitationMutation
@@ -36,7 +36,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
     teamInvitationFormState
   );
   const { email, id, role } = invitationForm;
-  const editMode = id !== '';
+  const editMode = id !== "";
 
   const currInvitee = useRecoilValue(currentInviteeState);
   const resetInvitee = useResetRecoilState(currentInviteeState);
@@ -46,12 +46,12 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
 
   const inviteeRole = editMode ? currInvitee.role : undefined;
   const items = getInviteRoles(inviteeRole);
-  const hasInvitationLink = Boolean(url !== '');
+  const hasInvitationLink = Boolean(url !== "");
 
   function handleClose() {
     resetInvitee();
-    setInvitationForm({ email: '', id: '', role: 'MEMBER' });
-    setUrl('');
+    setInvitationForm({ email: "", id: "", role: "MEMBER" });
+    setUrl("");
     setOpen(false);
   }
 
@@ -61,7 +61,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   return (
     <Dialog
       open={open}
-      title={editMode ? 'Edit invitation' : 'Invite new teammate'}
+      title={editMode ? "Edit invitation" : "Invite new teammate"}
       onClose={() => {
         handleClose();
       }}
@@ -75,7 +75,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             if (invitation) {
               updateInvitationsList({
                 id: editMode ? id : undefined,
-                invitation
+                invitation,
               });
             }
           },
@@ -86,9 +86,9 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             const msg =
               error?.source?.errors[0]?.message ||
               error?.message ||
-              'An unknown error occured';
+              "An unknown error occured";
             setErrorMsg(msg);
-          }
+          },
         });
       }}
       fullWidth
@@ -120,7 +120,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         <RoleSelection
           items={items}
           defaultValue={role}
-          selectProps={{ fullWidth: true, size: 'medium' }}
+          selectProps={{ fullWidth: true, size: "medium" }}
           onChange={(role) => {
             setInvitationForm({ ...invitationForm, role });
           }}

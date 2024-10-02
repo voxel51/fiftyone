@@ -8,7 +8,7 @@ export default function formatCtx(ctx) {
 }
 
 const ctxRenames = {
-  dataset_name: 'datasetName',
-  selected: 'selectedSamples',
-  selected_labels: 'selectedLabels'
+  dataset_name: "datasetName",
+  selected: "selectedSamples",
+  selected_labels: "selectedLabels",
 };

@@ -1,14 +1,14 @@
-import { mainTitleSelector } from '@fiftyone/teams-state';
-import { Box, Typography, TextField } from '@mui/material';
-import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
-import { useSetRecoilState } from 'recoil';
-import Grid from '@mui/material/Grid';
-import SupportOutlinedIcon from '@mui/icons-material/SupportOutlined';
+import { mainTitleSelector } from "@fiftyone/teams-state";
+import { Box, Typography, TextField } from "@mui/material";
+import Image from "next/image";
+import React, { useEffect, useState } from "react";
+import { useSetRecoilState } from "recoil";
+import Grid from "@mui/material/Grid";
+import SupportOutlinedIcon from "@mui/icons-material/SupportOutlined";
 import {
-  CONTACT_LINK
+  CONTACT_LINK,
   // DOCUMENTATION_LINK
-} from '@fiftyone/teams-state/src/constants';
+} from "@fiftyone/teams-state/src/constants";
 
 // This file is statically generated at build time.
 /*
@@ -18,18 +18,18 @@ import {
 function Custom404() {
   const setPageTitle = useSetRecoilState(mainTitleSelector);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => {
-    setPageTitle('Not found');
+    setPageTitle("Not found");
   }, [setPageTitle]);
 
   return (
     <Grid
       sx={{
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center'
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
       }}
       width="100%"
       height="70vh"
@@ -59,19 +59,19 @@ function Custom404() {
             type="url"
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{
-              marginTop: '2rem',
-              width: '100%',
-              maxWidth: '400px'
+              marginTop: "2rem",
+              width: "100%",
+              maxWidth: "400px",
             }}
             InputProps={{
-              sx: { p: 0, input: { p: '0.75rem' } }
+              sx: { p: 0, input: { p: "0.75rem" } },
             }}
             placeholder="Search docs.voxel51.com"
             onKeyDown={(e) => {
-              if (e.key == 'Enter') {
+              if (e.key == "Enter") {
                 window.open(
                   `https://docs.voxel51.com/search.html?q=${searchTerm}`,
-                  '_blank'
+                  "_blank"
                 );
               }
             }}

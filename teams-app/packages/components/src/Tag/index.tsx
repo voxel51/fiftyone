@@ -1,9 +1,9 @@
-import React from 'react';
+import React from "react";
 
-import { useTheme } from '@mui/material/styles';
-import { Box, Chip } from '@mui/material';
+import { useTheme } from "@mui/material/styles";
+import { Box, Chip } from "@mui/material";
 
-import CloseIcon from '@mui/icons-material/Close';
+import CloseIcon from "@mui/icons-material/Close";
 
 interface PropsType {
   title: string;
@@ -21,9 +21,9 @@ export default function Tag(props: PropsType) {
       alignItems="center"
       sx={{
         background: theme.palette.background.item,
-        borderRadius: '1rem',
+        borderRadius: "1rem",
         paddingRight: props.readOnly ? 0 : 1,
-        marginRight: 0.5
+        marginRight: 0.5,
       }}
     >
       <Chip title={props.title} label={props.label} sx={{ height: 24 }} />
@@ -32,9 +32,9 @@ export default function Tag(props: PropsType) {
           onClick={props?.onRemove}
           fontSize="medium"
           sx={{
-            '&:hover': {
-              cursor: 'pointer'
-            }
+            "&:hover": {
+              cursor: "pointer",
+            },
           }}
         />
       )}

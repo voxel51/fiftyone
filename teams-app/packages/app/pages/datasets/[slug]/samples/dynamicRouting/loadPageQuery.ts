@@ -1,13 +1,13 @@
-import { type PageQuery, dataset, type datasetQuery } from '@fiftyone/relay';
-import { type State, getCurrentEnvironment } from '@fiftyone/state';
+import { type PageQuery, dataset, type datasetQuery } from "@fiftyone/relay";
+import { type State, getCurrentEnvironment } from "@fiftyone/state";
 import {
   getTeamsClientEnvironment,
   historyLoadDatasetSnapshotMutation,
   type historyLoadDatasetSnapshotMutationT,
   historySnapshotQuery,
-  type historySnapshotQueryT
-} from '@fiftyone/teams-state';
-import { loadQuery } from 'react-relay';
+  type historySnapshotQueryT,
+} from "@fiftyone/teams-state";
+import { loadQuery } from "react-relay";
 import {
   type Environment,
   type GraphQLTaggedNode,
@@ -16,23 +16,23 @@ import {
   type VariablesOf,
   commitMutation,
   fetchQuery,
-  getRequest
-} from 'relay-runtime';
-import type { HistoryState } from './state';
+  getRequest,
+} from "relay-runtime";
+import type { HistoryState } from "./state";
 
 export type Page = PageQuery<datasetQuery> & {
-  snapshotData: historySnapshotQueryT['response'] | null;
+  snapshotData: historySnapshotQueryT["response"] | null;
 };
 
 const resolveFieldVisibility = (
   fieldVisbility?: State.FieldVisibilityStage
 ): State.Stage => {
   return {
-    _cls: fieldVisbility?.cls || 'fiftyone.core.stages.ExcludeFields',
+    _cls: fieldVisbility?.cls || "fiftyone.core.stages.ExcludeFields",
     kwargs: [
-      ['field_names', fieldVisbility?.kwargs?.field_names || []],
-      ['_allow_missing', true]
-    ]
+      ["field_names", fieldVisbility?.kwargs?.field_names || []],
+      ["_allow_missing", true],
+    ],
   };
 };
 
@@ -42,18 +42,18 @@ const loadPageQuery = async (
   hard = false
 ): Promise<Page> => {
   const view: State.Stage[] =
-    typeof state.view === 'string' ? [] : state.view || [];
+    typeof state.view === "string" ? [] : state.view || [];
   const variables = {
     extendedView: fieldVisibilityStage
       ? view.concat([resolveFieldVisibility(fieldVisibilityStage)])
       : view,
     name: state.datasetName,
-    savedViewSlug: typeof state.view === 'string' ? state.view : undefined,
+    savedViewSlug: typeof state.view === "string" ? state.view : undefined,
     view: view,
-    workspaceSlug: state.workspaceSlug
+    workspaceSlug: state.workspaceSlug,
   };
 
-  let snapshotData: historySnapshotQueryT['response'] | null = null;
+  let snapshotData: historySnapshotQueryT["response"] | null = null;
 
   if (state.snapshot) {
     snapshotData = await getQuery<historySnapshotQueryT>(
@@ -90,7 +90,7 @@ const loadPageQuery = async (
     data,
     preloadedQuery,
     snapshotData,
-    concreteRequest: getRequest(dataset)
+    concreteRequest: getRequest(dataset),
   };
 };
 
@@ -101,16 +101,16 @@ function getQuery<T extends OperationType>(
   hard = false
 ) {
   const observable = fetchQuery<T>(environment, operation, variables, {
-    fetchPolicy: hard ? 'network-only' : 'store-or-network'
+    fetchPolicy: hard ? "network-only" : "store-or-network",
   });
 
-  const promise = new Promise<T['response']>((resolve, reject) => {
+  const promise = new Promise<T["response"]>((resolve, reject) => {
     const subscription = observable.subscribe({
       next: (data) => {
         resolve(data);
         subscription?.unsubscribe();
       },
-      error: reject
+      error: reject,
     });
   });
 
@@ -122,12 +122,12 @@ function sendMutation<T extends MutationParameters>(
   mutation: GraphQLTaggedNode,
   variables: VariablesOf<T>
 ) {
-  return new Promise<T['response']>((resolve, reject) => {
+  return new Promise<T["response"]>((resolve, reject) => {
     commitMutation<T>(environment, {
       mutation,
       variables,
       onCompleted: resolve,
-      onError: reject
+      onError: reject,
     });
   });
 }

@@ -1,10 +1,10 @@
-import { MUIThemeModeType } from '@fiftyone/teams-state';
+import { MUIThemeModeType } from "@fiftyone/teams-state";
 import {
   APP_THEME_INIT_LOCAL_STORAGE_KEY,
   NON_OVERRIDABLE_THEME_PREFIX,
-  VALID_THEMES
-} from '@fiftyone/teams-state/src/constants';
-import { useColorScheme } from '@mui/material';
+  VALID_THEMES,
+} from "@fiftyone/teams-state/src/constants";
+import { useColorScheme } from "@mui/material";
 
 export default function useInitializeTheme() {
   const { setMode } = useColorScheme();
@@ -13,9 +13,9 @@ export default function useInitializeTheme() {
   );
 
   return (theme) => {
-    if (typeof theme !== 'string') return;
+    if (typeof theme !== "string") return;
     if (theme.startsWith(NON_OVERRIDABLE_THEME_PREFIX)) {
-      const themeMode = theme.replace(NON_OVERRIDABLE_THEME_PREFIX, '');
+      const themeMode = theme.replace(NON_OVERRIDABLE_THEME_PREFIX, "");
       if (!VALID_THEMES.includes(themeMode)) return;
       return setMode(themeMode as MUIThemeModeType);
     }

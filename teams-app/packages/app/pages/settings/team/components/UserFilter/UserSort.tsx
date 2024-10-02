@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo } from 'react';
-import { Selection } from '@fiftyone/teams-components';
-import useUsersSearch from '@fiftyone/hooks/src/settings/useUsersSearch'
+import React, { useCallback, useMemo } from "react";
+import { Selection } from "@fiftyone/teams-components";
+import useUsersSearch from "@fiftyone/hooks/src/settings/useUsersSearch";
 
-import { SORT_OPTIONS, sortOptionType } from './constants';
-
+import { SORT_OPTIONS, sortOptionType } from "./constants";
 
 export default function UserSort() {
   const { field, direction, setSort } = useUsersSearch();
@@ -19,7 +18,7 @@ export default function UserSort() {
         label: displayName,
         field,
         direction,
-        displayName
+        displayName,
       };
       return items;
     }, {});
@@ -38,11 +37,11 @@ export default function UserSort() {
         },
         sx: {
           minWidth: 150,
-          color: (theme) => theme.palette.text.secondary
+          color: (theme) => theme.palette.text.secondary,
         },
         MenuProps: {
-          anchorOrigin: { horizontal: 75, vertical: 'bottom' }
-        }
+          anchorOrigin: { horizontal: 75, vertical: "bottom" },
+        },
       }}
       onChange={(id) => {
         const sortOption = sortOptions[id as string];

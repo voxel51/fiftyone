@@ -1,14 +1,14 @@
-import { InputAdornment, Button, Box } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { InputAdornment, Button, Box } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
   ContentCopy,
-  SettingsInputCompositeRounded
-} from '@mui/icons-material';
-import { TextInput } from '@fiftyone/teams-components';
-import DoneOutlinedIcon from '@mui/icons-material/DoneOutlined';
+  SettingsInputCompositeRounded,
+} from "@mui/icons-material";
+import { TextInput } from "@fiftyone/teams-components";
+import DoneOutlinedIcon from "@mui/icons-material/DoneOutlined";
 
-import { TextInputProps } from '../TextInput';
-import { useEffect, useState } from 'react';
+import { TextInputProps } from "../TextInput";
+import { useEffect, useState } from "react";
 
 export default function TextInputCopy(props: TextInputProps) {
   const theme = useTheme();
@@ -51,11 +51,11 @@ export default function TextInputCopy(props: TextInputProps) {
                   setCopied(true);
                 }}
               >
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? "Copied!" : "Copy"}
               </Button>
             </Box>
           </InputAdornment>
-        )
+        ),
       }}
     />
   );

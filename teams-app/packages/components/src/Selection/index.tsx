@@ -1,4 +1,4 @@
-import { Check } from '@mui/icons-material';
+import { Check } from "@mui/icons-material";
 import {
   Box,
   BoxProps,
@@ -9,10 +9,10 @@ import {
   MenuItem,
   Select,
   SelectProps,
-  Typography
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import React, { useMemo } from 'react';
+  Typography,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import React, { useMemo } from "react";
 
 type SelectionItemProps = {
   IconComponent?: React.ReactNode;
@@ -29,7 +29,7 @@ export type SelectionProps = {
   disabled?: boolean;
   readOnly?: boolean;
   items: Array<SelectionItemProps>;
-  menuSize?: 'auto' | 'xsmall' | 'small' | 'medium' | 'large';
+  menuSize?: "auto" | "xsmall" | "small" | "medium" | "large";
   onChange?: (item: string | string[]) => void;
   showCheckmark?: boolean;
   value?: string | string[];
@@ -59,8 +59,8 @@ export default function Selection(props: SelectionProps) {
     label,
     loading,
     placeholder,
-    labelPrefix = '',
-    hidePlaceholder = ''
+    labelPrefix = "",
+    hidePlaceholder = "",
   } = props;
   const theme = useTheme();
   const fallbackSelection = selectProps?.multiple ? [] : undefined;
@@ -80,20 +80,20 @@ export default function Selection(props: SelectionProps) {
     [currentSelection, itemsLabelById]
   );
   const menuSizeToWidth = {
-    xsmall: '8rem',
-    small: '16rem',
-    medium: '24rem',
-    large: '32rem'
+    xsmall: "8rem",
+    small: "16rem",
+    medium: "24rem",
+    large: "32rem",
   };
   const menuWidth =
-    menuSize === 'auto'
+    menuSize === "auto"
       ? undefined
       : menuSizeToWidth[menuSize] || menuSizeToWidth.medium;
   const defaultPlaceholder = hidePlaceholder
-    ? ''
+    ? ""
     : selectProps?.multiple
-      ? 'Select one or more options'
-      : 'Select an option';
+    ? "Select one or more options"
+    : "Select an option";
 
   if (readOnly) return <Typography>{selectionLabel}</Typography>;
 
@@ -110,7 +110,7 @@ export default function Selection(props: SelectionProps) {
         }}
         displayEmpty
         inputProps={{
-          'data-testid': 'select'
+          "data-testid": "select",
         }}
         renderValue={() => {
           const label = selectionLabel || placeholder || defaultPlaceholder;
@@ -122,16 +122,16 @@ export default function Selection(props: SelectionProps) {
         }
         MenuProps={{
           anchorOrigin: {
-            horizontal: 'center',
-            vertical: 'bottom'
+            horizontal: "center",
+            vertical: "bottom",
           },
           PaperProps: {
-            sx: { width: menuWidth, maxHeight: '50vh' }
-          }
+            sx: { width: menuWidth, maxHeight: "50vh" },
+          },
         }}
         sx={{
           color: (theme) =>
-            theme.palette.text[selectionLabel ? 'primary' : 'tertiary']
+            theme.palette.text[selectionLabel ? "primary" : "tertiary"],
         }}
         {...selectProps}
       >
@@ -144,7 +144,7 @@ export default function Selection(props: SelectionProps) {
               IconComponent,
               id,
               disabled,
-              disabledInfo
+              disabledInfo,
             },
             i
           ) => {
@@ -160,10 +160,10 @@ export default function Selection(props: SelectionProps) {
                 sx={
                   i !== items.length - 1 && !noBorder
                     ? {
-                        borderBottom: '1px solid',
-                        borderColor: theme.palette.divider
+                        borderBottom: "1px solid",
+                        borderColor: theme.palette.divider,
                       }
-                    : { width: '100%' }
+                    : { width: "100%" }
                 }
               >
                 {IconComponent && <ListItemIcon>{IconComponent}</ListItemIcon>}
@@ -177,7 +177,7 @@ export default function Selection(props: SelectionProps) {
                     <Box>
                       {description && (
                         <Typography
-                          sx={{ whiteSpace: 'pre-wrap' }}
+                          sx={{ whiteSpace: "pre-wrap" }}
                           component="p"
                           variant="caption"
                           color="text.secondary"
@@ -188,9 +188,9 @@ export default function Selection(props: SelectionProps) {
                       {caption && (
                         <Typography
                           sx={{
-                            whiteSpace: 'pre-wrap',
-                            fontStyle: 'italic',
-                            paddingTop: '8px'
+                            whiteSpace: "pre-wrap",
+                            fontStyle: "italic",
+                            paddingTop: "8px",
                           }}
                           component="p"
                           variant="caption"
@@ -202,7 +202,7 @@ export default function Selection(props: SelectionProps) {
                       {disabledInfo && (
                         <Typography
                           color="text.primary"
-                          sx={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}
+                          sx={{ fontStyle: "italic", whiteSpace: "pre-wrap" }}
                         >
                           {disabledInfo}
                         </Typography>
@@ -211,7 +211,7 @@ export default function Selection(props: SelectionProps) {
                   }
                 ></ListItemText>
 
-                <ListItemIcon sx={{ justifyContent: 'flex-end' }}>
+                <ListItemIcon sx={{ justifyContent: "flex-end" }}>
                   {showCheckmark && isItemSelected && <Check />}
                 </ListItemIcon>
               </MenuItem>
@@ -228,5 +228,5 @@ function getLabel(
   itemsLabelById: Map<string, string>
 ) {
   const selectionArray = Array.isArray(selection) ? selection : [selection];
-  return selectionArray.map((id) => itemsLabelById.get(id)).join(', ');
+  return selectionArray.map((id) => itemsLabelById.get(id)).join(", ");
 }

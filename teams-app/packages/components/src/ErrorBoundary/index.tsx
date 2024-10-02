@@ -1,5 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Button, Typography } from '@mui/material';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Box, Button, Typography } from "@mui/material";
 
 type Props = {
   children?: ReactNode;
@@ -13,7 +13,7 @@ type State = {
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = { hasError: false };
-  public onError: Props['onError'];
+  public onError: Props["onError"];
   public Component: JSX.Element;
 
   public constructor(props: Props) {
@@ -29,7 +29,7 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error(error);
     console.error(errorInfo);
-    if (typeof this.onError === 'function') this.onError(error, errorInfo);
+    if (typeof this.onError === "function") this.onError(error, errorInfo);
   }
 
   public render() {
@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.Component) return this.Component;
 
       return (
-        <Box sx={{ mt: 8, textAlign: 'center' }}>
+        <Box sx={{ mt: 8, textAlign: "center" }}>
           <Typography variant="body2">
             Something went wrong. Please refer to browser's console for details.
           </Typography>

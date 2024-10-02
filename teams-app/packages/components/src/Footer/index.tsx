@@ -1,8 +1,8 @@
-import { Box, Grid, Link, Typography, LinkProps } from '@mui/material';
-import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
-import React from 'react';
-import { CONSTANT_VARIABLES, useFooter } from '@fiftyone/teams-state';
-import { useProductVersion } from '@fiftyone/hooks';
+import { Box, Grid, Link, Typography, LinkProps } from "@mui/material";
+import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
+import React from "react";
+import { CONSTANT_VARIABLES, useFooter } from "@fiftyone/teams-state";
+import { useProductVersion } from "@fiftyone/hooks";
 
 const {
   CONTACT_LINK,
@@ -11,7 +11,7 @@ const {
   PRIVACY_POLICY_LINK,
   SLACK_LINK,
   TERMS_OF_SERVICE_LINK,
-  COMPANY_NAME
+  COMPANY_NAME,
 } = CONSTANT_VARIABLES;
 
 export default function Footer() {
@@ -69,8 +69,8 @@ function FooterLink(props: FooterLinkProps) {
       {external && (
         <ArrowOutwardIcon
           sx={{
-            verticalAlign: 'middle',
-            color: (theme) => theme.palette.text.secondary
+            verticalAlign: "middle",
+            color: (theme) => theme.palette.text.secondary,
           }}
         />
       )}

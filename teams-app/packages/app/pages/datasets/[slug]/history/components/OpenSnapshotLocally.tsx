@@ -1,12 +1,12 @@
-import { CodeTabs, Dialog } from '@fiftyone/teams-components';
+import { CodeTabs, Dialog } from "@fiftyone/teams-components";
 import {
   openSnapshotLocallyState,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK } from '@fiftyone/teams-state/src/constants';
-import { Link, Stack, Typography } from '@mui/material';
-import { useRouter } from 'next/router';
-import { useRecoilState } from 'recoil';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK } from "@fiftyone/teams-state/src/constants";
+import { Link, Stack, Typography } from "@mui/material";
+import { useRouter } from "next/router";
+import { useRecoilState } from "recoil";
 
 export default function OpenSnapshotLocally() {
   const route = useRouter();
@@ -36,13 +36,13 @@ dataset = fo.load_dataset("${datasetName}", snapshot="${name}")`;
           You can load this snapshot on your local machine with the code below
         </Typography>
         <Typography>
-          Learn more about{' '}
+          Learn more about{" "}
           <Link href={LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK} target="_blank">
             snapshots in FiftyOne
           </Link>
         </Typography>
       </Stack>
-      <CodeTabs tabs={[{ id: 'python', code, label: 'Python' }]} />
+      <CodeTabs tabs={[{ id: "python", code, label: "Python" }]} />
     </Dialog>
   );
 }
