@@ -7,7 +7,6 @@ FiftyOne execution store.
 """
 
 import logging
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.store.service import ExecutionStoreService
 from typing import Any, Optional
 
