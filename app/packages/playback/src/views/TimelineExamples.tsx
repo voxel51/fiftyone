@@ -106,49 +106,6 @@ export const TimelineCreator = () => {
   );
 };
 
-export const TimelineSubscriber1 = () => {
-  const { getName } = useDefaultTimelineNameImperative();
-  const timelineName = React.useMemo(() => getName(), [getName]);
-
-  const [myLocalFrameNumber, setMyLocalFrameNumber] =
-    React.useState(DEFAULT_FRAME_NUMBER);
-
-  const loadRange = React.useCallback(async (range: BufferRange) => {
-    // no-op for now, but maybe for testing, i can resolve a promise inside settimeout
-  }, []);
-
-  const myRenderFrame = React.useCallback((frameNumber: number) => {
-    setMyLocalFrameNumber(frameNumber);
-  }, []);
-
-  const { subscribe, isTimelineInitialized, getFrameNumber } = useTimeline();
-
-  React.useEffect(() => {
-    if (!isTimelineInitialized) {
-      return;
-    }
-
-    subscribe({
-      id: `sub1`,
-      loadRange,
-      renderFrame: myRenderFrame,
-    });
-  }, [loadRange, myRenderFrame, subscribe, isTimelineInitialized]);
-
-  if (!isTimelineInitialized) {
-    return <div>loading...</div>;
-  }
-
-  return (
-    <>
-      <div style={{ margin: "1em" }}>
-        Subscriber 1 frame number {timelineName}: {myLocalFrameNumber}
-      </div>
-      <Timeline name={timelineName} />
-    </>
-  );
-};
-
 export const TimelineSubscriber2 = () => {
   const { getName } = useDefaultTimelineNameImperative();
   const timelineName = React.useMemo(() => getName(), [getName]);

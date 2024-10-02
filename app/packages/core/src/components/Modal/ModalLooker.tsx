@@ -7,8 +7,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useModalContext } from "./hooks";
 import { ImaVidLookerReact } from "./ImaVidLooker";
+import { VideoLookerReact } from "./VideoLooker";
+import { useModalContext } from "./hooks";
 
 export const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -197,9 +198,14 @@ export const ModalLooker = React.memo(
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true)
     );
+    const video = useRecoilValue(fos.isVideoDataset);
 
     if (shouldRenderImavid) {
       return <ImaVidLookerReact sample={sample} />;
+    }
+
+    if (video) {
+      return <VideoLookerReact sample={sample} />;
     }
 
     return <ModalLookerNoTimeline sample={sample} />;

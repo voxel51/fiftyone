@@ -546,6 +546,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     this.setReader();
   }
 
+  getVideo() {
+    return this.lookerElement.children[0].element as HTMLVideoElement;
+  }
+
   private hasFrame(frameNumber: number) {
     return (
       this.frames.has(frameNumber) &&

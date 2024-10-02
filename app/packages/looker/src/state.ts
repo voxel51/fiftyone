@@ -208,6 +208,7 @@ export interface BaseConfig {
     id: string;
     name: string;
   };
+  shouldHandleKeyEvents?: boolean;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -297,7 +298,6 @@ export interface BaseState {
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
-  shouldHandleKeyEvents: boolean;
   scale: number;
   pan: Coordinates;
   panning: boolean;

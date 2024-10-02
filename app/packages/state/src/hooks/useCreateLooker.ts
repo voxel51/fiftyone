@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
