@@ -1,5 +1,5 @@
 import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
-import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
+import { ServerError, getFetchFunction, isNullish } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
 import * as types from "./types";
@@ -91,6 +91,7 @@ export type RawContext = {
     scope: string;
   };
   groupSlice: string;
+  queryPerformance?: boolean;
 };
 
 export class ExecutionContext {
@@ -135,6 +136,10 @@ export class ExecutionContext {
   }
   public get groupSlice(): any {
     return this._currentContext.groupSlice;
+  }
+
+  public get queryPerformance(): boolean {
+    return Boolean(this._currentContext.queryPerformance);
   }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;

@@ -94,6 +94,7 @@ const globalContextSelector = selector({
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
+    const queryPerformance = typeof get(fos.lightningThreshold) === "number";
 
     return {
       datasetName,
@@ -105,6 +106,7 @@ const globalContextSelector = selector({
       viewName,
       extendedSelection,
       groupSlice,
+      queryPerformance,
     };
   },
 });
@@ -145,6 +147,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     extendedSelection,
     groupSlice,
+    queryPerformance,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
@@ -162,6 +165,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extendedSelection,
         analyticsInfo,
         groupSlice,
+        queryPerformance,
       },
       hooks
     );
