@@ -1317,6 +1317,65 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             {c["id"] for c in categories2},
         )
 
+        # Alphabetized 1-based categories by default
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+        )
+        categories2 = dataset2.info["categories"]
+
+        self.assertListEqual([c["id"] for c in categories2], [1, 2])
+        self.assertListEqual([c["name"] for c in categories2], ["cat", "dog"])
+
+        # Only load matching classes
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+            classes="cat",
+            only_matching=False,
+        )
+
+        self.assertEqual(len(dataset2), 2)
+        self.assertListEqual(
+            dataset2.distinct("predictions.detections.label"),
+            ["cat", "dog"],
+        )
+
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="predictions",
+            classes="cat",
+            only_matching=True,
+        )
+
+        self.assertEqual(len(dataset3), 2)
+        self.assertListEqual(
+            dataset3.distinct("predictions.detections.label"),
+            ["cat"],
+        )
+
     @drop_datasets
     def test_voc_detection_dataset(self):
         dataset = self._make_dataset()
