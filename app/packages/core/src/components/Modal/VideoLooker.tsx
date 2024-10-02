@@ -8,7 +8,6 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo, useState } from "react";
-import "./Tmp";
 import useLooker from "./useLooker";
 
 interface VideoLookerReactProps {
