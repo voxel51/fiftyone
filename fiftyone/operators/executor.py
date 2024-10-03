@@ -713,6 +713,11 @@ class ExecutionContext(object):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
 
+    @property
+    def query_performance(self):
+        """Whether query performance is enabled."""
+        return self.request_params.get("query_performance", None)
+
     def prompt(
         self,
         operator_uri,
