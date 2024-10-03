@@ -1817,16 +1817,19 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
     @drop_datasets
     def test_add_coco_labels(self):
         dataset = self._make_dataset()
+
         classes = dataset.distinct("predictions.detections.label")
+        categories = [{"id": i, "name": l} for i, l in enumerate(classes, 1)]
 
         export_dir = self._new_dir()
         dataset.export(
             export_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            categories=categories,
         )
         coco_labels_path = os.path.join(export_dir, "labels.json")
 
-        fouc.add_coco_labels(dataset, "coco", coco_labels_path, classes)
+        fouc.add_coco_labels(dataset, "coco", coco_labels_path, categories)
         self.assertEqual(
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("coco.detections.label"),

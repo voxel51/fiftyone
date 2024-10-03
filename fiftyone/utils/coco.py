@@ -45,7 +45,7 @@ def add_coco_labels(
     sample_collection,
     label_field,
     labels_or_path,
-    classes,
+    categories,
     label_type="detections",
     coco_id_field=None,
     include_annotation_id=False,
@@ -68,7 +68,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "bbox": [260, 177, 231, 199],
 
                 # optional
@@ -88,7 +88,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
 
@@ -109,7 +109,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "keypoints": [224, 226, 2, ...],
                 "num_keypoints": 10,
 
@@ -129,8 +129,14 @@ def add_coco_labels(
             will be created if necessary
         labels_or_path: a list of COCO annotations or the path to a JSON file
             containing such data on disk
-        classes: the list of class label strings or a dict mapping class IDs to
-            class labels
+        categories: can be any of the following:
+
+            -   a list of category dicts in the format of
+                :meth:`parse_coco_categories` specifying the classes and their
+                category IDs
+            -   a dict mapping class IDs to class labels
+            -   a list of class labels whose 1-based ordering is assumed to
+                correspond to the category IDs in the provided COCO labels
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
         coco_id_field (None): this parameter determines how to map the
@@ -195,10 +201,14 @@ def add_coco_labels(
     view.compute_metadata()
     widths, heights = view.values(["metadata.width", "metadata.height"])
 
-    if isinstance(classes, dict):
-        classes_map = classes
+    if isinstance(categories, dict):
+        classes_map = categories
+    elif not categories:
+        classes_map = {}
+    elif isinstance(categories[0], dict):
+        classes_map = {c["id"]: c["name"] for c in categories}
     else:
-        classes_map = {i: label for i, label in enumerate(classes)}
+        classes_map = {i: label for i, label in enumerate(categories, 1)}
 
     labels = []
     for _coco_objects, width, height in zip(coco_objects, widths, heights):
