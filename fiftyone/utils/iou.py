@@ -11,6 +11,7 @@ import logging
 
 import numpy as np
 import scipy.spatial as sp
+import rtree.index as rti
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
@@ -19,7 +20,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .utils3d import compute_cuboid_iou
+from .utils3d import compute_cuboid_iou, _Box
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
@@ -84,8 +85,11 @@ def compute_ious(
     Returns:
         a ``num_preds x num_gts`` array of IoUs
     """
-    if not preds or not gts:
-        return np.zeros((len(preds), len(gts)))
+    if not preds:
+        return {}
+
+    if not gts:
+        return dict((p.id, []) for p in preds)
 
     if etau.is_str(iscrowd):
         iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
@@ -485,6 +489,37 @@ def compute_bbox_iou(gt, pred, gt_crowd=False):
     return min(etan.safe_divide(inter, union), 1)
 
 
+def _get_detection_box(det, dimension=None):
+    if dimension is None:
+        dimension = _get_bbox_dim(det)
+
+    if dimension == 2:
+        px, py, pw, ph = det.bounding_box
+        xmin = px
+        xmax = px + pw
+        ymin = py
+        ymax = py + ph
+        result = (xmin, xmax, ymin, ymax)
+    elif dimension == 3:
+        box = _Box(det.rotation, det.location, det.dimensions)
+        xmin = np.min(box.vertices[:, 0])
+        xmax = np.max(box.vertices[:, 0])
+        ymin = np.min(box.vertices[:, 1])
+        ymax = np.max(box.vertices[:, 1])
+        zmin = np.min(box.vertices[:, 2])
+        zmax = np.max(box.vertices[:, 2])
+        result = (xmin, xmax, ymin, ymax, zmin, zmax)
+    else:
+        raise Exception(f"dimension should be 2 or 3, but got {dimension}")
+
+    return result
+
+
+def _get_poly_box(x):
+    detection = x.to_detection()
+    return _get_detection_box(detection)
+
+
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     is_symmetric = preds is gts
 
@@ -501,28 +536,36 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
         else:
             gts = _polylines_to_detections(gts)
 
+    index_property = rti.Property()
     if _get_bbox_dim(gts[0]) == 3:
         bbox_iou_fcn = compute_cuboid_iou
+        index_property.dimension = 3
     else:
         bbox_iou_fcn = compute_bbox_iou
+        index_property.dimension = 2
 
-    ious = np.zeros((len(preds), len(gts)))
+    rtree_index = rti.Index(properties=index_property, interleaved=False)
+    for i, gt in enumerate(gts):
+        box = _get_detection_box(gt, dimension=index_property.dimension)
+        rtree_index.insert(i, box)
 
-    for j, (gt, gt_crowd) in enumerate(zip(gts, gt_crowds)):
-
-        for i, pred in enumerate(preds):
-            if is_symmetric and i < j:
-                iou = ious[j, i]
-            elif is_symmetric and i == j:
-                iou = 1
-            elif classwise and pred.label != gt.label:
+    pred_ious = {}
+    for i, pred in enumerate(preds):
+        box = _get_detection_box(pred, dimension=index_property.dimension)
+        indices = rtree_index.intersection(box)
+        pred_ious[pred.id] = []
+        for j in indices:  # pylint: disable=not-an-iterable
+            gt = gts[j]
+            gt_crowd = gt_crowds[j]
+            if classwise and pred.label != gt.label:
                 continue
-            else:
-                iou = bbox_iou_fcn(gt, pred, gt_crowd=gt_crowd)
 
-            ious[i, j] = iou
+            iou = bbox_iou_fcn(gt, pred, gt_crowd=gt_crowd)
+            pred_ious[pred.id].append((gt.id, iou))
+            if is_symmetric:
+                pred_ious[gt.id].append((pred.id, iou))
 
-    return ious
+    return pred_ious
 
 
 def _compute_polygon_ious(
@@ -564,57 +607,71 @@ def _compute_polygon_ious(
         elif gt_crowds is None:
             gt_crowds = [False] * num_gt
 
-        ious = np.zeros((num_pred, num_gt))
+        rtree_index = rti.Index(interleaved=False)
+        for i, gt in enumerate(gts):
+            box = _get_poly_box(gt)
+            rtree_index.insert(i, box)
 
-        for j, (gt_poly, gt_label, gt_area, gt_crowd) in enumerate(
-            zip(gt_polys, gt_labels, gt_areas, gt_crowds)
+        pred_ious = {}
+        for i, (pred, pred_poly, pred_label, pred_area) in enumerate(
+            zip(preds, pred_polys, pred_labels, pred_areas)
         ):
-            for i, (pred_poly, pred_label, pred_area) in enumerate(
-                zip(pred_polys, pred_labels, pred_areas)
-            ):
-                if is_symmetric and i < j:
-                    iou = ious[j, i]
-                elif is_symmetric and i == j:
-                    iou = 1
-                elif classwise and pred_label != gt_label:
+            pred_ious[pred.id] = []
+
+            if is_symmetric:
+                pred_ious[pred.id].append((pred.id, 1))
+
+            box = _get_poly_box(pred)
+            indices = rtree_index.intersection(box)
+            for j in indices:  # pylint: disable=not-an-iterable
+                gt = gts[j]
+                gt_poly = gt_polys[j]
+                gt_label = gt_labels[j]
+                gt_area = gt_areas[j]
+                gt_crowd = gt_crowds[j]
+
+                if classwise and pred_label != gt_label:
                     continue
+
+                try:
+                    inter = gt_poly.intersection(pred_poly).area
+                except Exception as e:
+                    inter = 0.0
+                    fou.handle_error(
+                        ValueError(
+                            "Failed to compute intersection of predicted "
+                            "object '%s' and ground truth object '%s'"
+                            % (preds[i].id, gts[j].id)
+                        ),
+                        error_level,
+                        base_error=e,
+                    )
+
+                if gt_crowd:
+                    union = pred_area
                 else:
-                    try:
-                        inter = gt_poly.intersection(pred_poly).area
-                    except Exception as e:
-                        inter = 0.0
-                        fou.handle_error(
-                            ValueError(
-                                "Failed to compute intersection of predicted "
-                                "object '%s' and ground truth object '%s'"
-                                % (preds[i].id, gts[j].id)
-                            ),
-                            error_level,
-                            base_error=e,
-                        )
+                    union = pred_area + gt_area - inter
 
-                    if gt_crowd:
-                        union = pred_area
-                    else:
-                        union = pred_area + gt_area - inter
+                iou = min(etan.safe_divide(inter, union), 1)
+                pred_ious[pred.id].append((gt.id, iou))
+                if is_symmetric:
+                    pred_ious[gt.id].append((pred.id, iou))
 
-                    iou = min(etan.safe_divide(inter, union), 1)
-
-                ious[i, j] = iou
-
-    return ious
+    return pred_ious
 
 
 def _compute_polyline_similarities(preds, gts, classwise=False):
-    sims = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        for i, pred in enumerate(preds):
+    sims = {}
+    for pred in preds:
+        sims[pred.id] = []
+        for gt in gts:
             if classwise and pred.label != gt.label:
                 continue
 
             gtp = list(itertools.chain.from_iterable(gt.points))
             predp = list(itertools.chain.from_iterable(pred.points))
-            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
+            sim = _compute_object_keypoint_similarity(gtp, predp)
+            sims[pred.id].append((gt.id, sim))
 
     return sims
 
@@ -687,15 +744,17 @@ def _compute_segment_ious(preds, gts):
 
 
 def _compute_keypoint_similarities(preds, gts, classwise=False):
-    sims = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        for i, pred in enumerate(preds):
+    sims = {}
+    for pred in preds:
+        sims[pred.id] = []
+        for gt in gts:
             if classwise and pred.label != gt.label:
                 continue
 
             gtp = gt.points
             predp = pred.points
-            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
+            sim = _compute_object_keypoint_similarity(gtp, predp)
+            sims[pred.id].append((gt.id, sim))
 
     return sims
 

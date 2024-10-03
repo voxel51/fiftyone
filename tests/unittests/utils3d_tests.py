@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 import numpy as np
+import numpy.testing as nptest
 import open3d as o3d
 from PIL import Image
 
@@ -387,6 +388,16 @@ class GetSceneAssetPaths(unittest.TestCase):
                     f"{temp_dir}/relative2.stl",
                 },
             )
+
+
+class BoxTests(unittest.TestCase):
+    def test_box_vertices(self):
+        rotation = [0, 0, 0]
+        location = [0, 0, 0]
+        scale = [1, 1, 1]
+        box = fou3d._Box(rotation, location, scale)
+        expected = fou3d._UNIT_BOX
+        nptest.assert_equal(expected, box.vertices)
 
 
 if __name__ == "__main__":
