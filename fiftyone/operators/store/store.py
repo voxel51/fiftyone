@@ -59,7 +59,7 @@ class ExecutionStore:
         """
         self._store_service.set_key(self.store_name, key, value, ttl)
 
-    def delete(self, key: str) -> None:
+    def delete(self, key: str) -> bool:
         """Deletes a key from the store.
 
         Args:
