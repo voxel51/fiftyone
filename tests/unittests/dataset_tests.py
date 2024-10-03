@@ -695,8 +695,10 @@ class DatasetTests(unittest.TestCase):
         frame_stats["indexBuilds"] = ["gt.detections.label_1"]
 
         with patch.object(
-            dataset, "_sample_collstats", return_value=sample_stats
-        ), patch.object(dataset, "_frame_collstats", return_value=frame_stats):
+            fo.Dataset, "_sample_collstats", return_value=sample_stats
+        ), patch.object(
+            fo.Dataset, "_frame_collstats", return_value=frame_stats
+        ):
             info = dataset.get_index_information(include_stats=True)
             for key in [
                 "gt.detections.label",
