@@ -85,7 +85,7 @@ class ExecutionStoreService:
         Args:
             store_name: the name of the store
             key: the key to update the TTL for
-            new_ttl: the new TTL in milliseconds
+            new_ttl: the new TTL in seconds
 
         Returns:
             a :class:`fiftyone.store.models.KeyDocument`

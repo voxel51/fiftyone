@@ -90,7 +90,7 @@ class ExecutionStore:
 
         Args:
             key (str): The key to update the TTL for.
-            new_ttl (int): The new TTL in milliseconds.
+            new_ttl (int): The new TTL in seconds.
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
 
@@ -101,7 +101,7 @@ class ExecutionStore:
             key (str): The key to get the TTL for.
 
         Returns:
-            Optional[int]: The TTL in milliseconds, or None if the key does not have a TTL.
+            Optional[int]: The TTL in seconds, or None if the key does not have a TTL.
         """
         return self._store_service.get_ttl(self.store_name, key)
 
