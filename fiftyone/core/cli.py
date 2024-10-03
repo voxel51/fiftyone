@@ -3102,7 +3102,7 @@ def _launch_delegated_local():
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
-            dos.execute_scheduled_operations(limit=1, log=True)
+            dos.execute_queued_operations(limit=1, log=True)
             time.sleep(0.5)
     except KeyboardInterrupt:
         pass
