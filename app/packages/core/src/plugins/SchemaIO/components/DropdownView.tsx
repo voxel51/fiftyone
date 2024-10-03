@@ -1,3 +1,4 @@
+import SettingsIcon from "@mui/icons-material/Settings";
 import { MenuItem, Select } from "@mui/material";
 import React, { useState } from "react";
 import { useKey } from "../hooks";
@@ -24,6 +25,7 @@ export default function DropdownView(props: ViewPropsType) {
     description,
     color,
     variant,
+    useIconOnly = false,
   } = view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
   const [selected, setSelected] = useState(false);
@@ -82,6 +84,9 @@ export default function DropdownView(props: ViewPropsType) {
         displayEmpty
         title={compact ? description : undefined}
         renderValue={(value) => {
+          if (useIconOnly) {
+            return <SettingsIcon />;
+          }
           const unselected = value?.length === 0;
           setSelected(!unselected);
           if (unselected) {
