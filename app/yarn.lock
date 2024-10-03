@@ -906,6 +906,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.20.13":
+  version: 7.25.7
+  resolution: "@babel/runtime@npm:7.25.7"
+  dependencies:
+    regenerator-runtime: ^0.14.0
+  checksum: 1d6133ed1cf1de1533cfe84a4a8f94525271a0d93f6af4f2cdae14884ec3c8a7148664ddf7fd2a14f82cc4485904a1761821a55875ad241c8b4034e95e7134b2
+  languageName: node
+  linkType: hard
+
 "@babel/template@npm:^7.22.15, @babel/template@npm:^7.24.0, @babel/template@npm:^7.3.3":
   version: 7.24.0
   resolution: "@babel/template@npm:7.24.0"
@@ -1762,6 +1771,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/debugger@workspace:packages/debugger":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/debugger@workspace:packages/debugger"
+  dependencies:
+    typescript: ^4.7.4
+    vite: ^5.2.14
+    vite-plugin-externals: ^0.5.0
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/embeddings@workspace:packages/embeddings":
   version: 0.0.0-use.local
   resolution: "@fiftyone/embeddings@workspace:packages/embeddings"
@@ -1803,6 +1822,7 @@ __metadata:
     jpeg-js: ^0.4.4
     jsdom: ^20.0.2
     prettier: ^2.8.0
+    react-json-view: ^1.21.3
     react-player: ^2.16.0
     react-plotly.js: ^2.6.0
     relay-compiler: ^14.1.0
@@ -6130,6 +6150,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"base16@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "base16@npm:1.0.0"
+  checksum: 0cd449a2db0f0f957e4b6b57e33bc43c9e20d4f1dd744065db94b5da35e8e71fa4dc4bc7a901e59a84d5f8b6936e3c520e2471787f667fc155fb0f50d8540f5d
+  languageName: node
+  linkType: hard
+
 "base64-arraybuffer@npm:^0.2.0":
   version: 0.2.0
   resolution: "base64-arraybuffer@npm:0.2.0"
@@ -8930,6 +8957,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fbemitter@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "fbemitter@npm:3.0.0"
+  dependencies:
+    fbjs: ^3.0.0
+  checksum: 069690b8cdff3521ade3c9beb92ba0a38d818a86ef36dff8690e66749aef58809db4ac0d6938eb1cacea2dbef5f2a508952d455669590264cdc146bbe839f605
+  languageName: node
+  linkType: hard
+
 "fbjs-css-vars@npm:^1.0.0":
   version: 1.0.2
   resolution: "fbjs-css-vars@npm:1.0.2"
@@ -8937,7 +8973,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fbjs@npm:^3.0.2":
+"fbjs@npm:^3.0.0, fbjs@npm:^3.0.1, fbjs@npm:^3.0.2":
   version: 3.0.5
   resolution: "fbjs@npm:3.0.5"
   dependencies:
@@ -9070,6 +9106,18 @@ __metadata:
   dependencies:
     dtype: ^2.0.0
   checksum: 45757b5f023b4ab76a7b44105b3ce6e3303b6f937deaabc67d4800fb31eccbaf489b115d11cd16b7456fe9b99f79b350ed6d5a2a285f96c0cbaadc1b105d461c
+  languageName: node
+  linkType: hard
+
+"flux@npm:^4.0.1":
+  version: 4.0.4
+  resolution: "flux@npm:4.0.4"
+  dependencies:
+    fbemitter: ^3.0.0
+    fbjs: ^3.0.1
+  peerDependencies:
+    react: ^15.0.2 || ^16.0.0 || ^17.0.0
+  checksum: 8fa5c2f9322258de3e331f67c6f1078a7f91c4dec9dbe8a54c4b8a80eed19a4f91889028b768668af4a796e8f2ee75e461e1571b8615432a3920ae95cc4ff794
   languageName: node
   linkType: hard
 
@@ -11764,10 +11812,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash.curry@npm:^4.0.1":
+  version: 4.1.1
+  resolution: "lodash.curry@npm:4.1.1"
+  checksum: 9192b70fe7df4d1ff780c0260bee271afa9168c93fe4fa24bc861900240531b59781b5fdaadf4644fea8f4fbcd96f0700539ab294b579ffc1022c6c15dcc462a
+  languageName: node
+  linkType: hard
+
 "lodash.debounce@npm:^4.0.0":
   version: 4.0.8
   resolution: "lodash.debounce@npm:4.0.8"
   checksum: a3f527d22c548f43ae31c861ada88b2637eb48ac6aa3eb56e82d44917971b8aa96fbb37aa60efea674dc4ee8c42074f90f7b1f772e9db375435f6c83a19b3bc6
+  languageName: node
+  linkType: hard
+
+"lodash.flow@npm:^3.3.0":
+  version: 3.5.0
+  resolution: "lodash.flow@npm:3.5.0"
+  checksum: a9a62ad344e3c5a1f42bc121da20f64dd855aaafecee24b1db640f29b88bd165d81c37ff7e380a7191de6f70b26f5918abcebbee8396624f78f3618a0b18634c
   languageName: node
   linkType: hard
 
@@ -14098,6 +14160,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pure-color@npm:^1.2.0":
+  version: 1.3.0
+  resolution: "pure-color@npm:1.3.0"
+  checksum: 646d8bed6e6eab89affdd5e2c11f607a85b631a7fb03c061dfa658eb4dc4806881a15feed2ac5fd8c0bad8c00c632c640d5b1cb8b9a972e6e947393a1329371b
+  languageName: node
+  linkType: hard
+
 "pure-rand@npm:^6.0.0":
   version: 6.1.0
   resolution: "pure-rand@npm:6.1.0"
@@ -14167,6 +14236,18 @@ __metadata:
     react: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-dom: ^16.13.1 || ^17.0.0 || ^18.0.0
   checksum: 49aa715d67020884b6f662c184d2ca5cebe7a20b1a865dd8450bd877f6118cc18e508e420fcfcf6a6dedc98c3b17d5100b43237b9dbcc2666ef0840e636da007
+  languageName: node
+  linkType: hard
+
+"react-base16-styling@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "react-base16-styling@npm:0.6.0"
+  dependencies:
+    base16: ^1.0.0
+    lodash.curry: ^4.0.1
+    lodash.flow: ^3.3.0
+    pure-color: ^1.2.0
+  checksum: 00a12dddafc8a9025cca933b0dcb65fca41c81fa176d1fc3a6a9d0242127042e2c0a604f4c724a3254dd2c6aeb5ef55095522ff22f5462e419641c1341a658e4
   languageName: node
   linkType: hard
 
@@ -14340,6 +14421,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-json-view@npm:^1.21.3":
+  version: 1.21.3
+  resolution: "react-json-view@npm:1.21.3"
+  dependencies:
+    flux: ^4.0.1
+    react-base16-styling: ^0.6.0
+    react-lifecycles-compat: ^3.0.4
+    react-textarea-autosize: ^8.3.2
+  peerDependencies:
+    react: ^17.0.0 || ^16.3.0 || ^15.5.4
+    react-dom: ^17.0.0 || ^16.3.0 || ^15.5.4
+  checksum: 5718bcd9210ad5b06eb9469cf8b9b44be9498845a7702e621343618e8251f26357e6e1c865532cf170db6165df1cb30202787e057309d8848c220bc600ec0d1a
+  languageName: node
+  linkType: hard
+
 "react-laag@npm:^2.0.3":
   version: 2.0.5
   resolution: "react-laag@npm:2.0.5"
@@ -14349,6 +14445,13 @@ __metadata:
     react: ^16.0.0 || ^17.0.0 || ^18.0.0
     react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0
   checksum: 3a7cefe0970493305ca4ba529e7d517e61eeff3c56a14e29d4cf39be84d5530e1fd8b125cc2121a5fa63ba5f08025b89b5ff6ac43bc3c017c62b9f158f7122c3
+  languageName: node
+  linkType: hard
+
+"react-lifecycles-compat@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "react-lifecycles-compat@npm:3.0.4"
+  checksum: a904b0fc0a8eeb15a148c9feb7bc17cec7ef96e71188280061fc340043fd6d8ee3ff233381f0e8f95c1cf926210b2c4a31f38182c8f35ac55057e453d6df204f
   languageName: node
   linkType: hard
 
@@ -14519,6 +14622,19 @@ __metadata:
   peerDependencies:
     react: ">= 0.14.0"
   checksum: c082b48f30f8ba8d0c55ed1d761910630860077c7ff5793c4c912adcb5760df06436ed0ad62be0de28113aac9ad2af55eccd995f8eee98df53382e4ced2072fb
+  languageName: node
+  linkType: hard
+
+"react-textarea-autosize@npm:^8.3.2":
+  version: 8.5.3
+  resolution: "react-textarea-autosize@npm:8.5.3"
+  dependencies:
+    "@babel/runtime": ^7.20.13
+    use-composed-ref: ^1.3.0
+    use-latest: ^1.2.1
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: b317c3763f37a89621bbafd0e6e2d068e7876790a5ae77f497adfd6ba9334ceea138c8a0b7d907bae0f79c765cb24e8b2ca2b8033b4144c0bce28571a3658921
   languageName: node
   linkType: hard
 
@@ -17255,7 +17371,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"use-isomorphic-layout-effect@npm:^1.0.0":
+"use-composed-ref@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "use-composed-ref@npm:1.3.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: f771cbadfdc91e03b7ab9eb32d0fc0cc647755711801bf507e891ad38c4bbc5f02b2509acadf9c965ec9c5f2f642fd33bdfdfb17b0873c4ad0a9b1f5e5e724bf
+  languageName: node
+  linkType: hard
+
+"use-isomorphic-layout-effect@npm:^1.0.0, use-isomorphic-layout-effect@npm:^1.1.1":
   version: 1.1.2
   resolution: "use-isomorphic-layout-effect@npm:1.1.2"
   peerDependencies:
@@ -17264,6 +17389,20 @@ __metadata:
     "@types/react":
       optional: true
   checksum: a6532f7fc9ae222c3725ff0308aaf1f1ddbd3c00d685ef9eee6714fd0684de5cb9741b432fbf51e61a784e2955424864f7ea9f99734a02f237b17ad3e18ea5cb
+  languageName: node
+  linkType: hard
+
+"use-latest@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "use-latest@npm:1.2.1"
+  dependencies:
+    use-isomorphic-layout-effect: ^1.1.1
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: ed3f2ddddf6f21825e2ede4c2e0f0db8dcce5129802b69d1f0575fc1b42380436e8c76a6cd885d4e9aa8e292e60fb8b959c955f33c6a9123b83814a1a1875367
   languageName: node
   linkType: hard
 

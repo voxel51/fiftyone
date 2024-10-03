@@ -1,0 +1,23 @@
+{
+    "name": "@fiftyone/debugger",
+    "version": "0.0.0",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "watch": "nodemon --watch ./src --ext js,jsx,ts,tsx --exec 'yarn build'"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "devDependencies": {
+        "typescript": "^4.7.4",
+        "vite": "^5.2.14",
+        "vite-plugin-externals": "^0.5.0"
+    },
+    "fiftyone": {
+        "script": "dist/index.umd.js"
+    },
+    "packageManager": "yarn@3.2.1"
+}

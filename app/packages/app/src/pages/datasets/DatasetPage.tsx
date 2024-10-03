@@ -1,5 +1,6 @@
 import { Dataset, Snackbar, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
+import "@fiftyone/debugger";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
