@@ -39,7 +39,7 @@ class DelegatedOperationDocument(object):
             ExecutionRunState.SCHEDULED
             if is_remote
             else ExecutionRunState.QUEUED
-        )  # if running locally use SCHEDULED otherwise QUEUED
+        )  # if running locally use QUEUED otherwise SCHEDULED
         self.run_link = None
         self.queued_at = datetime.utcnow() if not is_remote else None
         self.updated_at = datetime.utcnow()
