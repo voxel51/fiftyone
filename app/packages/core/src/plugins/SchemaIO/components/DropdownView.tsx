@@ -7,6 +7,7 @@ import { ViewPropsType } from "../utils/types";
 import AlertView from "./AlertView";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 import FieldWrapper from "./FieldWrapper";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
@@ -24,6 +25,7 @@ export default function DropdownView(props: ViewPropsType) {
     description,
     color,
     variant,
+    useIcon = false,
   } = view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
   const [selected, setSelected] = useState(false);
@@ -82,6 +84,9 @@ export default function DropdownView(props: ViewPropsType) {
         displayEmpty
         title={compact ? description : undefined}
         renderValue={(value) => {
+          if (useIcon) {
+            return <SettingsIcon />;
+          }
           const unselected = value?.length === 0;
           setSelected(!unselected);
           if (unselected) {
