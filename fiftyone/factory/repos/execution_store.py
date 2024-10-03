@@ -106,8 +106,6 @@ class ExecutionStoreRepo:
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
     """MongoDB implementation of execution store repository."""
 
-    COLLECTION_NAME = "execution_store"
-
     def __init__(self, collection: Collection):
         super().__init__(collection)
         self._create_indexes()
