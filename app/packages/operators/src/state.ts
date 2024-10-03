@@ -181,6 +181,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     currentSample,
     groupSlice,
+    queryPerformance,
   ]);
 
   return ctx;

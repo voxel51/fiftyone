@@ -137,10 +137,10 @@ export class ExecutionContext {
   public get groupSlice(): any {
     return this._currentContext.groupSlice;
   }
-
   public get queryPerformance(): boolean {
     return Boolean(this._currentContext.queryPerformance);
   }
+
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }
@@ -711,6 +711,7 @@ export async function executeOperatorWithContext(
           view: currentContext.view,
           view_name: currentContext.viewName,
           group_slice: currentContext.groupSlice,
+          query_performance: currentContext.queryPerformance,
         }
       );
       result = serverResult.result;
