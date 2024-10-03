@@ -303,6 +303,7 @@ export const OPERATOR_RUN_STATES = {
   FAILED: "failed",
   QUEUED: "queued",
   RUNNING: "running",
+  SCHEDULED: "scheduled",
 };
 
 export const mediaTypeItems = [

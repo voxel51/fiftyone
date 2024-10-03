@@ -63,6 +63,7 @@ export const runsPageQuery = graphql`
         }
         pinned
         runLink
+        scheduledAt
         status
       }
       pageTotal
@@ -134,6 +135,7 @@ export const runsItemQuery = graphql`
         id
       }
       runState
+      scheduledAt
       startedAt
       status
       runLink
@@ -168,6 +170,7 @@ export const runsReRunMutation = graphql`
         name
       }
       runState
+      scheduledAt
       startedAt
       updatedAt
     }

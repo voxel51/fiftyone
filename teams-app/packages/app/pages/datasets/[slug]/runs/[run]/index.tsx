@@ -39,7 +39,7 @@ import getTimestamp from "../utils/getTimestamp";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
 
-const { QUEUED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
+const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
 function Run(props) {
   const { preloadedQuery, refresh } = props;
@@ -60,6 +60,7 @@ function Run(props) {
     runState,
     context,
     queuedAt,
+    scheduledAt,
     startedAt,
     result: runResult,
     status,
@@ -172,6 +173,12 @@ function Run(props) {
                 <Typography color="text.tertiary">
                   Queued{" "}
                   <Timestamp timestamp={queuedAt} color="text.tertiary" />
+                </Typography>
+              )}
+              {runState !== SCHEDULED && scheduledAt && (
+                <Typography color="text.tertiary">
+                  Scheduled{" "}
+                  <Timestamp timestamp={scheduledAt} color="text.tertiary" />
                 </Typography>
               )}
               {EXITED_STATES.includes(runState) && (

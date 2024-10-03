@@ -306,8 +306,14 @@ const muiTheme = extendMuiTheme({
           dangerAlertBg: "#412729", // Not in the design
           dangerAlertBorder: "#764a48", // Not in the design
         },
-        queued: {
+        scheduled: {
           main: colors.gray50,
+        },
+        queued: {
+          main: colors.blue20,
+        },
+        info: {
+          main: colors.yellow21,
         },
         custom: {
           shadow: themes.light.shadow,
@@ -382,8 +388,14 @@ const muiTheme = extendMuiTheme({
           loaderPrimary: themes.dark.loaderPrimary,
           loaderSecondary: themes.dark.loaderSecondary,
         },
-        queued: {
+        scheduled: {
           main: colors.gray40,
+        },
+        queued: {
+          main: colors.blue56,
+        },
+        info: {
+          main: colors.yellow60,
         },
       },
     },

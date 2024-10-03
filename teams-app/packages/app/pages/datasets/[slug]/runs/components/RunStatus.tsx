@@ -64,6 +64,7 @@ type RunStatusPropsType = {
 
 const colorGroupStatus = {
   queued: "queued",
+  scheduled: "scheduled",
   running: "info",
   completed: "success",
   failed: "error",

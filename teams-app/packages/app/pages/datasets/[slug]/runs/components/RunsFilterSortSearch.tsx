@@ -167,6 +167,7 @@ const statusFilterItems = [
   { id: "failed", label: "Failed" },
   { id: "queued", label: "Queued" },
   { id: "running", label: "Running" },
+  { id: "scheduled", label: "Scheduled" },
 ];
 
 type SortingMode = "newest" | "oldest" | "operator";

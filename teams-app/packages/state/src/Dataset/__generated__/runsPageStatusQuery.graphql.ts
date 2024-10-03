@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0d80a8c02a66d75937ab0cc6971e6c19>>
+ * @generated SignedSource<<96fa4d1148fa0fff2e0087e3f445eaff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
-export type DelegatedOperationOrderFields = "completedAt" | "failedAt" | "operator" | "queuedAt" | "startedAt" | "updatedAt" | "%future added value";
+export type DelegatedOperationOrderFields = "completedAt" | "failedAt" | "operator" | "queuedAt" | "scheduledAt" | "startedAt" | "updatedAt" | "%future added value";
 export type DelegatedOperationSearchFields = "delegationTarget" | "label" | "operator" | "user" | "%future added value";
 export type OrderInputDirection = "ASC" | "DESC" | "%future added value";
 export type DelegatedOperationFilter = {
