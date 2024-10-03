@@ -1,4 +1,4 @@
-open3d>=0.16.0,<0.18.0
+open3d==0.16.1
 itsdangerous==2.0.1
 werkzeug==2.0.3
 pydicom<3
