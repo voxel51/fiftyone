@@ -15,7 +15,6 @@ from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import KeyDocument
 from fiftyone.factory.repo_factory import ExecutionStoreRepo
 from fiftyone.operators.store import ExecutionStore
-from fiftyone.operators.store import ExecutionStoreService
 
 EPSILON = 0.1
 
