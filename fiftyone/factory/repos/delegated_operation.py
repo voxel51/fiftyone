@@ -44,7 +44,7 @@ class DelegatedOperationRepo(object):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
-        required_state: ExecutionResult = None,
+        required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
