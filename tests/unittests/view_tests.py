@@ -109,6 +109,15 @@ class DatasetViewTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_set_unknown_attribute(self):
+        dataset_name = self.test_set_unknown_attribute.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        view = dataset.view()
+        self.assertRaises(AttributeError, setattr, view, "persistant", True)
+        self.assertRaises(AttributeError, setattr, view, "somethingelse", 5)
+
+    @drop_datasets
     def test_view(self):
         dataset = fo.Dataset()
         dataset.add_sample_field(

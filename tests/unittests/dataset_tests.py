@@ -197,6 +197,14 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(last_loaded_at3 > last_loaded_at2)
 
     @drop_datasets
+    def test_set_unknown_attribute(self):
+        dataset_name = self.test_set_unknown_attribute.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        self.assertRaises(AttributeError, setattr, dataset, "persistant", True)
+        self.assertRaises(AttributeError, setattr, dataset, "somethingelse", 5)
+
+    @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
 
