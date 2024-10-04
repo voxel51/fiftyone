@@ -1850,7 +1850,7 @@ class BoxesTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
-            filepath="image2.jpg",
+            filepath="image1.jpg",
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
@@ -1878,7 +1878,7 @@ class BoxesTests(unittest.TestCase):
                 ]
             ),
         )
-        sample2 = fo.Sample(filepath="image1.jpg")
+        sample2 = fo.Sample(filepath="image2.jpg")
 
         dataset.add_samples([sample1, sample2])
 

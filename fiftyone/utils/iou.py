@@ -11,8 +11,8 @@ import itertools
 import logging
 
 import numpy as np
-import scipy.spatial as sp
 import rtree.index as rti
+import scipy.spatial as sp
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
@@ -180,7 +180,7 @@ def compute_segment_ious(preds, gts, sparse=False):
         if sparse:
             return {p.id: [] for p in preds}
         else:
-            return np.zeros((len(preds), len(gts)))
+            return np.zeros((len(preds or []), len(gts or [])))
 
     return _compute_segment_ious(preds, gts, sparse=sparse)
 
