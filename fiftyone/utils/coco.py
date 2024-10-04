@@ -45,7 +45,7 @@ def add_coco_labels(
     sample_collection,
     label_field,
     labels_or_path,
-    classes,
+    categories,
     label_type="detections",
     coco_id_field=None,
     include_annotation_id=False,
@@ -68,7 +68,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "bbox": [260, 177, 231, 199],
 
                 # optional
@@ -88,7 +88,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
 
@@ -109,7 +109,7 @@ def add_coco_labels(
             {
                 "id": 1,
                 "image_id": 1,
-                "category_id": 2,
+                "category_id": 1,
                 "keypoints": [224, 226, 2, ...],
                 "num_keypoints": 10,
 
@@ -129,8 +129,14 @@ def add_coco_labels(
             will be created if necessary
         labels_or_path: a list of COCO annotations or the path to a JSON file
             containing such data on disk
-        classes: the list of class label strings or a dict mapping class IDs to
-            class labels
+        categories: can be any of the following:
+
+            -   a list of category dicts in the format of
+                :meth:`parse_coco_categories` specifying the classes and their
+                category IDs
+            -   a dict mapping class IDs to class labels
+            -   a list of class labels whose 1-based ordering is assumed to
+                correspond to the category IDs in the provided COCO labels
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
         coco_id_field (None): this parameter determines how to map the
@@ -195,10 +201,14 @@ def add_coco_labels(
     view.compute_metadata()
     widths, heights = view.values(["metadata.width", "metadata.height"])
 
-    if isinstance(classes, dict):
-        classes_map = classes
+    if isinstance(categories, dict):
+        classes_map = categories
+    elif not categories:
+        classes_map = {}
+    elif isinstance(categories[0], dict):
+        classes_map = {c["id"]: c["name"] for c in categories}
     else:
-        classes_map = {i: label for i, label in enumerate(classes)}
+        classes_map = {i: label for i, label in enumerate(categories, 1)}
 
     labels = []
     for _coco_objects, width, height in zip(coco_objects, widths, heights):
@@ -563,15 +573,11 @@ class COCODetectionDatasetImporter(
                 self.labels_path, extra_attrs=self.extra_attrs
             )
 
-            classes = None
             if classes_map is not None:
-                classes = _to_classes(classes_map)
-
-            if classes is not None:
-                info["classes"] = classes
+                info["classes"] = _to_classes(classes_map)
 
             image_ids = _get_matching_image_ids(
-                classes,
+                classes_map,
                 images,
                 annotations,
                 image_ids=self.image_ids,
@@ -907,12 +913,11 @@ class COCODetectionDatasetExporter(
 
     def close(self, *args):
         if self._dynamic_classes:
-            classes = sorted(self._classes)
-            labels_map_rev = _to_labels_map_rev(classes)
+            labels_map_rev = _to_labels_map_rev(sorted(self._classes))
             for anno in self._annotations:
                 anno["category_id"] = labels_map_rev[anno["category_id"]]
-        else:
-            classes = self.classes
+        elif self.categories is None:
+            labels_map_rev = _to_labels_map_rev(self.classes)
 
         _info = self.info or {}
         _date_created = datetime.now().replace(microsecond=0).isoformat()
@@ -933,10 +938,10 @@ class COCODetectionDatasetExporter(
             categories = [
                 {
                     "id": i,
-                    "name": l,
+                    "name": c,
                     "supercategory": None,
                 }
-                for i, l in enumerate(classes)
+                for c, i in sorted(labels_map_rev.items(), key=lambda t: t[1])
             ]
 
         labels = {
@@ -1681,7 +1686,7 @@ def download_coco_dataset_split(
         if classes is not None:
             # Filter by specified classes
             all_ids, any_ids = _get_images_with_classes(
-                image_ids, annotations, classes, all_classes
+                image_ids, annotations, classes, all_classes_map
             )
         else:
             all_ids = image_ids
@@ -1846,7 +1851,7 @@ def _parse_include_license(include_license):
 
 
 def _get_matching_image_ids(
-    all_classes,
+    classes_map,
     images,
     annotations,
     image_ids=None,
@@ -1862,7 +1867,7 @@ def _get_matching_image_ids(
 
     if classes is not None:
         all_ids, any_ids = _get_images_with_classes(
-            image_ids, annotations, classes, all_classes
+            image_ids, annotations, classes, classes_map
         )
     else:
         all_ids = image_ids
@@ -1930,7 +1935,7 @@ def _do_download(args):
 
 
 def _get_images_with_classes(
-    image_ids, annotations, target_classes, all_classes
+    image_ids, annotations, target_classes, classes_map
 ):
     if annotations is None:
         logger.warning("Dataset is unlabeled; ignoring classes requirement")
@@ -1939,11 +1944,12 @@ def _get_images_with_classes(
     if etau.is_str(target_classes):
         target_classes = [target_classes]
 
-    bad_classes = [c for c in target_classes if c not in all_classes]
+    labels_map_rev = {c: i for i, c in classes_map.items()}
+
+    bad_classes = [c for c in target_classes if c not in labels_map_rev]
     if bad_classes:
         raise ValueError("Unsupported classes: %s" % bad_classes)
 
-    labels_map_rev = _to_labels_map_rev(all_classes)
     class_ids = {labels_map_rev[c] for c in target_classes}
 
     all_ids = []
@@ -2029,7 +2035,7 @@ def _load_image_ids_json(json_path):
 
 
 def _to_labels_map_rev(classes):
-    return {c: i for i, c in enumerate(classes)}
+    return {c: i for i, c in enumerate(classes, 1)}
 
 
 def _to_classes(classes_map):
