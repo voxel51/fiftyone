@@ -528,7 +528,7 @@ def _coco_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute IoUs for overlapping detections
-        ious = foui.compute_ious(preds, gts, **iou_kwargs)
+        ious = foui.compute_ious(preds, gts, sparse=True, **iou_kwargs)
         pred_ious.update(ious)
 
     return cats, pred_ious, iscrowd
