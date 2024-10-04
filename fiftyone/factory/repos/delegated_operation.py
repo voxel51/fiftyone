@@ -44,6 +44,7 @@ class DelegatedOperationRepo(object):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
+        required_state: ExecutionResult = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -243,6 +244,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
+        required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -310,13 +312,17 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update["$set"]["status"] = progress
             update["$set"]["status"]["updated_at"] = datetime.utcnow()
 
+        collection_filter = {"_id": _id}
+        if required_state is not None:
+            collection_filter["run_state"] = required_state
+
         doc = self._collection.find_one_and_update(
-            filter={"_id": _id},
+            filter=collection_filter,
             update=[update],
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        return DelegatedOperationDocument().from_pymongo(doc)
+        return DelegatedOperationDocument().from_pymongo(doc) if doc is not None else None
 
     def update_progress(
         self,
