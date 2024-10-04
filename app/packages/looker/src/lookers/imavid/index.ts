@@ -1,6 +1,6 @@
 import { BufferManager } from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
-import { VIDEO_SHORTCUTS } from "../../elements/common";
+import { IMAVID_SHORTCUTS } from "../../elements/common/actions";
 import { ImaVidElement } from "../../elements/imavid";
 import {
   DEFAULT_BASE_OPTIONS,
@@ -52,7 +52,15 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   get element() {
-    return this.elements.children[0] as ImaVidElement;
+    return this.lookerElement.children[0] as ImaVidElement;
+  }
+
+  get config() {
+    return this.state.config;
+  }
+
+  get options() {
+    return this.state.options;
   }
 
   destroy() {
@@ -105,7 +113,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       buffering: false,
       bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
-      SHORTCUTS: VIDEO_SHORTCUTS,
+      SHORTCUTS: IMAVID_SHORTCUTS,
     };
   }
 
@@ -130,7 +138,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     return {
       ...DEFAULT_BASE_OPTIONS,
-      loop: false,
+      loop: true,
       playbackRate: defaultPlaybackRate,
     } as ImaVidOptions;
   }

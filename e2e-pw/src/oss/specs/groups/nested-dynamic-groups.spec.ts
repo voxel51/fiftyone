@@ -151,7 +151,8 @@ test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
     scene_key: "1",
     order_key: "1",
   });
-  await modal.video.playUntilFrames("2 / 2", true);
+  await modal.imavid.setSpeedTo("low");
+  await modal.imavid.playUntilFrames("2 / 2", true);
 
   await modal.sidebar.assert.verifySidebarEntryTexts({
     scene_key: "1",
@@ -164,7 +165,8 @@ test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
     order_key: "1",
   });
 
-  await modal.video.playUntilFrames("2 / 2", true);
+  await modal.imavid.setSpeedTo("low");
+  await modal.imavid.playUntilFrames("2 / 2", true);
 
   await modal.sidebar.assert.verifySidebarEntryTexts({
     scene_key: "2",

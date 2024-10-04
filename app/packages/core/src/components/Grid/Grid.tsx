@@ -36,13 +36,12 @@ function Grid() {
   const threshold = useThreshold();
 
   const records = useRecords(pageReset);
-  const { page, store } = useSpotlightPager(
-    {
-      pageSelector: pageParameters,
-      zoomSelector: gridCrop,
-    },
-    records
-  );
+  const { page, store } = useSpotlightPager({
+    clearRecords: pageReset,
+    pageSelector: pageParameters,
+    records,
+    zoomSelector: gridCrop,
+  });
   const { get, set } = useAt(pageReset);
 
   const lookerOptions = fos.useLookerOptions(false);

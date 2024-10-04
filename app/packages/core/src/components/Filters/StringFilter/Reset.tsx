@@ -1,11 +1,14 @@
 import * as fos from "@fiftyone/state";
-import { isSidebarFilterMode, pathColor } from "@fiftyone/state";
+import { isSidebarFilterMode } from "@fiftyone/state";
 import React from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback } from "recoil";
 import { Button } from "../../utils";
 
-export default function (params: { modal: boolean; path: string }) {
-  const color = useRecoilValue(pathColor(params.path));
+export default function (params: {
+  color: string;
+  modal: boolean;
+  path: string;
+}) {
   const handleReset = useRecoilCallback(
     ({ snapshot, reset }) =>
       async () => {
@@ -19,7 +22,7 @@ export default function (params: { modal: boolean; path: string }) {
   return (
     <Button
       text={"Reset"}
-      color={color}
+      color={params.color}
       onClick={handleReset}
       style={{
         margin: "0.25rem -0.5rem",

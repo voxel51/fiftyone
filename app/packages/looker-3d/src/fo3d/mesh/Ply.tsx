@@ -124,7 +124,13 @@ const PlyWithNoMaterialOverride = ({
 
 export const Ply = ({
   name,
-  ply: { plyPath, preTransformedPlyPath, defaultMaterial, isPcd },
+  ply: {
+    plyPath,
+    preTransformedPlyPath,
+    defaultMaterial,
+    isPcd,
+    centerGeometry,
+  },
   position,
   quaternion,
   scale,
@@ -161,7 +167,10 @@ export const Ply = ({
       !geometry.attributes.normal?.count
     ) {
       geometry.computeVertexNormals();
-      geometry.center();
+
+      if (centerGeometry) {
+        geometry.center();
+      }
     }
 
     if (geometry.attributes?.color?.count) {
@@ -169,7 +178,7 @@ export const Ply = ({
     }
 
     setIsGeometryResolved(true);
-  }, [geometry]);
+  }, [geometry, centerGeometry]);
 
   const mesh = useMemo(() => {
     if (!isGeometryResolved) {

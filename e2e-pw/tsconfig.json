@@ -1,9 +1,9 @@
 {
     "compilerOptions": {
-        "target": "ES6",
-        "moduleResolution": "node",
+        "target": "ESNext",
         "esModuleInterop": true,
-        "module": "CommonJS",
+        "module": "commonjs",
+        "moduleResolution": "Node",
         "noImplicitAny": true,
         "lib": ["ES6", "dom", "dom.iterable"],
         "types": ["node"],

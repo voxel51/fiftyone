@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { is } from "immutable";
+import { dispatchTimelineSetFrameNumberEvent } from "@fiftyone/playback";
 import { SCALE_FACTOR } from "../../constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import {
@@ -372,7 +372,7 @@ export const COMMON = {
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
 
-export const nextFrame: Control<VideoState | ImaVidState> = {
+export const nextFrame: Control<VideoState> = {
   title: "Next frame",
   eventKeys: [".", ">"],
   shortcut: ">",
@@ -380,21 +380,9 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      (state: ImaVidState | VideoState) => {
-        const imavidController = (state.config as ImaVidConfig)
-          .frameStoreController as ImaVidFramesController;
-
+      (state: VideoState) => {
         if (state.playing || state.config.thumbnail) {
           return {};
-        }
-
-        if (imavidController) {
-          return {
-            currentFrameNumber: Math.min(
-              imavidController.totalFrameCount,
-              (state as ImaVidState).currentFrameNumber + 1
-            ),
-          };
         }
 
         const {
@@ -417,7 +405,7 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const previousFrame: Control<VideoState | ImaVidState> = {
+export const previousFrame: Control<VideoState> = {
   title: "Previous frame",
   eventKeys: [",", "<"],
   shortcut: "<",
@@ -425,21 +413,9 @@ export const previousFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      (state: ImaVidState | VideoState) => {
-        const imavidController = (state.config as ImaVidConfig)
-          .frameStoreController as ImaVidFramesController;
-
+      (state: VideoState) => {
         if (state.playing || state.config.thumbnail) {
           return {};
-        }
-
-        if (imavidController) {
-          return {
-            currentFrameNumber: Math.max(
-              1,
-              (state as ImaVidState).currentFrameNumber - 1
-            ),
-          };
         }
 
         const {
@@ -460,35 +436,21 @@ export const previousFrame: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const playPause: Control<VideoState | ImaVidState> = {
+export const playPause: Control<VideoState> = {
   title: "Play / pause",
   shortcut: "Space",
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update((state: ImaVidState | VideoState) => {
+    update((state: VideoState) => {
       if (state.config.thumbnail) {
         return {};
       }
+
       dispatchEvent("options", { showJSON: false });
 
-      // separate handling for imavid vs video state
-
-      const isImaVid = (state.config as ImaVidConfig)
-        .frameStoreController as ImaVidFramesController;
-      if (isImaVid) {
-        const {
-          currentFrameNumber,
-          playing,
-          config: { frameStoreController },
-        } = state as ImaVidState;
-        const reachedEnd =
-          currentFrameNumber >= frameStoreController.totalFrameCount;
-        return {
-          currentFrameNumber: reachedEnd ? 1 : currentFrameNumber,
-          options: { showJSON: false },
-          playing: !playing || reachedEnd,
-        };
+      if ((state.config as ImaVidConfig).frameStoreController) {
+        return {};
       }
 
       const {
@@ -663,6 +625,12 @@ const videoEscape: Control<VideoState | ImaVidState> = {
       }
 
       if (state[frameName] !== 1) {
+        if (isImavid) {
+          dispatchTimelineSetFrameNumberEvent({
+            newFrameNumber: 1,
+          });
+        }
+
         return {
           [frameName]: 1,
           playing: false,
@@ -680,7 +648,7 @@ const videoEscape: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const VIDEO = {
+const VIDEO = {
   ...COMMON,
   escape: videoEscape,
   muteUnmute,
@@ -691,4 +659,10 @@ export const VIDEO = {
   supportLock,
 };
 
+const IMAVID = {
+  ...COMMON,
+  escape: videoEscape,
+};
+
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
+export const IMAVID_SHORTCUTS = readActions(IMAVID);

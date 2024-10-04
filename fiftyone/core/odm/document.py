@@ -713,63 +713,45 @@ class Document(BaseDocument, mongoengine.Document):
             # Update existing document
             updates = {}
 
-            try:
-                # OPTIMIZATION: we monkey patch `to_mongo()` and
-                # `_get_changed_fields()` here so that mongoengine's
-                # implementations of `_delta()` and `_clear_changed_fields()`,
-                # which call these methods, will not serialize unnecessary
-                # fields and recompute changed fields unecessarily
-                self._get_changed_fields_orig = self._get_changed_fields
-                self._to_mongo_orig = self.to_mongo
+            if hasattr(self, "_changed_fields"):
+                changed_fields = self._get_changed_fields()
+                roots, paths = self._parse_changed_fields(changed_fields)
+            else:
+                # Changes aren't yet tracked, so validate everything
+                roots, paths = None, None
 
-                if hasattr(self, "_changed_fields"):
-                    changed_fields = self._get_changed_fields()
-                    roots, paths = self._parse_changed_fields(changed_fields)
-                else:
-                    # Changes aren't yet tracked, so validate everything
-                    roots, paths = None, None
+            if validate:
+                self._validate_updates(
+                    roots,
+                    paths,
+                    clean=clean,
+                    enforce_read_only=enforce_read_only,
+                )
 
-                if validate:
-                    self._validate_updates(
-                        roots,
-                        paths,
-                        clean=clean,
-                        enforce_read_only=enforce_read_only,
+            sets, unsets = self._delta()
+
+            if sets:
+                updates["$set"] = sets
+
+            if unsets:
+                updates["$unset"] = unsets
+
+            if updates:
+                ops, updated_existing = self._update(
+                    _id,
+                    updates,
+                    deferred=deferred,
+                    upsert=upsert,
+                    **kwargs,
+                )
+
+                if not deferred and not upsert and not updated_existing:
+                    raise ValueError(
+                        "Failed to update %s with ID '%s'"
+                        % (self._doc_name().lower(), str(_id))
                     )
 
-                # OPTIMIZATION: apply monkey patch
-                doc = self.to_mongo(fields=roots)
-                self._get_changed_fields = lambda: changed_fields
-                self.to_mongo = lambda: doc
-
-                sets, unsets = self._delta()
-
-                if sets:
-                    updates["$set"] = sets
-
-                if unsets:
-                    updates["$unset"] = unsets
-
-                if updates:
-                    ops, updated_existing = self._update(
-                        _id,
-                        updates,
-                        deferred=deferred,
-                        upsert=upsert,
-                        **kwargs,
-                    )
-
-                    if not deferred and not upsert and not updated_existing:
-                        raise ValueError(
-                            "Failed to update %s with ID '%s'"
-                            % (self._doc_name().lower(), str(_id))
-                        )
-
-                self._clear_changed_fields()
-            finally:
-                # OPTIMIZATION: revert monkey patch
-                self._get_changed_fields = self._get_changed_fields_orig
-                self.to_mongo = self._to_mongo_orig
+            self._clear_changed_fields()
 
         return ops
 

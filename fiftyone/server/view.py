@@ -191,7 +191,13 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        stages = _make_filter_stages(view, filters)
+        match_stage = _make_match_stage(view, filters)
+        stages = []
+        if match_stage:
+            stages = [match_stage]
+
+        stages.extend(_make_field_filter_stages(view, filters))
+        stages.extend(_make_label_filter_stages(view, filters))
 
         for stage in stages:
             view = view.add_stage(stage)
@@ -314,9 +320,7 @@ def _add_labels_tags_counts(view):
 
         view = add_tags(path, field, view)
 
-    view = _count_list_items(_LABEL_TAGS, view)
-
-    return view
+    return _count_list_items(_LABEL_TAGS, view)
 
 
 def _project_pagination_paths(
@@ -347,16 +351,15 @@ def _project_pagination_paths(
     )
 
 
-def _make_filter_stages(
-    view,
-    filters,
-):
-    stages = []
+def _make_match_stage(view, filters):
     queries = []
-    for path, label_path, field, args in _iter_paths(view, filters):
+
+    for path, parent_path, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
         path_field = view.get_field(path)
-        is_label_field = _is_label(field)
+
+        field = view.get_field(parent_path)
+        is_label_field = _is_label_type(field)
         if (
             is_label_field
             and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
@@ -370,13 +373,48 @@ def _make_filter_stages(
         queries.append(_make_query(path, path_field, args))
 
     if queries:
-        stages.append(fosg.Match({"$and": queries}))
+        return fosg.Match({"$and": queries})
 
-    for path, label_path, label_field, args in _iter_paths(
-        view, filters, labels=True
+
+def _make_field_filter_stages(view, filters):
+    stages = []
+    for path, parent_path, args in _iter_paths(
+        view, filters, label_types=False
     ):
-        is_matching = args.get("isMatching", True)
+        if args.get("isMatching", False):
+            continue
+
         field = view.get_field(path)
+        parent_field = view.get_field(parent_path)
+        if not isinstance(parent_field, fof.ListField) or not isinstance(
+            parent_field.field, fof.EmbeddedDocumentField
+        ):
+            continue
+
+        set_field = parent_path
+
+        expr = _make_scalar_expression(F(path.split(".")[-1]), args, field)
+
+        if expr is None:
+            continue
+
+        expr = F(parent_path).filter(expr)
+        stages.append(fosg.SetField(set_field, expr, _allow_missing=True))
+
+    return stages
+
+
+def _make_label_filter_stages(
+    view,
+    filters,
+):
+    stages = []
+    for path, label_path, args in _iter_paths(view, filters, label_types=True):
+        if args.get("isMatching", False):
+            continue
+
+        field = view.get_field(path)
+        label_field = view.get_field(label_path)
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):
@@ -389,23 +427,34 @@ def _make_filter_stages(
                         **expr,
                     )
                 )
+                continue
 
-        elif not is_matching:
-            key = field.db_field if field.db_field else field.name
-            expr = _make_scalar_expression(F(key), args, field, is_label=True)
-            if expr is not None:
-                stages.append(
-                    fosg.FilterLabels(
-                        label_path,
-                        expr,
-                        only_matches=not args.get("exclude", False),
-                    )
-                )
+        key = field.db_field if field.db_field else field.name
+        expr = _make_scalar_expression(
+            F(key),
+            args,
+            field,
+            is_label=True,
+        )
+        if expr is None:
+            continue
+
+        stages.append(
+            fosg.FilterLabels(
+                label_path,
+                expr,
+                only_matches=not args.get("exclude", False),
+            )
+        )
 
     return stages
 
 
-def _iter_paths(view, filters, labels=False):
+def _iter_paths(
+    view,
+    filters,
+    label_types=None,
+):
     for path in sorted(filters):
         if path == "tags" or path.startswith("_"):
             continue
@@ -416,17 +465,21 @@ def _iter_paths(view, filters, labels=False):
             parent_path = path
 
         parent_field = view.get_field(parent_path)
-        if isinstance(parent_field, fof.ListField) and isinstance(
+        is_list_field = isinstance(parent_field, fof.ListField) and isinstance(
             parent_field.field, fof.EmbeddedDocumentField
+        )
+        if is_list_field and issubclass(
+            parent_field.field.document_type, fol.Label
         ):
-            if issubclass(parent_field.field.document_type, fol.Label):
-                parent_path = ".".join(parent_path.split(".")[:-1])
-                parent_field = view.get_field(parent_path)
+            parent_path = ".".join(parent_path.split(".")[:-1])
+            parent_field = view.get_field(parent_path)
 
-        if labels and not _is_label(parent_field):
-            continue
+        if label_types is not None:
+            _is_label = _is_label_type(parent_field)
+            if label_types != _is_label:
+                continue
 
-        yield path, parent_path, parent_field, filters[path]
+        yield path, parent_path, filters[path]
 
 
 def _is_support(field):
@@ -447,7 +500,7 @@ def _is_datetime(field):
     return isinstance(field, (fof.DateField, fof.DateTimeField))
 
 
-def _is_label(field):
+def _is_label_type(field):
     return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
         field.document_type, fol.Label
     )
@@ -545,12 +598,17 @@ def _make_range_query(path: str, field: fof.Field, args):
     }
 
 
-def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
+def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
     expr = None
     if _is_support(field):
         mn, mx = args["range"]
         expr = (f[0] >= mn) & (f[1] <= mx)
     elif isinstance(field, fof.ListField):
+        if isinstance(list_field, str):
+            return f.filter(
+                _make_scalar_expression(F(list_field), args, field.field)
+            )
+
         expr = f.filter(
             _make_scalar_expression(F(), args, field.field, list_field=True)
         ).length()

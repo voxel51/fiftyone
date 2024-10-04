@@ -554,7 +554,19 @@ const ModalActionsRowContainer = styled.div`
     opacity: 1;
     transition: opacity 0.1s ease-out;
   }
-}`;
+
+  svg {
+    font-size: 18px;
+  }
+
+  > div {
+    max-height: 24px;
+
+    > div:first-child {
+      max-height: 24px;
+    }
+  }
+`;
 
 const DraggableHandleIconContainer = styled.div`
   cursor: grab;
@@ -597,110 +609,110 @@ export const GridActionsRow = () => {
   const { placements: secondaryPlacements } = useOperatorPlacements(
     types.Places.SAMPLES_GRID_SECONDARY_ACTIONS
   );
-  const initialItems = [
-    {
-      id: "toggle-sidebar",
-      Component: (props) => {
-        return <ToggleSidebar modal={false} adaptiveMenuItemProps={props} />;
-      },
-      priority: 1, // always show this first
-    },
-    {
-      id: "colors",
-      Component: (props) => {
-        return <Colors adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "tag",
-      Component: (props) => {
-        return <Tag modal={false} adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "patches",
-      Component: (props) => {
-        return <Patches adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "similarity",
-      Component: (props) => {
-        return <Similarity modal={false} adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "save-filters",
-      Component: (props) => {
-        return <SaveFilters adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "selected",
-      Component: (props) => {
-        return <Selected modal={false} adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "dynamic-group-action",
-      Component: (props) => {
-        return <DynamicGroupAction adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "browse-operations",
-      Component: (props) => {
-        return <BrowseOperations adaptiveMenuItemProps={props} />;
-      },
-    },
-    {
-      id: "options",
-      Component: (props) => {
-        return <Options modal={false} adaptiveMenuItemProps={props} />;
-      },
-    },
-    ...primaryPlacements.map((placement) => {
-      return {
-        id: placement?.operator?.uri,
+  const initialItems = useMemo(() => {
+    return [
+      {
+        id: "toggle-sidebar",
         Component: (props) => {
-          return (
-            <OperatorPlacementWithErrorBoundary
-              place={types.Places.SAMPLES_GRID_ACTIONS}
-              adaptiveMenuItemProps={props}
-              {...placement}
-            />
-          );
+          return <ToggleSidebar modal={false} adaptiveMenuItemProps={props} />;
         },
-      };
-    }),
-    ...secondaryPlacements.map((placement) => {
-      return {
-        id: placement?.operator?.uri,
+        priority: 1, // always show this first
+      },
+      {
+        id: "colors",
         Component: (props) => {
-          return (
-            <OperatorPlacementWithErrorBoundary
-              place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS}
-              adaptiveMenuItemProps={props}
-              {...placement}
-            />
-          );
+          return <Colors adaptiveMenuItemProps={props} />;
         },
-      };
-    }),
-  ];
+      },
+      {
+        id: "tag",
+        Component: (props) => {
+          return <Tag modal={false} adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "patches",
+        Component: (props) => {
+          return <Patches adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "similarity",
+        Component: (props) => {
+          return <Similarity modal={false} adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "save-filters",
+        Component: (props) => {
+          return <SaveFilters adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "selected",
+        Component: (props) => {
+          return <Selected modal={false} adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "dynamic-group-action",
+        Component: (props) => {
+          return <DynamicGroupAction adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "browse-operations",
+        Component: (props) => {
+          return <BrowseOperations adaptiveMenuItemProps={props} />;
+        },
+      },
+      {
+        id: "options",
+        Component: (props) => {
+          return <Options modal={false} adaptiveMenuItemProps={props} />;
+        },
+      },
+      ...primaryPlacements.map((placement) => {
+        return {
+          id: placement?.operator?.uri,
+          Component: (props) => {
+            return (
+              <OperatorPlacementWithErrorBoundary
+                place={types.Places.SAMPLES_GRID_ACTIONS}
+                adaptiveMenuItemProps={props}
+                {...placement}
+              />
+            );
+          },
+        };
+      }),
+      ...secondaryPlacements.map((placement) => {
+        return {
+          id: placement?.operator?.uri,
+          Component: (props) => {
+            return (
+              <OperatorPlacementWithErrorBoundary
+                place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS}
+                adaptiveMenuItemProps={props}
+                {...placement}
+              />
+            );
+          },
+        };
+      }),
+    ];
+  }, [primaryPlacements, secondaryPlacements]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
     "grid-actions-row"
   );
-  const [items, setItems] = useState(orderedItems);
 
   return (
     <Box sx={{ width: "100%", minWidth: 100 }}>
       <AdaptiveMenu
         id="grid-actions-row"
-        items={items}
+        items={orderedItems}
         onOrderChange={(items) => {
-          setItems(items);
           setOrder(items);
         }}
       />

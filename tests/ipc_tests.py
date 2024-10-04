@@ -13,6 +13,9 @@ import socket
 import sys
 import threading
 import time
+import unittest
+from io import BytesIO
+from unittest.mock import MagicMock
 
 import psutil
 import pytest
@@ -118,6 +121,31 @@ def test_run_in_background():
         send_request(server.port, 2)
         send_request(server.port, 3)
     assert requests == [2, 3]
+
+
+@unittest.mock.patch("socket.socket")
+def test_socket_closes_on_exception(mock_socket):
+    mock_socket_instance = MagicMock()
+    mock_socket.return_value = mock_socket_instance
+    mock_wb = BytesIO()
+    mock_socket_instance.makefile.side_effect = [mock_wb]
+
+    # Test
+    with unittest.mock.patch(
+        "pickle.dump", side_effect=Exception("Test exception")
+    ):
+        try:
+            send_request(12345, "test message")
+        except Exception as e:
+            assert str(e) == "Test exception"
+
+    # Ensure that the context manager enters and exits
+    mock_socket_instance.__enter__.assert_called_once()
+    mock_socket_instance.__exit__.assert_called_once_with(
+        Exception,  # The exception type
+        unittest.mock.ANY,  # The exception instance
+        unittest.mock.ANY,  # The traceback object
+    )
 
 
 def test_find_processes_by_args():
