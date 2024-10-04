@@ -1,18 +1,12 @@
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { selector, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate } from "./hooks";
+import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
-
-export const hoveredSampleId = selector<string>({
-  key: "hoveredSampleId",
-  get: ({ get }) => {
-    return get(fos.hoveredSample)?._id;
-  },
-});
 
 const CLOSE = "close";
 
@@ -94,13 +88,8 @@ function useLooker<L extends fos.Lookers>({
       );
     }
   );
-  const hoveredId = useRecoilValue(hoveredSampleId);
 
-  useEffect(() => {
-    looker.updateOptions({
-      shouldHandleKeyEvents: sample.sample._id === hoveredId,
-    });
-  }, [hoveredId, sample, looker]);
+  useKeyEvents(initialRef, sample.sample._id, looker);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }

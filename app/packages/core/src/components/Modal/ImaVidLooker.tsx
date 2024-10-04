@@ -19,6 +19,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
+import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
@@ -128,19 +129,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
 
-    const hoveredSample = useRecoilValue(fos.hoveredSample);
-
-    useEffect(() => {
-      const hoveredSampleId = hoveredSample?._id;
-      looker.updater((state) => ({
-        ...state,
-        // todo: always setting it to true might not be wise
-        shouldHandleKeyEvents: true,
-        options: {
-          ...state.options,
-        },
-      }));
-    }, [hoveredSample, sample, looker]);
+    useKeyEvents(initialRef, sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {

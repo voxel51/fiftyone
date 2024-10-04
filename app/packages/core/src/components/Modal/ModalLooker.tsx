@@ -28,7 +28,7 @@ interface LookerProps {
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
-  const { id, looker, ref, sample } = useLooker<ImageLooker>(props);
+  const { id, looker, ref } = useLooker<ImageLooker>(props);
   const theme = useTheme();
   const setModalLooker = useSetRecoilState(fos.modalLooker);
 

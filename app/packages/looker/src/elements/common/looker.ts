@@ -29,7 +29,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           const {
             SHORTCUTS,
             error,
-
             options: { shouldHandleKeyEvents },
           } = state;
           if (!error && e.key in SHORTCUTS) {
