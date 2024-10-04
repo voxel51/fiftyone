@@ -459,6 +459,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   pointFilter: (path: string, point: Point) => true,
   attributeVisibility: {},
   mediaFallback: false,
+  shouldHandleKeyEvents: true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
