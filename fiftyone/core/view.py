@@ -80,6 +80,9 @@ class DatasetView(foc.SampleCollection):
         if _stages is None:
             _stages = []
 
+        self._make_sample_fcn = None
+        self._make_frame_fcn = None
+
         self.__dataset = dataset
         self.__stages = _stages
         self.__media_type = _media_type
