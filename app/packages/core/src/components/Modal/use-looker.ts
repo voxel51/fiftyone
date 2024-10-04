@@ -89,7 +89,7 @@ function useLooker<L extends fos.Lookers>({
     }
   );
 
-  useKeyEvents(sample.sample._id, looker);
+  useKeyEvents(initialRef, sample.sample._id, looker);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }

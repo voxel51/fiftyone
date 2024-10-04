@@ -1,6 +1,7 @@
 import type { Lookers } from "@fiftyone/state";
 import { hoveredSample } from "@fiftyone/state";
-import { useEffect } from "react";
+import type { MutableRefObject } from "react";
+import { useEffect, useRef } from "react";
 import { selector, useRecoilValue } from "recoil";
 
 export const hoveredSampleId = selector<string>({
@@ -10,16 +11,30 @@ export const hoveredSampleId = selector<string>({
   },
 });
 
-export default function (id: string, looker: Lookers) {
+export default function (
+  ref: MutableRefObject<boolean>,
+  id: string,
+  looker: Lookers
+) {
   const hoveredId = useRecoilValue(hoveredSampleId);
+  const ready = useRef(false);
 
   useEffect(() => {
-    const load = () => {
+    if (ref.current) {
+      // initial call should wait for load event
+      const update = () => {
+        looker.updateOptions({
+          shouldHandleKeyEvents: id === hoveredId,
+        });
+        ready.current = true;
+
+        looker.removeEventListener("load", update);
+      };
+      looker.addEventListener("load", update);
+    } else if (ready.current) {
       looker.updateOptions({
         shouldHandleKeyEvents: id === hoveredId,
       });
-      looker.removeEventListener("load", load);
-    };
-    looker.addEventListener("load", load);
-  }, [hoveredId, id, looker]);
+    }
+  }, [hoveredId, id, looker, ref]);
 }
