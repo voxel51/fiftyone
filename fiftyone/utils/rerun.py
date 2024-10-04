@@ -16,13 +16,10 @@ class RrdFile(DynamicEmbeddedDocument, fol._HasMedia):
 
     Args:
         filepath (None): the path to the rrd file
-        version (0.18.2): the version of the rrd file. Since rrd files do not
-            yet guarantee backwards compatibility, this field is used to
-            determine how to parse the file and what rerun viewer to use.
-            If not provided, the default version is 0.18.2
+        version (None): the version of the rrd file
     """
 
     _MEDIA_FIELD = "filepath"
 
     filepath = fof.StringField()
-    version = fof.StringField(default="0.18.2")
+    version = fof.StringField()
