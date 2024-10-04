@@ -30,8 +30,11 @@ function useLooker<L extends fos.Lookers>({
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
   const looker = React.useMemo(() => {
+    /** start refreshers */
     reset;
     selectedMediaField;
+    /** end refreshers */
+
     return createLooker.current(sample);
   }, [createLooker, reset, sample, selectedMediaField]) as L;
   const handleError = useErrorHandler();
@@ -49,7 +52,10 @@ function useLooker<L extends fos.Lookers>({
   }, [looker, lookerOptions]);
 
   useEffect(() => {
+    /** start refreshers */
     colorScheme;
+    /** end refreshers */
+
     !initialRef.current && looker.updateSample(sample);
   }, [colorScheme, looker, sample]);
 
