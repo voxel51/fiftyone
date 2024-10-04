@@ -219,20 +219,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   get waiting() {
     const video = this.lookerElement.children[0].element as HTMLVideoElement;
-    if (
-      !this.state.config.thumbnail &&
-      video &&
-      (video.seeking ||
-        video.readyState < 2 ||
-        !this.hasFrame(this.state.frameNumber))
-    ) {
-      console.log(
-        video,
-        video.seeking,
-        video.readyState < 2,
-        !this.hasFrame(this.state.frameNumber)
-      );
-    }
     return (
       video &&
       (video.seeking ||
@@ -541,11 +527,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.setZoom = false;
     }
 
-    !this.state.config.thumbnail &&
+    if (this.state.config.enableTimeline) {
       getDefaultStore().set(setFrameNumberAtom, {
         name: `timeline-${this.state.config.sampleId}`,
         newFrameNumber: this.state.frameNumber,
       });
+    }
 
     return super.postProcess();
   }

@@ -219,6 +219,7 @@ export interface FrameConfig extends BaseConfig {
 export type ImageConfig = BaseConfig;
 
 export interface VideoConfig extends BaseConfig {
+  enableTimeline: boolean;
   frameRate: number;
   support?: [number, number];
 }

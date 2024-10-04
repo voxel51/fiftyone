@@ -20,7 +20,13 @@ function useLooker<L extends fos.Lookers>({
   const ref = useRef<HTMLDivElement>(null);
   const [reset, setReset] = useState(false);
   const lookerOptions = fos.useLookerOptions(true);
-  const createLooker = fos.useCreateLooker(true, false, lookerOptions);
+  const createLooker = fos.useCreateLooker(
+    true,
+    false,
+    lookerOptions,
+    undefined,
+    true
+  );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
   const looker = React.useMemo(() => {
