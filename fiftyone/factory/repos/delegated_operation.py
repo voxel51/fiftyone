@@ -301,6 +301,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "updated_at": datetime.utcnow(),
                 }
             }
+        elif run_state == ExecutionRunState.QUEUED:
+            update = {
+                "$set": {
+                    "run_state": run_state,
+                    "queued_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+            }
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link

@@ -117,6 +117,21 @@ class DelegatedOperationService(object):
             _id=doc_id, run_state=ExecutionRunState.SCHEDULED, required_state=required_state
         )
 
+    def set_queued(self, doc_id, required_state: ExecutionRunState = None):
+        """Sets the given delegated operation to queued state.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            required_state (ExecutionRunState): an optional required state of the operation. If provided, the
+                update will only be performed if the referenced operation matches this state.
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.update_run_state(
+            _id=doc_id, run_state=ExecutionRunState.QUEUED, required_state=required_state
+        )
+
     def set_completed(
         self,
         doc_id,
