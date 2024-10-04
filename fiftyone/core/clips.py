@@ -74,6 +74,16 @@ class ClipsView(fov.DatasetView):
             the clips in this view
     """
 
+    __slots__ = (
+        "_classification_field",
+        "_source_collection",
+        "_clips_stage",
+        "_clips_dataset",
+        "__stages",
+        "__media_type",
+        "__name",
+    )
+
     def __init__(
         self,
         source_collection,
@@ -447,6 +457,13 @@ class TrajectoriesView(ClipsView):
         clips_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
             the clips in this view
     """
+
+    __slots__ = (
+        "_num_trajectory_stages",
+        "__stages",
+        "__media_type",
+        "__name",
+    )
 
     def __init__(
         self,
