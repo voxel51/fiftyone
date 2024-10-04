@@ -17,13 +17,14 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
+import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import {
-  shortcutToHelpItems,
-  useClearSelectedLabels,
+  useInitializeImaVidSubscriptions,
   useLookerOptionsUpdate,
-  useShowOverlays,
-} from "./ModalLooker";
+  useModalContext,
+} from "./hooks";
+import useKeyEvents from "./use-key-events";
+import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;
@@ -132,19 +133,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
 
-    const hoveredSample = useRecoilValue(fos.hoveredSample);
-
-    useEffect(() => {
-      const hoveredSampleId = hoveredSample?._id;
-      looker.updater((state) => ({
-        ...state,
-        // todo: always setting it to true might not be wise
-        shouldHandleKeyEvents: true,
-        options: {
-          ...state.options,
-        },
-      }));
-    }, [hoveredSample, sample, looker]);
+    useKeyEvents(initialRef, sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
