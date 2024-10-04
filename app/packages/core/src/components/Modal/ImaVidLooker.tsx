@@ -129,7 +129,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
 
-    useKeyEvents(initialRef, sample._id, looker);
+    useKeyEvents(sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
