@@ -3261,9 +3261,9 @@
             "date_added": "2024-07-01 19:22:51"
         },
         {
-            "base_name": "yolov11n-coco-torch",
-            "base_filename": "yolov11n-coco.pt",
-            "description": "YOLOv11-N model trained on COCO",
+            "base_name": "yolo11n-coco-torch",
+            "base_filename": "yolo11n-coco.pt",
+            "description": "YOLO11-N model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "size_bytes": 5613764,
             "manager": {
@@ -3293,9 +3293,9 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
-            "base_name": "yolov11s-coco-torch",
-            "base_filename": "yolov11s-coco.pt",
-            "description": "YOLOv11-S model trained on COCO",
+            "base_name": "yolo11s-coco-torch",
+            "base_filename": "yolo11s-coco.pt",
+            "description": "YOLO11-S model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "size_bytes": 19313732,
             "manager": {
@@ -3325,9 +3325,9 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
-            "base_name": "yolov11m-coco-torch",
-            "base_filename": "yolov11m-coco.pt",
-            "description": "YOLOv11-M model trained on COCO",
+            "base_name": "yolo11m-coco-torch",
+            "base_filename": "yolo11m-coco.pt",
+            "description": "YOLO11-M model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "size_bytes": 40684120,
             "manager": {
@@ -3357,9 +3357,9 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
-            "base_name": "yolov11l-coco-torch",
-            "base_filename": "yolov11l-coco.pt",
-            "description": "YOLOv11-L model trained on COCO",
+            "base_name": "yolo11l-coco-torch",
+            "base_filename": "yolo11l-coco.pt",
+            "description": "YOLO11-L model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "size_bytes": 51387343,
             "manager": {
@@ -3389,9 +3389,9 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
-            "base_name": "yolov11x-coco-torch",
-            "base_filename": "yolov11x-coco.pt",
-            "description": "YOLOv11-X model trained on COCO",
+            "base_name": "yolo11x-coco-torch",
+            "base_filename": "yolo11x-coco.pt",
+            "description": "YOLO11-X model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
             "size_bytes": 114636239,
             "manager": {
