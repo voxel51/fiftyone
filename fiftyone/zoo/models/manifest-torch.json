@@ -3796,7 +3796,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "torch", "yolo"],
+            "tags": ["detection", "torch", "yolo"],
             "date_added": "2024-01-06 08:51:14"
         },
         {
