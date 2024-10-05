@@ -105,6 +105,13 @@ You can directly pass Ultralytics `YOLO` or `RTDETR` detection models to
     # model = YOLO("yolov10l.pt)
     # model = YOLO("yolov10x.pt)
 
+    # YOLOv11
+    # model = YOLO("yolo11n.pt)
+    # model = YOLO("yolo11s.pt)
+    # model = YOLO("yolo11m.pt)
+    # model = YOLO("yolo11l.pt)
+    # model = YOLO("yolo11x.pt)
+
     # RTDETR
     # model = YOLO("rtdetr-l.pt")
     # model = YOLO("rtdetr-x.pt")
@@ -140,6 +147,7 @@ You can also load any of these models directly from the
     # model_name = "yolov8m-coco-torch"
     # model_name = "yolov9e-coco-torch"
     # model_name = "yolov10s-coco-torch"
+    # model_name = "yolo11x-coco-torch"
     # model_name = "rtdetr-l-coco-torch"
 
     model = foz.load_zoo_model(
