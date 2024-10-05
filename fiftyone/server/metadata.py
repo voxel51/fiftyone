@@ -37,6 +37,7 @@ import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
 from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
+from fiftyone.utils.rerun import RrdFile
 from fiftyone.server.cache import create_tlru_cache
 
 
@@ -46,6 +47,7 @@ _ADDITIONAL_MEDIA_FIELDS = {
     fol.Heatmap: "map_path",
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
+    RrdFile: "filepath",
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
