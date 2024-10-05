@@ -50,7 +50,7 @@ COMPATIBLE_VERSIONS = ">=0.19,<1.1"
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "1.0.0"  # open source compatibility version
+VERSION = "1.0.1"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -109,11 +109,3 @@ DATABASE_APPNAME = "fiftyone"
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
-
-# App setup
-try:
-    from fiftyone.desktop import FIFTYONE_DESKTOP_APP_DIR
-except ImportError:
-    FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
-        os.path.join(FIFTYONE_DIR, "../app")
-    )

@@ -1,9 +1,11 @@
 import type { Schema } from "@fiftyone/utilities";
 import {
+  CLASSIFICATIONS,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   STRING_FIELD,
+  TEMPORAL_DETECTIONS,
 } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 import { getBubbles, getField, unwind } from "./bubbles";
@@ -195,6 +197,38 @@ describe("text bubble tests", () => {
         }
       )
     ).toStrictEqual([field.fields.value, ["value"]]);
+
+    const classifications = {
+      ...FIELD_DATA,
+      dbField: "classes",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: CLASSIFICATIONS,
+      fields: {},
+    };
+
+    expect(
+      getBubbles(
+        "classes",
+        { classes: { classifications: [{ label: "label" }] } },
+        { classes: classifications }
+      )
+    );
+
+    const temporalDetections = {
+      ...FIELD_DATA,
+      dbField: "temporal",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: TEMPORAL_DETECTIONS,
+      fields: {},
+    };
+
+    expect(
+      getBubbles(
+        "temporal",
+        { temporal: { detections: [{ label: "label" }] } },
+        { temporal: temporalDetections }
+      )
+    );
   });
 
   it("getField gets field from a path keys", () => {

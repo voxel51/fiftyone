@@ -19,6 +19,27 @@ export const useLookerHelpers = () => {
   };
 };
 
+export const useLookerOptionsUpdate = () => {
+  return useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (update: object, updater?: (updated: {}) => void) => {
+        const currentOptions = await snapshot.getPromise(
+          fos.savedLookerOptions
+        );
+
+        const panels = await snapshot.getPromise(fos.lookerPanels);
+        const updated = {
+          ...currentOptions,
+          ...update,
+          showJSON: panels.json.isOpen,
+          showHelp: panels.help.isOpen,
+        };
+        set(fos.savedLookerOptions, updated);
+        if (updater) updater(updated);
+      }
+  );
+};
+
 export const useInitializeImaVidSubscriptions = () => {
   const subscribeToImaVidStateChanges = useRecoilCallback(
     ({ set }) =>

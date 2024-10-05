@@ -54,14 +54,14 @@ export const getBubbles = (
     }
 
     if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
-      out.values = out.values.flatMap(
+      out.values = unwind(field.dbField, out.values).flatMap(
         (value) => value.classifications || []
       ) as Sample[];
       break;
     }
 
     if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
-      out.values = out.values.flatMap(
+      out.values = unwind(field.dbField, out.values).flatMap(
         (value) => value.detections || []
       ) as Sample[];
       break;
