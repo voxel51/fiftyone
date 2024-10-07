@@ -95,6 +95,8 @@ const globalContextSelector = selector({
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
     const queryPerformance = typeof get(fos.lightningThreshold) === "number";
+    const spaces = get(fos.sessionSpaces);
+    const workspaceName = spaces?._name;
 
     // Teams only
     const datasetHeadName = get(fos.datasetHeadName);
@@ -112,6 +114,8 @@ const globalContextSelector = selector({
       extendedSelection,
       groupSlice,
       queryPerformance,
+      spaces,
+      workspaceName,
     };
   },
 });
@@ -155,6 +159,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     extendedSelection,
     groupSlice,
     queryPerformance,
+    spaces,
+    workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
@@ -175,6 +181,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         analyticsInfo,
         groupSlice,
         queryPerformance,
+        spaces,
+        workspaceName,
       },
       hooks
     );
@@ -191,6 +199,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     currentSample,
     groupSlice,
     queryPerformance,
+    spaces,
+    workspaceName,
   ]);
 
   return ctx;

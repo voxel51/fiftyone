@@ -1939,28 +1939,6 @@ class SaveWorkspace(foo.Operator):
             ),
         )
 
-        # @todo infer this automatically from current App spaces
-        spaces_prop = inputs.oneof(
-            "spaces",
-            [types.String(), types.Object()],
-            default=None,
-            required=True,
-            label="Spaces",
-            description=(
-                "JSON description of the workspace to save: "
-                "`print(session.spaces.to_json(True))`"
-            ),
-            view=types.CodeView(),
-        )
-
-        spaces = ctx.params.get("spaces", None)
-        if spaces is not None:
-            try:
-                _parse_spaces(spaces)
-            except:
-                spaces_prop.invalid = True
-                spaces_prop.error_message = "Invalid workspace definition"
-
         name = ctx.params.get("name", None)
 
         if name in workspaces:
@@ -1979,7 +1957,10 @@ class SaveWorkspace(foo.Operator):
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
 
-        spaces = _parse_spaces(spaces)
+        if spaces is None:
+            spaces = ctx.spaces
+        else:
+            spaces = _parse_spaces(spaces)
 
         ctx.dataset.save_workspace(
             name,
@@ -2034,11 +2015,12 @@ def _edit_workspace_info_inputs(ctx, inputs):
     for key in workspaces:
         workspace_selector.add_choice(key, label=key)
 
-    # @todo default to current workspace name, if one is currently open
+    current_workspace = ctx.spaces.name if ctx.spaces else None
     inputs.enum(
         "name",
         workspace_selector.values(),
         required=True,
+        default=current_workspace,
         label="Workspace",
         description="The workspace to edit",
         view=workspace_selector,
@@ -2102,11 +2084,11 @@ class DeleteWorkspace(foo.Operator):
             workspace_selector = types.AutocompleteView()
             for key in workspaces:
                 workspace_selector.add_choice(key, label=key)
-
+            current_workspace = ctx.spaces.name if ctx.spaces else None
             inputs.enum(
                 "name",
                 workspace_selector.values(),
-                default=None,
+                default=current_workspace,
                 required=True,
                 label="Workspace",
                 description="The workspace to delete",

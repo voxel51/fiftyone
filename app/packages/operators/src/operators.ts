@@ -1,5 +1,6 @@
 import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
-import { ServerError, getFetchFunction, isNullish } from "@fiftyone/utilities";
+import { SpaceNode, spaceNodeFromJSON, SpaceNodeJSON } from "@fiftyone/spaces";
+import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
 import * as types from "./types";
@@ -92,6 +93,8 @@ export type RawContext = {
   };
   groupSlice: string;
   queryPerformance?: boolean;
+  spaces: SpaceNodeJSON;
+  workspaceName: string;
 };
 
 export class ExecutionContext {
@@ -139,6 +142,12 @@ export class ExecutionContext {
   }
   public get queryPerformance(): boolean {
     return Boolean(this._currentContext.queryPerformance);
+  }
+  public get spaces(): SpaceNode {
+    return spaceNodeFromJSON(this._currentContext.spaces);
+  }
+  public get workspaceName(): string {
+    return this._currentContext.workspaceName;
   }
 
   getCurrentPanelId(): string | null {
@@ -552,7 +561,8 @@ async function executeOperatorAsGenerator(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
-
+      spaces: currentContext.spaces,
+      workspace_name: currentContext.workspaceName,
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
     },
@@ -719,6 +729,9 @@ export async function executeOperatorWithContext(
           view_name: currentContext.viewName,
           group_slice: currentContext.groupSlice,
           query_performance: currentContext.queryPerformance,
+          spaces: currentContext.spaces,
+          workspace_name: currentContext.workspaceName,
+
           // Teams only
           dataset_head_name: currentContext.datasetHeadName,
         }
@@ -824,6 +837,8 @@ export async function resolveRemoteType(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      spaces: currentContext.spaces,
+      workspace_name: currentContext.workspaceName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -901,6 +916,8 @@ export async function resolveExecutionOptions(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      spaces: currentContext.spaces,
+      workspace_name: currentContext.workspaceName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
@@ -935,6 +952,8 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      spaces: currentContext.spaces,
+      workspace_name: currentContext.workspaceName,
 
       // Teams only
       dataset_head_name: currentContext.datasetHeadName,
