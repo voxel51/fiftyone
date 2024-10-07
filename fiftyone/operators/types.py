@@ -406,6 +406,9 @@ class Object(BaseType):
             ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
             ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
             another content (for example, menu for full-panel-width plot)
+            icon (None): when set, the icon will be displayed as the menu button instead of the label.
+            Can be "SettingsIcon", "MoreVertIcon".
+
         Returns:
             a :class:`Object`
         """
