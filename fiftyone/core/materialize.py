@@ -60,6 +60,15 @@ class MaterializedView(fov.DatasetView):
             serves the samples in this view
     """
 
+    __slots__ = (
+        "_source_collection",
+        "_materialize_stage",
+        "_materialized_dataset",
+        "__stages",
+        "__media_type",
+        "__name",
+    )
+
     def __init__(
         self,
         source_collection,
