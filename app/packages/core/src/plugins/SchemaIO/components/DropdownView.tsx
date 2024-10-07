@@ -1,7 +1,5 @@
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import SettingsIcon from "@mui/icons-material/Settings";
-import { MenuItem, Select } from "@mui/material";
-import React, { useState } from "react";
+import { IconButton, MenuItem, Select } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";
@@ -9,6 +7,14 @@ import { ViewPropsType } from "../utils/types";
 import AlertView from "./AlertView";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 import FieldWrapper from "./FieldWrapper";
+
+// if we want to support more icons in the future, add them here
+const iconImports: {
+  [key: string]: () => Promise<{ default: React.ComponentType<any> }>;
+} = {
+  MoreVertIcon: () => import("@mui/icons-material/MoreVert"),
+  SettingsIcon: () => import("@mui/icons-material/Settings"),
+};
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
@@ -28,6 +34,8 @@ export default function DropdownView(props: ViewPropsType) {
     variant,
     icon,
   } = view;
+  const [IconComponent, setIconComponent] =
+    useState<React.ComponentType<any> | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
   const [selected, setSelected] = useState(false);
 
@@ -55,23 +63,83 @@ export default function DropdownView(props: ViewPropsType) {
       ? rawDefaultValue.toString().split(separator)
       : rawDefaultValue;
 
-  const choiceLabels = choices.reduce((labels, choice) => {
-    labels[choice.value] = choice.label;
-    return labels;
-  }, {});
+  const choiceLabels = useMemo(() => {
+    return choices.reduce((labels, choice) => {
+      labels[choice.value] = choice.label;
+      return labels;
+    }, {});
+  }, [choices]);
+
+  const getIconOnlyStyles = () => ({
+    "&.MuiInputBase-root.MuiOutlinedInput-root.MuiInputBase-colorPrimary": {
+      backgroundColor: "transparent !important",
+      borderRadius: "0 !important",
+      border: "none !important",
+      boxShadow: "none !important",
+      "&:hover, &:focus": {
+        backgroundColor: "transparent !important",
+        boxShadow: "none !important",
+      },
+    },
+    "& .MuiSelect-select": {
+      padding: 0,
+      background: "transparent",
+      "&:focus": {
+        background: "transparent",
+      },
+    },
+    "& .MuiInputBase-root": {
+      background: "transparent",
+    },
+    "& .MuiOutlinedInput-notchedOutline": {
+      border: "none",
+    },
+    "& .MuiSelect-icon": {
+      display: "none",
+    },
+  });
+
+  const getDefaultStyles = (selected: boolean) => ({
+    ".MuiSelect-select": {
+      padding: "0.45rem 2rem 0.45rem 1rem",
+      opacity: selected ? 1 : 0.5,
+    },
+  });
+
+  const getDropdownStyles = (icon: string | undefined, selected: boolean) => {
+    return icon ? getIconOnlyStyles() : getDefaultStyles(selected);
+  };
+
+  // Now, condense the code like this:
   const { MenuProps = {}, ...selectProps } = getComponentProps(
     props,
     "select",
     {
       sx: {
-        ".MuiSelect-select": {
-          padding: "0.45rem 2rem 0.45rem 1rem",
-          opacity: selected ? 1 : 0.5,
-        },
+        ...getDropdownStyles(icon, selected),
         ...getFieldSx({ color, variant }),
       },
     }
   );
+
+  // dynamically import the icon component
+  useEffect(() => {
+    if (icon && iconImports[icon]) {
+      iconImports[icon]().then((module) => {
+        setIconComponent(() => module.default);
+      });
+    }
+  }, [icon]);
+
+  const renderIcon = () => {
+    if (!IconComponent) return null;
+
+    return (
+      <IconButton aria-label={icon}>
+        <IconComponent />
+      </IconButton>
+    );
+  };
 
   return (
     <FieldWrapper {...props} hideHeader={compact}>
@@ -85,11 +153,8 @@ export default function DropdownView(props: ViewPropsType) {
         displayEmpty
         title={compact ? description : undefined}
         renderValue={(value) => {
-          if (icon === "SettingsIcon") {
-            return <SettingsIcon />;
-          }
-          if (icon === "MoreVertIcon") {
-            return <MoreVertIcon />;
+          if (icon) {
+            return renderIcon();
           }
           const unselected = value?.length === 0;
           setSelected(!unselected);
@@ -125,7 +190,7 @@ export default function DropdownView(props: ViewPropsType) {
       >
         {choices.map(({ value, ...choice }) => (
           <MenuItem
-            key="value"
+            key={value}
             value={value}
             {...getComponentProps(props, "optionContainer")}
           >
