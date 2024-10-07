@@ -115,6 +115,7 @@ export function defineCustomPanel({
   on_change_selected_labels,
   on_change_extended_selection,
   on_change_group_slice,
+  on_change_spaces,
   panel_name,
   panel_label,
 }) {
@@ -132,6 +133,7 @@ export function defineCustomPanel({
       onChangeSelectedLabels={on_change_selected_labels}
       onChangeExtendedSelection={on_change_extended_selection}
       onChangeGroupSlice={on_change_group_slice}
+      onChangeSpaces={on_change_spaces}
       dimensions={dimensions}
       panelName={panel_name}
       panelLabel={panel_label}

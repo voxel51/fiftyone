@@ -126,6 +126,7 @@ class Panel(Operator):
             "on_change_selected_labels",
             "on_change_extended_selection",
             "on_change_group_slice",
+            "on_change_spaces",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):

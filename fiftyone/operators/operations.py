@@ -356,6 +356,7 @@ class Operations(object):
                 current extended selection changes
             on_change_group_slice (None): an operator to invoke when the group
                 slice changes
+            on_change_spaces (None): an operator to invoke when the current spaces changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
         """
