@@ -87,8 +87,9 @@ def compute_ious(
             error will default to an IoU of 0
 
     Returns:
-        a ``num_preds x num_gts`` array of IoUs when ``sparse=False`, or a dict
-        of the form ``d[pred.id] = [(gt.id, iou), ...]`` when ``sparse=True``
+        a ``num_preds x num_gts`` array of IoUs when ``sparse=False``, or a
+        dict of the form ``d[pred.id] = [(gt.id, iou), ...]`` when
+        ``sparse=True``
     """
     if not preds or not gts:
         if sparse:
@@ -172,7 +173,7 @@ def compute_segment_ious(preds, gts, sparse=False):
             than a full matrix
 
     Returns:
-        a ``num_preds x num_gts`` array of segment IoUs when ``sparse=False`,
+        a ``num_preds x num_gts`` array of segment IoUs when ``sparse=False``,
         or a dict of the form ``d[pred.id] = [(gt.id, iou), ...]`` when
         ``sparse=True``
     """
@@ -548,7 +549,7 @@ def _get_detection_box(det, dimension=None):
         zmax = np.max(box.vertices[:, 2])
         result = (xmin, xmax, ymin, ymax, zmin, zmax)
     else:
-        raise Exception(f"dimension should be 2 or 3, but got {dimension}")
+        raise ValueError(f"dimension should be 2 or 3, but got {dimension}")
 
     return result
 
