@@ -563,13 +563,13 @@ class DatasetView(foc.SampleCollection):
                 yield sample
 
     def _make_sample(self, d):
-        if getattr(self, "_make_sample_fcn", None) is None:
+        if self._make_sample_fcn is None:
             self._make_sample_fcn = self._init_make_sample()
 
         return self._make_sample_fcn(d)
 
     def _make_frame(self, d):
-        if getattr(self, "_make_frame_fcn", None) is None:
+        if self._make_frame_fcn is None:
             self._make_frame_fcn = self._init_make_frame()
 
         return self._make_frame_fcn(d)
@@ -1429,9 +1429,8 @@ class DatasetView(foc.SampleCollection):
         for stage in self._stages:
             _view = _view.add_stage(stage)
 
-        for name in ("_make_sample_fcn", "_make_frame_fcn"):
-            if hasattr(self, name):
-                delattr(self, name)
+        self._make_sample_fcn = None
+        self._make_frame_fcn = None
 
     def to_dict(
         self,
