@@ -8,7 +8,7 @@ export const DELETE_DATASET_DOCS_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#dataset-persistence";
 export const DATASET_CREATION_DOCUMENTATION_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/index.html";
-export const DOCUMENTATION_LINK = "https://fiftyone.ai/";
+export const DOCUMENTATION_LINK = "https://docs.fiftyone.ai/";
 export const CONTACT_LINK = "mailto:support@voxel51.com";
 export const SLACK_LINK = "https://slack.voxel51.com";
 export const GITHUB_LINK = "https://github.com/voxel51/fiftyone";
