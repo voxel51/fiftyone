@@ -80,9 +80,6 @@ class DatasetView(foc.SampleCollection):
         if _stages is None:
             _stages = []
 
-        self._make_sample_fcn = None
-        self._make_frame_fcn = None
-
         self.__dataset = dataset
         self.__stages = _stages
         self.__media_type = _media_type
@@ -563,13 +560,13 @@ class DatasetView(foc.SampleCollection):
                 yield sample
 
     def _make_sample(self, d):
-        if self._make_sample_fcn is None:
+        if getattr(self, "_make_sample_fcn", None) is None:
             self._make_sample_fcn = self._init_make_sample()
 
         return self._make_sample_fcn(d)
 
     def _make_frame(self, d):
-        if self._make_frame_fcn is None:
+        if getattr(self, "_make_frame_fcn", None) is None:
             self._make_frame_fcn = self._init_make_frame()
 
         return self._make_frame_fcn(d)
@@ -1429,8 +1426,9 @@ class DatasetView(foc.SampleCollection):
         for stage in self._stages:
             _view = _view.add_stage(stage)
 
-        self._make_sample_fcn = None
-        self._make_frame_fcn = None
+        for name in ("_make_sample_fcn", "_make_frame_fcn"):
+            if hasattr(self, name):
+                delattr(self, name)
 
     def to_dict(
         self,
