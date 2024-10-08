@@ -47,7 +47,10 @@
         "braces": "^3.0.3",
         "ua-parser-js": "^0.7.38",
         "fast-loops": "^1.1.4",
-        "@babel/traverse": "^7.24.7"
+        "@babel/traverse": "^7.24.7",
+        "http-cache-semantics": "^4.1.1",
+        "semver": "^5.7.2",
+        "dset": "3.1.4"
     },
     "packageManager": "yarn@3.2.1"
 }
