@@ -65,6 +65,12 @@ LINUX_DOWNLOADS = {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
         },
     },
+    "fedora": {
+        "4": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
+    },
     "pop": {
         "18": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",

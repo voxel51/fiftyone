@@ -157,6 +157,10 @@ export const useCreateTimeline = (
       return;
     }
 
+    if (playHeadStateRef.current === "buffering") {
+      return;
+    }
+
     setPlayHeadState({ name: timelineName, state: "playing" });
     if (onPlayListenerRef.current) {
       onPlayListenerRef.current();
@@ -364,6 +368,10 @@ export const useCreateTimeline = (
       const key = e.key.toLowerCase();
 
       if (key === " ") {
+        if (playHeadState === "buffering") {
+          return;
+        }
+
         if (playHeadState === "paused") {
           play();
         } else {
@@ -448,6 +456,10 @@ export const useCreateTimeline = (
      * Re-render all subscribers of the timeline with current frame number.
      */
     refresh,
+    /**
+     * Set the playhead state of the timeline.
+     */
+    setPlayHeadState,
     /**
      * Subscribe to the timeline.
      */

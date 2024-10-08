@@ -39,5 +39,8 @@
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "^5.2.14"
+    },
+    "peerDependencies": {
+        "jotai": "*"
     }
 }

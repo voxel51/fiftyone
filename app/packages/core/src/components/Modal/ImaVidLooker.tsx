@@ -17,13 +17,14 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useInitializeImaVidSubscriptions, useModalContext } from "./hooks";
+import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import {
-  shortcutToHelpItems,
-  useClearSelectedLabels,
+  useInitializeImaVidSubscriptions,
   useLookerOptionsUpdate,
-  useShowOverlays,
-} from "./ModalLooker";
+  useModalContext,
+} from "./hooks";
+import useKeyEvents from "./use-key-events";
+import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;
@@ -132,19 +133,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
 
-    const hoveredSample = useRecoilValue(fos.hoveredSample);
-
-    useEffect(() => {
-      const hoveredSampleId = hoveredSample?._id;
-      looker.updater((state) => ({
-        ...state,
-        // todo: always setting it to true might not be wise
-        shouldHandleKeyEvents: true,
-        options: {
-          ...state.options,
-        },
-      }));
-    }, [hoveredSample, sample, looker]);
+    useKeyEvents(initialRef, sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -175,9 +164,13 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
+        setPlayHeadState({ name: timelineName, state: "buffering" });
+
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
           unprocessedBufferRange
         );
+
+        imaVidLookerRef.current.frameStoreController.resumeFetch();
 
         return new Promise<void>((resolve) => {
           const fetchMoreListener = (e: CustomEvent) => {
@@ -185,6 +178,9 @@ export const ImaVidLookerReact = React.memo(
               e.detail.id === imaVidLookerRef.current.frameStoreController.key
             ) {
               if (storeBufferManager.containsRange(unprocessedBufferRange)) {
+                // todo: change playhead state in setFrameNumberAtom and not here
+                // if done here, store ref to last playhead status
+                setPlayHeadState({ name: timelineName, state: "paused" });
                 resolve();
                 window.removeEventListener(
                   "fetchMore",
@@ -250,6 +246,7 @@ export const ImaVidLookerReact = React.memo(
       registerOnPauseCallback,
       registerOnPlayCallback,
       registerOnSeekCallbacks,
+      setPlayHeadState,
       subscribe,
     } = useCreateTimeline({
       name: timelineName,
@@ -325,6 +322,7 @@ export const ImaVidLookerReact = React.memo(
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          overflowX: "hidden",
         }}
       >
         <div
