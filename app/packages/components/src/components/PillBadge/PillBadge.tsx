@@ -1,7 +1,15 @@
 import React from "react";
 import { Badge, Chip } from "@mui/material";
 
-const PillBadge = ({ text, color }: { text: string; color?: string }) => {
+const PillBadge = ({
+  text,
+  color,
+  variant,
+}: {
+  text: string;
+  color?: string;
+  variant?: string;
+}) => {
   const COLORS: { [key: string]: string } = {
     default: "#777777",
     primary: "#FFB682",
@@ -10,7 +18,7 @@ const PillBadge = ({ text, color }: { text: string; color?: string }) => {
     info: "info",
     success: "#8BC18D",
   };
-  return <Chip icon={<Badge />} label={text} variant={} />;
+  return <Chip label={text} />;
 };
 
 export default PillBadge;
