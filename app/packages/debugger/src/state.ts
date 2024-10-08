@@ -1,4 +1,4 @@
-import { usePanels, usePanelState } from "@fiftyone/spaces";
+import { usePanels, usePanelState, useSpaceNodes, useSpaces } from "@fiftyone/spaces";
 import {
   atom,
   useRecoilState,
@@ -65,12 +65,22 @@ export function getAutoCompleteSuggestions(input, context) {
 }
 
 import * as fos from "@fiftyone/state";
+import { FIFTYONE_GRID_SPACES_ID } from "@fiftyone/state/src/constants";
+import { useGlobalExecutionContext } from "@fiftyone/operators";
 
 function useConsoleContext() {
+  const ctx = useGlobalExecutionContext();
   const panels = usePanels();
+  const spaces = useSpaces(FIFTYONE_GRID_SPACES_ID);
+  const [currentPanelId, setCurrentPanel] = useRecoilState(atoms.panelToInspect);
+  const [panel] = usePanelState(null, currentPanelId);
   return {
     fos,
     panels,
+    spaces,
+    panel,
+    setCurrentPanel,
+    ctx
   };
 }
 
@@ -84,11 +94,6 @@ export function useConsole() {
     }
     return value;
   });
-  const state = {
-    myAtom,
-    useValueOfSomething: () => 42, // A mock function as an example
-    addNumbers: (a, b) => a + b, // Another example function
-  };
 
   const handleCommand = async (command) => {
     try {
