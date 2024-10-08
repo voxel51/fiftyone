@@ -17,7 +17,6 @@ interface PlayheadProps {
   pause: () => void;
 }
 
-
 interface SpeedProps {
   speed: number;
   setSpeed: (speed: number) => void;

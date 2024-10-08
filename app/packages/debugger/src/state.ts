@@ -1,4 +1,9 @@
-import { usePanels, usePanelState, useSpaceNodes, useSpaces } from "@fiftyone/spaces";
+import {
+  usePanels,
+  usePanelState,
+  useSpaceNodes,
+  useSpaces,
+} from "@fiftyone/spaces";
 import {
   atom,
   useRecoilState,
@@ -72,7 +77,9 @@ function useConsoleContext() {
   const ctx = useGlobalExecutionContext();
   const panels = usePanels();
   const spaces = useSpaces(FIFTYONE_GRID_SPACES_ID);
-  const [currentPanelId, setCurrentPanel] = useRecoilState(atoms.panelToInspect);
+  const [currentPanelId, setCurrentPanel] = useRecoilState(
+    atoms.panelToInspect
+  );
   const [panel] = usePanelState(null, currentPanelId);
   return {
     fos,
@@ -80,7 +87,7 @@ function useConsoleContext() {
     spaces,
     panel,
     setCurrentPanel,
-    ctx
+    ctx,
   };
 }
 
