@@ -201,7 +201,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 device=sam2_predictor.device,
             )
 
-            masks, _, _ = sam2_predictor.predict(
+            masks, scores, _ = sam2_predictor.predict(
                 point_coords=None,
                 point_labels=None,
                 box=sam_boxes[None, :],
@@ -214,6 +214,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                     "boxes": input_boxes,
                     "labels": labels,
                     "masks": torch.tensor(masks, device=sam2_predictor.device),
+                    "scores": torch.tensor(
+                        scores, device=sam2_predictor.device
+                    ),
                 }
             )
 
