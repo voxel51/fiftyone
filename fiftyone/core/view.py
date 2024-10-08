@@ -58,6 +58,16 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
+    __slots__ = (
+        "__dataset",
+        "__stages",
+        "__media_type",
+        "__group_slice",
+        "__name",
+        "_make_sample_fcn",
+        "_make_frame_fcn",
+    )
+
     def __init__(
         self,
         dataset,

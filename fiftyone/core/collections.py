@@ -217,6 +217,8 @@ class SampleCollection(object):
     :class:`fiftyone.core.dataset.Dataset`.
     """
 
+    __slots__ = ("__weakref__",)
+
     _FRAMES_PREFIX = "frames."
     _GROUPS_PREFIX = "groups."
 
