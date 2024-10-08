@@ -5,6 +5,7 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from functools import partial
 import itertools
 import warnings
@@ -1639,7 +1640,6 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 }
 
 
-@staticmethod
 def _get_uint_dtype(maxval):
     if maxval < 2**8:
         return np.uint8
