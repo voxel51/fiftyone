@@ -56,7 +56,7 @@ function useLooker<L extends fos.Lookers>({
     colorScheme;
     /** end refreshers */
 
-    !initialRef.current && looker.updateSample(sample);
+    !initialRef.current && looker.updateSample(sample.sample);
   }, [colorScheme, looker, sample]);
 
   useEffect(() => {
