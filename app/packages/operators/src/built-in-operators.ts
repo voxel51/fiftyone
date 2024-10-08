@@ -1313,6 +1313,42 @@ export class SetGroupSlice extends Operator {
   }
 }
 
+export class DisableQueryPerformance extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "disable_query_performance",
+      label: "Disable query performance",
+    });
+  }
+
+  useHooks() {
+    const { disable } = fos.useQueryPerformance();
+    return { disable };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.disable();
+  }
+}
+
+export class EnableQueryPerformance extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "enable_query_performance",
+      label: "Enable query performance",
+    });
+  }
+
+  useHooks() {
+    const { enable } = fos.useQueryPerformance();
+    return { enable };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.enable();
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1362,6 +1398,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetGroupSlice);
     _registerBuiltInOperator(SetPlayheadState);
     _registerBuiltInOperator(SetFrameNumber);
+    _registerBuiltInOperator(DisableQueryPerformance);
+    _registerBuiltInOperator(EnableQueryPerformance);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

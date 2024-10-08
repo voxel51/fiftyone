@@ -24,6 +24,7 @@ export { default as useLookerStore } from "./useLookerStore";
 export { default as useNotification } from "./useNotification";
 export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
+export { default as useQueryPerformance } from "./useQueryPerformance";
 export { default as useRefresh } from "./useRefresh";
 export { default as useReset } from "./useReset";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";

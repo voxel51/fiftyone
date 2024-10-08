@@ -86,6 +86,15 @@ class EvaluationPatchView(_PatchView):
 
 
 class _PatchesView(fov.DatasetView):
+    __slots__ = (
+        "_source_collection",
+        "_patches_stage",
+        "_patches_dataset",
+        "__stages",
+        "__media_type",
+        "__name",
+    )
+
     def __init__(
         self,
         source_collection,
@@ -445,6 +454,8 @@ class PatchesView(_PatchesView):
             the patches in this view
     """
 
+    __slots__ = ("_patches_field",)
+
     def __init__(
         self,
         source_collection,
@@ -500,6 +511,8 @@ class EvaluationPatchesView(_PatchesView):
         patches_dataset: the :class:`fiftyone.core.dataset.Dataset` that serves
             the patches in this view
     """
+
+    __slots__ = ("_gt_field", "_pred_field")
 
     def __init__(
         self,
