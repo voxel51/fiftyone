@@ -13,7 +13,7 @@ from inspect import isclass
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from strawberry.field import StrawberryField as Field
+from strawberry.types.field import StrawberryField as Field
 import strawberry.permission as gqlp
 
 from fiftyone.core.utils import to_slug
@@ -153,7 +153,7 @@ def authorize(endpoint):
 
 
 def authorize_gql_class(query: t.Type[t.Any]) -> t.Type[t.Any]:
-    fields: t.List[Field] = query._type_definition._fields
+    fields: t.List[Field] = query._type_definition.fields
     for field in fields:
         if field.name not in _GRAPHQL_FIELDS:
             field.permission_classes = [NotAllowed]
