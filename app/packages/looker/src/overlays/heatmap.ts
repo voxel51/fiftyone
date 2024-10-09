@@ -26,7 +26,7 @@ interface HeatMap {
   image: ArrayBuffer;
 }
 
-interface HeatmapLabel extends BaseLabel {
+export interface HeatmapLabel extends BaseLabel {
   map?: HeatMap;
   range?: [number, number];
 }

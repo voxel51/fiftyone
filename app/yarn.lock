@@ -1874,6 +1874,7 @@ __metadata:
     "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
+    decode-tiff: ^0.2.1
     fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
@@ -1881,6 +1882,8 @@ __metadata:
     mime: ^2.5.2
     monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
+    tiff: ^6.1.1
+    tiff.js: ^1.0.0
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
@@ -7525,6 +7528,13 @@ __metadata:
   dependencies:
     character-entities: ^2.0.0
   checksum: f4c71d3b93105f20076052f9cb1523a22a9c796b8296cd35eef1ca54239c78d182c136a848b83ff8da2071e3ae2b1d300bf29d00650a6d6e675438cc31b11d78
+  languageName: node
+  linkType: hard
+
+"decode-tiff@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "decode-tiff@npm:0.2.1"
+  checksum: 83e57af690cdb63dc4eb0915e195291ec4ed938cb8d14715231e6c2b4c6ad9ed6e9fea44c1830cac974eb73e90599dc70281840e98a4c800756a814a1dd0dad0
   languageName: node
   linkType: hard
 
@@ -16425,6 +16435,23 @@ __metadata:
     readable-stream: ~2.3.6
     xtend: ~4.0.1
   checksum: beb0f338aa2931e5660ec7bf3ad949e6d2e068c31f4737b9525e5201b824ac40cac6a337224856b56bd1ddd866334bbfb92a9f57cd6f66bc3f18d3d86fc0fe50
+  languageName: node
+  linkType: hard
+
+"tiff.js@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "tiff.js@npm:1.0.0"
+  checksum: b3b078bd9ce3766aa6775e5c9f8a1c0b85376136e4f360b9799b05143ce0ffc573568073d7b43f72389a4526ee4f3e0253dbef5e6d2b4f70b435f6839c96c71f
+  languageName: node
+  linkType: hard
+
+"tiff@npm:^6.1.1":
+  version: 6.1.1
+  resolution: "tiff@npm:6.1.1"
+  dependencies:
+    iobuffer: ^5.3.2
+    pako: ^2.1.0
+  checksum: f600d08b0321f87445f03df33e5ac3e687e83b9a6bee3b848d67dc994c395f68273767147c69883531a0f6a28456127fcd5499b488f98758e28d87fbc0d0d0e7
   languageName: node
   linkType: hard
 

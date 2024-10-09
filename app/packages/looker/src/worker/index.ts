@@ -3,25 +3,23 @@
  */
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
+import type { Schema, Stage } from "@fiftyone/utilities";
 import {
   DENSE_LABELS,
+  DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  getCls,
-  getFetchFunction,
   HEATMAP,
   LABEL_LIST,
-  Schema,
-  setFetchFunction,
-  Stage,
+  SEGMENTATION,
   VALID_LABEL_TYPES,
+  getCls,
+  getFetchFunction,
+  setFetchFunction,
 } from "@fiftyone/utilities";
-import { decode as decodePng } from "fast-png";
-import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
-import { OverlayMask } from "../numpy";
-import {
+import type {
   BaseConfig,
   Coloring,
   Colorscale,
@@ -31,69 +29,13 @@ import {
   LabelTagColor,
   Sample,
 } from "../state";
+import decode from "./decode";
 import { DeserializerFactory } from "./deserializer";
-import { indexedPngBufferToRgb } from "./indexed-png-decoder";
-import { PainterFactory } from "./painter";
+import { painter, resolveColor } from "./painters";
+import type { ResolveColor, ResolveColorMethod } from "./painters/utils";
 import { mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
-
-interface ResolveColor {
-  key: string | number;
-  seed: number;
-  color: string;
-}
-
-type ResolveColorMethod = ReaderMethod & ResolveColor;
-
-const [requestColor, resolveColor] = ((): [
-  (pool: string[], seed: number, key: string | number) => Promise<string>,
-  (result: ResolveColor) => void
-] => {
-  const cache = {};
-  const requests = {};
-  const promises = {};
-
-  return [
-    (pool, seed, key) => {
-      if (!(seed in cache)) {
-        cache[seed] = {};
-      }
-
-      const colors = cache[seed];
-
-      if (!(key in colors)) {
-        if (!(seed in requests)) {
-          requests[seed] = {};
-          promises[seed] = {};
-        }
-
-        const seedRequests = requests[seed];
-        const seedPromises = promises[seed];
-
-        if (!(key in seedRequests)) {
-          seedPromises[key] = new Promise((resolve) => {
-            seedRequests[key] = resolve;
-            postMessage({
-              method: "requestColor",
-              key,
-              seed,
-              pool,
-            });
-          });
-        }
-
-        return seedPromises[key];
-      }
-
-      return Promise.resolve(colors[key]);
-    },
-    ({ key, seed, color }) => {
-      requests[seed][key](color);
-    },
-  ];
-})();
-
-const painterFactory = PainterFactory(requestColor);
+import type { ReaderMethod } from "./types";
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
@@ -113,22 +55,25 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      imputeOverlayFromPath(
-        field,
-        detection,
-        coloring,
-        customizeColorSetting,
-        colorscale,
-        buffers,
-        {},
-        cls
-      )
-    );
+    if (label?.detections?.length) {
+      for (const detection of label.detections) {
+        imputeOverlayFromPath(
+          field,
+          detection,
+          coloring,
+          customizeColorSetting,
+          colorscale,
+          buffers,
+          {},
+          cls
+        );
+      }
+    }
     return;
   }
 
-  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
+  // overlay path is in `map_path` property for heatmap, or else, it's in
+  // `mask_path` property (for segmentation or detection)
   const overlayPathField = cls === HEATMAP ? "map_path" : "mask_path";
   const overlayField = overlayPathField === "map_path" ? "map" : "mask";
 
@@ -141,55 +86,20 @@ const imputeOverlayFromPath = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayImageUrl = getSampleSrc(
+  const url = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
 
-  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
-    "GET",
-    overlayImageUrl,
-    null,
-    "arrayBuffer"
-  );
-
-  let overlayData;
-
-  if (overlayImageUrl.endsWith(".jpg") || overlayImageUrl.endsWith(".jpeg")) {
-    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
-  } else {
-    overlayData = decodePng(overlayImageBuffer);
-  }
-
-  if (overlayData.palette?.length) {
-    overlayData.data = indexedPngBufferToRgb(
-      overlayData.data,
-      overlayData.depth,
-      overlayData.palette
-    );
-    overlayData.channels = 3;
-  }
-
-  const width = overlayData.width;
-  const height = overlayData.height;
-
-  const numChannels =
-    overlayData.channels ?? overlayData.data.length / (width * height);
-
-  const overlayMask: OverlayMask = {
-    buffer: overlayData.data.buffer,
-    channels: numChannels,
-    arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
-    shape: [height, width],
-  };
+  const mask = await decode(url);
 
   // set the `mask` property for this label
   label[overlayField] = {
-    data: overlayMask,
-    image: new ArrayBuffer(width * height * 4),
+    data: mask,
+    image: new ArrayBuffer(mask.shape[0] * mask.shape[1] * 4),
   };
 
   // transfer buffers
-  buffers.push(overlayMask.buffer);
+  buffers.push(mask.buffer);
   buffers.push(label[overlayField].image);
 };
 
@@ -205,7 +115,7 @@ const processLabels = async (
   schema: Schema
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
-  const promises = [];
+  const promises: Promise<void>[] = [];
 
   for (const field in sample) {
     let labels = sample[field];
@@ -261,18 +171,28 @@ const processLabels = async (
         }
       }
 
-      if (painterFactory[cls]) {
-        promises.push(
-          painterFactory[cls](
-            prefix ? prefix + field : field,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags
-          )
-        );
+      const params = {
+        field: prefix ? prefix + field : field,
+        label,
+        coloring,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+      };
+      switch (cls) {
+        case DETECTION:
+          painter.Detection(params);
+          break;
+        case DETECTIONS:
+          painter.Detections(params);
+          break;
+        case HEATMAP:
+          painter.Heatmap(params);
+          break;
+        case SEGMENTATION:
+          painter.Segmentation(params);
+          break;
       }
     }
   }
@@ -288,10 +208,6 @@ let stream: FrameStream | null = null;
 let streamId: string | null = null;
 
 /** END GLOBALS */
-
-interface ReaderMethod {
-  method: string;
-}
 
 export interface ProcessSample {
   uuid: string;
@@ -340,24 +256,22 @@ const processSample = ({
     ];
   }
 
-  if (sample.frames && sample.frames.length) {
+  if (sample?.frames?.length) {
     bufferPromises = [
       ...bufferPromises,
-      ...sample.frames
-        .map((frame) =>
-          processLabels(
-            frame,
-            coloring,
-            "frames.",
-            sources,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags,
-            schema
-          )
+      ...sample.frames.flatMap((frame) =>
+        processLabels(
+          frame,
+          coloring,
+          "frames.",
+          sources,
+          customizeColorSetting,
+          colorscale,
+          labelTagColors,
+          selectedLabelTags,
+          schema
         )
-        .flat(),
+      ),
     ];
   }
 
@@ -533,7 +447,7 @@ type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
 
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream && stream.reader.read().then(getSendChunk(uuid));
+    stream?.reader?.read().then(getSendChunk(uuid));
   }
 };
 
@@ -570,7 +484,7 @@ const setStream = ({
   group,
   schema,
 }: SetStream) => {
-  stream && stream.cancel();
+  stream?.cancel();
   streamId = uuid;
 
   stream = createReader({
@@ -612,7 +526,7 @@ type Method =
   | SetStreamMethod;
 
 if (typeof onmessage !== "undefined") {
-  onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
+  window.onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     switch (method) {
       case "init":
         init(args as Init);
