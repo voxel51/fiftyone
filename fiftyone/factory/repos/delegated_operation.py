@@ -330,7 +330,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        return DelegatedOperationDocument().from_pymongo(doc) if doc is not None else None
+        return (
+            DelegatedOperationDocument().from_pymongo(doc)
+            if doc is not None
+            else None
+        )
 
     def update_progress(
         self,
