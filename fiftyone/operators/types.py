@@ -1475,6 +1475,19 @@ class LoadingView(ReadOnlyView):
         super().__init__(**kwargs)
 
 
+class PillBadgeView(ReadOnlyView):
+    """Displays a pill shaped badge.
+
+    Args:
+        text ("Reviewed"): a label for the pill badge
+        color ("primary"): the color of the pill
+        variant ("outlined"): the variant of the pill
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class PlotlyView(View):
     """Displays a Plotly chart.
 
