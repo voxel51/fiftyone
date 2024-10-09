@@ -60,6 +60,7 @@ INSTALL_REQUIRES = [
     "PyYAML",
     "regex",
     "retrying",
+    "rtree",
     "scikit-learn",
     "scikit-image",
     "scipy",

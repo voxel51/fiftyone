@@ -167,7 +167,7 @@ class _Box(object):
         vertices = np.zeros((_NUM_KEYPOINTS, 3))
         for i in range(_NUM_KEYPOINTS):
             vertices[i, :] = (
-                np.matmul(rotation, scaled_identity_box[i, :])
+                np.matmul(self.rotation, scaled_identity_box[i, :])
                 + location.flatten()
             )
 
