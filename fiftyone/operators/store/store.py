@@ -7,7 +7,6 @@ FiftyOne execution store.
 """
 
 import logging
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.store.service import ExecutionStoreService
 from typing import Any, Optional
 
@@ -60,7 +59,7 @@ class ExecutionStore:
         """
         self._store_service.set_key(self.store_name, key, value, ttl)
 
-    def delete(self, key: str) -> None:
+    def delete(self, key: str) -> bool:
         """Deletes a key from the store.
 
         Args:
@@ -91,7 +90,7 @@ class ExecutionStore:
 
         Args:
             key (str): The key to update the TTL for.
-            new_ttl (int): The new TTL in milliseconds.
+            new_ttl (int): The new TTL in seconds.
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
 
@@ -102,7 +101,7 @@ class ExecutionStore:
             key (str): The key to get the TTL for.
 
         Returns:
-            Optional[int]: The TTL in milliseconds, or None if the key does not have a TTL.
+            Optional[int]: The TTL in seconds, or None if the key does not have a TTL.
         """
         return self._store_service.get_ttl(self.store_name, key)
 

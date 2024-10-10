@@ -24,10 +24,8 @@ class ExecutionStoreRepo:
 
     def create_store(self, store_name, permissions=None) -> StoreDocument:
         """Creates a store in the execution store."""
-        store_doc = StoreDocument(
-            store_name=store_name, permissions=permissions
-        )
-        self._collection.insert_one(store_doc.dict())
+        store_doc = StoreDocument(store_name=store_name, value=permissions)
+        self._collection.insert_one(store_doc.to_mongo_dict())
         return store_doc
 
     def list_stores(self) -> list[str]:
@@ -40,14 +38,21 @@ class ExecutionStoreRepo:
         now = datetime.datetime.now()
         expiration = KeyDocument.get_expiration(ttl)
         key_doc = KeyDocument(
-            store_name=store_name, key=key, value=value, updated_at=now
+            store_name=store_name,
+            key=key,
+            value=value,
+            updated_at=now,
+            expires_at=expiration,
         )
 
         # Prepare the update operations
         update_fields = {
-            "$set": key_doc.dict(
-                exclude={"created_at", "expires_at", "store_name", "key"}
-            ),
+            "$set": {
+                k: v
+                for k, v in key_doc.to_mongo_dict().items()
+                if k
+                not in {"_id", "created_at", "expires_at", "store_name", "key"}
+            },
             "$setOnInsert": {
                 "store_name": store_name,
                 "key": key,
@@ -100,8 +105,6 @@ class ExecutionStoreRepo:
 
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
     """MongoDB implementation of execution store repository."""
-
-    COLLECTION_NAME = "execution_store"
 
     def __init__(self, collection: Collection):
         super().__init__(collection)
