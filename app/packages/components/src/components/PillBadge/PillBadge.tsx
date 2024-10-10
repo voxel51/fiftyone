@@ -13,24 +13,33 @@ const PillBadge = ({
   variant?: "filled" | "outlined";
   showIcon?: boolean;
 }) => {
+  const getInitialChipSelection = (
+    text: string | string[] | [string, string][]
+  ) => {
+    if (typeof text === "string") return text;
+    if (Array.isArray(text)) {
+      if (Array.isArray(text[0])) return text[0][0];
+      return text[0];
+    }
+    return "";
+  };
+
+  const getInitialChipColor = (
+    text: string | string[] | [string, string][],
+    color?: string
+  ) => {
+    if (typeof text === "string") return color;
+    if (Array.isArray(text)) {
+      if (Array.isArray(text[0])) return text[0][1];
+      return color || "default";
+    }
+    return "default";
+  };
+
   const [chipSelection, setChipSelection] = useState(
-    typeof text === "string"
-      ? text
-      : Array.isArray(text)
-      ? Array.isArray(text[0])
-        ? text[0][0]
-        : text[0]
-      : ""
+    getInitialChipSelection(text)
   );
-  const [chipColor, setChipColor] = useState(
-    typeof text === "string"
-      ? color
-      : Array.isArray(text)
-      ? Array.isArray(text[0])
-        ? text[0][1]
-        : color || "default"
-      : "default"
-  );
+  const [chipColor, setChipColor] = useState(getInitialChipColor(text, color));
 
   const COLORS: { [key: string]: string } = {
     default: "#999999",
