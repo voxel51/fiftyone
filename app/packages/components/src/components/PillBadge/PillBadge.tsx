@@ -1,5 +1,6 @@
 import React from "react";
-import { Badge, Chip } from "@mui/material";
+import CircleIcon from "@mui/icons-material/Circle";
+import { Chip } from "@mui/material";
 
 const PillBadge = ({
   text,
@@ -11,20 +12,32 @@ const PillBadge = ({
   variant?: "filled" | "outlined";
 }) => {
   const COLORS: { [key: string]: string } = {
-    default: "#777777",
+    default: "#999999",
     primary: "#FFB682",
     error: "error",
     warning: "warning",
     info: "info",
     success: "#8BC18D",
   };
+
+  const chipStyle: { [key: string]: string | number } = {
+    color: COLORS[color || "default"],
+    fontWeight: 500,
+    paddingLeft: 1,
+  };
+
   return (
     <span>
       {typeof text === "string" ? (
         <Chip
-          icon={<Badge />}
+          icon={<CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />}
           label={text}
-          sx={{ color: COLORS[color || "default"], fontWeight: 500 }}
+          sx={{
+            ...chipStyle,
+            "& .MuiChip-label": {
+              marginBottom: "2px",
+            },
+          }}
           variant={variant as "filled" | "outlined" | undefined}
         />
       ) : (
