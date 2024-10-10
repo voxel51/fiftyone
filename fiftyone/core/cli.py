@@ -13,6 +13,7 @@ from cryptography.fernet import Fernet
 from datetime import datetime
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -38,6 +39,7 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
+import fiftyone.operators.delegated_executors.continual as fodec
 import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
@@ -3187,7 +3189,7 @@ class DelegatedCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        # _register_command(subparsers, "launch", DelegatedLaunchCommand)
+        _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
@@ -3218,9 +3220,20 @@ class DelegatedLaunchCommand(Command):
             help="the type of service to launch. The default is 'local'",
         )
 
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            default=10,
+            help="Interval in seconds to check for new operations",
+        )
+
     @staticmethod
     def execute(parser, args):
-        supported_types = ("local",)
+        supported_types = (
+            "local",
+            "remote",
+        )
         if args.type not in supported_types:
             raise ValueError(
                 "Unsupported service type '%s'. Supported values are %s"
@@ -3229,6 +3242,11 @@ class DelegatedLaunchCommand(Command):
 
         if args.type == "local":
             _launch_delegated_local()
+        elif args.type == "remote":
+            executor = fodec.ContinualExecutor(args.interval)
+            signal.signal(signal.SIGTERM, executor.signal_handler)
+            signal.signal(signal.SIGINT, executor.signal_handler)
+            executor.start()
 
 
 def _launch_delegated_local():
