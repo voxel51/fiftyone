@@ -1482,7 +1482,7 @@ class PillBadgeView(ReadOnlyView):
     """Displays a pill shaped badge.
 
     Args:
-        text ("Reviewed"): a label for the pill badge
+        text ("Reviewed" | ["Reviewed", "Not Reviewed"]): a label or set of label options for the pill badge
         color ("primary"): the color of the pill
         variant ("outlined"): the variant of the pill
     """
