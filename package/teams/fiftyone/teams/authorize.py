@@ -13,6 +13,7 @@ from inspect import isclass
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from strawberry.permission import PermissionExtension
 from strawberry.types.field import StrawberryField as Field
 import strawberry.permission as gqlp
 
@@ -166,6 +167,8 @@ def authorize_gql_class(query: t.Type[t.Any]) -> t.Type[t.Any]:
         ):
             field.permission_classes.append(IsAuthorized)
 
+        _apply_field_permissions(field)
+
     return query
 
 
@@ -217,6 +220,20 @@ def _get_dataset_name(variables):
         return variables["datasetName"]
 
     return None
+
+
+def _apply_field_permissions(field: Field):
+    field.extensions = [
+        extension
+        for extension in field.extensions
+        if not isinstance(extension, PermissionExtension)
+    ]
+    field.extensions.append(
+        PermissionExtension(
+            [permission() for permission in field.permission_classes],
+            use_directives=False,
+        )
+    )
 
 
 async def _has_dataset_permission(
