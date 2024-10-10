@@ -4,11 +4,11 @@ import { Badge, Chip } from "@mui/material";
 const PillBadge = ({
   text,
   color,
-  variant,
+  variant = "filled",
 }: {
-  text: string;
+  text: string | string[];
   color?: string;
-  variant?: string;
+  variant?: "filled" | "outlined";
 }) => {
   const COLORS: { [key: string]: string } = {
     default: "#777777",
@@ -18,7 +18,20 @@ const PillBadge = ({
     info: "info",
     success: "#8BC18D",
   };
-  return <Chip label={text} />;
+  return (
+    <span>
+      {typeof text === "string" ? (
+        <Chip
+          icon={<Badge />}
+          label={text}
+          sx={{ color: COLORS[color || "default"], fontWeight: 500 }}
+          variant={variant as "filled" | "outlined" | undefined}
+        />
+      ) : (
+        <Chip />
+      )}
+    </span>
+  );
 };
 
 export default PillBadge;
