@@ -6,10 +6,12 @@ const PillBadge = ({
   text,
   color,
   variant = "filled",
+  showIcon = true,
 }: {
   text: string | string[] | [string, string][];
   color?: string;
   variant?: "filled" | "outlined";
+  showIcon?: boolean;
 }) => {
   const [chipSelection, setChipSelection] = useState(
     typeof text === "string"
@@ -39,7 +41,11 @@ const PillBadge = ({
     <span>
       {typeof text === "string" ? (
         <Chip
-          icon={<CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />}
+          icon={
+            showIcon ? (
+              <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
+            ) : undefined
+          }
           label={text}
           sx={{
             ...chipStyle,
@@ -55,7 +61,11 @@ const PillBadge = ({
       ) : (
         <FormControl fullWidth>
           <Chip
-            icon={<CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />}
+            icon={
+              showIcon ? (
+                <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
+              ) : undefined
+            }
             label={
               Array.isArray(text) && Array.isArray(text[0]) ? (
                 <Select
