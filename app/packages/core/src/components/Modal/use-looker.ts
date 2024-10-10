@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
-import { useLookerOptionsUpdate } from "./hooks";
+import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
 
@@ -102,6 +102,20 @@ function useLooker<L extends fos.Lookers>({
   );
 
   useKeyEvents(initialRef, sample.sample._id, looker);
+
+  const setModalLooker = useSetRecoilState(fos.modalLooker);
+
+  const { setActiveLookerRef } = useModalContext();
+
+  useEffect(() => {
+    setModalLooker(looker);
+  }, [looker, setModalLooker]);
+
+  useEffect(() => {
+    if (looker) {
+      setActiveLookerRef(looker as fos.Lookers);
+    }
+  }, [looker, setActiveLookerRef]);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }
