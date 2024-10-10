@@ -445,7 +445,24 @@ class DelegatedOperationService(object):
                 information about the operation
         """
         try:
-            self.set_running(doc_id=operation.id, run_link=run_link)
+            succeeded = (
+                self.set_running(
+                    doc_id=operation.id,
+                    run_link=run_link,
+                    required_state=ExecutionRunState.QUEUED,
+                )
+                is not None
+            )
+            if not succeeded:
+                if log:
+                    logger.debug(
+                        "Not executing operation %s (%s) which is "
+                        "no longer in QUEUED state, or doesn't exist.",
+                        operation.id,
+                        operation.operator,
+                    )
+                return
+
             if log:
                 logger.info(
                     "\nRunning operation %s (%s)",
