@@ -36,6 +36,8 @@ type AppConfig {
   colorscale: String!
   gridZoom: Int!
   lightningThreshold: Int
+  enableQueryPerformance: Boolean!
+  defaultQueryPerformance: Boolean!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -50,6 +52,7 @@ type AppConfig {
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
+  disableFrameFiltering: Boolean!
   mediaFallback: Boolean!
 }
 
@@ -223,25 +226,24 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int!
+  estimatedSampleCount: Int
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
-  headName: String
-  snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
   workspace(slug: String): Workspace
 }
 
 type DatasetAppConfig {
   colorScheme: ColorScheme
+  disableFrameFiltering: Boolean
+  gridMediaField: String!
   mediaFields: [String!]
+  modalMediaField: String!
+  mediaFallback: Boolean!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode
   spaces: JSON
-  gridMediaField: String!
-  modalMediaField: String!
-  mediaFallback: Boolean!
 }
 
 type DatasetStrConnection {
@@ -505,7 +507,7 @@ type PointCloudSample implements Sample {
 
 type Query {
   aggregate(datasetName: String!, view: BSONArray, aggregations: [Aggregate!]!, viewName: String = null, form: ExtendedViewForm = null): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset!
   datasets(search: String, first: Int = 200, after: String = null): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
   lightning(input: LightningInput!): [LightningResults!]!
