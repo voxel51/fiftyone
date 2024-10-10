@@ -133,12 +133,6 @@ function parse(array: Uint8Array): OverlayMask {
           rawData.byteLength / ArrayType.BYTES_PER_ELEMENT
         );
 
-  console.log({
-    arrayType: typedData.constructor.name,
-    buffer: typedData.buffer,
-    channels: header.shape[2] ?? 1,
-    shape: [header.shape[0], header.shape[1]],
-  });
   return {
     arrayType: typedData.constructor.name,
     buffer: typedData.buffer,

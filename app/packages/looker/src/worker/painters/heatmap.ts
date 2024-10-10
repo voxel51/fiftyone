@@ -52,18 +52,19 @@ const heatmap: Painter<HeatmapLabel> = async ({
 
   // these for loops must be fast. no "in" or "of" syntax
   for (let i = 0; i < overlay.length; i++) {
-    let value;
+    let value: number;
     if (mapData.channels > 2) {
       // rgb mask
       value = getRgbFromMaskData(targets, mapData.channels, i)[0];
     } else {
-      value = targets[i];
+      value = Number(targets[i]);
     }
 
     // 0 is background image
     if (value === 0) {
       continue;
     }
+
     let r: number;
     if (coloring.by === COLOR_BY.FIELD) {
       color =

@@ -526,7 +526,7 @@ type Method =
   | SetStreamMethod;
 
 if (typeof onmessage !== "undefined") {
-  window.onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
+  onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     switch (method) {
       case "init":
         init(args as Init);

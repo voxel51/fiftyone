@@ -21,6 +21,7 @@ interface SegmentationInfo extends BaseLabel {
   mask?: {
     shape: [number, number];
   };
+  instance?: number | bigint;
 }
 
 export default class SegmentationOverlay<State extends BaseState>
@@ -140,12 +141,7 @@ export default class SegmentationOverlay<State extends BaseState>
       return this.handleRgbTargets(maskTargets, target);
     }
 
-    if (this.label.mask.data.channels === 2) {
-      console.log(target);
-      throw new Error("E");
-    }
-
-    return {
+    const result = {
       color:
         maskTargets && Object.keys(maskTargets).length === 1
           ? getColor(
@@ -166,6 +162,15 @@ export default class SegmentationOverlay<State extends BaseState>
       target,
       type: "Segmentation",
     };
+
+    if (this.label.mask.data.channels === 2) {
+      return {
+        ...result,
+        instance: this.getInstance(state),
+      };
+    }
+
+    return result;
   }
 
   getSelectData(): SelectData {
@@ -207,6 +212,16 @@ export default class SegmentationOverlay<State extends BaseState>
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];
+  }
+
+  private getInstance(state: Readonly<State>): number {
+    const index = this.getIndex(state);
+
+    if (index < 0) {
+      return null;
+    }
+
+    return Number(this.targets[index + 1]);
   }
 
   private getTarget(state: Readonly<State>): number {
