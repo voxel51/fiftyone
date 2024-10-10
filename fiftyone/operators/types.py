@@ -1482,6 +1482,7 @@ class PillBadgeView(ReadOnlyView):
         text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
         color ("primary"): the color of the pill
         variant ("outlined"): the variant of the pill
+        show_icon (False | True): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):
