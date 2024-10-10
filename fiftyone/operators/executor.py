@@ -718,6 +718,18 @@ class ExecutionContext(object):
         """Whether query performance is enabled."""
         return self.request_params.get("query_performance", None)
 
+    @property
+    def spaces(self):
+        """The current workspace or the state of spaces in the app."""
+        workspace_name = self.request_params.get("workspace_name", None)
+        if workspace_name is not None:
+            return self.dataset.load_workspace(workspace_name)
+
+        spaces_dict = self.request_params.get("spaces", None)
+        if spaces_dict is None:
+            return None
+        return fo.Space.from_dict(spaces_dict)
+
     def prompt(
         self,
         operator_uri,
