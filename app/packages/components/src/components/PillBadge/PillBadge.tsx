@@ -4,7 +4,7 @@ import { Chip, FormControl, MenuItem, Select } from "@mui/material";
 
 const PillBadge = ({
   text,
-  color,
+  color = "default",
   variant = "filled",
   showIcon = true,
 }: {
@@ -22,6 +22,9 @@ const PillBadge = ({
         : text[0]
       : ""
   );
+  const [chipColor, setChipColor] = useState(
+    typeof text === "string" ? color : Array.isArray(text) ? text[0][1] : color
+  );
   const COLORS: { [key: string]: string } = {
     default: "#999999",
     primary: "#FFB682",
@@ -32,7 +35,7 @@ const PillBadge = ({
   };
 
   const chipStyle: { [key: string]: string | number } = {
-    color: COLORS[color || "default"],
+    color: COLORS[chipColor || "default"],
     fontWeight: 500,
     paddingLeft: 1,
   };
@@ -72,13 +75,15 @@ const PillBadge = ({
                   value={chipSelection}
                   variant={"standard"}
                   disableUnderline={true}
-                  onChange={(event) =>
-                    setChipSelection(event.target.value as string)
-                  }
+                  onChange={(event) => {
+                    const selectedText = text.find(
+                      (t) => t[0] === event.target.value
+                    );
+                    setChipSelection(event.target.value);
+                    setChipColor(selectedText?.[1] ?? "default");
+                  }}
                   sx={{
-                    color: COLORS[color || "default"],
-                    boxShadow: "none",
-                    textShadow: "none",
+                    color: "inherit",
                   }}
                 >
                   {text.map((t, index) => (
@@ -96,9 +101,7 @@ const PillBadge = ({
                     setChipSelection(event.target.value as string)
                   }
                   sx={{
-                    color: COLORS[color || "default"],
-                    boxShadow: "none",
-                    textShadow: "none",
+                    color: "inherit",
                   }}
                 >
                   {text.map((t, index) => (
@@ -116,6 +119,9 @@ const PillBadge = ({
               },
               "& .MuiChip-label": {
                 marginBottom: "1px",
+              },
+              "& .MuiInput-input:focus": {
+                backgroundColor: "inherit",
               },
             }}
             variant={variant as "filled" | "outlined" | undefined}
