@@ -1,13 +1,9 @@
-import {
-  AbstractLooker,
-  BaseState,
-  PointInfo,
-  type Sample,
-} from "@fiftyone/looker";
+import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
+import type { Lookers } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
@@ -27,7 +23,7 @@ import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
-export const modalLooker = atom<AbstractLooker<BaseState> | null>({
+export const modalLooker = atom<Lookers | null>({
   key: "modalLooker",
   default: null,
   dangerouslyAllowMutability: true,
@@ -73,7 +69,7 @@ export const currentSampleId = selector({
         ? get(pinned3DSample).id
         : get(nullableModalSampleId);
 
-    if (id && id.endsWith("-modal")) {
+    if (id?.endsWith("-modal")) {
       return id.replace("-modal", "");
     }
     return id;

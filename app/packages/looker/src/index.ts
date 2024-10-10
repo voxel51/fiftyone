@@ -3,7 +3,7 @@
  */
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
-export { freeVideos } from "./elements/util";
+export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export type { PointInfo } from "./overlays";
 export type {

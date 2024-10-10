@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -36,7 +36,8 @@ export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
-  highlight?: (sample: Sample) => boolean
+  highlight?: (sample: Sample) => boolean,
+  enableTimeline?: boolean
 ) => {
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
@@ -112,6 +113,7 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         let config: ConstructorParameters<T>[1] = {
+          enableTimeline,
           fieldSchema: {
             ...fieldSchema,
             frames: {
@@ -132,6 +134,7 @@ export default <T extends AbstractLooker<BaseState>>(
           mediaField,
           thumbnail,
           view,
+          shouldHandleKeyEvents: isModal,
         };
 
         let sampleMediaFilePath = urls[mediaField];

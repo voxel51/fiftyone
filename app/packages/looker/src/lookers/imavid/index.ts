@@ -15,6 +15,8 @@ import {
   IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
 } from "./constants";
 
+export { BUFFERING_PAUSE_TIMEOUT } from "./constants";
+
 const DEFAULT_PAN = 0;
 const DEFAULT_SCALE = 1;
 const FIRST_FRAME = 1;

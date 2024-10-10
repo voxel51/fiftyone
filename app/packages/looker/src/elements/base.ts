@@ -64,8 +64,7 @@ export abstract class BaseElement<
     for (const [eventType, handler] of Object.entries(this.getEvents(config))) {
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
-      this.element &&
-        this.element.addEventListener(eventType, this.events[eventType]);
+      this.element?.addEventListener(eventType, this.events[eventType]);
     }
   }
   applyChildren(children: BaseElement<State>[]) {

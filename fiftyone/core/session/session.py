@@ -1125,7 +1125,7 @@ class Session(object):
             if wait < 0:
                 while True:
                     time.sleep(10)
-            elif self.remote:
+            else:
                 self._wait_closed = False
                 while not self._wait_closed:
                     time.sleep(wait)

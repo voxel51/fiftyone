@@ -20,7 +20,9 @@ import {
 } from "../state";
 import { addToBuffers, createWorker, removeFromBuffers } from "../util";
 
+import { setFrameNumberAtom } from "@fiftyone/playback";
 import { Schema } from "@fiftyone/utilities";
+import { getDefaultStore } from "jotai";
 import { LRUCache } from "lru-cache";
 import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getFrameNumber } from "../elements/util";
@@ -525,6 +527,13 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.setZoom = false;
     }
 
+    if (this.state.config.enableTimeline) {
+      getDefaultStore().set(setFrameNumberAtom, {
+        name: `timeline-${this.state.config.sampleId}`,
+        newFrameNumber: this.state.frameNumber,
+      });
+    }
+
     return super.postProcess();
   }
 
@@ -544,6 +553,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     this.frames.clear();
     super.updateSample(sample);
     this.setReader();
+  }
+
+  getVideo() {
+    return this.lookerElement.children[0].element as HTMLVideoElement;
   }
 
   private hasFrame(frameNumber: number) {

@@ -24,6 +24,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
+from fiftyone.utils.rerun import RrdFile
 
 import fiftyone.core.media as fom
 
@@ -33,6 +34,7 @@ _ADDITIONAL_MEDIA_FIELDS = {
     fol.Heatmap: "map_path",
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
+    RrdFile: "filepath",
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 

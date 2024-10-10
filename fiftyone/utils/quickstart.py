@@ -11,9 +11,7 @@ import fiftyone.core.session as fos
 import fiftyone.zoo.datasets as fozd
 
 
-def quickstart(
-    video=False, port=None, address=None, remote=False, desktop=None
-):
+def quickstart(video=False, port=None, address=None, remote=False):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -27,9 +25,6 @@ def quickstart(
             ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (None): whether to launch the App in the browser (False) or as
-            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts
 
     Returns:
         a tuple containing
@@ -39,30 +34,29 @@ def quickstart(
             the App that was launched
     """
     if video:
-        return _video_quickstart(port, address, remote, desktop)
+        return _video_quickstart(port, address, remote)
 
-    return _quickstart(port, address, remote, desktop)
+    return _quickstart(port, address, remote)
 
 
-def _quickstart(port, address, remote, desktop):
+def _quickstart(port, address, remote):
     print(_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart")
-    return _launch_app(dataset, port, address, remote, desktop)
+    return _launch_app(dataset, port, address, remote)
 
 
-def _video_quickstart(port, address, remote, desktop):
+def _video_quickstart(port, address, remote):
     print(_VIDEO_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart-video")
-    return _launch_app(dataset, port, address, remote, desktop)
+    return _launch_app(dataset, port, address, remote)
 
 
-def _launch_app(dataset, port, address, remote, desktop):
+def _launch_app(dataset, port, address, remote):
     session = fos.launch_app(
         dataset=dataset,
         port=port,
         address=address,
         remote=remote,
-        desktop=desktop,
     )
 
     return dataset, session
