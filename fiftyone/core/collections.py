@@ -481,6 +481,8 @@ class SampleCollection(object):
     :class:`fiftyone.core.dataset.Dataset`.
     """
 
+    __slots__ = ("__weakref__", "_download_context")
+
     _FRAMES_PREFIX = "frames."
     _GROUPS_PREFIX = "groups."
 

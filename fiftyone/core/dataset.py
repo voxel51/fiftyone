@@ -374,6 +374,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name
     """
 
+    __slots__ = (
+        "_doc",
+        "_sample_doc_cls",
+        "_frame_doc_cls",
+        "_group_slice",
+        "_annotation_cache",
+        "_brain_cache",
+        "_evaluation_cache",
+        "_run_cache",
+        "_deleted",
+        "_head_name",
+        "_snapshot_name",
+        "__permission",
+    )
+
     def __init__(
         self,
         name=None,
