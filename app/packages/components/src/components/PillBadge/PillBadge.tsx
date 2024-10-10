@@ -1,16 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
-import { Chip } from "@mui/material";
+import { Chip, FormControl, MenuItem, Select } from "@mui/material";
 
 const PillBadge = ({
   text,
   color,
   variant = "filled",
 }: {
-  text: string | string[];
+  text: string | string[] | [string, string][];
   color?: string;
   variant?: "filled" | "outlined";
 }) => {
+  const [chipSelection, setChipSelection] = useState(
+    typeof text === "string"
+      ? text
+      : Array.isArray(text)
+      ? Array.isArray(text[0])
+        ? text[0][0]
+        : text[0]
+      : ""
+  );
   const COLORS: { [key: string]: string } = {
     default: "#999999",
     primary: "#FFB682",
@@ -34,14 +43,74 @@ const PillBadge = ({
           label={text}
           sx={{
             ...chipStyle,
+            "& .MuiChip-icon": {
+              marginRight: "-7px",
+            },
             "& .MuiChip-label": {
-              marginBottom: "2px",
+              marginBottom: "1px",
             },
           }}
           variant={variant as "filled" | "outlined" | undefined}
         />
       ) : (
-        <Chip />
+        <FormControl fullWidth>
+          <Chip
+            icon={<CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />}
+            label={
+              Array.isArray(text) && Array.isArray(text[0]) ? (
+                <Select
+                  value={chipSelection}
+                  variant={"standard"}
+                  disableUnderline={true}
+                  onChange={(event) =>
+                    setChipSelection(event.target.value as string)
+                  }
+                  sx={{
+                    color: COLORS[color || "default"],
+                    boxShadow: "none",
+                    textShadow: "none",
+                  }}
+                >
+                  {text.map((t, index) => (
+                    <MenuItem key={index} value={t[0]}>
+                      {t[0]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              ) : (
+                <Select
+                  value={chipSelection}
+                  variant={"standard"}
+                  disableUnderline={true}
+                  onChange={(event) =>
+                    setChipSelection(event.target.value as string)
+                  }
+                  sx={{
+                    color: COLORS[color || "default"],
+                    boxShadow: "none",
+                    textShadow: "none",
+                  }}
+                >
+                  {text.map((t, index) => (
+                    <MenuItem key={index} value={t}>
+                      {t}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )
+            }
+            sx={{
+              ...chipStyle,
+              "& .MuiChip-icon": {
+                marginRight: "-7px",
+              },
+              "& .MuiChip-label": {
+                marginBottom: "1px",
+              },
+            }}
+            variant={variant as "filled" | "outlined" | undefined}
+          ></Chip>
+        </FormControl>
       )}
     </span>
   );
