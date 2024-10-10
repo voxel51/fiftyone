@@ -629,6 +629,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(request_params={"foo": "bar"}),
             metadata={"inputs_schema": mock_inputs.to_json()},
         )
+
+        # Set it to running separately - execution not allowed now because
+        #   it's running elsewhere.
         self.svc.set_running(doc.id)
 
         self.svc.execute_operation(doc)
