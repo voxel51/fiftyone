@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.1.1
 --------------------
-*Released October 8, 2024*
+*Released October 11, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.1 <release-notes-v1.0.1>`, plus:
 
@@ -16,7 +16,7 @@ Includes all updates from :ref:`FiftyOne 1.0.1 <release-notes-v1.0.1>`, plus:
 
 FiftyOne 1.0.1
 --------------
-*Released October 8, 2024*
+*Released October 11, 2024*
 
 App
 
