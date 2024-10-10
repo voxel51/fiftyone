@@ -85,6 +85,9 @@ opened in a new tab of your web browser. See
         # Blocks execution until the App is closed
         session.wait()
 
+        # Or block execution indefinitely with a negative wait value
+        # session.wait(-1)
+
 .. note::
 
     When working inside a Docker container, FiftyOne should automatically
