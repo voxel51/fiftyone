@@ -23,8 +23,15 @@ const PillBadge = ({
       : ""
   );
   const [chipColor, setChipColor] = useState(
-    typeof text === "string" ? color : Array.isArray(text) ? text[0][1] : color
+    typeof text === "string"
+      ? color
+      : Array.isArray(text)
+      ? Array.isArray(text[0])
+        ? text[0][1]
+        : color || "default"
+      : "default"
   );
+
   const COLORS: { [key: string]: string } = {
     default: "#999999",
     primary: "#FFB682",
@@ -35,7 +42,7 @@ const PillBadge = ({
   };
 
   const chipStyle: { [key: string]: string | number } = {
-    color: COLORS[chipColor || "default"],
+    color: COLORS[chipColor || "default"] || COLORS.default,
     fontWeight: 500,
     paddingLeft: 1,
   };
@@ -97,9 +104,7 @@ const PillBadge = ({
                   value={chipSelection}
                   variant={"standard"}
                   disableUnderline={true}
-                  onChange={(event) =>
-                    setChipSelection(event.target.value as string)
-                  }
+                  onChange={(event) => setChipSelection(event.target.value)}
                   sx={{
                     color: "inherit",
                   }}
