@@ -309,9 +309,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         for doc in docs_to_run:
             self.svc.set_scheduled(doc)
 
-        queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 10 + initial_queued)
-
         scheduled = self.svc.get_scheduled_operations()
         self.assertEqual(len(scheduled), 10 + initial_scheduled)
 

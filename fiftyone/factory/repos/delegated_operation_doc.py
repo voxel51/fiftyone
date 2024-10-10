@@ -25,6 +25,7 @@ class DelegatedOperationDocument(object):
         operator: str = None,
         delegation_target: str = None,
         context: dict = None,
+        is_remote: bool = False,
     ):
         self.operator = operator
         self.label = None
@@ -35,10 +36,12 @@ class DelegatedOperationDocument(object):
             else context
         )
         self.run_state = (
-            ExecutionRunState.QUEUED
-        )  # default to queued state on create
+            ExecutionRunState.SCHEDULED
+            if is_remote
+            else ExecutionRunState.QUEUED
+        )  # if running locally use QUEUED otherwise SCHEDULED
         self.run_link = None
-        self.queued_at = datetime.utcnow()
+        self.queued_at = datetime.utcnow() if not is_remote else None
         self.updated_at = datetime.utcnow()
         self.status = None
         self.dataset_id = None
@@ -46,7 +49,7 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.scheduled_at = None
+        self.scheduled_at = datetime.utcnow() if is_remote else None
         self.result = None
         self.id = None
         self._doc = None

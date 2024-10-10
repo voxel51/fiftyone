@@ -7,3 +7,4 @@ Internal classes and utilities.
 """
 
 from .secrets import *
+from .util import is_remote_service
