@@ -1,11 +1,10 @@
 import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useMemo } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import React, { useMemo } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { VideoLookerReact } from "./VideoLooker";
-import { useModalContext } from "./hooks";
 import useLooker from "./use-looker";
 
 export const useShowOverlays = () => {
@@ -28,21 +27,8 @@ interface LookerProps {
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
-  const { id, looker, ref } = useLooker<ImageLooker>(props);
+  const { id, ref } = useLooker<ImageLooker>(props);
   const theme = useTheme();
-  const setModalLooker = useSetRecoilState(fos.modalLooker);
-
-  const { setActiveLookerRef } = useModalContext();
-
-  useEffect(() => {
-    setModalLooker(looker);
-  }, [looker, setModalLooker]);
-
-  useEffect(() => {
-    if (looker) {
-      setActiveLookerRef(looker as fos.Lookers);
-    }
-  }, [looker, setActiveLookerRef]);
 
   return (
     <div
