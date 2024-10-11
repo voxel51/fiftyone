@@ -32,10 +32,22 @@ export class ModalImaAsVideoControlsPom {
     return timelineId;
   }
 
+  private async waitUntilBufferingIsFinished() {
+    await this.page.waitForFunction(
+      () =>
+        document
+          .querySelector("[data-cy=imavid-playhead]")
+          ?.getAttribute("data-playhead-state") !== "buffering"
+    );
+  }
+
   private async togglePlay() {
+    await this.waitUntilBufferingIsFinished();
+
     let currentPlayHeadStatus = await this.playPauseButton.getAttribute(
       "data-playhead-state"
     );
+
     const original = currentPlayHeadStatus;
 
     // keep pressing space until play head status changes

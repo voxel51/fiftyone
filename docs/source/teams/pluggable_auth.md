@@ -225,18 +225,22 @@ async function Hook(context) {
                 groupName
             );
         }
-        // Add signed-in user to the group and update the group
-        group.userIds.push(user.id);
-        const updatedGroupName = undefined;
-        const updatedGroupDescription = undefined;
-        const updatedGroupUserIds = [...group.userIds, user.id];
-        await services.directory.groups.updateGroup(
-            orgId,
-            group.id,
-            updatedGroupName,
-            updatedGroupDescription,
-            updatedGroupUserIds
-        );
+
+        if (!group.userIds.includes(user.id)) {
+            // Add signed-in user to the group and update the group
+            const updatedGroupName = undefined;
+            const updatedGroupDescription = undefined;
+            const updatedGroupUserIds = [...group.userIds, user.id];
+            const accessorId = undefined;
+            await services.directory.groups.updateGroup(
+                orgId,
+                group.id,
+                accessorId,
+                updatedGroupName,
+                updatedGroupDescription,
+                updatedGroupUserIds
+            );
+        }
     }
 }
 ```

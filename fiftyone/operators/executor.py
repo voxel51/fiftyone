@@ -917,6 +917,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
             ficv.running_user_request_token.set(None)
             ficv.no_singleton_cache.set(False)
 
+    def query_performance(self):
+        """Whether query performance is enabled."""
+        return self.request_params.get("query_performance", None)
+
     def prompt(
         self,
         operator_uri,

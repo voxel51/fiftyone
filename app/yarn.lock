@@ -2069,6 +2069,8 @@ __metadata:
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
     vite: ^5.2.14
+  peerDependencies:
+    jotai: "*"
   languageName: unknown
   linkType: soft
 
