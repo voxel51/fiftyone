@@ -18,4 +18,5 @@ def authenticate(token: str):
         token,
         teams_config.auth_secret,
         algorithms=_ALGORITHMS,
+        options={"require_exp": True},
     )
