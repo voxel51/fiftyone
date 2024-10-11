@@ -32,6 +32,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
       teamSendUserInvitationMutation
     );
   const [open, setOpen] = useRecoilState(settingsTeamInviteTeammateOpen);
+  const [inviteSent, setInviteSent] = useState(false);
   const [invitationForm, setInvitationForm] = useRecoilState(
     teamInvitationFormState
   );
@@ -53,6 +54,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
     setInvitationForm({ email: "", id: "", role: "MEMBER" });
     setUrl("");
     setOpen(false);
+    setInviteSent(false);
   }
 
   // if current role is disabled
@@ -81,6 +83,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
           },
           onSuccess(data) {
             setUrl(data.sendUserInvitation.url);
+            setInviteSent(true);
           },
           onError(error) {
             const msg =
@@ -98,8 +101,10 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         errorMsg !== null ||
         (hasSeatsLeft && !hasSeatsLeft(role)) ||
         (currInvitee && currInvitee.role === role) ||
-        selectionNotValid
+        selectionNotValid ||
+        (inviteSent && url.length > 0)
       }
+      confirmationButtonText={"Send invitation"}
     >
       <Box>
         <LicenseAudit />
@@ -111,6 +116,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
           onChange={(e) => {
             setErrorMsg(null);
             setInvitationForm({ ...invitationForm, email: e.target.value });
+            setUrl("");
           }}
           type="email"
           value={email}
@@ -123,6 +129,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
           selectProps={{ fullWidth: true, size: "medium" }}
           onChange={(role) => {
             setInvitationForm({ ...invitationForm, role });
+            setUrl("");
           }}
         />
       </Box>
