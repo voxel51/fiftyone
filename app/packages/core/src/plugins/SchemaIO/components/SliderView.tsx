@@ -1,4 +1,3 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   FormControl,
@@ -9,10 +8,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import FieldWrapper from "./FieldWrapper";
-import { autoFocus, getComponentProps } from "../utils";
+import { debounce, isNumber, throttle } from "lodash";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useKey } from "../hooks";
-import { isNumber } from "lodash";
+import { autoFocus, getComponentProps } from "../utils";
+import FieldWrapper from "./FieldWrapper";
 
 type ValueFormat = "flt" | "%";
 
@@ -146,13 +146,23 @@ export default function SliderView(props) {
         finalValue = ((max - min) / 100) * finalValue;
       }
 
-      onChange(
-        path,
-        isMin
-          ? [parseFloat(finalValue), parseFloat(data?.[1] || max)]
-          : [parseFloat(data?.[0] || min), parseFloat(finalValue)],
-        schema
-      );
+      const updateValue = () => {
+        onChange(
+          path,
+          isMin
+            ? [parseFloat(finalValue), parseFloat(data?.[1] || max)]
+            : [parseFloat(data?.[0] || min), parseFloat(finalValue)],
+          schema
+        );
+      };
+
+      // Throttle the onChange action to once every 300ms
+      const throttledUpdate = throttle(updateValue, 300);
+
+      // Debounce for 200ms to ensure final typing before triggering update
+      const debouncedUpdate = debounce(throttledUpdate, 200);
+
+      debouncedUpdate();
     }
   };
 
