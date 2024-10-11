@@ -9,9 +9,8 @@ import os
 from unittest import mock
 
 import pytest
+from fiftyone.teams.authenticate import authenticate
 from jose import ExpiredSignatureError
-
-from package.teams.fiftyone.teams.authenticate import authenticate
 
 VERIFICATION_KEY = "secret"
 payload = {
