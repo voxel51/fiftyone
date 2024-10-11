@@ -397,31 +397,38 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       );
     }
 
+    let buffering = this.state.buffering;
+    let playing = this.state.playing;
     if (
       (!state.config.thumbnail || state.playing) &&
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      lookerWithReader && lookerWithReader.pause();
+      lookerWithReader?.pause();
       this.setReader();
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {
-      this.state.buffering && this.dispatchEvent("buffering", false);
-      this.state.playing = false;
-      this.state.buffering = false;
+      buffering && this.dispatchEvent("buffering", false);
+      buffering = false;
+      playing = false;
     }
 
     if (lookerWithReader === this) {
       if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
-        this.state.buffering && this.dispatchEvent("buffering", false);
-        this.state.buffering = false;
+        buffering && this.dispatchEvent("buffering", false);
+        buffering = false;
       } else {
-        this.state.buffering = true;
-        this.dispatchEvent("buffering", true);
+        buffering = true;
         this.requestFrames(state.frameNumber);
       }
     }
+
+    if (this.state.playing !== playing) {
+      console.log("WHAT");
+    }
+    this.state.buffering = buffering;
+    this.state.playing = playing;
 
     return pluckedOverlays;
   }
@@ -549,10 +556,11 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   updateSample(sample: VideoSample) {
+    this.frames = new Map();
     this.state.buffers = [[1, 1]];
-    this.frames.clear();
-    super.updateSample(sample);
-    this.setReader();
+    super.updateSample(sample, () => {
+      this.setReader();
+    });
   }
 
   getVideo() {
@@ -560,6 +568,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   private hasFrame(frameNumber: number) {
+    !this.state.config.thumbnail && console.log(frameNumber, this.frames);
     return (
       this.frames.has(frameNumber) &&
       this.frames.get(frameNumber)?.deref() !== undefined

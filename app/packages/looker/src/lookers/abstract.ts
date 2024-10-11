@@ -493,7 +493,7 @@ export abstract class AbstractLooker<
 
   abstract updateOptions(options: Partial<State["options"]>): void;
 
-  updateSample(sample: Sample) {
+  updateSample(sample: Sample, cb?: () => void) {
     this.loadSample(sample);
   }
 
@@ -672,7 +672,7 @@ export abstract class AbstractLooker<
     );
   }
 
-  private loadSample(sample: Sample) {
+  private loadSample(sample: Sample, cb?: () => void) {
     const messageUUID = uuid();
     const labelsWorker = getLabelsWorker((event, detail) =>
       this.dispatchEvent(event, detail)
@@ -687,6 +687,7 @@ export abstract class AbstractLooker<
           disabled: false,
           reloading: false,
         });
+        cb?.();
         labelsWorker.removeEventListener("message", listener);
       }
     };
