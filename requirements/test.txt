@@ -6,6 +6,7 @@ pytest==7.3.1
 pytest-cov==4.0.0
 pytest-mock==3.10.0
 pytest-asyncio
+python-jose>=3.3.0,<4
 shapely
 tensorflow
 twine>=3
