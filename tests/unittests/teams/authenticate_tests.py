@@ -6,11 +6,14 @@ FiftyOne teams authentication tests
 |
 """
 import os
+import sys
 from unittest import mock
 
 import pytest
-from fiftyone.teams.authenticate import authenticate
 from jose import ExpiredSignatureError
+
+sys.path.append("../../../package/teams")
+from fiftyone.teams.authenticate import authenticate
 
 VERIFICATION_KEY = "secret"
 payload = {

@@ -14,5 +14,3 @@ from pkgutil import extend_path
 # https://docs.python.org/3/library/pkgutil.html#pkgutil.extend_path
 #
 __path__ = extend_path(__path__, __name__)
-
-from fiftyone.__public__ import *
