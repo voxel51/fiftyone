@@ -6,14 +6,11 @@ FiftyOne teams authentication tests
 |
 """
 import os
-import sys
 from unittest import mock
 
+import fiftyone.teams.authenticate as fota
 import pytest
 from jose import ExpiredSignatureError
-
-sys.path.append("../../../package/teams")
-from fiftyone.teams.authenticate import authenticate
 
 VERIFICATION_KEY = "secret"
 payload = {
@@ -45,7 +42,7 @@ class TestAuthenticate:
         with mock.patch.dict(
             os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
         ):
-            decoded = authenticate(valid_token)
+            decoded = fota.authenticate(valid_token)
             assert decoded == payload
 
     def test_expired(self):
@@ -53,4 +50,4 @@ class TestAuthenticate:
             os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
         ):
             with pytest.raises(ExpiredSignatureError):
-                _ = authenticate(expired_token)
+                _ = fota.authenticate(expired_token)
