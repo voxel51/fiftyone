@@ -341,6 +341,7 @@ export interface ImageState extends BaseState {
 }
 
 export interface VideoState extends BaseState {
+  buffers: Buffers;
   config: VideoConfig;
   options: VideoOptions;
   seeking: boolean;
