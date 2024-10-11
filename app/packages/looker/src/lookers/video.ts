@@ -402,10 +402,11 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      lookerWithReader && lookerWithReader.pause();
-      this.setReader();
+      lookerWithReader?.pause();
       lookerWithReader = this;
+      this.frames = new Map();
       this.state.buffers = [[1, 1]];
+      this.setReader();
     } else if (lookerWithReader !== this && frameCount) {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
@@ -549,10 +550,11 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   updateSample(sample: VideoSample) {
-    this.state.buffers = [[1, 1]];
-    this.frames.clear();
+    if (lookerWithReader === this) {
+      lookerWithReader?.pause();
+      lookerWithReader = null;
+    }
     super.updateSample(sample);
-    this.setReader();
   }
 
   getVideo() {
