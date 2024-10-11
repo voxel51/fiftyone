@@ -23,7 +23,7 @@ class ContinualExecutor:
     def start(self):
         logger.info("Executor started")
         while self.running:
-            self.dos.execute_queued_operations(log=True)
+            self.dos.execute_queued_operations(limit=1, log=True)
             time.sleep(self.interval)
 
     def stop(self):
