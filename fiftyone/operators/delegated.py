@@ -80,7 +80,13 @@ class DelegatedOperationService(object):
         """
         return self._repo.update_progress(_id=doc_id, progress=progress)
 
-    def set_running(self, doc_id, progress=None, run_link=None):
+    def set_running(
+        self,
+        doc_id,
+        progress=None,
+        run_link=None,
+        required_state=None,
+    ):
         """Sets the given delegated operation to running state.
 
         Args:
@@ -90,26 +96,60 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
+            required_state (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionRunState` required
+                state of the operation. If provided, the update will only be
+                performed if the referenced operation matches this state.
 
         Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
+                update was performed, else ``None``.
         """
         return self._repo.update_run_state(
             _id=doc_id,
             run_state=ExecutionRunState.RUNNING,
             run_link=run_link,
             progress=progress,
+            required_state=required_state,
         )
 
-    def set_scheduled(self, doc_id):
+    def set_scheduled(self, doc_id, required_state=None):
         """Sets the given delegated operation to scheduled state.
         Args:
             doc_id: the ID of the delegated operation
+            required_state (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionRunState` required
+                state of the operation. If provided, the update will only be
+                performed if the referenced operation matches this state.
+
         Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
+                update was performed, else ``None``.
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.SCHEDULED
+            _id=doc_id,
+            run_state=ExecutionRunState.SCHEDULED,
+            required_state=required_state,
+        )
+
+    def set_queued(self, doc_id, required_state=None):
+        """Sets the given delegated operation to queued state.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            required_state (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionRunState` required
+                state of the operation. If provided, the update will only be
+                performed if the referenced operation matches this state.
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
+                update was performed, else ``None``.
+        """
+        return self._repo.update_run_state(
+            _id=doc_id,
+            run_state=ExecutionRunState.QUEUED,
+            required_state=required_state,
         )
 
     def set_completed(
@@ -118,6 +158,7 @@ class DelegatedOperationService(object):
         result=None,
         progress=None,
         run_link=None,
+        required_state=None,
     ):
         """Sets the given delegated operation to completed state.
 
@@ -131,9 +172,14 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
+            required_state (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionRunState` required
+                state of the operation. If provided, the update will only be
+                performed if the referenced operation matches this state.
 
         Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
+                update was performed, else ``None``.
         """
 
         return self._repo.update_run_state(
@@ -142,6 +188,7 @@ class DelegatedOperationService(object):
             result=result,
             progress=progress,
             run_link=run_link,
+            required_state=required_state,
         )
 
     def set_failed(
@@ -150,6 +197,7 @@ class DelegatedOperationService(object):
         result=None,
         progress=None,
         run_link=None,
+        required_state=None,
     ):
         """Sets the given delegated operation to failed state.
 
@@ -163,9 +211,14 @@ class DelegatedOperationService(object):
                 operation
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
+            required_state (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionRunState` required
+                state of the operation. If provided, the update will only be
+                performed if the referenced operation matches this state.
 
         Returns:
-            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
+                update was performed, else ``None``.
         """
         return self._repo.update_run_state(
             _id=doc_id,
@@ -173,6 +226,7 @@ class DelegatedOperationService(object):
             result=result,
             run_link=run_link,
             progress=progress,
+            required_state=required_state,
         )
 
     def set_pinned(self, doc_id, pinned=True):
@@ -391,7 +445,24 @@ class DelegatedOperationService(object):
                 information about the operation
         """
         try:
-            self.set_running(doc_id=operation.id, run_link=run_link)
+            succeeded = (
+                self.set_running(
+                    doc_id=operation.id,
+                    run_link=run_link,
+                    required_state=ExecutionRunState.QUEUED,
+                )
+                is not None
+            )
+            if not succeeded:
+                if log:
+                    logger.debug(
+                        "Not executing operation %s (%s) which is "
+                        "no longer in QUEUED state, or doesn't exist.",
+                        operation.id,
+                        operation.operator,
+                    )
+                return
+
             if log:
                 logger.info(
                     "\nRunning operation %s (%s)",
