@@ -271,14 +271,19 @@ class SegmentAnythingModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                 device=sam_predictor.device,
             )
 
-            masks, _, _ = sam_predictor.predict_torch(
+            masks, scores, _ = sam_predictor.predict_torch(
                 point_coords=None,
                 point_labels=None,
                 boxes=transformed_boxes,
                 multimask_output=False,
             )
             outputs.append(
-                {"boxes": input_boxes, "labels": labels, "masks": masks}
+                {
+                    "boxes": input_boxes,
+                    "labels": labels,
+                    "masks": masks,
+                    "scores": scores,
+                }
             )
 
         return outputs
