@@ -5,8 +5,8 @@ FiftyOne teams authentication tests
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 from unittest import mock
-from unittest.mock import MagicMock
 
 import pytest
 from jose import ExpiredSignatureError
@@ -39,18 +39,16 @@ expired_token = (
 class TestAuthenticate:
     """test token decoder"""
 
-    @pytest.fixture(name="teams_config")
-    def fixture_teams_config(self):
-        config_mock = MagicMock()
-        config_mock.auth_secret = VERIFICATION_KEY
-        return config_mock
-
-    def test_okay(self, teams_config):
-        with mock.patch("fiftyone.teams.teams_config", teams_config):
+    def test_okay(self):
+        with mock.patch.dict(
+            os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
+        ):
             decoded = authenticate(valid_token)
             assert decoded == payload
 
-    def test_expired(self, teams_config):
-        with mock.patch("fiftyone.teams.teams_config", teams_config):
+    def test_expired(self):
+        with mock.patch.dict(
+            os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
+        ):
             with pytest.raises(ExpiredSignatureError):
                 _ = authenticate(expired_token)
