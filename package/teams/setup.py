@@ -55,7 +55,6 @@ setup(
     url="https://github.com/voxel51/fiftyone",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    namespace_packages=["fiftyone"],
     packages=["fiftyone.teams"],
     include_package_data=True,
     install_requires=get_install_requirements(
