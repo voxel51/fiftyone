@@ -5,7 +5,6 @@ FiftyOne Teams
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from pkgutil import extend_path
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
@@ -13,4 +12,4 @@ from pkgutil import extend_path
 #
 # https://docs.python.org/3/library/pkgutil.html#pkgutil.extend_path
 #
-__path__ = extend_path(__path__, __name__)
+__path__ = __import__("pkgutil").extend_path(__path__, __name__)

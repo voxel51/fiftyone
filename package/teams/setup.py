@@ -6,9 +6,9 @@ Installs FiftyOne Teams App
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-from pkg_resources import DistributionNotFound, get_distribution
 import re
+
+from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import setup
 
 INSTALL_REQUIRES = [
@@ -55,6 +55,7 @@ setup(
     url="https://github.com/voxel51/fiftyone",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    namespace_packages=["fiftyone"],
     packages=["fiftyone.teams"],
     include_package_data=True,
     install_requires=get_install_requirements(

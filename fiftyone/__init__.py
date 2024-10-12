@@ -9,10 +9,6 @@ See https://voxel51.com/fiftyone for more information.
 """
 
 import logging
-from os import getenv
-from pkgutil import extend_path as _extend_path
-from sys import hexversion
-
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +18,7 @@ logger = logging.getLogger(__name__)
 #
 # https://docs.python.org/3/library/pkgutil.html#pkgutil.extend_path
 #
-__path__ = _extend_path(__path__, __name__)
+__path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 import fiftyone.constants as _foc
 
