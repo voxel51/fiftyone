@@ -1073,7 +1073,6 @@ class Segmentation(_HasID, _HasMedia, Label):
     Args:
         mask (None): a numpy array with integer values encoding the labels
         mask_path (None): the absolute path to the segmentation image on disk
-
     """
 
     _MEDIA_FIELD = "mask_path"
@@ -1158,7 +1157,6 @@ class Segmentation(_HasID, _HasMedia, Label):
 
         Returns:
             the transformed mask
-
         """
         mask = self.get_mask()
         if mask is None:
@@ -1664,7 +1662,7 @@ def _mask_to_image(mask):
     if not shape_is_valid:
         raise ValueError("unsupported detection mask shape: {mask.shape}")
 
-    allowed_types = (np.uint8, np.uint16, np.uint32, np.uint64)
+    allowed_types = (np.uint8, np.uint16, np.uint32, np.uint64, np.int64)
 
     if mask.dtype not in allowed_types:
         raise ValueError(f"unsupported detection mask dtype: {mask.dtype}")
@@ -1674,7 +1672,7 @@ def _mask_to_image(mask):
     if mask.ndim == 3 and mask.shape[-1] == 3 and maxval >= 2**16:
         raise ValueError(
             f"3-channel masks must be saved as a PNG, with a max bit"
-            f" dpeth of 16, but mask has max value of {maxval} >= 2**16"
+            f" depth of 16, but mask has max value of {maxval} >= 2**16"
         )
 
     dtype = _get_uint_dtype(maxval)
@@ -1710,7 +1708,9 @@ def _write_mask(mask, mask_path):
     mask = _mask_to_image(mask)
     if extension in (".tif", ".tiff"):
         bigtiff = mask.dtype == np.uint64
-        tifffile.imwrite(mask_path, mask, compression="zlib", bigtiff=bigtiff)
+        tifffile.imwrite(
+            mask_path, data=mask, compression="zlib", bigtiff=bigtiff
+        )
     else:
         if mask.ndim == 3 and mask.shape[-1] == 2:
             # add empty third channel

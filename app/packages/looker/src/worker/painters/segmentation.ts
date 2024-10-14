@@ -97,18 +97,20 @@ const segmentation: Painter<SegmentationLabel> = async ({
 
   // the actual overlay that'll be painted, byte-length of width * height * 4
   // (RGBA channels)
-  const overlay = new Uint32Array(label.mask.image);
+
   const maskTargets = getTargets(field, coloring);
   const maskData: OverlayMask = label.mask.data;
 
   // target map array
   const targets = new ARRAY_TYPES[maskData.arrayType](maskData.buffer);
+
+  const setting = customizeColorSetting.find((x) => x.path === field);
+  const fieldColor = await getFieldColor(field, coloring, setting);
+  const overlay = new Uint32Array(label.mask.image);
   if (maskData.channels > 2) {
     handleRgb(maskData, maskTargets, overlay, targets);
     return;
   }
-
-  const setting = customizeColorSetting.find((x) => x.path === field);
   let colorBy = coloring.by;
 
   if (maskTargets && Object.keys(maskTargets).length === 1) {
@@ -116,30 +118,35 @@ const segmentation: Painter<SegmentationLabel> = async ({
   }
 
   const shouldClear = makeShouldClear(maskTargets);
-  const colorer = await makeColorer(field, coloring, setting);
+  const colorer = makeColorer(coloring, fieldColor, setting);
   const zero = usingBigInts(targets) ? 0n : 0;
 
   let tick = 1;
   let i = 0;
-  if (maskData.channels === 2) {
-    tick = 2;
+  let j = 0;
+  if (label.is_panoptic) {
     if (colorBy === COLOR_BY.INSTANCE) {
       i = 1;
     }
+
+    tick = maskData.channels;
   }
 
   // while loop should be fast
-  while (i < overlay.length) {
+  while (i < targets.length) {
     if (targets[i] === zero) {
       i += tick;
+      j++;
       continue;
     }
+
     if (shouldClear(Number(targets[i]))) {
       targets[i] = zero;
     }
 
-    overlay[i] = colorer[colorBy](i, targets);
+    overlay[j] = colorer[colorBy](i, targets);
     i += tick;
+    j++;
   }
 };
 
@@ -159,11 +166,11 @@ type Colorer = {
   [key in COLOR_BY]: (i: number, targets: TypedArray) => number;
 };
 
-const makeColorer = async (
-  field: string,
+const makeColorer = (
   coloring: Coloring,
+  fieldColor: number,
   setting: CustomizeColor
-): Promise<Colorer> => {
+): Colorer => {
   const cache: { [i: number]: number } = {};
 
   const getColor = (i: number) => {
@@ -184,18 +191,17 @@ const makeColorer = async (
     coloring.defaultMaskTargetsColors
   );
   const fieldSetting = convertMaskColorsToObject(setting?.maskTargetsColors);
-  const fieldColor = await getFieldColor(field, coloring, setting);
 
   return {
     [COLOR_BY.FIELD]: () => fieldColor,
     [COLOR_BY.INSTANCE]: (i: number, targets: TypedArray) => {
       return getColor(Number(targets[i]));
     },
-    [COLOR_BY.VALUE]: (target: number) => {
+    [COLOR_BY.VALUE]: (i: number, targets: TypedArray) => {
       // Attempt to find a color in the fields mask target color settings
       // If not found, attempt to find a color in the default mask target
       // colors
-      const targetString = target.toString();
+      const targetString = targets[i].toString();
       const customColor =
         fieldSetting?.[targetString] || defaultSetting?.[targetString];
 
@@ -204,7 +210,8 @@ const makeColorer = async (
       if (customColor) {
         return get32BitColor(convertToHex(customColor));
       }
-      return getColor(target);
+
+      return getColor(targets[i]);
     },
   };
 };

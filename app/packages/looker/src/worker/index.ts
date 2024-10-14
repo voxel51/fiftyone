@@ -180,20 +180,23 @@ const processLabels = async (
         labelTagColors,
         selectedLabelTags,
       };
+      let promise: Promise<void>;
       switch (cls) {
         case DETECTION:
-          painter.Detection(params);
+          promise = painter.Detection(params);
           break;
         case DETECTIONS:
-          painter.Detections(params);
+          promise = painter.Detections(params);
           break;
         case HEATMAP:
-          painter.Heatmap(params);
+          promise = painter.Heatmap(params);
           break;
         case SEGMENTATION:
-          painter.Segmentation(params);
+          promise = painter.Segmentation(params);
           break;
       }
+
+      promises.push(promise);
     }
   }
 

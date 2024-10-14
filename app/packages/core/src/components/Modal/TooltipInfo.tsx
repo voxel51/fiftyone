@@ -679,6 +679,14 @@ const SegmentationInfo = ({ detail }) => {
             value={detail.target}
           />
         ))}
+      {detail.instance >= 0 && (
+        <ContentItem
+          key={"instance-value"}
+          field={detail.field}
+          name={"instance"}
+          value={detail.instance}
+        />
+      )}
       <AttrInfo
         field={detail.field}
         label={detail.label}

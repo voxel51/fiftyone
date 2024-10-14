@@ -11,6 +11,7 @@ import { CONTAINS, isShown } from "./base";
 import { isRgbMaskTargets, sizeBytes, strokeCanvasRect, t } from "./util";
 
 export interface SegmentationLabel extends BaseLabel {
+  is_panoptic?: boolean;
   mask?: {
     data: OverlayMask;
     image: ArrayBuffer;
@@ -18,10 +19,10 @@ export interface SegmentationLabel extends BaseLabel {
 }
 
 interface SegmentationInfo extends BaseLabel {
+  instance?: number | bigint;
   mask?: {
     shape: [number, number];
   };
-  instance?: number | bigint;
 }
 
 export default class SegmentationOverlay<State extends BaseState>
@@ -201,7 +202,13 @@ export default class SegmentationOverlay<State extends BaseState>
     if (sx < 0 || sy < 0) {
       return -1;
     }
-    return this.label.mask.data.shape[1] * sy + sx;
+
+    let mulitplier = 1;
+    if (this.label.is_panoptic) {
+      mulitplier = this.label.mask?.data?.channels;
+    }
+
+    return mulitplier * (this.label.mask.data.shape[1] * sy + sx);
   }
 
   private getMaskCoordinates({
@@ -226,10 +233,10 @@ export default class SegmentationOverlay<State extends BaseState>
 
   private getTarget(state: Readonly<State>): number {
     const index = this.getIndex(state);
-
     if (index < 0) {
       return null;
     }
+
     return Number(this.targets[index]);
   }
 
