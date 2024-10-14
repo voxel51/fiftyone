@@ -79,7 +79,7 @@ jobs:
       # this workflow
       - name: Run tests
         run: |
-          python tests/utils/pytest_wrapper.py tests/ --verbose \
+          python tests/utils/pytest_wrapper.py tests/ package/tests --verbose \
             --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
