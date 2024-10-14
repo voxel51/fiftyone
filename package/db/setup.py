@@ -148,7 +148,11 @@ def _get_linux_download():
         # filter empty lines
         d = dict(line for line in reader if line)
 
-    for k, v in LINUX_DOWNLOADS[d["ID"].lower()].items():
+    key = d["ID"].lower()
+    if key not in LINUX_DOWNLOADS:
+        key = d["ID_LIKE"].lower()
+
+    for k, v in LINUX_DOWNLOADS[key].items():
         if d["VERSION_ID"].startswith(k):
             return v[MACHINE]
 
@@ -171,7 +175,7 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.1.6"
+VERSION = "1.1.7"
 
 
 def get_version():

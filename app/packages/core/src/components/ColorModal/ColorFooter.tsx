@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useMutation } from "react-relay";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
@@ -14,8 +14,7 @@ const ColorFooter: React.FC = () => {
     ? canEditCustomColors.message
     : "Save to dataset app config";
   const setColorScheme = fos.useSetSessionColorScheme();
-  const [activeColorModalField, setActiveColorModalField] =
-    useRecoilState(activeColorEntry);
+  const activeColorModalField = useRecoilValue(activeColorEntry);
   const [setDatasetColorScheme] =
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -26,8 +25,8 @@ const ColorFooter: React.FC = () => {
   const subscription = useRecoilValue(fos.stateSubscription);
 
   useEffect(
-    () => foq.subscribe(() => setActiveColorModalField(null)),
-    [setActiveColorModalField]
+    () => foq.subscribe((_, { set }) => set(activeColorEntry, null)),
+    []
   );
 
   if (!activeColorModalField) return null;
