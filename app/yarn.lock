@@ -4758,7 +4758,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tweenjs/tween.js@npm:~23.1.1, @tweenjs/tween.js@npm:~23.1.3":
+"@tweenjs/tween.js@npm:~23.1.3":
   version: 23.1.3
   resolution: "@tweenjs/tween.js@npm:23.1.3"
   checksum: 2f8a908b275bb6729bde4b863c277bf7411d2e0302ceb0455369479077b89eaf8380cd9206b91ff574416418a95c6f06db4e1ddea732a286d0db0ba8e7c093d3
@@ -5354,9 +5354,10 @@ __metadata:
   version: 0.163.0
   resolution: "@types/three@npm:0.163.0"
   dependencies:
-    "@tweenjs/tween.js": ~23.1.1
+    "@tweenjs/tween.js": ~23.1.3
     "@types/stats.js": "*"
     "@types/webxr": "*"
+    "@webgpu/types": "*"
     fflate: ~0.8.2
     meshoptimizer: ~0.18.1
   checksum: ebe603dfddc8bbc99736d9ce1963acc5f548e4e58a978943a6024aed83ac1925a0b077ee41799943faaa813278e7bd377405ca728049fc542185f56c81387bf4
