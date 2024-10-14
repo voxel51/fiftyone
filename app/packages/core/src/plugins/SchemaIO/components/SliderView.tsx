@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { debounce, isNumber, throttle } from "lodash";
+import { isNumber } from "lodash";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";
@@ -146,24 +146,26 @@ export default function SliderView(props) {
         finalValue = ((max - min) / 100) * finalValue;
       }
 
-      const updateValue = () => {
-        onChange(
-          path,
-          isMin
-            ? [parseFloat(finalValue), parseFloat(data?.[1] || max)]
-            : [parseFloat(data?.[0] || min), parseFloat(finalValue)],
-          schema
-        );
-      };
-
-      // Throttle the onChange action to once every 300ms
-      const throttledUpdate = throttle(updateValue, 300);
-
-      // Debounce for 200ms to ensure final typing before triggering update
-      const debouncedUpdate = debounce(throttledUpdate, 200);
-
-      debouncedUpdate();
+      onChange(
+        path,
+        isMin
+          ? [parseFloat(finalValue), parseFloat(data?.[1] || max)]
+          : [parseFloat(data?.[0] || min), parseFloat(finalValue)],
+        schema
+      );
     }
+  };
+
+  // Update the UI immediately during sliding
+  const handleSliderChange = (_, value: number) => {
+    setMinText(valueLabelFormat(value[0], min, max, unit, valuePrecision));
+    setMaxText(valueLabelFormat(value[1], min, max, unit, valuePrecision));
+  };
+
+  // Trigger actual onChange when the slider is released
+  const handleSliderCommit = (_, value: number) => {
+    onChange(path, value, schema);
+    setUserChanged();
   };
 
   const UnitSelection = useMemo(
@@ -234,23 +236,8 @@ export default function SliderView(props) {
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
-              onChange={(_, value: number) => {
-                onChange(
-                  path,
-                  type === "number" ? parseFloat(value) : value,
-                  schema
-                );
-                setUserChanged();
-
-                if (variant === "withInputs") {
-                  setMinText(
-                    valueLabelFormat(value[0], min, max, unit, valuePrecision)
-                  );
-                  setMaxText(
-                    valueLabelFormat(value[1], min, max, unit, valuePrecision)
-                  );
-                }
-              }}
+              onChange={handleSliderChange} // Smooth UI update
+              onChangeCommitted={handleSliderCommit} // Final change on slider release
               ref={sliderRef}
               {...getComponentProps(props, "slider")}
             />
