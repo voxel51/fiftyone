@@ -249,6 +249,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # get all the existing counts of scheduled operations
         initial_queued = len(self.svc.get_queued_operations())
+        initial_queued = len(self.svc.get_queued_operations())
         initial_running = len(self.svc.get_running_operations())
         initial_scheduled = len(self.svc.get_scheduled_operations())
         initial_dataset_scheduled = len(
@@ -292,8 +293,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.docs_to_delete.append(doc)
             static_docs.append(doc.id)
 
-        scheduled = self.svc.get_scheduled_operations()
-        self.assertEqual(len(scheduled), 20 + initial_scheduled)
+        queued = self.svc.get_queued_operations()
+        self.assertEqual(len(queued), initial_queued)
 
         scheduled = self.svc.get_scheduled_operations(
             dataset_name=dataset_name
