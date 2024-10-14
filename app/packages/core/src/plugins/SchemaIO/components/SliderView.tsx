@@ -236,8 +236,8 @@ export default function SliderView(props) {
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
-              onChange={handleSliderChange} // Smooth UI update
-              onChangeCommitted={handleSliderCommit} // Final change on slider release
+              onChange={handleSliderChange}
+              onChangeCommitted={handleSliderCommit}
               ref={sliderRef}
               {...getComponentProps(props, "slider")}
             />
