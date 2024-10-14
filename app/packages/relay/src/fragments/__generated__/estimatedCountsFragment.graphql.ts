@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7f7e5448668dba5a46cbd016ef2c2ce5>>
+ * @generated SignedSource<<2c72c0c7ecd6d46a9c22e81126108379>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type estimatedCountsFragment$data = {
   readonly estimatedFrameCount: number | null;
-  readonly estimatedSampleCount: number;
+  readonly estimatedSampleCount: number | null;
   readonly " $fragmentType": "estimatedCountsFragment";
 };
 export type estimatedCountsFragment$key = {

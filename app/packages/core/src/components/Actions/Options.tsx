@@ -227,9 +227,9 @@ const Lightning = () => {
     <>
       <ActionOption
         id="lightning-mode"
-        text="Lightning mode"
+        text="Query Performance mode"
         href={LIGHTNING_MODE}
-        title={"More on lightning mode"}
+        title={"More on Query Performance mode"}
         style={{
           background: "unset",
           color: theme.text.primary,
