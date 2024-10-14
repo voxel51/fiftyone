@@ -3,6 +3,41 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.1.1
+--------------------
+*Released October 14, 2024*
+
+Includes all updates from :ref:`FiftyOne 1.0.1 <release-notes-v1.0.1>`, plus:
+
+- Fixed an issue with Auth0 connections for deployments behind proxies
+- Bumped dependency requirement `voxel51-eta>=0.13`
+
+.. _release-notes-v1.0.1:
+
+FiftyOne 1.0.1
+--------------
+*Released October 14, 2024*
+
+App
+
+- Video playback now supports the timeline API
+  `#4878 <https://github.com/voxel51/fiftyone/pull/4878>`_
+- Added utils to support a `rerun <https://rerun.io>`_ panel
+  `#4876 <https://github.com/voxel51/fiftyone/pull/4876>`_
+- Fixed a bug that prevented |Classifications| labels from rendering
+  `#4891 <https://github.com/voxel51/fiftyone/pull/4891>`_
+- Fixed a bug that prevented the `fiftyone quickstart` and
+  `fiftyone app launch` commands from launching the App
+  `#4888 <https://github.com/voxel51/fiftyone/pull/4888>`_
+
+Core
+
+- COCO exports now use 1-based categories
+  `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
+- Fixed a bug when passing the `classes` argument to load specific classes in
+  :ref:`COCO format <COCODetectionDataset-import>`
+  `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
+
 FiftyOne Teams 2.1.0
 --------------------
 *Released October 1, 2024*

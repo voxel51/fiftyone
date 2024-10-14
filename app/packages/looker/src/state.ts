@@ -175,6 +175,7 @@ interface BaseOptions {
   smoothMasks: boolean;
   zoomPad: number;
   selected: boolean;
+  shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
@@ -218,6 +219,7 @@ export interface FrameConfig extends BaseConfig {
 export type ImageConfig = BaseConfig;
 
 export interface VideoConfig extends BaseConfig {
+  enableTimeline: boolean;
   frameRate: number;
   support?: [number, number];
 }
@@ -297,7 +299,6 @@ export interface BaseState {
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
-  shouldHandleKeyEvents: boolean;
   scale: number;
   pan: Coordinates;
   panning: boolean;
@@ -340,6 +341,7 @@ export interface ImageState extends BaseState {
 }
 
 export interface VideoState extends BaseState {
+  buffers: Buffers;
   config: VideoConfig;
   options: VideoOptions;
   seeking: boolean;
@@ -458,6 +460,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   pointFilter: (path: string, point: Point) => true,
   attributeVisibility: {},
   mediaFallback: false,
+  shouldHandleKeyEvents: true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
