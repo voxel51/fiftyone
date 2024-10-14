@@ -1835,21 +1835,21 @@ __metadata:
     "@biomejs/biome": ^1.8.3
     "@emotion/react": ^11.11.3
     "@emotion/styled": ^11.11.0
-    "@react-three/drei": ^9.107.2
-    "@react-three/fiber": ^8.16.8
+    "@react-three/drei": ^9.114.4
+    "@react-three/fiber": ^8.17.10
     "@types/node": ^20.11.10
     "@types/react": ^18.2.48
     "@types/react-dom": ^18.2.18
-    "@types/three": ^0.165.0
+    "@types/three": ^0.169.0
     "@vitejs/plugin-react": ^1.3.0
     leva: ^0.9.35
     lodash: ^4.17.21
     nodemon: ^3.0.3
-    r3f-perf: ^7.2.1
+    r3f-perf: ^7.2.2
     react-color: ^2.19.3
     rollup-plugin-external-globals: ^0.6.1
     styled-components: ^6.1.8
-    three: ^0.165.0
+    three: ^0.169.0
     tunnel-rat: ^0.1.2
     typescript: ^5.4.5
     vite: ^5.2.14
@@ -3727,9 +3727,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^9.107.2":
-  version: 9.107.2
-  resolution: "@react-three/drei@npm:9.107.2"
+"@react-three/drei@npm:^9.114.4":
+  version: 9.114.4
+  resolution: "@react-three/drei@npm:9.114.4"
   dependencies:
     "@babel/runtime": ^7.11.2
     "@mediapipe/tasks-vision": 0.10.8
@@ -3747,7 +3747,7 @@ __metadata:
     stats-gl: ^2.0.0
     stats.js: ^0.17.0
     suspend-react: ^0.1.3
-    three-mesh-bvh: ^0.7.0
+    three-mesh-bvh: ^0.7.8
     three-stdlib: ^2.29.9
     troika-three-text: ^0.49.0
     tunnel-rat: ^0.1.2
@@ -3762,22 +3762,23 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 4a0c4fdaf88c43098719539d7d237e663c16d9b9a6ed95151617691836253b260a865e59345e04cb7311547608472d92ad0cb181c3d4b8d6ea7060a119e6fd3d
+  checksum: d3ec8e40f5db14129b6d6549aa8bb3056811f17a97859cc770fb89530932ac01fac0e82a51fa7ce267bd5e0dd6f492d8ab67bc0fd899d9352227831c3d73fe86
   languageName: node
   linkType: hard
 
-"@react-three/fiber@npm:^8.16.8":
-  version: 8.16.8
-  resolution: "@react-three/fiber@npm:8.16.8"
+"@react-three/fiber@npm:^8.17.10":
+  version: 8.17.10
+  resolution: "@react-three/fiber@npm:8.17.10"
   dependencies:
     "@babel/runtime": ^7.17.8
+    "@types/debounce": ^1.2.1
     "@types/react-reconciler": ^0.26.7
     "@types/webxr": "*"
     base64-js: ^1.5.1
     buffer: ^6.0.3
+    debounce: ^1.2.1
     its-fine: ^1.0.6
     react-reconciler: ^0.27.0
-    react-use-measure: ^2.1.1
     scheduler: ^0.21.0
     suspend-react: ^0.1.3
     zustand: ^3.7.1
@@ -3803,7 +3804,7 @@ __metadata:
       optional: true
     react-native:
       optional: true
-  checksum: eb675bdb6af8ef6d7d60d34d755e03ee0b4458f5d45b6f4445e55dc9f80873e3156ce7ce87eb31379e2a7a7625530a9a0742d741daef53a35b106318791c4b51
+  checksum: 353c921f95c904883412cacefd8043cd864cb34e748b3195419064bb6577b14ec6d5f5e1f087b52a198a555b3f29e9a9196e32e8b25f8e6f14ec1e80211d81ae
   languageName: node
   linkType: hard
 
@@ -4395,10 +4396,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tweenjs/tween.js@npm:~23.1.1":
-  version: 23.1.1
-  resolution: "@tweenjs/tween.js@npm:23.1.1"
-  checksum: a93b331f0c2dc2dd2fce2c08ab9e505cd71ce1b31a3e2218f31da4f2d2af84ac4c4eaab05f9929a7b7884c5e00c5d32e8fd1872e0a3e10e9cca20febc8d263b5
+"@tweenjs/tween.js@npm:~23.1.3":
+  version: 23.1.3
+  resolution: "@tweenjs/tween.js@npm:23.1.3"
+  checksum: 2f8a908b275bb6729bde4b863c277bf7411d2e0302ceb0455369479077b89eaf8380cd9206b91ff574416418a95c6f06db4e1ddea732a286d0db0ba8e7c093d3
   languageName: node
   linkType: hard
 
@@ -4523,6 +4524,13 @@ __metadata:
   version: 3.0.2
   resolution: "@types/d3-timer@npm:3.0.2"
   checksum: 1643eebfa5f4ae3eb00b556bbc509444d88078208ec2589ddd8e4a24f230dd4cf2301e9365947e70b1bee33f63aaefab84cd907822aae812b9bc4871b98ab0e1
+  languageName: node
+  linkType: hard
+
+"@types/debounce@npm:^1.2.1":
+  version: 1.2.4
+  resolution: "@types/debounce@npm:1.2.4"
+  checksum: decef3eee65d681556d50f7fac346f1b33134f6b21f806d41326f9dfb362fa66b0282ff0640ae6791b690694c9dc3dad4e146e909e707e6f96650f3aa325b9da
   languageName: node
   linkType: hard
 
@@ -4988,16 +4996,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/three@npm:^0.165.0":
-  version: 0.165.0
-  resolution: "@types/three@npm:0.165.0"
+"@types/three@npm:^0.169.0":
+  version: 0.169.0
+  resolution: "@types/three@npm:0.169.0"
   dependencies:
-    "@tweenjs/tween.js": ~23.1.1
+    "@tweenjs/tween.js": ~23.1.3
     "@types/stats.js": "*"
     "@types/webxr": "*"
+    "@webgpu/types": "*"
     fflate: ~0.8.2
     meshoptimizer: ~0.18.1
-  checksum: ed86979c5cee78070b9fe9fd94f6049d27c392eeb3061f10fc4b54b85daae2433b6f184c1a00407cbf856778c5bc113fdf46b8b87e778ed91a311e06b9ae938b
+  checksum: faaa5bbcead150b5627e2e00bb0e63d98c2a8f8d8951f729f889f430a98534c568d73520f43263391157f216a765806c16e2ca05b688506bffb7f8cf417be042
   languageName: node
   linkType: hard
 
@@ -5496,6 +5505,13 @@ __metadata:
     loupe: ^3.1.1
     tinyrainbow: ^1.2.0
   checksum: 6867556dd7e376437e454b96c7e596ec16e141fb00b002b6ce435611ab3d9d1e3f38ebf48b1fc49f4c97f9754ed37abb602de8bf122f4ac0de621a4dbe0a314e
+  languageName: node
+  linkType: hard
+
+"@webgpu/types@npm:*":
+  version: 0.1.48
+  resolution: "@webgpu/types@npm:0.1.48"
+  checksum: d9976049bc92615396e23f78a59554a7aff9dbc99c49696903cd4a2a18dd2bb5fd6d3a67196fc195ae9ae8b3d7f25c5060ea5d77c5dd6eac34dfbc0adbdf9648
   languageName: node
   linkType: hard
 
@@ -14128,9 +14144,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"r3f-perf@npm:^7.2.1":
-  version: 7.2.1
-  resolution: "r3f-perf@npm:7.2.1"
+"r3f-perf@npm:^7.2.2":
+  version: 7.2.2
+  resolution: "r3f-perf@npm:7.2.2"
   dependencies:
     "@radix-ui/react-icons": ^1.3.0
     "@react-three/drei": ^9.103.0
@@ -14149,7 +14165,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: a4fa7f636861ad8de46e48cd245aed7634ee3a5b76e63c573a98bbfb0cf6d57aadb81821c43acd2df453bec9c4fd6e520a5c650a25b21d2d79ef1a62034c5ec3
+  checksum: ee1b7a6e698d670b1467c6e1dbffaff36de008cfcdd5a5fff87f0b0da7c99f0db04a111320aa2850851881bbe954401a506091ef0c3f32c897f4faaebc7fbae3
   languageName: node
   linkType: hard
 
@@ -14549,7 +14565,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-use-measure@npm:^2.0.1, react-use-measure@npm:^2.1.1":
+"react-use-measure@npm:^2.0.1":
   version: 2.1.1
   resolution: "react-use-measure@npm:2.1.1"
   dependencies:
@@ -16362,6 +16378,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"three-mesh-bvh@npm:^0.7.8":
+  version: 0.7.8
+  resolution: "three-mesh-bvh@npm:0.7.8"
+  peerDependencies:
+    three: ">= 0.151.0"
+  checksum: 3023a7d1ccdf033e08eba5c6437b4c3dd31a6ec83cb54cfadfca2d6aa22c74c7895c5b0d6e943897ac411a64b86d9bf78b3f6c3a902efd8b8bfd3cf0afd9a18e
+  languageName: node
+  linkType: hard
+
 "three-stdlib@npm:^2.29.4":
   version: 2.29.5
   resolution: "three-stdlib@npm:2.29.5"
@@ -16394,10 +16419,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.165.0":
-  version: 0.165.0
-  resolution: "three@npm:0.165.0"
-  checksum: 1dcfe9ef046a49036e527cf0f72e07475546a16ede694f24630330ece7635ab8ee5c3a3422d43c65c2d267a255e4859820ddb35381defadbd3515d91e2c2bd2e
+"three@npm:^0.169.0":
+  version: 0.169.0
+  resolution: "three@npm:0.169.0"
+  checksum: 714b68911a26523858edf10e6ed33e41901edaba734b6acd3aa3542746e45570295fa8750723b06bcb9d223013dba920e946e02a018ee136c86da927c04441c3
   languageName: node
   linkType: hard
 
