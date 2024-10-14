@@ -1882,8 +1882,6 @@ __metadata:
     mime: ^2.5.2
     monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
-    tiff: ^6.1.1
-    tiff.js: ^1.0.0
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
@@ -16435,23 +16433,6 @@ __metadata:
     readable-stream: ~2.3.6
     xtend: ~4.0.1
   checksum: beb0f338aa2931e5660ec7bf3ad949e6d2e068c31f4737b9525e5201b824ac40cac6a337224856b56bd1ddd866334bbfb92a9f57cd6f66bc3f18d3d86fc0fe50
-  languageName: node
-  linkType: hard
-
-"tiff.js@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "tiff.js@npm:1.0.0"
-  checksum: b3b078bd9ce3766aa6775e5c9f8a1c0b85376136e4f360b9799b05143ce0ffc573568073d7b43f72389a4526ee4f3e0253dbef5e6d2b4f70b435f6839c96c71f
-  languageName: node
-  linkType: hard
-
-"tiff@npm:^6.1.1":
-  version: 6.1.1
-  resolution: "tiff@npm:6.1.1"
-  dependencies:
-    iobuffer: ^5.3.2
-    pako: ^2.1.0
-  checksum: f600d08b0321f87445f03df33e5ac3e687e83b9a6bee3b848d67dc994c395f68273767147c69883531a0f6a28456127fcd5499b488f98758e28d87fbc0d0d0e7
   languageName: node
   linkType: hard
 

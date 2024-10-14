@@ -28,8 +28,6 @@
         "lru-cache": "^11.0.1",
         "mime": "^2.5.2",
         "monotone-convex-hull-2d": "^1.0.1",
-        "tiff": "^6.1.1",
-        "tiff.js": "^1.0.0",
         "uuid": "^8.3.2"
     },
     "devDependencies": {
