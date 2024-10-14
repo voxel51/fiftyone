@@ -15,6 +15,7 @@ import {
   FrameSample,
   LabelData,
   StateUpdate,
+  VideoConfig,
   VideoSample,
   VideoState,
 } from "../state";
@@ -318,7 +319,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
         ...this.getDefaultOptions(),
         ...options,
       },
-      buffers: [[firstFrame, firstFrame]] as Buffers,
+      buffers: this.initialBuffers(config),
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
@@ -328,8 +329,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   hasDefaultZoom(state: VideoState, overlays: Overlay<VideoState>[]): boolean {
-    let pan = [0, 0];
-    let scale = 1;
+    const pan = [0, 0];
+    const scale = 1;
 
     return (
       scale === state.scale &&
@@ -402,10 +403,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      lookerWithReader && lookerWithReader.pause();
-      this.setReader();
+      lookerWithReader?.pause();
       lookerWithReader = this;
-      this.state.buffers = [[1, 1]];
+      this.setReader();
     } else if (lookerWithReader !== this && frameCount) {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
@@ -549,10 +549,14 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   updateSample(sample: VideoSample) {
-    this.state.buffers = [[1, 1]];
-    this.frames.clear();
+    if (lookerWithReader === this) {
+      lookerWithReader?.pause();
+      lookerWithReader = null;
+    }
+
+    this.frames = new Map();
+    this.state.buffers = this.initialBuffers(this.state.config);
     super.updateSample(sample);
-    this.setReader();
   }
 
   getVideo() {
@@ -564,6 +568,11 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.frames.has(frameNumber) &&
       this.frames.get(frameNumber)?.deref() !== undefined
     );
+  }
+
+  private initialBuffers(config: VideoConfig) {
+    const firstFrame = config.support ? config.support[0] : 1;
+    return [[firstFrame, firstFrame]] as Buffers;
   }
 }
 
