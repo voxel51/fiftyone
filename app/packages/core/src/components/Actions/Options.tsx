@@ -17,7 +17,7 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { LIGHTNING_MODE, SIDEBAR_MODE } from "../../utils/links";
+import { QP_MODE, SIDEBAR_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import { Button } from "../utils";
@@ -226,9 +226,9 @@ const Lightning = () => {
   return (
     <>
       <ActionOption
-        id="lightning-mode"
+        id="qd-mode"
         text="Query Performance mode"
-        href={LIGHTNING_MODE}
+        href={QP_MODE}
         title={"More on Query Performance mode"}
         style={{
           background: "unset",
@@ -243,7 +243,7 @@ const Lightning = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
-          dataCy: `lightning-mode-${value}`,
+          dataCy: `qd-mode-${value}`,
           onClick: () =>
             setThreshold(value === "disable" ? null : config ?? count),
         }))}
