@@ -1,4 +1,3 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   FormControl,
@@ -9,10 +8,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import FieldWrapper from "./FieldWrapper";
-import { autoFocus, getComponentProps } from "../utils";
-import { useKey } from "../hooks";
 import { isNumber } from "lodash";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useKey } from "../hooks";
+import { autoFocus, getComponentProps } from "../utils";
+import FieldWrapper from "./FieldWrapper";
 
 type ValueFormat = "flt" | "%";
 
@@ -156,6 +156,18 @@ export default function SliderView(props) {
     }
   };
 
+  // Update the UI immediately during sliding
+  const handleSliderChange = (_, value: number) => {
+    setMinText(valueLabelFormat(value[0], min, max, unit, valuePrecision));
+    setMaxText(valueLabelFormat(value[1], min, max, unit, valuePrecision));
+  };
+
+  // Trigger actual onChange when the slider is released
+  const handleSliderCommit = (_, value: number) => {
+    onChange(path, value, schema);
+    setUserChanged();
+  };
+
   const UnitSelection = useMemo(
     () => (
       <FormControl variant="outlined">
@@ -224,23 +236,8 @@ export default function SliderView(props) {
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
-              onChange={(_, value: number) => {
-                onChange(
-                  path,
-                  type === "number" ? parseFloat(value) : value,
-                  schema
-                );
-                setUserChanged();
-
-                if (variant === "withInputs") {
-                  setMinText(
-                    valueLabelFormat(value[0], min, max, unit, valuePrecision)
-                  );
-                  setMaxText(
-                    valueLabelFormat(value[1], min, max, unit, valuePrecision)
-                  );
-                }
-              }}
+              onChange={handleSliderChange}
+              onChangeCommitted={handleSliderCommit}
               ref={sliderRef}
               {...getComponentProps(props, "slider")}
             />
