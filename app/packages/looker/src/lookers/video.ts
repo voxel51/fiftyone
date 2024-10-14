@@ -398,8 +398,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       );
     }
 
-    let buffering = this.state.buffering;
-    let playing = this.state.playing;
     if (
       (!state.config.thumbnail || state.playing) &&
       lookerWithReader !== this &&
@@ -409,26 +407,21 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       lookerWithReader = this;
       this.setReader();
     } else if (lookerWithReader !== this && frameCount) {
-      buffering && this.dispatchEvent("buffering", false);
-      buffering = false;
-      playing = false;
+      this.state.buffering && this.dispatchEvent("buffering", false);
+      this.state.playing = false;
+      this.state.buffering = false;
     }
 
     if (lookerWithReader === this) {
       if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
-        buffering && this.dispatchEvent("buffering", false);
-        buffering = false;
+        this.state.buffering && this.dispatchEvent("buffering", false);
+        this.state.buffering = false;
       } else {
-        buffering = true;
+        this.state.buffering = true;
+        this.dispatchEvent("buffering", true);
         this.requestFrames(state.frameNumber);
       }
     }
-
-    if (this.state.playing !== playing) {
-      console.log("WHAT");
-    }
-    this.state.buffering = buffering;
-    this.state.playing = playing;
 
     return pluckedOverlays;
   }
@@ -571,7 +564,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   private hasFrame(frameNumber: number) {
-    !this.state.config.thumbnail && console.log(frameNumber, this.frames);
     return (
       this.frames.has(frameNumber) &&
       this.frames.get(frameNumber)?.deref() !== undefined
