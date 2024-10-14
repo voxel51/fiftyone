@@ -14,7 +14,7 @@ from setuptools import setup
 INSTALL_REQUIRES = [
     "fiftyone>2.1,<2.3",
     "python-jose>=3.3.0,<4",
-    "strawberry-graphql==0.138.1",
+    "strawberry-graphql==0.243",
 ]
 
 
