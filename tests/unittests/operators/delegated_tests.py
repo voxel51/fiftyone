@@ -293,20 +293,30 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             static_docs.append(doc.id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 20 + initial_queued)
+        # dynamic + static docs should be queued
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + len(static_docs) + initial_queued
+        )
 
         queued = self.svc.get_queued_operations(dataset_name=dataset_name)
-        self.assertEqual(len(queued), 10 + initial_dataset_queued)
+        # dataset_name corresponds to dynamic docs
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + initial_dataset_queued
+        )
 
         queued = self.svc.get_queued_operations(operator=operator)
-        self.assertEqual(len(queued), 10 + initial_operator_queued)
+        # operator corresponds to dynamic docs
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + initial_operator_queued
+        )
 
         # test set_running behavior
         for doc_id in dynamic_docs:
             self.svc.set_running(doc_id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 10 + initial_queued)
+        # static docs should be `queued`
+        self.assertEqual(len(queued), len(static_docs) + initial_queued)
 
         running = self.svc.get_running_operations()
         # dynamic docs should be `running`
@@ -316,8 +326,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         for doc_id in dynamic_docs:
             self.svc.set_scheduled(doc_id)
 
-        scheduled = self.svc.get_scheduled_operations()
-        self.assertEqual(len(scheduled), 10 + initial_scheduled)
+        queued = self.svc.get_queued_operations()
+        # static docs should be `queued`
+        self.assertEqual(len(queued), len(static_docs) + initial_queued)
 
         scheduled = self.svc.get_scheduled_operations()
         # dynamic docs should be `scheduled`
