@@ -13,7 +13,7 @@ export class DisplayOptionsPom {
   }
 
   async setLightningMode(mode: LightningMode) {
-    const selector = this.page.getByTestId(`lightning-mode-${mode}`);
+    const selector = this.page.getByTestId(`qp-mode-${mode}`);
     return selector.click();
   }
 

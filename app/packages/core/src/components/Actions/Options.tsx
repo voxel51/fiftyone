@@ -227,7 +227,7 @@ const QueryPerformance = () => {
   if (enableQpMode) return (
     <>
       <ActionOption
-        id="qd-mode"
+        id="qp-mode"
         text="Query Performance mode"
         href={QP_MODE}
         title={"More on Query Performance mode"}
@@ -244,7 +244,7 @@ const QueryPerformance = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
-          dataCy: `qd-mode-${value}`,
+          dataCy: `qp-mode-${value}`,
           onClick: () =>
             setThreshold(value === "disable" ? null : config ?? count),
         }))}
