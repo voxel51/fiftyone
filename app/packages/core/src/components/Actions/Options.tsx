@@ -222,7 +222,9 @@ const QueryPerformance = () => {
   const reset = useResetRecoilState(fos.lightningThreshold);
   const count = useRecoilValue(fos.datasetSampleCount);
   const theme = useTheme();
-  const enableQpMode = useRecoilValue(fos.enableQueryPerformanceConfig) && useRecoilValue(fos.defaultQueryPerformanceConfig);
+  const enableQueryPerformanceConfig = useRecoilValue(fos.enableQueryPerformanceConfig);
+  const defaultQueryPerformanceConfig = useRecoilValue(fos.defaultQueryPerformanceConfig);
+  const enableQpMode = enableQueryPerformanceConfig && defaultQueryPerformanceConfig;
 
   if (enableQpMode) return (
     <>
