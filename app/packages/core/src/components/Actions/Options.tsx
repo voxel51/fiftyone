@@ -216,7 +216,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   );
 };
 
-const Lightning = () => {
+const QueryPerformance = () => {
   const [threshold, setThreshold] = useRecoilState(fos.lightningThreshold);
   const config = useRecoilValue(fos.lightningThresholdConfig);
   const reset = useResetRecoilState(fos.lightningThreshold);
@@ -239,7 +239,7 @@ const Lightning = () => {
         svgStyles={{ height: "1rem", marginTop: 7.5 }}
       />
       <TabOption
-        active={threshold === null ? "disable" : "enable"}
+        active={(threshold === null) || (!fos.enableQueryPerformance) || (!fos.defaultQueryPerformance) ? "disable" : "enable"}
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
@@ -372,7 +372,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
-      {!view?.length && <Lightning />}
+      {!view?.length && <QueryPerformance />}
       {!modal && <SidebarMode />}
       <SortFilterResults modal={modal} />
     </Popout>
