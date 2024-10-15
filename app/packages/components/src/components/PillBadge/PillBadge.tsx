@@ -52,6 +52,7 @@ const PillBadge = ({
 
   const chipStyle: { [key: string]: string | number } = {
     color: COLORS[chipColor || "default"] || COLORS.default,
+    fontSize: 14,
     fontWeight: 500,
     paddingLeft: 1,
   };
