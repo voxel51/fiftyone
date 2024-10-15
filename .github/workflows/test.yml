@@ -94,3 +94,6 @@ jobs:
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+      - name: Run teams package tests
+        run: |
+          pip install package/teams && pytest package/tests --verbose
