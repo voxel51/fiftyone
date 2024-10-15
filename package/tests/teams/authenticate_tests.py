@@ -38,6 +38,9 @@ expired_token = (
 class TestAuthenticate:
     """test token decoder"""
 
+    @mock.patch(
+        "fiftyone.teams.teams_config.auth_secret", new=VERIFICATION_KEY
+    )
     def test_okay(self):
         with mock.patch.dict(
             os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
@@ -45,6 +48,9 @@ class TestAuthenticate:
             decoded = authenticate(valid_token)
             assert decoded == payload
 
+    @mock.patch(
+        "fiftyone.teams.teams_config.auth_secret", new=VERIFICATION_KEY
+    )
     def test_expired(self):
         with mock.patch.dict(
             os.environ, {"FIFTYONE_AUTH_SECRET": VERIFICATION_KEY}
