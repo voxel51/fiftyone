@@ -79,13 +79,16 @@ jobs:
       # this workflow
       - name: Run tests
         run: |
-          python tests/utils/pytest_wrapper.py tests/ package/tests --verbose \
+          python tests/utils/pytest_wrapper.py tests/ --verbose \
             --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
+      - name: Run teams package tests
+        run: |
+          pytest package/tests --verbose
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
