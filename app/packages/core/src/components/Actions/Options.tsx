@@ -222,8 +222,9 @@ const QueryPerformance = () => {
   const reset = useResetRecoilState(fos.lightningThreshold);
   const count = useRecoilValue(fos.datasetSampleCount);
   const theme = useTheme();
+  const enableQpMode = useRecoilValue(fos.enableQueryPerformanceConfig) && useRecoilValue(fos.defaultQueryPerformanceConfig);
 
-  return (
+  if (enableQpMode) return (
     <>
       <ActionOption
         id="qd-mode"
@@ -239,7 +240,7 @@ const QueryPerformance = () => {
         svgStyles={{ height: "1rem", marginTop: 7.5 }}
       />
       <TabOption
-        active={(threshold === null) || (!fos.enableQueryPerformance) || (!fos.defaultQueryPerformance) ? "disable" : "enable"}
+        active={(threshold === null) ? "disable" : "enable"}
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
