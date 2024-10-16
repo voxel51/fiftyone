@@ -107,17 +107,12 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   }
 
   if (disabled) {
-    const [bgColor, textColor] = getDisabledColors(color);
+    const [bgColor, textColor] = getDisabledColors();
     baseProps.sx["&.Mui-disabled"] = {
       backgroundColor: variant === "outlined" ? "inherit" : bgColor,
       color: textColor,
     };
-    if (variant === "square") {
-      baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
-        theme.palette.background.field;
-    }
-
-    if (variant === "outlined") {
+    if (["square", "outlined"].includes(variant)) {
       baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
         theme.palette.background.field;
     }
