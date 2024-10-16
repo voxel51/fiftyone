@@ -253,6 +253,7 @@ class Object(BaseType):
         label,
         icon=None,
         variant=None,
+        disabled=False,
         on_click=None,
         prompt=False,
         params=None,
@@ -282,6 +283,7 @@ class Object(BaseType):
             label: the label of the button
             icon (None): the name of the icon to display
             icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            disabled (False): whether the button is disabled
             variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
                 ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
@@ -295,6 +297,7 @@ class Object(BaseType):
             href=href,
             icon=icon,
             icon_position=icon_position,
+            disabled=disabled,
             label=label,
             operator=on_click,
             params=params,
