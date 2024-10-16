@@ -21,6 +21,8 @@ export const useFo3dBounds = (
   const unchangedCount = useRef(0);
   const previousBox = useRef<Box3>(null);
 
+  const timeOutIdRef = useRef<number | null>(null);
+
   useLayoutEffect(() => {
     if (predicate && !predicate()) {
       return;
@@ -37,14 +39,20 @@ export const useFo3dBounds = (
       if (!isMounted) return;
 
       if (!objectRef.current) {
-        setTimeout(getBoundingBox, BOUNDING_BOX_POLLING_INTERVAL);
+        timeOutIdRef.current = window.setTimeout(
+          getBoundingBox,
+          BOUNDING_BOX_POLLING_INTERVAL
+        );
         return;
       }
 
       const box = new Box3().setFromObject(objectRef.current);
 
       if (Math.abs(box.max?.x) === Number.POSITIVE_INFINITY) {
-        setTimeout(getBoundingBox, BOUNDING_BOX_POLLING_INTERVAL);
+        timeOutIdRef.current = window.setTimeout(
+          getBoundingBox,
+          BOUNDING_BOX_POLLING_INTERVAL
+        );
         return;
       }
 
@@ -59,17 +67,27 @@ export const useFo3dBounds = (
       if (unchangedCount.current >= UNCHANGED_COUNT_THRESHOLD) {
         setSceneBoundingBox(box);
       } else {
-        setTimeout(getBoundingBox, BOUNDING_BOX_POLLING_INTERVAL);
+        timeOutIdRef.current = window.setTimeout(
+          getBoundingBox,
+          BOUNDING_BOX_POLLING_INTERVAL
+        );
       }
     };
 
     // this is a hack, yet to find a better way than polling to know when the scene is done loading
     // callbacks in loaders are not reliable
-    setTimeout(getBoundingBox, BOUNDING_BOX_POLLING_INTERVAL);
+    timeOutIdRef.current = window.setTimeout(
+      getBoundingBox,
+      BOUNDING_BOX_POLLING_INTERVAL
+    );
 
     // cleanup function to prevent memory leaks
     return () => {
       isMounted = false;
+
+      if (timeOutIdRef.current) {
+        window.clearTimeout(timeOutIdRef.current);
+      }
     };
   }, [objectRef, predicate]);
 
