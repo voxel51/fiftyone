@@ -1258,7 +1258,6 @@ class Button(View):
         self.operator = kwargs.get("operator", None)
         self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
-        self.href = kwargs.get("href", None)
 
     def to_json(self):
         return _convert_callables_to_operator_uris(
