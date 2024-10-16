@@ -203,6 +203,7 @@ export interface BaseConfig {
   sampleId: string;
   symbol: symbol;
   fieldSchema: Schema;
+  isDynamicGroup: boolean;
   view: Stage[];
   dataset: string;
   group?: {
@@ -341,6 +342,7 @@ export interface ImageState extends BaseState {
 }
 
 export interface VideoState extends BaseState {
+  buffers: Buffers;
   config: VideoConfig;
   options: VideoOptions;
   seeking: boolean;

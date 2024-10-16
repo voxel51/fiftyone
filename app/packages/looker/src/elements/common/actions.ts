@@ -405,6 +405,17 @@ export const nextFrame: Control<VideoState> = {
   },
 };
 
+export const nextFrameNoOpControl: Control<ImaVidState> = {
+  title: "Next frame",
+  eventKeys: [".", ">"],
+  shortcut: ">",
+  detail: "Seek to the next frame",
+  alwaysHandle: true,
+  action: () => {
+    // no-op here, supposed to be implemented elsewhere
+  },
+};
+
 export const previousFrame: Control<VideoState> = {
   title: "Previous frame",
   eventKeys: [",", "<"],
@@ -433,6 +444,17 @@ export const previousFrame: Control<VideoState> = {
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
+  },
+};
+
+export const previousFrameNoOpControl: Control<ImaVidState> = {
+  title: "Previous frame",
+  eventKeys: [",", "<"],
+  shortcut: "<",
+  detail: "Seek to the previous frame",
+  alwaysHandle: true,
+  action: () => {
+    // no-op here, supposed to be implemented elsewhere
   },
 };
 
@@ -662,6 +684,8 @@ const VIDEO = {
 const IMAVID = {
   ...COMMON,
   escape: videoEscape,
+  previousFrame: previousFrameNoOpControl,
+  nextFrame: nextFrameNoOpControl,
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);

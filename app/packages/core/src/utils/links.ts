@@ -13,7 +13,7 @@ export const FIELD_METADATA =
 export const FRAME_FILTERING_DISABLED =
   "https://docs.voxel51.com/user_guide/using_datasets.html#disable-frame-filtering";
 
-export const LIGHTNING_MODE =
+export const QP_MODE =
   "https://docs.voxel51.com/user_guide/app.html#lightning-mode";
 
 export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
