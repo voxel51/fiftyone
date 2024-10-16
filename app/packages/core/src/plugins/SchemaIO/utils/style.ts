@@ -8,6 +8,17 @@ export function getColorByCode(code: ColorType) {
   }
 }
 
+export function getDisabledColors(code: ColorType) {
+  if (code) {
+    if (["primary", "secondary", ...fiftyOneColorNames].includes(code))
+      return [
+        "var(--fo-palette-primary-main)",
+        "var(--fo-palette-text-primary)",
+      ];
+    return [code, "var(--fo-palette-text-primary)"];
+  }
+}
+
 export function getFieldSx(options: FieldsetOptionsType) {
   const { color, variant } = options;
   const sx = {
