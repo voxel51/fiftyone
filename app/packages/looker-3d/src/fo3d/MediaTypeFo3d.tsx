@@ -383,16 +383,50 @@ export const MediaTypeFo3dComponent = () => {
       const currentSelectedLabels = await snapshot.getPromise(
         fos.selectedLabels
       );
-      const labelsFieldNames = currentSelectedLabels.map((l) => l.field);
+
+      if (currentSelectedLabels.length === 0) {
+        return;
+      }
 
       const labelBoundingBoxes = [];
-      for (const labelKey of labelsFieldNames) {
-        const thisLabelDimension = sample.sample[labelKey].dimensions as [
+
+      for (const selectedLabel of currentSelectedLabels) {
+        const field = selectedLabel.field;
+        const labelId = selectedLabel.labelId;
+
+        const labelFieldData = sample.sample[field];
+
+        let thisLabel = null;
+
+        if (Array.isArray(labelFieldData)) {
+          // if the field data is an array of labels
+          thisLabel = labelFieldData.find(
+            (l) => l._id === labelId || l.id === labelId
+          );
+        } else if (
+          labelFieldData &&
+          labelFieldData.detections &&
+          Array.isArray(labelFieldData.detections)
+        ) {
+          // if the field data contains detections
+          thisLabel = labelFieldData.detections.find(
+            (l) => l._id === labelId || l.id === labelId
+          );
+        } else {
+          // single label
+          thisLabel = labelFieldData;
+        }
+
+        if (!thisLabel) {
+          continue;
+        }
+
+        const thisLabelDimension = thisLabel.dimensions as [
           number,
           number,
           number
         ];
-        const thisLabelLocation = sample.sample[labelKey].location as [
+        const thisLabelLocation = thisLabel.location as [
           number,
           number,
           number
