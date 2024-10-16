@@ -1473,7 +1473,10 @@ class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
     Args:
-        label ("Loading"): a label for the loading indicator
+        text ("Loading"): a label for the loading indicator
+        variant ("spinner"): the variant of the loading indicator
+        color ("primary"): the color of the loading indicator
+        size ("medium"): the size of the loading indicator
     """
 
     def __init__(self, **kwargs):
