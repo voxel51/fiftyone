@@ -95,6 +95,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             device=self.device,
         )
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
+        self._model.eval()
         return self._model
 
     def _get_text_features(self):
