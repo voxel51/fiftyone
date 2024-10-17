@@ -1112,6 +1112,20 @@ export class FieldView extends View {
 }
 
 /**
+ * Operator class for describing a TextView {@link View} for an
+ * operator type.
+ */
+export class TextView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "TextView";
+  }
+  static fromJSON(json) {
+    return new TextView(json);
+  }
+}
+
+/**
  * Operator class for describing a TextFieldView {@link View} for an
  * operator type.
  */
@@ -1220,6 +1234,7 @@ const VIEWS = {
   MediaPlayerView,
   PromptView,
   FieldView,
+  TextView,
   TextFieldView,
   LazyFieldView,
 };
