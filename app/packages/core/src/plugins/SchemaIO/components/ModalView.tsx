@@ -1,10 +1,17 @@
+import React from "react";
 import { getComponentProps } from "../utils";
 import ModalBase from "@fiftyone/components/src/components/ModalBase/ModalBase";
 
 export default function ModalView(props) {
   const { schema } = props;
   const { view = {} } = schema;
-  const { modal, primaryButton, secondaryButton, callbackFunction } = view;
+  const {
+    modal,
+    primaryButton,
+    secondaryButton,
+    callbackFunction,
+    functionality,
+  } = view;
 
   return (
     <ModalBase
@@ -12,6 +19,7 @@ export default function ModalView(props) {
       primaryButton={primaryButton}
       secondaryButton={secondaryButton}
       callbackFunction={callbackFunction}
+      functionality={functionality}
       props={getComponentProps(props, "modalBase")}
     />
   );
