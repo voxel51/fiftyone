@@ -78,7 +78,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     setSavedTags(tags);
   };
   const sendTagsToCallback = () => {
-    callbackFunction(savedTags);
+    // callbackFunction(savedTags);
   };
 
   return (
