@@ -36,11 +36,14 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: 400,
+    width: 600,
     bgcolor: "background.paper",
     border: "2px solid #000",
     boxShadow: 24,
-    p: 4,
+    p: 6, // Padding for inner spacing
+    display: "flex", // Use flexbox to control alignment
+    flexDirection: "column", // Stack items vertically
+    justifyContent: "center", // Vertically center the content
   };
 
   const modalButtonView: ModalButtonView = {
@@ -57,12 +60,14 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     variant: "contained",
     color: primaryColor,
     label: primaryText,
+    width: "100%",
   };
 
   const secondaryButtonView = {
     variant: "outlined",
     color: secondaryColor,
     label: secondaryText,
+    width: "100%",
   };
 
   const [open, setOpen] = useState(false);
@@ -98,29 +103,47 @@ const ModalBase: React.FC<ModalBaseProps> = ({
         aria-describedby="modal-subtitle"
       >
         <Box sx={modalStyle}>
-          <Typography id="modal-title" component="h3">
+          <Typography id="modal-title" variant="h5" component="h5">
             {title}
           </Typography>
-          <Typography id="modal-subtitle" sx={{ fontWeight: 500, mt: 2 }}>
+          <Typography
+            id="modal-subtitle"
+            variant="h6"
+            component="h6"
+            sx={{ mt: 4 }}
+          >
             {subtitle}
           </Typography>
-          <Typography id="modal-body">{body}</Typography>
+          <Typography id="modal-body" sx={{ my: 1 }}>
+            {body}
+          </Typography>
           {functionality === "tagging" && (
             <DisplayTags saveTags={handleSaveTags} />
           )}
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <ButtonView
-              onClick={handleClose}
-              schema={{
-                view: secondaryButtonView,
-              }}
-            />
-            <ButtonView
-              onClick={sendTagsToCallback}
-              schema={{
-                view: primaryButtonView,
-              }}
-            />
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              mt: 2,
+              gap: 3,
+            }}
+          >
+            <Box sx={{ flexGrow: 1 }}>
+              <ButtonView
+                onClick={handleClose}
+                schema={{
+                  view: secondaryButtonView,
+                }}
+              />
+            </Box>
+            <Box sx={{ flexGrow: 1 }}>
+              <ButtonView
+                onClick={sendTagsToCallback}
+                schema={{
+                  view: primaryButtonView,
+                }}
+              />
+            </Box>
           </Box>
         </Box>
       </Modal>

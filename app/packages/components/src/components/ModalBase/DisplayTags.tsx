@@ -33,7 +33,9 @@ const DisplayTags: React.FC<DisplayTagsProps> = ({ saveTags }) => {
         flexDirection: "column",
         gap: 2,
         alignItems: "start",
-        padding: "10px",
+        paddingTop: 1,
+        paddingBottom: 1,
+        width: "100%", // Ensure the box takes full width
       }}
     >
       <Box
@@ -41,6 +43,7 @@ const DisplayTags: React.FC<DisplayTagsProps> = ({ saveTags }) => {
           display: "flex",
           alignItems: "center",
           gap: 1,
+          width: "100%", // Ensure the inner box takes full width
         }}
       >
         <TextField
@@ -48,6 +51,7 @@ const DisplayTags: React.FC<DisplayTagsProps> = ({ saveTags }) => {
           label="Enter tag"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          fullWidth // Make TextField take up the remaining width
         />
         <IconButton onClick={handleAddChip} color="primary">
           <AddIcon />
