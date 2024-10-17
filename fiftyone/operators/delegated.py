@@ -381,7 +381,7 @@ class DelegatedOperationService(object):
             **kwargs,
         )
 
-    def execute_scheduled_operations(
+    def execute_queued_operations(
         self,
         operator=None,
         delegation_target=None,
@@ -390,7 +390,7 @@ class DelegatedOperationService(object):
         log=False,
         **kwargs,
     ):
-        """Executes scheduled delegated operations matching the given criteria.
+        """Executes queued delegated operations matching the given criteria.
 
         Args:
             operator (None): the optional name of the operator to execute all
@@ -410,16 +410,16 @@ class DelegatedOperationService(object):
         else:
             paging = None
 
-        scheduled_ops = self.list_operations(
+        queued_ops = self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
             delegation_target=delegation_target,
-            run_state=ExecutionRunState.SCHEDULED,
+            run_state=ExecutionRunState.QUEUED,
             paging=paging,
             **kwargs,
         )
 
-        for op in scheduled_ops:
+        for op in queued_ops:
             self.execute_operation(operation=op, log=log)
 
     def count(self, filters=None, search=None):

@@ -8,7 +8,6 @@ FiftyOne delegated operation repository document.
 
 import logging
 from datetime import datetime
-from fiftyone.internal.util import is_remote_service
 
 from fiftyone.operators.executor import (
     ExecutionContext,
@@ -26,6 +25,7 @@ class DelegatedOperationDocument(object):
         operator: str = None,
         delegation_target: str = None,
         context: dict = None,
+        is_remote: bool = False,
     ):
         self.operator = operator
         self.label = None
@@ -36,12 +36,12 @@ class DelegatedOperationDocument(object):
             else context
         )
         self.run_state = (
-            ExecutionRunState.QUEUED
-            if is_remote_service()
-            else ExecutionRunState.SCHEDULED
+            ExecutionRunState.SCHEDULED
+            if is_remote
+            else ExecutionRunState.QUEUED
         )  # if running locally use SCHEDULED otherwise QUEUED
         self.run_link = None
-        self.queued_at = datetime.utcnow() if is_remote_service() else None
+        self.queued_at = datetime.utcnow() if not is_remote else None
         self.updated_at = datetime.utcnow()
         self.status = None
         self.dataset_id = None
@@ -49,9 +49,7 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.scheduled_at = (
-            datetime.utcnow() if not is_remote_service() else None
-        )
+        self.scheduled_at = datetime.utcnow() if is_remote else None
         self.result = None
         self.id = None
         self._doc = None

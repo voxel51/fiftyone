@@ -207,9 +207,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             ),
         )
         self.docs_to_delete.append(doc)
-        self.assertIsNotNone(doc.scheduled_at)
+        self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertIsNone(doc.metadata)
 
         doc2_metadata = {"inputs_schema": {}}
@@ -222,9 +222,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             metadata=doc2_metadata,
         )
         self.docs_to_delete.append(doc2)
-        self.assertIsNotNone(doc2.scheduled_at)
+        self.assertIsNotNone(doc2.queued_at)
         self.assertEqual(doc2.label, "@voxelfiftyone/operator/foo")
-        self.assertEqual(doc2.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
         self.assertIsNotNone(doc2.metadata)
         self.assertEqual(doc2.metadata, doc2_metadata)
 
@@ -247,16 +247,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dynamic_docs = []
         static_docs = []
 
-        # get all the existing counts of scheduled operations
-        initial_queued = len(self.svc.get_queued_operations())
+        # get all the existing counts of queued operations
         initial_queued = len(self.svc.get_queued_operations())
         initial_running = len(self.svc.get_running_operations())
         initial_scheduled = len(self.svc.get_scheduled_operations())
-        initial_dataset_scheduled = len(
-            self.svc.get_scheduled_operations(dataset_name=dataset_name)
+        initial_dataset_queued = len(
+            self.svc.get_queued_operations(dataset_name=dataset_name)
         )
-        initial_operator_scheduled = len(
-            self.svc.get_scheduled_operations(operator=operator)
+        initial_operator_queued = len(
+            self.svc.get_queued_operations(operator=operator)
         )
 
         # create a bunch of ops
@@ -294,22 +293,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             static_docs.append(doc.id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), initial_queued)
+        self.assertEqual(len(queued), 20 + initial_queued)
 
-        scheduled = self.svc.get_scheduled_operations(
-            dataset_name=dataset_name
-        )
-        self.assertEqual(len(scheduled), 10 + initial_dataset_scheduled)
+        queued = self.svc.get_queued_operations(dataset_name=dataset_name)
+        self.assertEqual(len(queued), 10 + initial_dataset_queued)
 
-        scheduled = self.svc.get_scheduled_operations(operator=operator)
-        self.assertEqual(len(scheduled), 10 + initial_operator_scheduled)
+        queued = self.svc.get_queued_operations(operator=operator)
+        self.assertEqual(len(queued), 10 + initial_operator_queued)
 
         # test set_running behavior
         for doc_id in dynamic_docs:
             self.svc.set_running(doc_id)
 
-        scheduled = self.svc.get_scheduled_operations()
-        self.assertEqual(len(scheduled), 10 + initial_scheduled)
+        queued = self.svc.get_queued_operations()
+        self.assertEqual(len(queued), 10 + initial_queued)
 
         running = self.svc.get_running_operations()
         # dynamic docs should be `running`
@@ -418,7 +415,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         original_updated_at = doc.updated_at
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         time.sleep(0.1)
 
         doc = self.svc.set_running(doc_id=doc.id)
@@ -459,14 +456,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].error)
-        self.assertDictEqual(results[0].result, MockOperator.result)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -492,19 +484,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].error)
-        self.assertDictEqual(results[0].result, MockOperator.result)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
         self.assertIsNotNone(doc.started_at)
-        self.assertIsNotNone(doc.scheduled_at)
+        self.assertIsNotNone(doc.queued_at)
         self.assertIsNotNone(doc.completed_at)
 
         self.assertIsNone(doc.result.error)
@@ -531,9 +518,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_scheduled_operations(
+        results = self.svc.execute_queued_operations(
             delegation_target="test_target_generator"
         )
         self.assertEqual(len(results), 1)
@@ -542,7 +529,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
         self.assertIsNotNone(doc.started_at)
-        self.assertIsNotNone(doc.scheduled_at)
+        self.assertIsNotNone(doc.queued_at)
         self.assertIsNotNone(doc.completed_at)
         self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
@@ -565,13 +552,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].error)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -598,7 +581,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(
             doc.metadata, {"inputs_schema": mock_inputs.to_json()}
         )
@@ -672,19 +655,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNotNone(results[0].error)
-        self.assertIsNone(results[0].result)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
         self.assertIsNotNone(doc.started_at)
-        self.assertIsNotNone(doc.scheduled_at)
+        self.assertIsNotNone(doc.queued_at)
         self.assertIsNone(doc.completed_at)
 
         self.assertIsNotNone(doc.result)
@@ -714,14 +692,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNotNone(results[0].error)
-        self.assertIsNone(results[0].result)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
@@ -734,18 +707,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertNotEqual(doc.id, rerun_doc.id)
         self.assertIsNotNone(rerun_doc.delegation_target)
         self.assertEqual(rerun_doc.delegation_target, doc.delegation_target)
-        self.assertEqual(rerun_doc.run_state, ExecutionRunState.SCHEDULED)
-        self.assertIsNotNone(rerun_doc.scheduled_at)
+        self.assertEqual(rerun_doc.run_state, ExecutionRunState.QUEUED)
+        self.assertIsNotNone(rerun_doc.queued_at)
         self.assertIsNone(rerun_doc.started_at)
         self.assertIsNone(rerun_doc.completed_at)
         self.assertIsNone(rerun_doc.result)
 
-        results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
-        )
-        self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].error)
-        self.assertDictEqual(results[0].result, MockOperator.result)
+        self.svc.execute_queued_operations(delegation_target="test_target")
 
         doc = self.svc.get(doc_id=rerun_doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -774,10 +742,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         # Execute once with original dataset name
-        self.svc.execute_scheduled_operations(delegation_target="test_target")
+        self.svc.execute_queued_operations(delegation_target="test_target")
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
 
@@ -797,18 +765,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.assertEqual(
                 rerun_doc.delegation_target, doc.delegation_target
             )
-            self.assertEqual(rerun_doc.run_state, ExecutionRunState.SCHEDULED)
-            self.assertIsNotNone(rerun_doc.scheduled_at)
+            self.assertEqual(rerun_doc.run_state, ExecutionRunState.QUEUED)
+            self.assertIsNotNone(rerun_doc.queued_at)
             self.assertIsNone(rerun_doc.started_at)
             self.assertIsNone(rerun_doc.completed_at)
             self.assertIsNone(rerun_doc.result)
 
-            results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
-            )
-            self.assertEqual(len(results), 1)
-            self.assertIsNone(results[0].error)
-            self.assertDictEqual(results[0].result, MockOperator.result)
+            self.svc.execute_queued_operations(delegation_target="test_target")
 
             doc = self.svc.get(doc_id=rerun_doc.id)
             self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -866,26 +829,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.docs_to_delete.append(doc)
-        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         # Rename dataset
         dataset.name = f"renamed_dataset_{uid}"
         dataset.save()
 
-        # Execute scheduled operation after saving the new dataset name
+        # Execute queued operation after saving the new dataset name
         try:
-            results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
-            )
-            self.assertEqual(len(results), 1)
-            self.assertIsNone(results[0].error)
-            self.assertDictEqual(results[0].result, MockOperator.result)
-
+            self.svc.execute_queued_operations(delegation_target="test_target")
             doc = self.svc.get(doc_id=doc.id)
             self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
         except:
             pytest.fail(
-                "Should not fail when executing scheduled operation with renamed dataset"
+                "Should not fail when executing queued operation with renamed dataset"
             )
         finally:
             dataset.delete()
@@ -897,7 +854,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = dataset._doc.id
 
         # create 100 docs, 25 of each state & for each user
-        scheduled = []
+        queued = []
         running = []
         completed = []
         failed = []
@@ -917,10 +874,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 )
                 time.sleep(
                     0.01
-                )  # ensure that the scheduled_at times are different
+                )  # ensure that the queued_at times are different
                 self.docs_to_delete.append(doc)
                 if i == 0:
-                    scheduled.append(doc)
+                    queued.append(doc)
                 elif i == 1:
                     running.append(doc)
                 elif i == 2:
@@ -943,7 +900,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=25,
-                sort_by=SortByField.SCHEDULED_AT,
+                sort_by=SortByField.QUEUED_AT,
                 sort_direction=SortDirection.DESCENDING,
             ),
         )
@@ -969,13 +926,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=1,
-                sort_by=SortByField.SCHEDULED_AT,
+                sort_by=SortByField.QUEUED_AT,
                 sort_direction=SortDirection.ASCENDING,
             ),
         )
 
         self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0].id, scheduled[0].id)
+        self.assertEqual(docs[0].id, queued[0].id)
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_0",
@@ -983,7 +940,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
-        self.assertEqual(states, [ExecutionRunState.SCHEDULED] * 25)
+        self.assertEqual(states, [ExecutionRunState.QUEUED] * 25)
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_1",
@@ -1009,7 +966,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         states = [doc.run_state for doc in docs]
         self.assertEqual(states, [ExecutionRunState.FAILED] * 25)
 
-        # test paging - page through all the scheduled ops
+        # test paging - page through all the queued ops
         docs = [0]
         pages = 0
         limit = 7
@@ -1017,11 +974,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         while len(docs) > 0:
             docs = self.svc.list_operations(
                 dataset_name=dataset_name,
-                run_state=ExecutionRunState.SCHEDULED,
+                run_state=ExecutionRunState.QUEUED,
                 paging=DelegatedOperationPagingParams(
                     skip=pages * limit,
                     limit=limit,
-                    sort_by=SortByField.SCHEDULED_AT,
+                    sort_by=SortByField.QUEUED_AT,
                     sort_direction=SortDirection.DESCENDING,
                 ),
             )
@@ -1069,7 +1026,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value._doc.id = dataset_id
 
         # create 100 docs, 25 of each state & for each user
-        scheduled = []
+        queued = []
         operator = f"@voxelfiftyone/operator/test_{ObjectId}"
         for i in range(25):
             doc = self.svc.queue_operation(
@@ -1082,18 +1039,16 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                     }
                 ),
             )
-            time.sleep(
-                0.01
-            )  # ensure that the scheduled_at times are different
+            time.sleep(0.01)  # ensure that the queued_at times are different
             self.docs_to_delete.append(doc)
-            scheduled.append(doc)
+            queued.append(doc)
 
         ops = self.svc.list_operations(
             dataset_name=dataset_name,
             paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=100,
-                sort_by=SortByField.SCHEDULED_AT,
+                sort_by=SortByField.QUEUED_AT,
                 sort_direction=SortDirection.DESCENDING,
             ),
         )
@@ -1107,7 +1062,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=100,
-                sort_by=SortByField.SCHEDULED_AT,
+                sort_by=SortByField.QUEUED_AT,
                 sort_direction=SortDirection.DESCENDING,
             ),
         )
@@ -1142,13 +1097,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 )
                 time.sleep(
                     0.01
-                )  # ensure that the scheduled_at times are different
+                )  # ensure that the queued_at times are different
                 self.docs_to_delete.append(doc)
 
         paging = DelegatedOperationPagingParams(
             skip=0,
             limit=5000,
-            sort_by=SortByField.SCHEDULED_AT,
+            sort_by=SortByField.QUEUED_AT,
             sort_direction=SortDirection.ASCENDING,
         )
 
@@ -1245,7 +1200,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 )
                 time.sleep(
                     0.01
-                )  # ensure that the scheduled_at times are different
+                )  # ensure that the queued_at times are different
                 self.docs_to_delete.append(doc)
 
         # test paging - get a page of everything
