@@ -1,5 +1,4 @@
 import { Box } from "@mui/material";
-import React from "react";
 import { getComponentProps } from "../utils";
 import PillBadge from "@fiftyone/components/src/components/PillBadge/PillBadge";
 
