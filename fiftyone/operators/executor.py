@@ -571,24 +571,24 @@ class ExecutionContextUser(object):
     """Represents the user executing the operator.
 
     Args:
-        name (None): the user name
         id (None): the user ID
         email (None): the user email
+        name (None): the user name
         role (None): the user role
-        dataset_permission (None): the dataset permission
+        dataset_permission (None): the user's dataset permission
     """
 
     def __init__(
         self,
-        email=None,
         id=None,
+        email=None,
         name=None,
         role=None,
         dataset_permission=None,
         _request_token=None,
     ):
-        self.email = email
         self.id = id
+        self.email = email
         self.name = name
         self.role = role
         self.dataset_permission = dataset_permission
@@ -597,8 +597,8 @@ class ExecutionContextUser(object):
     @classmethod
     def from_dict(self, user):
         return ExecutionContextUser(
-            email=user.get("email", None),
             id=user.get("id", None),
+            email=user.get("email", None),
             name=user.get("name", None),
             role=user.get("role", None),
             dataset_permission=user.get("dataset_permission", None),
@@ -607,8 +607,8 @@ class ExecutionContextUser(object):
 
     def to_dict(self):
         return {
-            "email": self.email,
             "id": self.id,
+            "email": self.email,
             "name": self.name,
             "role": self.role,
             "dataset_permission": self.dataset_permission,
@@ -635,6 +635,8 @@ class ExecutionContext(contextlib.AbstractContextManager):
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
             plugin's definition
+        user (None): the :class:`ExecutionContextUser` for the user executing
+            the operation, if known
     """
 
     def __init__(
@@ -643,9 +645,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
-        user: ExecutionContextUser = None,
         operator_uri=None,
         required_secrets=None,
+        user=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -672,6 +674,35 @@ class ExecutionContext(contextlib.AbstractContextManager):
             self._panel = PanelRef(self)
 
         self.__context_tokens = None
+
+    def __enter__(self):
+        if self.__context_tokens:
+            raise RuntimeError(
+                "ExecutionContext can't run with nested with expressions"
+            )
+
+        self.__context_tokens = [
+            ficv.running_user_id.set(self.user_id),
+            ficv.running_user_request_token.set(self.user_request_token),
+            ficv.no_singleton_cache.set(True),
+        ]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            (
+                running_uid_tok,
+                running_user_request_token,
+                singleton_token,
+            ) = self.__context_tokens
+            self.__context_tokens = None
+            ficv.running_user_id.reset(running_uid_tok)
+            ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.no_singleton_cache.reset(singleton_token)
+        except ValueError:
+            # In case of any error, swallow and just reset to defaults.
+            ficv.running_user_id.set(None)
+            ficv.running_user_request_token.set(None)
+            ficv.no_singleton_cache.set(False)
 
     @property
     def dataset(self):
@@ -896,40 +927,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def group_slice(self):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
-
-    @property
-    def user_request_token(self):
-        """The request token authenticating the user executing the operation."""
-        return self.user._request_token if self.user else None
-
-    def __enter__(self):
-        if self.__context_tokens:
-            raise RuntimeError(
-                "ExecutionContext can't run with nested with expressions"
-            )
-
-        self.__context_tokens = [
-            ficv.running_user_id.set(self.user_id),
-            ficv.running_user_request_token.set(self.user_request_token),
-            ficv.no_singleton_cache.set(True),
-        ]
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            (
-                running_uid_tok,
-                running_user_request_token,
-                singleton_token,
-            ) = self.__context_tokens
-            self.__context_tokens = None
-            ficv.running_user_id.reset(running_uid_tok)
-            ficv.running_user_request_token.reset(running_user_request_token)
-            ficv.no_singleton_cache.reset(singleton_token)
-        except ValueError:
-            # In case of any error, swallow and just reset to defaults.
-            ficv.running_user_id.set(None)
-            ficv.running_user_request_token.set(None)
-            ficv.no_singleton_cache.set(False)
 
     def query_performance(self):
         """Whether query performance is enabled."""
