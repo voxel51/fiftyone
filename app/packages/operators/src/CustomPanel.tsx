@@ -12,7 +12,11 @@ import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
-import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
+import {
+  CustomPanelProps,
+  useCustomPanelHooks,
+  trackPanelClose,
+} from "./useCustomPanelHooks";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel } = props;
@@ -33,6 +37,7 @@ export function CustomPanel(props: CustomPanelProps) {
   useEffect(() => {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
+      trackPanelClose(panelName);
     });
   }, []);
 
