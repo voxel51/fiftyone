@@ -2349,7 +2349,7 @@ class ModalView(Button):
     """
 
     def __init__(self, **kwargs):
-        if "callback_function" not in kwargs or not callable(
+        if "callbackFunction" not in kwargs or not callable(
             kwargs["callback_function"]
         ):
             raise ValueError(
