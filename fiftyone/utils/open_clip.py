@@ -145,7 +145,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         if self._using_gpu:
             imgs = imgs.cuda()
 
-        with torch.no_grad(), torch.cuda.amp.autocast():
+        with torch.no_grad(), torch.amp.autocast("cuda"):
             image_features = self._model.encode_image(imgs)
             text_features = self._get_text_features()
 
