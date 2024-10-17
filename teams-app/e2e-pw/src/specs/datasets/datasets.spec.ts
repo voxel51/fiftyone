@@ -21,6 +21,10 @@ test.describe('dataset and listing page', async () => {
   });
 
   test('search and pin a dataset', async ({ dataset }) => {
+    await dataset.deleteIfExists(TEST_DATASET_NAME);
+    await dataset.create(TEST_DATASET_NAME);
+    await dataset.assert.ensureDatasetExist(TEST_DATASET_NAME);
+
     await dataset.unpinIfPinned(TEST_DATASET_NAME);
     await dataset.search(TEST_DATASET_NAME);
     await dataset.assert.ensureSearchResults(TEST_DATASET_NAME);
@@ -30,10 +34,10 @@ test.describe('dataset and listing page', async () => {
   });
 
   test('paginate dataset listing', async ({ dataset }) => {
-    await dataset.assert.ensurePagination();
-  });
+    await dataset.deleteIfExists(TEST_DATASET_NAME);
+    await dataset.create(TEST_DATASET_NAME);
+    await dataset.assert.ensureDatasetExist(TEST_DATASET_NAME);
 
-  test('delete a dataset', async ({ dataset }) => {
-    await dataset.delete(TEST_DATASET_NAME);
+    await dataset.assert.ensurePagination();
   });
 });

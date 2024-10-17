@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL;
 const USERNAME = process.env.KC_ADMIN_USERNAME;
@@ -115,10 +115,21 @@ export class KeycloakPom {
     const passwordInput = page.locator('input[name="password"]');
     await passwordInput.fill(USER_PASSWORD);
 
-    const loginButton = page.locator('input[name="login"]');
+    let loginButton = page.locator('input[name="login"]');
+    if (!(await loginButton.count())) {
+      loginButton = page.locator('button[name="login"]');
+    }
+    if (!(await loginButton.count())) {
+      throw new Error('Cannot find the keycloak login button');
+    }
     await loginButton.click();
 
     await page.waitForLoadState('networkidle');
+
+    const errorSpan = page.locator('span#input-error');
+    const isErrorPresent = await errorSpan.count();
+
+    expect(isErrorPresent).toBe(0);
   }
 }
 

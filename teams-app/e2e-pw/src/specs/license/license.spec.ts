@@ -87,10 +87,11 @@ test.describe('Tests license data displayed in Teams App', async () => {
     await superadmin.addUser(KC_GUEST_USERNAME, KC_GUEST_EMAIL);
 
     await license.goTo(`${BASE_URL}/settings/team/users`);
+    await license.page.reload();
     const newSeats = await license.getSeatsInfo();
 
     await superadmin.goToAdminPage();
-    await superadmin.removeUser(KC_GUEST_USERNAME);
+    await superadmin.removeUser(KC_GUEST_EMAIL);
 
     expect(newSeats.users.current).toBeGreaterThan(currentSeats.users.current);
     expect(newSeats.users.remaining).toBeLessThan(currentSeats.users.remaining);
@@ -105,7 +106,7 @@ test.describe('Tests license data displayed in Teams App', async () => {
     await page.goto(`${BASE_URL}/datasets`);
 
     //we should verify that the datasets page is loaded
-    expect(dataset.createBtn).toBeVisible();
+    await expect(dataset.createBtn).toBeVisible();
 
     await notification.assert.ensureComplianceNotification();
   });

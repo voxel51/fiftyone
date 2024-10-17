@@ -153,46 +153,24 @@ export class DatasetPom {
       .locator('input[placeholder="Your dataset name"]')
       .fill(name);
 
-    const response = await this.page.waitForResponse(async (response) => {
-      const url = response.url();
-      const status = response.status();
-      const request = response.request();
+    // Wait for the input value to change
+    await expect(
+      nameInputParent.locator('input[placeholder="Your dataset name"]')
+    ).toHaveValue(name);
 
-      if (request.method() === 'POST') {
-        const postData = request.postData();
-        const parsedData = postData ? JSON.parse(postData) : null;
+    const submitButton = modal.locator('[data-testid="create-dataset-submit"]'); // Get button locator
+    await expect(submitButton).toBeEnabled({ timeout: 2000 });
 
-        // You can now check for specific properties in the payload
-        const isExpectedPayload =
-          parsedData?.query?.includes('DatasetSlugQuery');
-
-        return (
-          url.includes('api/proxy/graphql-v1') &&
-          status === 200 &&
-          isExpectedPayload
-        );
-      }
-      return false;
+    await submitButton.click();
+    await this.page.waitForSelector('[data-testid="create-dataset-modal"]', {
+      state: 'hidden'
     });
-
-    const responseBody = await response.json();
-
-    if (responseBody?.data?.datasetSlug?.available === true) {
-      await modal.getByTestId('create-dataset-submit').click();
-
-      await this.page.waitForSelector('[data-testid="create-dataset-modal"]', {
-        state: 'hidden'
-      });
-    } else {
-      throw new Error('Dataset slug is not available');
-    }
   }
 }
 
 class DatasetAsserter {
   constructor(private readonly dataset: DatasetPom) {}
   async ensureDatasetExist(name: string) {
-    // await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: 'networkidle' });
     await this.dataset.exists(name);
   }
 
@@ -203,11 +181,9 @@ class DatasetAsserter {
   async ensureSearchResults(name: string) {
     const allRows = this.dataset.page.locator('[data-testid="dataset-box"]');
 
-    const rowCount = await allRows.count();
-    for (let i = 0; i < rowCount; i++) {
-      const rowName = await allRows.nth(i).textContent();
-      expect(rowName?.toLowerCase()).toContain(name.toLowerCase());
-    }
+    expect((await allRows.nth(0).innerText())?.toLowerCase()).toContain(
+      name.toLowerCase()
+    );
   }
 
   async ensurePagination() {

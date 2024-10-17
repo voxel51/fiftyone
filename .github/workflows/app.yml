@@ -24,6 +24,11 @@ jobs:
           file: teams-app/Dockerfile
           push: false
           tags: voxel51/fiftyone-teams-app:${{ github.sha }}
+
+  teams-app-e2e-tests:
+    uses: ./.github/workflows/teams-app-e2e.yml
+    secrets: inherit
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -34,7 +39,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
           check-latest: true
       # ===================================================
       - name: Install Teams App Dependencies

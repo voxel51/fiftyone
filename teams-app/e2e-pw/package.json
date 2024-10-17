@@ -22,7 +22,6 @@
     },
     "scripts": {
         "lint": "bash -c 'set +e; eslint --quiet .; set -e; tsc --skipLibCheck --sourceMap false'",
-        "sync-oss": "./scripts/sync-oss.sh",
         "e2e": "playwright test -c playwright.config.ts",
         "e2e:ui": "playwright test --ui -c playwright.config.ts"
     },

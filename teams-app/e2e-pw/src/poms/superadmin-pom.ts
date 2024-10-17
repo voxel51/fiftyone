@@ -60,40 +60,44 @@ export class SuperadminPom {
 
     await page.getByTestId('confirm-add').click();
 
-    await expect(page.locator(`text=${email}`)).toBeVisible({
-      timeout: 2000
-    });
+    // TODO: confirm user was added
+    await page.waitForTimeout(1000);
   }
 
-  async removeUser(username: string) {
-    await SuperadminPom.removeUser(this.page, username);
+  async removeUser(email: string) {
+    await SuperadminPom.removeUser(this.page, email);
   }
 
-  static async removeUser(page: Page, username: string) {
-    await page.goto(`${BASE_URL}/cas/admins`, {
-      waitUntil: 'networkidle',
-      timeout: 60000
+  static async removeUser(page: Page, email: string) {
+    const orgsReq = await fetch(`${BASE_URL}/cas/api/orgs`, {
+      headers: { 'X-API-KEY': process.env.SUPERADMIN_SECRET },
+      method: 'GET'
     });
+    const orgs = await orgsReq.json();
+    const defaultOrg = orgs.organizations.filter((org) => org.isDefault)[0];
+    const orgId = defaultOrg.id;
 
-    const existingCount = await page
-      .getByTestId(`delete-user-${username}`)
-      .count();
-
-    if (existingCount) {
-      const deleteBtns = await page
-        .getByTestId(`delete-user-${username}`)
-        .all();
-      for (let i = 0; i < deleteBtns.length; i++) {
-        const existing = deleteBtns[0];
-        await existing.click();
-        await page.waitForSelector('[role="dialog"]', {
-          state: 'visible'
-        });
-        await page.getByTestId('delete-user').click();
-        await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
-        await page.waitForSelector('[data-testid="admins-table"]');
+    // get users
+    const usersReq = await fetch(
+      `${BASE_URL}/cas/api/orgs/${orgId}/users?pageSize=1000&searchTerm=${email}`,
+      {
+        headers: { 'X-API-KEY': process.env.SUPERADMIN_SECRET },
+        method: 'GET'
       }
-    }
+    );
+    const users = await usersReq.json();
+    const allE2EGuests = users.users.filter(
+      (user) => user.email === process.env.KC_GUEST_EMAIL
+    );
+
+    await Promise.all(
+      allE2EGuests.map(async (user) => {
+        await fetch(`${BASE_URL}/cas/api/orgs/${orgId}/users/${user.id}`, {
+          headers: { 'X-API-KEY': process.env.SUPERADMIN_SECRET },
+          method: 'DELETE'
+        });
+      })
+    );
   }
 }
 

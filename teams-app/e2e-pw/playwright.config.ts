@@ -1,13 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
+// Load environment variables based on CI or development mode
 dotenv.config({ path: process.env.CI ? '.env.ci' : '.env.dev' });
 
 export const STORAGE_STATE_PATH = 'playwright/.auth/user.json';
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
 export default defineConfig({
   testDir: './src',
   testMatch: '**/?(*.)+(spec).ts?(x)',
@@ -18,24 +16,19 @@ export default defineConfig({
     'playwright-report',
     'older-specs'
   ],
-  /* Run tests in files in parallel */
   fullyParallel: false,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
   retries: process.env.CI ? 2 : 1,
-  /* Use max workers */
-  workers: undefined,
+  workers: 1, // Single worker to ensure no parallel execution
   timeout: 60000,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
 
+  use: {
+    trace: 'on-first-retry',
     baseURL: process.env.BASE_URL
   },
+
+  // Define test projects
   projects: [
     {
       name: 'keycloak-auth',
