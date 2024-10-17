@@ -1939,18 +1939,18 @@ class SaveWorkspace(foo.Operator):
             ),
         )
 
-        # @todo infer this automatically from current App spaces
+        current_spaces = ctx.spaces.to_json(True) if ctx.spaces else None
         spaces_prop = inputs.oneof(
             "spaces",
             [types.String(), types.Object()],
-            default=None,
+            default=current_spaces,
             required=True,
             label="Spaces",
             description=(
                 "JSON description of the workspace to save: "
                 "`print(session.spaces.to_json(True))`"
             ),
-            view=types.CodeView(),
+            view=types.CodeView(language="json"),
         )
 
         spaces = ctx.params.get("spaces", None)
@@ -2034,11 +2034,12 @@ def _edit_workspace_info_inputs(ctx, inputs):
     for key in workspaces:
         workspace_selector.add_choice(key, label=key)
 
-    # @todo default to current workspace name, if one is currently open
+    current_workspace = ctx.spaces.name if ctx.spaces else None
     inputs.enum(
         "name",
         workspace_selector.values(),
         required=True,
+        default=current_workspace,
         label="Workspace",
         description="The workspace to edit",
         view=workspace_selector,
@@ -2102,11 +2103,11 @@ class DeleteWorkspace(foo.Operator):
             workspace_selector = types.AutocompleteView()
             for key in workspaces:
                 workspace_selector.add_choice(key, label=key)
-
+            current_workspace = ctx.spaces.name if ctx.spaces else None
             inputs.enum(
                 "name",
                 workspace_selector.values(),
-                default=None,
+                default=current_workspace,
                 required=True,
                 label="Workspace",
                 description="The workspace to delete",
