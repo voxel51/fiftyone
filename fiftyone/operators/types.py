@@ -2350,10 +2350,10 @@ class ModalView(Button):
 
     def __init__(self, **kwargs):
         if "callbackFunction" not in kwargs or not callable(
-            kwargs["callback_function"]
+            kwargs["callbackFunction"]
         ):
             raise ValueError(
-                "The 'callback_function' parameter is missing or must be function that is callable."
+                "The 'callbackFunction' parameter is missing or must be function that is callable."
             )
         super().__init__(**kwargs)
 
