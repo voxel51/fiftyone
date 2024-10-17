@@ -5,11 +5,7 @@ import {
   useTheme,
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import {
-  configuredSidebarModeDefault,
-  groupStatistics,
-  sidebarMode,
-} from "@fiftyone/state";
+import { groupStatistics } from "@fiftyone/state";
 import React, { RefObject, useMemo } from "react";
 import {
   useRecoilState,
@@ -17,7 +13,7 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { QP_MODE, SIDEBAR_MODE } from "../../utils/links";
+import { QP_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import { Button } from "../utils";
@@ -114,43 +110,6 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
-const SidebarMode = () => {
-  const mode = useRecoilValue(configuredSidebarModeDefault(false));
-  const setMode = useSetRecoilState(sidebarMode(false));
-  const theme = useTheme();
-
-  if (mode === "disabled") {
-    return null;
-  }
-
-  return (
-    <>
-      <ActionOption
-        id="sidebar-mode"
-        text="Sidebar mode"
-        href={SIDEBAR_MODE}
-        title={"More on sidebar mode"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-
-      <TabOption
-        active={mode}
-        options={["fast", "best", "all"].map((value) => ({
-          text: value,
-          title: value,
-          onClick: () => setMode(value as "fast" | "best" | "all"),
-        }))}
-      />
-    </>
-  );
-};
-
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
@@ -222,79 +181,85 @@ const QueryPerformance = () => {
   const reset = useResetRecoilState(fos.lightningThreshold);
   const count = useRecoilValue(fos.datasetSampleCount);
   const theme = useTheme();
-  const enableQueryPerformanceConfig = useRecoilValue(fos.enableQueryPerformanceConfig);
-  const defaultQueryPerformanceConfig = useRecoilValue(fos.defaultQueryPerformanceConfig);
-  const enableQpMode = enableQueryPerformanceConfig && defaultQueryPerformanceConfig;
-
-  if (enableQpMode) return (
-    <>
-      <ActionOption
-        id="qp-mode"
-        text="Query Performance mode"
-        href={QP_MODE}
-        title={"More on Query Performance mode"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <TabOption
-        active={(threshold === null) ? "disable" : "enable"}
-        options={["disable", "enable"].map((value) => ({
-          text: value,
-          title: value,
-          dataCy: `qp-mode-${value}`,
-          onClick: () =>
-            setThreshold(value === "disable" ? null : config ?? count),
-        }))}
-      />
-      {threshold !== null && (
-        <>
-          <Selector
-            placeholder="sample threshold"
-            onSelect={async (text) => {
-              if (text === "") {
-                reset();
-                return "";
-              }
-              const value = parseInt(text);
-
-              if (!isNaN(value)) {
-                setThreshold(value);
-                return text;
-              }
-
-              return "";
-            }}
-            inputStyle={{
-              fontSize: "1rem",
-              textAlign: "right",
-              float: "right",
-              width: "100%",
-            }}
-            key={threshold}
-            value={threshold === null ? "" : String(threshold)}
-            containerStyle={{ display: "flex", justifyContent: "right" }}
-          />
-          {config !== threshold && config !== null && (
-            <Button
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-              text={"Reset"}
-              onClick={reset}
-            />
-          )}
-        </>
-      )}
-    </>
+  const enableQueryPerformanceConfig = useRecoilValue(
+    fos.enableQueryPerformanceConfig
   );
+  const defaultQueryPerformanceConfig = useRecoilValue(
+    fos.defaultQueryPerformanceConfig
+  );
+  const enableQpMode =
+    enableQueryPerformanceConfig && defaultQueryPerformanceConfig;
+
+  if (enableQpMode)
+    return (
+      <>
+        <ActionOption
+          id="qp-mode"
+          text="Query Performance mode"
+          href={QP_MODE}
+          title={"More on Query Performance mode"}
+          style={{
+            background: "unset",
+            color: theme.text.primary,
+            paddingTop: 0,
+            paddingBottom: 0,
+          }}
+          svgStyles={{ height: "1rem", marginTop: 7.5 }}
+        />
+        <TabOption
+          active={threshold === null ? "disable" : "enable"}
+          options={["disable", "enable"].map((value) => ({
+            text: value,
+            title: value,
+            dataCy: `qp-mode-${value}`,
+            onClick: () =>
+              setThreshold(value === "disable" ? null : config ?? count),
+          }))}
+        />
+        {threshold !== null && (
+          <>
+            <Selector
+              placeholder="sample threshold"
+              onSelect={async (text) => {
+                if (text === "") {
+                  reset();
+                  return "";
+                }
+                const value = parseInt(text);
+
+                if (!isNaN(value)) {
+                  setThreshold(value);
+                  return text;
+                }
+
+                return "";
+              }}
+              inputStyle={{
+                fontSize: "1rem",
+                textAlign: "right",
+                float: "right",
+                width: "100%",
+              }}
+              key={threshold}
+              value={threshold === null ? "" : String(threshold)}
+              containerStyle={{ display: "flex", justifyContent: "right" }}
+            />
+            {config !== threshold && config !== null && (
+              <Button
+                style={{
+                  margin: "0.25rem -0.5rem",
+                  height: "2rem",
+                  borderRadius: 0,
+                  textAlign: "center",
+                }}
+                text={"Reset"}
+                onClick={reset}
+              />
+            )}
+          </>
+        )}
+      </>
+    );
 };
 
 const HideFieldSetting = () => {
@@ -328,8 +293,10 @@ const HideFieldSetting = () => {
 };
 
 const ShowModalNav = () => {
-  const [showModalNavigationControls, setShowModalNavigationControls] =
-    useRecoilState(fos.showModalNavigationControls);
+  const [
+    showModalNavigationControls,
+    setShowModalNavigationControls,
+  ] = useRecoilState(fos.showModalNavigationControls);
   const theme = useTheme();
 
   return (
@@ -376,7 +343,6 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       <MediaFields modal={modal} />
       <Patches modal={modal} />
       {!view?.length && <QueryPerformance />}
-      {!modal && <SidebarMode />}
       <SortFilterResults modal={modal} />
     </Popout>
   );

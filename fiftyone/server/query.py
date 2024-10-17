@@ -207,14 +207,6 @@ class NamedKeypointSkeleton(KeypointSkeleton):
     name: str
 
 
-@gql.enum
-class SidebarMode(Enum):
-    all = "all"
-    best = "best"
-    disabled = "disabled"
-    fast = "fast"
-
-
 @gql.type
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
@@ -225,7 +217,6 @@ class DatasetAppConfig:
     media_fallback: bool = False
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
-    sidebar_mode: t.Optional[SidebarMode]
     spaces: t.Optional[JSON]
 
 
@@ -386,7 +377,6 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
-    sidebar_mode: SidebarMode
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool

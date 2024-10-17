@@ -23,7 +23,6 @@ export default r(graphql`
       showLabel
       showSkeletons
       showTooltip
-      sidebarMode
       theme
       timezone
       useFrameNumber

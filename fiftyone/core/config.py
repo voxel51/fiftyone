@@ -433,12 +433,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
-        self.sidebar_mode = self.parse_string(
-            d,
-            "sidebar_mode",
-            env_var="FIFTYONE_APP_SIDEBAR_MODE",
-            default="fast",
-        )
         self.theme = self.parse_string(
             d,
             "theme",
@@ -509,17 +503,6 @@ class AppConfig(EnvConfig):
                 default_color_by,
             )
             self.color_by = default_color_by
-
-        supported_sidebar_modes = {"all", "best", "fast", "disabled"}
-        default_sidebar_mode = "best"
-        if self.sidebar_mode not in supported_sidebar_modes:
-            logger.warning(
-                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
-                self.sidebar_mode,
-                supported_sidebar_modes,
-                default_sidebar_mode,
-            )
-            self.sidebar_mode = default_sidebar_mode
 
         supported_themes = {"browser", "dark", "light"}
         default_theme = "browser"
