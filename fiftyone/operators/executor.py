@@ -826,6 +826,13 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return self._user
 
     @property
+    def user_request_token(self):
+        """The request token authenticating the user executing the operation,
+        if known.
+        """
+        return self._user._request_token if self._user else None
+
+    @property
     def panel_id(self):
         """The ID of the panel that invoked the operator, if any."""
         # @todo: move panel_id to top level param
