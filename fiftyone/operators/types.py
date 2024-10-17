@@ -2323,6 +2323,41 @@ class IconButtonView(Button):
         super().__init__(**kwargs)
 
 
+class ModalView(Button):
+    """Represents a button in a :class:`View` that opens up an interactive modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        schema = {
+            "modal": {"title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body"},
+            "primary_button": {"text": "This is the primary button", "color": "primary"},
+            "secondary_button": {"text": "This is the secondary button", "color": "secondary"},
+            "callback_function": do_something()
+        }
+        modal = types.ModalView(**schema, label="Open Modal", variant="outlined")
+
+        inputs = types.Object()
+        inputs.view("modal_btn", modal)
+
+    Args:
+        modal: the textual content of the modal
+        primary_button: the properties of the primary button
+        secondary_button: the properties of the secondary button
+        callback_function: the function to execute when the primary button is clicked
+    """
+
+    def __init__(self, **kwargs):
+        if "callback_function" not in kwargs or not callable(
+            kwargs["callback_function"]
+        ):
+            raise ValueError(
+                "The 'callback_function' parameter is missing or must be function that is callable."
+            )
+        super().__init__(**kwargs)
+
+
 class HStackView(GridView):
     """Displays properties of an object as a horizontal stack of components.
 
