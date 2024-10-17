@@ -2332,9 +2332,10 @@ class ModalView(Button):
 
         schema = {
             "modal": {"title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body"},
-            "primary_button": {"text": "This is the primary button", "color": "primary"},
-            "secondary_button": {"text": "This is the secondary button", "color": "secondary"},
-            "callback_function": do_something()
+            "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary"},
+            "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
+            "callbackFunction": do_something(),
+            "functionality": "tagging",
         }
         modal = types.ModalView(**schema, label="Open Modal", variant="outlined")
 
@@ -2343,9 +2344,10 @@ class ModalView(Button):
 
     Args:
         modal: the textual content of the modal
-        primary_button: the properties of the primary button
-        secondary_button: the properties of the secondary button
-        callback_function: the function to execute when the primary button is clicked
+        primaryButton: the properties of the primary button
+        secondaryButton: the properties of the secondary button
+        callbackFunction: the function to execute when the primary button is clicked
+        functionality (None): the name of the functionality to execute when the primary button is clicked
     """
 
     def __init__(self, **kwargs):
