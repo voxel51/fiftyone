@@ -462,7 +462,7 @@ async def resolve_type(
         return ExecutionResult(error=traceback.format_exc())
 
 
-async def resolve_type_with_context(request_params, target: str = None):
+async def resolve_type_with_context(request_params, target=None):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
@@ -650,11 +650,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
-        self.user = user
 
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
+        self._user = user
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -816,7 +816,14 @@ class ExecutionContext(contextlib.AbstractContextManager):
     @property
     def user_id(self):
         """The ID of the user executing the operation, if known."""
-        return self.user.id if self.user else None
+        return self._user.id if self._user else None
+
+    @property
+    def user(self):
+        """An object of information about the user executing the operation, if
+        known.
+        """
+        return self._user
 
     @property
     def panel_id(self):
