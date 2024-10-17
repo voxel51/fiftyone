@@ -402,6 +402,15 @@ method:
     from transformers import GLPNForDepthEstimation
     model = GLPNForDepthEstimation.from_pretrained("vinvino02/glpn-kitti")
 
+    # Depth Anything
+    from transformers import AutoModelForDepthEstimation
+    model = AutoModelForDepthEstimation.from_pretrained("LiheYoung/depth-anything-small-hf")
+
+    # Depth Anything-V2
+    from transformers import AutoModelForDepthEstimation
+    model = AutoModelForDepthEstimation.from_pretrained("depth-anything/Depth-Anything-V2-Small-hf")
+
+
 
 .. code-block:: python
     :linenos:
