@@ -1587,6 +1587,39 @@ class CVATImage(object):
         )
 
 
+class HasCVATBinMask:
+    @staticmethod
+    def cvat_rle_to_binary_image_mask(
+        cvat_rle, left, top, width, img_h: int, img_w: int
+    ) -> np.ndarray:
+        # Source https://github.com/cvat-ai/cvat/issues/6487#issuecomment-1640097518
+        # convert CVAT tight object RLE to COCO-style whole image mask
+        rle = cvat_rle
+        mask = np.zeros((img_h, img_w), dtype=np.uint8)
+        value = 0
+        offset = 0
+        for rle_count in rle:
+            while rle_count > 0:
+                y, x = divmod(offset, width)
+                mask[y + top][x + left] = value
+                rle_count -= 1
+                offset += 1
+            value = 1 - value
+
+        return mask
+
+    @staticmethod
+    def mask_to_cvat_rle(binary_mask: np.ndarray) -> np.array:
+        counts = []
+        for i, (value, elements) in enumerate(
+            itertools.groupby(binary_mask.ravel(order="C"))
+        ):
+            if i == 0 and value == 1:
+                counts.append(0)
+            counts.append(len(list(elements)))
+        return counts
+
+
 class HasCVATPoints(object):
     """Mixin for CVAT annotations that store a list of ``(x, y)`` pixel
     coordinates.
@@ -5905,7 +5938,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ):
                     # A piece of an instance mask
                     label_type = "detections"
-                    label = cvat_shape.to_polyline(closed=True, filled=True)
+                    label = cvat_shape.to_instance_detection()
                 else:
                     # A regular polyline or polygon
                     if expected_label_type in ("polyline", "polylines"):
@@ -6402,32 +6435,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif label_type in ("instance", "instances"):
                 if det.mask is None:
                     continue
+                x, y, _, _ = det.bounding_box
+                frame_width, frame_height = frame_size
+                mask_height, mask_width = det.mask.shape
+                xtl, ytl = round(x * frame_width), round(y * frame_height)
+                xbr, ybr = xtl + mask_width, ytl + mask_height
 
-                polygon = det.to_polyline()
-                for points in polygon.points:
-                    if len(points) < 3:
-                        continue  # CVAT polygons must contain >= 3 points
-
-                    abs_points = HasCVATPoints._to_abs_points(
-                        points, frame_size
-                    )
-                    flattened_points = list(
-                        itertools.chain.from_iterable(abs_points)
-                    )
-
-                    curr_shapes.append(
-                        {
-                            "type": "polygon",
-                            "occluded": is_occluded,
-                            "z_order": 0,
-                            "points": flattened_points,
-                            "label_id": class_name,
-                            "group": group_id,
-                            "frame": frame_id,
-                            "source": "manual",
-                            "attributes": deepcopy(attributes),
-                        }
-                    )
+                rle = HasCVATBinMask.mask_to_cvat_rle(det.mask)
+                rle.extend(  # Necessary as per CVAT API
+                    [xtl, ytl, xbr - 1, ybr - 1]
+                )
+                curr_shapes.append(
+                    {
+                        "type": "mask",
+                        "occluded": is_occluded,
+                        "z_order": 0,
+                        "points": rle,
+                        "label_id": class_name,
+                        "group": group_id,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+                )
 
             if not curr_shapes:
                 continue
@@ -7072,6 +7102,36 @@ class CVATShape(CVATLabel):
         ]
         label = fol.Detection(
             label=self.label, bounding_box=bbox, index=self.index
+        )
+        self._set_attributes(label)
+        return label
+
+    def to_instance_detection(self):
+        """Converts this shape to a :class:`fiftyone.core.labels.Detection`.
+        Special case where we also have a mask
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detection`
+        """
+
+        xtl, ytl, xbr, ybr = self.points[-4:]
+        rel = self.points[:-4]
+        width, height = self.frame_size
+        mask = HasCVATBinMask.cvat_rle_to_binary_image_mask(
+            rel, top=ytl, left=xtl, width=xbr - xtl, img_h=height, img_w=width
+        )
+        cropped_mask = mask[ytl:ybr, xtl:xbr]
+        bbox = [
+            xtl / width,
+            ytl / height,
+            (xbr - xtl) / width,
+            (ybr - ytl) / height,
+        ]
+        label = fol.Detection(
+            label=self.label,
+            bounding_box=bbox,
+            index=self.index,
+            mask=cropped_mask,
         )
         self._set_attributes(label)
         return label
