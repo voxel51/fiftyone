@@ -1,9 +1,10 @@
-export type ValidPngBitDepth = 1 | 2 | 4 | 8;
+import type { BitDepth, PngDataArray } from "fast-png";
+
 export type ColorPalette = number[][];
 
 export const indexedPngBufferToRgb = (
-  inputData: Uint8Array,
-  bitDepth: ValidPngBitDepth,
+  inputData: PngDataArray,
+  bitDepth: BitDepth,
   colorPalette: ColorPalette
 ) => {
   const inputDataLength = inputData.length;
