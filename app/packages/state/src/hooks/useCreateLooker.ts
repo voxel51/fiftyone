@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -36,7 +36,8 @@ export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
-  highlight?: (sample: Sample) => boolean
+  highlight?: (sample: Sample) => boolean,
+  enableTimeline?: boolean
 ) => {
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
@@ -59,6 +60,8 @@ export default <T extends AbstractLooker<BaseState>>(
   const shouldRenderImaVidLooker = useRecoilValue(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
+
+  const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
 
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
@@ -112,6 +115,7 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         let config: ConstructorParameters<T>[1] = {
+          enableTimeline,
           fieldSchema: {
             ...fieldSchema,
             frames: {
@@ -126,12 +130,14 @@ export default <T extends AbstractLooker<BaseState>>(
           sources: urls,
           frameNumber: create === FrameLooker ? frameNumber : undefined,
           frameRate,
+          isDynamicGroup,
           sampleId: sample._id,
           support: isClip ? sample.support : undefined,
           dataset,
           mediaField,
           thumbnail,
           view,
+          shouldHandleKeyEvents: isModal,
         };
 
         let sampleMediaFilePath = urls[mediaField];

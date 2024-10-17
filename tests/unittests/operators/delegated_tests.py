@@ -28,6 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.factory.repos import delegated_operation
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 
@@ -55,6 +56,8 @@ class MockOutputs:
 
 
 class MockOperator(Operator):
+    result = {"executed": True}
+
     def __init__(self, success=True, sets_progress=False, **kwargs):
         self.success = success
         self.sets_progress = sets_progress
@@ -80,7 +83,7 @@ class MockOperator(Operator):
 
         if self.sets_progress:
             ctx.set_progress(0.5, "halfway there")
-        return {"executed": True}
+        return self.result
 
 
 class MockGeneratorOperator(Operator):
@@ -242,7 +245,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         operator = "@voxelfiftyone/operator/foo"
         operator2 = "@voxelfiftyone/operator/bar"
 
-        docs_to_run = []
+        dynamic_docs = []
+        static_docs = []
 
         # get all the existing counts of queued operations
         initial_queued = len(self.svc.get_queued_operations())
@@ -271,7 +275,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
             self.docs_to_delete.append(doc)
             # pylint: disable=no-member
-            docs_to_run.append(doc.id)
+            dynamic_docs.append(doc.id)
 
         for i in range(10):
             doc = self.svc.queue_operation(
@@ -287,33 +291,113 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 ),
             )
             self.docs_to_delete.append(doc)
+            static_docs.append(doc.id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 20 + initial_queued)
+        # dynamic + static docs should be queued
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + len(static_docs) + initial_queued
+        )
 
         queued = self.svc.get_queued_operations(dataset_name=dataset_name)
-        self.assertEqual(len(queued), 10 + initial_dataset_queued)
+        # dataset_name corresponds to dynamic docs
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + initial_dataset_queued
+        )
 
         queued = self.svc.get_queued_operations(operator=operator)
-        self.assertEqual(len(queued), 10 + initial_operator_queued)
+        # operator corresponds to dynamic docs
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + initial_operator_queued
+        )
 
-        for doc in docs_to_run:
-            self.svc.set_running(doc)
+        # test set_running behavior
+        for doc_id in dynamic_docs:
+            self.svc.set_running(doc_id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 10 + initial_queued)
+        # static docs should be `queued`
+        self.assertEqual(len(queued), len(static_docs) + initial_queued)
 
         running = self.svc.get_running_operations()
-        self.assertEqual(len(running), 10 + initial_running)
+        # dynamic docs should be `running`
+        self.assertEqual(len(running), len(dynamic_docs) + initial_running)
 
-        for doc in docs_to_run:
-            self.svc.set_scheduled(doc)
+        # test set_scheduled behavior
+        for doc_id in dynamic_docs:
+            self.svc.set_scheduled(doc_id)
 
         queued = self.svc.get_queued_operations()
-        self.assertEqual(len(queued), 10 + initial_queued)
+        # static docs should be `queued`
+        self.assertEqual(len(queued), len(static_docs) + initial_queued)
 
         scheduled = self.svc.get_scheduled_operations()
-        self.assertEqual(len(scheduled), 10 + initial_scheduled)
+        # dynamic docs should be `scheduled`
+        self.assertEqual(len(scheduled), len(dynamic_docs) + initial_scheduled)
+
+        # test set_queued(id) behavior
+        for doc_id in dynamic_docs:
+            self.svc.set_queued(doc_id)
+
+        queued = self.svc.get_queued_operations()
+        # dynamic + static docs should be `queued`
+        self.assertEqual(
+            len(queued), len(dynamic_docs) + len(static_docs) + initial_queued
+        )
+
+        # test set_queued(id, current_state=...) behavior
+        # set_queued(id, current_state=...) should only transition elements matching `current_state`
+
+        subset_size = 4
+        non_subset_size = len(dynamic_docs) - subset_size
+        # transition a subset of docs to `scheduled`
+        for doc_id in dynamic_docs[:subset_size]:
+            self.svc.set_scheduled(doc_id)
+        # transition the other dynamic docs to `running` (just not `scheduled` or `queued`)
+        for doc_id in dynamic_docs[subset_size:]:
+            self.svc.set_running(doc_id)
+
+        scheduled = self.svc.get_scheduled_operations()
+        # subset should be `scheduled`
+        self.assertEqual(len(scheduled), subset_size + initial_scheduled)
+
+        running = self.svc.get_running_operations()
+        # non-subset should be `running`
+        self.assertEqual(len(running), non_subset_size + initial_running)
+
+        queued = self.svc.get_queued_operations()
+        # static docs should be `queued`
+        self.assertEqual(len(queued), len(static_docs) + initial_queued)
+
+        return_values = []
+        for doc_id in dynamic_docs:
+            # attempt to transition from scheduled to queued
+            return_values.append(
+                self.svc.set_queued(
+                    doc_id, required_state=ExecutionRunState.SCHEDULED
+                )
+            )
+
+        # set_queued should return the updated doc if a transition occurred
+        for result in return_values[:subset_size]:
+            self.assertIsNotNone(result)
+        # set_queued should return `None` if no transition occurred
+        for result in return_values[subset_size:]:
+            self.assertIsNone(result)
+
+        queued = self.svc.get_queued_operations()
+        # subset + static docs should be `queued`
+        self.assertEqual(
+            len(queued), subset_size + len(static_docs) + initial_queued
+        )
+
+        scheduled = self.svc.get_scheduled_operations()
+        # only initial docs should still be `scheduled`
+        self.assertEqual(len(scheduled), initial_scheduled)
+
+        running = self.svc.get_running_operations()
+        # non-subset should still be `running`
+        self.assertEqual(len(running), non_subset_size + initial_running)
 
         dataset.delete()
         dataset2.delete()
@@ -386,7 +470,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].error)
+        self.assertDictEqual(results[0].result, MockOperator.result)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -414,7 +503,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].error)
+        self.assertDictEqual(results[0].result, MockOperator.result)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -448,9 +542,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(
+        results = self.svc.execute_queued_operations(
             delegation_target="test_target_generator"
         )
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].error)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -480,7 +576,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].error)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -536,6 +636,29 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             },
         )
 
+    def test_queued_state_required_to_execute(
+        self, mock_get_operator, mock_operator_exists
+    ):
+        mock_inputs = MockInputs()
+        operator = mock.MagicMock()
+        mock_get_operator.return_value = operator
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target="test_target",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+            metadata={"inputs_schema": mock_inputs.to_json()},
+        )
+
+        # Set it to running separately - execution not allowed now because
+        #   it's running elsewhere.
+        self.svc.set_running(doc.id)
+
+        self.svc.execute_operation(doc)
+        operator.execute.assert_not_called()
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.RUNNING)
+
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
     )
@@ -553,14 +676,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNotNone(results[0].error)
+        self.assertIsNone(results[0].result)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
@@ -590,14 +718,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=get_op_mock.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNotNone(results[0].error)
+        self.assertIsNone(results[0].result)
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
@@ -616,7 +749,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(rerun_doc.completed_at)
         self.assertIsNone(rerun_doc.result)
 
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].error)
+        self.assertDictEqual(results[0].result, MockOperator.result)
 
         doc = self.svc.get(doc_id=rerun_doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -640,7 +778,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=get_op_mock.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
 
@@ -648,7 +786,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         # Execute once with original dataset name
-        self.svc.execute_queued_operations(delegation_target="test_target")
+        results = self.svc.execute_queued_operations(
+            delegation_target="test_target"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertIsNotNone(results[0].error)
+        self.assertIsNone(results[0].result)
+
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
 
@@ -674,7 +818,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.assertIsNone(rerun_doc.completed_at)
             self.assertIsNone(rerun_doc.result)
 
-            self.svc.execute_queued_operations(delegation_target="test_target")
+            results = self.svc.execute_queued_operations(
+                delegation_target="test_target"
+            )
+            self.assertEqual(len(results), 1)
+            self.assertIsNone(results[0].error)
+            self.assertDictEqual(results[0].result, MockOperator.result)
 
             doc = self.svc.get(doc_id=rerun_doc.id)
             self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
@@ -685,6 +834,28 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
         finally:
             dataset.delete()
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_execute_with_already_processing_op(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+        mock_load_dataset.return_value = MockDataset()
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target=f"test_target",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+        doc = self.svc.set_running(doc.id)
+        result = self.svc.execute_operation(doc)
+        changed_doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(changed_doc.status, doc.status)
+        self.assertIsNone(result)
 
     def test_execute_with_renamed_dataset(self, get_op_mock, op_exists_mock):
         # setup
@@ -705,7 +876,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=get_op_mock.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
 
@@ -718,7 +889,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # Execute queued operation after saving the new dataset name
         try:
-            self.svc.execute_queued_operations(delegation_target="test_target")
+            results = self.svc.execute_queued_operations(
+                delegation_target="test_target"
+            )
+            self.assertEqual(len(results), 1)
+            self.assertIsNone(results[0].error)
+            self.assertDictEqual(results[0].result, MockOperator.result)
+
             doc = self.svc.get(doc_id=doc.id)
             self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
         except:
@@ -887,7 +1064,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
 
@@ -1118,7 +1295,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
         self.assertEqual(doc.label, mock_get_operator.return_value.name)
@@ -1148,7 +1325,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
-            delegation_target=f"test_target",
+            delegation_target="test_target",
             context=ctx.serialize(),
         )
         self.assertEqual(doc.label, mock_get_operator.return_value.name)
@@ -1157,3 +1334,25 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+
+    @patch.object(
+        delegated_operation,
+        "is_remote_service",
+        return_value=True,
+    )
+    def test_queue_op_remote_service(
+        self, mock_is_remote_service, mock_get_operator, mock_operator_exists
+    ):
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = dos.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        self.docs_to_delete.append(doc)
+        self.assertTrue(db.is_remote)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)

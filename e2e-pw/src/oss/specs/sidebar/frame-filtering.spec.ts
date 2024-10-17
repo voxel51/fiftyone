@@ -33,7 +33,7 @@ test.describe("frame filtering", () => {
       for name, disable in datasets:
         dataset = foz.load_zoo_dataset("quickstart-video", dataset_name=name, max_samples=1)
         dataset.app_config.disable_frame_filtering = disable
-        dataset.persist = True
+        dataset.persistent = True
         dataset.save()
       `
     );
