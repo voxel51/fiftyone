@@ -28,6 +28,9 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.factory.repos.delegated_operation import (
+    MongoDelegatedOperationRepo,
+)
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 
@@ -1333,3 +1336,25 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+
+    @patch.object(
+        MongoDelegatedOperationRepo,
+        "is_remote_service",
+        return_value=True,
+    )
+    def test_queue_op_remote_service(
+        self, mock_is_remote_service, mock_get_operator, mock_operator_exists
+    ):
+        db = MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = dos.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        self.docs_to_delete.append(doc)
+        self.assertTrue(db.is_remote)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
