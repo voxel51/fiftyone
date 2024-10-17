@@ -28,9 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-from fiftyone.factory.repos.delegated_operation import (
-    MongoDelegatedOperationRepo,
-)
+from fiftyone.factory.repos import delegated_operation
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 
@@ -1338,14 +1336,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
     @patch.object(
-        MongoDelegatedOperationRepo,
+        delegated_operation,
         "is_remote_service",
         return_value=True,
     )
     def test_queue_op_remote_service(
         self, mock_is_remote_service, mock_get_operator, mock_operator_exists
     ):
-        db = MongoDelegatedOperationRepo()
+        db = delegated_operation.MongoDelegatedOperationRepo()
         dos = DelegatedOperationService(repo=db)
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
