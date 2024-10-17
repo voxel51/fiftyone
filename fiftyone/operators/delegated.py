@@ -420,7 +420,8 @@ class DelegatedOperationService(object):
         )
 
         for op in queued_ops:
-            self.execute_operation(operation=op, log=log)
+            results.append(self.execute_operation(operation=op, log=log))
+        return results
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.
