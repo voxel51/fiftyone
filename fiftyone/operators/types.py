@@ -406,6 +406,9 @@ class Object(BaseType):
             ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
             ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
             another content (for example, menu for full-panel-width plot)
+            icon (None): when set, the icon will be displayed as the menu button instead of the label.
+            Can be "SettingsIcon", "MoreVertIcon".
+
         Returns:
             a :class:`Object`
         """
@@ -1475,6 +1478,20 @@ class LoadingView(ReadOnlyView):
         super().__init__(**kwargs)
 
 
+class PillBadgeView(ReadOnlyView):
+    """Displays a pill shaped badge.
+
+    Args:
+        text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
+        color ("primary"): the color of the pill
+        variant ("outlined"): the variant of the pill
+        show_icon (False | True): whether to display indicator icon
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class PlotlyView(View):
     """Displays a Plotly chart.
 
@@ -2361,6 +2378,8 @@ class MenuView(GridView):
         ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
         ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
         another content (for example, menu for full-panel-width plot)
+        icon (None): when set, the icon button will be displayed as the menu trigger,
+        instead of the selected value. Can be "SettingsIcon" or "MoreVertIcon"
     Returns:
         a :class:`Object`
     """
