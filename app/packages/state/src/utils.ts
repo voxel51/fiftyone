@@ -172,7 +172,7 @@ const fetchRelay: FetchFunction = async (
   params,
   variables
 ): Promise<GraphQLResponse> => {
-  const data = await await getFetchFunction()<unknown, GQLResponse>(
+  const data = await getFetchFunction()<unknown, GQLResponse>(
     "POST",
     "/graphql",
     {
