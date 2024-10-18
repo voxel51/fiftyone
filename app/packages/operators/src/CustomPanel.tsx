@@ -12,11 +12,8 @@ import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
-import {
-  CustomPanelProps,
-  useCustomPanelHooks,
-  trackPanelClose,
-} from "./useCustomPanelHooks";
+import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel } = props;
@@ -33,11 +30,12 @@ export function CustomPanel(props: CustomPanelProps) {
   } = useCustomPanelHooks(props);
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
-      trackPanelClose(panelName);
+      trackEvent("close_panel", { panel: panelName });
     });
   }, []);
 

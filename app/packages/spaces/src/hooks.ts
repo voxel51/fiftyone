@@ -40,6 +40,7 @@ import {
   SpaceNodeType,
 } from "./types";
 import { getNodes } from "./utils";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
   const [state, setState] = useRecoilState(spaceSelector(id));
