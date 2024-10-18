@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Snackbar, Button, SnackbarContent } from "@mui/material";
 
 export default function Toast() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const handleClick = () => {
     setOpen(true);
@@ -17,9 +17,6 @@ export default function Toast() {
 
   return (
     <div>
-      <Button variant="contained" onClick={handleClick}>
-        Show Toast
-      </Button>
       <Snackbar
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         open={open}
