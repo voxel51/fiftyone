@@ -28,7 +28,11 @@ def is_remote_service():
     Returns:
         True/False
     """
-    return has_encryption_key() and has_api_key()
+    return (
+        has_encryption_key()
+        and has_api_key()
+        and foc.load_config().database_uri
+    )
 
 
 def has_encryption_key():
