@@ -2,16 +2,29 @@ import React, { useState } from "react";
 import ButtonView from "@fiftyone/core/src/plugins/SchemaIO/components/ButtonView";
 import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
+import { MuiIconFont } from "../index";
 
 interface ModalBaseProps {
   modal: {
+    icon?: string;
+    iconVariant?: "outlined" | "filled" | "rounded" | "sharp" | undefined;
     title: string;
     subtitle: string;
     body: string;
     textAlign?: string | { [key: string]: string };
   };
-  primaryButton: { primaryText: string; primaryColor: string };
-  secondaryButton: { secondaryText: string; secondaryColor: string };
+  primaryButton: {
+    align?: string;
+    width?: string;
+    primaryText: string;
+    primaryColor: string;
+  };
+  secondaryButton: {
+    align?: string;
+    width?: string;
+    secondaryText: string;
+    secondaryColor: string;
+  };
   callbackFunction: () => void;
   functionality: string;
   props: any;
@@ -22,6 +35,7 @@ interface ModalButtonView {
   label: string;
   icon?: string;
   iconPosition?: string;
+  componentsProps: any;
 }
 
 const ModalBase: React.FC<ModalBaseProps> = ({
@@ -32,9 +46,23 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   functionality = "none",
   props,
 }) => {
-  const { title, subtitle, body, textAlign } = modal;
+  const { title, subtitle, body } = modal;
   const { primaryText, primaryColor } = primaryButton;
   const { secondaryText, secondaryColor } = secondaryButton;
+
+  const defaultAlign = "left";
+
+  let titleAlign = defaultAlign;
+  let subtitleAlign = defaultAlign;
+  let bodyAlign = defaultAlign;
+
+  if (typeof modal?.textAlign === "string") {
+    titleAlign = subtitleAlign = bodyAlign = modal.textAlign;
+  } else {
+    titleAlign = modal?.textAlign?.title ?? defaultAlign;
+    subtitleAlign = modal?.textAlign?.subtitle ?? defaultAlign;
+    bodyAlign = modal?.textAlign?.body ?? defaultAlign;
+  }
 
   const modalStyle = {
     position: "absolute",
@@ -51,14 +79,18 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     justifyContent: "center", // Vertically center the content
   };
 
-  console.log(props);
   const modalButtonView: ModalButtonView = {
     variant: props?.variant || "outlined",
     label: props?.label || "Open Modal",
-    // TODO: figure out how to pass down layout based props to ButtonView
-    // width: "500px",
-    // height: "100px",
-    // padding: 1,
+    componentsProps: {
+      button: {
+        sx: {
+          height: props?.height || "100%",
+          width: props?.width || "100%",
+          padding: 1,
+        },
+      },
+    },
   };
 
   if (Object.keys(props).includes("icon")) {
@@ -72,15 +104,9 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     label: primaryText,
     componentsProps: {
       button: {
-        // sx: {
-        //     display: "flex",
-        //     flexGrow: 1,
-        //     flexDirection: "row",
-        //     justifyContent: "center",
-        // },
         sx: {
-          width: "100%",
-          justifyContent: "center",
+          width: primaryButton?.width || "100%",
+          justifyContent: primaryButton?.align || "center",
         },
       },
     },
@@ -93,8 +119,8 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     componentsProps: {
       button: {
         sx: {
-          width: "100%",
-          justifyContent: "center",
+          width: primaryButton?.width || "100%",
+          justifyContent: primaryButton?.align || "center",
         },
       },
     },
@@ -138,19 +164,28 @@ const ModalBase: React.FC<ModalBaseProps> = ({
             id="modal-title"
             variant="h5"
             component="h5"
-            sx={{ textAlign: "left" }}
+            sx={{ textAlign: titleAlign }}
           >
+            {modal?.icon && (
+              <MuiIconFont
+                variant={modal?.iconVariant || "filled"}
+                sx={{ verticalAlign: "middle" }}
+                name={modal.icon}
+              >
+                {modal.icon}
+              </MuiIconFont>
+            )}{" "}
             {title}
           </Typography>
           <Typography
             id="modal-subtitle"
             variant="h6"
             component="h6"
-            sx={{ mt: 4, textAlign: "left" }}
+            sx={{ mt: 4, textAlign: subtitleAlign }}
           >
             {subtitle}
           </Typography>
-          <Typography id="modal-body" sx={{ my: 1, textAlign: "left" }}>
+          <Typography id="modal-body" sx={{ my: 1, textAlign: bodyAlign }}>
             {body}
           </Typography>
           {functionality === "tagging" && (
@@ -166,7 +201,6 @@ const ModalBase: React.FC<ModalBaseProps> = ({
           >
             {primaryButton && (
               <Box sx={{ flexGrow: 1 }}>
-                {/*TODO: Figure out how have button View fill remaining space*/}
                 <ButtonView
                   onClick={handleClose}
                   schema={{

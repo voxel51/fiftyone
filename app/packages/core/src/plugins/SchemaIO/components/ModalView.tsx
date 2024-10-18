@@ -14,7 +14,7 @@ export default function ModalView(props) {
     ...remainingViewProps
   } = view;
 
-  console.log(getComponentProps(props, "triggerButton"));
+  // console.log(getComponentProps(props, "triggerButton"));
   return (
     <ModalBase
       modal={modal}
