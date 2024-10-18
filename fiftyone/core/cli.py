@@ -7,7 +7,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 
 import argparse
-import warnings
 from collections import defaultdict
 from cryptography.fernet import Fernet
 from datetime import datetime
@@ -21,8 +20,6 @@ import textwrap
 
 import argcomplete
 from bson import ObjectId
-import humanize
-import pytz
 from tabulate import tabulate
 import webbrowser
 

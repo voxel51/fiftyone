@@ -374,11 +374,24 @@ class AppConfig(EnvConfig):
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
+        # deprecate lightning threshold in favor of a timer-based approach
         self.lightning_threshold = self.parse_int(
             d,
             "lightning_threshold",
             env_var="FIFTYONE_APP_LIGHTNING_THRESHOLD",
             default=None,
+        )
+        self.enable_query_performance = self.parse_bool(
+            d,
+            "enable_query_performance",
+            env_var="FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE",
+            default=True,
+        )
+        self.default_query_performance = self.parse_bool(
+            d,
+            "default_query_performance",
+            env_var="FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE",
+            default=True,
         )
         self.loop_videos = self.parse_bool(
             d,

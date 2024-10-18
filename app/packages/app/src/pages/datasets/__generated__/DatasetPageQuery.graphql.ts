@@ -84,7 +84,7 @@ export type DatasetPageQuery$data = {
     readonly defaultGroupSlice: string | null;
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type DatasetPageQuery = {
@@ -757,6 +757,20 @@ return {
             "args": null,
             "kind": "ScalarField",
             "name": "lightningThreshold",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "enableQueryPerformance",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "defaultQueryPerformance",
             "storageKey": null
           },
           {

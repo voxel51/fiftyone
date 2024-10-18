@@ -49,6 +49,8 @@ type AppConfig {
   colorscale: String!
   gridZoom: Int!
   lightningThreshold: Int
+  enableQueryPerformance: Boolean!
+  defaultQueryPerformance: Boolean!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -237,7 +239,7 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int!
+  estimatedSampleCount: Int
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   headName: String
@@ -596,7 +598,11 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
+  dataset(
+    name: String!
+    savedViewSlug: String
+    view: BSONArray = null
+  ): Dataset!
   datasets(
     search: String
     first: Int = 200

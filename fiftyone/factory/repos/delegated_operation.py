@@ -15,6 +15,7 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
+from fiftyone.internal.util import is_remote_service
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -136,7 +137,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._collection = (
             collection if collection is not None else self._get_collection()
         )
-
+        self.is_remote = is_remote_service()
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
@@ -179,7 +180,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             self._collection.create_indexes(indices_to_create)
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
-        op = DelegatedOperationDocument()
+        op = DelegatedOperationDocument(is_remote=self.is_remote)
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)

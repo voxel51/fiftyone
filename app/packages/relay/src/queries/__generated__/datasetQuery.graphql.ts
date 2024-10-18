@@ -89,7 +89,7 @@ export type datasetQuery$data = {
       readonly slug: string | null;
     } | null;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type datasetQuery = {
@@ -782,6 +782,20 @@ return {
             "args": null,
             "kind": "ScalarField",
             "name": "lightningThreshold",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "enableQueryPerformance",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "defaultQueryPerformance",
             "storageKey": null
           },
           {

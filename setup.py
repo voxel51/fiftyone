@@ -7,9 +7,26 @@ Installs FiftyOne Teams.
 |
 """
 
-from importlib import metadata
+import os
 import re
-from setuptools import setup, find_packages
+from importlib import metadata
+
+from setuptools import find_packages, setup
+
+VERSION = "2.1.0"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
 
 
 INSTALL_REQUIRES = [
@@ -45,6 +62,7 @@ INSTALL_REQUIRES = [
     "PyYAML",
     "regex",
     "retrying",
+    "rtree",
     "scikit-learn",
     "scikit-image",
     "scipy",

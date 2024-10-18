@@ -379,6 +379,8 @@ class AppConfig:
     colorscale: str
     grid_zoom: int
     lightning_threshold: t.Optional[int]
+    enable_query_performance: bool
+    default_query_performance: bool
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int

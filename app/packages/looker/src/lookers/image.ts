@@ -5,6 +5,10 @@ import { DEFAULT_IMAGE_OPTIONS, ImageState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
+import {
+  nextFrameNoOpControl,
+  previousFrameNoOpControl,
+} from "../elements/common/actions";
 import { zoomToContent } from "../zoom";
 
 export class ImageLooker extends AbstractLooker<ImageState> {
@@ -21,11 +25,21 @@ export class ImageLooker extends AbstractLooker<ImageState> {
       ...options,
     };
 
+    // if in dynamic groups mode, add < > shortcuts, too
+    let shortcuts = { ...COMMON_SHORTCUTS };
+    if (config.isDynamicGroup) {
+      shortcuts = {
+        ...COMMON_SHORTCUTS,
+        previousFrameNoOpControl,
+        nextFrameNoOpControl,
+      };
+    }
+
     return {
       ...this.getInitialBaseState(),
       config: { ...config },
       options,
-      SHORTCUTS: COMMON_SHORTCUTS,
+      SHORTCUTS: shortcuts,
     };
   }
 
