@@ -1589,24 +1589,14 @@ class CVATImage(object):
 
 class HasCVATBinMask:
     @staticmethod
-    def cvat_rle_to_binary_image_mask(
-        cvat_rle, left, top, width, img_h: int, img_w: int
-    ) -> np.ndarray:
-        # Source https://github.com/cvat-ai/cvat/issues/6487#issuecomment-1640097518
-        # convert CVAT tight object RLE to COCO-style whole image mask
-        rle = cvat_rle
-        mask = np.zeros((img_h, img_w), dtype=np.uint8)
-        value = 0
-        offset = 0
-        for rle_count in rle:
-            while rle_count > 0:
-                y, x = divmod(offset, width)
-                mask[y + top][x + left] = value
-                rle_count -= 1
-                offset += 1
-            value = 1 - value
-
-        return mask
+    def rle_to_binary_image_mask(rle, mask_width, mask_height) -> np.ndarray:
+        mask = np.zeros(mask_width * mask_height, dtype=np.uint8)
+        counter = 0
+        for i, val in enumerate(rle):
+            if i % 2 == 1:
+                mask[counter : counter + val] = 1
+            counter += val
+        return mask.reshape(mask_width, mask_height)
 
     @staticmethod
     def mask_to_cvat_rle(binary_mask: np.ndarray) -> np.array:
@@ -5925,6 +5915,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if shape_type == "rectangle":
                 label_type = "detections"
                 label = cvat_shape.to_detection()
+            elif shape_type == "mask":
+                label_type = "detections"
+                label = cvat_shape.to_instance_detection()
             elif shape_type == "polygon":
                 if expected_label_type == "segmentation":
                     # A piece of a segmentation mask
@@ -5938,7 +5931,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ):
                     # A piece of an instance mask
                     label_type = "detections"
-                    label = cvat_shape.to_instance_detection()
+                    label = cvat_shape.to_polyline(closed=True, filled=True)
                 else:
                     # A regular polyline or polygon
                     if expected_label_type in ("polyline", "polylines"):
@@ -6444,6 +6437,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 rle = HasCVATBinMask.mask_to_cvat_rle(det.mask)
                 rle.extend(  # Necessary as per CVAT API
                     [xtl, ytl, xbr - 1, ybr - 1]
+                )
+                print(
+                    xbr,
+                    frame_width,
+                    xbr / frame_width,
+                    type(xbr),
+                    type(frame_width),
+                )
+                print(
+                    " Beginning box : ",
+                    det.bounding_box,
+                    "mask_W : ",
+                    mask_width,
+                    "frame_size ",
+                    frame_size,
+                    "bbox : ",
+                    [xtl, ytl, xbr - 1, ybr - 1],
                 )
                 curr_shapes.append(
                     {
@@ -7113,25 +7123,26 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-
         xtl, ytl, xbr, ybr = self.points[-4:]
-        rel = self.points[:-4]
-        width, height = self.frame_size
-        mask = HasCVATBinMask.cvat_rle_to_binary_image_mask(
-            rel, top=ytl, left=xtl, width=xbr - xtl, img_h=height, img_w=width
+        rel = np.array(self.points[:-4], dtype=int)
+        frame_width, frame_height = self.frame_size
+        mask = HasCVATBinMask.rle_to_binary_image_mask(
+            rel,
+            mask_width=round(xbr - xtl) + 1,
+            mask_height=round(ybr - ytl)
+            + 1,  # We need to add 1 because cvat uses - 1
         )
-        cropped_mask = mask[ytl:ybr, xtl:xbr]
         bbox = [
-            xtl / width,
-            ytl / height,
-            (xbr - xtl) / width,
-            (ybr - ytl) / height,
+            xtl / frame_width,
+            ytl / frame_height,
+            (xbr - xtl) / frame_width,
+            (ybr - ytl) / frame_height,
         ]
         label = fol.Detection(
             label=self.label,
             bounding_box=bbox,
             index=self.index,
-            mask=cropped_mask,
+            mask=mask,
         )
         self._set_attributes(label)
         return label
