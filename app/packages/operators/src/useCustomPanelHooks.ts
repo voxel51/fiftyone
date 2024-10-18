@@ -1,4 +1,3 @@
-import { useTrackEvent } from "@fiftyone/analytics";
 import { debounce, merge } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 
