@@ -49,8 +49,6 @@ type AppConfig {
   colorscale: String!
   gridZoom: Int!
   lightningThreshold: Int
-  enableQueryPerformance: Boolean!
-  defaultQueryPerformance: Boolean!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -66,6 +64,8 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
+  defaultQueryPerformance: Boolean
+  enableQueryPerformance: Boolean
   mediaFallback: Boolean!
 }
 
@@ -245,7 +245,7 @@ type Dataset {
   headName: String
   snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
-  workspace(slug: String): Workspace
+  workspace(slug: String = null): Workspace
 }
 
 type DatasetAppConfig {

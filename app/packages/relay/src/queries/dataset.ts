@@ -6,7 +6,7 @@ export default graphql`
     $name: String!
     $savedViewSlug: String
     $view: BSONArray!
-    $workspaceSlug: String
+    $workspaceSlug: String = null
   ) {
     config {
       colorBy

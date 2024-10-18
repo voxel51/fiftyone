@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1766791ce2ba64378c0e41d8878d8371>>
+ * @generated SignedSource<<c8b5fbc1ad7bf3c6c3f01472f3826d37>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,9 +19,9 @@ export type configFragment$data = {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
-    readonly defaultQueryPerformance: boolean;
+    readonly defaultQueryPerformance: boolean | null;
     readonly disableFrameFiltering: boolean;
-    readonly enableQueryPerformance: boolean;
+    readonly enableQueryPerformance: boolean | null;
     readonly gridZoom: number;
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
