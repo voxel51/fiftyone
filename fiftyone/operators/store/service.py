@@ -8,9 +8,7 @@ FiftyOne execution store service.
 
 import logging
 from typing import Optional, List
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
-from fiftyone.factory.repos.execution_store import ExecutionStoreRepo
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +16,12 @@ logger = logging.getLogger(__name__)
 class ExecutionStoreService:
     """Service for managing execution store operations."""
 
-    def __init__(self, repo: Optional[ExecutionStoreRepo] = None):
+    def __init__(self, repo: Optional["ExecutionStoreRepo"] = None):
+        from fiftyone.factory.repo_factory import (
+            RepositoryFactory,
+            ExecutionStoreRepo,
+        )
+
         if repo is None:
             repo = RepositoryFactory.execution_store_repo()
 
