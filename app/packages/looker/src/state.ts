@@ -203,6 +203,7 @@ export interface BaseConfig {
   sampleId: string;
   symbol: symbol;
   fieldSchema: Schema;
+  isDynamicGroup: boolean;
   view: Stage[];
   dataset: string;
   group?: {

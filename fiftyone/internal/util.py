@@ -9,7 +9,6 @@ FiftyOne internal utilities.
 import os
 
 import fiftyone.core.config as foc
-
 from fiftyone.internal.constants import API_URL_ENV_VAR, ENCRYPTION_KEY_ENV_VAR
 
 
@@ -21,6 +20,19 @@ def is_internal_service():
     """
     val = os.environ.get("FIFTYONE_INTERNAL_SERVICE", "")
     return val.lower() in ("true", "1")
+
+
+def is_remote_service():
+    """Whether the SDK is running in a remote service context.
+
+    Returns:
+        True/False
+    """
+    return (
+        has_encryption_key()
+        and has_api_key()
+        and foc.load_config().database_uri
+    )
 
 
 def has_encryption_key():

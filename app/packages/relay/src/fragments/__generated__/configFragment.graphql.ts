@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<af77f7720adf5f214a0f43f0e4b20c6f>>
+ * @generated SignedSource<<c8b5fbc1ad7bf3c6c3f01472f3826d37>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,7 +19,9 @@ export type configFragment$data = {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
+    readonly defaultQueryPerformance: boolean | null;
     readonly disableFrameFiltering: boolean;
+    readonly enableQueryPerformance: boolean | null;
     readonly gridZoom: number;
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
@@ -100,6 +102,20 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "lightningThreshold",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "enableQueryPerformance",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "defaultQueryPerformance",
           "storageKey": null
         },
         {
@@ -210,6 +226,6 @@ return {
 };
 })();
 
-(node as any).hash = "1f162e6489b61a178ecbd049eef370fd";
+(node as any).hash = "3f94f31ced2627b0cd19b0a22d4e3378";
 
 export default node;
