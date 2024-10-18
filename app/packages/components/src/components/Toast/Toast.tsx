@@ -2,34 +2,27 @@ import React, { useState } from "react";
 import { Snackbar, Button, SnackbarContent } from "@mui/material";
 
 export default function Toast() {
-  const [open, setOpen] = useState(true);
-
-  const handleClick = () => {
-    setOpen(true);
-  };
-
-  const handleClose = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
-    setOpen(false);
-  };
+  const [open, setOpen] = useState(false);
+  const state = useToastState();
 
   return (
     <div>
+      <Button variant="contained" onClick={handleClick}>
+        Show Toast
+      </Button>
       <Snackbar
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        open={open}
+        open={state.open}
         onClose={handleClose}
         autoHideDuration={3000}
       >
         <SnackbarContent
-          message={<span>Custom Text</span>}
+          message={<span>{state.title}</span>}
           action={
             <Button
               color="secondary"
               size="small"
-              onClick={handleClose}
+              onClick={state.buttonAction}
               style={{ marginLeft: "auto" }} // Right align the button
             >
               CLOSE
