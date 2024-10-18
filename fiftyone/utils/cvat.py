@@ -1598,10 +1598,7 @@ class HasCVATBinMask:
                 mask[counter : counter + val] = 1
             counter += val
 
-        return mask.reshape(mask_width, mask_height)
-        # mask = np.zeros(mask_width * mask_height, dtype=np.uint8)
-        # mask[np.add.accumulate(rle)[::2]] = 1
-        # return mask.reshape(mask_width, mask_height)
+        return mask.reshape(mask_height, mask_width)
 
     @staticmethod
     def mask_to_cvat_rle(binary_mask: np.ndarray) -> np.array:
@@ -7119,7 +7116,7 @@ class CVATShape(CVATLabel):
             round(ybr - ytl) + 1,
         )  # We need to add 1 because cvat uses - 1
         mask = HasCVATBinMask.rle_to_binary_image_mask(
-            rel, mask_width=mask_h, mask_height=mask_w
+            rel, mask_height=mask_h, mask_width=mask_w
         )
         bbox = [
             xtl / frame_width,
