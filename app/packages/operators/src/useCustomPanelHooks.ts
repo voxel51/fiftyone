@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { debounce, merge } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -222,4 +223,9 @@ function getPanelViewData(panelState) {
   const state = panelState?.state;
   const data = panelState?.data;
   return merge({}, { ...state }, { ...data });
+}
+
+export function trackPanelClose(panelName) {
+  const trackEvent = useTrackEvent();
+  return trackEvent("close_panel", { panel_name: panelName });
 }
