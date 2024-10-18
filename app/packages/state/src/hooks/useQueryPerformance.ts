@@ -1,10 +1,6 @@
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
-import {
-  datasetSampleCount,
-  lightningThreshold,
-  lightningThresholdConfig,
-} from "../recoil";
+import { datasetSampleCount } from "../recoil";
 
 export default function () {
   const disable = useRecoilCallback(
@@ -17,7 +13,7 @@ export default function () {
 
   const enable = useRecoilCallback(
     ({ set, snapshot }) =>
-      async (threshold?: number) => {
+      async () => {
         let setting = threshold;
 
         if (setting === undefined) {

@@ -6,7 +6,7 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
@@ -225,6 +225,12 @@ export const queryPerformance = selector({
     }
 
     return get(defaultQueryPerformanceConfig);
+  },
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceStore(get(datasetId)),
+      value instanceof DefaultValue ? undefined : value
+    );
   },
 });
 

@@ -43,7 +43,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
-  const lightning = useRecoilValue(fos.isLightningPath(path));
+  const indexed = useRecoilValue(fos.isIndexedPath(path));
 
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
@@ -51,7 +51,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const one = useRecoilValue(state.oneBound({ path, modal }));
   const timeZone = useRecoilValue(fos.timeZone);
 
-  if (named && !lightning && !hasBounds) {
+  if (named && !indexed && !hasBounds) {
     return null;
   }
 
@@ -97,7 +97,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
         {defaultRange && <Nonfinites modal={modal} path={path} />}
         <FilterOption color={color} modal={modal} path={path} />
         <Reset color={color} modal={modal} path={path} />
-        {!lightning && !hasBounds && <>No results</>}
+        {!indexed && !hasBounds && "No results"}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>
   );

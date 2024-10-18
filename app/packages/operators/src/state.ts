@@ -94,7 +94,7 @@ const globalContextSelector = selector({
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
-    const queryPerformance = typeof get(fos.lightningThreshold) === "number";
+    const queryPerformance = typeof get(fos.queryPerformance) === "number";
 
     return {
       datasetName,

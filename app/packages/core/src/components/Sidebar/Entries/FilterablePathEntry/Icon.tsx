@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { Bolt } from "@mui/icons-material";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import Arrow from "./Arrow";
@@ -10,29 +11,30 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
-  const lightning = useRecoilValue(fos.isLightningPath(path));
+  const indexed = useRecoilValue(fos.isIndexedPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const color = useRecoilValue(fos.pathColor(path));
 
   return (
-    <Arrow
-      color={!lightning ? undefined : color}
-      unindexed={!lightning}
-      expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
-      id={path}
-      frameFilterDisabledPath={frameFilteringDisabled}
-    />
+    <>
+      <Bolt />
+      <Arrow
+        unindexed={!indexed}
+        expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
+        id={path}
+        frameFilterDisabledPath={frameFilteringDisabled}
+      />
+    </>
   );
 };
 
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const lightning = useRecoilValue(fos.lightning);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameFilteringDisabled =
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
 
-  if (lightning && !modal) {
+  if (queryPerformance && !modal) {
     return (
       <Lightning path={path} frameFilteringDisabled={frameFilteringDisabled} />
     );
