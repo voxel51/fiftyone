@@ -37,5 +37,6 @@ export { default as TabOption } from "./TabOption";
 export { default as TextField } from "./TextField";
 export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
+export { Toast } from "./Toast";
 
 export * from "./types";
