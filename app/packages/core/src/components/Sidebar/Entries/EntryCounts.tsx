@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
@@ -14,23 +14,18 @@ const showEntryCounts = selectorFamily<
   { always?: boolean; path: string; modal: boolean }
 >({
   key: "showEntryCounts",
-  get:
-    (params) =>
-    ({ get }) => {
-      const mode = get(fos.resolvedSidebarMode(params.modal));
+  get: (params) => ({ get }) => {
+    if (
+      params.always ||
+      params.modal ||
+      params.path === "" ||
+      get(fos.sidebarExpanded(params))
+    ) {
+      return true;
+    }
 
-      if (
-        params.always ||
-        params.modal ||
-        params.path === "" ||
-        mode === "all" ||
-        get(fos.sidebarExpanded(params))
-      ) {
-        return true;
-      }
-
-      return false;
-    },
+    return false;
+  },
 });
 
 export const PathEntryCounts = ({
@@ -66,38 +61,34 @@ const labelTagCount = selectorFamily<
   { modal: boolean; tag: string; extended: boolean }
 >({
   key: "labelTagCount",
-  get:
-    ({ tag, ...rest }) =>
-    ({ get }) => {
-      const labeltags = get(
-        fos.cumulativeCounts({
-          ...fos.MATCH_LABEL_TAGS,
-          ...rest,
-        })
-      );
-      return labeltags[tag] ?? 0;
-    },
+  get: ({ tag, ...rest }) => ({ get }) => {
+    const labeltags = get(
+      fos.cumulativeCounts({
+        ...fos.MATCH_LABEL_TAGS,
+        ...rest,
+      })
+    );
+    return labeltags[tag] ?? 0;
+  },
 });
 
 export const labelTagsCount = selectorFamily({
   key: "labelTagsCount",
-  get:
-    (props: { modal: boolean; extended: boolean }) =>
-    ({ get }) => {
-      const labelTagObj = get(
-        fos.cumulativeCounts({
-          ...fos.MATCH_LABEL_TAGS,
-          ...props,
-        })
-      );
-      if (!labelTagObj) return { count: 0, results: [] };
-      const labelTags = Object.entries(labelTagObj).map(([value, count]) => ({
-        value,
-        count,
-      }));
-      const count = labelTags.reduce((acc, { count }) => acc + count, 0);
-      return { count, results: labelTags };
-    },
+  get: (props: { modal: boolean; extended: boolean }) => ({ get }) => {
+    const labelTagObj = get(
+      fos.cumulativeCounts({
+        ...fos.MATCH_LABEL_TAGS,
+        ...props,
+      })
+    );
+    if (!labelTagObj) return { count: 0, results: [] };
+    const labelTags = Object.entries(labelTagObj).map(([value, count]) => ({
+      value,
+      count,
+    }));
+    const count = labelTags.reduce((acc, { count }) => acc + count, 0);
+    return { count, results: labelTags };
+  },
 });
 
 export const LabelTagCounts = ({

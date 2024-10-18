@@ -1,6 +1,6 @@
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
-import { isLightningPath, lightning } from "../lightning";
+import { queryPerformance } from "../queryPerformance";
 import { lightningBooleanResults } from "./lightningBoolean";
 
 export const booleanResults = selectorFamily<
@@ -14,7 +14,7 @@ export const booleanResults = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      if (get(isLightningPath(params.path)) && get(lightning)) {
+      if (get(queryPerformance)) {
         return get(lightningBooleanResults(params));
       }
 

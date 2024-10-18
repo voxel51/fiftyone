@@ -10,7 +10,6 @@ export default r(graphql`
       colorscale
       disableFrameFiltering
       gridZoom
-      lightningThreshold
       enableQueryPerformance
       defaultQueryPerformance
       loopVideos

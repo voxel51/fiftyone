@@ -1,15 +1,11 @@
-import {
-  DefaultValue,
-  GetRecoilValue,
-  selectorFamily,
-  SetRecoilState,
-} from "recoil";
+import type { DefaultValue, GetRecoilValue, SetRecoilState } from "recoil";
+import { selectorFamily } from "recoil";
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
-import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
-import { Range } from "../utils";
+import { isIndexedPath, queryPerformance } from "../queryPerformance";
+import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
 
 export interface NumericFilter {
@@ -156,19 +152,15 @@ export const boundsAtom = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const lightning = get(isLightningPath(params.path));
-
-      const atom =
-        lightning && !params.modal
+      if (get(queryPerformance)) {
+        return get(isIndexedPath(params.path))
           ? pathData.lightningBounds(params.path)
-          : pathData.bounds({ ...params, extended: false });
-      const bounds = get(atom);
-
-      if (!bounds) {
-        return lightning ? null : [null, null];
+          : [null, null];
       }
 
-      return bounds;
+      const bounds = get(pathData.bounds({ ...params, extended: false }));
+
+      return bounds ? bounds : [null, null];
     },
 });
 

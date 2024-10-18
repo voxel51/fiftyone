@@ -293,10 +293,8 @@ const HideFieldSetting = () => {
 };
 
 const ShowModalNav = () => {
-  const [
-    showModalNavigationControls,
-    setShowModalNavigationControls,
-  ] = useRecoilState(fos.showModalNavigationControls);
+  const [showModalNavigationControls, setShowModalNavigationControls] =
+    useRecoilState(fos.showModalNavigationControls);
   const theme = useTheme();
 
   return (

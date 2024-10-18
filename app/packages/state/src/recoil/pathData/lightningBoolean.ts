@@ -1,5 +1,5 @@
 import { selectorFamily } from "recoil";
-import { lightningQuery } from "../lightning";
+import { lightningQuery } from "../queryPerformance";
 
 export const lightningBooleanResults = selectorFamily<
   {

@@ -365,7 +365,6 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
-    lightning_threshold: t.Optional[int]
     enable_query_performance: bool
     default_query_performance: bool
     loop_videos: bool
