@@ -11,8 +11,10 @@ export default function ModalView(props) {
     secondaryButton,
     callbackFunction,
     functionality,
+    ...remainingViewProps
   } = view;
 
+  console.log(getComponentProps(props, "triggerButton"));
   return (
     <ModalBase
       modal={modal}
@@ -20,7 +22,9 @@ export default function ModalView(props) {
       secondaryButton={secondaryButton}
       callbackFunction={callbackFunction}
       functionality={functionality}
-      props={getComponentProps(props, "modalBase")}
+      props={{
+        ...remainingViewProps,
+      }}
     />
   );
 }

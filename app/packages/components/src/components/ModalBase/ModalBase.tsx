@@ -4,7 +4,12 @@ import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
 
 interface ModalBaseProps {
-  modal: { title: string; subtitle: string; body: string };
+  modal: {
+    title: string;
+    subtitle: string;
+    body: string;
+    textAlign?: string | { [key: string]: string };
+  };
   primaryButton: { primaryText: string; primaryColor: string };
   secondaryButton: { secondaryText: string; secondaryColor: string };
   callbackFunction: () => void;
@@ -27,7 +32,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   functionality = "none",
   props,
 }) => {
-  const { title, subtitle, body } = modal;
+  const { title, subtitle, body, textAlign } = modal;
   const { primaryText, primaryColor } = primaryButton;
   const { secondaryText, secondaryColor } = secondaryButton;
 
@@ -46,9 +51,14 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     justifyContent: "center", // Vertically center the content
   };
 
+  console.log(props);
   const modalButtonView: ModalButtonView = {
     variant: props?.variant || "outlined",
     label: props?.label || "Open Modal",
+    // TODO: figure out how to pass down layout based props to ButtonView
+    // width: "500px",
+    // height: "100px",
+    // padding: 1,
   };
 
   if (Object.keys(props).includes("icon")) {
@@ -60,14 +70,34 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     variant: "contained",
     color: primaryColor,
     label: primaryText,
-    width: "100%",
+    componentsProps: {
+      button: {
+        // sx: {
+        //     display: "flex",
+        //     flexGrow: 1,
+        //     flexDirection: "row",
+        //     justifyContent: "center",
+        // },
+        sx: {
+          width: "100%",
+          justifyContent: "center",
+        },
+      },
+    },
   };
 
   const secondaryButtonView = {
     variant: "outlined",
     color: secondaryColor,
     label: secondaryText,
-    width: "100%",
+    componentsProps: {
+      button: {
+        sx: {
+          width: "100%",
+          justifyContent: "center",
+        },
+      },
+    },
   };
 
   const [open, setOpen] = useState(false);
@@ -82,6 +112,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   const handleSaveTags = (tags: string[]) => {
     setSavedTags(tags);
   };
+  // TODO: figure out how to pass tags back up to callback
   const sendTagsToCallback = () => {
     // callbackFunction(savedTags);
   };
@@ -103,18 +134,23 @@ const ModalBase: React.FC<ModalBaseProps> = ({
         aria-describedby="modal-subtitle"
       >
         <Box sx={modalStyle}>
-          <Typography id="modal-title" variant="h5" component="h5">
+          <Typography
+            id="modal-title"
+            variant="h5"
+            component="h5"
+            sx={{ textAlign: "left" }}
+          >
             {title}
           </Typography>
           <Typography
             id="modal-subtitle"
             variant="h6"
             component="h6"
-            sx={{ mt: 4 }}
+            sx={{ mt: 4, textAlign: "left" }}
           >
             {subtitle}
           </Typography>
-          <Typography id="modal-body" sx={{ my: 1 }}>
+          <Typography id="modal-body" sx={{ my: 1, textAlign: "left" }}>
             {body}
           </Typography>
           {functionality === "tagging" && (
@@ -128,22 +164,27 @@ const ModalBase: React.FC<ModalBaseProps> = ({
               gap: 3,
             }}
           >
-            <Box sx={{ flexGrow: 1 }}>
-              <ButtonView
-                onClick={handleClose}
-                schema={{
-                  view: secondaryButtonView,
-                }}
-              />
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
-              <ButtonView
-                onClick={sendTagsToCallback}
-                schema={{
-                  view: primaryButtonView,
-                }}
-              />
-            </Box>
+            {primaryButton && (
+              <Box sx={{ flexGrow: 1 }}>
+                {/*TODO: Figure out how have button View fill remaining space*/}
+                <ButtonView
+                  onClick={handleClose}
+                  schema={{
+                    view: secondaryButtonView,
+                  }}
+                />
+              </Box>
+            )}
+            {secondaryButton && (
+              <Box sx={{ flexGrow: 1 }}>
+                <ButtonView
+                  onClick={sendTagsToCallback}
+                  schema={{
+                    view: primaryButtonView,
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         </Box>
       </Modal>
