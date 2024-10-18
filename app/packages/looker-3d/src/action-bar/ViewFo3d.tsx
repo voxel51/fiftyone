@@ -40,7 +40,7 @@ export const ViewFo3d = (props: {
       return () => {};
     },
     [jsonPanel],
-    false
+    { useTransaction: false }
   );
 
   fos.useOutsideClick(buttonRef, () => {
