@@ -1472,11 +1472,24 @@ class HiddenView(View):
 class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
+    Examples::
+
+        schema_dots = {
+            text: "Loading dots only"
+        }
+        schema_spinner = {
+            variant: "spinner",
+            color: "primary",
+            size: "medium",
+        }
+        loading_dots = types.LoadingView(**schema_dots)
+        loading_spinner = types.LoadingView(**schema_spinner)
+
     Args:
-        text ("Loading"): a label for the loading indicator
-        variant ("spinner"): the variant of the loading indicator
-        color ("primary"): the color of the loading indicator
-        size ("medium"): the size of the loading indicator
+        text (None): a label for the loading indicator
+        variant (None): the variant of the loading indicator
+        color (None): the color of the loading indicator
+        size (None): the size of the loading indicator
     """
 
     def __init__(self, **kwargs):
@@ -1486,11 +1499,36 @@ class LoadingView(ReadOnlyView):
 class PillBadgeView(ReadOnlyView):
     """Displays a pill shaped badge.
 
+    Examples::
+
+        schema_options_single_color = {
+            text: ["Reviewed", "Not Reviewed"],
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+
+         schema_options_multi_color = {
+            text: [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]],
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+
+         schema_single_option= {
+            text: "Reviewed",
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+        badge = types.PillBadgeView(**schema_options_single_color)
+
+
     Args:
-        text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
-        color ("primary"): the color of the pill
-        variant ("outlined"): the variant of the pill
-        show_icon (False | True): whether to display indicator icon
+        text: a label or set of label options with or without a color for the pill badge
+        color (None): the color of the pill
+        variant (None): the variant of the pill
+        show_icon (None): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):

@@ -74,7 +74,6 @@ export default function SliderView(props) {
   const focus = autoFocus(props);
 
   const {
-    type,
     min: schemaMin,
     max: schemaMax,
     multipleOf: schemaMultipleOf,
@@ -131,7 +130,7 @@ export default function SliderView(props) {
       }
     } else {
       const floatValue = parseFloat(value);
-      if (!isNaN(floatValue)) {
+      if (!Number.isNaN(floatValue)) {
         isMin ? setMinText(value) : setMaxText(value);
       }
     }
