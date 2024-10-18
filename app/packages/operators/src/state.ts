@@ -478,6 +478,8 @@ export const useOperatorPrompt = () => {
       if (invalid) {
         return;
       }
+      console.log("execute()")
+      console.log('options', options)
       executor.execute(promptingOperator.params, {
         ...options,
         ...promptingOperator.options,
