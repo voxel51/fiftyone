@@ -8,28 +8,28 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
   const { view = {} } = schema;
   const {
     color = "primary",
-    fontSize = "1rem",
+    font_size = "1rem",
     title = "",
-    textTransform = "none",
+    text_transform = "none",
     variant = "body1",
     bold = false,
     italic = false,
     align = "inherit",
-    noWrap = false,
-    textDecoration = "none",
-    letterSpacing = "normal",
-    lineHeight = "normal",
-    fontFamily = "default",
+    no_wrap = false,
+    text_decoration = "none",
+    letter_spacing = "normal",
+    line_height = "normal",
+    font_family = "default",
     width = "auto",
-    displayMode = "block",
+    display_mode = "block",
     padding = "1rem",
   } = view;
 
   const sx = {
-    fontFamily,
+    font_family,
     ...(bold ? { fontWeight: "bold" } : {}),
     ...(italic ? { fontStyle: "italic" } : {}),
-    ...(noWrap
+    ...(no_wrap
       ? { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }
       : {}),
   };
@@ -38,17 +38,17 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
     <Box {...getComponentProps(props, "container")}>
       <Typography
         padding={padding}
-        display={displayMode}
+        display={display_mode}
         width={width}
         variant={variant}
         color={color}
-        fontSize={fontSize}
-        textTransform={textTransform}
+        fontSize={font_size}
+        textTransform={text_transform}
         align={align}
-        letterSpacing={letterSpacing}
-        noWrap={noWrap}
-        lineHeight={lineHeight}
-        textDecoration={textDecoration}
+        letterSpacing={letter_spacing}
+        noWrap={no_wrap}
+        lineHeight={line_height}
+        textDecoration={text_decoration}
         sx={sx}
         {...getComponentProps(props, "text")}
       >
