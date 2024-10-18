@@ -1592,11 +1592,16 @@ class HasCVATBinMask:
     def rle_to_binary_image_mask(rle, mask_width, mask_height) -> np.ndarray:
         mask = np.zeros(mask_width * mask_height, dtype=np.uint8)
         counter = 0
+
         for i, val in enumerate(rle):
             if i % 2 == 1:
                 mask[counter : counter + val] = 1
             counter += val
+
         return mask.reshape(mask_width, mask_height)
+        # mask = np.zeros(mask_width * mask_height, dtype=np.uint8)
+        # mask[np.add.accumulate(rle)[::2]] = 1
+        # return mask.reshape(mask_width, mask_height)
 
     @staticmethod
     def mask_to_cvat_rle(binary_mask: np.ndarray) -> np.array:
@@ -6438,23 +6443,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 rle.extend(  # Necessary as per CVAT API
                     [xtl, ytl, xbr - 1, ybr - 1]
                 )
-                print(
-                    xbr,
-                    frame_width,
-                    xbr / frame_width,
-                    type(xbr),
-                    type(frame_width),
-                )
-                print(
-                    " Beginning box : ",
-                    det.bounding_box,
-                    "mask_W : ",
-                    mask_width,
-                    "frame_size ",
-                    frame_size,
-                    "bbox : ",
-                    [xtl, ytl, xbr - 1, ybr - 1],
-                )
                 curr_shapes.append(
                     {
                         "type": "mask",
@@ -7126,11 +7114,12 @@ class CVATShape(CVATLabel):
         xtl, ytl, xbr, ybr = self.points[-4:]
         rel = np.array(self.points[:-4], dtype=int)
         frame_width, frame_height = self.frame_size
+        mask_w, mask_h = (
+            round(xbr - xtl) + 1,
+            round(ybr - ytl) + 1,
+        )  # We need to add 1 because cvat uses - 1
         mask = HasCVATBinMask.rle_to_binary_image_mask(
-            rel,
-            mask_width=round(xbr - xtl) + 1,
-            mask_height=round(ybr - ytl)
-            + 1,  # We need to add 1 because cvat uses - 1
+            rel, mask_width=mask_h, mask_height=mask_w
         )
         bbox = [
             xtl / frame_width,
