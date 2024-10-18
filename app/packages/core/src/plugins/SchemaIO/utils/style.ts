@@ -8,6 +8,10 @@ export function getColorByCode(code: ColorType) {
   }
 }
 
+export function getDisabledColors() {
+  return ["var(--fo-palette-primary-main)", "var(--fo-palette-text-primary)"];
+}
+
 export function getFieldSx(options: FieldsetOptionsType) {
   const { color, variant } = options;
   const sx = {

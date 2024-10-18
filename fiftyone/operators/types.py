@@ -253,6 +253,7 @@ class Object(BaseType):
         label,
         icon=None,
         variant=None,
+        disabled=False,
         on_click=None,
         prompt=False,
         params=None,
@@ -282,6 +283,7 @@ class Object(BaseType):
             label: the label of the button
             icon (None): the name of the icon to display
             icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            disabled (False): whether the button is disabled
             variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
                 ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
@@ -295,6 +297,7 @@ class Object(BaseType):
             href=href,
             icon=icon,
             icon_position=icon_position,
+            disabled=disabled,
             label=label,
             operator=on_click,
             params=params,
@@ -406,6 +409,9 @@ class Object(BaseType):
             ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
             ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
             another content (for example, menu for full-panel-width plot)
+            icon (None): when set, the icon will be displayed as the menu button instead of the label.
+            Can be "SettingsIcon", "MoreVertIcon".
+
         Returns:
             a :class:`Object`
         """
@@ -1255,7 +1261,6 @@ class Button(View):
         self.operator = kwargs.get("operator", None)
         self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
-        self.href = kwargs.get("href", None)
 
     def to_json(self):
         return _convert_callables_to_operator_uris(
@@ -1467,8 +1472,63 @@ class HiddenView(View):
 class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
+    Examples::
+
+        schema_dots = {
+            text: "Loading dots only"
+        }
+        schema_spinner = {
+            variant: "spinner",
+            color: "primary",
+            size: "medium",
+        }
+        loading_dots = types.LoadingView(**schema_dots)
+        loading_spinner = types.LoadingView(**schema_spinner)
+
     Args:
-        label ("Loading"): a label for the loading indicator
+        text (None): a label for the loading indicator
+        variant (None): the variant of the loading indicator
+        color (None): the color of the loading indicator
+        size (None): the size of the loading indicator
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class PillBadgeView(ReadOnlyView):
+    """Displays a pill shaped badge.
+
+    Examples::
+
+        schema_options_single_color = {
+            text: ["Reviewed", "Not Reviewed"],
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+
+         schema_options_multi_color = {
+            text: [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]],
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+
+         schema_single_option= {
+            text: "Reviewed",
+            color: "primary",
+            variant: "outlined",
+            show_icon: True
+        }
+        badge = types.PillBadgeView(**schema_options_single_color)
+
+
+    Args:
+        text: a label or set of label options with or without a color for the pill badge
+        color (None): the color of the pill
+        variant (None): the variant of the pill
+        show_icon (None): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):
@@ -1826,6 +1886,18 @@ class SwitchView(View):
     .. note::
 
         Must be used with :class:`Boolean` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TextView(View):
+    """Displays a text.
+
+    .. note::
+
+        Must be used with :class:`String` properties.
     """
 
     def __init__(self, **kwargs):
@@ -2361,6 +2433,8 @@ class MenuView(GridView):
         ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
         ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
         another content (for example, menu for full-panel-width plot)
+        icon (None): when set, the icon button will be displayed as the menu trigger,
+        instead of the selected value. Can be "SettingsIcon" or "MoreVertIcon"
     Returns:
         a :class:`Object`
     """

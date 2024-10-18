@@ -1,5 +1,4 @@
 import { Box, BoxProps } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import {
   getAdjustedLayoutWidth,
@@ -21,6 +20,7 @@ export default function GridView(props: ViewPropsType) {
   const propertiesAsArray = Object.entries(properties).map(([id, property]) => {
     return { id, ...property };
   });
+
   const height = props?.layout?.height as number;
   const parsedGap = parseGap(gap);
   const width = getAdjustedLayoutWidth(
@@ -29,11 +29,19 @@ export default function GridView(props: ViewPropsType) {
   ) as number;
 
   const baseGridProps: BoxProps = {
-    sx: { gap: parsedGap, ...getGridSx(view) },
+    sx: {
+      width: "100%",
+      boxSizing: "border-box",
+      gap: parsedGap,
+      ...getGridSx(view),
+    },
   };
 
   return (
-    <Box {...getComponentProps(props, "container")}>
+    <Box
+      {...getComponentProps(props, "container")}
+      sx={{ width: "100%", boxSizing: "border-box", padding: 1 }}
+    >
       <HeaderView {...props} divider nested />
       <Box {...getProps(props, "grid", baseGridProps)}>
         {propertiesAsArray.map((property) => {
@@ -48,7 +56,8 @@ export default function GridView(props: ViewPropsType) {
                 orientation === "vertical"
                   ? spaceToHeight(space, height)
                   : undefined,
-              width: "100%",
+              width: "100%", // Ensure each child takes full width
+              boxSizing: "border-box", // Include borders in width calculation
             },
             key: id,
           };
