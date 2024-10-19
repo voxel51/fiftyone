@@ -28,6 +28,7 @@ export default function TableView(props: ViewPropsType) {
     on_click_cell,
     on_click_row,
     on_click_column,
+    actions_label,
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -35,18 +36,23 @@ export default function TableView(props: ViewPropsType) {
   const hasRowActions = row_actions.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
+
   const getRowActions = useCallback((row) => {
-    return row_actions.map((action) => {
-      return {
-        ...action,
-        onClick: (action, e) => {
-          handleClick(panelId, {
-            operator: action.on_click,
-            params: { path, event: action.name, row },
-          });
-        },
-      };
-    });
+    const computedRowActions = [] as any;
+    for (const action of row_actions) {
+      if (action.rows?.[row] !== false) {
+        computedRowActions.push({
+          ...action,
+          onClick: (action, e) => {
+            handleClick(panelId, {
+              operator: action.on_click,
+              params: { path, event: action.name, row },
+            });
+          },
+        });
+      }
+    }
+    return computedRowActions;
   }, []);
 
   return (
@@ -71,7 +77,19 @@ export default function TableView(props: ViewPropsType) {
                     {label}
                   </TableCell>
                 ))}
-                {hasRowActions && <TableCell />}
+                {hasRowActions && (
+                  <TableCell
+                    {...getComponentProps(props, "tableHeadCell", {
+                      sx: {
+                        textAlign: "right",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                      },
+                    })}
+                  >
+                    {actions_label || "Actions"}
+                  </TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody {...getComponentProps(props, "tableBody")}>
