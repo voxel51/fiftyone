@@ -1,7 +1,7 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { defineCustomPanel } from "../CustomPanel";
 import OperatorIcon from "../OperatorIcon";
-import { ExecutionContext } from "../operators";
+import { ExecutionContext } from "../runtime/operators";
 
 export default function registerPanel(ctx: ExecutionContext) {
   registerComponent({

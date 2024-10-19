@@ -4,7 +4,7 @@ import {
   useOperatorBrowser,
   useOperatorExecutor,
   usePromptOperatorInput,
-} from "@fiftyone/operators/src/state";
+} from "@fiftyone/operators/src/runtime";
 import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import {
   Button,
@@ -192,7 +192,9 @@ export function OperatorLauncher(props: OperatorLauncherPropsType) {
 
   const handleClick = useCallback(() => {
     if (prompt) {
-      promptForInput(uri);
+      promptForInput({
+        uriOrName: uri,
+      });
     } else {
       execute({});
     }

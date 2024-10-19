@@ -29,8 +29,8 @@ import {
   _registerBuiltInOperator,
   executeOperator,
   listLocalAndRemoteOperators,
-} from "./operators";
-import { useShowOperatorIO } from "./state";
+} from "./runtime/operators";
+import { useShowOperatorIO } from "./runtime";
 import usePanelEvent from "./usePanelEvent";
 
 //

@@ -10,12 +10,12 @@ import { Extension } from "@mui/icons-material";
 import styled from "styled-components";
 import { types } from ".";
 import OperatorIcon from "./OperatorIcon";
-import { Operator } from "./operators";
+import { Operator } from "./runtime/operators";
 import {
   useOperatorExecutor,
   useOperatorPlacements,
   usePromptOperatorInput,
-} from "./state";
+} from "./runtime";
 import { Placement, Places } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
@@ -117,7 +117,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
   const handleClick = () => {
     if (prompt) {
-      promptForInput(uri);
+      promptForInput({ uriOrName: uri });
     } else {
       execute({});
     }

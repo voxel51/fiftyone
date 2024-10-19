@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
-import { showOperatorPromptSelector, useOperatorPrompt } from "../state";
+import { showOperatorPromptSelector, useOperatorPrompt } from "../runtime";
 import { BaseStylesProvider } from "../styled-components";
 import { OperatorPromptType } from "../types";
 import OperatorModalPrompt from "./OperatorModalPrompt";

@@ -1,5 +1,5 @@
-import { ExecutionContext } from "./operators";
-import { useOperatorPrompt } from "./state";
+import { ExecutionContext } from "./runtime/operators";
+import { useOperatorPrompt } from "./runtime";
 
 export class BaseType {}
 

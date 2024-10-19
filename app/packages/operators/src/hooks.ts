@@ -8,14 +8,14 @@ import {
   ExecutionContext,
   fetchRemotePlacements,
   resolveLocalPlacements,
-} from "./operators";
+} from "./runtime/operators";
 import {
   activePanelsEventCountAtom,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
   useCurrentSample,
-} from "./state";
+} from "./runtime";
 
 function useOperatorThrottledContextSetter() {
   const datasetName = useRecoilValue(fos.datasetName);

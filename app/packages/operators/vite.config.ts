@@ -1,7 +1,6 @@
 import { UserConfig } from "vite";
 
 export default <UserConfig>{
-  esbuild: true,
   build: {
     lib: {
       entry: "src/index.ts",
@@ -14,5 +13,10 @@ export default <UserConfig>{
     alias: {
       "@fiftyone/looker": "@fiftyone/looker/src/index.ts",
     },
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    exclude: ["node_modules", "dist"],
   },
 };
