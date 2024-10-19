@@ -3,7 +3,7 @@ import { Close, Extension, Help, Lock } from "@mui/icons-material";
 import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { initializationErrors } from "./operators";
+import { initializationErrors } from "./runtime/operators";
 import { useOperatorBrowser } from "./state";
 
 // todo: use plugin component

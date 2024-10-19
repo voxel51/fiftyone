@@ -10,7 +10,7 @@ import { Extension } from "@mui/icons-material";
 import styled from "styled-components";
 import { types } from ".";
 import OperatorIcon from "./OperatorIcon";
-import { Operator } from "./operators";
+import { Operator } from "./runtime/operators";
 import {
   useOperatorExecutor,
   useOperatorPlacements,

@@ -8,7 +8,7 @@ import {
   ExecutionContext,
   fetchRemotePlacements,
   resolveLocalPlacements,
-} from "./operators";
+} from "./runtime/operators";
 import {
   activePanelsEventCountAtom,
   operatorPlacementsAtom,

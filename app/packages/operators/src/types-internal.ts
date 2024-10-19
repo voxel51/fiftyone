@@ -1,4 +1,4 @@
-import { OperatorResult } from "./operators";
+import { OperatorResult } from "./runtime/operators";
 
 export type ExecutionCallback = (result: OperatorResult) => void;
 export type ExecutionErrorCallback = (error: Error) => void;
@@ -8,4 +8,9 @@ export type OperatorExecutorOptions = {
   requestDelegation?: boolean;
   skipOutput?: boolean;
   callback?: ExecutionCallback;
+};
+
+export type ExecutionHandlers = {
+  onSuccess?: ExecutionCallback;
+  onError?: ExecutionErrorCallback;
 };

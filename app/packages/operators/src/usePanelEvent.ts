@@ -1,7 +1,7 @@
 import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
 import { useActivePanelEventsCount } from "./hooks";
-import { executeOperator } from "./operators";
+import { executeOperator } from "./runtime/operators";
 import { usePromptOperatorInput } from "./state";
 import { ExecutionCallback } from "./types-internal";
 

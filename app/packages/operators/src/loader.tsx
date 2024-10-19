@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
-import { executeOperatorsForEvent, loadOperatorsFromServer } from "./operators";
+import {
+  executeOperatorsForEvent,
+  loadOperatorsFromServer,
+} from "./runtime/operators";
 import {
   availableOperatorsRefreshCount,
   operatorsInitializedAtom,

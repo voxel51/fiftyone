@@ -18,7 +18,7 @@ export {
   abortOperationsByURI,
   executeOperator,
   registerOperator,
-} from "./operators";
+} from "./runtime/operators";
 export {
   useGlobalExecutionContext,
   useOperatorBrowser,

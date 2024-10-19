@@ -29,7 +29,7 @@ import {
   _registerBuiltInOperator,
   executeOperator,
   listLocalAndRemoteOperators,
-} from "./operators";
+} from "./runtime/operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
 
