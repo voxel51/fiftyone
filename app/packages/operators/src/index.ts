@@ -14,7 +14,6 @@ export {
   ExecutionContext,
   Operator,
   OperatorConfig,
-  abortOperationsByExpression,
   abortOperationsByURI,
   executeOperator,
   registerOperator,
@@ -24,6 +23,6 @@ export {
   useOperatorBrowser,
   useOperatorExecutor,
   useOperatorPlacements,
-} from "./state";
+} from "./runtime";
 export * as types from "./types";
 export { default as usePanelEvent } from "./usePanelEvent";

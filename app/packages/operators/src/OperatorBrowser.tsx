@@ -4,7 +4,7 @@ import { Link } from "@mui/material";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { initializationErrors } from "./runtime/operators";
-import { useOperatorBrowser } from "./state";
+import { useOperatorBrowser } from "./runtime";
 
 // todo: use plugin component
 import { useTrackEvent } from "@fiftyone/analytics";

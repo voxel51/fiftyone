@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { savedWorkspacesAtom } from "../../state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
-import { operatorsInitializedAtom } from "@fiftyone/operators/src/state";
+import { operatorsInitializedAtom } from "@fiftyone/operators/src/runtime";
 
 export function useWorkspaces() {
   const [state, setState] = useRecoilState(savedWorkspacesAtom);

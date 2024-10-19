@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { currentContextSelector } from "../recoil";
 import { ExecutionContext } from "../operators";
+import useCurrentSample from "./useCurrentSample";
+import { useAnalyticsInfo } from "@fiftyone/analytics";
 
 /**
  * useExecutionContext
@@ -15,10 +17,54 @@ const useExecutionContext = (
   hooks: object = {}
 ): ExecutionContext => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-
+  const currentSample = useCurrentSample();
+  const {
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    params,
+    selectedLabels,
+    viewName,
+    extendedSelection,
+    groupSlice,
+    queryPerformance,
+  } = curCtx;
+  const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
-    return new ExecutionContext({ ...curCtx.params }, { ...curCtx }, hooks);
-  }, [curCtx, hooks]);
+    return new ExecutionContext(
+      params,
+      {
+        datasetName,
+        view,
+        extended,
+        filters,
+        selectedSamples,
+        selectedLabels,
+        currentSample,
+        viewName,
+        extendedSelection,
+        analyticsInfo,
+        groupSlice,
+        queryPerformance,
+      },
+      hooks
+    );
+  }, [
+    params,
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    selectedLabels,
+    hooks,
+    viewName,
+    currentSample,
+    groupSlice,
+    queryPerformance,
+  ]);
 
   return ctx;
 };

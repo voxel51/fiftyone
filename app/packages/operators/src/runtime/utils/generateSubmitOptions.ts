@@ -1,8 +1,9 @@
 import { ExecutionOptions } from "../operators";
 import { OperatorPromptType } from "../../types";
+import { SubmitOption } from "../types";
 
 type GenerateSubmitOptionsParams = {
-  executionOptions: ExecutionOptions;
+  executionOptions?: ExecutionOptions;
   promptView?: OperatorPromptType["promptView"];
   execute: (options?: {
     requestDelegation?: boolean;
@@ -20,6 +21,9 @@ export function generateSubmitOptions({
   promptView,
   execute,
 }: GenerateSubmitOptionsParams): SubmitOption[] {
+  const options: SubmitOption[] = [];
+  if (!executionOptions) return options;
+
   const availableOrchestrators = executionOptions?.availableOrchestrators || [];
   const hasAvailableOrchestrators = availableOrchestrators.length > 0;
   const defaultToExecute = executionOptions.allowDelegatedExecution
@@ -28,8 +32,6 @@ export function generateSubmitOptions({
   const defaultToSchedule = executionOptions.allowDelegatedExecution
     ? executionOptions.defaultChoiceToDelegated
     : false;
-
-  const options: SubmitOption[] = [];
 
   if (executionOptions.allowImmediateExecution) {
     options.push({

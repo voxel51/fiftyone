@@ -1,5 +1,5 @@
-import { Operator } from "./Operator";
-import { Executor } from "./Executor";
+import Executor from "./Executor";
+import Operator from "./Operator";
 
 function isObjWithContent(obj: any): boolean {
   return obj !== null && typeof obj === "object" && Object.keys(obj).length > 0;

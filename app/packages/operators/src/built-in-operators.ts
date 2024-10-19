@@ -30,7 +30,7 @@ import {
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./runtime/operators";
-import { useShowOperatorIO } from "./state";
+import { useShowOperatorIO } from "./runtime";
 import usePanelEvent from "./usePanelEvent";
 
 //

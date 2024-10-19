@@ -8,7 +8,7 @@ import {
   PANEL_STATE_PATH_CHANGE_DEBOUNCE,
 } from "./constants";
 import { executeOperator } from "./runtime/operators";
-import { useCurrentSample, useGlobalExecutionContext } from "./state";
+import { useCurrentSample, useGlobalExecutionContext } from "./runtime";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
 

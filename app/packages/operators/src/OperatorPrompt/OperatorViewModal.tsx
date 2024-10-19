@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import OperatorIO from "../OperatorIO";
 import OperatorPalette from "../OperatorPalette";
-import { useShowOperatorIO } from "../state";
+import { useShowOperatorIO } from "../runtime";
 import { PaletteContentContainer } from "../styled-components";
 
 export default function OperatorViewModal() {

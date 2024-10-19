@@ -1,17 +1,21 @@
 import { useState, useCallback, useEffect } from "react";
 import { debounce } from "lodash";
-import { ExecutionContext, resolveExecutionOptions } from "../operators";
+import {
+  ExecutionContext,
+  Orchestrator,
+  resolveExecutionOptions,
+} from "../operators";
 
 const EXEC_OPTIONS_RESOLVE_DELAY = 300;
 
 type ExecutionOptions = {
   allowImmediateExecution: boolean;
   allowDelegatedExecution?: boolean;
-  availableOrchestrators?: any[]; // Adjust type based on actual structure
+  availableOrchestrators?: Orchestrator[];
   defaultChoiceToDelegated?: boolean;
 };
 
-type UseExecutionOptionsReturn = {
+export type UseExecutionOptionsReturn = {
   isLoading: boolean;
   executionOptions: ExecutionOptions | null;
   fetch: (ctxOverride?: ExecutionContext | null) => Promise<void>;

@@ -15,7 +15,7 @@ import {
   useOperatorExecutor,
   useOperatorPlacements,
   usePromptOperatorInput,
-} from "./state";
+} from "./runtime";
 import { Placement, Places } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
@@ -117,7 +117,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
 
   const handleClick = () => {
     if (prompt) {
-      promptForInput(uri);
+      promptForInput({ uriOrName: uri });
     } else {
       execute({});
     }

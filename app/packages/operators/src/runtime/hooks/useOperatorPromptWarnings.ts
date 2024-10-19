@@ -12,6 +12,11 @@ export function useOperatorPromptWarnings({
   executionOptions,
   hasAvailableOrchestrators,
 }: UseOperatorPromptWarningsParams) {
+  if (!executionOptions) {
+    return {
+      showWarning: false,
+    };
+  }
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestrators;

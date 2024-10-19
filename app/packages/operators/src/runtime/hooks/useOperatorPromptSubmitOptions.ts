@@ -1,18 +1,14 @@
-import { useCallback } from "react";
-import { ExecutionOptions } from "../operators";
+import { useCallback, useEffect } from "react";
 import { OperatorPromptType } from "../../types";
-import useOperatorSubmitOptionsState, {
-  SubmitOption,
-} from "./useOperatorSubmitOptionsState";
-import { generateSubmitOptions } from "./generateSubmitOptions";
 import { useOperatorPromptWarnings } from "./useOperatorPromptWarnings";
+import { SubmitOption } from "../types";
+import useOperatorSubmitOptionsState from "./useOperatorSubmitOptionsState";
+import { generateSubmitOptions } from "../utils/generateSubmitOptions";
+import { UseExecutionOptionsReturn } from "./useExecutionOptions";
 
 type UseOperatorPromptSubmitOptionsProps = {
   operatorURI: string;
-  execDetails: {
-    executionOptions?: ExecutionOptions;
-    isLoading: boolean;
-  };
+  execDetails: UseExecutionOptionsReturn;
   execute: (options?: {
     requestDelegation?: boolean;
     delegationTarget?: string;
@@ -36,12 +32,11 @@ type UseOperatorPromptSubmitOptionsReturn = {
  * Manages submission options for the operator prompt.
  */
 export default function useOperatorPromptSubmitOptions({
-  operatorURI,
   execDetails,
   execute,
   promptView,
 }: UseOperatorPromptSubmitOptionsProps): UseOperatorPromptSubmitOptionsReturn {
-  const { executionOptions = {}, isLoading } = execDetails;
+  const { executionOptions, isLoading } = execDetails;
   const { options, selectedID, setOptions, setSelectedID } =
     useOperatorSubmitOptionsState();
   const availableOrchestrators = executionOptions?.availableOrchestrators || [];

@@ -180,7 +180,7 @@ export const availableOperators: RecoilValueReadOnly<OperatorConfig[]> =
       return listLocalAndRemoteOperators().allOperators.map((operator) => ({
         label: operator.label,
         name: operator.name,
-        value: operator.uri, // Changed from 'uri' to 'value'
+        value: operator.uri,
         description: operator.config.description,
         unlisted: operator.unlisted,
         canExecute: operator.config.canExecute,
@@ -204,11 +204,58 @@ export const operatorPaletteOpened: RecoilValueReadOnly<boolean> = selector({
   },
 });
 
+export const operatorBrowserQueryState = atom({
+  key: "operatorBrowserQueryState",
+  default: "",
+});
+
+export function filterChoicesByQuery(query, all) {
+  const sanitizedQuery = query.trim();
+  if (sanitizedQuery.length === 0) return all;
+  return all.filter(({ label = "", value = "", description = "" }) => {
+    value = value || "";
+    description = description || "";
+    label = label || "";
+    return (
+      label.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+      value.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+      description.toLowerCase().includes(sanitizedQuery.toLowerCase())
+    );
+  });
+}
+function sortResults(results, recentlyUsedOperators) {
+  const recentlyUsedOperatorsCount = recentlyUsedOperators.length;
+  return results
+    .map((result) => {
+      let score = (result.description || result.label).charCodeAt(0);
+      if (recentlyUsedOperators.includes(result.value)) {
+        const recentIdx = recentlyUsedOperators.indexOf(result.value);
+        score = (recentlyUsedOperatorsCount - recentIdx) * -1;
+      }
+      if (result.canExecute === false) {
+        score += results.length;
+      }
+      return {
+        ...result,
+        score,
+      };
+    })
+    .sort((a, b) => {
+      if (a.score < b.score) {
+        return -1;
+      }
+      if (a.score > b.score) {
+        return 1;
+      }
+      return 0;
+    });
+}
+
 export const operatorBrowserChoices = selector({
   key: "operatorBrowserChoices",
   get: ({ get }) => {
     const allChoices = get(availableOperators);
-    const query = get(fos.operatorBrowserQueryState) as string;
+    const query = get(operatorBrowserQueryState);
     let results = [...allChoices];
     results = results.filter(({ unlisted }) => !unlisted);
     if (query && query.length > 0) {
@@ -243,4 +290,9 @@ export const placementsForPlaceSelector = selectorFamily<
         )
         .map(({ placement, operator }) => ({ placement, operator }));
     },
+});
+
+export const operatorThrottledContext = atom({
+  key: "operatorThrottledContext",
+  default: {},
 });

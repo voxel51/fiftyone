@@ -2,7 +2,7 @@ import { useSetRecoilState } from "recoil";
 import { recentlyUsedOperatorsState, promptingOperatorState } from "../recoil";
 
 type PromptOptions = {
-  operatorName: string;
+  uriOrName: string;
   params?: object;
   options?: object;
 };
@@ -22,18 +22,14 @@ export default function usePromptOperatorInput(): UsePromptOperatorInputReturn {
   );
   const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
-  const prompt = ({
-    operatorName,
-    params = {},
-    options = {},
-  }: PromptOptions) => {
+  const prompt = ({ uriOrName, params = {}, options = {} }: PromptOptions) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
-      const update = new Set([operatorName, ...recentlyUsedOperators]);
+      const update = new Set([uriOrName, ...recentlyUsedOperators]);
       return Array.from(update).slice(0, 5);
     });
 
     setPromptingOperator({
-      operatorName,
+      operatorName: uriOrName,
       params,
       options,
       initialParams: params,

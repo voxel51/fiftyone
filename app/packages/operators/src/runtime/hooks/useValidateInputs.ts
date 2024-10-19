@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { ExecutionContext, Operator, ValidationContext } from "../operators";
+import { ExecutionContext, Operator } from "../operators";
 import { debounce } from "lodash";
+import { ValidationContext } from "../../validation";
 
 type UseValidateInputsReturn = {
   validationErrors: any[];

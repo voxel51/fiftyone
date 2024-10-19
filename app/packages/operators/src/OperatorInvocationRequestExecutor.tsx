@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import {
   useInvocationRequestExecutor,
   useInvocationRequestQueue,
-} from "./state";
+} from "./runtime";
 import { QueueItemStatus } from "./constants";
 
 export default function OperatorInvocationRequestExecutor() {

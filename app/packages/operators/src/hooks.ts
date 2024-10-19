@@ -15,7 +15,7 @@ import {
   operatorThrottledContext,
   operatorsInitializedAtom,
   useCurrentSample,
-} from "./state";
+} from "./runtime";
 
 function useOperatorThrottledContextSetter() {
   const datasetName = useRecoilValue(fos.datasetName);

@@ -2,7 +2,7 @@ import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
 import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator } from "./runtime/operators";
-import { usePromptOperatorInput } from "./state";
+import { usePromptOperatorInput } from "./runtime";
 import { ExecutionCallback } from "./types-internal";
 
 type HandlerOptions = {
@@ -49,7 +49,11 @@ export default function usePanelEvent() {
     };
 
     if (prompt) {
-      promptForOperator(operator, actualParams, { callback: eventCallback });
+      promptForOperator({
+        uriOrName: operator,
+        params: actualParams,
+        options: { callback: eventCallback },
+      });
     } else {
       increment(panelId);
       executeOperator(operator, actualParams, { callback: eventCallback });

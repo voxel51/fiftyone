@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { globalContextSelector } from "../recoil";
-import { ExecutionContext, RawContext } from "../operators";
+import { ExecutionContext } from "../operators";
+import { RawContext } from "../operators/ExecutionContext";
 
 /**
  * useGlobalExecutionContext

@@ -1,5 +1,5 @@
 import { useRecoilValueLoadable } from "recoil";
-import { currentSampleId } from "../recoil";
+import * as fos from "@fiftyone/state";
 
 /**
  * useCurrentSample
@@ -10,7 +10,7 @@ import { currentSampleId } from "../recoil";
  */
 export default function useCurrentSample(): string | null {
   // 'currentSampleId' may suspend for group datasets, so we use a loadable
-  const currentSample = useRecoilValueLoadable<string | null>(currentSampleId);
+  const currentSample = useRecoilValueLoadable(fos.currentSampleId);
 
   // Check the state of the loadable and return the content if available
   return currentSample.state === "hasValue" ? currentSample.contents : null;
