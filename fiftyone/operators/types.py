@@ -2331,13 +2331,13 @@ class ModalView(Button):
         import fiftyone.operators.types as types
 
         schema = {
-            "modal": {"title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body"},
+            "modal": {"icon": "local_offer", "iconVariant": "outlined", "title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body", textAlign: {title: "center", subtitle: "left", body: "right"}},
             "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary"},
             "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
             "callbackFunction": do_something(),
             "functionality": "tagging",
         }
-        modal = types.ModalView(**schema, label="Open Modal", variant="outlined")
+        modal = types.ModalView(**schema, label="This is a modal", variant="outlined", icon="local_offer")
 
         inputs = types.Object()
         inputs.view("modal_btn", modal)
