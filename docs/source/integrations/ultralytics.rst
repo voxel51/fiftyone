@@ -105,6 +105,13 @@ You can directly pass Ultralytics `YOLO` or `RTDETR` detection models to
     # model = YOLO("yolov10l.pt)
     # model = YOLO("yolov10x.pt)
 
+    # YOLOv11
+    # model = YOLO("yolo11n.pt)
+    # model = YOLO("yolo11s.pt)
+    # model = YOLO("yolo11m.pt)
+    # model = YOLO("yolo11l.pt)
+    # model = YOLO("yolo11x.pt)
+
     # RTDETR
     # model = YOLO("rtdetr-l.pt")
     # model = YOLO("rtdetr-x.pt")
@@ -140,6 +147,7 @@ You can also load any of these models directly from the
     # model_name = "yolov8m-coco-torch"
     # model_name = "yolov9e-coco-torch"
     # model_name = "yolov10s-coco-torch"
+    # model_name = "yolo11x-coco-torch"
     # model_name = "rtdetr-l-coco-torch"
 
     model = foz.load_zoo_model(
@@ -182,6 +190,11 @@ You can directly pass Ultralytics YOLO segmentation models to
     # model = YOLO("yolov8l-seg.pt")
     # model = YOLO("yolov8x-seg.pt")
 
+    # model = YOLO("yolo11s-seg.pt")
+    # model = YOLO("yolo11m-seg.pt")
+    # model = YOLO("yolo11l-seg.pt")
+    # model = YOLO("yolo11x-seg.pt")
+
     dataset.apply_model(model, label_field="instances")
 
     session = fo.launch_app(dataset)
@@ -207,19 +220,27 @@ manually convert Ultralytics predictions into the desired
    :align: center
 
 
-You can also load YOLOv8 and YOLOv9 segmentation models from the
+You can also load YOLOv8, YOLOv9, and YOLO11 segmentation models from the
 :ref:`FiftyOne Model Zoo <model-zoo>`:
 
 .. code-block:: python
     :linenos:
 
-    model_name = "yolov9c-seg-coco-torch"
-    # model_name = "yolov9e-seg-coco-torch"
-    # model_name = "yolov8x-seg-coco-torch"
-    # model_name = "yolov8l-seg-coco-torch"
-    # model_name = "yolov8m-seg-coco-torch"
+    model_name = "yolov8n-seg-coco-torch"
     # model_name = "yolov8s-seg-coco-torch"
-    # model_name = "yolov8n-seg-coco-torch"
+    # model_name = "yolov8m-seg-coco-torch"
+    # model_name = "yolov8l-seg-coco-torch"
+    # model_name = "yolov8x-seg-coco-torch"
+
+    # model_name = "yolov9c-seg-coco-torch"
+    # model_name = "yolov9e-seg-coco-torch"
+
+    # model_name = "yolo11n-seg-coco-torch"
+    # model_name = "yolo11s-seg-coco-torch"
+    # model_name = "yolo11m-seg-coco-torch"
+    # model_name = "yolo11l-seg-coco-torch"
+    # model_name = "yolo11x-seg-coco-torch"
+    
 
     model = foz.load_zoo_model(model_name, label_field="yolo_seg")
 
