@@ -2323,6 +2323,50 @@ class IconButtonView(Button):
         super().__init__(**kwargs)
 
 
+class ModalView(Button):
+    """Represents a button in a :class:`View` that opens up an interactive modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        schema = {
+            "modal": {"icon": "local_offer", "iconVariant": "outlined", "title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body", textAlign: {title: "center", subtitle: "left", body: "right"}},
+            "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary", "params": {"foo": "bar", "multiple": True}},
+            "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
+            "primaryCallback": self.do_something(),
+            "secondaryCallback": self.do_nothing(),
+            "functionality": "tagging",
+        }
+        modal = types.ModalView(**schema, label="This is a modal", variant="outlined", icon="local_offer")
+
+        .. note::
+            The primary callback is called when the primary button is clicked and the secondary callback is called when the secondary button is clicked.
+            Secondary callback defaults to a closure of the modal unless defined.
+            Buttons of ModalView inherit all functionality of ButtonView.
+
+        inputs = types.Object()
+        inputs.view("modal_btn", modal)
+
+    Args:
+        modal: the textual content of the modal
+        primaryButton (None): the properties of the primary button
+        secondaryButton (None): the properties of the secondary button
+        primaryCallback (None): the function to execute when the primary button is clicked
+        secondaryCallback (None): the function to execute when the secondary button is clicked
+        functionality (None): the name of the functionality to execute when the primary button is clicked. Available options are 'tagging'
+    """
+
+    def __init__(self, **kwargs):
+        if "primaryCallback" not in kwargs or not callable(
+            kwargs["primaryCallback"]
+        ):
+            raise ValueError(
+                "The 'primaryCallback' parameter is missing or must be function that is callable."
+            )
+        super().__init__(**kwargs)
+
+
 class HStackView(GridView):
     """Displays properties of an object as a horizontal stack of components.
 
