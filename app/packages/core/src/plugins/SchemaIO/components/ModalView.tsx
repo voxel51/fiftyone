@@ -1,5 +1,4 @@
 import React from "react";
-import { getComponentProps } from "../utils";
 import ModalBase from "@fiftyone/components/src/components/ModalBase/ModalBase";
 
 export default function ModalView(props) {
@@ -9,19 +8,20 @@ export default function ModalView(props) {
     modal,
     primaryButton,
     secondaryButton,
-    callbackFunction,
     functionality,
+    primaryCallback,
+    secondaryCallback,
     ...remainingViewProps
   } = view;
 
-  // console.log(getComponentProps(props, "triggerButton"));
   return (
     <ModalBase
       modal={modal}
       primaryButton={primaryButton}
       secondaryButton={secondaryButton}
-      callbackFunction={callbackFunction}
       functionality={functionality}
+      primaryCallback={primaryCallback}
+      secondaryCallback={secondaryCallback}
       props={{
         ...remainingViewProps,
       }}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import ButtonView from "@fiftyone/core/src/plugins/SchemaIO/components/ButtonView";
 import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
@@ -13,20 +13,31 @@ interface ModalBaseProps {
     body: string;
     textAlign?: string | { [key: string]: string };
   };
-  primaryButton: {
+  primaryButton?: {
+    href?: any;
+    prompt?: any;
+    params?: any;
+    operator?: any;
     align?: string;
     width?: string;
+    onClick?: any;
     primaryText: string;
     primaryColor: string;
   };
-  secondaryButton: {
+  secondaryButton?: {
+    href?: any;
+    prompt?: any;
+    params?: any;
+    operator?: any;
     align?: string;
     width?: string;
+    onClick?: any;
     secondaryText: string;
     secondaryColor: string;
   };
-  callbackFunction: () => void;
-  functionality: string;
+  functionality?: string;
+  primaryCallback?: () => void;
+  secondaryCallback?: () => void;
   props: any;
 }
 
@@ -42,19 +53,26 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   modal,
   primaryButton,
   secondaryButton,
-  callbackFunction,
+  primaryCallback,
+  secondaryCallback,
   functionality = "none",
   props,
 }) => {
   const { title, subtitle, body } = modal;
-  const { primaryText, primaryColor } = primaryButton;
-  const { secondaryText, secondaryColor } = secondaryButton;
 
   const defaultAlign = "left";
 
   let titleAlign = defaultAlign;
   let subtitleAlign = defaultAlign;
   let bodyAlign = defaultAlign;
+
+  const [open, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => {
+    if (!secondaryCallback) {
+      setOpen(false);
+    }
+  };
 
   if (typeof modal?.textAlign === "string") {
     titleAlign = subtitleAlign = bodyAlign = modal.textAlign;
@@ -74,7 +92,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     border: "2px solid #000",
     boxShadow: 24,
     p: 6, // Padding for inner spacing
-    display: "flex", // Use flexbox to control alignment
+    display: "flex",
     flexDirection: "column", // Stack items vertically
     justifyContent: "center", // Vertically center the content
   };
@@ -98,50 +116,57 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     modalButtonView["iconPosition"] = props?.iconPosition || "left";
   }
 
-  const primaryButtonView = {
+  const [primaryButtonView, setPrimaryButtonView] = useState({
     variant: "contained",
-    color: primaryColor,
-    label: primaryText,
+    color: primaryButton?.primaryColor,
+    label: primaryButton?.primaryText,
+    onClick: primaryButton?.onClick,
+    operator: primaryCallback || primaryButton?.operator,
+    params: primaryButton?.params,
+    href: primaryButton?.href,
+    prompt: primaryButton?.prompt,
     componentsProps: {
       button: {
         sx: {
           width: primaryButton?.width || "100%",
           justifyContent: primaryButton?.align || "center",
+          ...primaryButton,
         },
       },
     },
-  };
+  });
 
-  const secondaryButtonView = {
+  const [secondaryButtonView, setSecondaryButtonView] = useState({
     variant: "outlined",
-    color: secondaryColor,
-    label: secondaryText,
+    color: secondaryButton?.secondaryColor,
+    label: secondaryButton?.secondaryText,
+    onClick: secondaryButton?.onClick,
+    operator: secondaryCallback || secondaryButton?.operator,
+    params: secondaryButton?.params,
+    href: secondaryButton?.href,
+    prompt: secondaryButton?.prompt,
     componentsProps: {
       button: {
         sx: {
           width: primaryButton?.width || "100%",
           justifyContent: primaryButton?.align || "center",
+          ...secondaryButton,
         },
       },
     },
-  };
-
-  const [open, setOpen] = useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => {
-    setOpen(false);
-  };
+  });
 
   // State options for functionality based on user input
 
-  const [savedTags, setSavedTags] = useState<string[]>([]);
-  const handleSaveTags = (tags: string[]) => {
-    setSavedTags(tags);
-  };
-  // TODO: figure out how to pass tags back up to callback
-  const sendTagsToCallback = () => {
-    // callbackFunction(savedTags);
-  };
+  {
+    /* TAGGING FUNCTIONALITY */
+  }
+  const handleSaveTags = useCallback((tags: string[]) => {
+    setPrimaryButtonView((prevButtonView) => ({
+      ...prevButtonView,
+      params: { ...prevButtonView.params, tags }, // Add tags to existing params
+    }));
+  }, []);
 
   return (
     <>
@@ -199,7 +224,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
               gap: 3,
             }}
           >
-            {primaryButton && (
+            {secondaryButton && (
               <Box sx={{ flexGrow: 1 }}>
                 <ButtonView
                   onClick={handleClose}
@@ -209,10 +234,10 @@ const ModalBase: React.FC<ModalBaseProps> = ({
                 />
               </Box>
             )}
-            {secondaryButton && (
+            {primaryButton && (
               <Box sx={{ flexGrow: 1 }}>
                 <ButtonView
-                  onClick={sendTagsToCallback}
+                  onClick={handleClose}
                   schema={{
                     view: primaryButtonView,
                   }}
