@@ -1472,24 +1472,11 @@ class HiddenView(View):
 class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
-    Examples::
-
-        schema_dots = {
-            text: "Loading dots only"
-        }
-        schema_spinner = {
-            variant: "spinner",
-            color: "primary",
-            size: "medium",
-        }
-        loading_dots = types.LoadingView(**schema_dots)
-        loading_spinner = types.LoadingView(**schema_spinner)
-
     Args:
-        text (None): a label for the loading indicator
-        variant (None): the variant of the loading indicator
-        color (None): the color of the loading indicator
-        size (None): the size of the loading indicator
+        text ("Loading"): a label for the loading indicator
+        variant ("spinner"): the variant of the loading indicator
+        color ("primary"): the color of the loading indicator
+        size ("medium"): the size of the loading indicator
     """
 
     def __init__(self, **kwargs):
@@ -1499,36 +1486,11 @@ class LoadingView(ReadOnlyView):
 class PillBadgeView(ReadOnlyView):
     """Displays a pill shaped badge.
 
-    Examples::
-
-        schema_options_single_color = {
-            text: ["Reviewed", "Not Reviewed"],
-            color: "primary",
-            variant: "outlined",
-            show_icon: True
-        }
-
-         schema_options_multi_color = {
-            text: [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]],
-            color: "primary",
-            variant: "outlined",
-            show_icon: True
-        }
-
-         schema_single_option= {
-            text: "Reviewed",
-            color: "primary",
-            variant: "outlined",
-            show_icon: True
-        }
-        badge = types.PillBadgeView(**schema_options_single_color)
-
-
     Args:
-        text: a label or set of label options with or without a color for the pill badge
-        color (None): the color of the pill
-        variant (None): the variant of the pill
-        show_icon (None): whether to display indicator icon
+        text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
+        color ("primary"): the color of the pill
+        variant ("outlined"): the variant of the pill
+        show_icon (False | True): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):
@@ -1886,18 +1848,6 @@ class SwitchView(View):
     .. note::
 
         Must be used with :class:`Boolean` properties.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class TextView(View):
-    """Displays a text.
-
-    .. note::
-
-        Must be used with :class:`String` properties.
     """
 
     def __init__(self, **kwargs):
@@ -2370,6 +2320,50 @@ class IconButtonView(Button):
     def __init__(self, **kwargs):
         if "icon" not in kwargs or not isinstance(kwargs["icon"], str):
             raise ValueError("The 'icon' parameter of type str is required.")
+        super().__init__(**kwargs)
+
+
+class ModalView(Button):
+    """Represents a button in a :class:`View` that opens up an interactive modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        schema = {
+            "modal": {"icon": "local_offer", "iconVariant": "outlined", "title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body", textAlign: {title: "center", subtitle: "left", body: "right"}},
+            "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary", "params": {"foo": "bar", "multiple": True}},
+            "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
+            "primaryCallback": self.do_something(),
+            "secondaryCallback": self.do_nothing(),
+            "functionality": "tagging",
+        }
+        modal = types.ModalView(**schema, label="This is a modal", variant="outlined", icon="local_offer")
+
+        .. note::
+            The primary callback is called when the primary button is clicked and the secondary callback is called when the secondary button is clicked.
+            Secondary callback defaults to a closure of the modal unless defined.
+            Buttons of ModalView inherit all functionality of ButtonView.
+
+        inputs = types.Object()
+        inputs.view("modal_btn", modal)
+
+    Args:
+        modal: the textual content of the modal
+        primaryButton (None): the properties of the primary button
+        secondaryButton (None): the properties of the secondary button
+        primaryCallback (None): the function to execute when the primary button is clicked
+        secondaryCallback (None): the function to execute when the secondary button is clicked
+        functionality (None): the name of the functionality to execute when the primary button is clicked. Available options are 'tagging'
+    """
+
+    def __init__(self, **kwargs):
+        if "primaryCallback" not in kwargs or not callable(
+            kwargs["primaryCallback"]
+        ):
+            raise ValueError(
+                "The 'primaryCallback' parameter is missing or must be function that is callable."
+            )
         super().__init__(**kwargs)
 
 
