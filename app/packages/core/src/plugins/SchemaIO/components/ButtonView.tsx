@@ -48,7 +48,6 @@ export default function ButtonView(props: ViewPropsType) {
           href={href}
           onClick={(e) => {
             if (operator) {
-              // note: ordering matters: if both defined, operator always executes before onClick
               handleClick(panelId, {
                 params: computedParams,
                 operator,
