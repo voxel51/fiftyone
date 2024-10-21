@@ -179,6 +179,9 @@ function getTableData(props) {
       : Array.isArray(defaultValue)
       ? defaultValue
       : [],
+    selectedCells: new Set(),
+    selectedRows: new Set(),
+    selectedColumns: new Set(),
   };
 }
 
