@@ -14,7 +14,7 @@ import { useAnalyticsInfo } from "@fiftyone/analytics";
  */
 const useExecutionContext = (
   operatorName: string,
-  hooks: object = {}
+  hooks?: object
 ): ExecutionContext => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
   const currentSample = useCurrentSample();
@@ -31,6 +31,7 @@ const useExecutionContext = (
     groupSlice,
     queryPerformance,
   } = curCtx;
+
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
     return new ExecutionContext(

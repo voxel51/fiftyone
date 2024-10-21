@@ -29,7 +29,10 @@ export default function useOperatorPrompt() {
   const resolveTypeError = useRef();
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
-  const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
+  const { operator, isRemote } = useMemo(
+    () => getLocalOrRemoteOperator(operatorName),
+    [operatorName]
+  );
   const execDetails = useExecutionOptions(operatorName, ctx, isRemote);
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);

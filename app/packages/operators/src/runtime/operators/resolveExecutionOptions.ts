@@ -1,6 +1,7 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { resolveOperatorURI } from "./resolveOperator";
 import ExecutionOptions from "./ExecutionOptions";
+import ExecutionContext from "./ExecutionContext";
 
 /**
  * Resolves the execution options for a given operator URI.

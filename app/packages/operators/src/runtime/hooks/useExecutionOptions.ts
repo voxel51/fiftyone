@@ -46,6 +46,7 @@ export default function useExecutionOptions(
         setExecutionOptions({ allowImmediateExecution: true });
         return;
       }
+      console.log("resolving execution options");
       if (!ctxOverride) setIsLoading(true); // Only show loading if loading the first time
       const options = await resolveExecutionOptions(
         operatorURI,

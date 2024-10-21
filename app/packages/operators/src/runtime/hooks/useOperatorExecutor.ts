@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   executeOperatorWithContext,
   ExecutionContext,
@@ -12,7 +12,15 @@ import * as fos from "@fiftyone/state";
 import { useRecoilCallback } from "recoil";
 import { currentContextSelector } from "../recoil";
 
-export default function useOperatorExecutor(uri, handlers: any = {}) {
+function useLogWhenChanged(dep, name) {
+  const prev = useRef(dep);
+  if (prev.current !== dep) {
+    console.log(name, dep, "changed");
+    prev.current = dep;
+  }
+}
+
+export default function useOperatorExecutor(uri, handlers?: any) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
   const { operator } = getLocalOrRemoteOperator(uri);
@@ -64,7 +72,7 @@ export default function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result);
+        handlers?.onSuccess?.(result);
         callback?.(result);
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
@@ -74,7 +82,7 @@ export default function useOperatorExecutor(uri, handlers: any = {}) {
         if (!isAbortError) {
           setError(e);
           setResult(null);
-          handlers.onError?.(e);
+          handlers?.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
           notify({ msg, variant: "error" });
@@ -85,6 +93,9 @@ export default function useOperatorExecutor(uri, handlers: any = {}) {
     },
     [currentSample, context]
   );
+
+  useLogWhenChanged(context, "context");
+
   return {
     isExecuting,
     hasExecuted,

@@ -11,4 +11,14 @@ export default class ExecutionOptions {
     public availableOrchestrators: Orchestrator[] = [],
     public defaultChoiceToDelegated: boolean = false
   ) {}
+
+  static fromJSON(json: any) {
+    return new ExecutionOptions(
+      json.orchestratorRegistrationEnabled,
+      json.allowImmediateExecution,
+      json.allowDelegatedExecution,
+      json.availableOrchestrators.map((o: any) => Orchestrator.fromJSON(o)),
+      json.defaultChoiceToDelegated
+    );
+  }
 }

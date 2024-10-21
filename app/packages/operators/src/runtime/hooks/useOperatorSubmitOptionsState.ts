@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { SubmitOption } from "../types";
 
 type UseOperatorSubmitOptionsStateReturn = {
   options: SubmitOption[];
@@ -29,10 +30,13 @@ export default function useOperatorSubmitOptionsState(
     }
   }, [options]);
 
-  return {
-    options,
-    selectedID,
-    setOptions,
-    setSelectedID,
-  };
+  return useMemo(
+    () => ({
+      options,
+      selectedID,
+      setOptions,
+      setSelectedID,
+    }),
+    [options, selectedID, setOptions, setSelectedID]
+  );
 }
