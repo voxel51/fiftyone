@@ -146,6 +146,21 @@ export const counts = selectorFamily({
     },
 });
 
+export const gatheredPaths = selectorFamily({
+  key: "gatheredPaths",
+  get:
+    ({
+      embeddedDocType,
+      ftype,
+    }: {
+      embeddedDocType?: string | string[];
+      ftype: string | string[];
+    }) =>
+    ({ get }) => {
+      return [...new Set(gatherPaths(get, ftype, embeddedDocType))];
+    },
+});
+
 export const cumulativeCounts = selectorFamily<
   { [key: string]: number },
   {
@@ -160,7 +175,7 @@ export const cumulativeCounts = selectorFamily<
   get:
     ({ extended, path: key, modal, ftype, embeddedDocType }) =>
     ({ get }) => {
-      return [...new Set(gatherPaths(get, ftype, embeddedDocType))].reduce(
+      return get(gatheredPaths({ ftype, embeddedDocType })).reduce(
         (result, path) => {
           const data = get(counts({ extended, modal, path: `${path}.${key}` }));
           for (const value in data) {

@@ -13,7 +13,11 @@ const onSetGroupSlice: RegisteredWriter<"sessionGroupSlice"> =
 
     const pathname = router.history.location.pathname + string;
 
-    router.push(pathname, { ...router.location.state, groupSlice: slice });
+    router.push(pathname, {
+      ...router.location.state,
+      event: "slice",
+      groupSlice: slice,
+    });
 
     if (env().VITE_NO_STATE) return;
     commitMutation<setGroupSliceMutation>(environment, {

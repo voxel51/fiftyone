@@ -1,4 +1,4 @@
-import { expect, Locator, Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
@@ -118,11 +118,9 @@ export class ModalPom {
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
-    await this.url.pageChange(() =>
-      this.locator
-        .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-        .click()
-    );
+    await this.locator
+      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
+      .click();
 
     // wait for sample id to change
     await this.page.waitForFunction((currentSampleId) => {
@@ -219,9 +217,7 @@ export class ModalPom {
 
   async close() {
     // close by clicking outside of modal
-    await this.url.pageChange(() =>
-      this.page.click("body", { position: { x: 0, y: 0 } })
-    );
+    await this.page.click("body", { position: { x: 0, y: 0 } });
   }
 
   async navigateNextSample(allowErrorInfo = false) {

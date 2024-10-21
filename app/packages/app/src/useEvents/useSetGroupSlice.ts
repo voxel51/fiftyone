@@ -15,7 +15,11 @@ const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
         session.current.sessionGroupSlice = slice;
       });
 
-      router.push(pathname, { ...router.location.state, groupSlice: slice });
+      router.push(pathname, {
+        ...router.location.state,
+        event: "slice",
+        groupSlice: slice,
+      });
     },
     [router, session]
   );

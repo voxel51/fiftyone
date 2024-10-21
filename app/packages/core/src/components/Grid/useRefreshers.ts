@@ -63,13 +63,8 @@ export default function useRefreshers() {
 
   useEffect(
     () =>
-      subscribe(({ event }, { reset }, previous) => {
-        if (
-          event === "fieldVisibility" ||
-          event === "modal" ||
-          previous?.event === "modal"
-        )
-          return;
+      subscribe(({ event }, { reset }) => {
+        if (event === "fieldVisibility") return;
 
         // if not a modal page change, reset the grid location
         reset(gridAt);
