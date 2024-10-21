@@ -6,4 +6,3 @@ import jsonIcon from "./icons/json.svg";
 import helpIcon from "./icons/help.svg";
 
 export { jsonIcon, helpIcon };
-export { Toast } from "./components/Toast";

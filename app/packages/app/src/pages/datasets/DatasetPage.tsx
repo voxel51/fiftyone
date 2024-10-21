@@ -13,7 +13,6 @@ import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { Toast } from "@fiftyone/components";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -116,7 +115,6 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
         )}
       </div>
       <Snackbar />
-      <Toast />
     </Nav>
   );
 };
