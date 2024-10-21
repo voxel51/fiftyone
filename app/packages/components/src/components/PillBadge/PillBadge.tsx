@@ -18,6 +18,7 @@ const PillBadge = ({
   ) => {
     if (typeof text === "string") return text;
     if (Array.isArray(text)) {
+      if (text.length === 0) return "";
       if (Array.isArray(text[0])) return text[0][0];
       return text[0];
     }
@@ -30,6 +31,7 @@ const PillBadge = ({
   ) => {
     if (typeof text === "string") return color;
     if (Array.isArray(text)) {
+      if (text.length === 0) return "default";
       if (Array.isArray(text[0])) return text[0][1];
       return color || "default";
     }
@@ -87,7 +89,9 @@ const PillBadge = ({
               ) : undefined
             }
             label={
-              Array.isArray(text) && text.length > 0 && Array.isArray(text[0]) ? (
+              Array.isArray(text) &&
+              text.length > 0 &&
+              Array.isArray(text[0]) ? (
                 <Select
                   value={chipSelection}
                   variant={"standard"}

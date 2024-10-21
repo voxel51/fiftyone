@@ -149,7 +149,7 @@ export default function DropdownView(props: ViewPropsType) {
         autoFocus={autoFocus(props)}
         defaultValue={computedDefaultValue}
         size="small"
-        fullWidth
+        fullWidth={!icon}
         displayEmpty
         title={compact ? description : undefined}
         renderValue={(value) => {
