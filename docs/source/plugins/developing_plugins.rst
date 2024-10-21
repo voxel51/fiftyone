@@ -142,8 +142,8 @@ directory.
 .. note::
 
    For vite configs we recommend forking the
-   `FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository
-   and following the conventions there to build your plugin.
+   `FiftyOne Plugins <https://github.com/voxel51/hello-world-plugin-js>`_
+   repository and following the conventions there to build your plugin.
 
 .. _plugin-anatomy:
 
