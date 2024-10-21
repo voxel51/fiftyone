@@ -4,8 +4,14 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import BoltIcon from '@mui/icons-material/Bolt'; // Icon for the lightning bolt
 
-export default function Toast(action, message, duration = 3000 // default duration of 3 seconds
-  ) {
+// Define types for the props
+interface ToastProps {
+  action: React.ReactNode;   // Accepts any valid React component, element, or JSX
+  message: React.ReactNode;  // Accepts any valid React component, element, or JSX
+  duration?: number;         // Optional duration, with a default value
+}
+
+const Toast: React.FC<ToastProps> = ({ action, message, duration = 3000 }) => {
   const [open, setOpen] = useState(true);
 
   const handleClick = () => {
@@ -44,7 +50,10 @@ export default function Toast(action, message, duration = 3000 // default durati
 
   // example of message; we can also restrict the message to just be title and description
   // title (optional) can be a react node or string
-  // description (required) is string
+  // description is string
+  // make these div into a component like the button
+  // snackbar message => component
+  // snackbar action => component (primary, secondary)
   message = (
     <Box
       sx={{
@@ -102,3 +111,5 @@ export default function Toast(action, message, duration = 3000 // default durati
     </div>
   );
 }
+
+export default Toast;
