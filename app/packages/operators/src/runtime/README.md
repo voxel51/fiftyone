@@ -127,3 +127,26 @@ operator invocation requests in the FiftyOne App (browser):
     -   `markAsCompleted(id)`: Marks a request as successfully completed.
     -   `markAsFailed(id)`: Marks a request as failed.
     -   `clean()`: Clears completed requests from the queue.
+
+## Tests
+
+This directory uses [Vitest](https://vitest.dev/) along with React's
+[Testing Library](https://testing-library.com/docs/react-testing-library/intro)
+to ensure the hooks and operators function correctly. The tests are structured
+to run within a Recoil context to simulate the application state and ensure
+accurate behavior during execution.
+
+**Running tests**
+
+```
+cd $FIFTYONE_DIR/app/packages/operators
+
+# run all tests
+yarn test
+
+# run the runtime tests
+yarn test -- src/runtime/**
+
+# run a specific test
+yarn test -- src/runtime/hooks/useExectuionContext.test.tsx
+```
