@@ -103,6 +103,7 @@ export const count = selectorFamily({
       }
 
       if (QP_TIMEOUT === null) {
+        console.log("HELLO");
         QP_TIMEOUT = setTimeout(() => {
           window.dispatchEvent(new QueryPerformanceToast());
         }, 1000);
