@@ -178,6 +178,8 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
+const SKIP_EVENTS = new Set(["modal", "slice"]);
+
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;
   let currentResource: Resource<Entry<T>>;
@@ -185,8 +187,8 @@ const makeGetEntryResource = <T extends OperationType>() => {
   const isReusable = (location: FiftyOneLocation) => {
     if (currentLocation) {
       return (
-        location.state.event === "modal" ||
-        currentLocation?.state.event === "modal"
+        SKIP_EVENTS.has(location.state.event || "") ||
+        SKIP_EVENTS.has(currentLocation?.state.event || "")
       );
     }
 
