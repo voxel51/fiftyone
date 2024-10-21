@@ -1155,6 +1155,34 @@ export class IconButtonView extends Button {
 }
 
 /**
+ * Operator class for describing a PillBadgeView {@link View} for an
+ * operator type.
+ */
+export class PillBadgeView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "PillBadgeView";
+  }
+  static fromJSON(json) {
+    return new PillBadgeView(json);
+  }
+}
+
+/**
+ * Operator class for describing a ModalView {@link Button} for an
+ * operator type.
+ */
+export class ModalView extends Button {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "ModalView";
+  }
+  static fromJSON(json) {
+    return new ModalView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1222,6 +1250,8 @@ const VIEWS = {
   FieldView,
   TextFieldView,
   LazyFieldView,
+  PillBadgeView,
+  ModalView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
