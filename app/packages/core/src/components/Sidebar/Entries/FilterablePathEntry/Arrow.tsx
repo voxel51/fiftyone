@@ -5,16 +5,14 @@ import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import { FRAME_FILTERING_DISABLED, QP_MODE } from "../../../../utils/links";
+import { FRAME_FILTERING_DISABLED } from "../../../../utils/links";
 import DisabledReason from "./DisabledReason";
 
 export default ({
   id,
-  color,
   disabled,
   expanded,
   frameFilterDisabledPath,
-  unindexed,
 }: {
   id: string;
   color?: string;
@@ -53,24 +51,13 @@ export default ({
     return arrow;
   }
 
-  if (unindexed) {
-    return (
-      <Tooltip
-        text={<DisabledReason text={"add an index"} href={QP_MODE} />}
-        placement="top-center"
-      >
-        {arrow}
-      </Tooltip>
-    );
-  }
-
   return (
     <Arrow
       data-cy={`sidebar-field-arrow-enabled-${id}`}
       style={{
         cursor: "pointer",
         margin: 0,
-        color: color ?? theme.text.primary,
+        color: theme.text.secondary,
       }}
       onClick={(event) => {
         event.preventDefault();

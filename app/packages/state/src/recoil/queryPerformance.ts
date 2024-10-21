@@ -146,9 +146,8 @@ export const pathHasIndexes = selectorFamily({
   key: "pathHasIndexes",
   get:
     (path: string) =>
-    ({ get }) => {
-      return !!get(indexedPaths(path)).size;
-    },
+    ({ get }) =>
+      !!get(indexedPaths(path)).size,
 });
 
 export const indexedPaths = selectorFamily<Set<string>, string>({
@@ -232,13 +231,4 @@ export const queryPerformance = selector({
       value instanceof DefaultValue ? undefined : value
     );
   },
-});
-
-export const isIndexedPath = selectorFamily({
-  key: "isIndexedPath",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      return get(queryPerformance) && !get(pathHasIndexes(path));
-    },
 });

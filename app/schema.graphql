@@ -462,6 +462,7 @@ union LightningResults =
   | DateTimeLightningResult
   | FloatLightningResult
   | IntLightningResult
+  | ObjectIdLightningResult
   | StringLightningResult
 
 type MaskColor {
@@ -576,6 +577,11 @@ type NamedKeypointSkeleton {
 type NamedTargets {
   name: String!
   targets: [Target!]!
+}
+
+type ObjectIdLightningResult implements LightningResult {
+  path: String!
+  values: [String]
 }
 
 type PointCloudSample implements Sample {

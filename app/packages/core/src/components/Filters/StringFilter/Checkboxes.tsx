@@ -162,6 +162,7 @@ const Checkboxes = ({
   selectedAtom,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
@@ -172,6 +173,10 @@ const Checkboxes = ({
 
   const show = useRecoilValue(isBooleanField(path));
   const getCount = useGetCount(modal, path);
+
+  if (!modal && queryPerformance && values.length === 0) {
+    return null;
+  }
 
   // if results are null, and show is false, values are loading
   if (loading || (!show && results === null)) {

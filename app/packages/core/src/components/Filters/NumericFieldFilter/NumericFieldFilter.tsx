@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import RangeSlider from "../../Common/RangeSlider";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import Boxes from "./Boxes";
 import FilterOption from "./FilterOption";
 import Nonfinites from "./Nonfinites";
 import Reset from "./Reset";
@@ -43,7 +44,8 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
-  const indexed = useRecoilValue(fos.isIndexedPath(path));
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
@@ -51,7 +53,11 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const one = useRecoilValue(state.oneBound({ path, modal }));
   const timeZone = useRecoilValue(fos.timeZone);
 
-  if (named && !indexed && !hasBounds) {
+  if (queryPerformance && !indexed) {
+    return <Boxes />;
+  }
+
+  if (named && !hasBounds) {
     return null;
   }
 

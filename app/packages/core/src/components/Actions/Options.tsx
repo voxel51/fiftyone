@@ -200,12 +200,12 @@ const QueryPerformance = () => {
           svgStyles={{ height: "1rem", marginTop: 7.5 }}
         />
         <TabOption
-          active={enabled ? "disable" : "enable"}
-          options={["disable", "enable"].map((value) => ({
+          active={enabled ? "enabled" : "disabled"}
+          options={["disabled", "enabled"].map((value) => ({
             text: value,
             title: value,
             dataCy: `qp-mode-${value}`,
-            onClick: () => setEnabled(value === "enable"),
+            onClick: () => setEnabled(value === "enabled" ? true : false),
           }))}
         />
       </>

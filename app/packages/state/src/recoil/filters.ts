@@ -118,6 +118,9 @@ export const fieldIsFiltered = selectorFamily<
   get:
     ({ path, modal }) =>
     ({ get }) => {
+      if (!path) {
+        return false;
+      }
       const f = get(modal ? modalFilters : filters);
 
       const expandedPath = get(expandPath(path));

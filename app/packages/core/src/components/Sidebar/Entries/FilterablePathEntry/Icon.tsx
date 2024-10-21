@@ -1,8 +1,14 @@
+import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import React from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 import Arrow from "./Arrow";
+
+const LightningBolt = styled(Bolt)`
+  color: ${({ theme }) => theme.text.secondary};
+`;
 
 const Lightning = ({
   path,
@@ -11,14 +17,14 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
-  const indexed = useRecoilValue(fos.isIndexedPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
 
   return (
     <>
-      <Bolt />
+      <Tooltip placement="top-center" text={"Indexed"}>
+        <LightningBolt style={{ height: 16, marginRight: 2, width: 16 }} />
+      </Tooltip>
       <Arrow
-        unindexed={!indexed}
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
         id={path}
         frameFilterDisabledPath={frameFilteringDisabled}
@@ -30,11 +36,12 @@ const Lightning = ({
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameFilteringDisabled =
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
-  if (queryPerformance && !modal) {
+  if (queryPerformance && indexed && !modal) {
     return (
       <Lightning path={path} frameFilteringDisabled={frameFilteringDisabled} />
     );

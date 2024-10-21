@@ -1,7 +1,6 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Settings, VisibilityOff } from "@mui/icons-material";
-import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
@@ -11,6 +10,7 @@ import { FilterInputDiv } from "./utils";
 
 const Text = styled.div`
   font-size: 1rem;
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const Filter = () => {
@@ -36,14 +36,14 @@ const Filter = () => {
 
   return (
     <FilterInputDiv>
-      <Box alignItems={"center"} display="flex">
+      <Box alignItems="center" display="flex">
         {isFilterMode && (
           <Box display="flex" onClick={() => setIsFilterMode(false)}>
             <Tooltip
               text={"Toggle to visibility mode"}
               placement="bottom-start"
             >
-              <FilterAltIcon
+              <FilterList
                 sx={{
                   color: theme.text.tertiary,
                   "&:hover": {

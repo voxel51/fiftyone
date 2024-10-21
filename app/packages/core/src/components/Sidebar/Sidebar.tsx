@@ -1,8 +1,8 @@
-import { Resizable, useTheme } from "@fiftyone/components";
+import { Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, styles } from "@fiftyone/utilities";
-import { Box } from "@mui/material";
+import { useTheme as useMUITheme } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -11,7 +11,6 @@ import SchemaSettings from "../Schema/SchemaSettings";
 import { Filter } from "./Entries";
 import style from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
-import { useTheme as useMUITheme } from "@mui/material";
 
 const MARGIN = 3;
 
@@ -693,7 +692,6 @@ const InteractiveSidebar = ({
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
   );
-  const theme = useTheme();
   const muiTheme = useMUITheme();
 
   return shown ? (
@@ -713,19 +711,7 @@ const InteractiveSidebar = ({
       }}
     >
       <SchemaSettings />
-      {!modal && (
-        <Box
-          style={{
-            padding: 8,
-            paddingLeft: 16,
-            paddingRight: 16,
-            background: theme.background.mediaSpace,
-            borderTopRightRadius: 8,
-          }}
-        >
-          <ViewSelection id="saved-views" />
-        </Box>
-      )}
+      {!modal && <ViewSelection id="saved-views" />}
       {!modal && <Filter />}
       <SidebarColumn
         ref={container}
