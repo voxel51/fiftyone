@@ -13,6 +13,10 @@ from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
     MongoDelegatedOperationRepo,
 )
+from fiftyone.factory.repos.execution_store import (
+    ExecutionStoreRepo,
+    MongoExecutionStoreRepo,
+)
 
 _db: Database = None
 
@@ -44,3 +48,18 @@ class RepositoryFactory(object):
         return RepositoryFactory.repos[
             MongoDelegatedOperationRepo.COLLECTION_NAME
         ]
+
+    @staticmethod
+    def execution_store_repo() -> ExecutionStoreRepo:
+        """Factory method for execution store repository."""
+        if (
+            MongoExecutionStoreRepo.COLLECTION_NAME
+            not in RepositoryFactory.repos
+        ):
+            RepositoryFactory.repos[
+                MongoExecutionStoreRepo.COLLECTION_NAME
+            ] = MongoExecutionStoreRepo(
+                collection=_get_db()[MongoExecutionStoreRepo.COLLECTION_NAME]
+            )
+
+        return RepositoryFactory.repos[MongoExecutionStoreRepo.COLLECTION_NAME]
