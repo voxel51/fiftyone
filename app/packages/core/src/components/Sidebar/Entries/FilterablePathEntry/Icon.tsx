@@ -6,6 +6,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Arrow from "./Arrow";
 
+const LABEL_TAGS = "_label_tags";
+
 export const LightningBolt = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
@@ -40,6 +42,10 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
   const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+
+  if (!modal && queryPerformance && path === LABEL_TAGS) {
+    return null;
+  }
 
   if (queryPerformance && indexed && !modal) {
     return (

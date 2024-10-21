@@ -25,13 +25,13 @@ export default function (
     resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
   const length = results?.results?.length ?? 0;
 
-  const shown = queryPerformance
-    ? true
-    : resultsLoadable.state !== "loading" || boolean || length < CHECKBOX_LIMIT;
+  const shown =
+    queryPerformance ||
+    (resultsLoadable.state !== "loading" && length >= CHECKBOX_LIMIT);
 
   return {
     results,
     useSearch,
-    showSearch: Boolean(shown),
+    showSearch: Boolean(shown) && !boolean,
   };
 }

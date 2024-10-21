@@ -29,7 +29,6 @@ export const aggregationQuery = graphQLSelectorFamily<
   {
     customView?: any;
     extended: boolean;
-    queryPerformance?: boolean;
     modal: boolean;
     mixed?: boolean;
     paths: string[];

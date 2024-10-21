@@ -160,7 +160,6 @@ def _resolve_lightning_path_queries(
     field_path = path.path
     field = dataset.get_field(field_path)
     field_path = f"{'.'.join(field_path.split('.')[:-1] + [field.db_field])}"
-    print("HELLO", field_path)
     collection = dataset._sample_collection_name
     is_frame_field = bool(dataset._is_frame_field(field_path))
     if is_frame_field:
