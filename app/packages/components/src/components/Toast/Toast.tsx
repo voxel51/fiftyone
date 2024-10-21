@@ -11,7 +11,7 @@ interface ToastProps {
   duration?: number;         // Optional duration, with a default value
 }
 
-const Toast: React.FC<ToastProps> = ({ action, message, duration = 3000 }) => {
+const Toast: React.FC<ToastProps> = ({ action, message, duration = 5000 }) => {
   const [open, setOpen] = useState(true);
 
   const handleClose = (event, reason) => {
@@ -22,21 +22,19 @@ const Toast: React.FC<ToastProps> = ({ action, message, duration = 3000 }) => {
   };
 
   return (
-    <div>
-      <Snackbar
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        open={open}
-        onClose={handleClose}
-        autoHideDuration={30000}
-        sx={{ height: 5 }}
-      >
-        <SnackbarContent
-          message={message}
-          action={action}
-          style={{ backgroundColor: "#333", color: "#fff" }} // Custom styling for the Snackbar
-        />
-      </Snackbar>
-    </div>
+    <Snackbar
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      open={open}
+      onClose={handleClose}
+      autoHideDuration={duration}
+      sx={{ height: 5 }}
+    >
+      <SnackbarContent
+        message={message}
+        action={action}
+        style={{ backgroundColor: "#333", color: "#fff" }}
+      />
+    </Snackbar>
   );
 }
 
