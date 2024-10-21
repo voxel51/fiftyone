@@ -4,8 +4,14 @@ import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
-import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
+import { LightningBolt } from "./FilterablePathEntry/Icon";
 import { FilterInputDiv } from "./utils";
 
 const Text = styled.div`
@@ -33,6 +39,7 @@ const Filter = () => {
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   return (
     <FilterInputDiv>
@@ -124,6 +131,7 @@ const Filter = () => {
             </Box>
           </Tooltip>
         )}
+        {queryPerformance && <LightningBolt />}
         <Tooltip
           text="Change field visibility"
           placement="bottom-center"

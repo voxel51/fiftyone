@@ -34,9 +34,11 @@ const EntryCounts = ({
   }
 
   if (countAtom) {
-    <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
-      {subcount?.toLocaleString()} of {count?.toLocaleString()}
-    </span>;
+    return (
+      <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
+        {subcount?.toLocaleString()} of {count?.toLocaleString()}
+      </span>
+    );
   }
 
   return (

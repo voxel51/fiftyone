@@ -196,12 +196,13 @@ export const defaultQueryPerformanceConfig = selector({
   get: ({ get }) => get(config).defaultQueryPerformance,
 });
 
-const queryPerformanceStore = atomFamily<string, string>({
+const queryPerformanceStore = atomFamily<boolean, string>({
   key: "queryPerformanceStore",
   default: undefined,
   effects: (datasetId) => [
     getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
       sessionStorage: true,
+      valueClass: "boolean",
     }),
   ],
 });
@@ -218,7 +219,6 @@ export const queryPerformance = selector({
     }
 
     const storedValue = get(queryPerformanceStore(get(datasetId)));
-
     if (storedValue !== undefined) {
       return storedValue;
     }

@@ -1,8 +1,6 @@
 import { selectorFamily } from "recoil";
 import { lightningQuery } from "../queryPerformance";
 
-const types = new Set();
-
 export const lightningStringResults = selectorFamily<
   string[],
   { path: string; search?: string; exclude?: string[] }

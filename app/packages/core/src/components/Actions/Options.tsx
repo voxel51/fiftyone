@@ -183,33 +183,36 @@ const QueryPerformance = () => {
   const enableQpMode =
     enableQueryPerformanceConfig && defaultQueryPerformanceConfig;
 
-  if (enableQpMode)
-    return (
-      <>
-        <ActionOption
-          id="qp-mode"
-          text="Query Performance mode"
-          href={QP_MODE}
-          title={"More on Query Performance mode"}
-          style={{
-            background: "unset",
-            color: theme.text.primary,
-            paddingTop: 0,
-            paddingBottom: 0,
-          }}
-          svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        />
-        <TabOption
-          active={enabled ? "enabled" : "disabled"}
-          options={["disabled", "enabled"].map((value) => ({
-            text: value,
-            title: value,
-            dataCy: `qp-mode-${value}`,
-            onClick: () => setEnabled(value === "enabled" ? true : false),
-          }))}
-        />
-      </>
-    );
+  if (!enableQpMode) {
+    return null;
+  }
+
+  return (
+    <>
+      <ActionOption
+        id="qp-mode"
+        text="Query Performance mode"
+        href={QP_MODE}
+        title={"More on Query Performance mode"}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <TabOption
+        active={enabled ? "enabled" : "disabled"}
+        options={["disabled", "enabled"].map((value) => ({
+          text: value,
+          title: value,
+          dataCy: `qp-mode-${value}`,
+          onClick: () => setEnabled(value === "enabled"),
+        }))}
+      />
+    </>
+  );
 };
 
 const HideFieldSetting = () => {

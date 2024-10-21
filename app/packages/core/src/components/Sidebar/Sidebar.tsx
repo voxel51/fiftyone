@@ -12,6 +12,15 @@ import { Filter } from "./Entries";
 import style from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
+const TopContainer = styled.div`
+  padding: 1rem 1rem 0.5rem 1rem;
+  background: ${({ theme }) => theme.background.mediaSpace};
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
+  border-radius: 0 6px 0 0;
+`;
+
 const MARGIN = 3;
 
 const fn = (
@@ -711,8 +720,12 @@ const InteractiveSidebar = ({
       }}
     >
       <SchemaSettings />
-      {!modal && <ViewSelection id="saved-views" />}
-      {!modal && <Filter />}
+      {!modal && (
+        <TopContainer>
+          <ViewSelection id="saved-views" />
+          <Filter />
+        </TopContainer>
+      )}
       <SidebarColumn
         ref={container}
         data-cy="sidebar-column"
