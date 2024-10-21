@@ -1,8 +1,5 @@
 import React, { useState } from "react";
-import { Snackbar, Button, SnackbarContent } from "@mui/material";
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import BoltIcon from '@mui/icons-material/Bolt'; // Icon for the lightning bolt
+import { Snackbar, SnackbarContent } from "@mui/material";
 
 // Define types for the props
 interface ToastProps {
