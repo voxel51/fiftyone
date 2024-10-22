@@ -48,6 +48,7 @@ export { default as SwitchView } from "./SwitchView";
 export { default as TableView } from "./TableView";
 export { default as TabsView } from "./TabsView";
 export { default as TagsView } from "./TagsView";
+export { default as TextView } from "./TextView";
 export { default as TextFieldView } from "./TextFieldView";
 export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";

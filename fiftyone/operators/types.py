@@ -1854,6 +1854,16 @@ class SwitchView(View):
         super().__init__(**kwargs)
 
 
+class TextView(View):
+    """Displays a text.
+    .. note::
+        Must be used with :class:`String` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class TextFieldView(View):
     """Displays a text input.
 
