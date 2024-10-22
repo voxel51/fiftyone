@@ -176,7 +176,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     } else {
       setPrimaryButtonView({ ...primaryButtonView, disabled: false });
     }
-  }, [functionality, primaryButtonView, primaryButtonView.params]);
+  }, [primaryButtonView.params]);
 
   const handleSaveTags = useCallback((tags: string[]) => {
     setPrimaryButtonView((prevButtonView) => ({
