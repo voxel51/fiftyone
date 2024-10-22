@@ -2131,17 +2131,27 @@ class SaveView(foo.Operator):
         name = ctx.params.get("name", None)
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
+        view = ctx.params.get("view", None)
+
+        curr_view = view is None
+        if curr_view:
+            view = ctx.view
+        else:
+            view = _parse_view(ctx, view)
 
         ctx.dataset.save_view(
             name,
-            ctx.view,
+            view,
             description=description,
             color=color,
             overwrite=True,
         )
 
+        """
         # @todo fix App bug so that this works
-        # ctx.ops.set_view(name=name)
+        if curr_view:
+            ctx.ops.set_view(name=name)
+        """
 
 
 class EditSavedViewInfo(foo.Operator):
@@ -2168,8 +2178,16 @@ class EditSavedViewInfo(foo.Operator):
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
 
+        curr_name = ctx.view.name
         info = dict(name=new_name, description=description, color=color)
+
         ctx.dataset.update_saved_view_info(name, info)
+
+        """
+        # @todo fix App bug so that this works
+        if curr_name is not None and curr_name == name and name != new_name:
+            ctx.ops.set_view(name=new_name)
+        """
 
 
 def _edit_saved_view_info_inputs(ctx, inputs):
@@ -2259,8 +2277,13 @@ class DeleteSavedView(foo.Operator):
     def execute(self, ctx):
         names = ctx.params["names"]
 
+        curr_view = False
         for name in names:
+            curr_view |= name == ctx.view.name
             ctx.dataset.delete_saved_view(name)
+
+        if curr_view:
+            ctx.ops.set_view(view=ctx.dataset.view())
 
 
 def _delete_saved_view_inputs(ctx, inputs):
@@ -2282,10 +2305,11 @@ def _delete_saved_view_inputs(ctx, inputs):
     inputs.list(
         "names",
         types.String(),
+        default=[ctx.view.name] if ctx.view.name is not None else None,
+        required=True,
         label="Saved view",
         description="The saved view(s) to delete",
         view=saved_view_selector,
-        required=True,
     )
 
 
@@ -2580,10 +2604,11 @@ def _delete_workspace_inputs(ctx, inputs):
     inputs.list(
         "names",
         types.String(),
+        default=[ctx.spaces.name] if ctx.spaces.name is not None else None,
+        required=True,
         label="Workspace",
         description="The workspace(s) to delete",
         view=workspace_selector,
-        required=True,
     )
 
 
@@ -2773,6 +2798,13 @@ class DownloadFileOperator(foo.Operator):
         # in OSS, in teams it resolves cloud bucket urls
         url = ctx.params["url"]
         ctx.ops.browser_download(url)
+
+
+def _parse_view(ctx, view):
+    if isinstance(view, str):
+        view = json.loads(view)
+
+    return fo.DatasetView._build(ctx.dataset, view)
 
 
 def _parse_spaces(ctx, spaces):
