@@ -3209,6 +3209,8 @@ class DelegatedLaunchCommand(Command):
 
     @staticmethod
     def setup(parser):
+        # Default is local which is unsupported in Teams. This is so that
+        #   caller must be intentional about wanting "remote" mode.
         parser.add_argument(
             "-t",
             "--type",
@@ -3225,12 +3227,14 @@ class DelegatedLaunchCommand(Command):
             help="Interval in seconds to check for new operations",
         )
 
+        parser.add_argument(
+            "--no-validate",
+        )
+
     @staticmethod
     def execute(parser, args):
-        supported_types = (
-            "local",
-            "remote",
-        )
+        # "local" not supported in Teams
+        supported_types = {"remote"}
         if args.type not in supported_types:
             raise ValueError(
                 "Unsupported service type '%s'. Supported values are %s"
@@ -3241,6 +3245,7 @@ class DelegatedLaunchCommand(Command):
             _launch_delegated_local()
         elif args.type == "remote":
             executor = fodec.ContinualExecutor(args.interval)
+            executor.validate()
             signal.signal(signal.SIGTERM, executor.signal_handler)
             signal.signal(signal.SIGINT, executor.signal_handler)
             executor.start()
