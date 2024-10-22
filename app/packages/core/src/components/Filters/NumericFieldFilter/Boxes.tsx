@@ -1,7 +1,8 @@
 import { Selector, useTheme } from "@fiftyone/components";
-import { pathColor } from "@fiftyone/state";
+import { maxAtom, minAtom, pathColor } from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import type { RecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -16,8 +17,16 @@ const Container = styled.div`
   padding: 0.25rem 0.5rem;
 `;
 
-const Box = ({ path, placeholder }: { path: string; placeholder: string }) => {
-  const color = useRecoilValue(pathColor(path));
+const Box = ({
+  atom,
+  color,
+  placeholder,
+}: {
+  atom: RecoilState<number | null>;
+  color: string;
+  placeholder: string;
+}) => {
+  const [value, setValue] = useRecoilState(atom);
   const theme = useTheme();
   return (
     <Selector
@@ -27,17 +36,22 @@ const Box = ({ path, placeholder }: { path: string; placeholder: string }) => {
         fontSize: "1rem",
         width: "100%",
       }}
-      onSelect={() => alert("E")}
+      value={value !== null ? String(value) : undefined}
+      onSelect={async (v) => {
+        setValue(Number.parseFloat(v));
+        return v;
+      }}
       containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
     />
   );
 };
 
-const Boxes = ({ path }: { path: string }) => {
+const Boxes = ({ modal, path }: { modal: boolean; path: string }) => {
+  const color = useRecoilValue(pathColor(path));
   return (
     <Container>
-      <Box path={path} placeholder={"min"} />
-      <Box path={path} placeholder={"max"} />
+      <Box atom={minAtom({ modal, path })} color={color} placeholder={"min"} />
+      <Box atom={maxAtom({ modal, path })} color={color} placeholder={"max"} />
     </Container>
   );
 };
