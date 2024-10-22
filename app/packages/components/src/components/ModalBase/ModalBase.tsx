@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ButtonView from "@fiftyone/core/src/plugins/SchemaIO/components/ButtonView";
 import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
@@ -21,6 +21,7 @@ interface ModalBaseProps {
     align?: string;
     width?: string;
     onClick?: any;
+    disabled?: boolean;
     primaryText: string;
     primaryColor: string;
   };
@@ -32,6 +33,7 @@ interface ModalBaseProps {
     align?: string;
     width?: string;
     onClick?: any;
+    disabled?: boolean;
     secondaryText: string;
     secondaryColor: string;
   };
@@ -125,6 +127,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     params: primaryButton?.params,
     href: primaryButton?.href,
     prompt: primaryButton?.prompt,
+    disabled: primaryButton?.disabled,
     componentsProps: {
       button: {
         sx: {
@@ -145,6 +148,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     params: secondaryButton?.params,
     href: secondaryButton?.href,
     prompt: secondaryButton?.prompt,
+    disabled: secondaryButton?.disabled,
     componentsProps: {
       button: {
         sx: {
@@ -161,6 +165,19 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   {
     /* TAGGING FUNCTIONALITY */
   }
+  useEffect(() => {
+    if (
+      (functionality === "tagging" || functionality === "Tagging") &&
+      (!primaryButtonView.params ||
+        !primaryButtonView.params.tags ||
+        primaryButtonView.params.tags.length === 0)
+    ) {
+      setPrimaryButtonView({ ...primaryButtonView, disabled: true });
+    } else {
+      setPrimaryButtonView({ ...primaryButtonView, disabled: false });
+    }
+  }, [functionality, primaryButtonView, primaryButtonView.params]);
+
   const handleSaveTags = useCallback((tags: string[]) => {
     setPrimaryButtonView((prevButtonView) => ({
       ...prevButtonView,
@@ -213,7 +230,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
           <Typography id="modal-body" sx={{ my: 1, textAlign: bodyAlign }}>
             {body}
           </Typography>
-          {functionality === "tagging" && (
+          {(functionality === "tagging" || functionality === "Tagging") && (
             <DisplayTags saveTags={handleSaveTags} />
           )}
           <Box
