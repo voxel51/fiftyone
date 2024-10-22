@@ -174,16 +174,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
 const QueryPerformance = () => {
   const theme = useTheme();
   const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
-  const enableQueryPerformanceConfig = useRecoilValue(
-    fos.enableQueryPerformanceConfig
-  );
-  const defaultQueryPerformanceConfig = useRecoilValue(
-    fos.defaultQueryPerformanceConfig
-  );
-  const enableQpMode =
-    enableQueryPerformanceConfig && defaultQueryPerformanceConfig;
-
-  if (!enableQpMode) {
+  if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
     return null;
   }
 
