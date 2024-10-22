@@ -2261,7 +2261,7 @@ The example code below shows how to access and update panel state.
 
         def decrement(self, ctx):
             count = ctx.panel.get_state("v_stack.h_stack.count", 0)
-            ctx.panel.set_state("v_stack.h_stack.count", count + 1)
+            ctx.panel.set_state("v_stack.h_stack.count", count - 1)
 
         def render(self, ctx):
             panel = types.Object()
