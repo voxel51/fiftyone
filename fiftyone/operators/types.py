@@ -2358,12 +2358,6 @@ class ModalView(Button):
     """
 
     def __init__(self, **kwargs):
-        if "primaryCallback" not in kwargs or not callable(
-            kwargs["primaryCallback"]
-        ):
-            raise ValueError(
-                "The 'primaryCallback' parameter is missing or must be function that is callable."
-            )
         super().__init__(**kwargs)
 
 
