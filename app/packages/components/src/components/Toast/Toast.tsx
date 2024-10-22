@@ -1,16 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
+import { atom, useRecoilState } from "recoil";
 import { Button, Snackbar, SnackbarContent } from "@mui/material";
 
 // Define types for the props
 interface ToastProps {
   message: React.ReactNode;  // Accepts any valid React component, element, or JSX
-  primary: Button;           // Accepts a Button component
-  secondary: Button;          // Accepts a Button component
+  primary: typeof Button;           // Accepts a Button component
+  secondary: typeof Button;          // Accepts a Button component
   duration?: number;         // Optional duration, with a default value
 }
 
 const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 5000 }) => {
-  const [open, setOpen] = useState(true);
+  const toastStateAtom = atom({
+    key: "open",
+    default: true,
+  });
+
+  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
   const handleClose = (event, reason) => {
     if (reason === "clickaway") {
@@ -20,11 +26,11 @@ const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 50
   };
 
   const action = (
-  <div>
-    {primary}
-    {secondary}
-  </div>
-);
+    <div>
+      {primary(setOpen)} {/* Pass setOpen to primary button */}
+      {secondary(setOpen)} {/* Pass setOpen to secondary button */}
+    </div>
+  );
 
   return (
     <Snackbar
