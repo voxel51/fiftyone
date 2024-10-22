@@ -1,17 +1,21 @@
 import React, { useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
 import { Chip, FormControl, MenuItem, Select } from "@mui/material";
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
 
 const PillBadge = ({
   text,
   color = "default",
   variant = "filled",
   showIcon = true,
+  operator,
 }: {
   text: string | string[] | [string, string][];
   color?: string;
   variant?: "filled" | "outlined";
   showIcon?: boolean;
+  operator?: () => void;
 }) => {
   const getInitialChipSelection = (
     text: string | string[] | [string, string][]
@@ -59,6 +63,9 @@ const PillBadge = ({
     paddingLeft: 1,
   };
 
+  const panelId = usePanelId();
+  const handleClick = usePanelEvent();
+
   return (
     <span>
       {typeof text === "string" ? (
@@ -102,6 +109,12 @@ const PillBadge = ({
                     );
                     setChipSelection(event.target.value);
                     setChipColor(selectedText?.[1] ?? "default");
+                    if (operator) {
+                      handleClick(panelId, {
+                        params: { value: event.target.value },
+                        operator,
+                      });
+                    }
                   }}
                   sx={{
                     color: "inherit",
@@ -118,7 +131,15 @@ const PillBadge = ({
                   value={chipSelection}
                   variant={"standard"}
                   disableUnderline={true}
-                  onChange={(event) => setChipSelection(event.target.value)}
+                  onChange={(event) => {
+                    setChipSelection(event.target.value);
+                    if (operator) {
+                      handleClick(panelId, {
+                        params: { value: event.target.value },
+                        operator,
+                      });
+                    }
+                  }}
                   sx={{
                     color: "inherit",
                   }}

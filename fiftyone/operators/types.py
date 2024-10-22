@@ -1483,7 +1483,7 @@ class LoadingView(ReadOnlyView):
         super().__init__(**kwargs)
 
 
-class PillBadgeView(ReadOnlyView):
+class PillBadgeView(View):
     """Displays a pill shaped badge.
 
     Args:
