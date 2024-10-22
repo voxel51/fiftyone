@@ -59,7 +59,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   );
 
   const createLooker = fos.useCreateLooker(
-    false,
+    true,
     true,
     {
       ...opts,

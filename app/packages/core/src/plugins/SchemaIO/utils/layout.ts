@@ -179,11 +179,30 @@ export function parseGap(gap: number | string) {
   return 0;
 }
 
-export function getAdjustedLayoutWidth(layoutWidth?: number, gap?: number) {
-  if (typeof gap === "number" && typeof layoutWidth === "number") {
-    return layoutWidth - gap * 8;
+export function getAdjustedLayoutDimension(value?: number, gap?: number) {
+  if (typeof gap === "number" && typeof value === "number") {
+    return value - gap * 8;
   }
-  return layoutWidth;
+  return value;
+}
+
+export function getAdjustedLayoutDimensions({
+  height,
+  width,
+  gap,
+  orientation,
+}: {
+  height?: number;
+  width?: number;
+  gap?: number;
+  orientation?: string;
+}) {
+  const adjustedHeight = getAdjustedLayoutDimension(height, gap);
+  const adjustedWidth = getAdjustedLayoutDimension(width, gap);
+  if (orientation === "horizontal") {
+    return { height, width: adjustedWidth };
+  }
+  return { height: adjustedHeight, width };
 }
 
 type PaddingSxType = {

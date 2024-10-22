@@ -125,7 +125,9 @@ export const Looker3d = () => {
       set(fos.modalSelector, null);
     },
     [sampleMap, isHovering],
-    false
+    {
+      useTransaction: false,
+    }
   );
 
   const clear = useCallback(() => {

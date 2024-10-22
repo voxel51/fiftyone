@@ -55,7 +55,7 @@ export const ActionBar = ({
       jsonPanel.toggle(sampleForJsonView);
     },
     [sampleForJsonView],
-    false
+    { useTransaction: false }
   );
 
   const componentsToRender = useMemo(() => {
