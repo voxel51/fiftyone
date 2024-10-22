@@ -5,20 +5,24 @@ import { Snackbar, SnackbarContent } from "@mui/material";
 // Define types for the props
 interface ToastProps {
   message: React.ReactNode;
-  primary: CallableFunction;
-  secondary: CallableFunction;
+  primary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
+  secondary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
   duration?: number;         // Optional duration, with a default value
 }
 
 const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 5000 }) => {
   const toastStateAtom = atom({
-    key: "open",
+    key: "toastOpenState",
     default: true,
   });
 
   const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
   const handleClose = (event, reason) => {
+    if (event) {
+      console.log(event);
+    }
+    
     if (reason === "clickaway") {
       return;
     }
