@@ -33,7 +33,7 @@ const EntryCounts = ({
     return <span data-cy="entry-count-all">{count?.toLocaleString()}</span>;
   }
 
-  if (countAtom) {
+  if (countAtom !== CONST_SELECTOR) {
     return (
       <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
         {subcount?.toLocaleString()} of {count?.toLocaleString()}

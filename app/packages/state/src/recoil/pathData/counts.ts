@@ -11,14 +11,6 @@ import * as viewAtoms from "../view";
 import { booleanCountResults } from "./boolean";
 import { gatherPaths } from "./utils";
 
-class QueryPerformanceToast extends Event {
-  constructor() {
-    super("queryperformance");
-  }
-}
-
-let QP_TIMEOUT: ReturnType<typeof setTimeout> | null = null;
-
 export const count = selectorFamily({
   key: "count",
   get:
@@ -100,13 +92,6 @@ export const count = selectorFamily({
 
       if (value !== undefined) {
         return get(counts(params))[value] || 0;
-      }
-
-      if (QP_TIMEOUT === null) {
-        console.log("HELLO");
-        QP_TIMEOUT = setTimeout(() => {
-          window.dispatchEvent(new QueryPerformanceToast());
-        }, 1000);
       }
 
       return get(aggregation(params))?.count as number;

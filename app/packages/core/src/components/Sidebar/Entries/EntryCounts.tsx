@@ -44,7 +44,7 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
-  return (!queryPerformance || hasFilters) && shown ? (
+  return (!queryPerformance || hasFilters || !path) && shown ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}

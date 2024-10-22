@@ -1,13 +1,27 @@
 import { Toast } from "@fiftyone/components";
+import { QP_MODE } from "@fiftyone/core";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@material-ui/core";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { atom, useRecoilState } from "recoil";
 
 const TIMEOUT = 5000;
 
+const hideQueryPerformanceToast = atom({
+  key: "hideQueryPerformanceToast",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("hideQueryPerformanceToast", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 const QueryPerformanceToast = () => {
   const [shown, setShown] = useState(false);
+  const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
 
   if (!element) {
@@ -31,7 +45,7 @@ const QueryPerformanceToast = () => {
     return () => window.removeEventListener("queryperformance", listen);
   }, []);
 
-  if (!shown) {
+  if (!shown || disabled) {
     return null;
   }
 
@@ -42,19 +56,19 @@ const QueryPerformanceToast = () => {
           <Button
             variant="contained"
             size="small"
-            onClick={}
+            onClick={() => open(QP_MODE, "_blank")?.focus()}
             style={{ marginLeft: "auto" }} // Right align the button
           >
-            Create an index
+            View Documentation
           </Button>
           <Button
             variant="text"
             color="secondary"
             size="small"
-            onClick={}
+            onClick={() => setDisabled(true)}
             style={{ marginLeft: "auto" }} // Right align the button
           >
-            Don't show me again
+            Don&apos;t show me again
           </Button>
         </div>
       }

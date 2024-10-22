@@ -3,6 +3,7 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import Boxes from "./Boxes";
 import RangeSlider from "./RangeSlider";
 import * as state from "./state";
 
@@ -53,7 +54,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
         />
       )}
       {boxes ? (
-        "Boxes"
+        <Boxes path={path} />
       ) : (
         <RangeSlider color={color} modal={modal} path={path} />
       )}
