@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+import bson
 import pytest
 
 import fiftyone
@@ -519,6 +520,35 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(doc.status.progress, 0.5)
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
+
+    def test_output_schema_null_metadata(
+        self, mock_get_operator, mock_operator_exists
+    ):
+        mock_outputs = MockOutputs()
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target="test_target",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+
+        # Set metadata to null instead of being unset, to test that corner case
+        self.svc._repo._collection.find_one_and_update(
+            {"_id": bson.ObjectId(doc.id)}, {"$set": {"metadata": None}}
+        )
+
+        self.svc.set_completed(
+            doc.id,
+            result=ExecutionResult(outputs_schema=mock_outputs.to_json()),
+        )
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertEqual(
+            doc.metadata,
+            {
+                "outputs_schema": mock_outputs.to_json(),
+            },
+        )
 
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
