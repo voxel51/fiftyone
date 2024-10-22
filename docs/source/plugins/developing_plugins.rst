@@ -974,6 +974,7 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
+-   `ctx.spaces` - the current :ref:`Spaces layout <app-spaces>` in the App
 -   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
@@ -1006,7 +1007,6 @@ contains the following properties:
     if any
 -   `ctx.results` - a dict containing the outputs of the `execute()` method, if
     it has been called
--   `ctx.spaces` - The current workspace or the state of spaces in the app.
 -   `ctx.hooks` **(JS only)** - the return value of the operator's `useHooks()`
     method
 
@@ -1997,6 +1997,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_view")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_spaces(self, ctx):
+            """Implement this method to set panel state/data when the current
+            spaces layout changes.
+
+            The current spaces layout will be available via ``ctx.spaces``.
+            """
+            event = {
+                "data": ctx.spaces,
+                "description": "the current spaces layout",
+            }
+            ctx.panel.set_state("event", "on_change_spaces")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_current_sample(self, ctx):
             """Implement this method to set panel state/data when a new sample
             is loaded in the Sample modal.
@@ -2064,19 +2077,6 @@ subsequent sections.
                 "description": "the current group slice",
             }
             ctx.panel.set_state("event", "on_change_group_slice")
-            ctx.panel.set_data("event_data", event)
-
-        def on_change_spaces(self, ctx):
-            """Implement this method to set panel state/data when the current
-            state of spaces changes in the app.
-
-            The current state of spaces will be available via ``ctx.spaces``.
-            """
-            event = {
-                "data": ctx.spaces,
-                "description": "the current state of spaces",
-            }
-            ctx.panel.set_state("event", "on_change_spaces")
             ctx.panel.set_data("event_data", event)
 
         #######################################################################
