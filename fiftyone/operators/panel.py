@@ -119,14 +119,14 @@ class Panel(Operator):
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
             "on_change_ctx",
-            "on_change_view",
             "on_change_dataset",
+            "on_change_view",
+            "on_change_spaces",
             "on_change_current_sample",
             "on_change_selected",
             "on_change_selected_labels",
             "on_change_extended_selection",
             "on_change_group_slice",
-            "on_change_spaces",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):
