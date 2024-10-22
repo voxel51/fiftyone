@@ -1483,7 +1483,7 @@ class LoadingView(ReadOnlyView):
         super().__init__(**kwargs)
 
 
-class PillBadgeView(ReadOnlyView):
+class PillBadgeView(View):
     """Displays a pill shaped badge.
 
     Args:
@@ -1640,16 +1640,39 @@ class Column(View):
         return {**super().to_json(), "key": self.key}
 
 
+class Action(View):
+    """An action (currently supported only in a :class:`TableView`).
+
+    Args:
+        name: the name of the action
+        label (None): the label of the action
+        icon (None): the icon of the action
+        on_click: the operator to execute when the action is clicked
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def clone(self):
+        clone = Action(**self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
 class TableView(View):
     """Displays a table.
 
     Args:
         columns (None): a list of :class:`Column` objects to display
+        row_actions (None): a list of :class:`Action` objects to display
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
+        self.row_actions = kwargs.get("row_actions", [])
 
     def keys(self):
         return [column.key for column in self.columns]
@@ -1659,15 +1682,24 @@ class TableView(View):
         self.columns.append(column)
         return column
 
+    def add_row_action(self, name, on_click, label=None, icon=None, **kwargs):
+        row_action = Action(
+            name=name, on_click=on_click, label=label, icon=icon, **kwargs
+        )
+        self.row_actions.append(row_action)
+        return row_action
+
     def clone(self):
         clone = super().clone()
         clone.columns = [column.clone() for column in self.columns]
+        clone.row_actions = [action.clone() for action in self.row_actions]
         return clone
 
     def to_json(self):
         return {
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
+            "row_actions": [action.to_json() for action in self.row_actions],
         }
 
 
@@ -2368,12 +2400,6 @@ class ModalView(Button):
     """
 
     def __init__(self, **kwargs):
-        if "primaryCallback" not in kwargs or not callable(
-            kwargs["primaryCallback"]
-        ):
-            raise ValueError(
-                "The 'primaryCallback' parameter is missing or must be function that is callable."
-            )
         super().__init__(**kwargs)
 
 
@@ -2478,13 +2504,43 @@ class ArrowNavView(View):
 
 
 class FrameLoaderView(View):
-    """Utility for loading frames and animated panels.
+    """Utility for animating panel state based on the given timeline_name.
+
+    Examples::
+
+        def on_load(self, ctx):
+            panel.state.plot = {
+                "type": "scatter",
+                "x": [1, 2, 3],
+                "y": [1, 2, 3],
+            }
+
+        def render(self, ctx):
+            panel.obj(
+                "frame_data",
+                view=types.FrameLoaderView(
+                    on_load_range=self.on_load_range,
+                    target="plot.selectedpoints",
+                ),
+            )
+            panel.plot("plot")
+
+        def load_range(self, ctx, range_to_load):
+            r = ctx.params.get("range")
+
+            chunk = {}
+            for i in range(r[0], r[1]):
+                rendered_frame = [i]
+                chunk[f"frame_data.frames[{i}]"] = rendered_frame
+
+            ctx.panel.set_data(chunk)
+            current_field = ctx.panel.state.selected_field or "default_field"
+            ctx.panel.set_state("frame_data.signature", current_field + str(r))
 
     Args:
-        timeline_id (None): the ID of the timeline to load
-        on_load (None): the operator to execute when the frame is loaded
-        on_error (None): the operator to execute when the frame fails to load
+        timeline_name (None): the name of the timeline to load if provided, otherwise the default timeline
         on_load_range (None): the operator to execute when the frame is loading
+        target: the path to the property to animate
     """
 
     def __init__(self, **kwargs):

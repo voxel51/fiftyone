@@ -11,6 +11,13 @@ const DisplayTags: React.FC<DisplayTagsProps> = ({ saveTags }) => {
   const [chips, setChips] = useState<string[]>([]); // chips is an array of strings
   const [inputValue, setInputValue] = useState<string>(""); // inputValue is a string
 
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleAddChip();
+    }
+  };
+
   const handleAddChip = () => {
     if (inputValue.trim() !== "") {
       const updatedChips = [...chips, inputValue];
@@ -51,6 +58,7 @@ const DisplayTags: React.FC<DisplayTagsProps> = ({ saveTags }) => {
           label="Enter tag"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyPress}
           fullWidth // Make TextField take up the remaining width
         />
         <IconButton onClick={handleAddChip} color="primary">

@@ -4,7 +4,7 @@ import PillBadge from "@fiftyone/components/src/components/PillBadge/PillBadge";
 
 export default function PillBadgeView(props) {
   const { schema } = props;
-  const { view = {} } = schema;
+  const { view = {}, onChange } = schema;
   const { text, color, variant, showIcon } = view;
 
   return (
@@ -14,6 +14,7 @@ export default function PillBadgeView(props) {
         color={color}
         variant={variant}
         showIcon={showIcon}
+        operator={onChange}
         {...getComponentProps(props, "pillBadge")}
       />
     </Box>
