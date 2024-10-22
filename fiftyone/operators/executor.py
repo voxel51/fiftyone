@@ -611,6 +611,19 @@ class ExecutionContext(object):
         return has_stages or has_filters or has_extended
 
     @property
+    def spaces(self):
+        """The current spaces layout in the FiftyOne App."""
+        workspace_name = self.request_params.get("workspace_name", None)
+        if workspace_name is not None:
+            return self.dataset.load_workspace(workspace_name)
+
+        spaces_dict = self.request_params.get("spaces", None)
+        if spaces_dict is not None:
+            return fo.Space.from_dict(spaces_dict)
+
+        return None
+
+    @property
     def selected(self):
         """The list of selected sample IDs (if any)."""
         return self.request_params.get("selected", [])
