@@ -262,6 +262,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             else None
         )
 
+        needs_pipeline_update = False
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
@@ -272,10 +274,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
 
-        if outputs_schema:
-            update["$set"]["metadata.outputs_schema"] = {
-                "$ifNull": [outputs_schema, {}]
-            }
+            if outputs_schema:
+                update["$set"]["metadata.outputs_schema"] = (
+                    outputs_schema or {}
+                )
+                needs_pipeline_update = True
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -325,9 +328,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if required_state is not None:
             collection_filter["run_state"] = required_state
 
+        # Using pipeline update instead of a single update doc fixes a case
+        #   where `metadata` is null and so accessing the dotted field
+        #   `metadata.output_schema` creates the document instead of erroring.
+        if needs_pipeline_update:
+            update = [update]
+
         doc = self._collection.find_one_and_update(
             filter=collection_filter,
-            update=[update],
+            update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
