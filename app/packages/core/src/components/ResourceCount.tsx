@@ -47,7 +47,7 @@ const GroupsCount = () => {
       <div>
         (<PathEntryCounts modal={false} path={""} />{" "}
         {elementTotal === 1 ? element.singular : element.plural}){" "}
-        <PathEntryCounts modal={false} path={"_"} ignoreSidebarMode />{" "}
+        <PathEntryCounts modal={false} path={"_"} />{" "}
         {total === 1 ? "group" : "groups"}
         {groupSlice && " with slice"}
       </div>

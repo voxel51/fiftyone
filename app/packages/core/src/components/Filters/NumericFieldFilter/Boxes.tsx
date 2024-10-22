@@ -46,12 +46,20 @@ const Box = ({
   );
 };
 
-const Boxes = ({ modal, path }: { modal: boolean; path: string }) => {
+const Boxes = ({ path }: { path: string }) => {
   const color = useRecoilValue(pathColor(path));
   return (
     <Container>
-      <Box atom={minAtom({ modal, path })} color={color} placeholder={"min"} />
-      <Box atom={maxAtom({ modal, path })} color={color} placeholder={"max"} />
+      <Box
+        atom={minAtom({ modal: true, path })}
+        color={color}
+        placeholder={"min"}
+      />
+      <Box
+        atom={maxAtom({ modal: true, path })}
+        color={color}
+        placeholder={"max"}
+      />
     </Container>
   );
 };

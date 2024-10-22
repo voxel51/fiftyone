@@ -6,6 +6,7 @@ import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
 
 const LABEL_TAGS = "_label_tags";
+const TIMEOUT = 5000;
 
 class QueryPerformanceToast extends Event {
   constructor() {
@@ -15,9 +16,11 @@ class QueryPerformanceToast extends Event {
 
 const QueryPerformanceDispatcher = () => {
   useEffect(() => {
-    window.dispatchEvent(new QueryPerformanceToast());
+    const timeout = setTimeout(() => {
+      window.dispatchEvent(new QueryPerformanceToast());
+    }, TIMEOUT);
 
-    return () => undefined;
+    return () => clearTimeout(timeout);
   }, []);
   return null;
 };

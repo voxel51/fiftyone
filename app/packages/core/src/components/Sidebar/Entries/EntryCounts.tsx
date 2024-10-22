@@ -6,7 +6,6 @@ import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 interface PathEntryCountsProps {
   path: string;
   modal: boolean;
-  ignoreSidebarMode?: boolean;
 }
 
 const showEntryCounts = selectorFamily<
@@ -20,6 +19,7 @@ const showEntryCounts = selectorFamily<
       if (
         params.modal ||
         params.path === "" ||
+        params.path === "_" ||
         get(fos.sidebarExpanded(params))
       ) {
         return true;
@@ -44,7 +44,7 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
-  return (!queryPerformance || hasFilters || !path) && shown ? (
+  return (!queryPerformance || hasFilters) && shown ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}

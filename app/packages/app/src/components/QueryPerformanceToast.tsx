@@ -3,9 +3,11 @@ import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@material-ui/core";
 import { Bolt } from "@mui/icons-material";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
+
+const SHOWN_FOR = 10000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -18,20 +20,29 @@ const hideQueryPerformanceToast = atom({
 });
 
 const QueryPerformanceToast = () => {
+  const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
+
+  useEffect(() => {
+    const listen = () => {
+      setShown(true);
+    };
+    window.addEventListener("queryperformance", listen);
+    return () => window.removeEventListener("queryperformance", listen);
+  }, []);
 
   if (!element) {
     throw new Error("no query performance element");
   }
 
-  if (disabled) {
+  if (!shown || disabled) {
     return null;
   }
 
   return createPortal(
     <Toast
-      duration={1000000}
+      duration={SHOWN_FOR}
       primary={(setOpen) => {
         return (
           <Button
