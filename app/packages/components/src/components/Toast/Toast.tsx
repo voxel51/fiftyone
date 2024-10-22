@@ -1,18 +1,23 @@
-import React, { useState } from "react";
-import { Snackbar, Button, SnackbarContent } from "@mui/material";
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import BoltIcon from '@mui/icons-material/Bolt'; // Icon for the lightning bolt
+import React from "react";
+import { atom, useRecoilState } from "recoil";
+import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
 // Define types for the props
 interface ToastProps {
-  action: React.ReactNode;   // Accepts any valid React component, element, or JSX
-  message: React.ReactNode;  // Accepts any valid React component, element, or JSX
+  message: React.ReactNode;
+  primary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
+  secondary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
   duration?: number;         // Optional duration, with a default value
 }
 
-const Toast: React.FC<ToastProps> = ({ action, message, duration = 5000 }) => {
-  const [open, setOpen] = useState(true);
+const toastStateAtom = atom({
+  key: "toastOpenState",
+  default: true,
+});
+
+const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 5000 }) => {
+
+  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
   const handleClose = (event, reason) => {
     if (reason === "clickaway") {
@@ -20,6 +25,15 @@ const Toast: React.FC<ToastProps> = ({ action, message, duration = 5000 }) => {
     }
     setOpen(false);
   };
+
+  const action = (
+    <div>
+      <Box display="flex" justifyContent="flex-end">
+        {primary(setOpen)} {/* Pass setOpen to primary button */}
+        {secondary(setOpen)} {/* Pass setOpen to secondary button */}
+      </Box>
+    </div>
+  );
 
   return (
     <Snackbar
