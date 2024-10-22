@@ -15,9 +15,7 @@ class QueryPerformanceToast extends Event {
 
 const QueryPerformanceDispatcher = () => {
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      window.dispatchEvent(new QueryPerformanceToast());
-    }, 0);
+    window.dispatchEvent(new QueryPerformanceToast());
 
     return () => undefined;
   }, []);
@@ -32,7 +30,7 @@ const QueryPerformanceSubscriber = ({ path }: { path: string }) => {
 const QueryPerformance = ({ path }: { path: string }) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
 
-  if (queryPerformance || path === LABEL_TAGS) {
+  if (queryPerformance || path === LABEL_TAGS || !path) {
     return null;
   }
 
