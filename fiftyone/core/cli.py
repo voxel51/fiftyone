@@ -3228,7 +3228,7 @@ class DelegatedLaunchCommand(Command):
         )
 
         parser.add_argument(
-            "--no-validate",
+            "--no-validate", action="store_false", dest="validate"
         )
 
     @staticmethod
@@ -3245,7 +3245,8 @@ class DelegatedLaunchCommand(Command):
             _launch_delegated_local()
         elif args.type == "remote":
             executor = fodec.ContinualExecutor(args.interval)
-            executor.validate()
+            if args.validate:
+                executor.validate()
             signal.signal(signal.SIGTERM, executor.signal_handler)
             signal.signal(signal.SIGINT, executor.signal_handler)
             executor.start()
