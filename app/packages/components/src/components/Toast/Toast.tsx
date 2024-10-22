@@ -1,6 +1,6 @@
 import React from "react";
 import { atom, useRecoilState } from "recoil";
-import { Snackbar, SnackbarContent } from "@mui/material";
+import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
 // Define types for the props
 interface ToastProps {
@@ -31,8 +31,10 @@ const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 50
 
   const action = (
     <div>
-      {primary(setOpen)} {/* Pass setOpen to primary button */}
-      {secondary(setOpen)} {/* Pass setOpen to secondary button */}
+      <Box display="flex" justifyContent="flex-end">
+        {primary(setOpen)} {/* Pass setOpen to primary button */}
+        {secondary(setOpen)} {/* Pass setOpen to secondary button */}
+      </Box>
     </div>
   );
 
