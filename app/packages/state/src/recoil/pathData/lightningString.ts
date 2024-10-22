@@ -1,5 +1,5 @@
 import { selectorFamily } from "recoil";
-import { lightningQuery } from "../lightning";
+import { lightningQuery } from "../queryPerformance";
 
 export const lightningStringResults = selectorFamily<
   string[],
@@ -11,7 +11,10 @@ export const lightningStringResults = selectorFamily<
     ({ get }) => {
       const [data] = get(lightningQuery([params]));
 
-      if (data.__typename !== "StringLightningResult") {
+      if (
+        data.__typename !== "StringLightningResult" &&
+        data.__typename !== "ObjectIdLightningResult"
+      ) {
         throw new Error(
           `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`
         );

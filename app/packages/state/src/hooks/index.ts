@@ -18,7 +18,6 @@ export { default as useHover } from "./useHover";
 export { default as useHoveredSample } from "./useHoveredSample";
 export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useKeyDown } from "./useKeyDown";
-export { default as useLightingUnlocked } from "./useLightningUnlocked";
 export * from "./useLookerStore";
 export { default as useLookerStore } from "./useLookerStore";
 export { default as useNotification } from "./useNotification";

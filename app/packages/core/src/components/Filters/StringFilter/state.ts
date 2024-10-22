@@ -4,7 +4,7 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import { atomFamily, selectorFamily } from "recoil";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { nullSort } from "../utils";
-import { Result } from "./Result";
+import type { Result } from "./Result";
 
 export const stringSearch = atomFamily<
   string,
@@ -67,7 +67,7 @@ export const stringSearchResults = selectorFamily<
         count: 0,
       };
 
-      if (!modal && get(fos.isLightningPath(path))) {
+      if (!modal && get(fos.queryPerformance)) {
         return {
           values: get(
             fos.lightningStringResults({

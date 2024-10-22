@@ -1,29 +1,25 @@
 import * as fos from "@fiftyone/state";
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 interface PathEntryCountsProps {
   path: string;
   modal: boolean;
-  ignoreSidebarMode?: boolean;
 }
 
 const showEntryCounts = selectorFamily<
   boolean,
-  { always?: boolean; path: string; modal: boolean }
+  { path: string; modal: boolean }
 >({
   key: "showEntryCounts",
   get:
     (params) =>
     ({ get }) => {
-      const mode = get(fos.resolvedSidebarMode(params.modal));
-
       if (
-        params.always ||
         params.modal ||
         params.path === "" ||
-        mode === "all" ||
+        params.path === "_" ||
         get(fos.sidebarExpanded(params))
       ) {
         return true;
@@ -33,11 +29,7 @@ const showEntryCounts = selectorFamily<
     },
 });
 
-export const PathEntryCounts = ({
-  modal,
-  path,
-  ignoreSidebarMode,
-}: PathEntryCountsProps) => {
+export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const getAtom = useCallback(
     (extended: boolean) => {
       return fos.count({
@@ -48,14 +40,13 @@ export const PathEntryCounts = ({
     },
     [modal, path]
   );
+  const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
-  const shown = useRecoilValue(
-    showEntryCounts({ path, modal, always: ignoreSidebarMode })
-  );
-
-  return shown ? (
+  return (!queryPerformance || hasFilters) && shown ? (
     <SuspenseEntryCounts
-      countAtom={getAtom(false)}
+      countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}
     />
   ) : null;
