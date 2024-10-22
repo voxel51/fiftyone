@@ -2432,13 +2432,43 @@ class ArrowNavView(View):
 
 
 class FrameLoaderView(View):
-    """Utility for loading frames and animated panels.
+    """Utility for animating panel state based on the given timeline_name.
+
+    Examples::
+
+        def on_load(self, ctx):
+            panel.state.plot = {
+                "type": "scatter",
+                "x": [1, 2, 3],
+                "y": [1, 2, 3],
+            }
+
+        def render(self, ctx):
+            panel.obj(
+                "frame_data",
+                view=types.FrameLoaderView(
+                    on_load_range=self.on_load_range,
+                    target="plot.selectedpoints",
+                ),
+            )
+            panel.plot("plot")
+
+        def load_range(self, ctx, range_to_load):
+            r = ctx.params.get("range")
+
+            chunk = {}
+            for i in range(r[0], r[1]):
+                rendered_frame = [i]
+                chunk[f"frame_data.frames[{i}]"] = rendered_frame
+
+            ctx.panel.set_data(chunk)
+            current_field = ctx.panel.state.selected_field or "default_field"
+            ctx.panel.set_state("frame_data.signature", current_field + str(r))
 
     Args:
-        timeline_id (None): the ID of the timeline to load
-        on_load (None): the operator to execute when the frame is loaded
-        on_error (None): the operator to execute when the frame fails to load
+        timeline_name (None): the name of the timeline to load if provided, otherwise the default timeline
         on_load_range (None): the operator to execute when the frame is loading
+        target: the path to the property to animate
     """
 
     def __init__(self, **kwargs):
