@@ -1,12 +1,12 @@
 import React from "react";
 import { atom, useRecoilState } from "recoil";
-import { Button, Snackbar, SnackbarContent } from "@mui/material";
+import { Snackbar, SnackbarContent } from "@mui/material";
 
 // Define types for the props
 interface ToastProps {
-  message: React.ReactNode;  // Accepts any valid React component, element, or JSX
-  primary: typeof Button;           // Accepts a Button component
-  secondary: typeof Button;          // Accepts a Button component
+  message: React.ReactNode;
+  primary: CallableFunction;
+  secondary: CallableFunction;
   duration?: number;         // Optional duration, with a default value
 }
 
