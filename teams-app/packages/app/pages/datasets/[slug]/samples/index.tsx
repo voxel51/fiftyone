@@ -142,7 +142,6 @@ const DynamicDataset = dynamic(
 
     function Plugins({ children }: React.PropsWithChildren<{}>) {
       const plugins = usePlugins();
-      if (plugins.hasError) return <div>Plugin error...</div>;
       if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
       return <>{children}</>;
     }
