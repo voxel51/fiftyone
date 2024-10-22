@@ -13,6 +13,7 @@ import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel } = props;
@@ -29,10 +30,12 @@ export function CustomPanel(props: CustomPanelProps) {
   } = useCustomPanelHooks(props);
   const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
+      trackEvent("close_panel", { panel: panelName });
     });
   }, []);
 
@@ -115,6 +118,7 @@ export function defineCustomPanel({
   on_change_selected_labels,
   on_change_extended_selection,
   on_change_group_slice,
+  on_change_spaces,
   panel_name,
   panel_label,
 }) {
@@ -132,6 +136,7 @@ export function defineCustomPanel({
       onChangeSelectedLabels={on_change_selected_labels}
       onChangeExtendedSelection={on_change_extended_selection}
       onChangeGroupSlice={on_change_group_slice}
+      onChangeSpaces={on_change_spaces}
       dimensions={dimensions}
       panelName={panel_name}
       panelLabel={panel_label}

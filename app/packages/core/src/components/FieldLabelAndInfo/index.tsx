@@ -20,7 +20,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { LIGHTNING_MODE } from "../../utils/links";
+import { QP_MODE } from "../../utils/links";
 import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
@@ -345,7 +345,7 @@ const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
             <ContentValue>
               <ExternalLink
                 style={{ color: theme.text.primary }}
-                href={LIGHTNING_MODE}
+                href={QP_MODE}
               >
                 Lightning indexed
               </ExternalLink>

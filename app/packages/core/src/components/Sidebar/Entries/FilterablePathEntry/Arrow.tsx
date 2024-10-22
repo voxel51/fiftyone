@@ -7,7 +7,7 @@ import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
 import {
   FRAME_FILTERING_DISABLED,
-  LIGHTNING_MODE,
+  QP_MODE,
 } from "../../../../utils/links";
 import DisabledReason from "./DisabledReason";
 
@@ -60,7 +60,7 @@ export default ({
   if (unindexed && !unlocked) {
     return (
       <Tooltip
-        text={<DisabledReason text={"add an index"} href={LIGHTNING_MODE} />}
+        text={<DisabledReason text={"add an index"} href={QP_MODE} />}
         placement="top-center"
       >
         {arrow}

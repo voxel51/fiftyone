@@ -404,6 +404,7 @@ class DelegatedOperationService(object):
             log (False): the optional boolean flag to log the execution of the
                 delegated operations
         """
+        results = []
         if limit is not None:
             paging = DelegatedOperationPagingParams(limit=limit)
         else:
@@ -419,7 +420,8 @@ class DelegatedOperationService(object):
         )
 
         for op in queued_ops:
-            self.execute_operation(operation=op, log=log)
+            results.append(self.execute_operation(operation=op, log=log))
+        return results
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.
@@ -444,6 +446,7 @@ class DelegatedOperationService(object):
             run_link (None): an optional link to orchestrator-specific
                 information about the operation
         """
+        result = None
         try:
             succeeded = (
                 self.set_running(
@@ -461,7 +464,7 @@ class DelegatedOperationService(object):
                         operation.id,
                         operation.operator,
                     )
-                return
+                return result
 
             if log:
                 logger.info(
@@ -483,6 +486,7 @@ class DelegatedOperationService(object):
                 logger.info(
                     "Operation %s failed\n%s", operation.id, result.error
                 )
+        return result
 
     async def _execute_operator(self, doc):
         operator_uri = doc.operator

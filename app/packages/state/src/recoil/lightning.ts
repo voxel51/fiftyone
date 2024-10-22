@@ -200,6 +200,16 @@ export const lightningThresholdConfig = selector({
   get: ({ get }) => get(config).lightningThreshold,
 });
 
+export const enableQueryPerformanceConfig = selector({
+    key: "enableQueryPerformanceConfig",
+    get: ({ get }) => get(config).enableQueryPerformance,
+});
+
+export const defaultQueryPerformanceConfig = selector({
+    key: "defaultQueryPerformanceConfig",
+    get: ({ get }) => get(config).defaultQueryPerformance,
+});
+
 const lightningThresholdAtom = atomFamily<string, string>({
   key: "lightningThresholdAtom",
   default: undefined,

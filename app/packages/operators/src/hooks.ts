@@ -28,6 +28,8 @@ function useOperatorThrottledContextSetter() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
   const setContext = useSetRecoilState(operatorThrottledContext);
+  const spaces = useRecoilValue(fos.sessionSpaces);
+  const workspaceName = spaces._name;
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -49,6 +51,8 @@ function useOperatorThrottledContextSetter() {
       currentSample,
       viewName,
       groupSlice,
+      spaces,
+      workspaceName,
     });
   }, [
     setThrottledContext,
@@ -61,6 +65,8 @@ function useOperatorThrottledContextSetter() {
     currentSample,
     viewName,
     groupSlice,
+    spaces,
+    workspaceName,
   ]);
 }
 
