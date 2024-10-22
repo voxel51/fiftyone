@@ -365,7 +365,7 @@ class AppConfig(EnvConfig):
             d,
             "default_query_performance",
             env_var="FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE",
-            default=True,
+            default=False,
         )
         self.loop_videos = self.parse_bool(
             d,
