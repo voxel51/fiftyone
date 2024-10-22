@@ -1,9 +1,5 @@
-import {
-  Nonfinite,
-  boundsAtom,
-  nonfiniteAtom,
-  rangeAtom,
-} from "@fiftyone/state";
+import type { Nonfinite } from "@fiftyone/state";
+import { boundsAtom, nonfiniteAtom, rangeAtom } from "@fiftyone/state";
 import { selectorFamily } from "recoil";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];

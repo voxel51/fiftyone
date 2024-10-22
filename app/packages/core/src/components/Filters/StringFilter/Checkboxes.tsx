@@ -15,7 +15,6 @@ import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import type { Result } from "./Result";
 import { pathSearchCount } from "./state";
-import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
   color: string;
@@ -46,12 +45,7 @@ const checkboxCounts = selectorFamily({
         return map;
       }
 
-      if (
-        !modal &&
-        get(fos.lightning) &&
-        get(fos.isLightningPath(path)) &&
-        !get(fos.lightningUnlocked)
-      ) {
+      if (!modal && get(fos.queryPerformance)) {
         return map;
       }
 
@@ -65,8 +59,7 @@ const checkboxCounts = selectorFamily({
 
 const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
   const loadable = useRecoilValueLoadable(checkboxCounts({ modal, path }));
-  const unlocked = fos.useLightingUnlocked();
-  const lightning = useRecoilValue(fos.lightning);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const data =
     loadable.state === "hasValue"
       ? loadable.contents
@@ -77,10 +70,7 @@ const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
   if (results) {
     for (const { count, value } of results) {
       if (!data.has(value)) {
-        data.set(
-          value,
-          loading || (lightning && !unlocked) ? count : count ?? 0
-        );
+        data.set(value, loading || queryPerformance ? count : count ?? 0);
       }
     }
   }
@@ -100,26 +90,22 @@ const useValues = ({
   selected: (string | null)[];
 }) => {
   const name = path.split(".").slice(-1)[0];
-  const unlocked = fos.useLightingUnlocked();
-  const lightning = useRecoilValue(fos.lightning);
-  const lightningPath =
-    useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const skeleton = useRecoilValue(isSkeleton(path));
   const { counts, loading } = useCounts(modal, path, results);
-  const hasCount =
-    (!lightning || !lightningPath || unlocked || modal) && !loading;
+  const hasCount = (!queryPerformance || modal) && !loading;
 
   let allValues = selected.map((value) => ({
     value,
     count: hasCount ? counts.get(value) ?? null : null,
-    loading: unlocked && loading,
+    loading: loading,
   }));
   const objectId = useRecoilValue(fos.isObjectIdField(path));
   const selectedSet = new Set(selected);
   const boolean = useRecoilValue(isBooleanField(path));
 
   const hasCheckboxResults =
-    (!lightningPath && counts.size <= CHECKBOX_LIMIT && !objectId) ||
+    (!queryPerformance && counts.size <= CHECKBOX_LIMIT && !objectId) ||
     skeleton ||
     boolean;
 
@@ -141,24 +127,24 @@ const useValues = ({
   return {
     name,
     selectedSet,
-    sorting: !lightningPath ? sorting : { asc: true, count: false },
+    sorting: !queryPerformance ? sorting : { asc: true, count: false },
     values: [...new Set(allValues)],
-    loading: !lightning && loading,
+    loading: !queryPerformance && loading,
   };
 };
 
 const useGetCount = (modal: boolean, path: string) => {
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const keypoints = useRecoilValue(isInKeypointsField(path));
-  const lightning = useRecoilValue(fos.isLightningPath(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   return (count: number | null, value: string | null) => {
     // show no count for the 'points' field of a Keypoint, and visibility mode
     if (!isFilterMode || keypoints) {
       return undefined;
     }
 
-    // request subcount for non-lightning paths
-    if (typeof count !== "number" && !lightning) {
+    // request subcount when query performance is disabled
+    if (typeof count !== "number" && !queryPerformance) {
       return pathSearchCount({ modal, path, value: value as string });
     }
 
@@ -176,6 +162,7 @@ const Checkboxes = ({
   selectedAtom,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
@@ -184,8 +171,12 @@ const Checkboxes = ({
     selected,
   });
 
-  const show = useRecoilValue(showSearchSelector({ modal, path }));
+  const show = useRecoilValue(isBooleanField(path));
   const getCount = useGetCount(modal, path);
+
+  if (!modal && queryPerformance && values.length === 0) {
+    return null;
+  }
 
   // if results are null, and show is false, values are loading
   if (loading || (!show && results === null)) {

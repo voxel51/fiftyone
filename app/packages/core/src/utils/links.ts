@@ -14,7 +14,7 @@ export const FRAME_FILTERING_DISABLED =
   "https://docs.voxel51.com/user_guide/using_datasets.html#disable-frame-filtering";
 
 export const QP_MODE =
-  "https://docs.voxel51.com/user_guide/app.html#lightning-mode";
+  "https://docs.voxel51.com/user_guide/app.html#query-performance";
 
 export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
 

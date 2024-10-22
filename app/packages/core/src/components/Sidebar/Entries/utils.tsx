@@ -26,12 +26,12 @@ export const InputDiv = styled.div`
 `;
 
 export const FilterInputDiv = styled.div`
+  background: ${({ theme }) => theme.background.mediaSpace};
   box-sizing: border-box;
   cursor: pointer;
   font-weight: bold;
   user-select: none;
-  padding-top: 2px;
-  margin: 0 1rem 0.25rem 1rem;
+  padding 2px 1rem 0.25rem 1rem;
 
   display: flex;
   justify-content: space-between;
