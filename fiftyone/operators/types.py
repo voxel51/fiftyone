@@ -253,6 +253,7 @@ class Object(BaseType):
         label,
         icon=None,
         variant=None,
+        disabled=False,
         on_click=None,
         prompt=False,
         params=None,
@@ -282,6 +283,7 @@ class Object(BaseType):
             label: the label of the button
             icon (None): the name of the icon to display
             icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            disabled (False): whether the button is disabled
             variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
                 ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
@@ -295,6 +297,7 @@ class Object(BaseType):
             href=href,
             icon=icon,
             icon_position=icon_position,
+            disabled=disabled,
             label=label,
             operator=on_click,
             params=params,
@@ -406,6 +409,9 @@ class Object(BaseType):
             ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
             ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
             another content (for example, menu for full-panel-width plot)
+            icon (None): when set, the icon will be displayed as the menu button instead of the label.
+            Can be "SettingsIcon", "MoreVertIcon".
+
         Returns:
             a :class:`Object`
         """
@@ -1255,7 +1261,6 @@ class Button(View):
         self.operator = kwargs.get("operator", None)
         self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
-        self.href = kwargs.get("href", None)
 
     def to_json(self):
         return _convert_callables_to_operator_uris(
@@ -1468,7 +1473,24 @@ class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
     Args:
-        label ("Loading"): a label for the loading indicator
+        text ("Loading"): a label for the loading indicator
+        variant ("spinner"): the variant of the loading indicator
+        color ("primary"): the color of the loading indicator
+        size ("medium"): the size of the loading indicator
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class PillBadgeView(View):
+    """Displays a pill shaped badge.
+
+    Args:
+        text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
+        color ("primary"): the color of the pill
+        variant ("outlined"): the variant of the pill
+        show_icon (False | True): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):
@@ -1858,6 +1880,16 @@ class SwitchView(View):
     .. note::
 
         Must be used with :class:`Boolean` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TextView(View):
+    """Displays a text.
+    .. note::
+        Must be used with :class:`String` properties.
     """
 
     def __init__(self, **kwargs):
@@ -2333,6 +2365,44 @@ class IconButtonView(Button):
         super().__init__(**kwargs)
 
 
+class ModalView(Button):
+    """Represents a button in a :class:`View` that opens up an interactive modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        schema = {
+            "modal": {"icon": "local_offer", "iconVariant": "outlined", "title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body", textAlign: {title: "center", subtitle: "left", body: "right"}},
+            "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary", "params": {"foo": "bar", "multiple": True}},
+            "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
+            "primaryCallback": self.do_something(),
+            "secondaryCallback": self.do_nothing(),
+            "functionality": "tagging",
+        }
+        modal = types.ModalView(**schema, label="This is a modal", variant="outlined", icon="local_offer")
+
+        .. note::
+            The primary callback is called when the primary button is clicked and the secondary callback is called when the secondary button is clicked.
+            Secondary callback defaults to a closure of the modal unless defined.
+            Buttons of ModalView inherit all functionality of ButtonView.
+
+        inputs = types.Object()
+        inputs.view("modal_btn", modal)
+
+    Args:
+        modal: the textual content of the modal
+        primaryButton (None): the properties of the primary button
+        secondaryButton (None): the properties of the secondary button
+        primaryCallback (None): the function to execute when the primary button is clicked
+        secondaryCallback (None): the function to execute when the secondary button is clicked
+        functionality (None): the name of the functionality to execute when the primary button is clicked. Available options are 'tagging'
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class HStackView(GridView):
     """Displays properties of an object as a horizontal stack of components.
 
@@ -2393,6 +2463,8 @@ class MenuView(GridView):
         ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
         ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
         another content (for example, menu for full-panel-width plot)
+        icon (None): when set, the icon button will be displayed as the menu trigger,
+        instead of the selected value. Can be "SettingsIcon" or "MoreVertIcon"
     Returns:
         a :class:`Object`
     """

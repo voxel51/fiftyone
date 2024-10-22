@@ -1112,6 +1112,20 @@ export class FieldView extends View {
 }
 
 /**
+ * Operator class for describing a TextView {@link View} for an
+ * operator type.
+ */
+export class TextView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "TextView";
+  }
+  static fromJSON(json) {
+    return new TextView(json);
+  }
+}
+
+/**
  * Operator class for describing a TextFieldView {@link View} for an
  * operator type.
  */
@@ -1151,6 +1165,34 @@ export class IconButtonView extends Button {
   }
   static fromJSON(json) {
     return new IconButtonView(json);
+  }
+}
+
+/**
+ * Operator class for describing a PillBadgeView {@link View} for an
+ * operator type.
+ */
+export class PillBadgeView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "PillBadgeView";
+  }
+  static fromJSON(json) {
+    return new PillBadgeView(json);
+  }
+}
+
+/**
+ * Operator class for describing a ModalView {@link Button} for an
+ * operator type.
+ */
+export class ModalView extends Button {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "ModalView";
+  }
+  static fromJSON(json) {
+    return new ModalView(json);
   }
 }
 
@@ -1220,8 +1262,11 @@ const VIEWS = {
   MediaPlayerView,
   PromptView,
   FieldView,
+  TextView,
   TextFieldView,
   LazyFieldView,
+  PillBadgeView,
+  ModalView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
