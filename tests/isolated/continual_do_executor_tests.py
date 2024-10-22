@@ -1,6 +1,5 @@
 """
 FiftyOne continual delegated executor related unit tests.
-
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -83,7 +82,7 @@ class MockOperator(Operator):
 
 
 @patch(
-    "fiftyone.internal.api_requests.resolve_operation_user",
+    "fiftyone.operators.executor.resolve_operation_user",
     return_value=None,
 )
 @patch(
@@ -103,7 +102,7 @@ def start_executor(
 
 
 @patch(
-    "fiftyone.internal.api_requests.resolve_operation_user",
+    "fiftyone.operators.executor.resolve_operation_user",
     return_value=None,
 )
 @patch(

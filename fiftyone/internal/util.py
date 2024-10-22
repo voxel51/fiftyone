@@ -7,7 +7,9 @@ FiftyOne internal utilities.
 """
 
 import os
+import re
 
+import fiftyone as fo
 import fiftyone.core.config as foc
 from fiftyone.internal.constants import API_URL_ENV_VAR, ENCRYPTION_KEY_ENV_VAR
 
@@ -30,8 +32,14 @@ def is_remote_service():
     """
     return (
         has_encryption_key()
-        and has_api_key()
-        and foc.load_config().database_uri
+        or (fo.config.api_uri or os.getenv(API_URL_ENV_VAR))
+        or not (
+            fo.config.database_uri is None
+            or re.match(
+                r"^mongodb://.*(localhost|127.0.0.1|0.0.0.0)",
+                fo.config.database_uri,
+            )
+        )
     )
 
 
