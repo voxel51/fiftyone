@@ -10,19 +10,16 @@ interface ToastProps {
   duration?: number;         // Optional duration, with a default value
 }
 
+const toastStateAtom = atom({
+  key: "toastOpenState",
+  default: true,
+});
+
 const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 5000 }) => {
-  const toastStateAtom = atom({
-    key: "toastOpenState",
-    default: true,
-  });
 
   const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
   const handleClose = (event, reason) => {
-    if (event) {
-      console.log(event);
-    }
-    
     if (reason === "clickaway") {
       return;
     }
