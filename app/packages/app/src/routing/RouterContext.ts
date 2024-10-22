@@ -90,8 +90,13 @@ export const createRouter = <T extends OperationType>(
           hard: false,
           handleError,
         });
-      } catch {
-        return;
+      } catch (e) {
+        if (e instanceof Resource) {
+          // skip the page change if a resource is thrown
+          return;
+        }
+
+        throw e;
       }
 
       requestAnimationFrame(() => {
@@ -210,6 +215,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
     handleError?: (error: unknown) => void;
   }): Resource<Entry<T>> => {
     if (isReusable(location)) {
+      // throw the current resource (page) if it can be reused
       throw currentResource;
     }
 
