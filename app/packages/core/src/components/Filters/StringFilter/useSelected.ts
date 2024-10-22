@@ -26,12 +26,16 @@ export default function (
   const length = results?.results?.length ?? 0;
 
   const shown =
-    queryPerformance ||
+    (!modal && queryPerformance) ||
     (resultsLoadable.state !== "loading" && length >= CHECKBOX_LIMIT);
 
   return {
     results,
-    useSearch,
+
+    useSearch:
+      path === "_label_tags" && queryPerformance && !modal
+        ? undefined
+        : useSearch,
     showSearch: Boolean(shown) && !boolean,
   };
 }

@@ -131,7 +131,7 @@ const Filter = () => {
             </Box>
           </Tooltip>
         )}
-        {queryPerformance && <LightningBolt />}
+        {queryPerformance && <LightningBolt style={{ color: "#f5b700" }} />}
         <Tooltip
           text="Change field visibility"
           placement="bottom-center"
