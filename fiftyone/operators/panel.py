@@ -119,8 +119,9 @@ class Panel(Operator):
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
             "on_change_ctx",
-            "on_change_view",
             "on_change_dataset",
+            "on_change_view",
+            "on_change_spaces",
             "on_change_current_sample",
             "on_change_selected",
             "on_change_selected_labels",
