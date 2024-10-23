@@ -1813,6 +1813,21 @@ class AlertView(View):
         return {**super().to_json(), "severity": self.severity}
 
 
+class ToastView(View):
+    """Displays a snackbar style toast element.
+
+    Args:
+        message: the message to display
+        primary (None): the primary button text
+        secondary (None): the secondary button text
+        duration (None): the duration to stay on screen in milliseconds
+        layout (None): the layout of the toast
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class CheckboxView(View):
     """Displays a checkbox.
 

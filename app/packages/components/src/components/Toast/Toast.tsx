@@ -2,12 +2,22 @@ import React from "react";
 import { atom, useRecoilState } from "recoil";
 import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
-// Define types for the props
 interface ToastProps {
   message: React.ReactNode;
-  primary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
-  secondary: (setOpen: React.Dispatch<React.SetStateAction<boolean>>) => React.ReactNode;
-  duration?: number;         // Optional duration, with a default value
+  primary: (
+    setOpen: React.Dispatch<React.SetStateAction<boolean>>
+  ) => React.ReactNode;
+  secondary: (
+    setOpen: React.Dispatch<React.SetStateAction<boolean>>
+  ) => React.ReactNode;
+  duration?: number;
+  layout?: {
+    vertical?: "top" | "bottom";
+    horizontal?: "left" | "center" | "right";
+    height?: number | string;
+    backgroundColor?: string;
+    color?: string;
+  };
 }
 
 const toastStateAtom = atom({
@@ -15,41 +25,56 @@ const toastStateAtom = atom({
   default: true,
 });
 
-const Toast: React.FC<ToastProps> = ({message, primary, secondary, duration = 5000 }) => {
+const Toast: React.FC<ToastProps> = ({
+  message,
+  primary,
+  secondary,
+  duration = 5000,
+  layout = {},
+}) => {
+  const [open, setOpen] = useRecoilState(toastStateAtom);
 
-  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
+  const handleClose = React.useCallback(
+    (event, reason) => {
+      if (reason === "clickaway") return;
+      setOpen(false);
+    },
+    [setOpen]
+  );
 
-  const handleClose = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
-    setOpen(false);
-  };
-
-  const action = (
-    <div>
-      <Box display="flex" justifyContent="flex-end">
-        {primary(setOpen)} {/* Pass setOpen to primary button */}
-        {secondary(setOpen)} {/* Pass setOpen to secondary button */}
-      </Box>
-    </div>
+  const action = React.useMemo(
+    () => (
+      <div>
+        <Box display="flex" justifyContent="flex-end">
+          {primary(setOpen)}
+          {secondary(setOpen)}
+        </Box>
+      </div>
+    ),
+    [primary, secondary, setOpen]
   );
 
   return (
     <Snackbar
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      anchorOrigin={{
+        vertical: layout.vertical ?? "bottom",
+        horizontal: layout.horizontal ?? "center",
+      }}
       open={open}
       onClose={handleClose}
       autoHideDuration={duration}
-      sx={{ height: 5 }}
+      sx={{ height: layout.height ?? 5 }}
     >
       <SnackbarContent
         message={message}
         action={action}
-        style={{ backgroundColor: "#333", color: "#fff" }}
+        style={{
+          backgroundColor: layout.backgroundColor ?? "#333",
+          color: layout.color ?? "#fff",
+        }}
       />
     </Snackbar>
   );
-}
+};
 
 export default Toast;
