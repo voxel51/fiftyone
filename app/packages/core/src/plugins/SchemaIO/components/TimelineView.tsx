@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Timeline, useCreateTimeline, useTimeline } from "@fiftyone/playback";
 import { ViewPropsType } from "../utils/types";
+
+const DEFAULT_CONFIG = { loop: false };
 
 export default function TimelineView(props: ViewPropsType) {
   const { schema } = props;
@@ -12,14 +14,10 @@ export default function TimelineView(props: ViewPropsType) {
     totalFrames: total_frames,
   };
 
-  const defaultConfig = {
-    loop: false,
-  };
-  const finalConfig = {
-    ...defaultConfig,
-    ...providedcConfig,
-  };
-
+  const finalConfig = useMemo(
+    () => ({ ...DEFAULT_CONFIG, ...providedConfig }),
+    [providedConfig]
+  );
   if (!timeline_name) {
     throw new Error("Timeline name is required");
   }
@@ -31,12 +29,10 @@ export default function TimelineView(props: ViewPropsType) {
 }
 
 export const TimelineCreator = ({ timelineName, totalFrames, loop }) => {
+  const config = useMemo(() => ({ totalFrames, loop }), [totalFrames, loop]);
   const { isTimelineInitialized } = useCreateTimeline({
     name: timelineName,
-    config: {
-      totalFrames: totalFrames,
-      loop,
-    },
+    config,
   });
 
   if (!isTimelineInitialized) {
