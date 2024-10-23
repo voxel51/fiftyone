@@ -19,7 +19,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
   const setPanelState = useSetPanelStateById(true);
   const localIdRef = React.useRef<string>();
   const bufm = useRef(new BufferManager());
-  const frameDataRef = useRef();
+  const frameDataRef = useRef<typeof data.frames>(null);
 
   useEffect(() => {
     localIdRef.current = Math.random().toString(36).substring(7);
