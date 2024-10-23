@@ -123,38 +123,44 @@ export default function TableView(props: ViewPropsType) {
               </TableRow>
             </TableHead>
             <TableBody {...getComponentProps(props, "tableBody")}>
-              {rows.map((item, rowIndex) => (
-                <TableRow
-                  key={item.id}
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                  {...getComponentProps(props, "tableBodyRow")}
-                >
-                  {columns.map(({ key }, columnIndex) => {
-                    const coordinate = [rowIndex, columnIndex].join(",");
-                    const isSelected =
-                      selectedCells.has(coordinate) ||
-                      selectedRows.has(rowIndex) ||
-                      selectedColumns.has(columnIndex);
-                    return (
-                      <TableCell
-                        key={key}
-                        sx={{ background: isSelected ? "green" : "unset" }}
-                        onClick={() => {
-                          handleCellClick(rowIndex, columnIndex);
-                        }}
-                        {...getComponentProps(props, "tableBodyCell")}
-                      >
-                        {formatCellValue(item[key], props)}
+              {rows.map((item, rowIndex) => {
+                const rowActions = getRowActions(rowIndex);
+                const currentRowHasActions = rowActions?.length > 0;
+                return (
+                  <TableRow
+                    key={item.id}
+                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                    {...getComponentProps(props, "tableBodyRow")}
+                  >
+                    {columns.map(({ key }, columnIndex) => {
+                      const coordinate = [rowIndex, columnIndex].join(",");
+                      const isSelected =
+                        selectedCells.has(coordinate) ||
+                        selectedRows.has(rowIndex) ||
+                        selectedColumns.has(columnIndex);
+                      return (
+                        <TableCell
+                          key={key}
+                          sx={{ background: isSelected ? "green" : "unset" }}
+                          onClick={() => {
+                            handleCellClick(rowIndex, columnIndex);
+                          }}
+                          {...getComponentProps(props, "tableBodyCell")}
+                        >
+                          {formatCellValue(item[key], props)}
+                        </TableCell>
+                      );
+                    })}
+                    {hasRowActions && (
+                      <TableCell align="right">
+                        {currentRowHasActions && (
+                          <ActionsMenu actions={getRowActions(rowIndex)} />
+                        )}
                       </TableCell>
-                    );
-                  })}
-                  {hasRowActions && (
-                    <TableCell align="right">
-                      <ActionsMenu actions={getRowActions(rowIndex)} />
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
