@@ -175,8 +175,8 @@ const QueryPerformance = () => {
   const theme = useTheme();
   const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
 
-  // Admins can choose to disable all QP features (toast + toggle) or disable toasts for each dataset
-  if (!useRecoilValue(fos.enableQueryPerformanceConfig) || !useRecoilValue(fos.defaultQueryPerformanceConfig)) {
+  // Admins can choose to disable all QP features (toast + toggle)
+  if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
     return null;
   }
 

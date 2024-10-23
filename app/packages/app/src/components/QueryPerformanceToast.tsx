@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import { Toast } from "@fiftyone/components";
 import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
@@ -5,7 +6,7 @@ import { Box, Button, Typography } from "@material-ui/core";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState } from "recoil";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 
 const SHOWN_FOR = 10000;
 
@@ -36,7 +37,8 @@ const QueryPerformanceToast = () => {
     throw new Error("no query performance element");
   }
 
-  if (!shown || disabled) {
+  // Admins can choose to disable toasts for each dataset
+  if (!shown || disabled || !useRecoilValue(fos.defaultQueryPerformanceConfig)) {
     return null;
   }
 
