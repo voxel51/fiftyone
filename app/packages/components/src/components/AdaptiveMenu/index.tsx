@@ -33,6 +33,12 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
 
   const itemsById = useMemo(() => {
     return items.reduce((itemsById, item, index) => {
+      if (item.id in itemsById) {
+        // In case of name collision, append index to the id to make it unique and
+        // ensure the index corresponds to the correct item
+        console.error(`Duplicate item id: ${item.id} at index ${index}`);
+        item.id = `${item.id}-${index}`;
+      }
       itemsById[item.id] = { ...item, index };
       return itemsById;
     }, {} as Record<string, AdaptiveMenuItemPropsType>);
@@ -53,7 +59,9 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
     if (!containerElem) return;
     hideOverflowingNodes(containerElem, (_: number, lastVisibleItemId) => {
       const lastVisibleItem = itemsById[lastVisibleItemId];
-      const computedHidden = items.length - lastVisibleItem.index - 1;
+      const computedHidden = lastVisibleItem?.index
+        ? items.length - lastVisibleItem.index - 1
+        : 0;
       setHidden(computedHidden);
     });
   }
