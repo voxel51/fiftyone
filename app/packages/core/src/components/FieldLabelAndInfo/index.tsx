@@ -290,7 +290,7 @@ function FieldInfoExpanded({
             colorBy={colorBy}
           />
         )}
-        <Lightning color={color} path={field.path} />
+
         {field.description && (
           <ExpFieldInfoDesc
             collapsed={descTooLong && isCollapsed}
@@ -321,16 +321,14 @@ function FieldInfoExpanded({
   );
 }
 
-type LightningProp = {
+const QueryPerformance: React.FunctionComponent<{
   color: string;
   path: string;
-};
-
-const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
-  const lightning = useRecoilValue(fos.lightning);
-  const lightnigPath = useRecoilValue(fos.lightningPaths(path)).size > 0;
+}> = ({ color, path }) => {
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const theme = useTheme();
-  if (!lightning || !lightnigPath) {
+  if (!queryPerformance || !indexed) {
     return null;
   }
 

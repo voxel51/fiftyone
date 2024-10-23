@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1766791ce2ba64378c0e41d8878d8371>>
+ * @generated SignedSource<<8948f8dd72ac5718c73fbe2a21d573df>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,6 @@
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "value" | "%future added value";
-export type SidebarMode = "all" | "best" | "disabled" | "fast" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type configFragment$data = {
@@ -23,7 +22,6 @@ export type configFragment$data = {
     readonly disableFrameFiltering: boolean;
     readonly enableQueryPerformance: boolean;
     readonly gridZoom: number;
-    readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
     readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
@@ -34,7 +32,6 @@ export type configFragment$data = {
     readonly showLabel: boolean;
     readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
-    readonly sidebarMode: SidebarMode;
     readonly theme: Theme;
     readonly timezone: string | null;
     readonly useFrameNumber: boolean;
@@ -95,13 +92,6 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "gridZoom",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "lightningThreshold",
           "storageKey": null
         },
         {
@@ -192,13 +182,6 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "sidebarMode",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
           "name": "theme",
           "storageKey": null
         },
@@ -226,6 +209,6 @@ return {
 };
 })();
 
-(node as any).hash = "3f94f31ced2627b0cd19b0a22d4e3378";
+(node as any).hash = "4e3c420ab0b75831727c079a3e1f940d";
 
 export default node;

@@ -198,7 +198,11 @@ const ListValueEntry = ({
           <Arrow
             key="arrow"
             data-cy={`sidebar-field-arrow-enabled-${path}`}
-            style={{ cursor: "pointer", margin: 0 }}
+            style={{
+              color: theme.text.secondary,
+              cursor: "pointer",
+              margin: 0,
+            }}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

@@ -7,7 +7,6 @@ import {
   selectorFamily,
   useRecoilState,
   useRecoilValue,
-  useRecoilValueLoadable,
 } from "recoil";
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
@@ -71,12 +70,6 @@ const Hidden = ({ path }: { path: string }) => {
   ) : null;
 };
 
-const useUnlocked = () => {
-  const lightning = useRecoilValue(fos.lightning);
-  const unlocked = useRecoilValueLoadable(fos.lightningUnlocked);
-  return !lightning || (unlocked.state === "hasValue" && unlocked.contents);
-};
-
 const useTitleTemplate = ({
   modal,
   path,
@@ -88,7 +81,6 @@ const useTitleTemplate = ({
     const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
-    const unlocked = useUnlocked();
 
     return (
       <NameAndCountContainer
@@ -105,7 +97,7 @@ const useTitleTemplate = ({
             <Hidden path={path} />
           </Suspense>
         )}
-        {!disabled && isFilterMode && (unlocked || modal) && (
+        {!disabled && isFilterMode && (
           <PathEntryCounts key="count" modal={modal} path={expandedPath} />
         )}
         <Icon modal={modal} path={path} />
