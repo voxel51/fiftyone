@@ -21,11 +21,9 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.zoo as foz
 
 from fiftyone.server.app import app
 from fiftyone.server.events import set_port
-
 
 DEBUG_LOGGING = fo.config.logging_level == "DEBUG"
 
@@ -49,8 +47,4 @@ if __name__ == "__main__":
     if args.clean_start:
         fo.delete_datasets("*")
 
-    dataset_directory = "."
-    dataset = foz.load_zoo_dataset("quickstart")
-
-
-asyncio.run(serve(app, config), debug=DEBUG_LOGGING)
+    asyncio.run(serve(app, config), debug=DEBUG_LOGGING)

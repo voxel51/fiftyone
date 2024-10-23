@@ -75,7 +75,7 @@ const Toast: React.FC<ToastProps> = ({
   return (
     <Snackbar
       anchorOrigin={{
-        vertical: "top",
+        vertical: layout?.vertical || "bottom",
         horizontal: layout?.horizontal || "center",
       }}
       open={open}
