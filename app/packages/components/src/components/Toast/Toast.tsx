@@ -4,17 +4,15 @@ import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
 interface ToastProps {
   message: React.ReactNode;
-  primary: (
-    setOpen: React.Dispatch<React.SetStateAction<boolean>>
-  ) => React.ReactNode;
-  secondary: (
-    setOpen: React.Dispatch<React.SetStateAction<boolean>>
-  ) => React.ReactNode;
+  primary?: any;
+  secondary?: any;
   duration?: number;
   layout?: {
     vertical?: "top" | "bottom";
     horizontal?: "left" | "center" | "right";
     height?: number | string;
+    top?: number | string;
+    bottom?: number | string;
     backgroundColor?: string;
     color?: string;
   };
@@ -32,45 +30,65 @@ const Toast: React.FC<ToastProps> = ({
   duration = 5000,
   layout = {},
 }) => {
-  const [open, setOpen] = useRecoilState(toastStateAtom);
+  const snackbarStyle = {
+    height: layout?.height || 5,
+    ...(layout?.top && {
+      top: {
+        xs: layout.top,
+        sm: layout.top,
+        md: layout.top,
+        lg: layout.top,
+        xl: layout.top,
+      },
+    }),
+    ...(layout?.bottom && {
+      bottom: {
+        xs: layout.bottom,
+        sm: layout.bottom,
+        md: layout.bottom,
+        lg: layout.bottom,
+        xl: layout.bottom,
+      },
+    }),
+  };
 
-  const handleClose = React.useCallback(
-    (event, reason) => {
-      if (reason === "clickaway") return;
-      setOpen(false);
-    },
-    [setOpen]
-  );
+  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
-  const action = React.useMemo(
-    () => (
-      <div>
-        <Box display="flex" justifyContent="flex-end">
-          {primary(setOpen)}
-          {secondary(setOpen)}
-        </Box>
-      </div>
-    ),
-    [primary, secondary, setOpen]
+  const handleClose = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setOpen(false);
+  };
+
+  const action = (
+    <div>
+      <Box display="flex" justifyContent="flex-end">
+        {/* note: Not implemented within Python Panels context */}
+        {primary && primary(setOpen)} {/* Pass setOpen to primary button */}
+        {secondary && secondary(setOpen)}{" "}
+        {/* Pass setOpen to secondary button */}
+      </Box>
+    </div>
   );
 
   return (
     <Snackbar
       anchorOrigin={{
-        vertical: layout.vertical ?? "bottom",
-        horizontal: layout.horizontal ?? "center",
+        vertical: "top",
+        horizontal: layout?.horizontal || "center",
       }}
       open={open}
       onClose={handleClose}
       autoHideDuration={duration}
-      sx={{ height: layout.height ?? 5 }}
+      sx={snackbarStyle}
     >
       <SnackbarContent
         message={message}
         action={action}
         style={{
-          backgroundColor: layout.backgroundColor ?? "#333",
-          color: layout.color ?? "#fff",
+          backgroundColor: layout?.backgroundColor || "#333",
+          color: layout?.color || "#fff",
         }}
       />
     </Snackbar>

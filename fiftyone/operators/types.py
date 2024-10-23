@@ -1816,10 +1816,22 @@ class AlertView(View):
 class ToastView(View):
     """Displays a snackbar style toast element.
 
+    Examples::
+
+    schema = {
+            "message": "Test",
+            "duration": 30000,
+            "layout": {
+                "vertical": "top",
+                "horizontal": "center",
+                "top": "200px"
+            },
+        }
+        snackbar = types.ToastView(**schema)
+        panel.obj("toast", view=snackbar)
+
     Args:
         message: the message to display
-        primary (None): the primary button text
-        secondary (None): the secondary button text
         duration (None): the duration to stay on screen in milliseconds
         layout (None): the layout of the toast
     """
