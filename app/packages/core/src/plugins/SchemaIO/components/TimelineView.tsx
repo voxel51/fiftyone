@@ -20,13 +20,12 @@ export default function TimelineView(props: ViewPropsType) {
     ...providedcConfig,
   };
 
-  const requiredParams = ["timeline_name", "total_frames"];
-
-  // for (const param of requiredParams) {
-  //   if (!finalConfig[param]) {
-  //     throw new Error(`Missing required parameter: ${param}`);
-  //   }
-  // }
+  if (!timeline_name) {
+    throw new Error("Timeline name is required");
+  }
+  if (!finalConfig.totalFrames) {
+    throw new Error("Total frames is required");
+  }
 
   return <TimelineCreator timelineName={timeline_name} {...finalConfig} />;
 }
