@@ -86,7 +86,7 @@ const Toast: React.FC<ToastProps> = ({
       <SnackbarContent
         message={message}
         action={action}
-        style={{
+        sx={{
           backgroundColor: layout?.backgroundColor || "#333",
           color: layout?.color || "#fff",
         }}
