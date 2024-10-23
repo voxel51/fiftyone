@@ -699,7 +699,7 @@ export async function executeOperatorWithContext(
         {
           current_sample: currentContext.currentSample,
           dataset_name: currentContext.datasetName,
-          delegation_target: currentContext.delegationTarget,
+          delegation_target: ctx.delegationTarget,
           extended: currentContext.extended,
           extended_selection: currentContext.extendedSelection,
           filters: currentContext.filters,
@@ -803,7 +803,7 @@ export async function resolveRemoteType(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -882,7 +882,7 @@ export async function resolveExecutionOptions(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
