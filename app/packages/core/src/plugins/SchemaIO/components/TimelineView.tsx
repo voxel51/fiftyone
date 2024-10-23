@@ -7,7 +7,7 @@ export default function TimelineView(props: ViewPropsType) {
   const { view = {} } = schema;
   const { timeline_name, loop, total_frames } = view;
 
-  const providedcConfig = {
+  const providedConfig = {
     loop,
     totalFrames: total_frames,
   };
