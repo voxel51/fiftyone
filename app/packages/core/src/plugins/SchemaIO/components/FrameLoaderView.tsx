@@ -16,15 +16,16 @@ export default function FrameLoaderView(props: ViewPropsType) {
   const setPanelState = useSetPanelStateById(true);
   const localIdRef = React.useRef<string>();
   const bufm = useRef(new BufferManager());
+  const frameDataRef = useRef();
 
   useEffect(() => {
     localIdRef.current = Math.random().toString(36).substring(7);
-    if (data?.frames)
-      window.dispatchEvent(
-        new CustomEvent(`frames-loaded`, {
-          detail: { localId: localIdRef.current },
-        })
-      );
+    if (data?.frames) frameDataRef.current = data.frames;
+    window.dispatchEvent(
+      new CustomEvent(`frames-loaded`, {
+        detail: { localId: localIdRef.current },
+      })
+    );
   }, [data?.signature]);
 
   const loadRange = React.useCallback(
@@ -41,15 +42,22 @@ export default function FrameLoaderView(props: ViewPropsType) {
         }
 
         return new Promise<void>((resolve) => {
-          window.addEventListener(`frames-loaded`, (e) => {
-            if (
-              e instanceof CustomEvent &&
-              e.detail.localId === localIdRef.current
-            ) {
-              bufm.current.addNewRange(range);
-              resolve();
-            }
-          });
+          if (frameDataRef.current) {
+            bufm.current.addNewRange(range);
+            resolve();
+          } else {
+            window.addEventListener(`frames-loaded`, (e) => {
+              if (
+                e instanceof CustomEvent &&
+                e.detail.localId === localIdRef.current
+              ) {
+                try {
+                  bufm.current.addNewRange(range);
+                } catch (e) {}
+                resolve();
+              }
+            });
+          }
         });
       }
     },
