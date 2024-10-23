@@ -10,6 +10,8 @@ import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
 import { useTimeline } from "@fiftyone/playback/src/lib/use-timeline";
 import _ from "lodash";
 
+const FRAME_LOADED_EVENT = "frames-loaded";
+
 export default function FrameLoaderView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { view = {} } = schema;
@@ -25,7 +27,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     localIdRef.current = Math.random().toString(36).substring(7);
     if (data?.frames) frameDataRef.current = data.frames;
     window.dispatchEvent(
-      new CustomEvent(`frames-loaded`, {
+      new CustomEvent(FRAME_LOADED_EVENT, {
         detail: { localId: localIdRef.current },
       })
     );
@@ -49,17 +51,17 @@ export default function FrameLoaderView(props: ViewPropsType) {
             bufm.current.addNewRange(range);
             resolve();
           } else {
-            window.addEventListener(`frames-loaded`, (e) => {
+            const onFramesLoaded = (e) => {
               if (
                 e instanceof CustomEvent &&
                 e.detail.localId === localIdRef.current
               ) {
-                try {
-                  bufm.current.addNewRange(range);
-                } catch (e) {}
+                window.removeEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
+                bufm.current.addNewRange(range);
                 resolve();
               }
-            });
+            };
+            window.addEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
           }
         });
       }
