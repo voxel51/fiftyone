@@ -29,6 +29,7 @@ export default function TableView(props: ViewPropsType) {
     on_click_row,
     on_click_column,
     actions_label,
+    selected_color,
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -36,6 +37,8 @@ export default function TableView(props: ViewPropsType) {
   const hasRowActions = row_actions.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
+  const selectedCellColor =
+    selected_color || ((theme) => theme.palette.background.activeCell);
 
   const getRowActions = useCallback((row) => {
     const computedRowActions = [] as any;
@@ -126,6 +129,7 @@ export default function TableView(props: ViewPropsType) {
               {rows.map((item, rowIndex) => {
                 const rowActions = getRowActions(rowIndex);
                 const currentRowHasActions = rowActions?.length > 0;
+                const isRowSelected = selectedRows.has(rowIndex);
                 return (
                   <TableRow
                     key={item.id}
@@ -136,12 +140,16 @@ export default function TableView(props: ViewPropsType) {
                       const coordinate = [rowIndex, columnIndex].join(",");
                       const isSelected =
                         selectedCells.has(coordinate) ||
-                        selectedRows.has(rowIndex) ||
+                        isRowSelected ||
                         selectedColumns.has(columnIndex);
                       return (
                         <TableCell
                           key={key}
-                          sx={{ background: isSelected ? "green" : "unset" }}
+                          sx={{
+                            background: isSelected
+                              ? selectedCellColor
+                              : "unset",
+                          }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
                           }}
@@ -152,7 +160,14 @@ export default function TableView(props: ViewPropsType) {
                       );
                     })}
                     {hasRowActions && (
-                      <TableCell align="right">
+                      <TableCell
+                        align="right"
+                        sx={{
+                          background: isRowSelected
+                            ? selectedCellColor
+                            : "unset",
+                        }}
+                      >
                         {currentRowHasActions && (
                           <ActionsMenu actions={getRowActions(rowIndex)} />
                         )}
