@@ -7,6 +7,7 @@ import {
   getComponent,
   getErrorsForView,
   isCompositeView,
+  isEditableView,
   isInitialized,
 } from "../utils";
 import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
@@ -63,21 +64,24 @@ function useCustomComponents() {
 
 // todo: need to improve initializing the state... refactor this function
 function useStateInitializer(props: ViewPropsType) {
-  const { data, schema, onChange } = props;
+  const { data, onChange } = props;
   const computedSchema = getComputedSchema(props);
   const { default: defaultValue } = computedSchema;
+  const shouldInitialize = useMemo(() => {
+    return !isCompositeView(computedSchema) && isEditableView(computedSchema);
+  }, [computedSchema]);
   const basicData = useMemo(() => {
-    if (!isCompositeView(schema)) {
+    if (shouldInitialize) {
       return data;
     }
-  }, [data, schema]);
+  }, [shouldInitialize, data]);
   const unboundState = useUnboundState({ computedSchema, props });
 
   useEffect(() => {
     const { computedSchema, props } = unboundState;
     const { data, path, root_id } = props || {};
     if (
-      !isCompositeView(computedSchema) &&
+      shouldInitialize &&
       !isEqual(data, defaultValue) &&
       !isPathUserChanged(path, root_id) &&
       !isNullish(defaultValue) &&
