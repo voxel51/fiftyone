@@ -40,7 +40,7 @@ export const TimelineCreator = ({ timelineName, totalFrames, loop }) => {
   });
 
   if (!isTimelineInitialized) {
-    return <div>initializing timeline...</div>;
+    return null;
   }
 
   return <Timeline name={timelineName} />;
