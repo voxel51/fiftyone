@@ -401,17 +401,74 @@ class Detection(_HasAttributesDict, _HasID, Label):
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
+        mask_path (None):  the absolute path to the instance segmentation image
+            on disk
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
 
+    _MEDIA_FIELD = "mask_path"
+
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
     mask = fof.ArrayField()
+    mask_path = fof.StringField()
     confidence = fof.FloatField()
     index = fof.IntField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the segmentation mask for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.mask is not None:
+            return self.mask
+
+        if self.mask_path is not None:
+            return _read_mask(self.mask_path)
+
+        return None
+
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            outpath: the path to write the map
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
+        if self.mask_path is not None:
+            self.mask = _read_mask(self.mask_path)
+
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
+        """
+        if self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            _write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -467,7 +524,8 @@ class Detection(_HasAttributesDict, _HasID, Label):
         Returns:
             a :class:`Segmentation`
         """
-        if self.mask is None:
+        mask = self.get_mask()
+        if mask is None:
             raise ValueError(
                 "Only detections with their `mask` attributes populated can "
                 "be converted to segmentations"
