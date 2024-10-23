@@ -15,6 +15,8 @@ interface ToastProps {
     bottom?: number | string;
     backgroundColor?: string;
     color?: string;
+    fontSize?: string;
+    textAlign?: string;
   };
 }
 
@@ -86,9 +88,12 @@ const Toast: React.FC<ToastProps> = ({
       <SnackbarContent
         message={message}
         action={action}
-        style={{
+        sx={{
           backgroundColor: layout?.backgroundColor || "#333",
           color: layout?.color || "#fff",
+          fontSize: layout?.fontSize || "14px",
+          display: "block",
+          textAlign: layout?.textAlign || "left",
         }}
       />
     </Snackbar>
