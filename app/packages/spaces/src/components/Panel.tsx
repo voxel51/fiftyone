@@ -1,7 +1,7 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useSetRecoilState } from "recoil";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import { PanelContext } from "../contexts";
 import { useReactivePanel } from "../hooks";
@@ -20,7 +20,7 @@ function Panel(props: PanelProps) {
   const setPanelIdToScope = useSetRecoilState(panelIdToScopeAtom);
   const scope = isModalPanel ? "modal" : "grid";
 
-  const thisModalUniqueId = useRecoilValue(fos.currentModalUniqueId);
+  const thisModalUniqueId = null;
 
   useEffect(() => {
     setPanelIdToScope((ids) => ({ ...ids, [node.id]: scope }));
