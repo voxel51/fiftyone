@@ -354,7 +354,7 @@ def _render_card_model_content(template, model_name):
 
     tags = ",".join(tags)
 
-    link = "models.html#%s" % zoo_model.name
+    link = "models.html#%s" % zoo_model.name.replace(".", "-")
 
     description = zoo_model.description
 
