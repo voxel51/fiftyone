@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
-import { useLookerOptionsUpdate, useModalContext } from "./hooks";
+import { useLookerOptionsUpdate } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
 
@@ -18,8 +18,8 @@ function useLooker<L extends fos.Lookers>({
   const [id] = useState(() => uuid());
   const initialRef = useRef<boolean>(true);
   const ref = useRef<HTMLDivElement>(null);
-  const [reset, setReset] = useState(false);
   const lookerOptions = fos.useLookerOptions(true);
+  const [reset, setReset] = useState(false);
   const createLooker = fos.useCreateLooker(
     true,
     false,
@@ -27,19 +27,17 @@ function useLooker<L extends fos.Lookers>({
     undefined,
     true
   );
-  const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
-  const colorScheme = useRecoilValue(fos.colorScheme);
   const looker = React.useMemo(() => {
     /** start refreshers */
     reset;
-    selectedMediaField;
     /** end refreshers */
 
     return createLooker.current(sample);
-  }, [createLooker, reset, sample, selectedMediaField]) as L;
+  }, [createLooker, reset, sample]) as L;
   const handleError = useErrorHandler();
   const updateLookerOptions = useLookerOptionsUpdate();
-
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const colorScheme = useRecoilValue(fos.colorScheme);
   fos.useEventHandler(looker, "clear", useClearSelectedLabels());
   fos.useEventHandler(looker, "error", (event) => handleError(event.detail));
   fos.useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
@@ -59,6 +57,35 @@ function useLooker<L extends fos.Lookers>({
     !initialRef.current && looker.updateSample(sample.sample);
   }, [colorScheme, looker, sample]);
 
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+  fos.useEventHandler(
+    looker,
+    "panels",
+    async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      if (showJSON) {
+        jsonPanel[showJSON](sample);
+      }
+      if (showHelp) {
+        if (showHelp === CLOSE) {
+          helpPanel.close();
+        } else {
+          helpPanel[showHelp](shortcutToHelpItems(SHORTCUTS));
+        }
+      }
+      updateLookerOptions({}, (updatedOptions) =>
+        looker.updateOptions(updatedOptions)
+      );
+    }
+  );
+
+  useKeyEvents(initialRef, sample.sample._id, looker);
+
+  useEffect(() => {
+    ref.current?.dispatchEvent(
+      new CustomEvent("looker-attached", { bubbles: true })
+    );
+  }, []);
   useEffect(() => {
     initialRef.current = false;
   }, []);
@@ -77,47 +104,7 @@ function useLooker<L extends fos.Lookers>({
     return () => looker?.destroy();
   }, [looker]);
 
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
-
-  fos.useEventHandler(
-    looker,
-    "panels",
-    async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
-      if (showJSON) {
-        jsonPanel[showJSON](sample);
-      }
-      if (showHelp) {
-        if (showHelp === CLOSE) {
-          helpPanel.close();
-        } else {
-          helpPanel[showHelp](shortcutToHelpItems(SHORTCUTS));
-        }
-      }
-
-      updateLookerOptions({}, (updatedOptions) =>
-        looker.updateOptions(updatedOptions)
-      );
-    }
-  );
-
-  useKeyEvents(initialRef, sample.sample._id, looker);
-
-  const setModalLooker = useSetRecoilState(fos.modalLooker);
-
-  const { setActiveLookerRef } = useModalContext();
-
-  useEffect(() => {
-    setModalLooker(looker);
-  }, [looker, setModalLooker]);
-
-  useEffect(() => {
-    if (looker) {
-      setActiveLookerRef(looker as fos.Lookers);
-    }
-  }, [looker, setActiveLookerRef]);
-
-  return { id, looker, ref, sample, updateLookerOptions };
+  return { id, looker, ref, sample };
 }
 
 export default useLooker;
