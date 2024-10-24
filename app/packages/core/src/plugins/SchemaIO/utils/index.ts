@@ -92,6 +92,27 @@ const COMPOSITE_VIEWS = [
   "ButtonGroupView",
 ];
 
+const NON_EDITABLE_VIEWS = [
+  "AlertView",
+  "ArrowNavView",
+  "ButtonView",
+  "ErrorView",
+  "GridView",
+  "HeaderView",
+  "HiddenView",
+  "ImageView",
+  "JSONView",
+  "KeyValueView",
+  "LabelValueView",
+  "LinkView",
+  "LoadingView",
+  "MarkdownView",
+  "MediaPlayerView",
+  "ProgressView",
+  "TableView",
+  "TagsView",
+];
+
 export function isCompositeView(schema: SchemaType) {
   return COMPOSITE_VIEWS.includes(schema?.view?.component);
 }
@@ -99,4 +120,8 @@ export function isCompositeView(schema: SchemaType) {
 export function isInitialized(props: ViewPropsType) {
   const { initialData, path } = props || {};
   return !isNullish(get(initialData, path));
+}
+
+export function isEditableView(schema: SchemaType) {
+  return !NON_EDITABLE_VIEWS.includes(schema?.view?.component);
 }
