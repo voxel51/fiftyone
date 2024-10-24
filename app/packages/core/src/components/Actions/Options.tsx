@@ -174,6 +174,8 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
 const QueryPerformance = () => {
   const theme = useTheme();
   const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
+
+  // Admins can choose to disable all QP features (toast + toggle)
   if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
     return null;
   }

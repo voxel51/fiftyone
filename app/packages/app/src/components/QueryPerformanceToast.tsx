@@ -1,13 +1,14 @@
-import { Toast } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { Button, Toast } from "@fiftyone/components";
 import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { Box, Button, Typography } from "@material-ui/core";
+import { Box, Typography } from "@material-ui/core";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState } from "recoil";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 
-const SHOWN_FOR = 10000;
+const TOAST_DURATION = 50000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -36,13 +37,18 @@ const QueryPerformanceToast = () => {
     throw new Error("no query performance element");
   }
 
-  if (!shown || disabled) {
+  // Admins can choose to disable toasts for each dataset with env variable defaultQueryPerformance
+  const hideToast = !shown || disabled || !useRecoilValue(fos.defaultQueryPerformanceConfig);
+  console.log("Toast visibility: ", !hideToast);
+
+  if (hideToast) {
     return null;
   }
 
   return createPortal(
     <Toast
-      duration={SHOWN_FOR}
+      duration={TOAST_DURATION}
+      layout={{ bottom: '100px', vertical: "bottom", horizontal: "center"}}
       primary={(setOpen) => {
         return (
           <Button
@@ -98,7 +104,6 @@ const QueryPerformanceToast = () => {
               NEW
             </Typography>
           </Box>
-          <br />
           <Typography variant="body2" sx={{ color: "#757575" }}>
             Index the most critical fields for faster data loading and query
             performance.
