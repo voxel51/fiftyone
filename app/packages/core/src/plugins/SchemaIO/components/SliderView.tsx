@@ -89,6 +89,7 @@ export default function SliderView(props) {
     label_position: labelPosition = "left",
     label = "Threshold",
     viewMultipleOf = null,
+    value: viewValue,
   } = view;
 
   const multipleOf = viewMultipleOf || schemaMultipleOf;
@@ -104,10 +105,10 @@ export default function SliderView(props) {
   const [key, setUserChanged] = useKey(path, schema, data, true);
   const [unit, setUnit] = useState<ValueFormat>(valueFormat);
   const [minText, setMinText] = useState(
-    valueLabelFormat(data?.[0] || min, min, max, unit, valuePrecision)
+    valueLabelFormat(data?.[0] || viewValue[0], min, max, unit, valuePrecision)
   );
   const [maxText, setMaxText] = useState(
-    valueLabelFormat(data?.[1] || max, min, max, unit, valuePrecision)
+    valueLabelFormat(data?.[1] || viewValue[1], min, max, unit, valuePrecision)
   );
 
   useEffect(() => {
@@ -182,7 +183,7 @@ export default function SliderView(props) {
             setUnit(newUnit);
             setMinText(
               valueLabelFormat(
-                data?.[0] || min,
+                data?.[0] || viewValue[0],
                 min,
                 max,
                 newUnit,
@@ -191,7 +192,7 @@ export default function SliderView(props) {
             );
             setMaxText(
               valueLabelFormat(
-                data?.[1] || max,
+                data?.[1] || viewValue[1],
                 min,
                 max,
                 newUnit,
@@ -231,7 +232,7 @@ export default function SliderView(props) {
               key={key}
               disabled={schema.view?.readOnly}
               valueLabelDisplay={valueLabelDisplay}
-              value={data || [min, max]}
+              value={data || viewValue}
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
