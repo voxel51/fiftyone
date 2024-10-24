@@ -556,10 +556,9 @@ export abstract class AbstractLooker<
 
   destroy() {
     this.resizeObserver.disconnect();
-    this.lookerElement.element.parentElement &&
-      this.lookerElement.element.parentElement.removeChild(
-        this.lookerElement.element
-      );
+    this.lookerElement.element.parentElement.removeChild(
+      this.lookerElement.element
+    );
     this.updater({ destroyed: true });
   }
   disable() {

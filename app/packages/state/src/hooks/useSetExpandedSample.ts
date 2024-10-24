@@ -34,7 +34,7 @@ export default () => {
     []
   );
 
-  const commit = useRecoilCallback(
+  return useRecoilCallback(
     ({ set }) =>
       async (selector: ModalSelector) => {
         set(modalSelector, selector);

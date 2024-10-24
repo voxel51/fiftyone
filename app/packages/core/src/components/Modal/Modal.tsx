@@ -7,11 +7,11 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
-import { useLookerHelpers } from "./hooks";
-import { modalContext } from "./modal-context";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
+import { useLookerHelpers } from "./hooks";
+import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
