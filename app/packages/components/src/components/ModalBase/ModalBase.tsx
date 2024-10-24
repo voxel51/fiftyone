@@ -207,7 +207,12 @@ const ModalBase: React.FC<ModalBaseProps> = ({
             id="modal-title"
             variant="h5"
             component="h5"
-            sx={{ textAlign: titleAlign, verticalAlign: "middle" }}
+            sx={{
+              textAlign: titleAlign,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
           >
             {modal?.icon && (
               <MuiIconFont
@@ -217,7 +222,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
               >
                 {modal.icon}
               </MuiIconFont>
-            )}{" "}
+            )}
             {title}
           </Typography>
           <Typography
