@@ -104,6 +104,10 @@ const Modal = () => {
         }
 
         clearModal();
+        activeLookerRef.current?.removeEventListener(
+          "close",
+          modalCloseHandler
+        );
       },
     [clearModal, jsonPanel, helpPanel]
   );
@@ -181,13 +185,6 @@ const Modal = () => {
     onLookerSetSubscribers.current.forEach((sub) => sub(looker));
 
     looker.addEventListener("close", modalCloseHandler);
-  }, []);
-
-  // cleanup effect
-  useEffect(() => {
-    return () => {
-      activeLookerRef.current?.removeEventListener("close", modalCloseHandler);
-    };
   }, []);
 
   const setActiveLookerRef = useCallback(
