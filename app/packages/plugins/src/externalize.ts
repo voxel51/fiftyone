@@ -1,18 +1,14 @@
 import * as foa from "@fiftyone/aggregations";
-import * as focore from "@fiftyone/core";
-import * as foe from "@fiftyone/embeddings";
-import * as fol from "@fiftyone/looker";
-import * as fom from "@fiftyone/map";
-import * as fopb from "@fiftyone/playback";
-import * as fosl from "@fiftyone/spotlight";
-import * as fof from "@fiftyone/flashlight";
-import * as fol3d from "@fiftyone/looker-3d";
 import * as foc from "@fiftyone/components";
+import * as fof from "@fiftyone/flashlight";
+import * as fol from "@fiftyone/looker";
 import * as foo from "@fiftyone/operators";
+import * as fopb from "@fiftyone/playback";
+import * as fop from "@fiftyone/plugins";
+import * as fosp from "@fiftyone/spaces";
+import * as fosl from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
-import * as fosp from "@fiftyone/spaces";
-import * as fop from "@fiftyone/plugins";
 import * as mui from "@mui/material";
 import React from "react";
 import ReactDOM from "react-dom";
@@ -31,16 +27,18 @@ declare global {
     __fosp__: typeof fosp;
     __fop__: typeof fop;
     __foa__: typeof foa;
-    __focore__: typeof focore;
-    __foe__: typeof foe;
     __fol__: typeof fol;
-    __fom__: typeof fom;
     __fopb__: typeof fopb;
     __fosl__: typeof fosl;
     __fof__: typeof fof;
-    __fol3d__: typeof fol3d;
     __mui__: typeof mui;
     __styled__: typeof styled;
+
+    // todo: the following cannot be externalized because of unknown reason
+    // __focore__: typeof focore;
+    // __fol3d__: typeof fol3d;
+    // __fom__: typeof fom;
+    // __foe__: typeof foe;
   }
 }
 
@@ -58,13 +56,14 @@ if (typeof window !== "undefined") {
   window.__mui__ = mui;
   window.__fop__ = fop;
   window.__foa__ = foa;
-  window.__focore__ = focore;
-  window.__foe__ = foe;
   window.__fol__ = fol;
-  window.__fom__ = fom;
   window.__fopb__ = fopb;
   window.__fosl__ = fosl;
   window.__fof__ = fof;
-  window.__fol3d__ = fol3d;
   window.__styled__ = styled;
+  // todo: the following cannot be externalized because of unknown reason
+  // window.__fol3d__ = fol3d;
+  // window.__foe__ = foe;
+  // window.__fom__ = fom;
+  // window.__focore__ = focore;
 }
