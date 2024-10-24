@@ -14,15 +14,20 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-
 from fiftyone.core.odm.workspace import default_workspace_factory
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.data_lens.config_management_operators import (
+    ListLensConfigsOperator,
+    UpsertLensConfigOperator,
+    DeleteLensConfigOperator
+)
+from fiftyone.operators.data_lens.datasource_connector_operator import DatasourceConnectorOperator
 from fiftyone.operators.panels import (
     DataQualityPanel,
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
 from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
-from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -2228,6 +2233,10 @@ BUILTIN_OPERATORS = (
         ListFiles(_builtin=True),
         EvaluateModel(_builtin=True),
         EvaluateModelAsync(_builtin=True),
+        DatasourceConnectorOperator(_builtin=True),
+        ListLensConfigsOperator(_builtin=True),
+        UpsertLensConfigOperator(_builtin=True),
+        DeleteLensConfigOperator(_builtin=True),
     ]
     + DATA_QUALITY_OPERATORS
     + QUERY_PERFORMANCE_OPERATORS

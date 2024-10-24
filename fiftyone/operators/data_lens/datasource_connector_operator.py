@@ -1,0 +1,224 @@
+"""
+FiftyOne Data Lens datasource connector.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+import dataclasses
+import re
+import uuid
+from dataclasses import asdict
+
+import fiftyone as fo
+import fiftyone.core.storage as fos
+import fiftyone.operators as foo
+from fiftyone.core.odm.dataset import SampleFieldDocument
+from fiftyone.operators.data_lens.models import (
+    DataLensSearchResponse, PreviewResponse, ImportResponse, BaseResponse, PreviewRequest,
+    ImportRequest, DatasourceConnectorRequest
+)
+from fiftyone.operators.data_lens.utils import filter_fields_for_type
+
+
+class DatasourceConnectorOperator(foo.Operator):
+    """Operator which acts as the main entry point for Data Lens."""
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name='lens_datasource_connector',
+            label='Data Lens Datasource Connector',
+            unlisted=True,
+        )
+
+    def execute(self, ctx: foo.ExecutionContext) -> dict:
+        try:
+            request = DatasourceConnectorRequest(
+                **filter_fields_for_type(ctx.params, DatasourceConnectorRequest)
+            )
+
+            if request.query_type == 'preview':
+                return asdict(self._handle_preview(ctx))
+            elif request.query_type == 'import':
+                return asdict(self._handle_import(ctx))
+            else:
+                raise ValueError(f'unsupported query type "{request.query_type}"')
+
+        except Exception as e:
+            return asdict(
+                BaseResponse(
+                    error=str(e),
+                )
+            )
+
+    def _handle_preview(self, ctx: foo.ExecutionContext) -> PreviewResponse:
+        try:
+            preview_request = PreviewRequest(
+                **filter_fields_for_type(ctx.params, PreviewRequest)
+            )
+
+            operator: foo.Operator = foo.get_operator(preview_request.operator_uri)
+            operator_ctx = self._build_ctx(ctx)
+
+            if operator.config.execute_as_generator is True:
+                operator_result = next(operator.execute(operator_ctx))
+            else:
+                execution_result = operator.execute(operator_ctx)
+                execution_result.raise_exceptions()
+                operator_result = execution_result.result
+
+            operator_response = DataLensSearchResponse(
+                **filter_fields_for_type(operator_result, DataLensSearchResponse)
+            )
+
+            # These samples are not being added to a dataset, so we need to manually resolve the URL
+            #   for any cloud-backed media.
+            for sample in operator_response.query_result:
+                if 'filepath' in sample:
+                    sample['filepath'] = self._resolve_url(sample['filepath'])
+
+            # We also need to generate a valid field schema for these samples to be rendered with
+            #   their labels.
+            field_schema = self._generate_schema(operator_response.query_result)
+
+            return PreviewResponse(
+                **filter_fields_for_type(asdict(operator_response), PreviewResponse),
+                field_schema=field_schema
+            )
+
+        except Exception as e:
+            return PreviewResponse(
+                error=str(e),
+            )
+
+    def _handle_import(self, ctx: foo.ExecutionContext) -> ImportResponse:
+        try:
+            import_request = ImportRequest(
+                **filter_fields_for_type(ctx.params, ImportRequest)
+            )
+
+            operator: foo.Operator = foo.get_operator(import_request.operator_uri)
+            operator_ctx = self._build_ctx(ctx)
+
+            dataset: fo.Dataset = fo.load_dataset(
+                import_request.dataset_name,
+                create_if_necessary=True,
+            )
+
+            if operator.config.execute_as_generator is True:
+                for batch_response in operator.execute(operator_ctx):
+                    last_response = DataLensSearchResponse(
+                        **filter_fields_for_type(batch_response, DataLensSearchResponse),
+                    )
+                    if last_response.error is not None:
+                        raise ValueError(last_response.error)
+
+                    self._import_samples(dataset, last_response.query_result)
+
+            else:
+                while True:
+                    batch_response = operator.execute(operator_ctx)
+                    last_response = DataLensSearchResponse(
+                        **filter_fields_for_type(batch_response, DataLensSearchResponse),
+                    )
+                    if last_response.error is not None:
+                        raise ValueError(last_response.error)
+
+                    self._import_samples(dataset, last_response.query_result)
+
+                    pagination_token = last_response.pagination_token
+                    if pagination_token is None:
+                        break
+
+                    operator_ctx.params = self._build_params(
+                        ctx,
+                        {'pagination_token': pagination_token}
+                    )
+
+            return ImportResponse()
+
+        except Exception as e:
+            return ImportResponse(
+                error=str(e),
+            )
+
+    def _import_samples(self, dataset: fo.Dataset, samples_json: list[dict]):
+        samples = [fo.Sample.from_dict(s) for s in samples_json]
+
+        # merge_samples will dedupe with samples already in the dataset, but will fail if there
+        #  are duplicate samples within the list being merged.
+        unique_samples = self._dedupe_samples(samples)
+        dataset.merge_samples(unique_samples, skip_existing=True, insert_new=True)
+
+    def _build_ctx(self, base_ctx: foo.ExecutionContext) -> foo.ExecutionContext:
+        operator_params = {
+            'params': self._build_params(base_ctx),
+        }
+
+        return foo.ExecutionContext(
+            request_params=operator_params,
+            operator_uri=base_ctx.params.get('operator_uri'),
+            user=base_ctx.user,
+        )
+
+    @staticmethod
+    def _dedupe_samples(samples: list[fo.Sample]) -> list[fo.Sample]:
+        unique_samples = []
+        dedupe_keys = set()
+        for sample in samples:
+            if sample.filepath not in dedupe_keys:
+                dedupe_keys.add(sample.filepath)
+                unique_samples.append(sample)
+
+        return unique_samples
+
+    @staticmethod
+    def _resolve_url(url: str) -> str:
+        if re.match(r'^[a-z]+://', url, re.IGNORECASE) is not None:
+            return fos.get_url(url)
+
+        return url
+
+    @staticmethod
+    def _build_params(ctx: foo.ExecutionContext, overrides: dict = None) -> dict:
+        source_params = ctx.params.copy()
+        source_params.update(overrides or {})
+
+        # Include all search parameters as top-level parameters.
+        # This ensures that fields declared by `resolve_input` in the inner operator are
+        #   accessible via `ctx.params.get(field_name)`.
+        params = source_params.get('search_params', {}).copy()
+
+        # Set metadata.
+        # Note that these keys are meant to be treated as reserved and may overwrite
+        #   user-defined values.
+        params.update({
+            '_search_request': {
+                'search_params': source_params.get('search_params'),
+                'max_results': source_params.get('max_results', source_params.get('batch_size')),
+                'pagination_token': source_params.get('pagination_token'),
+            },
+        })
+
+        return params
+
+    @staticmethod
+    def _generate_schema(samples: list[dict]) -> dict:
+        tmp_dataset = fo.Dataset(str(uuid.uuid4()))
+
+        try:
+            tmp_dataset.add_samples([
+                fo.Sample.from_dict(sample)
+                for sample in samples
+            ])
+
+            schema = tmp_dataset.get_field_schema()
+
+            return {
+                k: SampleFieldDocument.from_field(v).to_dict()
+                for k, v in schema.items()
+            }
+
+        finally:
+            tmp_dataset.delete()
