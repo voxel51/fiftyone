@@ -6,16 +6,16 @@ Utilities for working with
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
+import eta.core.utils as etau
 import numpy as np
 
-import eta.core.utils as etau
-
-from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
+from fiftyone.core.config import Config
+from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 
 torch = fou.lazy_import("torch")
@@ -451,9 +451,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.image_processor = self._load_image_processor()
 
     @property
@@ -498,9 +496,7 @@ class FiftyOneZeroShotTransformer(
         self.config = config
         self.classes = config.classes
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.processor = self._load_processor()
         self._text_prompts = None
 
@@ -749,9 +745,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.classes = config.classes
         self.processor = self._load_processor(config)
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._text_prompts = None
 
     def _load_processor(self, config):
@@ -760,7 +754,9 @@ class FiftyOneZeroShotTransformerForObjectDetection(
             if config.model is not None:
                 name_or_path = config.model.name_or_path
 
-        return transformers.AutoProcessor.from_pretrained(name_or_path)
+        return transformers.AutoProcessor.from_pretrained(name_or_path).to(
+            self.device
+        )
 
     def _load_model(self, config):
         name_or_path = config.name_or_path
@@ -825,7 +821,7 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 
         return transformers.AutoModelForObjectDetection.from_pretrained(
             config.name_or_path
-        )
+        ).to(self.device)
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
@@ -876,10 +872,11 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         if config.model is not None:
             model = config.model
         else:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
             model = (
                 transformers.AutoModelForSemanticSegmentation.from_pretrained(
                     config.name_or_path
-                )
+                ).to(device)
             )
 
         self.mask_targets = model.config.id2label
@@ -929,10 +926,10 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         return transformers.AutoModelForDepthEstimation.from_pretrained(
             config.name_or_path
-        )
+        ).to(device)
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
@@ -1034,7 +1031,8 @@ def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
         __import__(module_name, fromlist=[itr_class_name]),
         itr_class_name,
     )
-    return itr_class.from_pretrained(model_name_or_path)
+
+    return itr_class.from_pretrained(model_name_or_path).to(base_model.device)
 
 
 def _get_image_processor_fallback(model):
@@ -1083,4 +1081,5 @@ def _get_detector_from_processor(processor, model_name_or_path):
         __import__(module_name, fromlist=[detector_class_name]),
         detector_class_name,
     )
-    return detector_class.from_pretrained(model_name_or_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return detector_class.from_pretrained(model_name_or_path).to(device)
