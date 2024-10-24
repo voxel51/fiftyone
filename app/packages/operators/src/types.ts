@@ -1197,6 +1197,20 @@ export class ModalView extends Button {
 }
 
 /**
+ * Operator class for describing a ToastView {@link View} for an
+ * operator type.
+ */
+export class ToastView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "ToastView";
+  }
+  static fromJSON(json) {
+    return new ToastView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1267,6 +1281,7 @@ const VIEWS = {
   LazyFieldView,
   PillBadgeView,
   ModalView,
+  ToastView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {

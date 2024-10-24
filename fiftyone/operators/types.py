@@ -1813,6 +1813,33 @@ class AlertView(View):
         return {**super().to_json(), "severity": self.severity}
 
 
+class ToastView(View):
+    """Displays a snackbar style toast element.
+
+    Examples::
+
+    schema = {
+            "message": "Test",
+            "duration": 30000,
+            "layout": {
+                "vertical": "top",
+                "horizontal": "center",
+                "top": "200px"
+            },
+        }
+        snackbar = types.ToastView(**schema)
+        panel.obj("toast", view=snackbar)
+
+    Args:
+        message: the message to display
+        duration (None): the duration to stay on screen in milliseconds
+        layout (None): the layout of the toast
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class CheckboxView(View):
     """Displays a checkbox.
 
