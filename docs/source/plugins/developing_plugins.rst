@@ -2199,6 +2199,11 @@ The ``surfaces`` key defines the panel's scope:
     :ref:`modal view <app-sample-view>`, which allows you to build interactions
     that focus on individual samples and scenarios
 
+.. note::
+
+   For an example of a modal panel, refer to the
+   `label count panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/label_count>`_.
+
 .. _panel-execution-context:
 
 Execution context
