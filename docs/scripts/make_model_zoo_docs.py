@@ -423,7 +423,7 @@ def main():
     # Write docs page
 
     docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
-    outpath = os.path.join(docs_dir, "source/user_guide/model_zoo/models.rst")
+    outpath = os.path.join(docs_dir, "source/model_zoo/models.rst")
 
     print("Writing '%s'" % outpath)
     etau.write_file("\n".join(content), outpath)
