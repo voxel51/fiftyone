@@ -13,6 +13,7 @@ export default class Row<K, V> {
   #from: number;
   #hidden: boolean;
 
+  readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
@@ -47,7 +48,7 @@ export default class Row<K, V> {
       element.style.top = pixels(ZERO);
 
       if (config.onItemClick) {
-        element.addEventListener("click", (event) => {
+        const handler = (event) => {
           if (event.metaKey || event.shiftKey) {
             return;
           }
@@ -59,18 +60,13 @@ export default class Row<K, V> {
             item,
             iter,
           });
+        };
+
+        element.addEventListener("click", handler, {
+          signal: this.#aborter.signal,
         });
-        element.addEventListener("contextmenu", (event) => {
-          if (event.metaKey || event.shiftKey) {
-            return;
-          }
-          event.preventDefault();
-          focus(item.id);
-          config.onItemClick({
-            event,
-            item,
-            iter,
-          });
+        element.addEventListener("contextmenu", handler, {
+          signal: this.#aborter.signal,
         });
       }
 
@@ -121,6 +117,10 @@ export default class Row<K, V> {
 
   get last() {
     return this.#row[this.#row.length - ONE].item.id;
+  }
+
+  destroy() {
+    this.#aborter.abort();
   }
 
   has(item: string) {
