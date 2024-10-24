@@ -26,14 +26,16 @@ interface TimelineProps {
  */
 export const Timeline = React.memo(
   React.forwardRef<HTMLDivElement, TimelineProps>(
-    ({ name, style, controlsStyle }, ref) => {
+    (timelineProps: TimelineProps, ref) => {
+      const { name, style, controlsStyle } = timelineProps;
+
       const { playHeadState, config, play, pause, setSpeed } =
         useTimeline(name);
       const frameNumber = useFrameNumber(name);
 
-      const { getSeekValue, seekTo } = useTimelineVizUtils();
+      const { getSeekValue, seekTo } = useTimelineVizUtils(name);
 
-      const seekBarValue = React.useMemo(() => getSeekValue(), [frameNumber]);
+      const seekBarValue = React.useMemo(() => getSeekValue(), [getSeekValue]);
 
       const { loaded, loading } = useTimelineBuffers(name);
 
@@ -52,7 +54,7 @@ export const Timeline = React.memo(
             detail: { timelineName: name, start: true },
           })
         );
-      }, [pause]);
+      }, [pause, name]);
 
       const onSeekEnd = React.useCallback(() => {
         dispatchEvent(
@@ -60,7 +62,7 @@ export const Timeline = React.memo(
             detail: { timelineName: name, start: false },
           })
         );
-      }, []);
+      }, [name]);
 
       const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);
 

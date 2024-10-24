@@ -39,10 +39,7 @@ export default function GridView(props: ViewPropsType) {
   };
 
   return (
-    <Box
-      {...getComponentProps(props, "container")}
-      sx={{ width: "100%", boxSizing: "border-box", padding: 1 }}
-    >
+    <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} divider nested />
       <Box {...getProps(props, "grid", baseGridProps)}>
         {propertiesAsArray.map((property) => {
