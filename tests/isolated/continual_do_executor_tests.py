@@ -21,8 +21,10 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionRunState,
 )
+from fiftyone.operators.orchestrator import OrchestratorService
 from fiftyone.operators.operator import Operator, OperatorConfig
 from fiftyone.operators.delegated_executors.continual import ContinualExecutor
+from fiftyone.factory.repos import delegated_operation
 
 
 class MockDataset:
@@ -81,6 +83,11 @@ class MockOperator(Operator):
         return {"executed": True}
 
 
+@patch.object(
+    delegated_operation,
+    "is_remote_service",
+    return_value=False,
+)
 @patch(
     "fiftyone.operators.executor.resolve_operation_user",
     return_value=None,
@@ -94,13 +101,25 @@ class MockOperator(Operator):
     return_value=MockOperator(sleep_time=3),
 )
 def start_executor(
-    mock_get_operator, mock_operator_exists, mock_resolve_operation_user
+    mock_get_operator,
+    mock_operator_exists,
+    mock_resolve_operation_user,
+    mock_is_remote_service,
 ):
-    executor = ContinualExecutor()
+    do_svc = DelegatedOperationService()
+    orch_svc = OrchestratorService()
+    executor = ContinualExecutor(
+        do_svc, orch_svc, instance_id="test_target_continual"
+    )
     signal.signal(signal.SIGTERM, executor.signal_handler)
     executor.start()
 
 
+@patch.object(
+    delegated_operation,
+    "is_remote_service",
+    return_value=False,
+)
 @patch(
     "fiftyone.operators.executor.resolve_operation_user",
     return_value=None,
@@ -114,7 +133,12 @@ def start_executor(
     return_value=MockOperator(),
 )
 class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    @patch.object(
+        delegated_operation,
+        "is_remote_service",
+        return_value=False,
+    )
+    def setUp(self, mock_is_remote_service):
         multiprocessing.set_start_method("fork", force=True)
         self.docs_to_delete = []
         self.svc = DelegatedOperationService()
@@ -143,6 +167,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
         mock_get_operator,
         mock_operator_exists,
         mock_resolve_operation_user,
+        mock_is_remote_service,
     ):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
@@ -185,6 +210,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
         mock_get_operator,
         mock_operator_exists,
         mock_resolve_operation_user,
+        mock_is_remote_service,
     ):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(

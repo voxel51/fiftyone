@@ -167,7 +167,7 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
 @patch.object(
     delegated_operation,
     "is_remote_service",
-    return_value=True,
+    return_value=False,
 )
 @patch(
     "fiftyone.operators.registry.OperatorRegistry.operator_exists",
@@ -180,7 +180,12 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
 class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
     _should_fail = False
 
-    def setUp(self):
+    @patch.object(
+        delegated_operation,
+        "is_remote_service",
+        return_value=False,
+    )
+    def setUp(self, mock_is_remote_service):
         self.docs_to_delete = []
         self.svc = DelegatedOperationService()
 

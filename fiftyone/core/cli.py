@@ -3244,7 +3244,15 @@ class DelegatedLaunchCommand(Command):
         if args.type == "local":
             _launch_delegated_local()
         elif args.type == "remote":
-            executor = fodec.ContinualExecutor(args.interval)
+            do_svc = food.DelegatedOperationService()
+            orch_svc = foo.orchestrator.OrchestratorService()
+            run_link_path = fo.config.delegated_operation_run_link_path
+            executor = fodec.ContinualExecutor(
+                do_svc,
+                orch_svc,
+                execution_interval=args.interval,
+                run_link_path=run_link_path,
+            )
             if args.validate:
                 executor.validate()
             signal.signal(signal.SIGTERM, executor.signal_handler)

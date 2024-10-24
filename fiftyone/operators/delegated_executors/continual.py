@@ -2,7 +2,8 @@ import time
 import logging
 import logging.handlers
 import sys
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 
 import fiftyone.internal.util as foiu
 import fiftyone as fo
@@ -10,6 +11,7 @@ import fiftyone.operators.delegated as food
 import fiftyone.core.storage as fos
 import fiftyone.factory as fof
 import fiftyone.operators.executor as foe
+import fiftyone.operators.orchestrator as foo
 
 logger = logging.getLogger(__name__)
 root_logger = logging.getLogger()
@@ -18,43 +20,76 @@ root_logger = logging.getLogger()
 class ContinualExecutor:
     """Continual Executor for Delegated Operations."""
 
-    def __init__(self, interval: int = 10):
+    DO_LOGS = "do_logs"
+
+    def __init__(
+        self,
+        do_svc: food.DelegatedOperationService,
+        orch_svc: foo.OrchestratorService,
+        execution_interval: int = 10,
+        registration_interval: int = 600,
+        instance_id: str = "fiftyone-executor",
+        instance_desc: str = "Built-in FiftyOne Executor",
+        run_link_path: str = None,
+    ):
         self.running = True
-        self.interval = interval
-        self.dos = food.DelegatedOperationService()
+        self.execution_interval = execution_interval
+        self.registration_interval = registration_interval
+        self.instance_id = instance_id
+        self.instance_desc = instance_desc
+        self.do_svc = do_svc
+        self.orch_svc = orch_svc
         self.file_handler = None
         self.temp_dir = None
         self.log_path = None
+        self.run_link_path = run_link_path
+
         self.configure_logging()
 
     def start(self):
         logger.info("Executor started")
+        next_register_time = self.register()
         while self.running:
-            queued_ops = self.dos.list_operations(
-                run_state=foe.ExecutionRunState.QUEUED,
-                paging=fof.DelegatedOperationPagingParams(limit=1),
+            if datetime.utcnow() >= next_register_time:
+                next_register_time = self.register()
+            self.execute()
+            time.sleep(self.execution_interval)
+
+    def execute(self):
+        queued_ops = self.do_svc.list_operations(
+            run_state=foe.ExecutionRunState.QUEUED,
+            paging=fof.DelegatedOperationPagingParams(limit=1),
+            delegation_target=self.instance_id,
+        )
+        for queued_op in queued_ops:
+            run_link = self.create_run_link(str(queued_op.id))
+            results = self.do_svc.execute_operation(
+                queued_op, log=True, run_link=run_link
             )
-            for queued_op in queued_ops:
-                run_link = self.create_run_link(str(queued_op.id))
-                results = self.dos.execute_operation(
-                    queued_op, log=True, run_link=run_link
-                )
-                if results:
-                    self.flush_logs(run_link)
-            time.sleep(self.interval)
+            if results:
+                self.flush_logs(run_link)
+
+    def register(self):
+        logger.info(f"Registering executor {self.instance_id}")
+        self.orch_svc.register(
+            instance_id=self.instance_id,
+            description=self.instance_desc,
+        )
+        register_delta = random.gauss(self.registration_interval, 120)
+        return datetime.utcnow() + timedelta(seconds=register_delta)
 
     def create_run_link(self, op_id: str):
         now = datetime.utcnow()
         return (
             fos.join(
-                fo.config.delegated_operation_run_link_path,
-                "do_logs",
+                self.run_link_path,
+                self.DO_LOGS,
                 str(now.year),
                 str(now.month),
                 str(now.day),
                 op_id + ".log",
             )
-            if fo.config.delegated_operation_run_link_path
+            if self.run_link_path
             else None
         )
 
@@ -68,7 +103,7 @@ class ContinualExecutor:
         self.running = False
 
     def configure_logging(self):
-        if fo.config.delegated_operation_run_link_path is not None:
+        if self.run_link_path is not None:
             self.temp_dir = fos.make_temp_dir()
             self.log_path = fos.join(
                 self.temp_dir, "fiftyone_delegated_executor.log"

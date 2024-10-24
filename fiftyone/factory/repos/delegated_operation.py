@@ -439,7 +439,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if run_state:
             query["run_state"] = run_state
         if delegation_target:
-            query["delegation_target"] = delegation_target
+            query["delegation_target"] = {"$in": [delegation_target, None]}
         if run_by:
             query["context.user"] = run_by
         if dataset_id:
