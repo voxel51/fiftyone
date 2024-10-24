@@ -488,7 +488,7 @@
             "date_added": "2024-08-17 14:48:00"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-tiny-image-torch",
+            "base_name": "segment-anything-2.1-hiera-tiny-image-torch",
             "base_filename": "sam2.1_hiera_tiny_image.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -523,7 +523,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-small-image-torch",
+            "base_name": "segment-anything-2.1-hiera-small-image-torch",
             "base_filename": "sam2.1_hiera_small_image.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -558,7 +558,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-base-plus-image-torch",
+            "base_name": "segment-anything-2.1-hiera-base-plus-image-torch",
             "base_filename": "sam2.1_hiera_base_plus_image.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -593,7 +593,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-large-image-torch",
+            "base_name": "segment-anything-2.1-hiera-large-image-torch",
             "base_filename": "sam2.1_hiera_large_image.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -628,7 +628,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-tiny-video-torch",
+            "base_name": "segment-anything-2.1-hiera-tiny-video-torch",
             "base_filename": "sam2.1_hiera_tiny_video.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -662,7 +662,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-small-video-torch",
+            "base_name": "segment-anything-2.1-hiera-small-video-torch",
             "base_filename": "sam2.1_hiera_small_video.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -697,7 +697,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-base-plus-video-torch",
+            "base_name": "segment-anything-2.1-hiera-base-plus-video-torch",
             "base_filename": "sam2.1_hiera_base_plus_video.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
@@ -732,7 +732,7 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
-            "base_name": "segment-anything-2-1-hiera-large-video-torch",
+            "base_name": "segment-anything-2.1-hiera-large-video-torch",
             "base_filename": "sam2.1_hiera_large_video.pt",
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
