@@ -18,7 +18,7 @@ import {
   SCROLLBAR_WIDTH,
   TWO,
   ZERO,
-  ZOOMING_COEFFICIENT
+  ZOOMING_COEFFICIENT,
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import { Load, RowChange } from "./events";
@@ -107,8 +107,8 @@ export default class Spotlight<K, V> extends EventTarget {
       throw new Error("spotlight is not attached");
     }
 
-    this.#backward?.remove();
-    this.#forward?.remove();
+    this.#backward?.destroy();
+    this.#forward?.destroy();
     this.#element?.classList.remove(styles.spotlightLoaded);
     this.#element?.remove();
     this.#scrollReader?.destroy();
@@ -203,7 +203,7 @@ export default class Spotlight<K, V> extends EventTarget {
               const backward = this.#forward;
               this.#forward = section;
               this.#forward.attach(this.#element);
-              this.#backward.remove();
+              this.#backward.destroy();
               this.#backward = backward;
               offset = before - this.#containerHeight + this.#config.spacing;
             }
@@ -271,7 +271,7 @@ export default class Spotlight<K, V> extends EventTarget {
               this.#backward = result.section;
               this.#backward.attach(this.#element);
 
-              this.#forward.remove();
+              this.#forward.destroy();
               this.#forward = forward;
             }
 
