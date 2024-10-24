@@ -114,7 +114,8 @@ const NON_EDITABLE_VIEWS = [
 ];
 
 export function isCompositeView(schema: SchemaType) {
-  return COMPOSITE_VIEWS.includes(schema?.view?.component);
+  const { component, composite_view } = schema?.view || {};
+  return composite_view || COMPOSITE_VIEWS.includes(component);
 }
 
 export function isInitialized(props: ViewPropsType) {
