@@ -119,7 +119,7 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx=None, **kwargs):
+def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
     """Executes the operator with the given name.
 
     Args:
@@ -144,6 +144,7 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+        exhaust (True): whether to immediately exhaust generator operators
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 
@@ -157,7 +158,7 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
     coroutine = execute_or_delegate_operator(
-        operator_uri, request_params, exhaust=True
+        operator_uri, request_params, exhaust=exhaust,
     )
 
     try:

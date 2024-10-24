@@ -5,7 +5,6 @@ FiftyOne Data Lens datasource connector.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import dataclasses
 import re
 import uuid
 from dataclasses import asdict
@@ -19,6 +18,7 @@ from fiftyone.operators.data_lens.models import (
     ImportRequest, DatasourceConnectorRequest
 )
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
+from fiftyone.operators.executor import ExecutionResult
 
 
 class DatasourceConnectorOperator(foo.Operator):
@@ -58,18 +58,15 @@ class DatasourceConnectorOperator(foo.Operator):
                 **filter_fields_for_type(ctx.params, PreviewRequest)
             )
 
-            operator: foo.Operator = foo.get_operator(preview_request.operator_uri)
-            operator_ctx = self._build_ctx(ctx)
+            operator_result = self._execute_operator(preview_request.operator_uri, ctx)
 
-            if operator.config.execute_as_generator is True:
-                operator_result = next(operator.execute(operator_ctx))
+            if operator_result.is_generator:
+                operator_result = next(operator_result.result)
             else:
-                execution_result = operator.execute(operator_ctx)
-                execution_result.raise_exceptions()
-                operator_result = execution_result.result
+                operator_result = operator_result.result
 
             operator_response = DataLensSearchResponse(
-                **filter_fields_for_type(operator_result, DataLensSearchResponse)
+                **filter_fields_for_type(asdict(operator_result), DataLensSearchResponse)
             )
 
             # These samples are not being added to a dataset, so we need to manually resolve the URL
@@ -98,18 +95,17 @@ class DatasourceConnectorOperator(foo.Operator):
                 **filter_fields_for_type(ctx.params, ImportRequest)
             )
 
-            operator: foo.Operator = foo.get_operator(import_request.operator_uri)
-            operator_ctx = self._build_ctx(ctx)
-
             dataset: fo.Dataset = fo.load_dataset(
                 import_request.dataset_name,
                 create_if_necessary=True,
             )
 
-            if operator.config.execute_as_generator is True:
-                for batch_response in operator.execute(operator_ctx):
+            operator_result = self._execute_operator(import_request.operator_uri, ctx)
+
+            if operator_result.is_generator:
+                for batch_response in operator_result.result:
                     last_response = DataLensSearchResponse(
-                        **filter_fields_for_type(batch_response, DataLensSearchResponse),
+                        **filter_fields_for_type(asdict(batch_response), DataLensSearchResponse),
                     )
                     if last_response.error is not None:
                         raise ValueError(last_response.error)
@@ -118,10 +114,12 @@ class DatasourceConnectorOperator(foo.Operator):
 
             else:
                 while True:
-                    batch_response = operator.execute(operator_ctx)
                     last_response = DataLensSearchResponse(
-                        **filter_fields_for_type(batch_response, DataLensSearchResponse),
+                        **filter_fields_for_type(
+                            asdict(operator_result.result), DataLensSearchResponse
+                        ),
                     )
+
                     if last_response.error is not None:
                         raise ValueError(last_response.error)
 
@@ -131,9 +129,10 @@ class DatasourceConnectorOperator(foo.Operator):
                     if pagination_token is None:
                         break
 
-                    operator_ctx.params = self._build_params(
+                    operator_result = self._execute_operator(
+                        import_request.operator_uri,
                         ctx,
-                        {'pagination_token': pagination_token}
+                        {'pagination_token': pagination_token},
                     )
 
             return ImportResponse()
@@ -143,6 +142,18 @@ class DatasourceConnectorOperator(foo.Operator):
                 error=str(e),
             )
 
+    def _execute_operator(
+            self,
+            operator_uri: str,
+            base_ctx: foo.ExecutionContext,
+            ctx_overrides: dict = None,
+    ) -> ExecutionResult:
+        operator_ctx = self._build_ctx(base_ctx, ctx_overrides)
+        operator_result = foo.execute_operator(operator_uri, operator_ctx, exhaust=False)
+        operator_result.raise_exceptions()
+
+        return operator_result
+
     def _import_samples(self, dataset: fo.Dataset, samples_json: list[dict]):
         samples = [fo.Sample.from_dict(s) for s in samples_json]
 
@@ -151,16 +162,10 @@ class DatasourceConnectorOperator(foo.Operator):
         unique_samples = self._dedupe_samples(samples)
         dataset.merge_samples(unique_samples, skip_existing=True, insert_new=True)
 
-    def _build_ctx(self, base_ctx: foo.ExecutionContext) -> foo.ExecutionContext:
-        operator_params = {
-            'params': self._build_params(base_ctx),
+    def _build_ctx(self, base_ctx: foo.ExecutionContext, overrides: dict = None) -> dict:
+        return {
+            'params': self._build_params(base_ctx, overrides),
         }
-
-        return foo.ExecutionContext(
-            request_params=operator_params,
-            operator_uri=base_ctx.params.get('operator_uri'),
-            user=base_ctx.user,
-        )
 
     @staticmethod
     def _dedupe_samples(samples: list[fo.Sample]) -> list[fo.Sample]:
