@@ -8717,11 +8717,11 @@ __metadata:
   linkType: hard
 
 "eslint-plugin-react-hooks@npm:rc":
-  version: 5.1.0-rc-28668d39-20241023
-  resolution: "eslint-plugin-react-hooks@npm:5.1.0-rc-28668d39-20241023"
+  version: 5.1.0-rc-02c0e824-20241028
+  resolution: "eslint-plugin-react-hooks@npm:5.1.0-rc-02c0e824-20241028"
   peerDependencies:
     eslint: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0
-  checksum: 6ad29212fa76b96488a6eeb9941a9a6111420092cc309417f5569f917e4e40b15ed282172842ca8611466387c3d750ceee07e9e739e4c28e808065eaf9ed2307
+  checksum: d4f78c419aadd4bbb775733d39dbfa53e9e2d8c8be16ca8413d48513532ea8b16490d7a58533c96837d300b6c82231e7628654d384cd6a58fffa0dca7c3ece02
   languageName: node
   linkType: hard
 
