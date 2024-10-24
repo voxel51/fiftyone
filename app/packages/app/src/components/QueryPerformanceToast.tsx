@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState, useRecoilValue } from "recoil";
 
-const SHOWN_FOR = 10000;
+const TOAST_DURATION = 50000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -37,14 +37,18 @@ const QueryPerformanceToast = () => {
     throw new Error("no query performance element");
   }
 
-  // Admins can choose to disable toasts for each dataset
-  if (!shown || disabled || !useRecoilValue(fos.defaultQueryPerformanceConfig)) {
+  // Admins can choose to disable toasts for each dataset with env variable defaultQueryPerformance
+  const hideToast = !shown || disabled || !useRecoilValue(fos.defaultQueryPerformanceConfig);
+  console.log("Toast visibility: ", !hideToast);
+
+  if (hideToast) {
     return null;
   }
 
   return createPortal(
     <Toast
-      duration={SHOWN_FOR}
+      duration={TOAST_DURATION}
+      layout={{ bottom: '100px', vertical: "bottom", horizontal: "center"}}
       primary={(setOpen) => {
         return (
           <Button
