@@ -453,7 +453,7 @@
             "base_name": "med-sam-2-video-torch",
             "base_filename": "med-sam-2_pretrain.pth",
             "version": null,
-            "description": "Fine-tuned SAM2-hiera-tiny model from paper: Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
+            "description": "Fine-tuned SAM2-hiera-tiny model from `Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
             "source": "https://github.com/MedicineToken/Medical-SAM2",
             "size_bytes": 155906050,
             "manager": {
