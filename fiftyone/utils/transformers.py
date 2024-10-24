@@ -581,7 +581,10 @@ class FiftyOneZeroShotTransformerForImageClassification(
         if config.model is not None:
             return config.model
 
-        model = transformers.AutoModel.from_pretrained(config.name_or_path)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = transformers.AutoModel.from_pretrained(config.name_or_path).to(
+            device
+        )
         if _has_image_text_retrieval(model):
             model = _get_model_for_image_text_retrieval(
                 model, config.name_or_path
@@ -690,10 +693,10 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         return transformers.AutoModelForImageClassification.from_pretrained(
             config.name_or_path
-        )
+        ).to(device)
 
     def _predict(self, inputs):
         with torch.no_grad():
@@ -818,10 +821,10 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         return transformers.AutoModelForObjectDetection.from_pretrained(
             config.name_or_path
-        ).to(self.device)
+        ).to(device)
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
