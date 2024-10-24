@@ -125,12 +125,11 @@ function Grid() {
 
     element && spotlight.attach(element);
     spotlight.addEventListener("load", mount);
-    spotlight.addEventListener("rowchange", set);
 
     return () => {
       freeVideos();
       spotlight.removeEventListener("load", mount);
-      spotlight.removeEventListener("rowchange", set);
+
       spotlight.destroy();
       document.dispatchEvent(new CustomEvent("grid-unmount"));
     };

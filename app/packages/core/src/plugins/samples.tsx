@@ -20,6 +20,7 @@ registerComponent({
   name: "Samples",
   label: "Samples",
   component: () => {
+    console.log("RENDER");
     return (
       <Container>
         <Grid key={"grid"} />
