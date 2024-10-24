@@ -475,6 +475,7 @@ export const useOperatorPrompt = () => {
         return;
       }
       executor.execute(promptingOperator.params, {
+        ...options,
         ...promptingOperator.options,
       });
     },
