@@ -1,8 +1,8 @@
 import * as fos from "@fiftyone/state";
-import { Toast } from "@fiftyone/components";
+import { Button, Toast } from "@fiftyone/components";
 import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { Box, Button, Typography } from "@material-ui/core";
+import { Box, Typography } from "@material-ui/core";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -104,7 +104,6 @@ const QueryPerformanceToast = () => {
               NEW
             </Typography>
           </Box>
-          <br />
           <Typography variant="body2" sx={{ color: "#757575" }}>
             Index the most critical fields for faster data loading and query
             performance.
