@@ -101,13 +101,14 @@ const ModalBase: React.FC<ModalBaseProps> = ({
 
   const modalButtonView: ModalButtonView = {
     variant: props?.variant || "outlined",
-    label: props?.label || "Open Modal",
+    label: props?.label || "",
     componentsProps: {
       button: {
         sx: {
           height: props?.height || "100%",
           width: props?.width || "100%",
-          padding: 1,
+          padding: props?.padding || 1,
+          minWidth: 0,
         },
       },
     },
@@ -206,7 +207,12 @@ const ModalBase: React.FC<ModalBaseProps> = ({
             id="modal-title"
             variant="h5"
             component="h5"
-            sx={{ textAlign: titleAlign }}
+            sx={{
+              textAlign: titleAlign,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
           >
             {modal?.icon && (
               <MuiIconFont
@@ -216,7 +222,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
               >
                 {modal.icon}
               </MuiIconFont>
-            )}{" "}
+            )}
             {title}
           </Typography>
           <Typography
