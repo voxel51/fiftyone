@@ -57,11 +57,6 @@ const SliderInputField: React.FC<SliderInputFieldProps> = ({
       onKeyDown={onKeyDown}
       sx={{
         width: "70px",
-        borderTopRightRadius: 0,
-        borderBottomRightRadius: 0,
-      }}
-      InputProps={{
-        sx: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
       }}
     />
     {UnitSelection}
@@ -79,10 +74,10 @@ export default function SliderView(props) {
     multipleOf: schemaMultipleOf,
     view,
   } = schema;
+
   const {
     min: viewMin,
     max: viewMax,
-    value_format: valueFormat = "%",
     value_label_display: valueLabelDisplay = "on",
     value_precision: valuePrecision = 2,
     variant = null,
@@ -90,6 +85,7 @@ export default function SliderView(props) {
     label = "Threshold",
     viewMultipleOf = null,
   } = view;
+  const valueFormat = "%";
 
   const multipleOf = viewMultipleOf || schemaMultipleOf;
   const [min, max] = [
@@ -171,6 +167,7 @@ export default function SliderView(props) {
     () => (
       <FormControl variant="outlined">
         <Select
+          disabled
           size="small"
           value={unit}
           sx={{
@@ -201,7 +198,7 @@ export default function SliderView(props) {
           }}
         >
           <MenuItem value="%">%</MenuItem>
-          <MenuItem value="flt">flt</MenuItem>
+          {/* <MenuItem value="flt">flt</MenuItem> */}
         </Select>
       </FormControl>
     ),
@@ -231,7 +228,7 @@ export default function SliderView(props) {
               key={key}
               disabled={schema.view?.readOnly}
               valueLabelDisplay={valueLabelDisplay}
-              value={data || [min, max]}
+              defaultValue={data || [min, max]}
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
@@ -245,20 +242,20 @@ export default function SliderView(props) {
             <Grid container justifyContent="space-between" pl={1}>
               <Grid item pl={labelPosition === "left" ? "100px" : "0"}>
                 <SliderInputField
-                  label="Min"
+                  label="Min %"
                   value={minText}
                   onChange={(e) => handleInputChange(e, true)}
                   onKeyDown={(e) => handleKeyDown(e, true)}
-                  UnitSelection={UnitSelection}
+                  UnitSelection={null}
                 />
               </Grid>
               <Grid item>
                 <SliderInputField
-                  label="Max"
+                  label="Max %"
                   value={maxText}
                   onChange={(e) => handleInputChange(e, false)}
                   onKeyDown={(e) => handleKeyDown(e, false)}
-                  UnitSelection={UnitSelection}
+                  UnitSelection={null}
                 />
               </Grid>
             </Grid>
