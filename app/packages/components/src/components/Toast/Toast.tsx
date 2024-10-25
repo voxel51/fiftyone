@@ -1,18 +1,60 @@
-import React, { useState } from "react";
-import { Snackbar, Button, SnackbarContent } from "@mui/material";
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import BoltIcon from '@mui/icons-material/Bolt'; // Icon for the lightning bolt
+import React from "react";
+import { atom, useRecoilState } from "recoil";
+import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
-// Define types for the props
 interface ToastProps {
-  action: React.ReactNode;   // Accepts any valid React component, element, or JSX
-  message: React.ReactNode;  // Accepts any valid React component, element, or JSX
-  duration?: number;         // Optional duration, with a default value
+  message: React.ReactNode;
+  primary?: any;
+  secondary?: any;
+  duration?: number;
+  layout?: {
+    vertical?: "top" | "bottom";
+    horizontal?: "left" | "center" | "right";
+    height?: number | string;
+    top?: number | string;
+    bottom?: number | string;
+    backgroundColor?: string;
+    color?: string;
+    fontSize?: string;
+    textAlign?: string;
+  };
 }
 
-const Toast: React.FC<ToastProps> = ({ action, message, duration = 5000 }) => {
-  const [open, setOpen] = useState(true);
+const toastStateAtom = atom({
+  key: "toastOpenState",
+  default: true,
+});
+
+const Toast: React.FC<ToastProps> = ({
+  message,
+  primary,
+  secondary,
+  duration = 5000,
+  layout = {},
+}) => {
+  const snackbarStyle = {
+    height: layout?.height || 5,
+    ...(layout?.top && {
+      top: {
+        xs: layout.top,
+        sm: layout.top,
+        md: layout.top,
+        lg: layout.top,
+        xl: layout.top,
+      },
+    }),
+    ...(layout?.bottom && {
+      bottom: {
+        xs: layout.bottom,
+        sm: layout.bottom,
+        md: layout.bottom,
+        lg: layout.bottom,
+        xl: layout.bottom,
+      },
+    }),
+  };
+
+  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
   const handleClose = (event, reason) => {
     if (reason === "clickaway") {
@@ -21,21 +63,41 @@ const Toast: React.FC<ToastProps> = ({ action, message, duration = 5000 }) => {
     setOpen(false);
   };
 
+  const action = (
+    <div>
+      <Box display="flex" justifyContent="flex-end">
+        {/* note: Not implemented within Python Panels context */}
+        {primary && primary(setOpen)} {/* Pass setOpen to primary button */}
+        {secondary && secondary(setOpen)}{" "}
+        {/* Pass setOpen to secondary button */}
+      </Box>
+    </div>
+  );
+
   return (
     <Snackbar
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      anchorOrigin={{
+        vertical: layout?.vertical || "bottom",
+        horizontal: layout?.horizontal || "center",
+      }}
       open={open}
       onClose={handleClose}
       autoHideDuration={duration}
-      sx={{ height: 5 }}
+      sx={snackbarStyle}
     >
       <SnackbarContent
         message={message}
         action={action}
-        style={{ backgroundColor: "#333", color: "#fff" }}
+        sx={{
+          backgroundColor: layout?.backgroundColor || "#333",
+          color: layout?.color || "#fff",
+          fontSize: layout?.fontSize || "14px",
+          display: "block",
+          textAlign: layout?.textAlign || "left",
+        }}
       />
     </Snackbar>
   );
-}
+};
 
 export default Toast;

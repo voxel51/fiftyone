@@ -2199,6 +2199,11 @@ The ``surfaces`` key defines the panel's scope:
     :ref:`modal view <app-sample-view>`, which allows you to build interactions
     that focus on individual samples and scenarios
 
+.. note::
+
+   For an example of a modal panel, refer to the
+   `label count panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/label_count>`_.
+
 .. _panel-execution-context:
 
 Execution context
@@ -2261,7 +2266,7 @@ The example code below shows how to access and update panel state.
 
         def decrement(self, ctx):
             count = ctx.panel.get_state("v_stack.h_stack.count", 0)
-            ctx.panel.set_state("v_stack.h_stack.count", count + 1)
+            ctx.panel.set_state("v_stack.h_stack.count", count - 1)
 
         def render(self, ctx):
             panel = types.Object()

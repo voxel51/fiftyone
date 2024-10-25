@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e03888005e9020c4f86c8452025ba5be>>
+ * @generated SignedSource<<878d89c6671cfbad0a8fe887ae7ddb17>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -52,6 +52,10 @@ export type lightningQuery$data = {
     readonly intMin: number | null;
     readonly path: string;
   } | {
+    readonly __typename: "ObjectIdLightningResult";
+    readonly path: string;
+    readonly values: ReadonlyArray<string | null> | null;
+  } | {
     readonly __typename: "StringLightningResult";
     readonly path: string;
     readonly values: ReadonlyArray<string | null> | null;
@@ -82,6 +86,16 @@ v1 = {
   "storageKey": null
 },
 v2 = [
+  (v1/*: any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "values",
+    "storageKey": null
+  }
+],
+v3 = [
   {
     "alias": null,
     "args": [
@@ -236,16 +250,13 @@ v2 = [
       },
       {
         "kind": "InlineFragment",
-        "selections": [
-          (v1/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "values",
-            "storageKey": null
-          }
-        ],
+        "selections": (v2/*: any*/),
+        "type": "ObjectIdLightningResult",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": (v2/*: any*/),
         "type": "StringLightningResult",
         "abstractKey": null
       }
@@ -259,7 +270,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "lightningQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v3/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -268,19 +279,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "lightningQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "947a19fdaf332914a40a3e18a935964b",
+    "cacheID": "55b3745ca13a2178557414d23b071012",
     "id": null,
     "metadata": {},
     "name": "lightningQuery",
     "operationKind": "query",
-    "text": "query lightningQuery(\n  $input: LightningInput!\n) {\n  lightning(input: $input) {\n    __typename\n    ... on BooleanLightningResult {\n      path\n      false\n      true\n    }\n    ... on IntLightningResult {\n      path\n      intMax: max\n      intMin: min\n    }\n    ... on DateLightningResult {\n      path\n      dateMax: max\n      dateMin: min\n    }\n    ... on DateTimeLightningResult {\n      path\n      datetimeMax: max\n      datetimeMin: min\n    }\n    ... on FloatLightningResult {\n      path\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on StringLightningResult {\n      path\n      values\n    }\n  }\n}\n"
+    "text": "query lightningQuery(\n  $input: LightningInput!\n) {\n  lightning(input: $input) {\n    __typename\n    ... on BooleanLightningResult {\n      path\n      false\n      true\n    }\n    ... on IntLightningResult {\n      path\n      intMax: max\n      intMin: min\n    }\n    ... on DateLightningResult {\n      path\n      dateMax: max\n      dateMin: min\n    }\n    ... on DateTimeLightningResult {\n      path\n      datetimeMax: max\n      datetimeMin: min\n    }\n    ... on FloatLightningResult {\n      path\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on ObjectIdLightningResult {\n      path\n      values\n    }\n    ... on StringLightningResult {\n      path\n      values\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "be98e4ecd7153d94f03477ed2645b539";
+(node as any).hash = "f4f8b5069a4ac276ea169fb0415f165f";
 
 export default node;

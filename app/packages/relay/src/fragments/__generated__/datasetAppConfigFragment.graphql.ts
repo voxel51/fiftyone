@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3bb7c6a93740cc39e63d2656c5b81445>>
+ * @generated SignedSource<<ce94cdb41613bcba236c9582707cacaf>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,6 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type SidebarMode = "all" | "best" | "disabled" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
@@ -21,7 +20,6 @@ export type datasetAppConfigFragment$data = {
   readonly mediaFields: ReadonlyArray<string> | null;
   readonly modalMediaField: string;
   readonly plugins: object | null;
-  readonly sidebarMode: SidebarMode | null;
   readonly " $fragmentType": "datasetAppConfigFragment";
 };
 export type datasetAppConfigFragment$key = {
@@ -92,19 +90,12 @@ const node: ReaderFragment = {
       "kind": "ScalarField",
       "name": "plugins",
       "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "sidebarMode",
-      "storageKey": null
     }
   ],
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
 
-(node as any).hash = "e34c48a6289a03fae3a9954b35a83ee6";
+(node as any).hash = "67a2528b02fd534bfb7a4824d234fe41";
 
 export default node;

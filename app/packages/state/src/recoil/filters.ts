@@ -4,15 +4,12 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, selector, selectorFamily } from "recoil";
+import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { lightning, lightningPaths } from "./lightning";
-import { dbPath, expandPath, fields } from "./schema";
+import { indexedPaths } from "./queryPerformance";
+import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
-import {
-  granularSidebarExpandedStore,
-  sidebarExpandedStore,
-} from "./sidebarExpanded";
+import { sidebarExpandedStore } from "./sidebarExpanded";
 import { State } from "./types";
 
 export const modalFilters = sessionAtom({
@@ -49,25 +46,6 @@ export const filters = (() => {
   );
 })();
 
-export const lightningFilters = selector({
-  key: "lightningFilters",
-  get: ({ get }) => {
-    if (!get(lightning)) {
-      return {};
-    }
-
-    const f = { ...get(filters) };
-    const paths = get(lightningPaths(""));
-    for (const p in f) {
-      if (!paths.has(get(dbPath(p)))) {
-        delete f[p];
-      }
-    }
-
-    return f;
-  },
-});
-
 export const filter = selectorFamily<
   State.Filter,
   { path: string; modal: boolean }
@@ -86,10 +64,10 @@ export const filter = selectorFamily<
     },
   set:
     ({ path, modal }) =>
-    ({ get, reset, set }, filter) => {
+    ({ get, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
-      const currentLightningPaths = get(lightningPaths(""));
+      const currentLightningPaths = get(indexedPaths(""));
 
       if (!modal && currentLightningPaths.has(path)) {
         for (const p in newFilters) {
@@ -97,7 +75,7 @@ export const filter = selectorFamily<
             delete newFilters[p];
           }
         }
-        reset(granularSidebarExpandedStore);
+
         set(sidebarExpandedStore(false), (current) => {
           const next = { ...current };
 
@@ -140,6 +118,9 @@ export const fieldIsFiltered = selectorFamily<
   get:
     ({ path, modal }) =>
     ({ get }) => {
+      if (!path) {
+        return false;
+      }
       const f = get(modal ? modalFilters : filters);
 
       const expandedPath = get(expandPath(path));
