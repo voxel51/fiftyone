@@ -865,7 +865,6 @@ def _get_mask_targets(
     Returns:
         A tuple containing the mask targets dictionary {1: "label1", 2: "label2", ...} and a list of class names ["label1", "label2", ...]
     """
-    breakpoint()
     # We have defined mask targets for this field
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
