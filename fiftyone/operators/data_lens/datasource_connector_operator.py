@@ -15,7 +15,7 @@ import fiftyone.operators as foo
 from fiftyone.core.odm.dataset import SampleFieldDocument
 from fiftyone.operators.data_lens.models import (
     DataLensSearchResponse, PreviewResponse, ImportResponse, BaseResponse, PreviewRequest,
-    ImportRequest, DatasourceConnectorRequest
+    ImportRequest, DatasourceConnectorRequest, RequestType
 )
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
 from fiftyone.operators.executor import ExecutionResult
@@ -38,12 +38,12 @@ class DatasourceConnectorOperator(foo.Operator):
                 **filter_fields_for_type(ctx.params, DatasourceConnectorRequest)
             )
 
-            if request.query_type == 'preview':
+            if request.request_type == RequestType.PREVIEW:
                 return asdict(self._handle_preview(ctx))
-            elif request.query_type == 'import':
+            elif request.request_type == RequestType.IMPORT:
                 return asdict(self._handle_import(ctx))
             else:
-                raise ValueError(f'unsupported query type "{request.query_type}"')
+                raise ValueError(f'unsupported query type "{request.request_type}"')
 
         except Exception as e:
             return asdict(

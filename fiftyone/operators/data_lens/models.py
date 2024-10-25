@@ -5,6 +5,7 @@ FiftyOne Data Lens models.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import enum
 from dataclasses import dataclass, KW_ONLY, field
 
 
@@ -40,11 +41,17 @@ class PreviewResponse(BaseResponse):
     field_schema: dict = None
 
 
+class RequestType(enum.Enum):
+    """Datasource connector request types."""
+    PREVIEW = 'preview'
+    IMPORT = 'import'
+
+
 @dataclass
 class DatasourceConnectorRequest:
     """Base request model for entry into the datasource connector operator."""
     _: KW_ONLY
-    query_type: str
+    request_type: RequestType
 
 
 @dataclass

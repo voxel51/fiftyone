@@ -6,12 +6,18 @@ export type BaseResponse = {
 };
 
 /**
+ * Since we use a single entry point to the datasource connector, we provide
+ *   the request type for disambiguation.
+ */
+export type RequestType = "preview" | "import";
+
+/**
  * Request type for sample preview functionality.
  */
 export type PreviewRequest = {
   search_params: object;
   operator_uri: string;
-  query_type: string;
+  request_type: RequestType;
   max_results: number;
 };
 
@@ -32,7 +38,7 @@ export type ImportRequest = {
   operator_uri: string;
   batch_size: number;
   dataset_name: string;
-  query_type: string;
+  request_type: RequestType;
   max_samples?: number;
 };
 

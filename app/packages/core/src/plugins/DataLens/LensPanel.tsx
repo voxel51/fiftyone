@@ -153,7 +153,7 @@ export const LensPanel = () => {
       search_params: { ...formState },
       operator_uri: activeConfig.operator_uri,
       max_results: maxSamples,
-      query_type: "preview",
+      request_type: "preview",
     };
 
     // Callback which handles the response from the operator.
@@ -186,7 +186,7 @@ export const LensPanel = () => {
       search_params: { ...formState },
       operator_uri: activeConfig.operator_uri,
       batch_size: batchSize,
-      query_type: "import",
+      request_type: "import",
       dataset_name: datasetName,
       max_samples: isImportAllSelected ? 0 : maxImportSamples,
     };
