@@ -522,7 +522,11 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(doc.status.updated_at)
 
     def test_output_schema_null_metadata(
-        self, mock_get_operator, mock_operator_exists
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_outputs = MockOutputs()
         doc = self.svc.queue_operation(
