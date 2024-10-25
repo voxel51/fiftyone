@@ -167,7 +167,6 @@ export default function SliderView(props) {
     () => (
       <FormControl variant="outlined">
         <Select
-          disabled
           size="small"
           value={unit}
           sx={{
