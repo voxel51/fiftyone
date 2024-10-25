@@ -38,9 +38,9 @@ class DatasourceConnectorOperator(foo.Operator):
                 **filter_fields_for_type(ctx.params, DatasourceConnectorRequest)
             )
 
-            if request.request_type == RequestType.PREVIEW:
+            if request.request_type == RequestType.PREVIEW.name.lower():
                 return asdict(self._handle_preview(ctx))
-            elif request.request_type == RequestType.IMPORT:
+            elif request.request_type == RequestType.IMPORT.name.lower():
                 return asdict(self._handle_import(ctx))
             else:
                 raise ValueError(f'unsupported query type "{request.request_type}"')

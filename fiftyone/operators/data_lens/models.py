@@ -51,7 +51,7 @@ class RequestType(enum.Enum):
 class DatasourceConnectorRequest:
     """Base request model for entry into the datasource connector operator."""
     _: KW_ONLY
-    request_type: RequestType
+    request_type: str
 
 
 @dataclass
