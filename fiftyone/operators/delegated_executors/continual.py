@@ -28,8 +28,8 @@ class ContinualExecutor:
         orch_svc: foo.OrchestratorService,
         execution_interval: int = 10,
         registration_interval: int = 600,
-        instance_id: str = "fiftyone-executor",
-        instance_desc: str = "Built-in FiftyOne Executor",
+        instance_id: str = "fiftyone-enterprise",
+        instance_desc: str = "FiftyOne Enterprise",
         run_link_path: str = None,
     ):
         self.running = True
