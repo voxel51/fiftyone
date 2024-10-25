@@ -162,7 +162,8 @@ def annotate(
             define their per-field attributes (in addition to any per-class
             attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
-            strings. Only applicable when annotating semantic segmentations
+            strings. Only applicable when annotating semantic segmentations.
+            Must specify if the field does not exist prior to annotation.
         allow_additions (True): whether to allow new labels to be added. Only
             applicable when editing existing label fields
         allow_deletions (True): whether to allow labels to be deleted. Only
@@ -468,7 +469,11 @@ def _build_label_schema(
 
         if _label_type == "segmentation":
             _mask_targets, _classes = _get_mask_targets(
-                samples, mask_targets, _label_field, _label_info
+                samples,
+                mask_targets,
+                _label_field,
+                _label_info,
+                _existing_field,
             )
         else:
             _mask_targets = None
@@ -841,13 +846,45 @@ def _parse_classes_dict(
     return {"classes": classes, "attributes": attributes}
 
 
-def _get_mask_targets(samples, mask_targets, label_field, label_info):
+def _get_mask_targets(
+    samples,
+    mask_targets: dict,
+    label_field: str,
+    label_info: dict,
+    existing_field: bool,
+) -> tuple[dict[int, str], list[str]]:
+    """Returns mask targets for a semantic segmentation field
+
+    Args:
+        samples: The sample collection that is being annotated
+        mask_targets: A dictionary mapping pixel values to semantic labels, 0 is reserved for the background
+        label_field: The name of the field where the semantic segmentation masks will be stored
+        label_info: The label schema information for the field
+        existing_field: Whether the field already exists in the dataset
+
+    Returns:
+        A tuple containing the mask targets dictionary {1: "label1", 2: "label2", ...} and a list of class names ["label1", "label2", ...]
+    """
+    breakpoint()
+    # We have defined mask targets for this field
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
     if mask_targets is None:
-        mask_targets = {i: str(i) for i in range(1, 256)}
-        mask_targets[0] = "background"
+        # If this is a new field, users must define mask targets
+        if not existing_field:
+            raise ValueError(
+                f"Must specify mask_targets argument or in schema for new segmentations field '{label_field}'"
+            )
+
+        # Attempt to find mask targets, otherwise bail and use a default set
+        if label_field in samples.mask_targets:
+            mask_targets = samples.mask_targets[label_field]
+        elif samples.default_mask_targets != {}:
+            mask_targets = samples.default_mask_targets
+        else:
+            mask_targets = {i: str(i) for i in range(1, 256)}
+            mask_targets[0] = "background"
 
     classes = [c for v, c in mask_targets.items() if v != 0]
 
