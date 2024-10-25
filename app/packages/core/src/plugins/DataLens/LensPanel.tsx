@@ -32,6 +32,7 @@ import {
 import { Lens } from "./Lens";
 import { EmptyState } from "./EmptyState";
 import { LensConfigManager } from "./LensConfigManager";
+import { Layout, TabConfig } from "./Layout";
 
 type ImportLimitType = "limit" | "all";
 
@@ -41,11 +42,9 @@ type ImportLimitType = "limit" | "all";
 export const LensPanel = () => {
   // General state
   const [lensConfigs, setLensConfigs] = useState<LensConfig[]>([]);
-  const [isInitializing, setIsInitializing] = useState(true);
   const [activeConfig, setActiveConfig] = useState<LensConfig>(lensConfigs[0]);
   const [formState, setFormState] = useState<FormState>({});
   const [isFormValid, setIsFormValid] = useState(false);
-  const [showConfigManager, setShowConfigManager] = useState(false);
 
   // Preview state
   const [maxSamples, setMaxSamples] = useState(25);
@@ -69,6 +68,9 @@ export const LensPanel = () => {
 
   // Error state
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Content management
+  const [activeTab, setActiveTab] = useState(0);
 
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
@@ -108,7 +110,6 @@ export const LensPanel = () => {
       if (!(response.error || response.result?.error)) {
         const configs = response.result?.configs ?? [];
         handleLensConfigsUpdate(configs);
-        setIsInitializing(false);
       } else {
         setErrorMessage(response.error || response.result?.error);
       }
@@ -222,303 +223,329 @@ export const LensPanel = () => {
     setMaxImportSamples(500);
   };
 
-  // Handle edge cases
-  if (isInitializing) {
-    return <Typography>Initializing...</Typography>;
-  } else if (showConfigManager) {
-    return (
-      <LensConfigManager
-        configs={lensConfigs}
-        onConfigsChange={handleLensConfigsUpdate}
-        onReturnToLens={() => setShowConfigManager(false)}
-      />
-    );
-  } else if (lensConfigs.length === 0) {
-    return (
-      <EmptyState onManageConfigsClick={() => setShowConfigManager(true)} />
-    );
-  } else {
-    // Render main content.
-    // LensConfig selection.
-    const lensConfigContent = (
-      <Box sx={{ m: 2 }}>
-        <Typography sx={{ mb: 2 }}>Select datasource configuration</Typography>
+  // Tabs declared here to allow programmatic navigation below.
+  const tabs: TabConfig[] = [];
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+  // Handler for switching tabs.
+  // tab.id is used as a canonical reference to a tab.
+  const switchToTab = (tabId: string) => {
+    const index = tabs.findIndex((tab) => tab.id === tabId);
+    if (index >= 0 && index < tabs.length) {
+      setActiveTab(index);
+    }
+  };
+
+  // LensConfig selection.
+  const lensConfigContent = (
+    <Box sx={{ m: 2 }}>
+      <Typography sx={{ mb: 2 }}>Select datasource configuration</Typography>
+
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Select
+          variant="outlined"
+          value={activeConfig?.name}
+          onChange={(e) => handleLensConfigChange(e.target.value)}
         >
-          <Select
-            variant="outlined"
-            value={activeConfig.name}
-            onChange={(e) => handleLensConfigChange(e.target.value)}
-          >
-            {lensConfigs.map((cfg) => (
-              <MenuItem key={cfg.name} value={cfg.name}>
-                {cfg.name}
-              </MenuItem>
-            ))}
-          </Select>
+          {lensConfigs.map((cfg) => (
+            <MenuItem key={cfg.name} value={cfg.name}>
+              {cfg.name}
+            </MenuItem>
+          ))}
+        </Select>
 
-          <Button variant="text" onClick={() => setShowConfigManager(true)}>
-            Manage datasources
-          </Button>
-        </Box>
-      </Box>
-    );
-
-    // Operator (search) configuration.
-    const queryOperatorContent = (
-      <Box sx={{ m: 2 }}>
-        <Typography sx={{ mb: 2 }}>Query parameters</Typography>
-        <Box sx={{ mb: 2, border: "1px solid #333", p: 2 }}>
-          <OperatorConfigurator
-            operator={activeConfig.operator_uri}
-            formState={formState}
-            onStateChange={handleFormStateChange}
-          />
-        </Box>
-      </Box>
-    );
-
-    // Additional search controls.
-    const searchControls = (
-      <Box sx={{ m: 2, mt: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+        <Button
+          variant="text"
+          onClick={() => switchToTab("manage-datasources")}
         >
-          <Button
-            variant="contained"
-            disabled={!isFormValid || isPreviewLoading}
-            onClick={doSearch}
-          >
-            Search
-          </Button>
-
-          <FormControl>
-            <TextField
-              variant="outlined"
-              label="Number of samples"
-              value={maxSamples}
-              onChange={(e) =>
-                setMaxSamples(
-                  isNaN(Number.parseInt(e.target.value))
-                    ? 10
-                    : Number.parseInt(e.target.value)
-                )
-              }
-            />
-          </FormControl>
-        </Box>
+          Manage datasources
+        </Button>
       </Box>
-    );
+    </Box>
+  );
 
-    // Dataset import.
-    const importContent = (
-      <>
-        <Button variant="contained" onClick={openImportDialog}>
-          Import to dataset
+  // Operator (search) configuration.
+  const queryOperatorContent = (
+    <Box sx={{ m: 2 }}>
+      <Typography sx={{ mb: 2 }}>Query parameters</Typography>
+      <Box sx={{ mb: 2, border: "1px solid #333", p: 2 }}>
+        <OperatorConfigurator
+          operator={activeConfig?.operator_uri}
+          formState={formState}
+          onStateChange={handleFormStateChange}
+        />
+      </Box>
+    </Box>
+  );
+
+  // Additional search controls.
+  const searchControls = (
+    <Box sx={{ m: 2, mt: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Button
+          variant="contained"
+          disabled={!isFormValid || isPreviewLoading}
+          onClick={doSearch}
+        >
+          Search
         </Button>
 
-        <Dialog open={isImportOpen} onClose={() => setIsImportOpen(false)}>
-          <Box sx={{ m: 2 }}>
-            <Typography variant="h5">Import data to a Dataset</Typography>
+        <FormControl>
+          <TextField
+            variant="outlined"
+            label="Number of samples"
+            value={maxSamples}
+            onChange={(e) =>
+              setMaxSamples(
+                isNaN(Number.parseInt(e.target.value))
+                  ? 10
+                  : Number.parseInt(e.target.value)
+              )
+            }
+          />
+        </FormControl>
+      </Box>
+    </Box>
+  );
 
-            <Typography sx={{ mt: 4 }}>
-              Enter the name of a new or existing dataset
-            </Typography>
+  // Dataset import.
+  const importContent = (
+    <>
+      <Button variant="contained" onClick={openImportDialog}>
+        Import to dataset
+      </Button>
 
-            <Stack sx={{ mt: 1 }} direction="column" spacing={4}>
-              <TextField
-                type="text"
-                value={datasetName}
-                onChange={(e) => setDatasetName(e.target.value)}
-              />
+      <Dialog open={isImportOpen} onClose={() => setIsImportOpen(false)}>
+        <Box sx={{ m: 2 }}>
+          <Typography variant="h5">Import data to a Dataset</Typography>
 
-              <Box>
-                <Typography>Maximum number of samples</Typography>
-                <RadioGroup
-                  value={importLimitType}
-                  onChange={(e) =>
-                    setImportLimitType(e.target.value as ImportLimitType)
+          <Typography sx={{ mt: 4 }}>
+            Enter the name of a new or existing dataset
+          </Typography>
+
+          <Stack sx={{ mt: 1 }} direction="column" spacing={4}>
+            <TextField
+              type="text"
+              value={datasetName}
+              onChange={(e) => setDatasetName(e.target.value)}
+            />
+
+            <Box>
+              <Typography>Maximum number of samples</Typography>
+              <RadioGroup
+                value={importLimitType}
+                onChange={(e) =>
+                  setImportLimitType(e.target.value as ImportLimitType)
+                }
+              >
+                <FormControlLabel
+                  value="all"
+                  control={<Radio />}
+                  label="Import all matching samples"
+                />
+                <FormControlLabel
+                  value="limit"
+                  control={<Radio />}
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Typography>Up to</Typography>
+                      <TextField
+                        value={maxImportSamples}
+                        onChange={(e) =>
+                          setMaxImportSamples(
+                            isNaN(Number.parseInt(e.target.value))
+                              ? 500
+                              : Number.parseInt(e.target.value)
+                          )
+                        }
+                        disabled={isImportAllSelected}
+                      />
+                      <Typography>samples</Typography>
+                    </Stack>
                   }
-                >
-                  <FormControlLabel
-                    value="all"
-                    control={<Radio />}
-                    label="Import all matching samples"
-                  />
-                  <FormControlLabel
-                    value="limit"
-                    control={<Radio />}
-                    label={
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <Typography>Up to</Typography>
-                        <TextField
-                          value={maxImportSamples}
-                          onChange={(e) =>
-                            setMaxImportSamples(
-                              isNaN(Number.parseInt(e.target.value))
-                                ? 500
-                                : Number.parseInt(e.target.value)
-                            )
-                          }
-                          disabled={isImportAllSelected}
-                        />
-                        <Typography>samples</Typography>
-                      </Stack>
-                    }
-                  />
-                </RadioGroup>
-              </Box>
-            </Stack>
+                />
+              </RadioGroup>
+            </Box>
+          </Stack>
 
-            <Stack sx={{ mt: 4 }} direction="row" spacing={2}>
-              {importTime > 0 ? (
-                <Button
-                  variant="contained"
-                  startIcon={<OpenInBrowserIcon />}
-                  onClick={openDataset}
-                >
-                  Open dataset
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  startIcon={<SystemUpdateAltIcon />}
-                  disabled={!datasetName || isImportLoading}
-                  onClick={doImport}
-                >
-                  Import to dataset
-                </Button>
-              )}
-
+          <Stack sx={{ mt: 4 }} direction="row" spacing={2}>
+            {importTime > 0 ? (
               <Button
                 variant="contained"
-                color="secondary"
-                onClick={() => setIsImportOpen(false)}
+                startIcon={<OpenInBrowserIcon />}
+                onClick={openDataset}
               >
-                {importTime > 0 ? "Close" : "Cancel"}
+                Open dataset
               </Button>
-            </Stack>
-          </Box>
-        </Dialog>
-      </>
-    );
+            ) : (
+              <Button
+                variant="contained"
+                startIcon={<SystemUpdateAltIcon />}
+                disabled={!datasetName || isImportLoading}
+                onClick={doImport}
+              >
+                Import to dataset
+              </Button>
+            )}
 
-    // Sample preview.
-    const previewContent = searchResponse ? (
-      <>
-        <Box sx={{ m: 2 }}>
-          <Box sx={{ mt: 1 }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => setIsImportOpen(false)}
             >
-              <Typography>
-                {searchResponse.result_count.toLocaleString(undefined, {
-                  maximumFractionDigits: 0,
-                })}{" "}
-                samples received in{" "}
-                {(previewTime / 1000).toLocaleString(undefined, {
-                  minimumFractionDigits: 3,
-                  maximumFractionDigits: 3,
-                })}{" "}
-                s
-              </Typography>
-
-              {searchResponse.result_count > 0 && importContent}
-            </Box>
-          </Box>
+              {importTime > 0 ? "Close" : "Cancel"}
+            </Button>
+          </Stack>
         </Box>
+      </Dialog>
+    </>
+  );
 
-        {searchResponse.result_count > 0 && (
-          <Box sx={{ m: 2 }}>
-            <Lens
-              samples={searchResponse.query_result}
-              sampleSchema={searchResponse.field_schema}
-            />
-          </Box>
-        )}
-      </>
-    ) : isPreviewLoading ? (
-      <>
-        <Box sx={{ m: 2 }}>
-          <Box sx={{ mt: 1 }}>
-            <Typography> </Typography>
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            m: 2,
-            border: "1px solid #777",
-            width: "100%",
-            height: "800px",
-          }}
-        >
-          <Loading>Fetching samples...</Loading>
-        </Box>
-      </>
-    ) : (
-      <Fragment />
-    );
-
-    const errorContent = errorMessage ? (
-      <Snackbar
-        open={!!errorMessage}
-        onClose={() => setErrorMessage(null)}
-        message={errorMessage}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      />
-    ) : (
-      <Fragment />
-    );
-
-    // All content.
-    const content = (
+  // Sample preview.
+  const previewContent = searchResponse ? (
+    <>
       <Box sx={{ m: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "end" }}>
-          <Typography variant="h6">
-            <Link href="https://docs.voxel51.com" target="_blank">
-              Need help with Lens?
-            </Link>
-          </Typography>
+        <Box sx={{ mt: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography>
+              {(searchResponse.result_count ?? 0).toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}{" "}
+              samples received in{" "}
+              {(previewTime / 1000).toLocaleString(undefined, {
+                minimumFractionDigits: 3,
+                maximumFractionDigits: 3,
+              })}{" "}
+              s
+            </Typography>
+
+            {searchResponse.result_count > 0 && importContent}
+          </Box>
         </Box>
-
-        <Box sx={{ maxWidth: "750px", m: "auto", p: 2 }}>
-          <Typography sx={{ textAlign: "center", mb: 2 }} variant="h1">
-            Data Lens
-          </Typography>
-
-          <Typography sx={{ textAlign: "center", mb: 6 }} variant="h6">
-            Search your connected datasources directly from FiftyOne
-          </Typography>
-
-          {lensConfigContent}
-          {queryOperatorContent}
-          {searchControls}
-        </Box>
-
-        {previewContent}
       </Box>
-    );
 
-    return (
-      <>
-        {content}
-        {errorContent}
-      </>
-    );
-  }
+      {searchResponse.result_count > 0 && (
+        <Box sx={{ m: 2 }}>
+          <Lens
+            samples={searchResponse.query_result}
+            sampleSchema={searchResponse.field_schema}
+          />
+        </Box>
+      )}
+    </>
+  ) : isPreviewLoading ? (
+    <>
+      <Box sx={{ m: 2 }}>
+        <Box sx={{ mt: 1 }}>
+          <Typography> </Typography>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          m: 2,
+          border: "1px solid #777",
+          width: "100%",
+          height: "800px",
+        }}
+      >
+        <Loading>Fetching samples...</Loading>
+      </Box>
+    </>
+  ) : (
+    <Fragment />
+  );
+
+  const errorContent = errorMessage ? (
+    <Snackbar
+      open={!!errorMessage}
+      onClose={() => setErrorMessage(null)}
+      message={errorMessage}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+    />
+  ) : (
+    <Fragment />
+  );
+
+  // All content.
+  const content = (
+    <Box sx={{ m: 2 }}>
+      <Box sx={{ display: "flex", justifyContent: "end" }}>
+        <Typography variant="h6">
+          <Link href="https://docs.voxel51.com" target="_blank">
+            Need help with Lens?
+          </Link>
+        </Typography>
+      </Box>
+
+      <Box sx={{ maxWidth: "750px", m: "auto", p: 2 }}>
+        <Typography sx={{ textAlign: "center", mb: 2 }} variant="h1">
+          Data Lens
+        </Typography>
+
+        <Typography sx={{ textAlign: "center", mb: 6 }} variant="h6">
+          Search your connected datasources directly from FiftyOne
+        </Typography>
+
+        {lensConfigContent}
+        {queryOperatorContent}
+        {searchControls}
+      </Box>
+
+      {previewContent}
+    </Box>
+  );
+
+  tabs.push(
+    ...[
+      {
+        id: "empty-state",
+        label: "Home",
+        content: (
+          <EmptyState
+            onManageConfigsClick={() => switchToTab("manage-datasources")}
+          />
+        ),
+      },
+      {
+        id: "query-data",
+        label: "Query data",
+        content: content,
+      },
+      {
+        id: "manage-datasources",
+        label: "Data sources",
+        content: (
+          <LensConfigManager
+            configs={lensConfigs}
+            onConfigsChange={handleLensConfigsUpdate}
+          />
+        ),
+      },
+    ]
+  );
+
+  return (
+    <>
+      <Layout tabs={tabs} active={activeTab} onTabClick={setActiveTab} />
+      {errorContent}
+    </>
+  );
 };

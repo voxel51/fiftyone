@@ -34,11 +34,9 @@ import AddIcon from "@mui/icons-material/Add";
 export const LensConfigManager = ({
   configs,
   onConfigsChange,
-  onReturnToLens,
 }: {
   configs: LensConfig[];
   onConfigsChange: (configs: LensConfig[]) => void;
-  onReturnToLens: () => void;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [configId, setConfigId] = useState(null);
@@ -325,11 +323,7 @@ export const LensConfigManager = ({
             mb: 4,
           }}
         >
-          <Typography variant="h3">Lens Datasources</Typography>
-
-          <Button variant="text" onClick={onReturnToLens}>
-            Back to Lens
-          </Button>
+          <Typography variant="h3">{configs.length} Data sources</Typography>
         </Box>
 
         <Box sx={{ textAlign: "center", mb: 8 }}>
