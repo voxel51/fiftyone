@@ -79,13 +79,13 @@ export default function SliderView(props) {
     min: viewMin,
     max: viewMax,
     value_label_display: valueLabelDisplay = "on",
+    value_format: valueFormat = "%",
     value_precision: valuePrecision = 2,
     variant = null,
     label_position: labelPosition = "left",
     label = "Threshold",
     viewMultipleOf = null,
   } = view;
-  const valueFormat = "%";
 
   const multipleOf = viewMultipleOf || schemaMultipleOf;
   const [min, max] = [
@@ -241,7 +241,7 @@ export default function SliderView(props) {
             <Grid container justifyContent="space-between" pl={1}>
               <Grid item pl={labelPosition === "left" ? "100px" : "0"}>
                 <SliderInputField
-                  label="Min %"
+                  label={`Min ${unit}`}
                   value={minText}
                   onChange={(e) => handleInputChange(e, true)}
                   onKeyDown={(e) => handleKeyDown(e, true)}
@@ -250,7 +250,7 @@ export default function SliderView(props) {
               </Grid>
               <Grid item>
                 <SliderInputField
-                  label="Max %"
+                  label={`Max ${unit}`}
                   value={maxText}
                   onChange={(e) => handleInputChange(e, false)}
                   onKeyDown={(e) => handleKeyDown(e, false)}
