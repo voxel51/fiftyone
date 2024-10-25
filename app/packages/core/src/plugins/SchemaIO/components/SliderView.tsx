@@ -241,7 +241,7 @@ export default function SliderView(props) {
             <Grid container justifyContent="space-between" pl={1}>
               <Grid item pl={labelPosition === "left" ? "100px" : "0"}>
                 <SliderInputField
-                  label={`Min ${unit}`}
+                  label={`Min ${unit === "flt" ? "" : unit}`}
                   value={minText}
                   onChange={(e) => handleInputChange(e, true)}
                   onKeyDown={(e) => handleKeyDown(e, true)}
@@ -250,7 +250,7 @@ export default function SliderView(props) {
               </Grid>
               <Grid item>
                 <SliderInputField
-                  label={`Max ${unit}`}
+                  label={`Max ${unit === "flt" ? "" : unit}`}
                   value={maxText}
                   onChange={(e) => handleInputChange(e, false)}
                   onKeyDown={(e) => handleKeyDown(e, false)}
