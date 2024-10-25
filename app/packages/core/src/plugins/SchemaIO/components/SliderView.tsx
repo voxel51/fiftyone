@@ -198,7 +198,7 @@ export default function SliderView(props) {
           }}
         >
           <MenuItem value="%">%</MenuItem>
-          {/* <MenuItem value="flt">flt</MenuItem> */}
+          <MenuItem value="flt">flt</MenuItem>
         </Select>
       </FormControl>
     ),
