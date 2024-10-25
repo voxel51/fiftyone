@@ -2574,6 +2574,19 @@ class FrameLoaderView(View):
         super().__init__(**kwargs)
 
 
+class TimelineView(View):
+    """Represents a timeline for playing animations.
+
+    Args:
+        timeline_name (None): the name of the timeline
+        total_frames (None): the total number of frames in the timeline
+        loop (False): whether to loop the timeline
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class Container(BaseType):
     """Represents a base container for a container types."""
 
