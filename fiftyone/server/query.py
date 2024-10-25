@@ -383,8 +383,6 @@ class AppConfig:
     use_frame_number: bool
     spaces: t.Optional[JSON]
     disable_frame_filtering: bool = False
-    default_query_performance: t.Optional[bool] = False
-    enable_query_performance: t.Optional[bool] = False
     media_fallback: bool = False
 
 
