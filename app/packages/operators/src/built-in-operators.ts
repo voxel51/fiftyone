@@ -1027,6 +1027,7 @@ class PromptUserForOperation extends Operator {
     inputs.obj("params", { label: "Params" });
     inputs.str("on_success", { label: "On success" });
     inputs.str("on_error", { label: "On error" });
+    inputs.str("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
@@ -1037,11 +1038,12 @@ class PromptUserForOperation extends Operator {
     const { params, operator_uri, on_success, on_error } = ctx.params;
     const { triggerEvent } = ctx.hooks;
     const panelId = ctx.getCurrentPanelId();
+    const shouldPrompt = !params.skip_prompt;
 
     triggerEvent(panelId, {
       operator: operator_uri,
       params,
-      prompt: true,
+      prompt: shouldPrompt,
       callback: (result: OperatorResult) => {
         if (result.error) {
           triggerEvent(panelId, {
