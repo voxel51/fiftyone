@@ -5,8 +5,11 @@ import {
   Box,
   Button,
   FormControl,
+  FormControlLabel,
   Link,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Snackbar,
   Stack,
@@ -29,6 +32,8 @@ import {
 import { Lens } from "./Lens";
 import { EmptyState } from "./EmptyState";
 import { LensConfigManager } from "./LensConfigManager";
+
+type ImportLimitType = "limit" | "all";
 
 /**
  * Main Data Lens panel.
@@ -54,6 +59,13 @@ export const LensPanel = () => {
   const [importTime, setImportTime] = useState(0);
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [destDatasetName, setDestDatasetName] = useState("");
+  const [importLimitType, setImportLimitType] = useState<ImportLimitType>(
+    "limit"
+  );
+  const [maxImportSamples, setMaxImportSamples] = useState(500);
+  const isImportAllSelected = useMemo(() => importLimitType === "all", [
+    importLimitType,
+  ]);
 
   // Error state
   const [errorMessage, setErrorMessage] = useState(null);
@@ -176,6 +188,7 @@ export const LensPanel = () => {
       batch_size: batchSize,
       query_type: "import",
       dataset_name: datasetName,
+      max_samples: isImportAllSelected ? 0 : maxImportSamples,
     };
 
     // Callback which handles the response from the operator.
@@ -206,6 +219,7 @@ export const LensPanel = () => {
     setDatasetName("");
     setImportTime(0);
     setDestDatasetName("");
+    setMaxImportSamples(500);
   };
 
   // Handle edge cases
@@ -317,26 +331,56 @@ export const LensPanel = () => {
           <Box sx={{ m: 2 }}>
             <Typography variant="h5">Import data to a Dataset</Typography>
 
-            <Typography sx={{ mt: 2 }}>
+            <Typography sx={{ mt: 4 }}>
               Enter the name of a new or existing dataset
             </Typography>
 
-            <Box
-              sx={{
-                mt: 2,
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
+            <Stack sx={{ mt: 1 }} direction="column" spacing={4}>
               <TextField
-                label="Dataset name"
                 type="text"
                 value={datasetName}
                 onChange={(e) => setDatasetName(e.target.value)}
               />
-            </Box>
 
-            <Stack sx={{ mt: 2 }} direction="row" spacing={2}>
+              <Box>
+                <Typography>Maximum number of samples</Typography>
+                <RadioGroup
+                  value={importLimitType}
+                  onChange={(e) =>
+                    setImportLimitType(e.target.value as ImportLimitType)
+                  }
+                >
+                  <FormControlLabel
+                    value="all"
+                    control={<Radio />}
+                    label="Import all matching samples"
+                  />
+                  <FormControlLabel
+                    value="limit"
+                    control={<Radio />}
+                    label={
+                      <Stack direction="row" alignItems="center" spacing={2}>
+                        <Typography>Up to</Typography>
+                        <TextField
+                          value={maxImportSamples}
+                          onChange={(e) =>
+                            setMaxImportSamples(
+                              isNaN(Number.parseInt(e.target.value))
+                                ? 500
+                                : Number.parseInt(e.target.value)
+                            )
+                          }
+                          disabled={isImportAllSelected}
+                        />
+                        <Typography>samples</Typography>
+                      </Stack>
+                    }
+                  />
+                </RadioGroup>
+              </Box>
+            </Stack>
+
+            <Stack sx={{ mt: 4 }} direction="row" spacing={2}>
               {importTime > 0 ? (
                 <Button
                   variant="contained"

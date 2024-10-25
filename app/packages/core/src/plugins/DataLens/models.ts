@@ -33,6 +33,7 @@ export type ImportRequest = {
   batch_size: number;
   dataset_name: string;
   query_type: string;
+  max_samples?: number;
 };
 
 /**

@@ -102,6 +102,13 @@ class DatasourceConnectorOperator(foo.Operator):
 
             operator_result = self._execute_operator(import_request.operator_uri, ctx)
 
+            max_samples = (
+                import_request.max_samples
+                if import_request.max_samples > 0
+                else (1 << 30)  # 1B seems like a reasonable limit...
+            )
+            total_samples = 0
+
             if operator_result.is_generator:
                 for batch_response in operator_result.result:
                     last_response = DataLensSearchResponse(
@@ -110,20 +117,34 @@ class DatasourceConnectorOperator(foo.Operator):
                     if last_response.error is not None:
                         raise ValueError(last_response.error)
 
-                    self._import_samples(dataset, last_response.query_result)
-
-            else:
-                while True:
-                    last_response = DataLensSearchResponse(
-                        **filter_fields_for_type(
-                            asdict(operator_result.result), DataLensSearchResponse
-                        ),
+                    total_samples += self._import_samples(
+                        dataset,
+                        last_response.query_result,
+                        max_samples - total_samples,
                     )
 
+                    if total_samples >= max_samples:
+                        break
+
+            else:
+                last_response = DataLensSearchResponse(
+                    **filter_fields_for_type(
+                        asdict(operator_result.result), DataLensSearchResponse
+                    ),
+                )
+
+                while total_samples < max_samples:
                     if last_response.error is not None:
                         raise ValueError(last_response.error)
 
-                    self._import_samples(dataset, last_response.query_result)
+                    total_samples += self._import_samples(
+                        dataset,
+                        last_response.query_result,
+                        max_samples - total_samples
+                    )
+
+                    if total_samples >= max_samples:
+                        break
 
                     pagination_token = last_response.pagination_token
                     if pagination_token is None:
@@ -133,6 +154,12 @@ class DatasourceConnectorOperator(foo.Operator):
                         import_request.operator_uri,
                         ctx,
                         {'pagination_token': pagination_token},
+                    )
+
+                    last_response = DataLensSearchResponse(
+                        **filter_fields_for_type(
+                            asdict(operator_result.result), DataLensSearchResponse
+                        ),
                     )
 
             return ImportResponse()
@@ -154,13 +181,20 @@ class DatasourceConnectorOperator(foo.Operator):
 
         return operator_result
 
-    def _import_samples(self, dataset: fo.Dataset, samples_json: list[dict]):
+    def _import_samples(
+            self,
+            dataset: fo.Dataset,
+            samples_json: list[dict],
+            max_samples: int
+    ) -> int:
         samples = [fo.Sample.from_dict(s) for s in samples_json]
 
         # merge_samples will dedupe with samples already in the dataset, but will fail if there
         #  are duplicate samples within the list being merged.
         unique_samples = self._dedupe_samples(samples)
-        dataset.merge_samples(unique_samples, skip_existing=True, insert_new=True)
+        dataset.merge_samples(unique_samples[:max_samples], skip_existing=True, insert_new=True)
+
+        return min(len(unique_samples), max_samples)
 
     def _build_ctx(self, base_ctx: foo.ExecutionContext, overrides: dict = None) -> dict:
         return {

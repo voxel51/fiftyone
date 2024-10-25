@@ -64,6 +64,7 @@ class ImportRequest:
     operator_uri: str
     batch_size: int
     dataset_name: str
+    max_samples: int = 0
 
 
 @dataclass
