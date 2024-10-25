@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useMemo, useRef, useState } from "react";
 import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import OpenInBrowserIcon from "@mui/icons-material/OpenInBrowser";
 import {
@@ -11,7 +11,6 @@ import {
   Radio,
   RadioGroup,
   Select,
-  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -23,25 +22,27 @@ import {
   ImportRequest,
   ImportResponse,
   LensConfig,
-  ListLensConfigsRequest,
-  ListLensConfigsResponse,
   OperatorResponse,
   PreviewRequest,
   PreviewResponse,
 } from "./models";
 import { Lens } from "./Lens";
-import { EmptyState } from "./EmptyState";
-import { LensConfigManager } from "./LensConfigManager";
-import { Layout, TabConfig } from "./Layout";
 
 type ImportLimitType = "limit" | "all";
 
 /**
- * Main Data Lens panel.
+ * Component responsible for handling query and preview functionality.
  */
-export const LensPanel = () => {
+export const LensPanel = ({
+  lensConfigs,
+  onError,
+  switchToTab,
+}: {
+  lensConfigs: LensConfig[];
+  onError: (message: string) => void;
+  switchToTab: (tabId: string) => void;
+}) => {
   // General state
-  const [lensConfigs, setLensConfigs] = useState<LensConfig[]>([]);
   const [activeConfig, setActiveConfig] = useState<LensConfig>(lensConfigs[0]);
   const [formState, setFormState] = useState<FormState>({});
   const [isFormValid, setIsFormValid] = useState(false);
@@ -66,18 +67,17 @@ export const LensPanel = () => {
     importLimitType,
   ]);
 
-  // Error state
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  // Content management
-  const [activeTab, setActiveTab] = useState(0);
-
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
 
-  const listConfigsOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_list_lens_configs"
-  );
+  // Check to see if our active config still exists.
+  // This handles the case where a user has deleted a config that was previously active.
+  if (activeConfig?.id) {
+    if (lensConfigs.findIndex((cfg) => cfg.id === activeConfig.id) < 0) {
+      setActiveConfig(lensConfigs[0]);
+    }
+  }
+
   const searchOperator = useOperatorExecutor(
     "@voxel51/operators/lens_datasource_connector"
   );
@@ -85,38 +85,6 @@ export const LensPanel = () => {
   const openDatasetOperator = useOperatorExecutor(
     "@voxel51/operators/open_dataset"
   );
-
-  // Callback which handles updates to the list of available configs.
-  const handleLensConfigsUpdate = (configs: LensConfig[]) => {
-    configs.sort((a, b) => a.name.localeCompare(b.name));
-    setLensConfigs(configs);
-
-    // Check to see if our active config still exists.
-    // This handles the case where a user has deleted a config that was previously active.
-    const isActiveConfigValid =
-      activeConfig?.id &&
-      configs.findIndex((cfg) => cfg.id === activeConfig.id) >= 0;
-
-    if (!isActiveConfigValid) {
-      setActiveConfig(configs?.length > 0 ? configs[0] : null);
-    }
-  };
-
-  // Load configs on initial render
-  useEffect(() => {
-    const request: ListLensConfigsRequest = {};
-
-    const callback = (response: OperatorResponse<ListLensConfigsResponse>) => {
-      if (!(response.error || response.result?.error)) {
-        const configs = response.result?.configs ?? [];
-        handleLensConfigsUpdate(configs);
-      } else {
-        setErrorMessage(response.error || response.result?.error);
-      }
-    };
-
-    listConfigsOperator.execute(request, { callback });
-  }, []);
 
   // Keep track of the average sample size of our current preview.
   // This will allow us to calculate a reasonable batch size for imports.
@@ -163,7 +131,7 @@ export const LensPanel = () => {
       setSearchResponse(response.result);
       setIsPreviewLoading(false);
 
-      setErrorMessage(response.error || response.result?.error);
+      onError(response.error || response.result?.error);
     };
 
     setIsPreviewLoading(true);
@@ -197,7 +165,7 @@ export const LensPanel = () => {
       setImportTime(new Date().getTime() - importStartTime.current);
       setIsImportLoading(false);
 
-      setErrorMessage(response.error || response.result?.error);
+      onError(response.error || response.result?.error);
     };
 
     setImportTime(0);
@@ -221,18 +189,6 @@ export const LensPanel = () => {
     setImportTime(0);
     setDestDatasetName("");
     setMaxImportSamples(500);
-  };
-
-  // Tabs declared here to allow programmatic navigation below.
-  const tabs: TabConfig[] = [];
-
-  // Handler for switching tabs.
-  // tab.id is used as a canonical reference to a tab.
-  const switchToTab = (tabId: string) => {
-    const index = tabs.findIndex((tab) => tab.id === tabId);
-    if (index >= 0 && index < tabs.length) {
-      setActiveTab(index);
-    }
   };
 
   // LensConfig selection.
@@ -473,17 +429,6 @@ export const LensPanel = () => {
     <Fragment />
   );
 
-  const errorContent = errorMessage ? (
-    <Snackbar
-      open={!!errorMessage}
-      onClose={() => setErrorMessage(null)}
-      message={errorMessage}
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-    />
-  ) : (
-    <Fragment />
-  );
-
   // All content.
   const content = (
     <Box sx={{ m: 2 }}>
@@ -513,39 +458,5 @@ export const LensPanel = () => {
     </Box>
   );
 
-  tabs.push(
-    ...[
-      {
-        id: "empty-state",
-        label: "Home",
-        content: (
-          <EmptyState
-            onManageConfigsClick={() => switchToTab("manage-datasources")}
-          />
-        ),
-      },
-      {
-        id: "query-data",
-        label: "Query data",
-        content: content,
-      },
-      {
-        id: "manage-datasources",
-        label: "Data sources",
-        content: (
-          <LensConfigManager
-            configs={lensConfigs}
-            onConfigsChange={handleLensConfigsUpdate}
-          />
-        ),
-      },
-    ]
-  );
-
-  return (
-    <>
-      <Layout tabs={tabs} active={activeTab} onTabClick={setActiveTab} />
-      {errorContent}
-    </>
-  );
+  return content;
 };
