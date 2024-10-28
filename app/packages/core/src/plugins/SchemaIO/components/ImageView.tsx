@@ -46,6 +46,7 @@ export default function ImageView(props) {
         width={width}
         alt={alt}
         onClick={onClick}
+        style={{ cursor: href ? "pointer" : "default" }} // Change cursor based on href
         {...getComponentProps(props, "image")}
       />
     </Box>
