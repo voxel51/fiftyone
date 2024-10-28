@@ -95,6 +95,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             device=self.device,
         )
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
+        self._model.eval()
         return self._model
 
     def _get_text_features(self):
@@ -144,7 +145,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         if self._using_gpu:
             imgs = imgs.cuda()
 
-        with torch.no_grad(), torch.cuda.amp.autocast():
+        with torch.no_grad(), torch.amp.autocast("cuda"):
             image_features = self._model.encode_image(imgs)
             text_features = self._get_text_features()
 
