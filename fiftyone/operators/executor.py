@@ -969,6 +969,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "skip_prompt": skip_prompt,
                 }
             ),
         )
