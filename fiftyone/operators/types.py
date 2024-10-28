@@ -1782,7 +1782,7 @@ class ImageView(View):
                 "width": "100px",
                 "alt": "My image alt text",
                 "href": "https://voxel51.com",
-                "operator": "self.do_something",
+                "operator": self.do_something,
                 "prompt": "False",
                 "params": {"foo": "bar"},
             }
@@ -1800,7 +1800,7 @@ class ImageView(View):
         width (None): the width of the image
         alt (None): the alt text of the image
         href (None): the href of the image
-        operator (None): the name of the operator to execute when the image is clicked
+        operator (None): the name of the callable operator to execute when the image is clicked
         prompt (False): whether to prompt the user before executing the operator
         params (None): the parameters to pass to the operator
     """
