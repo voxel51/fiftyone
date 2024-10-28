@@ -1,7 +1,18 @@
-import { Box, Button, Link, Typography } from "@mui/material";
+import { Box, Button, Card, Grid, Typography } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
-import SettingsIcon from "@mui/icons-material/Settings";
-import ImageSearchIcon from "@mui/icons-material/ImageSearch";
+import HubIcon from "@mui/icons-material/HubOutlined";
+import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+
+/**
+ * Model defining the UX for an onboarding step.
+ */
+type StepConfig = {
+  icon: React.JSX;
+  text: string;
+  description: string;
+  extra?: React.ReactNode;
+};
 
 /**
  * Component responsible for rendering the 'empty state' of the Data Lens.
@@ -15,83 +26,101 @@ export const EmptyState = ({
 }: {
   onManageConfigsClick: () => void;
 }) => {
-  const steps = [
+  const steps: StepConfig[] = [
     {
       icon: CodeIcon,
-      text: "Define an operator which exposes custom search parameters",
-      description:
-        "Tailor your search experience to exactly the queries you want to perform",
+      text: "Define your pipeline",
+      description: "Tell FiftyOne how to query your data source",
+      extra: (
+        <Button
+          endIcon={<OpenInNewIcon />}
+          variant="outlined"
+          color="secondary"
+          href="https://docs.voxel51.com"
+          target="_blank"
+        >
+          Data Lens Docs
+        </Button>
+      ),
     },
     {
-      icon: SettingsIcon,
-      text: "Register your operator with Data Lens",
-      description: "Connect your datasources directly to FiftyOne",
+      icon: HubIcon,
+      text: "Connect to your data sources",
+      description: "Register your operator to connect to a data source",
+      extra: (
+        <Box>
+          <Typography sx={{ mb: 1 }}>Get started:</Typography>
+          <Button variant="contained" onClick={onManageConfigsClick}>
+            Connect to a data source
+          </Button>
+        </Box>
+      ),
     },
     {
-      icon: ImageSearchIcon,
-      text: "View samples directly from your connected datasource",
+      icon: CenterFocusWeakIcon,
+      text: "Easily view samples within FiftyOne",
       description:
-        "View samples instantly using FiftyOne's advanced visualization capabilities",
+        "View samples from your data source and import them to a dataset",
     },
   ];
 
-  const renderStep = (step) => {
+  const renderStep = (step: StepConfig, stepNumber: number) => {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          mb: 6,
-        }}
-      >
-        <step.icon sx={{ height: "4rem", width: "4rem", mr: 2 }} />
+      <Box sx={{ mb: 6 }}>
+        <Grid container spacing={2}>
+          <Grid
+            item
+            xs={2}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <step.icon sx={{ fontSize: "3rem", color: "#FFC59B" }} />
+          </Grid>
+          <Grid item xs={10}>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                {stepNumber}. {step.text}
+              </Typography>
 
-        <Box>
-          <Typography variant="h6">{step.text}</Typography>
+              <Typography color="secondary">{step.description}</Typography>
+            </Box>
+          </Grid>
 
-          <Typography variant="body2">{step.description}</Typography>
-        </Box>
+          <Grid item xs={2}>
+            {/*Empty grid cell to preserve spacing*/}
+          </Grid>
+          <Grid item xs={10}>
+            {step.extra}
+          </Grid>
+        </Grid>
       </Box>
     );
   };
 
   return (
     <>
-      <Box sx={{ m: 2 }}>
-        <Box sx={{ maxWidth: "750px", m: "auto", p: 2 }}>
-          <Typography sx={{ textAlign: "center", mb: 2 }} variant="h1">
-            Data Lens
-          </Typography>
-
-          <Typography sx={{ textAlign: "center", mb: 8 }} variant="h6">
-            Data Lens allows you to connect FiftyOne directly to an external
-            datasource
-            <br />
-            while leveraging your existing data pipelines
-          </Typography>
-
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Box sx={{ display: "flex", flexDirection: "column" }}>
-              {steps.map((step) => renderStep(step))}
-            </Box>
-          </Box>
-
-          <Typography sx={{ textAlign: "center", mb: 2 }} variant="h3">
-            Ready to get started?
-          </Typography>
-
-          <Typography sx={{ textAlign: "center" }} variant="h6">
-            <Link href="https://docs.voxel51.com" target="_blank">
-              View the documentation
-            </Link>
-
-            <Typography>or</Typography>
-
-            <Button onClick={onManageConfigsClick}>
-              Configure a datasource
-            </Button>
-          </Typography>
+      <Box sx={{ maxWidth: "750px", m: "auto" }}>
+        <Box sx={{ display: "flex", alignItems: "bottom", mb: 2 }}>
+          <CenterFocusWeakIcon sx={{ fontSize: "3rem", mr: 2 }} />
+          <Typography variant="h4">Data Lens</Typography>
         </Box>
+
+        <Typography sx={{ mb: 3 }} variant="h6">
+          Data Lens enables you to seamlessly explore samples in your external
+          data sources and import content directly into a FiftyOne Dataset.
+        </Typography>
+
+        <Typography sx={{ mb: 1 }} color="secondary">
+          How to get started with the Beta experience:
+        </Typography>
+        <Card square={false}>
+          <Box sx={{ margin: "3rem 1rem" }}>
+            {steps.map((step, idx) => renderStep(step, 1 + idx))}
+          </Box>
+        </Card>
       </Box>
     </>
   );
