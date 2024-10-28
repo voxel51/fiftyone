@@ -69,15 +69,13 @@ export default function SliderView(props) {
   const focus = autoFocus(props);
 
   const {
-    min: schemaMin,
-    max: schemaMax,
+    // min: schemaMin,
+    // max: schemaMax,
     multipleOf: schemaMultipleOf,
     view,
   } = schema;
 
   const {
-    min: viewMin,
-    max: viewMax,
     value_label_display: valueLabelDisplay = "on",
     value_format: valueFormat = "%",
     value_precision: valuePrecision = 2,
@@ -85,19 +83,21 @@ export default function SliderView(props) {
     label_position: labelPosition = "left",
     label = "Threshold",
     viewMultipleOf = null,
+    min: viewMin,
+    max: viewMax,
   } = view;
 
   const multipleOf = viewMultipleOf || schemaMultipleOf;
   const [min, max] = [
-    isNumber(viewMin) ? viewMin : isNumber(schemaMin) ? schemaMin : 0,
-    isNumber(viewMax) ? viewMax : isNumber(schemaMax) ? schemaMax : 100,
+    isNumber(viewMin) ? viewMin : 0,
+    isNumber(viewMax) ? viewMax : 100,
   ];
 
   const computedMultipleOf = isNumber(multipleOf)
     ? multipleOf
     : (max - min) / 100;
 
-  const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [key, setUserChanged] = useKey(path, schema, data, false);
   const [unit, setUnit] = useState<ValueFormat>(valueFormat);
   const [minText, setMinText] = useState(
     valueLabelFormat(data?.[0] || min, min, max, unit, valuePrecision)
@@ -134,20 +134,27 @@ export default function SliderView(props) {
 
   const handleKeyDown = (e, isMin: boolean) => {
     if (e.key === "Enter") {
-      let finalValue = e.target.value;
+      const finalValue = e.target.value;
       if (!finalValue) return;
 
-      if (unit === "%") {
-        finalValue = ((max - min) / 100) * finalValue;
+      let val = parseFloat(finalValue);
+      if (unit === "%" && isMin) {
+        val = min + (max - min) * (finalValue / 100);
+      }
+      if (unit === "%" && !isMin) {
+        val = min + (max - min) * (finalValue / 100);
       }
 
-      onChange(
-        path,
-        isMin
-          ? [parseFloat(finalValue), parseFloat(data?.[1] || max)]
-          : [parseFloat(data?.[0] || min), parseFloat(finalValue)],
-        schema
-      );
+      let finalMin = isMin ? val : data?.[0] || min;
+      let finalMax = !isMin ? val : data?.[1] || max;
+
+      if (finalMax <= finalMin) {
+        finalMin = finalMax;
+        finalMax = finalMin;
+      }
+
+      onChange(path, [finalMin, finalMax], schema);
+      setUserChanged();
     }
   };
 
@@ -228,6 +235,7 @@ export default function SliderView(props) {
               disabled={schema.view?.readOnly}
               valueLabelDisplay={valueLabelDisplay}
               defaultValue={data || [min, max]}
+              // value={data} // TODO: chat with Ibrahim - without this the thumbs don't move when input text changes
               valueLabelFormat={(value) =>
                 valueLabelFormat(value, min, max, unit, valuePrecision, false)
               }
