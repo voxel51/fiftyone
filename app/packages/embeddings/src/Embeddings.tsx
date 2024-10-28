@@ -157,9 +157,5 @@ export default function Embeddings({ containerHeight, dimensions }) {
       </EmbeddingsContainer>
     );
 
-  return (
-    <Loading style={{ background: theme.background.mediaSpace }}>
-      <EmptyEmbeddings />
-    </Loading>
-  );
+  return <EmptyEmbeddings />;
 }
