@@ -38,6 +38,7 @@ import formatCtx from "../utils/formatCtx";
 import getTimestamp from "../utils/getTimestamp";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
+import isUrl from "../utils/isUrl";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -188,21 +189,25 @@ function Run(props) {
                 </Typography>
               )}
             </Stack>
-            {runLink && showOrchestrators && (
-              <Link
-                href={runLink}
-                target="_blank"
-                color="secondary"
-                sx={{
-                  maxWidth: "80vw",
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {runLink}
-              </Link>
-            )}
+            {runLink &&
+              showOrchestrators &&
+              (isUrl(runLink) ? (
+                <Link
+                  href={runLink}
+                  target="_blank"
+                  color="secondary"
+                  sx={{
+                    maxWidth: "80vw",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {runLink}
+                </Link>
+              ) : (
+                <Typography color="text.tertiary">Logs: {runLink}</Typography>
+              ))}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />

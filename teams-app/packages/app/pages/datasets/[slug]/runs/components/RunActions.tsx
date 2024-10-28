@@ -18,6 +18,7 @@ import SettingsSystemDaydreamOutlinedIcon from "@mui/icons-material/SettingsSyst
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import { Typography } from "@mui/material";
 import { noop } from "lodash";
+import isUrl from "../utils/isUrl";
 
 export default function RunActions(props: RunActionsPropsType) {
   const {
@@ -68,7 +69,7 @@ export default function RunActions(props: RunActionsPropsType) {
             ? "Cannot mark non-running operation as failed"
             : undefined,
         },
-        ...(runLink && !hideViewInOrchestrator
+        ...(runLink && isUrl(runLink) && !hideViewInOrchestrator
           ? [
               {
                 primaryText: "View in orchestrator",

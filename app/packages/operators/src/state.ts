@@ -519,7 +519,11 @@ export const useOperatorPrompt = () => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
       if (executor.isDelegated) {
-        notify({ msg: "Operation successfully scheduled", variant: "success" });
+        notify({
+          msg: "Operation successfully scheduled",
+          link: "runs",
+          variant: "success",
+        });
       }
     }
   }, [
