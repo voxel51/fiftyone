@@ -1777,6 +1777,15 @@ class ImageView(View):
             return {"image": "https://voxel51.com/your/image.png"}
 
         def resolve_output(self, ctx):
+            schema = {
+                "height": "100px",
+                "width": "100px",
+                "alt": "My image alt text",
+                "href": "https://voxel51.com",
+                "operator": "self.do_something",
+                "prompt": "False",
+                "params": {"foo": "bar"},
+            }
             outputs = types.Object()
             outputs.define_property(
                 "image",
@@ -1785,6 +1794,15 @@ class ImageView(View):
                 view=types.ImageView(),
             )
             return types.Property(outputs)
+
+    Args:
+        height (None): the height of the image
+        width (None): the width of the image
+        alt (None): the alt text of the image
+        href (None): the href of the image
+        operator (None): the name of the operator to execute when the image is clicked
+        prompt (False): whether to prompt the user before executing the operator
+        params (None): the parameters to pass to the operator
     """
 
     def __init__(self, **kwargs):
