@@ -1,3 +1,4 @@
+import { Dialog } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { getFetchFunction } from "@fiftyone/utilities";
 import React, { Fragment, useState } from "react";
@@ -12,7 +13,14 @@ import {
 import {
   Box,
   Button,
-  Link,
+  Card,
+  FormControl,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  MenuList,
   Stack,
   Table,
   TableBody,
@@ -23,10 +31,12 @@ import {
   Typography,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import ErrorIcon from "@mui/icons-material/Error";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AddIcon from "@mui/icons-material/Add";
+import HubIcon from "@mui/icons-material/HubOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 /**
  * Component responsible for handling LensConfig management.
@@ -42,8 +52,10 @@ export const LensConfigManager = ({
   const [configId, setConfigId] = useState(null);
   const [operatorName, setOperatorName] = useState(null);
   const [operatorURI, setOperatorURI] = useState(null);
-  const [showForm, setShowForm] = useState(false);
   const [isOperatorValid, setIsOperatorValid] = useState(false);
+  const [activeActionsMenu, setActiveActionsMenu] = useState(-1);
+  const [isUpsertDialogOpen, setIsUpsertDialogOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   const upsertConfigOperator = useOperatorExecutor(
     "@voxel51/operators/lens_upsert_lens_config"
@@ -83,6 +95,7 @@ export const LensConfigManager = ({
       }
 
       setIsLoading(false);
+      resetActionsMenu();
     };
 
     setIsLoading(true);
@@ -105,6 +118,7 @@ export const LensConfigManager = ({
       }
 
       setIsLoading(false);
+      resetActionsMenu();
     };
 
     setIsLoading(true);
@@ -134,13 +148,26 @@ export const LensConfigManager = ({
     checkOperatorExistence(uri);
   };
 
+  // Callback which handles resetting the config context menu.
+  const resetActionsMenu = () => {
+    setActiveActionsMenu(-1);
+    setMenuAnchor(null);
+  };
+
+  // Callback which handles opening the config context menu.
+  const handleActionsMenuClick = (element: HTMLElement, configIdx: number) => {
+    setMenuAnchor(element);
+    setActiveActionsMenu(configIdx);
+  };
+
   // Callback which updates state to enable editing a LensConfig.
   const handleEditClick = (config: LensConfig) => {
     setConfigId(config.id);
     setOperatorName(config.name);
-    setOperatorURI(config.operator_uri);
+    handleOperatorURIChange(config.operator_uri);
 
-    setShowForm(true);
+    resetActionsMenu();
+    setIsUpsertDialogOpen(true);
   };
 
   // Callback which resets the LensConfig form.
@@ -149,7 +176,7 @@ export const LensConfigManager = ({
     setOperatorName(null);
     setOperatorURI(null);
 
-    setShowForm(false);
+    setIsUpsertDialogOpen(false);
   };
 
   const isFormValid = operatorName && operatorURI && isOperatorValid;
@@ -197,124 +224,137 @@ export const LensConfigManager = ({
     );
   };
 
-  const datasourceForm = (
-    <Box>
-      <Box>
-        <TextField
-          sx={{ m: 2 }}
-          variant="outlined"
-          label="Datasource name"
-          helperText=" "
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-        />
-
-        <TextField
-          sx={{ m: 2 }}
-          variant="outlined"
-          label="Operator URI"
-          helperText={getOperatorHelperText()}
-          value={operatorURI}
-          onChange={(e) => handleOperatorURIChange(e.target.value)}
-        />
-      </Box>
-
-      <Stack sx={{ mt: 1 }} direction="row" spacing={2}>
-        <Button
-          variant="contained"
-          onClick={handleFormSubmit}
-          disabled={!isFormValid || isLoading}
-        >
-          Submit
-        </Button>
-
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={resetForm}
-          disabled={isLoading}
-        >
-          Cancel
-        </Button>
-      </Stack>
-    </Box>
-  );
-
   const configsContent =
     configs?.length > 0 ? (
       <Table>
         <TableHead>
           <TableCell>
-            <Typography variant="h6">Datasource Name</Typography>
+            <Typography variant="h6" color="secondary">
+              DATA SOURCE NAME
+            </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6">Operator URI</Typography>
+            <Typography variant="h6" color="secondary">
+              OPERATOR
+            </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6">Action</Typography>
+            <Typography variant="h6" color="secondary">
+              ACTION
+            </Typography>
           </TableCell>
         </TableHead>
 
         <TableBody>
-          {configs.map((config) => (
+          {configs.map((config, idx) => (
             <TableRow key={config.id}>
               <TableCell>
-                <Typography>{config.name}</Typography>
+                <Typography sx={{ fontWeight: "bold" }}>
+                  {config.name}
+                </Typography>
               </TableCell>
+
               <TableCell>
                 <Typography>{config.operator_uri}</Typography>
               </TableCell>
-              <TableCell>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "nowrap",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      m: 1,
-                      width: "1.5rem",
-                      height: "1.5rem",
-                    }}
-                  >
-                    <EditIcon onClick={() => handleEditClick(config)} />
-                  </Typography>
 
-                  <Typography
-                    sx={{
-                      m: 1,
-                      width: "1.5rem",
-                      height: "1.5rem",
-                    }}
-                  >
-                    <DeleteIcon onClick={() => deleteConfig(config.id)} />
-                  </Typography>
-                </Box>
+              <TableCell>
+                <IconButton
+                  onClick={(e) => handleActionsMenuClick(e.currentTarget, idx)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={activeActionsMenu === idx}
+                  onClose={() => resetActionsMenu()}
+                >
+                  <MenuList>
+                    <MenuItem onClick={() => handleEditClick(config)}>
+                      <ListItemIcon>
+                        <EditIcon />
+                      </ListItemIcon>
+                      <ListItemText>Edit</ListItemText>
+                    </MenuItem>
+
+                    <MenuItem onClick={() => deleteConfig(config.id)}>
+                      <ListItemIcon>
+                        <DeleteIcon color="error" />
+                      </ListItemIcon>
+                      <ListItemText>
+                        <Typography color="error">Delete</Typography>
+                      </ListItemText>
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     ) : (
-      <Typography sx={{ textAlign: "center" }}>
-        You have not configured any datasources yet.
-        <br />
-        Add a new datasource to get started.
-      </Typography>
+      <Fragment />
     );
 
-  return (
-    <Box sx={{ m: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "end" }}>
-        <Typography variant="h6">
-          <Link href="https://docs.voxel51.com" target="_blank">
-            Need help with Lens?
-          </Link>
-        </Typography>
-      </Box>
+  const getEmptyContent = () => {
+    return (
+      <Card
+        square={false}
+        sx={{
+          minHeight: "500px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          <Box
+            sx={{
+              m: 2,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <HubIcon sx={{ fontSize: "6rem", color: "#FFC59B" }} />
+          </Box>
 
-      <Box sx={{ maxWidth: "750px", m: "auto", p: 2 }}>
+          <Box
+            sx={{
+              m: 2,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Typography textAlign="center" variant="h6">
+              Connect to your data source using your custom operator
+              <br />
+              to start previewing samples in real time.
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              m: 2,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setIsUpsertDialogOpen(true)}
+            >
+              Add data source
+            </Button>
+          </Box>
+        </Box>
+      </Card>
+    );
+  };
+
+  const getNonEmptyContent = () => {
+    return (
+      <>
         <Box
           sx={{
             display: "flex",
@@ -323,49 +363,92 @@ export const LensConfigManager = ({
             mb: 4,
           }}
         >
-          <Typography variant="h3">{configs.length} Data sources</Typography>
-        </Box>
+          <Typography variant="h4">{configs.length} Data sources</Typography>
 
-        <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography sx={{ textAlign: "center" }} variant="h6">
-            To connect to a datasource, create an operator which adheres to the
-            interface described in the
-            <br />
-            <Link href="https://docs.voxel51.com" target="_blank">
-              Data Lens documentation
-            </Link>
-            .
-          </Typography>
-
-          <Typography sx={{ mt: 2 }} variant="h6">
-            Once created, simply provide the operator&apos;s URI to enable
-            seamless data exploration.
-          </Typography>
-        </Box>
-
-        <Box>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-            }}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setIsUpsertDialogOpen(true)}
           >
-            <Typography variant="h5">Connected Datasources</Typography>
+            Add data source
+          </Button>
+        </Box>
+
+        <Card square={false}>{configsContent}</Card>
+      </>
+    );
+  };
+
+  const upsertDialog = (
+    <Dialog
+      open={isUpsertDialogOpen}
+      onClose={() => setIsUpsertDialogOpen(false)}
+    >
+      <Box sx={{ m: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Connect to a data source
+        </Typography>
+
+        <Stack sx={{ mt: 1 }} direction="column" spacing={4}>
+          <FormControl>
+            <Typography color="secondary" sx={{ mb: 1 }}>
+              Data source name
+            </Typography>
+            <TextField
+              type="text"
+              placeholder="Data source name"
+              value={operatorName}
+              onChange={(e) => setOperatorName(e.target.value)}
+            />
+          </FormControl>
+
+          <FormControl>
+            <Typography color="secondary" sx={{ mb: 1 }}>
+              Operator
+            </Typography>
+            <TextField
+              type="text"
+              placeholder="Operator"
+              helperText={getOperatorHelperText()}
+              value={operatorURI}
+              onChange={(e) => handleOperatorURIChange(e.target.value)}
+            />
+          </FormControl>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              sx={{ mr: 2 }}
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              onClick={resetForm}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
 
             <Button
+              sx={{ ml: 2 }}
+              fullWidth
               variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setShowForm(true)}
+              onClick={handleFormSubmit}
+              disabled={!isFormValid || isLoading}
             >
-              Add new datasource
+              {configId ? "Update" : "Connect"}
             </Button>
           </Box>
-
-          <Box sx={{ mb: 4 }}>{showForm && datasourceForm}</Box>
-
-          {configsContent}
-        </Box>
+        </Stack>
       </Box>
+    </Dialog>
+  );
+
+  const content =
+    configs?.length > 0 ? getNonEmptyContent() : getEmptyContent();
+
+  return (
+    <Box sx={{ maxWidth: "750px", m: "auto" }}>
+      {content}
+      {upsertDialog}
     </Box>
   );
 };
