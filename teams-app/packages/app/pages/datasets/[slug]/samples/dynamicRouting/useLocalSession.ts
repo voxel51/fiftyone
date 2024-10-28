@@ -24,6 +24,7 @@ import { useEffect, useMemo } from "react";
 import { useSetRecoilState } from "recoil";
 import {
   MODAL_EVENT,
+  SLICE_EVENT,
   getHistoryState,
   pushHistoryState,
   replaceHistoryState,
@@ -200,7 +201,7 @@ export const useLocalSession = (datasetIdentifier, snapshot) => {
 
     if (key === "sessionGroupSlice") {
       replaceHistoryState((state) => {
-        return { ...state, slice: value as string };
+        return { ...state, event: SLICE_EVENT, slice: value as string };
       });
     }
 

@@ -6,9 +6,9 @@ import {
 import { subscribe } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import {
+  SPACES_DEFAULT,
   ensureColorScheme,
   getSessionRef,
-  SPACES_DEFAULT,
 } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { loading } from "pages/state";
@@ -16,9 +16,9 @@ import { useRecoilCallback } from "recoil";
 import loadPageQuery, { type Page } from "./loadPageQuery";
 import {
   CONST_EVENTS,
-  getHistoryState,
   type HistoryState,
   MODAL_EVENT,
+  getHistoryState,
   replaceHistoryState,
 } from "./state";
 import { type TeamsSession, writeSession } from "./useLocalSession";

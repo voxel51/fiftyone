@@ -1,5 +1,6 @@
 import {
   type HistoryState,
+  SLICE_EVENT,
   getHistoryState,
   replaceHistoryState,
 } from "../state";
@@ -11,6 +12,7 @@ const onSetGroupSlice: RegisteredSetter = () => async (_, slice: string) => {
   const { slice: __, ...state } = getHistoryState();
   const newState: HistoryState = {
     ...state,
+    event: SLICE_EVENT,
     slice,
   };
 

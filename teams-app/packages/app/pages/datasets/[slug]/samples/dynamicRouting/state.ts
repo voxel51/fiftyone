@@ -5,10 +5,20 @@ import { transition } from "./transition";
 
 export const FIELD_VISIBILITY_EVENT = "fieldVisibility";
 export const MODAL_EVENT = "modal";
+export const SLICE_EVENT = "slice";
 
-export const CONST_EVENTS = new Set([FIELD_VISIBILITY_EVENT, MODAL_EVENT]);
+export const CONST_EVENTS = new Set([
+  FIELD_VISIBILITY_EVENT,
+  MODAL_EVENT,
+  SLICE_EVENT,
+]);
 
-type Events = typeof FIELD_VISIBILITY_EVENT | typeof MODAL_EVENT;
+const SKIP_EVENTS = new Set([MODAL_EVENT, SLICE_EVENT]);
+
+type Events =
+  | typeof FIELD_VISIBILITY_EVENT
+  | typeof MODAL_EVENT
+  | typeof SLICE_EVENT;
 
 export interface HistoryState {
   datasetId: string;
@@ -39,7 +49,8 @@ export const pushHistoryState = (
   state: HistoryState | ((state: HistoryState) => HistoryState)
 ) => {
   requestAnimationFrame(() => {
-    const next = state instanceof Function ? state(getHistoryState()) : state;
+    const current = getHistoryState();
+    const next = state instanceof Function ? state(current) : state;
     const search = resolveSearchParameters(next);
     const href = `${window.location.pathname}${search}`;
 
@@ -62,6 +73,9 @@ export const pushHistoryState = (
       "",
       href
     );
+
+    if (next.event && SKIP_EVENTS.has(next.event)) return;
+    if (current.event && SKIP_EVENTS.has(current.event)) return;
     transition(next);
   });
 };
