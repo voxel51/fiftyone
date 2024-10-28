@@ -1783,7 +1783,7 @@ class ImageView(View):
                 "alt": "My image alt text",
                 "href": "https://voxel51.com",
                 "operator": self.do_something,
-                "prompt": "False",
+                "prompt": False,
                 "params": {"foo": "bar"},
             }
             outputs = types.Object()
