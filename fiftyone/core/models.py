@@ -23,6 +23,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -162,14 +163,18 @@ def apply_model(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    if output_dir is not None:
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-        )
-    else:
-        filename_maker = None
-
     with contextlib.ExitStack() as context:
+        if output_dir is not None:
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
+        else:
+            filename_maker = None
+
         try:
             if confidence_thresh is not None:
                 cthresh = confidence_thresh
@@ -320,12 +325,18 @@ def _apply_image_model_single(
     needs_samples = isinstance(model, SamplesMixin)
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
         for sample in pb(samples):
             try:
-                img = foui.read(sample.filepath)
+                img = foui.read(sample.local_path)
 
                 if needs_samples:
                     labels = model.predict(img, sample=sample)
@@ -361,12 +372,20 @@ def _apply_image_model_batch(
     needs_samples = isinstance(model, SamplesMixin)
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
         for sample_batch in fou.iter_batches(samples, batch_size):
             try:
-                imgs = [foui.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    foui.read(sample.local_path) for sample in sample_batch
+                ]
 
                 if needs_samples:
                     labels_batch = model.predict_all(
@@ -418,6 +437,12 @@ def _apply_image_model_data_loader(
     )
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
@@ -475,6 +500,12 @@ def _apply_image_model_to_frames_single(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -488,7 +519,7 @@ def _apply_image_model_to_frames_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         if needs_samples:
@@ -536,6 +567,12 @@ def _apply_image_model_to_frames_batch(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -549,7 +586,7 @@ def _apply_image_model_to_frames_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         if needs_samples:
@@ -601,6 +638,12 @@ def _apply_video_model(
     is_clips = samples._dataset._is_clips
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         ctx = context.enter_context(foc.SaveContext(samples))
 
@@ -612,7 +655,7 @@ def _apply_video_model(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     if needs_samples:
                         labels = model.predict(video_reader, sample=sample)
@@ -648,12 +691,16 @@ def _do_export_array(label, input_path, filename_maker):
         mask_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_mask(mask_path, update=True)
+        local_path = filename_maker.get_alt_path(mask_path)
+        label.export_mask(local_path, update=True)
+        label.mask_path = mask_path
     elif isinstance(label, fol.Heatmap):
         map_path = filename_maker.get_output_path(
             input_path, output_ext=".png"
         )
-        label.export_map(map_path, update=True)
+        local_path = filename_maker.get_alt_path(map_path)
+        label.export_map(local_path, update=True)
+        label.map_path = map_path
 
 
 def _get_frame_counts(samples):
@@ -700,6 +747,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
         use_numpy=use_numpy,
         force_rgb=True,
         skip_failures=skip_failures,
+        download=False,  # assume images are already downloaded by iteration
     )
 
     def handle_errors(batch):
@@ -959,6 +1007,12 @@ def _compute_image_embeddings_single(
     errors = False
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -967,7 +1021,7 @@ def _compute_image_embeddings_single(
             embedding = None
 
             try:
-                img = foui.read(sample.filepath)
+                img = foui.read(sample.local_path)
                 embedding = model.embed(img)
             except Exception as e:
                 if not skip_failures:
@@ -998,6 +1052,12 @@ def _compute_image_embeddings_batch(
     errors = False
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -1006,7 +1066,9 @@ def _compute_image_embeddings_batch(
             embeddings_batch = [None] * len(sample_batch)
 
             try:
-                imgs = [foui.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    foui.read(sample.local_path) for sample in sample_batch
+                ]
                 embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
                 if not skip_failures:
@@ -1055,6 +1117,14 @@ def _compute_image_embeddings_data_loader(
     errors = False
 
     with contextlib.ExitStack() as context:
+        # @todo do we need to add additional pre-download overhead to ensure
+        # data loader workers don't encounter undownloaded images?
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -1109,6 +1179,12 @@ def _compute_frame_embeddings_single(
     embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -1125,7 +1201,7 @@ def _compute_frame_embeddings_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         embedding = model.embed(img)
@@ -1173,6 +1249,12 @@ def _compute_frame_embeddings_batch(
     embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -1189,7 +1271,7 @@ def _compute_frame_embeddings_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         embeddings_batch = list(model.embed_all(imgs))
@@ -1242,6 +1324,12 @@ def _compute_video_embeddings(
     errors = False
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -1254,7 +1342,7 @@ def _compute_video_embeddings(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     embedding = model.embed(video_reader)
 
@@ -1513,6 +1601,12 @@ def _embed_patches(
         embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -1526,7 +1620,7 @@ def _embed_patches(
                 )
 
                 if patches is not None:
-                    img = foui.read(sample.filepath)
+                    img = foui.read(sample.local_path)
 
                     if batch_size is None:
                         embeddings = _embed_patches_single(
@@ -1623,6 +1717,14 @@ def _embed_patches_data_loader(
         embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
+        # @todo do we need to add additional pre-download overhead to ensure
+        # data loader workers don't encounter undownloaded images?
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
             ctx = context.enter_context(foc.SaveContext(samples))
@@ -1686,6 +1788,12 @@ def _embed_frame_patches(
         embeddings_dict = {}
 
     with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
         pb = context.enter_context(
             fou.ProgressBar(total=total_frame_count, progress=progress)
         )
@@ -1702,7 +1810,7 @@ def _embed_frame_patches(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         frame_number = video_reader.frame_number
@@ -1790,6 +1898,7 @@ def _make_patch_data_loader(
         force_square=force_square,
         alpha=alpha,
         skip_failures=skip_failures,
+        download=False,  # assume images are already downloaded by iteration
     )
 
     return tud.DataLoader(

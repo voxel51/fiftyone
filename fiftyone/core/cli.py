@@ -8,9 +8,11 @@ Definition of the `fiftyone` command-line interface (CLI).
 
 import argparse
 from collections import defaultdict
+from cryptography.fernet import Fernet
 from datetime import datetime
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -26,6 +28,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.cache as foca
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
@@ -33,6 +36,7 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
+import fiftyone.operators.delegated_executors.continual as fodec
 import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
@@ -92,6 +96,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "brain", BrainCommand)
         _register_command(subparsers, "evaluation", EvaluationCommand)
         _register_command(subparsers, "app", AppCommand)
+        _register_command(subparsers, "cache", CacheCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
@@ -1075,6 +1080,139 @@ class AnnotationConfigCommand(Command):
                 print(etas.json_to_str(field))
         else:
             print(fo.annotation_config)
+
+
+class CacheCommand(Command):
+    """Tools for working with the FiftyOne media cache."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", CacheConfigCommand)
+        _register_command(subparsers, "clear", CacheClearCommand)
+        _register_command(subparsers, "stats", CacheStatsCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class CacheConfigCommand(Command):
+    """Tools for working with your FiftyOne media cache config.
+
+    Examples::
+
+        # Print your entire media cache config
+        fiftyone cache config
+
+        # Print a specific media cache config field
+        fiftyone cache config <field>
+
+        # Print the location of your media cache config on disk (if one exists)
+        fiftyone cache config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="a media cache config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your media cache config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            media_cache_config_path = focg.locate_media_cache_config()
+            if os.path.isfile(media_cache_config_path):
+                print(media_cache_config_path)
+            else:
+                print(
+                    "No media cache config file found at '%s'"
+                    % media_cache_config_path
+                )
+
+            return
+
+        if args.field:
+            field = getattr(fo.media_cache_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fo.media_cache_config)
+
+
+class CacheClearCommand(Command):
+    """Tools for clearing your FiftyOne media cache.
+
+    Examples::
+
+        # Clear your entire media cache
+        fiftyone cache clear
+
+        # Clear a specific dataset(s) media from your cache
+        fiftyone cache clear <dataset-name> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="DATASET_NAME",
+            nargs="*",
+            help="specific dataset(s) whose media to clear from the cache",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.name:
+            foca.media_cache.clear()
+            return
+
+        for name in args.name:
+            dataset = fod.load_dataset(name)
+            dataset.clear_media()
+
+
+class CacheStatsCommand(Command):
+    """Tools for getting stats about your FiftyOne media cache.
+
+    Examples::
+
+        # Print stats about your current media cache
+        fiftyone cache stats
+
+        # Print stats about any cached media in a specific dataset
+        fiftyone cache stats <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="DATASET_NAME",
+            nargs="?",
+            help="a specific dataset to which to restrict the stats",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.name:
+            dataset = fod.load_dataset(args.name)
+            stats = dataset.cache_stats()
+        else:
+            stats = foca.media_cache.stats()
+
+        _print_dict_as_table(stats)
 
 
 class AppCommand(Command):
@@ -3071,6 +3209,8 @@ class DelegatedLaunchCommand(Command):
 
     @staticmethod
     def setup(parser):
+        # Default is local which is unsupported in Teams. This is so that
+        #   caller must be intentional about wanting "remote" mode.
         parser.add_argument(
             "-t",
             "--type",
@@ -3079,9 +3219,22 @@ class DelegatedLaunchCommand(Command):
             help="the type of service to launch. The default is 'local'",
         )
 
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            default=10,
+            help="Interval in seconds to check for new operations",
+        )
+
+        parser.add_argument(
+            "--no-validate", action="store_false", dest="validate"
+        )
+
     @staticmethod
     def execute(parser, args):
-        supported_types = ("local",)
+        # "local" not supported in Teams
+        supported_types = {"remote"}
         if args.type not in supported_types:
             raise ValueError(
                 "Unsupported service type '%s'. Supported values are %s"
@@ -3090,6 +3243,21 @@ class DelegatedLaunchCommand(Command):
 
         if args.type == "local":
             _launch_delegated_local()
+        elif args.type == "remote":
+            do_svc = food.DelegatedOperationService()
+            orch_svc = foo.orchestrator.OrchestratorService()
+            run_link_path = fo.config.delegated_operation_run_link_path
+            executor = fodec.ContinualExecutor(
+                do_svc,
+                orch_svc,
+                execution_interval=args.interval,
+                run_link_path=run_link_path,
+            )
+            if args.validate:
+                executor.validate()
+            signal.signal(signal.SIGTERM, executor.signal_handler)
+            signal.signal(signal.SIGINT, executor.signal_handler)
+            executor.start()
 
 
 def _launch_delegated_local():
@@ -3098,7 +3266,7 @@ def _launch_delegated_local():
     try:
         dos = food.DelegatedOperationService()
 
-        print(_WELCOME_MESSAGE.format(foc.VERSION))
+        print(_WELCOME_MESSAGE.format(foc.TEAMS_VERSION))
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
@@ -4055,12 +4223,14 @@ class MigrateCommand(Command):
 
 
 def _print_migration_table(db_ver, dataset_vers):
-    print("Client version: %s" % foc.VERSION)
+    print("FiftyOne Teams version: %s" % foc.TEAMS_VERSION)
 
+    print("")
+    print("FiftyOne compatibility version: %s" % foc.VERSION)
     if foc.COMPATIBLE_VERSIONS:
-        print("Compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
-        print("")
+        print("Other compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
 
+    print("")
     print("Database version: %s" % db_ver)
 
     if dataset_vers:
@@ -4083,10 +4253,31 @@ class UtilsCommand(Command):
         _register_command(
             subparsers, "transform-videos", TransformVideosCommand
         )
+        _register_command(
+            subparsers, "generate-encryption-key", GenerateEncryptionKey
+        )
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class GenerateEncryptionKey(Command):
+    """Generates a Fernet encryption key and prints it to stdout.
+
+    Examples::
+
+        # Generates an encryption key and prints it to stdout
+        fiftyone utils generate-encryption-key
+    """
+
+    @staticmethod
+    def setup(parser):
+        pass
+
+    @staticmethod
+    def execute(parser, args):
+        print(Fernet.generate_key().decode())
 
 
 class ComputeMetadataCommand(Command):

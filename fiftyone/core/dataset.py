@@ -15,6 +15,7 @@ import logging
 import numbers
 import os
 import random
+import re
 import string
 
 from bson import json_util, ObjectId, DBRef
@@ -31,7 +32,6 @@ from pymongo import (
 from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -45,15 +45,21 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import SampleFieldDocument
 from fiftyone.core.odm.dataset import DatasetAppConfig, SidebarGroupDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+
+from fiftyone.internal import context_vars as ficv
+from fiftyone.internal import dataset_permissions
+from fiftyone.internal.dataset_permissions import (
+    requires_can_edit,
+    requires_can_manage,
+)
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -85,6 +91,14 @@ def list_datasets(glob_patt=None, tags=None, info=False):
     Returns:
         a list of dataset names or info dicts
     """
+    # First try to list datasets user has access to if in user context
+    user_datasets = dataset_permissions.list_datasets_for_current_user(
+        glob_patt=glob_patt, tags=tags, info=info
+    )
+    if user_datasets is not None:
+        return user_datasets
+
+    # Now normal list
     if info:
         return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
@@ -141,8 +155,37 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name, create_if_necessary=False):
-    """Loads the FiftyOne dataset with the given name.
+_SNAPSHOT_MATERIALIZED_NAME_RE = re.compile(r"_snapshot__([a-z0-9]{24})_(.*)$")
+
+
+def _snapshot_to_materialized_dataset_name(dataset_id, snapshot_name):
+    """Create materialized dataset snapshot name from dataset_id, snapshot"""
+    return f"_snapshot__{str(dataset_id)}_{snapshot_name}"
+
+
+def _parse_materialized_dataset_name(materialized_dataset_name):
+    """Parse materialized dataset snapshot into dataset_id,snapshot"""
+    match = _SNAPSHOT_MATERIALIZED_NAME_RE.match(materialized_dataset_name)
+    return (match.group(1), match.group(2)) if match else None
+
+
+def _load_snapshot_dataset(materialized_name, head_name, snapshot_name):
+    try:
+        return Dataset(
+            materialized_name,
+            _create=False,
+            _head_name=head_name,
+            _snapshot_name=snapshot_name,
+        )
+    except ValueError:
+        raise ValueError(
+            "Snapshot '%s' for dataset '%s' not found"
+            % (snapshot_name, head_name)
+        ) from None
+
+
+def load_dataset(name, snapshot=None, create_if_necessary=False):
+    """Loads the FiftyOne dataset or snapshot with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
 
@@ -154,6 +197,7 @@ def load_dataset(name, create_if_necessary=False):
 
     Args:
         name: the name of the dataset
+        snapshot(None): an optional snapshot name
         create_if_necessary (False): if no dataset exists, create an empty one
 
     Raises:
@@ -163,13 +207,37 @@ def load_dataset(name, create_if_necessary=False):
     Returns:
         a :class:`Dataset`
     """
-    try:
-        return Dataset(name, _create=False)
-    except DatasetNotFoundError as ex:
-        if create_if_necessary:
-            return Dataset(name, _create=True)
-        else:
-            raise ex
+    parsed_snapshot = _parse_materialized_dataset_name(name)
+
+    if snapshot is not None:
+        # Explicitly passed snapshot name
+        head_name = name
+
+        head_dataset = Dataset(head_name, _create=False)
+        dataset_id = str(head_dataset._doc.id)
+        name = _snapshot_to_materialized_dataset_name(dataset_id, snapshot)
+        return _load_snapshot_dataset(name, head_name, snapshot)
+    elif parsed_snapshot is not None:
+        # Name passed is in the form of a materialized dataset name
+        dataset_id, snapshot = parsed_snapshot
+        conn = foo.get_db_conn()
+        dataset_doc = conn.datasets.find_one(
+            {"_id": ObjectId(dataset_id)}, {"name": True}
+        )
+        if not dataset_doc:
+            raise ValueError(
+                "Could not find dataset id '%s'" % dataset_id
+            ) from None
+        head_name = dataset_doc["name"]
+        return _load_snapshot_dataset(name, head_name, snapshot)
+    else:
+        try:
+            return Dataset(name, _create=False)
+        except DatasetNotFoundError as ex:
+            if create_if_necessary:
+                return Dataset(name, _create=True)
+            else:
+                raise ex
 
 
 def get_default_dataset_name():
@@ -256,8 +324,14 @@ def delete_non_persistent_datasets(verbose=False):
     _delete_non_persistent_datasets(verbose=verbose)
 
 
-def _delete_non_persistent_datasets(verbose=False):
+def _delete_non_persistent_datasets(min_age=None, verbose=False):
     conn = foo.get_db_conn()
+
+    if min_age is not None:
+        now = datetime.utcnow()
+        is_old_enough = lambda ca: ca is None or now - ca >= min_age
+    else:
+        is_old_enough = lambda ca: True
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
@@ -267,7 +341,11 @@ def _delete_non_persistent_datasets(verbose=False):
             # which means it is persistent, so we don't worry about it here
             continue
 
-        if not dataset.persistent and not dataset.deleted:
+        if (
+            not dataset.persistent
+            and not dataset.deleted
+            and is_old_enough(dataset.created_at)
+        ):
             dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
@@ -306,6 +384,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_evaluation_cache",
         "_run_cache",
         "_deleted",
+        "_head_name",
+        "_snapshot_name",
+        "__permission",
     )
 
     def __init__(
@@ -315,22 +396,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
+        _head_name=None,
+        _snapshot_name=None,
         **kwargs,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
 
+        self._head_name = _head_name
+        self._snapshot_name = _snapshot_name
+
         if overwrite and dataset_exists(name):
             delete_dataset(name)
 
+        self.__permission = None
         if _create:
-            doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                self, name, persistent=persistent, **kwargs
-            )
+            docs = self._create_dataset_docs(name, persistent, **kwargs)
         else:
-            doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self, name, virtual=_virtual
-            )
+            docs = self._load_dataset_docs(name, _virtual)
+
+        doc, sample_doc_cls, frame_doc_cls = docs
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
@@ -347,6 +432,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if not _virtual:
             self._update_last_loaded_at()
+
+    def _load_dataset_docs(self, name, _virtual):
+        if not _virtual:
+            self.__permission = (
+                dataset_permissions.get_dataset_permissions_for_current_user(
+                    name
+                )
+            )
+        return _load_dataset(self, name, virtual=_virtual)
+
+    def _create_dataset_docs(self, name, persistent, **kwargs):
+        # Only attempt server creation if persistent. If we can't do it then
+        #   fall back to local creation with no permissions attached.
+        if (
+            persistent
+            and dataset_permissions.create_dataset_with_current_user_permissions(
+                name
+            )
+        ):
+            self.__permission = dataset_permissions.DatasetPermission.MANAGE
+            return _load_dataset(self, name, virtual=False)
+        else:
+            return _create_dataset(self, name, persistent=persistent, **kwargs)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -452,6 +560,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.media_type
 
     @media_type.setter
+    @requires_can_edit
     def media_type(self, media_type):
         if media_type == self._doc.media_type:
             return
@@ -660,6 +769,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_group_slice
 
     @default_group_slice.setter
+    @requires_can_edit
     def default_group_slice(self, slice_name):
         if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
@@ -686,6 +796,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.name
 
     @name.setter
+    @requires_can_manage
     def name(self, name):
         _name = self._doc.name
 
@@ -699,8 +810,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
         # Update singleton
-        self._instances.pop(_name, None)
-        self._instances[name] = self
+        # If we're not using the cache in this context, then just make sure
+        #   the singleton (if any) is renamed and replaced. STW 7/29/24
+        singleton = self._instances.pop(_name, None)
+        if ficv.no_singleton_cache.get():
+            if singleton is not None:
+                singleton.name = name
+                self._instances[name] = singleton
+        else:
+            self._instances[name] = self
+
+    @property
+    def head_name(self):
+        return self._head_name or self.name
+
+    @property
+    def snapshot_name(self):
+        return self._snapshot_name
+
+    @property
+    def _readonly(self):
+        return self.is_snapshot
+
+    @property
+    def _permission(self):
+        return self.__permission
 
     @property
     def slug(self):
@@ -730,7 +864,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.persistent
 
     @persistent.setter
+    @requires_can_manage
     def persistent(self, value):
+        if dataset_permissions.running_in_user_context():
+            message = (
+                "Changing dataset persistence after creation is "
+                "unsupported in this context."
+            )
+            if value:
+                message += " Use `fo.Dataset(..., persistent=True)` instead."
+            raise NotImplementedError(message)
+
         self._doc.persistent = value
         self.save()
 
@@ -755,6 +899,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.tags
 
     @tags.setter
+    @requires_can_manage
     def tags(self, value):
         self._doc.tags = value
         self.save()
@@ -775,6 +920,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.description
 
     @description.setter
+    @requires_can_manage
     def description(self, description):
         self._doc.description = description
         self.save()
@@ -799,6 +945,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.info
 
     @info.setter
+    @requires_can_edit
     def info(self, info):
         self._doc.info = info
         self.save()
@@ -838,6 +985,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.app_config
 
     @app_config.setter
+    @requires_can_edit
     def app_config(self, config):
         if config is None:
             config = DatasetAppConfig()
@@ -869,6 +1017,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.classes
 
     @classes.setter
+    @requires_can_edit
     def classes(self, classes):
         self._doc.classes = classes
         self.save()
@@ -895,6 +1044,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_classes
 
     @default_classes.setter
+    @requires_can_edit
     def default_classes(self, classes):
         self._doc.default_classes = classes
         self.save()
@@ -952,6 +1102,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.mask_targets
 
     @mask_targets.setter
+    @requires_can_edit
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
         self.save()
@@ -1000,6 +1151,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_mask_targets
 
     @default_mask_targets.setter
+    @requires_can_edit
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
         self.save()
@@ -1036,6 +1188,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.skeletons
 
     @skeletons.setter
+    @requires_can_edit
     def skeletons(self, skeletons):
         self._doc.skeletons = skeletons
         self.save()
@@ -1069,6 +1222,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_skeleton
 
     @default_skeleton.setter
+    @requires_can_edit
     def default_skeleton(self, skeleton):
         self._doc.default_skeleton = skeleton
         self.save()
@@ -1084,8 +1238,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        elements = [
-            ("Name:", self.name),
+        elements = [("Name:", self.head_name)]
+        if self.is_snapshot:
+            elements += [("Snapshot:", self.snapshot_name)]
+        elements += [
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),
             ("Persistent:", self.persistent),
@@ -1452,6 +1608,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             mode=mode,
         )
 
+    @requires_can_edit
     def add_sample_field(
         self,
         field_name,
@@ -1546,6 +1703,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    @requires_can_edit
     def add_dynamic_sample_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
@@ -1598,6 +1756,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for _schema in _handle_nested_fields(schema):
             self._merge_sample_field_schema(_schema)
 
+    @requires_can_edit
     def add_frame_field(
         self,
         field_name,
@@ -1672,6 +1831,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
         )
 
+    @requires_can_edit
     def create_summary_field(
         self,
         path,
@@ -2098,6 +2258,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return update_indexes
 
+    @requires_can_edit
     def update_summary_field(self, field_name):
         """Updates the summary field based on the current values of its source
         field.
@@ -2121,6 +2282,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._populate_summary_field(field_name, summary_info)
 
+    @requires_can_edit
     def delete_summary_field(self, field_name, error_level=0):
         """Deletes the summary field from all samples in the dataset.
 
@@ -2134,6 +2296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_summary_fields(field_name, error_level)
 
+    @requires_can_edit
     def delete_summary_fields(self, field_names, error_level=0):
         """Deletes the summary fields from all samples in the dataset.
 
@@ -2201,6 +2364,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    @requires_can_edit
     def add_dynamic_frame_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
@@ -2259,6 +2423,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for _schema in _handle_nested_fields(schema):
             self._merge_frame_field_schema(_schema)
 
+    @requires_can_edit
     def add_group_field(
         self,
         field_name,
@@ -2318,6 +2483,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return True
 
+    @requires_can_edit
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
 
@@ -2330,6 +2496,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_sample_fields({field_name: new_field_name})
 
+    @requires_can_edit
     def rename_sample_fields(self, field_mapping):
         """Renames the sample fields to the given new names.
 
@@ -2341,6 +2508,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_sample_fields(field_mapping)
 
+    @requires_can_edit
     def rename_frame_field(self, field_name, new_field_name):
         """Renames the frame-level field to the given new name.
 
@@ -2355,6 +2523,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_frame_fields({field_name: new_field_name})
 
+    @requires_can_edit
     def rename_frame_fields(self, field_mapping):
         """Renames the frame-level fields to the given new names.
 
@@ -2400,6 +2569,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
+    @requires_can_edit
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field into a new field of the dataset.
 
@@ -2412,6 +2582,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_sample_fields({field_name: new_field_name})
 
+    @requires_can_edit
     def clone_sample_fields(self, field_mapping):
         """Clones the given sample fields into new fields of the dataset.
 
@@ -2424,6 +2595,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_sample_fields(field_mapping)
 
+    @requires_can_edit
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field into a new field.
 
@@ -2438,6 +2610,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_frame_fields({field_name: new_field_name})
 
+    @requires_can_edit
     def clone_frame_fields(self, field_mapping):
         """Clones the frame-level fields into new fields.
 
@@ -2474,6 +2647,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
+    @requires_can_edit
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the dataset.
 
@@ -2488,6 +2662,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_sample_fields(field_name)
 
+    @requires_can_edit
     def clear_sample_fields(self, field_names):
         """Clears the values of the fields from all samples in the dataset.
 
@@ -2502,6 +2677,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_sample_fields(field_names)
 
+    @requires_can_edit
     def clear_frame_field(self, field_name):
         """Clears the values of the frame-level field from all samples in the
         dataset.
@@ -2519,6 +2695,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_frame_fields(field_name)
 
+    @requires_can_edit
     def clear_frame_fields(self, field_names):
         """Clears the values of the frame-level fields from all samples in the
         dataset.
@@ -2556,6 +2733,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
+    @requires_can_edit
     def delete_sample_field(self, field_name, error_level=0):
         """Deletes the field from all samples in the dataset.
 
@@ -2572,6 +2750,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_name, error_level)
 
+    @requires_can_edit
     def delete_sample_fields(self, field_names, error_level=0):
         """Deletes the fields from all samples in the dataset.
 
@@ -2588,6 +2767,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_names, error_level)
 
+    @requires_can_edit
     def remove_dynamic_sample_field(self, field_name, error_level=0):
         """Removes the dynamic embedded sample field from the dataset's schema.
 
@@ -2603,6 +2783,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_sample_fields(field_name, error_level)
 
+    @requires_can_edit
     def remove_dynamic_sample_fields(self, field_names, error_level=0):
         """Removes the dynamic embedded sample fields from the dataset's
         schema.
@@ -2619,6 +2800,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_sample_fields(field_names, error_level)
 
+    @requires_can_edit
     def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
@@ -2637,6 +2819,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_name, error_level)
 
+    @requires_can_edit
     def delete_frame_fields(self, field_names, error_level=0):
         """Deletes the frame-level fields from all samples in the dataset.
 
@@ -2655,6 +2838,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_names, error_level)
 
+    @requires_can_edit
     def remove_dynamic_frame_field(self, field_name, error_level=0):
         """Removes the dynamic embedded frame field from the dataset's schema.
 
@@ -2670,6 +2854,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_frame_fields(field_name, error_level)
 
+    @requires_can_edit
     def remove_dynamic_frame_fields(self, field_names, error_level=0):
         """Removes the dynamic embedded frame fields from the dataset's schema.
 
@@ -2747,6 +2932,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
+    @requires_can_edit
     def add_group_slice(self, name, media_type):
         """Adds a group slice with the given media type to the dataset, if
         necessary.
@@ -2800,6 +2986,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @requires_can_edit
     def rename_group_slice(self, name, new_name):
         """Renames the group slice with the given name.
 
@@ -2835,6 +3022,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @requires_can_edit
     def delete_group_slice(self, name):
         """Deletes all samples in the given group slice from the dataset.
 
@@ -2868,6 +3056,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @requires_can_edit(condition_param="autosave")
     def iter_samples(
         self,
         progress=False,
@@ -2945,6 +3134,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             exit_context.enter_context(pb)
             samples = pb(samples)
 
+            download_context = getattr(self, "_download_context", None)
+
             if autosave:
                 save_context = foc.SaveContext(
                     self,
@@ -2954,6 +3145,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 exit_context.enter_context(save_context)
 
             for sample in samples:
+                if download_context is not None:
+                    download_context.next()
+
                 yield sample
 
                 if autosave:
@@ -2979,6 +3173,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in self._iter_samples(pipeline=pipeline):
                 yield sample
 
+    @requires_can_edit(condition_param="autosave")
     def iter_groups(
         self,
         group_slices=None,
@@ -3066,6 +3261,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             exit_context.enter_context(pb)
             groups = pb(groups)
 
+            download_context = getattr(self, "_download_context", None)
+
             if autosave:
                 save_context = foc.SaveContext(
                     self,
@@ -3075,6 +3272,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 exit_context.enter_context(save_context)
 
             for group in groups:
+                if download_context is not None:
+                    download_context.next()
+
                 yield group
 
                 if autosave:
@@ -3184,6 +3384,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (group_id, group_field)
             )
 
+    @requires_can_edit
     def add_sample(
         self,
         sample,
@@ -3215,6 +3416,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return ids[0]
 
+    @requires_can_edit
     def add_samples(
         self,
         samples,
@@ -3268,6 +3470,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return sample_ids
 
+    @requires_can_edit
     def add_collection(
         self,
         sample_collection,
@@ -3496,6 +3699,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite_info=overwrite_info,
         )
 
+    @requires_can_edit
     def merge_sample(
         self,
         sample,
@@ -3602,6 +3806,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             existing_sample.save()
 
+    @requires_can_edit
     def merge_samples(
         self,
         samples,
@@ -3809,6 +4014,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples=num_samples,
         )
 
+    @requires_can_edit
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
 
@@ -3830,6 +4036,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = _get_sample_ids(samples_or_ids)
         self._clear(sample_ids=sample_ids)
 
+    @requires_can_edit
     def delete_frames(self, frames_or_ids):
         """Deletes the given frames(s) from the dataset.
 
@@ -3857,6 +4064,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame_ids = _get_frame_ids(frames_or_ids)
         self._clear_frames(frame_ids=frame_ids)
 
+    @requires_can_edit
     def delete_groups(self, groups_or_ids):
         """Deletes the given groups(s) from the dataset.
 
@@ -3882,6 +4090,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_ids = _get_group_ids(groups_or_ids)
         self._clear_groups(group_ids=group_ids)
 
+    @requires_can_edit
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
     ):
@@ -4170,6 +4379,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_ids=sample_ids
             )
 
+    @requires_can_edit
     def save(self):
         """Saves the dataset to the database.
 
@@ -4278,6 +4488,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [view_doc.name for view_doc in self._doc.get_saved_views()]
 
+    @requires_can_edit
     def save_view(
         self,
         name,
@@ -4367,6 +4578,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_saved_view_doc(name)
         return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
 
+    @requires_can_edit
     def update_saved_view_info(self, name, info):
         """Updates the editable information for the saved view with the given
         name.
@@ -4440,6 +4652,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc._update_last_loaded_at()
         return view
 
+    @requires_can_edit
     def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
 
@@ -4448,6 +4661,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_saved_view(name)
 
+    @requires_can_edit
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
 
@@ -4881,6 +5095,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _clone_collection(sample_collection, name, persistent)
 
+    @requires_can_edit
     def clear(self):
         """Removes all samples from the dataset.
 
@@ -4978,6 +5193,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if del_frame_fields:
                 self.delete_frame_fields(del_frame_fields)
 
+    @requires_can_edit
     def clear_frames(self):
         """Removes all frame labels from the dataset.
 
@@ -5105,6 +5321,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_id, fns, keep=True
             )
 
+    @requires_can_edit
     def ensure_frames(self):
         """Ensures that the video dataset contains frame instances for every
         frame of each sample's source video.
@@ -5160,6 +5377,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
+    @requires_can_manage
     def delete(self):
         """Deletes the dataset.
 
@@ -5186,6 +5404,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _delete_dataset_doc(self._doc)
         self._deleted = True
 
+    @requires_can_edit
     def add_dir(
         self,
         dataset_dir=None,
@@ -5315,6 +5534,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def merge_dir(
         self,
         dataset_dir=None,
@@ -5526,6 +5746,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_archive(
         self,
         archive_path,
@@ -5648,6 +5869,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             **kwargs,
         )
 
+    @requires_can_edit
     def merge_archive(
         self,
         archive_path,
@@ -5852,6 +6074,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             **kwargs,
         )
 
+    @requires_can_edit
     def add_importer(
         self,
         dataset_importer,
@@ -5912,6 +6135,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def merge_importer(
         self,
         dataset_importer,
@@ -6055,6 +6279,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_images(
         self,
         paths_or_samples,
@@ -6098,6 +6323,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_labeled_images(
         self,
         samples,
@@ -6157,6 +6383,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_images_dir(
         self,
         images_dir,
@@ -6189,6 +6416,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             image_paths, sample_parser, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def add_images_patt(self, images_patt, tags=None, progress=None):
         """Adds the given glob pattern of images to the dataset.
 
@@ -6206,12 +6434,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.get_glob_matches(images_patt)
+        image_paths = fost.get_glob_matches(images_patt)
         sample_parser = foud.ImageSampleParser()
         return self.add_images(
             image_paths, sample_parser, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def ingest_images(
         self,
         paths_or_samples,
@@ -6267,6 +6496,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_ingestor, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def ingest_labeled_images(
         self,
         samples,
@@ -6339,6 +6569,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_videos(
         self,
         paths_or_samples,
@@ -6378,6 +6609,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self, paths_or_samples, sample_parser, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def add_labeled_videos(
         self,
         samples,
@@ -6439,6 +6671,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
         )
 
+    @requires_can_edit
     def add_videos_dir(
         self, videos_dir, tags=None, recursive=True, progress=None
     ):
@@ -6467,6 +6700,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             video_paths, sample_parser, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def add_videos_patt(self, videos_patt, tags=None, progress=None):
         """Adds the given glob pattern of videos to the dataset.
 
@@ -6484,12 +6718,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        video_paths = etau.get_glob_matches(videos_patt)
+        video_paths = fost.get_glob_matches(videos_patt)
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(
             video_paths, sample_parser, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def ingest_videos(
         self,
         paths_or_samples,
@@ -6539,6 +6774,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_ingestor, tags=tags, progress=progress
         )
 
+    @requires_can_edit
     def ingest_labeled_videos(
         self,
         samples,
@@ -7377,8 +7613,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.save()
 
         def parse_sample(sd):
-            if rel_dir and not os.path.isabs(sd["filepath"]):
-                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
+            if rel_dir and not fost.isabs(sd["filepath"]):
+                sd["filepath"] = fost.join(rel_dir, sd["filepath"])
 
             if (media_type == fom.VIDEO) or (
                 media_type == fom.GROUP
@@ -7386,9 +7622,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ):
                 frames = sd.pop("frames", {})
 
+                # @todo batch download cloud `frames`
                 if etau.is_str(frames):
-                    frames_path = os.path.join(frame_labels_dir, frames)
-                    frames = etas.load_json(frames_path).get("frames", {})
+                    frames_path = fost.join(frame_labels_dir, frames)
+                    frames = fost.read_json(frames_path).get("frames", {})
 
                 sample = fos.Sample.from_dict(sd)
 
@@ -7448,7 +7685,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        d = etas.load_json(path_or_str)
+        d = fost.load_json(path_or_str)
         return cls.from_dict(
             d,
             name=name,
@@ -8044,7 +8281,9 @@ def _get_random_characters(n):
     )
 
 
-def _list_datasets(include_private=False, glob_patt=None, tags=None):
+def _list_datasets(
+    include_private=False, glob_patt=None, tags=None, info=False
+):
     conn = foo.get_db_conn()
     query = _list_datasets_query(
         include_private=include_private, glob_patt=glob_patt, tags=tags
@@ -10160,10 +10399,10 @@ def _set_field_read_only(field_doc, read_only):
 def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
-    if not os.path.isdir(dataset_dir):
-        etau.extract_archive(archive_path, delete_archive=cleanup)
+    if not fost.isdir(dataset_dir):
+        fost.extract_archive(archive_path, cleanup=cleanup)
 
-        if not os.path.isdir(dataset_dir):
+        if not fost.isdir(dataset_dir):
             raise ValueError(
                 "Expected to find a directory '%s' after extracting '%s', "
                 "but it was not found" % (dataset_dir, archive_path)

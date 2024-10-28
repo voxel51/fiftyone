@@ -14,6 +14,7 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
     ExecutionProgress,
+    ExecutionContextUser,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,14 +79,17 @@ class DelegatedOperationDocument(object):
         self.id = doc["_id"]
         self._doc = doc
 
+        user = ExecutionContextUser(id=doc["context"]["user"])
         # nested fields
         if (
             "context" in doc
             and doc["context"] is not None
             and "request_params" in doc["context"]
         ):
+            user = ExecutionContextUser(id=doc["context"]["user"])
             self.context = ExecutionContext(
                 request_params=doc["context"]["request_params"],
+                user=user,
             )
 
         if "result" in doc and doc["result"] is not None:
@@ -112,7 +116,7 @@ class DelegatedOperationDocument(object):
     def to_pymongo(self) -> dict:
         d = self.__dict__
         d["context"] = (
-            d["context"].to_dict()
+            d["context"].serialize()
             if isinstance(d["context"], ExecutionContext)
             else d["context"]
         )

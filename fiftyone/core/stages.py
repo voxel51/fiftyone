@@ -34,6 +34,12 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 from fiftyone.core.fields import EmbeddedDocumentField, ListField
 
+from fiftyone.internal.dataset_permissions import (
+    requires_can_edit,
+    DatasetPermissionException,
+)
+
+
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
@@ -3040,7 +3046,11 @@ class _GeoStage(ViewStage):
             self._location_key = self._location_field
 
         # These operations require a spherical index
-        sample_collection.create_index([(self._location_key, "2dsphere")])
+        #   Ignore permissions error if we don't have edit access
+        try:
+            sample_collection.create_index([(self._location_key, "2dsphere")])
+        except DatasetPermissionException:
+            ...
 
 
 class GeoNear(_GeoStage):
@@ -3684,6 +3694,7 @@ class GroupBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
         order_by = self._order_by
+        index_spec = None
 
         if order_by is not None:
             order = -1 if self._reverse else 1
@@ -3698,12 +3709,17 @@ class GroupBy(ViewStage):
             return
         elif etau.is_str(field_or_expr):
             index_spec = field_or_expr.lstrip("$")
-            sample_collection.create_index(index_spec)
         elif isinstance(field_or_expr, (list, tuple)) and all(
             etau.is_str(f) for f in field_or_expr
         ):
             index_spec = [(f.lstrip("$"), 1) for f in field_or_expr]
-            sample_collection.create_index(index_spec)
+
+        if index_spec:
+            # Ignore permissions error if we don't have edit access
+            try:
+                sample_collection.create_index(index_spec)
+            except DatasetPermissionException:
+                pass
 
 
 class Flatten(ViewStage):
@@ -7111,14 +7127,20 @@ class SortBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
 
+        index_spec = None
         if etau.is_str(field_or_expr):
             index_spec = field_or_expr.lstrip("$")
-            sample_collection.create_index(index_spec)
         elif isinstance(field_or_expr, (list, tuple)) and all(
             etau.is_str(i[0]) for i in field_or_expr
         ):
             index_spec = [(f.lstrip("$"), d) for f, d in field_or_expr]
-            sample_collection.create_index(index_spec)
+
+        if index_spec:
+            # Ignore permissions error if we don't have edit access
+            try:
+                sample_collection.create_index(index_spec)
+            except DatasetPermissionException:
+                pass
 
 
 def _serialize_sort_expr(field_or_expr):
@@ -7325,6 +7347,10 @@ class SortBySimilarity(ViewStage):
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
+    @requires_can_edit(
+        condition_param="self._dist_field",
+        data_obj_param="sample_collection",
+    )
     def validate(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
@@ -8217,6 +8243,10 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
+    @requires_can_edit(
+        condition_param="self._config.sample_frames",
+        data_obj_param="sample_collection",
+    )
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,

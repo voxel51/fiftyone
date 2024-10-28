@@ -20,9 +20,11 @@ import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 foue = fou.lazy_import("fiftyone.utils.eta")
@@ -998,9 +1000,61 @@ class Keypoints(_HasLabelList, Label):
 
 
 class _HasMedia(object):
-    """Mixin for :class:`Label` classes that contain a media field."""
+    """Mixin for :class:`Label` classes that contain a media field that may be
+    remote.
+    """
 
     _MEDIA_FIELD = None
+
+    @property
+    def local_path(self):
+        """The local path to this instance's media.
+
+        Accessing this property will cause remote files to be downloaded to
+        FiftyOne's local media cache, if necessary.
+        """
+        return self.get_local_path()
+
+    @property
+    def is_local(self):
+        """Determines whether the instance's media is local.
+
+        Returns:
+            True/False
+        """
+        media_path = getattr(self, self._MEDIA_FIELD)
+        return foc.media_cache.is_local(media_path)
+
+    @property
+    def is_local_or_cached(self):
+        """Determines whether this instance's media is either local or a remote
+        file that is currently in FiftyOne's local media cache.
+
+        If this method returns True, calling :meth:`local_path` will not cause
+        a media download.
+
+        Returns:
+            True/False
+        """
+        media_path = getattr(self, self._MEDIA_FIELD)
+        return foc.media_cache.is_local_or_cached(media_path)
+
+    def get_local_path(self, download=True, skip_failures=True):
+        """Returns the local path to this instance's media.
+
+        Args:
+            download (True): whether to download the remote media to FiftyOne's
+                local media cache, if necessary
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            the local filepath
+        """
+        media_path = getattr(self, self._MEDIA_FIELD)
+        return foc.media_cache.get_local_path(
+            media_path, download=download, skip_failures=skip_failures
+        )
 
 
 class Segmentation(_HasID, _HasMedia, Label):
@@ -1035,7 +1089,7 @@ class Segmentation(_HasID, _HasMedia, Label):
             return self.mask
 
         if self.mask_path is not None:
-            return _read_mask(self.mask_path)
+            return _read_mask(self.local_path)
 
         return None
 
@@ -1049,7 +1103,7 @@ class Segmentation(_HasID, _HasMedia, Label):
                 attribute after importing
         """
         if self.mask_path is not None:
-            self.mask = _read_mask(self.mask_path)
+            self.mask = _read_mask(self.local_path)
 
             if update:
                 self.mask_path = None
@@ -1064,7 +1118,7 @@ class Segmentation(_HasID, _HasMedia, Label):
                 exporting in-database segmentations
         """
         if self.mask_path is not None:
-            etau.copy_file(self.mask_path, outpath)
+            fos.copy_file(self.local_path, outpath)
         else:
             _write_mask(self.mask, outpath)
 
@@ -1224,7 +1278,7 @@ class Heatmap(_HasID, _HasMedia, Label):
             return self.map
 
         if self.map_path is not None:
-            return _read_heatmap(self.map_path)
+            return _read_heatmap(self.local_path)
 
         return None
 
@@ -1237,7 +1291,7 @@ class Heatmap(_HasID, _HasMedia, Label):
                 attribute after importing
         """
         if self.map_path is not None:
-            self.map = _read_heatmap(self.map_path)
+            self.map = _read_heatmap(self.local_path)
 
             if update:
                 self.map_path = None
@@ -1252,7 +1306,7 @@ class Heatmap(_HasID, _HasMedia, Label):
                 when exporting in-database heatmaps
         """
         if self.map_path is not None:
-            etau.copy_file(self.map_path, outpath)
+            fos.copy_file(self.local_path, outpath)
         else:
             _write_heatmap(self.map, outpath, range=self.range)
 

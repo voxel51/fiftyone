@@ -7,7 +7,6 @@ FiftyOne operator utilities.
 """
 
 import logging
-from .operator import Operator
 
 
 class ProgressHandler(logging.Handler):

@@ -6,6 +6,8 @@ FiftyOne Server samples pagination
 |
 """
 
+import aiohttp
+
 import asyncio
 import strawberry as gql
 import typing as t
@@ -135,14 +137,20 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
-    nodes = await asyncio.gather(
-        *[
-            _create_sample_item(
-                view, sample, metadata_cache, url_cache, pagination_data
-            )
-            for sample in samples
-        ]
-    )
+    async with aiohttp.ClientSession(trust_env=True) as session:
+        nodes = await asyncio.gather(
+            *[
+                _create_sample_item(
+                    view,
+                    sample,
+                    metadata_cache,
+                    url_cache,
+                    session,
+                    pagination_data,
+                )
+                for sample in samples
+            ]
+        )
 
     edges = []
     for idx, node in enumerate(nodes):
@@ -169,6 +177,7 @@ async def _create_sample_item(
     sample: t.Dict,
     metadata_cache: t.Dict[str, t.Dict],
     url_cache: t.Dict[str, str],
+    session: aiohttp.ClientSession,
     pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
@@ -185,7 +194,7 @@ async def _create_sample_item(
         raise ValueError(f"unknown media type '{media_type}'")
 
     metadata = await fosm.get_metadata(
-        dataset, sample, media_type, metadata_cache, url_cache
+        dataset, sample, media_type, metadata_cache, url_cache, session
     )
 
     if cls == VideoSample:

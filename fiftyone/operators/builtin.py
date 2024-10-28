@@ -2203,6 +2203,22 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
+    elif fs == fos.FileSystem.S3:
+        return fos.S3_PREFIX
+    elif fs == fos.FileSystem.GCS:
+        return fos.GCS_PREFIX
+    elif fs == fos.FileSystem.AZURE:
+        if not fos.azure_prefixes:
+            return None
+
+        azure_alias_prefix, azure_endpoint_prefix = fos.azure_prefixes[0]
+        return azure_alias_prefix or azure_endpoint_prefix
+    elif fs == fos.FileSystem.MINIO:
+        if not fos.minio_prefixes:
+            return None
+
+        minio_alias_prefix, minio_endpoint_prefix = fos.minio_prefixes[0]
+        return minio_alias_prefix or minio_endpoint_prefix
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -2210,18 +2226,29 @@ def get_default_path_for_filesystem(fs):
 def list_filesystems():
     filesystems = fos.list_available_file_systems()
     results = []
-    for fs in fos.FileSystem:
-        if fs in filesystems:
-            results.append(
-                {
-                    "name": fs.name,
-                    "default_path": get_default_path_for_filesystem(fs),
-                }
-            )
+    for fs in filesystems:
+        results.append(
+            {
+                "name": fs,
+                "default_path": get_default_path_for_filesystem(fs),
+            }
+        )
     return results
 
 
 def list_files(dirpath):
+    fs = fos.get_file_system(dirpath)
+    if fos._is_root(dirpath) and fs is not fos.FileSystem.LOCAL:
+        dirs = [
+            {
+                "name": path.rsplit("/", 1)[-1],
+                "type": "directory",
+                "absolute_path": path,
+            }
+            for path in fos.list_buckets(fs, abs_paths=True)
+        ]
+        return dirs
+
     dirs = [
         {
             "name": name,

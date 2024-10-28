@@ -18,7 +18,7 @@ export interface FetchFunction {
     body?: A,
     result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
     retries?: number,
-    retryCodes?: number[] | "arrayBuffer"
+    retryCodes?: number[]
   ): Promise<R>;
 }
 

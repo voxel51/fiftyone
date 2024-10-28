@@ -145,6 +145,8 @@ export namespace State {
     mediaType: MediaType;
     parentMediaType: MediaType;
     name: string;
+    headName: string;
+    snapshotName: string;
     version: string;
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton?: KeypointSkeleton;

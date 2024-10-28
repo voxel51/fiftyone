@@ -59,8 +59,8 @@ export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
   const filesystems = executor.result?.filesystems || [];
   const available = filesystems.length > 0;
-  const { azure, s3, gcp, minio, local } = getFileSystemsFromList(filesystems);
-  const hasCloud = azure || s3 || gcp || minio;
+  const { azure, s3, gcs, minio, local } = getFileSystemsFromList(filesystems);
+  const hasCloud = azure || s3 || gcs || minio;
   const defaultFilesystem = filesystems[0];
   const defaultPath = defaultFilesystem?.default_path;
   const defaultFile = defaultPath ? { absolute_path: defaultPath } : null;
@@ -79,7 +79,7 @@ export function useAvailableFileSystems() {
     hasCloud,
     azure,
     s3,
-    gcp,
+    gcs,
     minio,
     local,
     error: executor.error,

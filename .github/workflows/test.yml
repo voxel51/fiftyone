@@ -26,6 +26,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      FIFTYONE_DATABASE_ADMIN: true
     strategy:
       fail-fast: false
       matrix:
@@ -85,13 +86,6 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-      - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: python
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
@@ -100,3 +94,6 @@ jobs:
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+      - name: Run teams package tests
+        run: |
+          pip install package/teams && pytest package/tests --verbose

@@ -11,6 +11,7 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
@@ -19,13 +20,13 @@ import fiftyone.core.validation as fov
 logger = logging.getLogger(__name__)
 
 
-def read(path_or_url, include_alpha=False, flag=None):
+def read(path, include_alpha=False, flag=None):
     """Reads the image from the given path as a numpy array.
 
     Color images are returned as RGB arrays.
 
     Args:
-        path: the filepath or URL of the image
+        path: the path to the image
         include_alpha (False): whether to include the alpha channel of the
             image, if present, in the returned array
         flag (None): an optional OpenCV image format flag to use. If provided,
@@ -34,7 +35,15 @@ def read(path_or_url, include_alpha=False, flag=None):
     Returns:
         a uint8 numpy array containing the image
     """
-    return etai.read(path_or_url, include_alpha=include_alpha, flag=flag)
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        return etai.read(path, include_alpha=include_alpha, flag=flag)
+
+    client = fos.get_client(path=path)
+    b = client.download_bytes(path)
+
+    return etai.decode(b, include_alpha=include_alpha, flag=flag)
 
 
 def write(img, path):
@@ -44,7 +53,17 @@ def write(img, path):
         img: a numpy array
         path: the output path
     """
-    etai.write(img, path)
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        etai.write(img, path)
+        return
+
+    ext = os.path.splitext(path)[1]
+    b = etai.encode(img, ext)
+
+    client = fos.get_client(path=path)
+    client.upload_bytes(b, path)
 
 
 def reencode_images(
@@ -350,6 +369,8 @@ def _transform_images_single(
     save = update_filepaths
 
     view = sample_collection.select_fields(media_field)
+    stale_paths = []
+
     with fou.ProgressBar(total=view, progress=progress) as pb:
         for sample in pb(view.iter_samples(autosave=save)):
             inpath = sample[media_field]
@@ -361,7 +382,7 @@ def _transform_images_single(
             if ext is not None:
                 outpath = os.path.splitext(outpath)[0] + ext
 
-            _transform_image(
+            did_transform = _transform_image(
                 inpath,
                 outpath,
                 size=size,
@@ -373,8 +394,16 @@ def _transform_images_single(
                 skip_failures=skip_failures,
             )
 
-            if update_filepaths and (diff_field or outpath != inpath):
-                sample[output_field] = outpath
+            if diff_field or outpath != inpath:
+                if update_filepaths:
+                    sample[output_field] = outpath
+
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_images_multi(
@@ -425,22 +454,31 @@ def _transform_images_multi(
         )
 
     outpaths = {}
+    stale_paths = []
 
     try:
         with fou.ProgressBar(inputs, progress=progress) as pb:
             with fou.get_multiprocessing_context().Pool(
                 processes=num_workers
             ) as pool:
-                for sample_id, inpath, outpath, _ in pb(
+                for sample_id, inpath, outpath, did_transform in pb(
                     pool.imap_unordered(_do_transform, inputs)
                 ):
-                    if update_filepaths and (diff_field or outpath != inpath):
-                        outpaths[sample_id] = outpath
+                    if diff_field or outpath != inpath:
+                        if update_filepaths:
+                            outpaths[sample_id] = outpath
+
+                        if delete_originals:
+                            stale_paths.append(inpath)
+                    elif did_transform:
+                        stale_paths.append(inpath)
     finally:
         if outpaths:
             sample_collection.set_values(
                 output_field, outpaths, key_field="id"
             )
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _do_transform(args):
@@ -482,8 +520,9 @@ def _transform_image(
             size = _parse_parameters(img, size, min_size, max_size)
 
         if should_reencode and inpath == outpath and not delete_original:
-            orig_path = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(inpath, orig_path)
+            root, ext = os.path.splitext(inpath)
+            orig_path = root + "-original" + ext
+            fos.move_file(inpath, orig_path)
             moves.append((inpath, orig_path))
             inpath = orig_path
 
@@ -500,15 +539,15 @@ def _transform_image(
             write(img, outpath)
             did_transform = True
         elif inpath != outpath:
-            etau.copy_file(inpath, outpath)
+            fos.copy_file(inpath, outpath)
 
         if delete_original and inpath != outpath:
-            etau.delete_file(inpath)
+            fos.delete_file(inpath)
     except BaseException as e:
         try:
             # Undo any moves
             for from_path, to_path in moves:
-                etau.move_file(to_path, from_path)
+                fos.move_file(to_path, from_path)
         except:
             pass
 
@@ -553,4 +592,4 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(output_dir, filename)
+    return fos.join(output_dir, filename)

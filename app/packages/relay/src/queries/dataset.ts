@@ -6,7 +6,7 @@ export default graphql`
     $name: String!
     $savedViewSlug: String
     $view: BSONArray!
-    $workspaceSlug: String
+    $workspaceSlug: String = null
   ) {
     config {
       colorBy
@@ -19,6 +19,7 @@ export default graphql`
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
+      headName
       viewName
       savedViewSlug
       appConfig {

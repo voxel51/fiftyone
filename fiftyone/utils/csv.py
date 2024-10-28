@@ -11,7 +11,8 @@ import os
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -142,7 +143,7 @@ class CSVDatasetImporter(
 
         row = self._rows_map.get(filepath, None)
         if row is None:
-            return fos.Sample(filepath=filepath)
+            return Sample(filepath=filepath)
 
         kwargs = {}
         if isinstance(self._fields, dict):
@@ -160,7 +161,7 @@ class CSVDatasetImporter(
                 if value:
                     kwargs[key] = value
 
-        return fos.Sample(filepath=filepath, **kwargs)
+        return Sample(filepath=filepath, **kwargs)
 
     @property
     def has_sample_field_schema(self):
@@ -177,8 +178,8 @@ class CSVDatasetImporter(
         fields = _parse_import_fields(self.fields, self.media_field)
 
         media_field = self.media_field
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            with open(self.labels_path, "r") as f:
+        if self.labels_path is not None and fos.isfile(self.labels_path):
+            with fos.open_file(self.labels_path, "r") as f:
                 reader = csv.DictReader(f)
                 if media_field not in reader.fieldnames:
                     raise ValueError(
@@ -188,7 +189,7 @@ class CSVDatasetImporter(
 
                 for row in reader:
                     filename = row.pop(media_field, None)
-                    if filename is None or os.path.isabs(filename):
+                    if filename is None or fos.isabs(filename):
                         filepath = filename
                     else:
                         filepath = media_paths_map.get(filename, None)
@@ -341,6 +342,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
 
         self._media_exporter = None
         self._f = None
+        self._local_file = None
         self._csv_writer = None
         self._paths = None
         self._media_idx = None
@@ -365,14 +367,18 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
             self.fields, self.media_field, self.export_media
         )
 
-        etau.ensure_basedir(self.labels_path)
-        f = open(self.labels_path, "w", newline="")
+        local_file = fos.LocalFile(self.labels_path, "w")
+        local_path = local_file.__enter__()
+
+        etau.ensure_basedir(local_path)
+        f = open(local_path, "w", newline="")
 
         # QUOTE_MINIMAL ensures that list fields are handled properly
         csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         csv_writer.writerow(header)
 
         self._f = f
+        self._local_file = local_file
         self._csv_writer = csv_writer
         self._paths = paths
         self._media_idx = media_idx
@@ -402,6 +408,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
 
     def close(self, *args):
         self._f.close()
+        self._local_file.__exit__()
         self._media_exporter.close()
 
 
@@ -411,6 +418,8 @@ def _parse_export_fields(fields, media_field, export_media):
 
     if isinstance(fields, dict):
         paths, header = zip(*fields.items())
+        paths = list(paths)
+        header = list(header)
     elif etau.is_str(fields):
         paths = [fields]
         header = [fields]

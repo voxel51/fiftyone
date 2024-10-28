@@ -9,6 +9,7 @@ import types
 
 from .database import (
     aggregate,
+    has_db,
     get_db_config,
     establish_db_conn,
     get_db_client,
@@ -46,6 +47,7 @@ from .database import (
     import_collection,
     insert_documents,
     bulk_write,
+    get_cloud_credentials,
 )
 from .dataset import (
     SampleFieldDocument,

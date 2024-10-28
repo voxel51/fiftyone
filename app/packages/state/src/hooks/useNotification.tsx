@@ -1,5 +1,5 @@
 import Close from "@mui/icons-material/Close";
-import { IconButton } from "@mui/material";
+import { IconButton, Link } from "@mui/material";
 import { enqueueSnackbar, closeSnackbar, OptionsObject } from "notistack";
 import React from "react";
 
@@ -9,10 +9,21 @@ export default function useNotification(): (
   options: NotificationOption
 ) => void {
   return (options: NotificationOption) => {
-    const { msg } = options;
+    const { msg, link } = options;
     enqueueSnackbar({
       key: msg,
-      message: msg,
+      message: link ? (
+        <Link
+          href={link}
+          target="_self"
+          rel="noopener"
+          style={{ color: "inherit", textDecoration: "none" }}
+        >
+          {msg}
+        </Link>
+      ) : (
+        msg
+      ),
       anchorOrigin: { horizontal: "center", vertical: "bottom" },
       autoHideDuration: SNACKBAR_AUTO_HIDE_DURATION,
       preventDuplicate: true,
@@ -32,4 +43,5 @@ export default function useNotification(): (
 
 type NotificationOption = OptionsObject & {
   msg: string;
+  link?: string;
 };

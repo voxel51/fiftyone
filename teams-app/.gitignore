@@ -1,0 +1,11 @@
+node_modules
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+.env
+.env.local
+!packages/app/.env.local

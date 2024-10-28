@@ -1,0 +1,42 @@
+# If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
+# https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
+# Then `TEAMS_IMAGE_NAME` should already be set, just reuse it here...
+ARG TORCH_IMAGE_NAME
+ARG PYTHON_VERSION=3.11
+
+FROM python:${PYTHON_VERSION} as wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
+RUN pip wheel --wheel-dir=/tmp/wheels \
+      "langchain-community>=0.2.0" \
+      "langchain-core>=0.2.0" \
+      "langchain-openai>=0.1.0" \
+      "langchain>=0.2.0" \
+      "openai>=1.0.0" \
+      "tiktoken>=0.7.0" \
+      google-cloud-bigquery \
+      pandas \
+      scipy
+
+FROM ${TORCH_IMAGE_NAME} as gptrelease
+
+RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
+    pip install --no-cache-dir -q --no-index \
+      --find-links=/wheelhouse/tmp/wheels \
+      "langchain-community>=0.2.0" \
+      "langchain-core>=0.2.0" \
+      "langchain-openai>=0.1.0" \
+      "langchain>=0.2.0" \
+      "openai>=1.0.0" \
+      "tiktoken>=0.7.0" \
+      google-cloud-bigquery \
+      pandas \
+      scipy
+
+# run as the voxel51 user
+USER 1000:1000
+
+#
+# Serve the app
+#
+CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}" --workers "${HYPERCORN_WORKERS:-4}"

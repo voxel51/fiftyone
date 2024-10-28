@@ -5,12 +5,13 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import os
 from collections import Counter
 from typing import List, Optional, Union
 
-
+import fiftyone as fo
 import fiftyone.core.storage as fos
 
 from .camera import PerspectiveCamera
@@ -396,6 +397,8 @@ class Scene(Object3D):
         """
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be loaded from a .fo3d file")
+
+        path, _ = fo.media_cache.use_cached_path(path)
 
         dict_data = fos.read_json(path)
 

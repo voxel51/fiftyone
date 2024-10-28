@@ -119,6 +119,7 @@ class VOCDetectionDatasetImporter(
 
         self._image_paths_map = None
         self._labels_paths_map = None
+        self._local_files = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -186,11 +187,11 @@ class VOCDetectionDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isdir(self.labels_path):
+        if self.labels_path is not None and fos.isdir(self.labels_path):
             labels_path = fos.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(labels_path, p)
-                for p in etau.list_files(labels_path, recursive=True)
+                os.path.splitext(p)[0]: fos.join(labels_path, p)
+                for p in fos.list_files(labels_path, recursive=True)
                 if etau.has_extension(p, ".xml")
             }
         else:
@@ -203,10 +204,25 @@ class VOCDetectionDatasetImporter(
 
         uuids = self._preprocess_list(sorted(uuids))
 
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
+
+        self._local_files = local_files
         self._image_paths_map = image_paths_map
         self._labels_paths_map = labels_paths_map
         self._uuids = uuids
         self._num_samples = len(uuids)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
 
 class VOCDetectionDatasetExporter(
@@ -320,6 +336,7 @@ class VOCDetectionDatasetExporter(
 
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -339,7 +356,10 @@ class VOCDetectionDatasetExporter(
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self.labels_path)
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
+        fos.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -347,9 +367,10 @@ class VOCDetectionDatasetExporter(
         if detections is None:
             return
 
-        out_labels_path = os.path.join(
+        out_labels_path = fos.join(
             self.labels_path, os.path.splitext(uuid)[0] + ".xml"
         )
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
@@ -366,10 +387,11 @@ class VOCDetectionDatasetExporter(
             filename=uuid,
             extra_attrs=self.extra_attrs,
         )
-        self._writer.write(annotation, out_labels_path)
+        self._writer.write(annotation, local_path)
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 class VOCAnnotation(object):
@@ -743,7 +765,7 @@ class VOCAnnotationWriter(object):
                 "objects": annotation.objects,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 def load_voc_detection_annotations(xml_path):

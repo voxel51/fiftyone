@@ -386,13 +386,16 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
   localRegistry.register(operator);
 }
 
-export async function loadOperatorsFromServer(datasetName: string) {
+export async function loadOperatorsFromServer(
+  datasetName: string,
+  headName?: string
+) {
   initializationErrors = [];
   try {
     const { operators, errors } = await getFetchFunction()(
       "POST",
       "/operators",
-      { dataset_name: datasetName }
+      { dataset_name: datasetName, dataset_head_name: headName }
     );
     const operatorInstances = operators.map((d: any) =>
       Operator.fromRemoteJSON(d)
@@ -534,7 +537,8 @@ async function executeOperatorAsGenerator(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
+      request_delegation: ctx.requestDelegation,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -548,6 +552,9 @@ async function executeOperatorAsGenerator(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     },
     "json-stream"
   );
@@ -697,7 +704,7 @@ export async function executeOperatorWithContext(
         {
           current_sample: currentContext.currentSample,
           dataset_name: currentContext.datasetName,
-          delegation_target: currentContext.delegationTarget,
+          delegation_target: ctx.delegationTarget,
           extended: currentContext.extended,
           extended_selection: currentContext.extendedSelection,
           filters: currentContext.filters,
@@ -712,6 +719,8 @@ export async function executeOperatorWithContext(
           view_name: currentContext.viewName,
           group_slice: currentContext.groupSlice,
           query_performance: currentContext.queryPerformance,
+          // Teams only
+          dataset_head_name: currentContext.datasetHeadName,
         }
       );
       result = serverResult.result;
@@ -799,7 +808,7 @@ export async function resolveRemoteType(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -815,6 +824,9 @@ export async function resolveRemoteType(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
 
@@ -875,7 +887,7 @@ export async function resolveExecutionOptions(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -889,6 +901,9 @@ export async function resolveExecutionOptions(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
 
@@ -920,6 +935,9 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
   if (result && result.error) {

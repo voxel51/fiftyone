@@ -8,6 +8,7 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
+import contextlib
 import inspect
 import logging
 import os
@@ -21,6 +22,8 @@ import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.internal.api_requests import resolve_operation_user
+import fiftyone.internal.context_vars as ficv
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
@@ -29,7 +32,6 @@ from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
-
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +210,10 @@ def _parse_ctx(ctx=None, **kwargs):
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
-    operator_uri, request_params, exhaust=False
+    operator_uri,
+    request_params,
+    exhaust=False,
+    request_token=None,  # teams-only
 ):
     """Executes the operator with the given name.
 
@@ -216,17 +221,26 @@ async def execute_or_delegate_operator(
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
         exhaust (False): whether to immediately exhaust generator operators
+        request_token (None): the authentication token from the request
 
     Returns:
         an :class:`ExecutionResult`
     """
-    prepared = await prepare_operator_executor(operator_uri, request_params)
+    prepared = await prepare_operator_executor(
+        operator_uri,
+        request_params,
+        request_token=request_token,  # teams-only
+    )
+
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
         operator, executor, ctx, inputs = prepared
 
-    execution_options = operator.resolve_execution_options(ctx)
+    # User code
+    with ctx:
+        execution_options = operator.resolve_execution_options(ctx)
+
     if (
         not execution_options.allow_immediate_execution
         and not execution_options.allow_delegated_execution
@@ -235,9 +249,13 @@ async def execute_or_delegate_operator(
             "This operation does not support immediate OR delegated execution"
         )
 
-    should_delegate = (
-        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
-    )
+    # User code
+    with ctx:
+        should_delegate = (
+            operator.resolve_delegation(ctx)
+            or ctx.requesting_delegated_execution
+        )
+
     if should_delegate:
         if not execution_options.allow_delegated_execution:
             logger.warning(
@@ -307,6 +325,8 @@ async def prepare_operator_executor(
     request_params,
     set_progress=None,
     delegated_operation_id=None,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -314,6 +334,13 @@ async def prepare_operator_executor(
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params=request_params,
         executor=executor,
@@ -321,10 +348,17 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,  # teams-only
     )
 
-    await ctx.resolve_secret_values(operator._plugin_secrets)
-    inputs = operator.resolve_input(ctx)
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
+
+    # User code
+    with ctx:
+        inputs = operator.resolve_input(ctx)
+
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
@@ -334,28 +368,59 @@ async def prepare_operator_executor(
     return operator, executor, ctx, inputs
 
 
+def _context_generator(ctx, generator):
+    # Note: Manually iterating through generator because for-in did not
+    #   play nicely with the context vars. The context would only be
+    #   set for the first element and none others.
+    while True:
+        with ctx:
+            try:
+                yield next(generator)
+            except StopIteration:
+                break
+
+
+async def _context_async_generator(ctx, generator):
+    with ctx:
+        async for item in generator:
+            yield item
+
+
 async def do_execute_operator(operator, ctx, exhaust=False):
-    result = await (
-        operator.execute(ctx)
-        if asyncio.iscoroutinefunction(operator.execute)
-        else fou.run_sync_task(operator.execute, ctx)
-    )
+    # User code
+    with ctx:
+        result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else fou.run_sync_task(operator.execute, ctx)
+        )
 
-    if not exhaust:
-        return result
+        if inspect.isgenerator(result):
+            if exhaust:
+                # Fastest way to exhaust sync generator, re: itertools consume()
+                #   https://docs.python.org/3/library/itertools.html
+                collections.deque(result, maxlen=0)
+            else:
+                return _context_generator(ctx, result)
+        elif inspect.isasyncgen(result):
+            if exhaust:
+                async for _ in result:
+                    pass
+            else:
+                return _context_async_generator(ctx, result)
+        else:
+            return result
 
-    if inspect.isgenerator(result):
-        # Fastest way to exhaust sync generator, re: itertools consume()
-        #   https://docs.python.org/3/library/itertools.html
-        collections.deque(result, maxlen=0)
-    elif inspect.isasyncgen(result):
-        async for _ in result:
-            pass
-    else:
-        return result
+        return None
 
 
-async def resolve_type(registry, operator_uri, request_params):
+async def resolve_type(
+    registry,
+    operator_uri,
+    request_params,
+    request_token=None,  # teams-only
+    user=None,  # teams-only
+):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
@@ -371,16 +436,28 @@ async def resolve_type(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,  # teams-only
     )
-    await ctx.resolve_secret_values(operator._plugin_secrets)
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
     try:
-        return operator.resolve_type(
-            ctx, request_params.get("target", "inputs")
-        )
+        # User code
+        with ctx:
+            return operator.resolve_type(
+                ctx, request_params.get("target", "inputs")
+            )
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
@@ -404,7 +481,9 @@ async def resolve_type_with_context(request_params, target=None):
     return await resolve_type(registry, operator_uri, computed_request_params)
 
 
-async def resolve_execution_options(registry, operator_uri, request_params):
+async def resolve_execution_options(
+    registry, operator_uri, request_params, request_token=None, user=None
+):
     """Resolves the execution options of the operator with the given name.
 
     Args:
@@ -415,23 +494,49 @@ async def resolve_execution_options(registry, operator_uri, request_params):
     Returns:
         a :class:`fiftyone.operators.executor.ExecutionOptions` or None
     """
+    from fiftyone.operators.orchestrator import OrchestratorService
+
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
+    orc_svc = OrchestratorService()
     await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
-        return operator.resolve_execution_options(ctx)
+        search_params = {}
+        search_params[operator.uri] = ["available_operators"]
+        matching_orcs = orc_svc.list(search=search_params)
+
+        # User code
+        with ctx:
+            execution_options = operator.resolve_execution_options(ctx)
+
+        execution_options.update(available_orchestrators=matching_orcs)
+        return execution_options
+
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_placement(operator, request_params):
+async def resolve_placement(
+    operator, request_params, request_token=None, user=None
+):
     """Resolves the placement of the operator with the given name.
 
     Args:
@@ -441,18 +546,80 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
+    dataset = request_params.get("dataset_name", None)
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
     ctx = ExecutionContext(
         request_params,
         operator_uri=operator.uri,
         required_secrets=operator._plugin_secrets,
+        user=execution_context_user,
     )
     try:
-        return operator.resolve_placement(ctx)
+        # User code
+        with ctx:
+            return operator.resolve_placement(ctx)
     except Exception as e:
         return ExecutionResult(error=str(e))
 
 
-class ExecutionContext(object):
+class ExecutionContextUser(object):
+    """Represents the user executing the operator.
+
+    Args:
+        id (None): the user ID
+        email (None): the user email
+        name (None): the user name
+        role (None): the user role
+        dataset_permission (None): the user's dataset permission
+    """
+
+    def __init__(
+        self,
+        id=None,
+        email=None,
+        name=None,
+        role=None,
+        dataset_permission=None,
+        _request_token=None,
+    ):
+        self.id = id
+        self.email = email
+        self.name = name
+        self.role = role
+        self.dataset_permission = dataset_permission
+        self._request_token = _request_token
+
+    @classmethod
+    def from_dict(self, user):
+        return ExecutionContextUser(
+            id=user.get("id", None),
+            email=user.get("email", None),
+            name=user.get("name", None),
+            role=user.get("role", None),
+            dataset_permission=user.get("dataset_permission", None),
+            _request_token=user.get("_request_token"),
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "role": self.role,
+            "dataset_permission": self.dataset_permission,
+            # Do not serialize _request_token field
+        }
+
+    def serialize(self):
+        return self.to_dict()
+
+
+class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
 
     Operators can use the execution context to access the view, dataset, and
@@ -468,6 +635,8 @@ class ExecutionContext(object):
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
             plugin's definition
+        user (None): the :class:`ExecutionContextUser` for the user executing
+            the operation, if known
     """
 
     def __init__(
@@ -478,11 +647,12 @@ class ExecutionContext(object):
         delegated_operation_id=None,
         operator_uri=None,
         required_secrets=None,
+        user=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
-        self.user = None
+        self.user = user
 
         self._dataset = None
         self._view = None
@@ -502,6 +672,37 @@ class ExecutionContext(object):
         if self.panel_id:
             self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
+
+        self.__context_tokens = None
+
+    def __enter__(self):
+        if self.__context_tokens:
+            raise RuntimeError(
+                "ExecutionContext can't run with nested with expressions"
+            )
+
+        self.__context_tokens = [
+            ficv.running_user_id.set(self.user_id),
+            ficv.running_user_request_token.set(self.user_request_token),
+            ficv.no_singleton_cache.set(True),
+        ]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            (
+                running_uid_tok,
+                running_user_request_token,
+                singleton_token,
+            ) = self.__context_tokens
+            self.__context_tokens = None
+            ficv.running_user_id.reset(running_uid_tok)
+            ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.no_singleton_cache.reset(singleton_token)
+        except ValueError:
+            # In case of any error, swallow and just reset to defaults.
+            ficv.running_user_id.set(None)
+            ficv.running_user_request_token.set(None)
+            ficv.no_singleton_cache.set(False)
 
     @property
     def dataset(self):
@@ -720,7 +921,6 @@ class ExecutionContext(object):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
 
-    @property
     def query_performance(self):
         """Whether query performance is enabled."""
         return self.request_params.get("query_performance", None)
@@ -868,6 +1068,7 @@ class ExecutionContext(object):
         return {
             "request_params": self.request_params,
             "params": self.params,
+            "user": self.user_id,
         }
 
     def to_dict(self):
@@ -1246,8 +1447,11 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return bool(
-            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
+        return (
+            os.environ.get(
+                "FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", "false"
+            ).lower()
+            == "true"
         )
 
     def update(self, available_orchestrators=None):

@@ -23,14 +23,15 @@ from bson import ObjectId
 import jinja2
 import numpy as np
 import requests
+from urllib.parse import parse_qsl
 import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.cache as focc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -90,13 +91,12 @@ def import_annotations(
             the filenames in CVAT and the filepaths of ``sample_collection``.
             Can be any of the following:
 
-            -   a directory on disk where the media files reside. In this case,
-                the filenames must match those in CVAT
+            -   a directory where the media files reside. In this case, the
+                filenames must match those in CVAT
             -   a dict mapping CVAT filenames to absolute filepaths to the
-                corresponding media on disk
-            -   the path to a JSON manifest on disk containing a mapping
-                between CVAT filenames and absolute filepaths to the media on
-                disk
+                corresponding media
+            -   the path to a JSON manifest containing a mapping between CVAT
+                filenames and absolute filepaths to the media
 
             By default, only annotations whose filename matches an existing
             filepath in ``sample_collection`` will be imported
@@ -170,12 +170,12 @@ def import_annotations(
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path) and data_path.endswith(".json"):
-        data_map = etas.read_json(data_path)
+        data_map = fos.read_json(data_path)
     elif etau.is_str(data_path):
-        if os.path.isdir(data_path):
+        if fos.isdir(data_path):
             data_map = {
                 os.path.basename(f): f
-                for f in etau.list_files(
+                for f in fos.list_files(
                     data_path, abs_paths=True, recursive=True
                 )
             }
@@ -304,15 +304,18 @@ def _parse_task_metadata(
     chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
+    new_filepaths = []
+    new_tasks = []
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
         if download_media:
             if filepath is None and data_dir:
-                filepath = os.path.join(data_dir, filename)
+                filepath = fos.join(data_dir, filename)
 
-            if filepath and not os.path.exists(filepath):
-                download_tasks.append(
+            if filepath is not None:
+                new_filepaths.append(filepath)
+                new_tasks.append(
                     (
                         api,
                         task_id,
@@ -329,6 +332,12 @@ def _parse_task_metadata(
             task_filepaths.append(filepath)
         else:
             ignored_filenames.append(filename)
+
+    if new_tasks:
+        exists = fos.run(fos.isfile, new_filepaths)
+        for task, _exists in zip(new_tasks, exists):
+            if not _exists:
+                download_tasks.append(task)
 
     return cvat_id_map
 
@@ -373,14 +382,14 @@ def _do_download_media(task):
                         task_id, chunk_id, data_type="chunk"
                     )
                 )
-                chunk_path = os.path.join(tmp_dir, "%d%s" % (chunk_id, ext))
-                etau.write_file(resp._content, chunk_path)
+                chunk_path = fos.join(tmp_dir, "%d%s" % (chunk_id, ext))
+                fos.write_file(resp._content, chunk_path)
                 chunk_paths.append(chunk_path)
 
             fouv.concat_videos(chunk_paths, filepath)
     else:
         resp = api.get(api.task_data_download_url(task_id, frame_id))
-        etau.write_file(resp._content, filepath)
+        fos.write_file(resp._content, filepath)
 
 
 def _download_annotations(
@@ -564,7 +573,7 @@ class CVATImageDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        if os.path.isabs(filename):
+        if fos.isabs(filename):
             image_path = filename
         else:
             image_path = self._image_paths_map[filename]
@@ -601,7 +610,7 @@ class CVATImageDatasetImporter(
     def setup(self):
         image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             info, _, cvat_images = load_cvat_image_annotations(
                 self.labels_path
             )
@@ -615,7 +624,7 @@ class CVATImageDatasetImporter(
         cvat_images_map = {}
         for i in cvat_images:
             if i.subset:
-                key = os.path.join(i.subset, i.name)
+                key = fos.join(i.subset, i.name)
             else:
                 key = i.name
 
@@ -726,6 +735,7 @@ class CVATVideoDatasetImporter(
         self._cvat_task_labels = None
         self._video_paths_map = None
         self._labels_paths_map = None
+        self._local_files = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -787,11 +797,11 @@ class CVATVideoDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isdir(self.labels_path):
+        if self.labels_path is not None and fos.isdir(self.labels_path):
             labels_path = fos.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(labels_path, p)
-                for p in etau.list_files(labels_path, recursive=True)
+                os.path.splitext(p)[0]: fos.join(labels_path, p)
+                for p in fos.list_files(labels_path, recursive=True)
                 if etau.has_extension(p, ".xml")
             }
         else:
@@ -804,11 +814,27 @@ class CVATVideoDatasetImporter(
 
         uuids = self._preprocess_list(sorted(uuids))
 
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
+
+        self._info = None
         self._cvat_task_labels = CVATTaskLabels()
         self._video_paths_map = video_paths_map
         self._labels_paths_map = labels_paths_map
+        self._local_files = local_files
         self._uuids = uuids
         self._num_samples = len(uuids)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
     def get_dataset_info(self):
         return self._info
@@ -1091,6 +1117,7 @@ class CVATVideoDatasetExporter(
         self._num_samples = 0
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_video_metadata(self):
@@ -1117,6 +1144,9 @@ class CVATVideoDatasetExporter(
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         self._task_labels = sample_collection.info.get("task_labels", None)
 
@@ -1128,10 +1158,6 @@ class CVATVideoDatasetExporter(
 
         if metadata is None:
             metadata = fomt.VideoMetadata.build_for(video_path)
-
-        out_anno_path = os.path.join(
-            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
-        )
 
         # Generate object tracks
         frame_size = (metadata.frame_width, metadata.frame_height)
@@ -1148,19 +1174,25 @@ class CVATVideoDatasetExporter(
             # Use task labels from logged collection info
             cvat_task_labels = CVATTaskLabels(labels=self._task_labels)
 
+        out_labels_path = fos.join(
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
+        )
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
+
         # Write annotations
         self._num_samples += 1
         self._writer.write(
             cvat_task_labels,
             cvat_tracks,
             metadata,
-            out_anno_path,
+            local_path,
             id=self._num_samples - 1,
             name=uuid,
         )
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 class CVATTaskLabels(object):
@@ -2977,7 +3009,7 @@ class CVATImageAnnotationWriter(object):
                 "images": cvat_images,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 class CVATVideoAnnotationWriter(object):
@@ -3031,7 +3063,7 @@ class CVATVideoAnnotationWriter(object):
                 "tracks": cvat_tracks,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 class CVATBackendConfig(foua.AnnotationBackendConfig):
@@ -3116,6 +3148,12 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
             Note that this argument cannot be provided when uploading existing
             tracks
+        cloud_manifest (False): whether to load data from an attached cloud
+            storage with a ``manifest.jsonl`` file at the root of the storage
+            bucket (True) or whether to download the cloud media locally and
+            upload to it the CVAT server (False). This option also accepts the
+            path to a manifest file in the bucket
+            (ex: ``s3://bucket-name/manifest-name.jsonl``)
     """
 
     def __init__(
@@ -3146,6 +3184,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         frame_start=None,
         frame_stop=None,
         frame_step=None,
+        cloud_manifest=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3169,6 +3208,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.frame_start = _validate_frame_arg(frame_start, "frame_start")
         self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
         self.frame_step = _validate_frame_arg(frame_step, "frame_step")
+        self.cloud_manifest = cloud_manifest
 
         # store privately so these aren't serialized
         self._username = username
@@ -3584,6 +3624,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return self._server_version
 
     @property
+    def _supports_content_v2(self):
+        # Whether the CVAT server version supports the content-v2 API endpoint
+        # for working with cloud storages
+        return self._server_version >= Version("2.4.6")
+
+    @property
     def base_url(self):
         return self._url
 
@@ -3699,6 +3745,45 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def project_id_search_url(self, project_id):
         return "%s/projects?id=%d" % (self.base_api_url, project_id)
+
+    @property
+    def cloud_storages_url(self):
+        return "%s/cloudstorages" % self.base_api_url
+
+    def cloud_storage_url(self, cloud_storage_id):
+        return "%s/%d" % (self.cloud_storages_url, cloud_storage_id)
+
+    def cloud_storages_content_url(
+        self, cloud_storage_id, manifest=None, prefix=None
+    ):
+        if self._supports_content_v2:
+            url = "%s/content-v2" % self.cloud_storage_url(cloud_storage_id)
+        else:
+            url = "%s/content" % self.cloud_storage_url(cloud_storage_id)
+
+        separator = "?"
+        if manifest is not None:
+            url += "%smanifest_path=%s" % (separator, manifest)
+            separator = "&"
+
+        if prefix is not None:
+            url += "%sprefix=%s" % (separator, prefix)
+            separator = "&"
+
+        return url
+
+    def cloud_storages_search_url(self, provider_type=None, resource=None):
+        url = self.cloud_storages_url + "?"
+        separator = ""
+        if provider_type is not None:
+            url += "provider_type=%s" % provider_type
+            separator = "&"
+
+        if resource is not None:
+            url += "%sresource=%s" % (separator, resource)
+            separator = "&"
+
+        return url
 
     @property
     def assignee_key(self):
@@ -4211,6 +4296,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_start=None,
         frame_stop=None,
         frame_step=None,
+        cloud_manifest=False,
     ):
         """Uploads a list of media to the task with the given ID.
 
@@ -4233,6 +4319,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_stop (None): an optional last frame to upload
             frame_step (None): an optional positive integer specifying the
                 spacing between frames to upload
+            cloud_manifest (False): whether to load data from an attached cloud
+                storage with a ``manifest.jsonl`` file at the root of the storage
+                bucket (True) or whether to download the cloud media locally
+                and upload to it the CVAT server (False). This option also
+                accepts the path to a manifest file in the bucket
+                (ex: ``s3://bucket-name/manifest-name.jsonl``)
 
         Returns:
             a list of the job IDs created for the task
@@ -4255,13 +4347,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if frame_step is not None:
             data["frame_filter"] = "step=%d" % frame_step
 
-        files, open_files = self._parse_local_files(paths)
-
-        if self._server_version >= Version("2.4.6"):
+        if self._supports_content_v2:
             data["sorting_method"] = "predefined"
 
+        json = {}
+        if cloud_manifest:
+            self._parse_cloud_files(paths, data, cloud_manifest)
+            files = {}
+            open_files = []
+            if self._supports_content_v2:
+                json = data
+                data = {}
+        else:
+            files, open_files = self._parse_local_files(paths)
+
         try:
-            self.post(self.task_data_url(task_id), data=data, files=files)
+            self.post(
+                self.task_data_url(task_id), data=data, files=files, json=json
+            )
         except Exception as e:
             raise e
         finally:
@@ -4300,6 +4403,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return job_ids
 
     def _parse_local_files(self, paths):
+        paths = focc.media_cache.get_local_paths(paths)
+
         files = {}
         open_files = []
 
@@ -4313,7 +4418,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Image task
             for idx, path in enumerate(paths):
                 filename = os.path.basename(path)
-                if self._server_version < Version("2.4.6"):
+                if not self._supports_content_v2:
                     # IMPORTANT: older versions of CVAT organizes media within
                     # a task alphabetically by filename, so we must give CVAT
                     # filenames whose alphabetical order matches the order of
@@ -4330,6 +4435,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return files, open_files
 
+    def _parse_cloud_files(self, paths, data, cloud_manifest):
+        if not etau.is_str(cloud_manifest):
+            # Use default manifest name and location at root of bucket
+            cloud_manifest = self._get_default_manifest_from_path(paths[0])
+
+        data["storage"] = "cloud_storage"
+        (
+            root_dir,
+            manifest_filename,
+            cloud_storage_id,
+        ) = self._parse_cloud_manifest(cloud_manifest)
+        self._verify_cloud_files(
+            root_dir, cloud_storage_id, manifest_filename, paths
+        )
+        data["cloud_storage_id"] = cloud_storage_id
+
+        # Samples are pre-sorted if using to cloud storage
+        server_files = [_to_rel_url(path, root_dir) for path in paths]
+        server_files.append(manifest_filename)
+
+        if self._supports_content_v2:
+            data["server_files"] = server_files
+        else:
+            for idx, f in enumerate(server_files):
+                data["server_files[%d]" % idx] = f
+
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
         annotation and server configuration.
@@ -4345,9 +4476,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
+        media_field = config.media_field
         group_id_attr = config.group_id_attr
         task_size = config.task_size
+        cloud_manifest = config.cloud_manifest
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
+
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -4409,6 +4543,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         is_video = samples.media_type == fom.VIDEO
         is_clips = samples._is_clips
 
+        label_fields = samples._get_media_fields(whitelist=label_schema)
+        label_fields = list(label_fields.keys())
+
         if is_video:
             # The current implementation requires frame IDs for all frames that
             # might get labels
@@ -4423,6 +4560,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         with fou.ProgressBar(**pb_kwargs) as pb:
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
+
+                if cloud_manifest:
+                    # IMPORTANT: CVAT organizes media within a task alphabetically
+                    # by filename, so we must sort the samples by filename to
+                    # ensure annotations are uploaded properly
+                    #
+                    # When cloud manifests are not being used, upload_data() uses
+                    # filename mangling to preserve the order of samples_batch in
+                    # the CVAT task. However, when cloud manifests are being used,
+                    # that approach is not viable, so we must sort by filename or
+                    # else existing labels will not be uploaded correctly.
+                    #
+                    # Note that we don't always sort by media field because,
+                    # whenever possible, we prefer to maintain the order of the
+                    # users view, since they may have intentionally sorted it in a
+                    # particular way that they want to preserve in CVAT.
+                    samples_batch = samples_batch.sort_by(media_field)
+                else:
+                    samples_batch.download_media(
+                        media_fields=media_field, progress=False
+                    )
+
+                if label_fields:
+                    samples_batch.download_media(
+                        media_fields=label_fields, progress=False
+                    )
+
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
@@ -5322,8 +5486,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "task, but this requires loading all images "
                     "simultaneously into RAM, which will take at least %s. "
                     "Consider specifying a `task_size` to break the data into "
-                    "smaller chunks, or upgrade to FiftyOne Teams so that you "
-                    "can provide a cloud manifest",
+                    "smaller chunks, or use the `cloud_manifest=True` option",
                     etau.to_human_bytes_str(required_bytes),
                 )
 
@@ -5357,6 +5520,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
         issue_tracker = config.issue_tracker
+        cloud_manifest = config.cloud_manifest
 
         _task_assignee = task_assignee
         _job_assignees = job_assignees
@@ -5412,10 +5576,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         task_ids.append(task_id)
 
+        media_paths = samples_batch.values(media_field)
+
         # Upload media
         job_ids[task_id] = self.upload_data(
             task_id,
-            samples_batch.values(media_field),
+            media_paths,
             image_quality=image_quality,
             use_cache=use_cache,
             use_zip_chunks=use_zip_chunks,
@@ -5425,6 +5591,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_start=frame_start,
             frame_stop=frame_stop,
             frame_step=frame_step,
+            cloud_manifest=cloud_manifest,
         )
 
         self._verify_uploaded_frames(
@@ -6887,6 +7054,147 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return tracks
 
+    def _get_default_manifest_from_path(self, path):
+        path_fs = fos.get_file_system(path)
+        if path_fs not in _CLOUD_PROVIDER_MAP:
+            raise ValueError(
+                "Found an unsupported filepath `%s` when "
+                "`cloud_manifest=True`, expected only AWS, GCS, or "
+                "MINIO cloud files, all of which are in the same "
+                "bucket." % path
+            )
+        prefix, _ = fos.split_prefix(path)
+        bucket_name = fos.get_bucket_name(path)
+        cloud_manifest = fos.join(prefix + bucket_name, "manifest.jsonl")
+        return cloud_manifest
+
+    def _parse_cloud_manifest(self, cloud_manifest):
+        file_system = fos.get_file_system(cloud_manifest)
+        if file_system not in _CLOUD_PROVIDER_MAP:
+            raise ValueError(
+                "File system %s is not a valid CVAT cloud storage provider."
+                % str(file_system)
+            )
+        minio_endpoints = None
+        if file_system == fos.FileSystem.MINIO:
+            minio_endpoints = [p[1] for p in fos.minio_prefixes]
+
+        provider_type = _CLOUD_PROVIDER_MAP[file_system]
+        prefix, _ = fos.split_prefix(cloud_manifest)
+        resource = fos.get_bucket_name(cloud_manifest)
+        root_dir = prefix + resource
+        manifest_filename = _to_rel_url(cloud_manifest, root_dir)
+
+        cloud_storage_id = self._get_cloud_storage_id(
+            provider_type,
+            resource,
+            manifest_filename,
+            endpoints=minio_endpoints,
+        )
+        return root_dir, manifest_filename, cloud_storage_id
+
+    def _get_cloud_storage_id(
+        self, provider_type, resource, manifest_filename, endpoints=None
+    ):
+        cloud_storages_search_url = self.cloud_storages_search_url(
+            provider_type=provider_type, resource=resource
+        )
+        resp = self.get(cloud_storages_search_url).json()
+        results = resp["results"]
+        cloud_storage_id = None
+
+        for result in results:
+            specific_attrs = self._parse_specific_attributes(
+                result["specific_attributes"]
+            )
+            result_endpoint = specific_attrs.get("endpoint_url", None)
+            if etau.is_str(result_endpoint):
+                result_endpoint = result_endpoint.rstrip("/") + "/"
+
+            valid_endpoint = endpoints is None or result_endpoint in endpoints
+
+            if manifest_filename in result["manifests"] and valid_endpoint:
+                cloud_storage_id = result["id"]
+
+        if cloud_storage_id is None:
+            raise ValueError(
+                "No cloud storage of type `%s`, bucket name `%s`, with "
+                "manifest `%s` was found"
+                % (provider_type, resource, manifest_filename)
+            )
+
+        return cloud_storage_id
+
+    def _verify_cloud_files(
+        self, root_dir, cloud_storage_id, manifest_filename, paths
+    ):
+        file_systems = {fos.get_file_system(p) for p in paths}
+        root_fs = fos.get_file_system(root_dir)
+        if len(file_systems) > 1:
+            raise ValueError(
+                "Attempting to use manifest from file system '%s' but found "
+                "samples from multiple file systems: %s"
+                % (root_fs, file_systems)
+            )
+
+        paths_fs = list(file_systems)[0]
+        if root_fs != paths_fs:
+            raise ValueError(
+                "File system of the manifest '%s' does not match the file "
+                "system of samples '%s'" % (root_fs, paths_fs)
+            )
+
+        if self._supports_content_v2:
+            manifest_files = []
+            self._parse_v2_cloud_manifest(
+                manifest_files, cloud_storage_id, manifest_filename
+            )
+        else:
+            manifest_files = self._parse_v1_cloud_manifest(
+                cloud_storage_id, manifest_filename
+            )
+
+        formatted_paths = set([_to_rel_url(p, root_dir) for p in paths])
+        unspecified_paths = formatted_paths - set(manifest_files)
+        if unspecified_paths:
+            raise ValueError(
+                "Found %d files that are not specified in the given manifest "
+                "`%s` in cloud storage `%d`"
+                % (len(unspecified_paths), manifest_filename, cloud_storage_id)
+            )
+
+    def _parse_v1_cloud_manifest(self, cloud_storage_id, manifest_filename):
+        content_url = self.cloud_storages_content_url(
+            cloud_storage_id, manifest=manifest_filename
+        )
+        manifest_files = self.get(content_url).json()
+        return manifest_files
+
+    def _parse_v2_cloud_manifest(
+        self, paths, cloud_storage_id, manifest_filename, prefix=None
+    ):
+        content_url = self.cloud_storages_content_url(
+            cloud_storage_id,
+            manifest=manifest_filename,
+            prefix=prefix,
+        )
+        manifest_files = self.get(content_url).json()
+        for content in manifest_files.get("content", []):
+            content_type = content.get("type", None)
+            content_name = content.get("name", None)
+            if content_type == "DIR":
+                if prefix is None:
+                    prefix = ""
+                prefix += content_name + "/"
+                self._parse_v2_cloud_manifest(
+                    paths, cloud_storage_id, manifest_filename, prefix=prefix
+                )
+            elif content_type == "REG":
+                paths.append(prefix + content_name)
+
+    def _parse_specific_attributes(self, specific_attributes):
+        return {k: v for (k, v) in parse_qsl(specific_attributes)}
+
     def _validate(self, response, kwargs):
         try:
             response.raise_for_status()
@@ -7304,6 +7612,21 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
+class CVATCloudProviders(object):
+    """Enumeration of cloud storage providers supported by CVAT"""
+
+    S3 = "AWS_S3_BUCKET"
+    GCS = "GOOGLE_CLOUD_STORAGE"
+    AZURE = "AZURE_CONTAINER"
+
+
+_CLOUD_PROVIDER_MAP = {
+    fos.FileSystem.S3: CVATCloudProviders.S3,
+    fos.FileSystem.MINIO: CVATCloudProviders.S3,
+    fos.FileSystem.GCS: CVATCloudProviders.GCS,
+}
+
+
 def _is_supported_attribute_type(value):
     return (
         isinstance(value, bool) or etau.is_str(value) or etau.is_numeric(value)
@@ -7434,6 +7757,12 @@ def _stringify_value(value):
         return "false"
 
     return str(value)
+
+
+def _to_rel_url(url, dir_path):
+    url = fos.split_prefix(url)[1]
+    dir_path = fos.split_prefix(dir_path)[1]
+    return os.path.relpath(url, dir_path)
 
 
 def _to_int_bool(value):

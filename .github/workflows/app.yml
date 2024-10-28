@@ -1,0 +1,57 @@
+name: APP GitHub Tests
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - .github/workflows/app.yml
+      - app/**
+      - teams-app/**
+
+jobs:
+  build-teams-app-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout-fiftyone-teams
+        uses: actions/checkout@v4
+      # ===================================================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      # ===================================================
+      - name: Build Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: teams-app/Dockerfile
+          push: false
+          tags: voxel51/fiftyone-teams-app:${{ github.sha }}
+
+  teams-app-e2e-tests:
+    uses: ./.github/workflows/teams-app-e2e.yml
+    secrets: inherit
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # ===================================================
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          check-latest: true
+      # ===================================================
+      - name: Install Teams App Dependencies
+        working-directory: ./app
+        shell: bash
+        run: yarn install
+      # ===================================================
+      - name: Install Dependencies
+        working-directory: ./teams-app
+        shell: bash
+        run: yarn install
+      # ===================================================
+      - name: Run unit tests
+        working-directory: ./teams-app
+        run: yarn test

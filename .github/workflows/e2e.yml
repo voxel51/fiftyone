@@ -7,6 +7,7 @@ jobs:
     timeout-minutes: 90
     runs-on: ubuntu-latest-m
     env:
+      FIFTYONE_DATABASE_ADMIN: true
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_DATABASE_URI: mongodb://localhost:27017
       FIFTYONE_DATABASE_NAME: playwright

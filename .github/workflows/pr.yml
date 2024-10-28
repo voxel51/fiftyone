@@ -21,7 +21,7 @@ jobs:
 
   teams:
     runs-on: ubuntu-latest
-    if: false && github.base_ref == 'develop' # temporarily disabled
+    if: false
     steps:
       - uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:

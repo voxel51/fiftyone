@@ -96,6 +96,9 @@ const globalContextSelector = selector({
     const groupSlice = get(fos.groupSlice);
     const queryPerformance = typeof get(fos.lightningThreshold) === "number";
 
+    // Teams only
+    const datasetHeadName = get(fos.datasetHeadName);
+
     return {
       datasetName,
       view,
@@ -104,6 +107,8 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       viewName,
+      // Teams only
+      datasetHeadName,
       extendedSelection,
       groupSlice,
       queryPerformance,
@@ -145,6 +150,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     viewName,
+    // Teams only
+    datasetHeadName,
     extendedSelection,
     groupSlice,
     queryPerformance,
@@ -162,6 +169,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedLabels,
         currentSample,
         viewName,
+        // Teams only
+        datasetHeadName,
         extendedSelection,
         analyticsInfo,
         groupSlice,
@@ -292,8 +301,13 @@ const useOperatorPromptSubmitOptions = (
     }
   }
 
+  const fallbackId = executionOptions.allowImmediateExecution
+    ? "execute"
+    : "schedule";
   const defaultID =
-    options.find((option) => option.default)?.id || options[0]?.id || "execute";
+    options.find((option) => option.default)?.id ||
+    options[0]?.id ||
+    fallbackId;
   let [selectedID, setSelectedID] = fos.useBrowserStorage(
     persistUnderKey,
     defaultID
@@ -301,8 +315,13 @@ const useOperatorPromptSubmitOptions = (
   const selectedOption = options.find((option) => option.id === selectedID);
 
   useEffect(() => {
+    const selectedOptionExists = !!options.find((o) => o.id === selectedID);
     if (options.length === 1) {
       setSelectedID(options[0].id);
+    } else if (!selectedOptionExists) {
+      const nextSelectedID =
+        options.find((option) => option.default)?.id || options[0]?.id;
+      setSelectedID(nextSelectedID);
     }
   }, [options]);
 
@@ -465,6 +484,7 @@ export const useOperatorPrompt = () => {
         return;
       }
       executor.execute(promptingOperator.params, {
+        ...options,
         ...promptingOperator.options,
       });
     },
@@ -499,7 +519,11 @@ export const useOperatorPrompt = () => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
       if (executor.isDelegated) {
-        notify({ msg: "Operation successfully scheduled", variant: "success" });
+        notify({
+          msg: "Operation successfully scheduled",
+          link: "runs",
+          variant: "success",
+        });
       }
     }
   }, [

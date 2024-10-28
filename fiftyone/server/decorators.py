@@ -32,6 +32,12 @@ class Encoder(JSONEncoder):
         return JSONEncoder.default(self, o)
 
 
+async def load_variables(request: Request):
+    body = await request.body()
+    payload = body.decode("utf-8")
+    return json_util.loads(payload) if payload else {}
+
+
 async def create_response(response: dict):
     return Response(
         await run_sync_task(lambda: json_util.dumps(response, cls=Encoder))
@@ -40,13 +46,13 @@ async def create_response(response: dict):
 
 def route(func):
     async def wrapper(
-        endpoint: HTTPEndpoint, request: Request, *args
+        endpoint: HTTPEndpoint, request: Request, variables=None
     ) -> t.Union[dict, Response]:
         try:
-            body = await request.body()
-            payload = body.decode("utf-8")
-            data = json_util.loads(payload) if payload else {}
-            response = await func(endpoint, request, data, *args)
+            if variables is None:
+                variables = await load_variables(request)
+
+            response = await func(endpoint, request, variables)
             if isinstance(response, Response):
                 return response
 
