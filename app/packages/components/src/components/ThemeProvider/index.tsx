@@ -92,6 +92,8 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
+          lightning: "#f5b700",
+          toastBackgroundColor: "#333",
         },
         voxel: {
           500: "#FF6D04",
@@ -171,6 +173,8 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 10%)",
           shadowDark: "hsl(200, 0%, 0%)",
+          lightning: "#f5b700",
+          toastBackgroundColor: "#333",
         },
         voxel: {
           500: "#FF6D04",
