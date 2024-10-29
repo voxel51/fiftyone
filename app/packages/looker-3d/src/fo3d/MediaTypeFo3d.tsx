@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import type * as THREE from "three";
+import * as THREE from "three";
 import { type PerspectiveCamera, Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusBar, StatusTunnel } from "../StatusBar";
@@ -376,6 +376,132 @@ export const MediaTypeFo3dComponent = () => {
     [onChangeView]
   );
 
+  // zoom to selected labels and use them as the new lookAt
+  useHotkey(
+    "KeyZ",
+    async ({ snapshot }) => {
+      const currentSelectedLabels = await snapshot.getPromise(
+        fos.selectedLabels
+      );
+
+      if (currentSelectedLabels.length === 0) {
+        return;
+      }
+
+      const labelBoundingBoxes = [];
+
+      for (const selectedLabel of currentSelectedLabels) {
+        const field = selectedLabel.field;
+        const labelId = selectedLabel.labelId;
+
+        const labelFieldData = sample.sample[field];
+
+        let thisLabel = null;
+
+        if (Array.isArray(labelFieldData)) {
+          // if the field data is an array of labels
+          thisLabel = labelFieldData.find(
+            (l) => l._id === labelId || l.id === labelId
+          );
+        } else if (
+          labelFieldData &&
+          labelFieldData.detections &&
+          Array.isArray(labelFieldData.detections)
+        ) {
+          // if the field data contains detections
+          thisLabel = labelFieldData.detections.find(
+            (l) => l._id === labelId || l.id === labelId
+          );
+        } else {
+          // single label
+          thisLabel = labelFieldData;
+        }
+
+        if (!thisLabel) {
+          continue;
+        }
+
+        const thisLabelDimension = thisLabel.dimensions as [
+          number,
+          number,
+          number
+        ];
+        const thisLabelLocation = thisLabel.location as [
+          number,
+          number,
+          number
+        ];
+
+        const thisLabelBoundingBox = new THREE.Box3();
+        thisLabelBoundingBox.setFromCenterAndSize(
+          new THREE.Vector3(...thisLabelLocation),
+          new THREE.Vector3(...thisLabelDimension)
+        );
+
+        labelBoundingBoxes.push(thisLabelBoundingBox);
+      }
+
+      const unionBoundingBox = labelBoundingBoxes[0].clone();
+
+      for (let i = 1; i < labelBoundingBoxes.length; i++) {
+        unionBoundingBox.union(labelBoundingBoxes[i]);
+      }
+
+      const unionBoundingBoxCenter = unionBoundingBox.getCenter(
+        new THREE.Vector3()
+      );
+      const unionBoundingBoxSize = unionBoundingBox.getSize(
+        new THREE.Vector3()
+      );
+
+      const maxSize = Math.max(
+        unionBoundingBoxSize.x,
+        unionBoundingBoxSize.y,
+        unionBoundingBoxSize.z
+      );
+
+      const newCameraPosition = new THREE.Vector3();
+
+      if (upVector.y === 1) {
+        newCameraPosition.set(
+          unionBoundingBoxCenter.x,
+          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
+          unionBoundingBoxCenter.y + maxSize * 3,
+          unionBoundingBoxCenter.z
+        );
+      } else if (upVector.x === 1) {
+        newCameraPosition.set(
+          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
+          unionBoundingBoxCenter.x + maxSize * 2,
+          unionBoundingBoxCenter.y,
+          unionBoundingBoxCenter.z
+        );
+      } else {
+        // assume z-up
+        newCameraPosition.set(
+          unionBoundingBoxCenter.x,
+          unionBoundingBoxCenter.y,
+          // times 3 (arbitrary) to make sure the camera is not inside the bounding box
+          unionBoundingBoxCenter.z + maxSize * 2
+        );
+      }
+
+      await cameraControlsRef.current.setLookAt(
+        newCameraPosition.x,
+        newCameraPosition.y,
+        newCameraPosition.z,
+        unionBoundingBoxCenter.x,
+        unionBoundingBoxCenter.y,
+        unionBoundingBoxCenter.z,
+        true
+      );
+    },
+    [sample, upVector],
+    {
+      useTransaction: false,
+    }
+  );
+
   useEffect(() => {
     if (!cameraControlsRef.current) {
       return;
@@ -418,7 +544,7 @@ export const MediaTypeFo3dComponent = () => {
         >
           <AdaptiveDpr pixelated />
           <AdaptiveEvents />
-          <CameraControls ref={cameraControlsRef} makeDefault />
+          <CameraControls ref={cameraControlsRef} />
           <Lights lights={foScene?.lights} />
           <Gizmos />
 
