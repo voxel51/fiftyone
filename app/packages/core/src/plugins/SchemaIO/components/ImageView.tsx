@@ -35,7 +35,8 @@ export default function ImageView(props) {
           // execution after operator
 
           if (result?.error) {
-            console.error('Operation failed:', result?.errorMessage);
+            console.log(result?.error);
+            console.log(result?.errorMessage);
           } else {
             openLink();
           }
