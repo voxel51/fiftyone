@@ -2355,3 +2355,5 @@ BUILTIN_OPERATORS = [
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
 ]
+
+BUILTIN_PANELS = []
