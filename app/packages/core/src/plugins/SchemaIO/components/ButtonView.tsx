@@ -1,10 +1,10 @@
+import React from "react";
 import { MuiIconFont } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
-import React from "react";
-import { getColorByCode, getComponentProps } from "../utils";
+import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import Button from "./Button";
 import TooltipProvider from "./TooltipProvider";
@@ -22,6 +22,7 @@ export default function ButtonView(props: ViewPropsType) {
     params = {},
     prompt,
     title,
+    disabled = false,
   } = view;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
@@ -37,8 +38,12 @@ export default function ButtonView(props: ViewPropsType) {
 
   return (
     <Box {...getComponentProps(props, "container")}>
-      <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
+      <TooltipProvider
+        title={disabled ? "" : title}
+        {...getComponentProps(props, "tooltip")}
+      >
         <Button
+          disabled={disabled}
           variant={variant}
           href={href}
           onClick={(e) => {
@@ -66,7 +71,7 @@ export default function ButtonView(props: ViewPropsType) {
 }
 
 function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, variant, color } = props.schema.view;
+  const { label, variant, color, disabled } = props.schema.view;
   const baseProps: ButtonProps = getCommonProps(props);
   if (isNullish(label)) {
     baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
@@ -101,6 +106,18 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
     };
   }
 
+  if (disabled) {
+    const [bgColor, textColor] = getDisabledColors();
+    baseProps.sx["&.Mui-disabled"] = {
+      backgroundColor: variant === "outlined" ? "inherit" : bgColor,
+      color: textColor,
+    };
+    if (["square", "outlined"].includes(variant)) {
+      baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
+        theme.palette.background.field;
+    }
+  }
+
   return baseProps;
 }
 
@@ -110,6 +127,8 @@ function getIconProps(props: ViewPropsType): ButtonProps {
 
 function getCommonProps(props: ViewPropsType): ButtonProps {
   const color = getColor(props);
+  const disabled = props.schema.view?.disabled || false;
+
   return {
     sx: {
       color,
@@ -119,12 +138,20 @@ function getCommonProps(props: ViewPropsType): ButtonProps {
       "&:hover": {
         borderColor: color,
       },
+      ...(disabled
+        ? {
+            opacity: 0.5,
+          }
+        : {}),
     },
   };
 }
 
 function getColor(props: ViewPropsType) {
-  const color = props.schema.view.color;
+  const {
+    schema: { view = {} },
+  } = props;
+  const { color } = view;
   if (color) {
     return getColorByCode(color);
   }

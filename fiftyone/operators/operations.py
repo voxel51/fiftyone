@@ -310,8 +310,9 @@ class Operations(object):
         on_unload=None,
         on_change=None,
         on_change_ctx=None,
-        on_change_view=None,
         on_change_dataset=None,
+        on_change_view=None,
+        on_change_spaces=None,
         on_change_current_sample=None,
         on_change_selected=None,
         on_change_selected_labels=None,
@@ -342,10 +343,12 @@ class Operations(object):
                 changes
             on_change_ctx (None): an operator to invoke when the panel
                 execution context changes
-            on_change_view (None): an operator to invoke when the current view
-                changes
             on_change_dataset (None): an operator to invoke when the current
                 dataset changes
+            on_change_view (None): an operator to invoke when the current view
+                changes
+            on_change_spaces (None): an operator to invoke when the current
+                spaces layout changes
             on_change_current_sample (None): an operator to invoke when the
                 current sample changes
             on_change_selected (None): an operator to invoke when the current
@@ -372,8 +375,9 @@ class Operations(object):
             "on_unload": on_unload,
             "on_change": on_change,
             "on_change_ctx": on_change_ctx,
-            "on_change_view": on_change_view,
             "on_change_dataset": on_change_dataset,
+            "on_change_view": on_change_view,
+            "on_change_spaces": on_change_spaces,
             "on_change_current_sample": on_change_current_sample,
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,

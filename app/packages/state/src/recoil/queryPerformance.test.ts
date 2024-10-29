@@ -3,13 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import { TestSelectorFamily, setMockAtoms } from "../../../../__mocks__/recoil";
-import * as lightning from "./lightning";
+import type { TestSelectorFamily } from "../../../../__mocks__/recoil";
+import { setMockAtoms } from "../../../../__mocks__/recoil";
+import * as queryPerformance from "./queryPerformance";
 
-describe("tests lightning selectors", () => {
+describe("tests query performance selectors", () => {
   it("resolves wildcard indexed fields with database path", () => {
-    const test = <TestSelectorFamily<typeof lightning.lightningPaths>>(
-      (<unknown>lightning.lightningPaths("ground_truth"))
+    const test = <TestSelectorFamily<typeof queryPerformance.indexedPaths>>(
+      (<unknown>queryPerformance.indexedPaths("ground_truth"))
     );
     setMockAtoms({
       dbPath: (p) =>

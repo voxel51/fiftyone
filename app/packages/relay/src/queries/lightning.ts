@@ -34,6 +34,10 @@ export default r(graphql`
         nan
         ninf
       }
+      ... on ObjectIdLightningResult {
+        path
+        values
+      }
       ... on StringLightningResult {
         path
         values

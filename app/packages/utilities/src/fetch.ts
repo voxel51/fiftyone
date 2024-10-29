@@ -129,7 +129,7 @@ export const setFetchFunction = (
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
       signal: controller.signal,
-      referrerPolicy: 'same-origin',
+      referrerPolicy: "same-origin",
     });
 
     if (response.status >= 400) {
@@ -272,7 +272,7 @@ export const getEventSource = (
       method: "POST",
       signal,
       body: JSON.stringify(body),
-      referrerPolicy: 'same-origin',
+      referrerPolicy: "same-origin",
       async onopen(response) {
         if (response.ok) {
           events.onopen && events.onopen();

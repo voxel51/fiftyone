@@ -974,6 +974,7 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
+-   `ctx.spaces` - the current :ref:`Spaces layout <app-spaces>` in the App
 -   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
@@ -1996,6 +1997,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_view")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_spaces(self, ctx):
+            """Implement this method to set panel state/data when the current
+            spaces layout changes.
+
+            The current spaces layout will be available via ``ctx.spaces``.
+            """
+            event = {
+                "data": ctx.spaces,
+                "description": "the current spaces layout",
+            }
+            ctx.panel.set_state("event", "on_change_spaces")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_current_sample(self, ctx):
             """Implement this method to set panel state/data when a new sample
             is loaded in the Sample modal.
@@ -2185,6 +2199,11 @@ The ``surfaces`` key defines the panel's scope:
     :ref:`modal view <app-sample-view>`, which allows you to build interactions
     that focus on individual samples and scenarios
 
+.. note::
+
+   For an example of a modal panel, refer to the
+   `label count panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/label_count>`_.
+
 .. _panel-execution-context:
 
 Execution context
@@ -2247,7 +2266,7 @@ The example code below shows how to access and update panel state.
 
         def decrement(self, ctx):
             count = ctx.panel.get_state("v_stack.h_stack.count", 0)
-            ctx.panel.set_state("v_stack.h_stack.count", count + 1)
+            ctx.panel.set_state("v_stack.h_stack.count", count - 1)
 
         def render(self, ctx):
             panel = types.Object()

@@ -2126,6 +2126,7 @@ __metadata:
     "@eslint/compat": ^1.1.1
     eslint: 9.7.0
     eslint-plugin-react: ^7.35.0
+    eslint-plugin-react-hooks: rc
     globals: ^15.8.0
     jotai: ^2.9.3
     jotai-optics: ^0.4.0
@@ -8712,6 +8713,15 @@ __metadata:
   peerDependencies:
     eslint: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0
   checksum: 23001801f14c1d16bf0a837ca7970d9dd94e7b560384b41db378b49b6e32dc43d6e2790de1bd737a652a86f81a08d6a91f402525061b47719328f586a57e86c3
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-react-hooks@npm:rc":
+  version: 5.1.0-rc-02c0e824-20241028
+  resolution: "eslint-plugin-react-hooks@npm:5.1.0-rc-02c0e824-20241028"
+  peerDependencies:
+    eslint: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0
+  checksum: d4f78c419aadd4bbb775733d39dbfa53e9e2d8c8be16ca8413d48513532ea8b16490d7a58533c96837d300b6c82231e7628654d384cd6a58fffa0dca7c3ece02
   languageName: node
   linkType: hard
 

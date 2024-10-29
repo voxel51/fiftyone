@@ -32,7 +32,6 @@ export namespace State {
     showIndex: boolean;
     showLabel: boolean;
     showTooltip: boolean;
-    sidebarMode: "all" | "best" | "fast";
     timezone: string | null;
     theme: "browser" | "dark" | "light";
     useFrameNumber: boolean;
@@ -124,7 +123,6 @@ export namespace State {
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
-    sidebarMode?: "all" | "best" | "fast";
   }
 
   /**

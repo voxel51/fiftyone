@@ -1,12 +1,8 @@
 import * as fos from "@fiftyone/state";
 import { FLOAT_FIELD } from "@fiftyone/utilities";
 import React from "react";
-import {
-  RecoilValueReadOnly,
-  SetterOrUpdater,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import type { RecoilValueReadOnly, SetterOrUpdater } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import * as state from "./state";
 
@@ -58,7 +54,9 @@ const useNonfinites = (options: { modal: boolean; path: string }) => {
     })
   );
   if (ftype === FLOAT_FIELD) {
-    state.FLOAT_NONFINITES.forEach((key) => list.push(get(key)));
+    for (const key of state.FLOAT_NONFINITES) {
+      list.push(get(key));
+    }
   }
 
   return list
@@ -80,10 +78,10 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
   });
   const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
   const one = useRecoilValue(state.oneBound({ modal, path }));
-  const lightning = useRecoilValue(fos.lightning);
-  const lightningPath = useRecoilValue(fos.isLightningPath(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
 
-  if (lightning && lightningPath && nonfinites.length) {
+  if (queryPerformance && indexed && nonfinites.length) {
     return (
       <span style={{ color: "var(--fo-palette-danger-plainColor)" }}>
         {nonfinites.map(({ key }) => key).join(", ")} present
@@ -91,7 +89,7 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
     );
   }
 
-  if (nonfinites.length == 1 && nonfinites[0].key === "none") {
+  if (nonfinites.length === 1 && nonfinites[0].key === "none") {
     return null;
   }
 
@@ -103,7 +101,9 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
           color={color}
           name={NONFINITES[key]}
           forceColor={true}
-          disabled={one && nonfinites.length === 1 && !(one && hasBounds)}
+          disabled={Boolean(
+            one && nonfinites.length === 1 && !(one && hasBounds)
+          )}
           {...props}
         />
       ))}
