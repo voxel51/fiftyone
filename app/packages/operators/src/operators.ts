@@ -1,5 +1,7 @@
 import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
-import { SpaceNode, spaceNodeFromJSON, SpaceNodeJSON } from "@fiftyone/spaces";
+import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
+import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
+import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus } from "./constants";
