@@ -309,6 +309,66 @@ class Object(BaseType):
 
         return self.view(name, btn)
 
+    def img(
+        self,
+        name,
+        href=None,
+        on_click=None,
+        prompt=False,
+        params=None,
+        point_on_hover=True,
+        height=None,
+        width=None,
+        alt_text=None,
+        **kwargs,
+    ):
+        """Defines an image to display to the user as a :class:`ImageView`.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            ctx.panel.state.my_img = "https://i.imgur.com/TGEZj1Rl.jpg"
+
+            panel = types.Object()
+            panel.img(
+                "my_img",
+                href="https://voxel51.com",
+                on_click=self.do_something,
+                prompt=False,
+                params={"foo": "bar"},
+                point_on_hover=True,
+                height="100px",
+                width="100px",
+                alt_text="My image alt text"
+            )
+
+        Args:
+            name: the name of the property from state
+            href (None): the URL to navigate to when the button is clicked
+            on_click (None): the name of the operator to execute when the button is clicked
+            prompt (False): whether to prompt the user before executing the operator
+            params (None): the parameters to pass to the operator
+            point_on_hover (True): whether to show a pointer when hovering over the image
+            height (None): the height of the image
+            width (None): the width of the image
+            alt_text (None): the alt text of the image
+
+        """
+        img = ImageView(
+            href=href,
+            operator=on_click,
+            params=params,
+            prompt=prompt,
+            cursor=point_on_hover,
+            height=height,
+            width=width,
+            alt=alt_text,
+            **kwargs,
+        )
+
+        return self.view(name, img)
+
     def message(self, name, label, **kwargs):
         """Defines a message to display to the user as a :class:`Notice`.
 
@@ -1782,7 +1842,7 @@ class ImageView(View):
                 "width": "100px",
                 "alt": "My image alt text",
                 "href": "https://voxel51.com",
-                "operator": self.do_something,
+                "operator": "@my/plugin/my_operator" | self.my_operator (in Python Panels),
                 "prompt": False,
                 "params": {"foo": "bar"},
             }
