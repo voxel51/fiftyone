@@ -20,7 +20,7 @@ const useFirstExistingUri = (uris: string[]) => {
 export default function EmptyEmbeddings() {
   const theme = useTheme();
   const secondaryBodyColor = theme.text.secondary;
-  const { firstExistingUri: computeVisUri, exists: hasComputeVisualization } =
+  let { firstExistingUri: computeVisUri, exists: hasComputeVisualization } =
     useFirstExistingUri([
       "@voxel51/brain/compute_visualization",
       "@voxel51/operators/compute_visualization",
@@ -33,7 +33,7 @@ export default function EmptyEmbeddings() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#262626",
+        backgroundColor: theme.background.body,
         margin: 2,
       }}
     >
@@ -68,14 +68,14 @@ export default function EmptyEmbeddings() {
           </Grid>
           <Grid item />
           {!hasComputeVisualization && <OSSContent />}
-          {hasComputeVisualization && <TeamsContent />}
+          {hasComputeVisualization && <ComputeVisContent uri={computeVisUri} />}
         </Grid>
       </Box>
       {hasComputeVisualization && (
         <Box
           sx={{
             position: "absolute",
-            bottom: "100px",
+            bottom: "50px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -120,13 +120,13 @@ function OSSContent() {
   );
 }
 
-function TeamsContent() {
+function ComputeVisContent({ uri }) {
   const theme = useTheme();
   const secondaryBodyColor = theme.text.secondary;
   return (
     <>
       <Grid item>
-        <ComputeVisualizationButton />
+        <ComputeVisualizationButton uri={uri} />
       </Grid>
     </>
   );

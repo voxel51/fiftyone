@@ -4,7 +4,7 @@ import { usePanelId } from "@fiftyone/spaces";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@fiftyone/components";
 
-export default function ComputeVisualizationButton() {
+export default function ComputeVisualizationButton({ uri }) {
   const triggerEvent = usePanelEvent();
   const theme = useTheme();
   const panelId = usePanelId();
@@ -19,7 +19,7 @@ export default function ComputeVisualizationButton() {
       onClick={() => {
         triggerEvent(panelId, {
           params: { delegate: true },
-          operator: "@voxel51/brain/compute_visualization",
+          operator: uri,
           prompt: true,
         });
       }}
