@@ -207,10 +207,7 @@ class DownloadContext(object):
             return
 
         if self._curr_count >= self._last_batch_size:
-            batch_size = next(self._iter_batch_sizes, None)
-            if batch_size is None:
-                return
-
+            batch_size = next(self._iter_batch_sizes)
             self._download_batch(batch_size)
             self._last_batch_size = batch_size
             self._curr_count = 0
