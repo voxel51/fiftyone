@@ -21,7 +21,7 @@ const hideQueryPerformanceToast = atom({
 });
 
 const QueryPerformanceToast = () => {
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(true);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
@@ -44,7 +44,7 @@ const QueryPerformanceToast = () => {
   return createPortal(
     <Toast
       duration={SHOWN_FOR}
-      layout={{ bottom: '100px', vertical: "bottom", horizontal: "center"}}
+      layout={{ bottom: '100px', vertical: "bottom", horizontal: "center", backgroundColor: theme.custom.toastBackgroundColor}}
       primary={(setOpen) => {
         return (
           <Button
@@ -81,7 +81,7 @@ const QueryPerformanceToast = () => {
       message={
         <>
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Bolt sx={{ color: "#f5b700", marginRight: "8px" }} />
+            <Bolt sx={{ color: theme.custom.lightning, marginRight: "8px" }} />
             <Typography
               variant="subtitle1"
               sx={{ fontWeight: 500, marginRight: "8px", color: theme.text.primary }}
@@ -91,7 +91,7 @@ const QueryPerformanceToast = () => {
             <Typography
               variant="caption"
               sx={{
-                color: "#f5b700",
+                color: theme.custom.lightning,
                 borderRadius: "2px",
                 padding: "2px 4px",
                 fontSize: "1rem",
