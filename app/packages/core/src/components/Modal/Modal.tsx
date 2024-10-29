@@ -13,6 +13,7 @@ import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers } from "./hooks";
 import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+import { ModalSample } from "./ModalSamplePlugin";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -182,14 +183,13 @@ const Modal = () => {
   const onLookerSetSubscribers = useRef<((looker: fos.Lookers) => void)[]>([]);
 
   const onLookerSet = useCallback((looker: fos.Lookers) => {
-    onLookerSetSubscribers.current.forEach((sub) => sub(looker));
-
-    looker.addEventListener("close", modalCloseHandler);
+    // onLookerSetSubscribers.current.forEach((sub) => sub(looker));
+    // looker.addEventListener("close", modalCloseHandler);
   }, []);
 
   const setActiveLookerRef = useCallback(
     (looker: fos.Lookers) => {
-      activeLookerRef.current = looker;
+      // activeLookerRef.current = looker;
       onLookerSet(looker);
     },
     [onLookerSet]
@@ -214,7 +214,8 @@ const Modal = () => {
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
           <ModalNavigation onNavigate={onNavigate} />
           <SpacesContainer>
-            <ModalSpace />
+            {/* <ModalSpace /> */}
+            <ModalSample />
           </SpacesContainer>
           <SidebarContainer>
             <SidebarPanelBlendInDiv />

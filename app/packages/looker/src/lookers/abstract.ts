@@ -129,12 +129,12 @@ export abstract class AbstractLooker<
     this.ctx = this.canvas.getContext("2d");
 
     this.resizeObserver = new ResizeObserver(() => {
-      const box = getElementBBox(this.lookerElement.element);
-      if (box[2] && box[3] && this.lookerElement) {
-        this.updater((s) => ({ ...s, windowBBox: box }));
-      } else {
-        this.updater({});
-      }
+      // const box = getElementBBox(this.lookerElement.element);
+      // if (box[2] && box[3] && this.lookerElement) {
+      //   this.updater((s) => ({ ...s, windowBBox: box }));
+      // } else {
+      //   this.updater({});
+      // }
     });
 
     this.rootEvents = {};
@@ -223,19 +223,20 @@ export abstract class AbstractLooker<
   }
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
-    return (eventType: string, detail: any) => {
-      if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, {
-          shiftKey: detail,
-          id: this.sample.id,
-          sample: this.sample,
-          symbol: this.state.config.symbol,
-        });
-        return;
-      }
+    return () => {};
+    // return (eventType: string, detail: any) => {
+    //   if (eventType === "selectthumbnail") {
+    //     this.dispatchEvent(eventType, {
+    //       shiftKey: detail,
+    //       id: this.sample.id,
+    //       sample: this.sample,
+    //       symbol: this.state.config.symbol,
+    //     });
+    //     return;
+    //   }
 
-      this.dispatchEvent(eventType, detail);
-    };
+    //   this.dispatchEvent(eventType, detail);
+    // };
   }
 
   public batchUpdater(cb: () => unknown) {
@@ -493,7 +494,7 @@ export abstract class AbstractLooker<
       disabled: false,
     });
     element.appendChild(this.lookerElement.element);
-    !dimensions && this.resizeObserver.observe(element);
+    // !dimensions && this.resizeObserver.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
