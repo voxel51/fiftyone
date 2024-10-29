@@ -4,6 +4,7 @@ import HeaderView from "./HeaderView";
 import { getComponentProps } from "../utils";
 import { usePanelId } from "@fiftyone/spaces";
 import { usePanelEvent } from "@fiftyone/operators";
+import { OperatorResult } from "@fiftyone/operators/src/operators";
 
 export default function ImageView(props) {
   const { schema, data } = props;
@@ -15,6 +16,7 @@ export default function ImageView(props) {
     operator,
     prompt = false,
     params,
+    cursor = true,
   } = schema?.view || {};
   const imageURI = data ?? schema?.default;
 
@@ -22,18 +24,27 @@ export default function ImageView(props) {
   const handleClick = usePanelEvent();
 
   const onClick = () => {
-    // ordering matters: execute operator first then redirect if defined
-
     if (operator) {
       handleClick(panelId, {
         params: params,
         operator,
         prompt,
-      });
-    }
+        callback: (result: OperatorResult) => {
+          // execution after operator
 
-    if (href) {
-      window.open(href, "_blank");
+          if (result?.error) {
+            console.log(result?.error);
+            console.log(result?.errorMessage);
+          } else {
+            if (href) window.open(href, "_blank");
+          }
+        },
+      });
+    } else {
+      // execute if operator not defined
+      if (href) {
+        window.open(href, "_blank");
+      }
     }
   };
 
@@ -46,7 +57,7 @@ export default function ImageView(props) {
         width={width}
         alt={alt}
         onClick={onClick}
-        style={{ cursor: href ? "pointer" : "default" }} // Change cursor based on href
+        style={{ cursor: cursor ? "pointer" : "default" }} // Change cursor based on href
         {...getComponentProps(props, "image")}
       />
     </Box>
