@@ -1,5 +1,5 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
+import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import Embeddings from "./Embeddings";
 import EmbeddingsTabIndicator from "./EmbeddingsTabIndicator";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
@@ -10,7 +10,7 @@ registerComponent({
   component: Embeddings,
   type: PluginComponentType.Panel,
   activator: () => true,
-  Icon: ScatterPlotIcon,
+  Icon: WorkspacesIcon,
   panelOptions: {
     TabIndicator: EmbeddingsTabIndicator,
     priority: BUILT_IN_PANEL_PRIORITY_CONST,
