@@ -23,6 +23,8 @@ export default function ImageView(props) {
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
 
+  const openLink = () => href && window.open(href, "_blank");
+
   const onClick = () => {
     if (operator) {
       handleClick(panelId, {
@@ -33,18 +35,15 @@ export default function ImageView(props) {
           // execution after operator
 
           if (result?.error) {
-            console.log(result?.error);
-            console.log(result?.errorMessage);
+            console.error('Operation failed:', result?.errorMessage);
           } else {
-            if (href) window.open(href, "_blank");
+            openLink();
           }
         },
       });
     } else {
       // execute if operator not defined
-      if (href) {
-        window.open(href, "_blank");
-      }
+      openLink();
     }
   };
 
