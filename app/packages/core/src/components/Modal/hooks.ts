@@ -1,16 +1,25 @@
 import * as fos from "@fiftyone/state";
 import { useHelpPanel, useJSONPanel } from "@fiftyone/state";
-import { useCallback, useContext } from "react";
+import { useCallback, useContext, useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import { modalContext } from "./modal-context";
 
 export const useLookerHelpers = () => {
   const jsonPanel = useJSONPanel();
   const helpPanel = useHelpPanel();
+
+  // todo: jsonPanel and helpPanel are not referentially stable
+  // so use refs here
+  const jsonPanelRef = useRef(jsonPanel);
+  const helpPanelRef = useRef(helpPanel);
+
+  jsonPanelRef.current = jsonPanel;
+  helpPanelRef.current = helpPanel;
+
   const onNavigate = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
-  }, [helpPanel, jsonPanel]);
+    jsonPanelRef.current?.close();
+    helpPanelRef.current?.close();
+  }, []);
 
   return {
     jsonPanel,
