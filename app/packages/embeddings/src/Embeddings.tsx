@@ -9,6 +9,7 @@ import {
   OpenWith,
   Warning,
   CenterFocusWeak,
+  Add,
 } from "@mui/icons-material";
 import { useBrainResultsSelector } from "./useBrainResult";
 import { useLabelSelector } from "./useLabelSelector";
@@ -22,9 +23,10 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import { Link } from "@mui/material";
-import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
+import ComputeVisualizationButton from "./ComputeVisualizationButton";
+import EmptyEmbeddings from "./EmptyEmbeddings";
+import useComputeVisualization from "./useComputeVisualization";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -50,6 +52,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const embeddingsDocumentationLink = useExternalLink(
     "https://docs.voxel51.com"
   );
+  const computeViz = useComputeVisualization();
 
   useEffect(() => {
     setPanelCloseEffect(() => {
@@ -88,6 +91,14 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 resultsPlacement="bottom-start"
                 containerStyle={selectorStyle}
               />
+            )}
+            {computeViz.isAvailable && (
+              <PlotOption
+                to={() => computeViz.prompt()}
+                title={"Compute visualization"}
+              >
+                <Add />
+              </PlotOption>
             )}
             {!plotSelection.selectionIsExternal && (
               <PlotOption
@@ -156,24 +167,5 @@ export default function Embeddings({ containerHeight, dimensions }) {
       </EmbeddingsContainer>
     );
 
-  return (
-    <Loading style={{ background: theme.background.mediaSpace }}>
-      <NotFound style={{ textAlign: "center" }}>
-        <h3>No embeddings visualizations found.</h3>
-        <p>
-          <Link
-            style={{ color: theme.text.primary }}
-            href="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
-          >
-            Learn more
-          </Link>{" "}
-          about using this feature.
-        </p>
-      </NotFound>
-    </Loading>
-  );
+  return <EmptyEmbeddings />;
 }
-
-const NotFound = styled.div`
-  text-align: center;
-`;

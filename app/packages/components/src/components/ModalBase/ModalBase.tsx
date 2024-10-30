@@ -71,9 +71,9 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
-    if (!secondaryCallback) {
+    setTimeout(() => {
       setOpen(false);
-    }
+    }, 500); // 500 milliseconds = 0.5 second
   };
 
   if (typeof modal?.textAlign === "string") {
@@ -173,9 +173,15 @@ const ModalBase: React.FC<ModalBaseProps> = ({
         !primaryButtonView.params.tags ||
         primaryButtonView.params.tags.length === 0)
     ) {
-      setPrimaryButtonView({ ...primaryButtonView, disabled: true });
+      setPrimaryButtonView({
+        ...primaryButtonView,
+        disabled: primaryButtonView?.disabled || true,
+      });
     } else {
-      setPrimaryButtonView({ ...primaryButtonView, disabled: false });
+      setPrimaryButtonView({
+        ...primaryButtonView,
+        disabled: primaryButtonView?.disabled || false,
+      });
     }
   }, [primaryButtonView.params]);
 
@@ -198,7 +204,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
       </Box>
       <Modal
         open={open}
-        onClose={handleClose}
+        onClose={() => setOpen(false)}
         aria-labelledby="modal-title"
         aria-describedby="modal-subtitle"
       >

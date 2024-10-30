@@ -1,5 +1,5 @@
 import { IconButton, MenuItem, Select } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";
@@ -33,11 +33,33 @@ export default function DropdownView(props: ViewPropsType) {
     color,
     variant,
     icon,
+    addOnClickToMenuItems = false,
   } = view;
   const [IconComponent, setIconComponent] =
     useState<React.ComponentType<any> | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
   const [selected, setSelected] = useState(false);
+
+  const handleOnChange = useCallback(
+    (value: any) => {
+      const computedValue =
+        Array.isArray(value) && type !== "array"
+          ? value.join(separator)
+          : value;
+      onChange(path, computedValue);
+      setUserChanged();
+    },
+    [onChange, path, separator, setUserChanged, type]
+  );
+
+  // dynamically import the icon component
+  useEffect(() => {
+    if (icon && iconImports[icon]) {
+      iconImports[icon]().then((module) => {
+        setIconComponent(() => module.default);
+      });
+    }
+  }, [icon]);
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -122,15 +144,6 @@ export default function DropdownView(props: ViewPropsType) {
     }
   );
 
-  // dynamically import the icon component
-  useEffect(() => {
-    if (icon && iconImports[icon]) {
-      iconImports[icon]().then((module) => {
-        setIconComponent(() => module.default);
-      });
-    }
-  }, [icon]);
-
   const renderIcon = () => {
     if (!IconComponent) return null;
 
@@ -171,12 +184,7 @@ export default function DropdownView(props: ViewPropsType) {
         }}
         onChange={(e) => {
           const value = e.target.value;
-          const computedValue =
-            Array.isArray(value) && type !== "array"
-              ? value.join(separator)
-              : value;
-          onChange(path, computedValue);
-          setUserChanged();
+          handleOnChange(value);
         }}
         multiple={multiple}
         {...selectProps}
@@ -192,6 +200,11 @@ export default function DropdownView(props: ViewPropsType) {
           <MenuItem
             key={value}
             value={value}
+            onClick={() => {
+              if (addOnClickToMenuItems) {
+                handleOnChange(value);
+              }
+            }}
             {...getComponentProps(props, "optionContainer")}
           >
             <ChoiceMenuItemBody {...choice} {...props} />
