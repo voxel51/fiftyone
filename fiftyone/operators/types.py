@@ -2671,8 +2671,12 @@ class Container(BaseType):
     def __init__(self, **kwargs):
         self._kwargs = kwargs
 
+    def kwargs_to_json(self):
+        view_kwargs = {**self._kwargs}
+        return _convert_callables_to_operator_uris(view_kwargs)
+
     def to_json(self):
-        return {**super().to_json(), **self._kwargs}
+        return {**super().to_json(), **self.kwargs_to_json()}
 
 
 class PaperContainer(Container):
