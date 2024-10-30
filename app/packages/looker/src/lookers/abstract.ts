@@ -223,20 +223,19 @@ export abstract class AbstractLooker<
   }
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
-    return () => {};
-    // return (eventType: string, detail: any) => {
-    //   if (eventType === "selectthumbnail") {
-    //     this.dispatchEvent(eventType, {
-    //       shiftKey: detail,
-    //       id: this.sample.id,
-    //       sample: this.sample,
-    //       symbol: this.state.config.symbol,
-    //     });
-    //     return;
-    //   }
+    return (eventType: string, detail: any) => {
+      if (eventType === "selectthumbnail") {
+        this.dispatchEvent(eventType, {
+          shiftKey: detail,
+          id: this.sample.id,
+          sample: this.sample,
+          symbol: this.state.config.symbol,
+        });
+        return;
+      }
 
-    //   this.dispatchEvent(eventType, detail);
-    // };
+      this.dispatchEvent(eventType, detail);
+    };
   }
 
   public batchUpdater(cb: () => unknown) {
