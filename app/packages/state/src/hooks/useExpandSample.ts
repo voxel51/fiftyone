@@ -65,20 +65,26 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return { id: id.description, groupId };
         };
 
-        const next = async (offset?: number) => {
-          const result = await iter(cursor.next(offset ?? 1));
+        const next = async (offset: number = 1) => {
+          const nextId = await cursor.next(offset);
+          const nextCheckId = await cursor.next(offset, true);
+
+          const result = await iter(Promise.resolve(nextId));
           return {
-            hasNext: Boolean(await cursor.next(offset ?? 1, true)),
+            hasNext: Boolean(nextCheckId),
             hasPrevious: true,
             ...result,
           };
         };
 
         const previous = async (offset: number) => {
-          const result = await iter(cursor.next(-1 * (offset ?? 1)));
+          const prevId = await cursor.next(-1 * offset);
+          const prevCheckId = await cursor.next(-1 * offset, true);
+
+          const result = await iter(Promise.resolve(prevId));
           return {
             hasNext: true,
-            hasPrevious: Boolean(await cursor.next(-1 * (offset ?? 1), true)),
+            hasPrevious: Boolean(prevCheckId),
             ...result,
           };
         };

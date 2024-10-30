@@ -1,6 +1,6 @@
 interface DebouncedNavigatorOptions {
   isNavigationIllegalWhen: () => boolean;
-  navigateFn: (offset: number) => Promise<void> | void;
+  navigateFn: (offset: number) => Promise<void>;
   onNavigationStart: () => void;
   debounceTime?: number;
 }

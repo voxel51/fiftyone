@@ -10,8 +10,8 @@ export const useLookerHelpers = () => {
 
   // todo: jsonPanel and helpPanel are not referentially stable
   // so use refs here
-  const jsonPanelRef = useRef(jsonPanel);
-  const helpPanelRef = useRef(helpPanel);
+  const jsonPanelRef = useRef<typeof jsonPanel>(jsonPanel);
+  const helpPanelRef = useRef<typeof helpPanel>(helpPanel);
 
   jsonPanelRef.current = jsonPanel;
   helpPanelRef.current = helpPanel;
