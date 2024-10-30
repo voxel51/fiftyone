@@ -21,7 +21,7 @@ const hideQueryPerformanceToast = atom({
 });
 
 const QueryPerformanceToast = () => {
-  const [shown, setShown] = useState(true);
+  const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
@@ -54,7 +54,7 @@ const QueryPerformanceToast = () => {
               open(QP_MODE, "_blank")?.focus();
               setOpen(false);
             }}
-            sx={{ marginLeft: "auto", backgroundColor: theme.primary.main, color: theme.text.primary, boxShadow: 0 }} // Right align the button
+            sx={{ marginLeft: "auto", backgroundColor: theme.primary.main, color: "#FFFFFF", boxShadow: 0 }} // Right align the button
           >
             View Documentation
           </Button>
