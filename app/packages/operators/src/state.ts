@@ -946,6 +946,12 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
         callback?.(result);
+        if (result.error) {
+          notify({
+            msg: result.errorMessage || "Failed to execute an operation",
+            variant: "error",
+          });
+        }
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =
