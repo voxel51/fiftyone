@@ -1710,6 +1710,19 @@ class DeleteSavedView(foo.Operator):
         ctx.dataset.delete_saved_view(name)
 
 
+class ListDatasets(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_datasets",
+            label="List datasets",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        return {"datasets": fo.list_datasets()}
+
+
 class ListWorkspaces(foo.Operator):
     @property
     def config(self):
@@ -2224,6 +2237,7 @@ BUILTIN_OPERATORS = (
         SaveView(_builtin=True),
         EditSavedViewInfo(_builtin=True),
         DeleteSavedView(_builtin=True),
+        ListDatasets(_builtin=True),
         ListWorkspaces(_builtin=True),
         LoadWorkspace(_builtin=True),
         SaveWorkspace(_builtin=True),
