@@ -16,6 +16,8 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 
+from fiftyone.operators.brain.compute_visualization import ComputeVisualization
+
 
 class EditFieldInfo(foo.Operator):
     @property
@@ -2354,6 +2356,7 @@ BUILTIN_OPERATORS = [
     DeleteWorkspace(_builtin=True),
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
+    ComputeVisualization(_builtin=True),
 ]
 
 BUILTIN_PANELS = []
