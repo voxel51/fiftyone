@@ -84,7 +84,7 @@ export type DatasetPageQuery$data = {
     readonly defaultGroupSlice: string | null;
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  };
+  } | null;
   readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type DatasetPageQuery = {

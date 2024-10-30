@@ -89,7 +89,7 @@ export type datasetQuery$data = {
       readonly slug: string | null;
     } | null;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  };
+  } | null;
   readonly " $fragmentSpreads": FragmentRefs<"configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type datasetQuery = {
@@ -463,80 +463,73 @@ v27 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "datasetId",
   "storageKey": null
 },
 v28 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "datasetId",
+  "name": "info",
   "storageKey": null
 },
 v29 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "info",
+  "name": "lastLoadedAt",
   "storageKey": null
 },
 v30 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "lastLoadedAt",
+  "name": "mediaType",
   "storageKey": null
 },
 v31 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "mediaType",
+  "name": "version",
   "storageKey": null
 },
 v32 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "version",
+  "name": "key",
   "storageKey": null
 },
 v33 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "key",
+  "name": "timestamp",
   "storageKey": null
 },
 v34 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "timestamp",
+  "name": "viewStages",
   "storageKey": null
 },
 v35 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "viewStages",
+  "name": "cls",
   "storageKey": null
 },
 v36 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "cls",
-  "storageKey": null
-},
-v37 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "type",
   "storageKey": null
 },
-v38 = [
+v37 = [
   {
     "alias": null,
     "args": null,
@@ -546,56 +539,56 @@ v38 = [
   },
   (v15/*: any*/)
 ],
-v39 = {
+v38 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "labels",
   "storageKey": null
 },
-v40 = {
+v39 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "edges",
   "storageKey": null
 },
-v41 = {
+v40 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "ftype",
   "storageKey": null
 },
-v42 = {
+v41 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "subfield",
   "storageKey": null
 },
-v43 = {
+v42 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "embeddedDocType",
   "storageKey": null
 },
-v44 = {
+v43 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "dbField",
   "storageKey": null
 },
-v45 = {
+v44 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v46 = [
+v45 = [
   (v7/*: any*/),
   {
     "alias": null,
@@ -619,7 +612,7 @@ v46 = [
         "name": "field",
         "storageKey": null
       },
-      (v37/*: any*/)
+      (v36/*: any*/)
     ],
     "storageKey": null
   },
@@ -649,7 +642,7 @@ v46 = [
     "storageKey": null
   }
 ],
-v47 = {
+v46 = {
   "kind": "Variable",
   "name": "datasetName",
   "variableName": "name"
@@ -658,9 +651,8 @@ v48 = [
   (v19/*: any*/),
   (v41/*: any*/),
   (v42/*: any*/),
-  (v43/*: any*/),
-  (v29/*: any*/),
-  (v45/*: any*/)
+  (v28/*: any*/),
+  (v44/*: any*/)
 ];
 return {
   "fragment": {
@@ -897,7 +889,6 @@ return {
                 "storageKey": null
               },
               (v25/*: any*/),
-              (v26/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -929,7 +920,6 @@ return {
           },
           (v23/*: any*/),
           (v27/*: any*/),
-          (v28/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -940,7 +930,6 @@ return {
           (v12/*: any*/),
           (v29/*: any*/),
           (v30/*: any*/),
-          (v31/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -948,7 +937,7 @@ return {
             "name": "parentMediaType",
             "storageKey": null
           },
-          (v32/*: any*/),
+          (v31/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -957,10 +946,10 @@ return {
             "name": "brainMethods",
             "plural": true,
             "selections": [
-              (v33/*: any*/),
               (v32/*: any*/),
+              (v31/*: any*/),
+              (v33/*: any*/),
               (v34/*: any*/),
-              (v35/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -969,7 +958,7 @@ return {
                 "name": "config",
                 "plural": false,
                 "selections": [
-                  (v36/*: any*/),
+                  (v35/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -998,7 +987,7 @@ return {
                     "name": "supportsPrompts",
                     "storageKey": null
                   },
-                  (v37/*: any*/),
+                  (v36/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -1026,7 +1015,7 @@ return {
             "kind": "LinkedField",
             "name": "defaultMaskTargets",
             "plural": true,
-            "selections": (v38/*: any*/),
+            "selections": (v37/*: any*/),
             "storageKey": null
           },
           {
@@ -1037,8 +1026,8 @@ return {
             "name": "defaultSkeleton",
             "plural": false,
             "selections": [
-              (v39/*: any*/),
-              (v40/*: any*/)
+              (v38/*: any*/),
+              (v39/*: any*/)
             ],
             "storageKey": null
           },
@@ -1050,10 +1039,10 @@ return {
             "name": "evaluations",
             "plural": true,
             "selections": [
-              (v33/*: any*/),
               (v32/*: any*/),
+              (v31/*: any*/),
+              (v33/*: any*/),
               (v34/*: any*/),
-              (v35/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -1062,7 +1051,7 @@ return {
                 "name": "config",
                 "plural": false,
                 "selections": [
-                  (v36/*: any*/),
+                  (v35/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -1092,7 +1081,7 @@ return {
             "plural": true,
             "selections": [
               (v7/*: any*/),
-              (v31/*: any*/)
+              (v30/*: any*/)
             ],
             "storageKey": null
           },
@@ -1112,7 +1101,7 @@ return {
                 "kind": "LinkedField",
                 "name": "targets",
                 "plural": true,
-                "selections": (v38/*: any*/),
+                "selections": (v37/*: any*/),
                 "storageKey": null
               }
             ],
@@ -1127,8 +1116,8 @@ return {
             "plural": true,
             "selections": [
               (v7/*: any*/),
-              (v39/*: any*/),
-              (v40/*: any*/)
+              (v38/*: any*/),
+              (v39/*: any*/)
             ],
             "storageKey": null
           },
@@ -1154,13 +1143,13 @@ return {
             "name": "frameFields",
             "plural": true,
             "selections": [
+              (v40/*: any*/),
               (v41/*: any*/),
               (v42/*: any*/),
               (v43/*: any*/),
               (v19/*: any*/),
               (v44/*: any*/),
-              (v45/*: any*/),
-              (v29/*: any*/)
+              (v28/*: any*/)
             ],
             "storageKey": null
           },
@@ -1171,7 +1160,7 @@ return {
             "kind": "LinkedField",
             "name": "frameIndexes",
             "plural": true,
-            "selections": (v46/*: any*/),
+            "selections": (v45/*: any*/),
             "storageKey": null
           },
           {
@@ -1181,7 +1170,7 @@ return {
             "kind": "LinkedField",
             "name": "sampleIndexes",
             "plural": true,
-            "selections": (v46/*: any*/),
+            "selections": (v45/*: any*/),
             "storageKey": null
           },
           {
@@ -1197,8 +1186,7 @@ return {
               (v42/*: any*/),
               (v43/*: any*/),
               (v44/*: any*/),
-              (v45/*: any*/),
-              (v29/*: any*/)
+              (v28/*: any*/)
             ],
             "storageKey": null
           },
@@ -1240,7 +1228,7 @@ return {
       {
         "alias": null,
         "args": [
-          (v47/*: any*/)
+          (v46/*: any*/)
         ],
         "concreteType": "SavedView",
         "kind": "LinkedField",
@@ -1262,7 +1250,7 @@ return {
             "name": "lastModifiedAt",
             "storageKey": null
           },
-          (v30/*: any*/)
+          (v29/*: any*/)
         ],
         "storageKey": null
       },
@@ -1285,7 +1273,7 @@ return {
             "plural": true,
             "selections": [
               (v7/*: any*/),
-              (v37/*: any*/),
+              (v36/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -1309,7 +1297,7 @@ return {
       {
         "alias": null,
         "args": [
-          (v47/*: any*/),
+          (v46/*: any*/),
           {
             "kind": "Variable",
             "name": "viewStages",
@@ -1328,7 +1316,7 @@ return {
             "kind": "LinkedField",
             "name": "fieldSchema",
             "plural": true,
-            "selections": (v48/*: any*/),
+            "selections": (v47/*: any*/),
             "storageKey": null
           },
           {
@@ -1338,7 +1326,7 @@ return {
             "kind": "LinkedField",
             "name": "frameFieldSchema",
             "plural": true,
-            "selections": (v48/*: any*/),
+            "selections": (v47/*: any*/),
             "storageKey": null
           }
         ],

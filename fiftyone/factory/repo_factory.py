@@ -67,7 +67,7 @@ class RepositoryFactory(object):
 
         return RepositoryFactory.repos[MongoOrchestratorRepo.COLLECTION_NAME]
 
-    def execution_store_repo() -> ExecutionStoreRepo:
+    def execution_store_repo() -> ExecutionStoreRepo:  # pylint: disable=E0211
         """Factory method for execution store repository."""
         if (
             MongoExecutionStoreRepo.COLLECTION_NAME
