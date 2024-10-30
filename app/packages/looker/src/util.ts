@@ -461,8 +461,9 @@ export const createWorker = (
     "error",
     (error) => {
       dispatchEvent("error", error);
+      abortController?.abort();
     },
-    { signal: abortController.signal }
+    { signal: abortController?.signal }
   );
 
   worker.addEventListener(
@@ -475,7 +476,7 @@ export const createWorker = (
         dispatchEvent("error", new ErrorEvent("error", { error }));
       }
     },
-    { signal: abortController.signal }
+    { signal: abortController?.signal }
   );
 
   worker.postMessage({
@@ -496,7 +497,7 @@ export const createWorker = (
 
       listeners[method].forEach((callback) => callback(worker, args));
     },
-    { signal: abortController.signal }
+    { signal: abortController?.signal }
   );
   return worker;
 };
