@@ -173,9 +173,15 @@ const ModalBase: React.FC<ModalBaseProps> = ({
         !primaryButtonView.params.tags ||
         primaryButtonView.params.tags.length === 0)
     ) {
-      setPrimaryButtonView({ ...primaryButtonView, disabled: true });
+      setPrimaryButtonView({
+        ...primaryButtonView,
+        disabled: primaryButtonView?.disabled || true,
+      });
     } else {
-      setPrimaryButtonView({ ...primaryButtonView, disabled: false });
+      setPrimaryButtonView({
+        ...primaryButtonView,
+        disabled: primaryButtonView?.disabled || false,
+      });
     }
   }, [primaryButtonView.params]);
 
@@ -185,6 +191,8 @@ const ModalBase: React.FC<ModalBaseProps> = ({
       params: { ...prevButtonView.params, tags }, // Add tags to existing params
     }));
   }, []);
+
+  console.log(primaryButtonView.disabled);
 
   return (
     <>
