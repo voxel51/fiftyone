@@ -8,7 +8,6 @@ import * as atoms from "../recoil/atoms";
 import * as groupAtoms from "../recoil/groups";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
-import { useCallback } from "react";
 
 export type Sample = Exclude<
   Exclude<
@@ -66,20 +65,20 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return { id: id.description, groupId };
         };
 
-        const next = async (skip: number) => {
-          const result = await iter(cursor.next(skip));
+        const next = async (offset?: number) => {
+          const result = await iter(cursor.next(offset ?? 1));
           return {
-            hasNext: Boolean(await cursor.next(skip, true)),
+            hasNext: Boolean(await cursor.next(offset ?? 1, true)),
             hasPrevious: true,
             ...result,
           };
         };
 
-        const previous = async (skip: number) => {
-          const result = await iter(cursor.next(-1 * skip));
+        const previous = async (offset: number) => {
+          const result = await iter(cursor.next(-1 * (offset ?? 1)));
           return {
             hasNext: true,
-            hasPrevious: Boolean(await cursor.next(-1 * skip, true)),
+            hasPrevious: Boolean(await cursor.next(-1 * (offset ?? 1), true)),
             ...result,
           };
         };
