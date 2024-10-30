@@ -3,7 +3,7 @@ import {
   LookerArrowRightIcon,
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 
@@ -63,17 +63,92 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   const modal = useRecoilValue(fos.modalSelector);
   const navigation = useRecoilValue(fos.modalNavigation);
 
-  const navigateNext = useCallback(async () => {
-    onNavigate();
-    const result = await navigation?.next();
-    setModal(result);
+  const nextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const accumulatedNextOffsetRef = useRef(0);
+
+  const previousTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const accumulatedPreviousOffsetRef = useRef(0);
+
+  const modalRef = useRef(modal);
+
+  modalRef.current = modal;
+
+  const navigateNext = useCallback(() => {
+    if (!modalRef.current?.hasNext) {
+      return;
+    }
+
+    if (!nextTimeoutRef.current) {
+      // First click: navigate immediately
+      onNavigate();
+      navigation?.next(1).then(setModal);
+      accumulatedNextOffsetRef.current = 0;
+      console.log(">!>Immediate next execution");
+    } else {
+      // Subsequent clicks: accumulate offset
+      accumulatedNextOffsetRef.current += 1;
+      console.log(">!>Debouncing next");
+    }
+
+    // Reset debounce timer
+    if (nextTimeoutRef.current) {
+      clearTimeout(nextTimeoutRef.current);
+    }
+
+    nextTimeoutRef.current = setTimeout(() => {
+      if (accumulatedNextOffsetRef.current > 0) {
+        onNavigate();
+        navigation?.next(accumulatedNextOffsetRef.current).then(setModal);
+        accumulatedNextOffsetRef.current = 0;
+      }
+      nextTimeoutRef.current = null;
+    }, 200);
   }, [navigation, onNavigate, setModal]);
 
-  const navigatePrevious = useCallback(async () => {
-    onNavigate();
-    const result = await navigation?.previous();
-    setModal(result);
-  }, [onNavigate, navigation, setModal]);
+  const navigatePrevious = useCallback(() => {
+    if (!modalRef.current?.hasPrevious) {
+      return;
+    }
+
+    if (!previousTimeoutRef.current) {
+      // First click: navigate immediately
+      onNavigate();
+      navigation?.previous(1).then(setModal);
+      accumulatedPreviousOffsetRef.current = 0;
+      console.log(">!>Immediate previous execution");
+    } else {
+      // Subsequent clicks: accumulate offset
+      accumulatedPreviousOffsetRef.current += 1;
+      console.log(">!>Debouncing previous");
+    }
+
+    // Reset debounce timer
+    if (previousTimeoutRef.current) {
+      clearTimeout(previousTimeoutRef.current);
+    }
+
+    previousTimeoutRef.current = setTimeout(() => {
+      if (accumulatedPreviousOffsetRef.current > 0) {
+        onNavigate();
+        navigation
+          ?.previous(accumulatedPreviousOffsetRef.current)
+          .then(setModal);
+        accumulatedPreviousOffsetRef.current = 0;
+      }
+      previousTimeoutRef.current = null;
+    }, 200);
+  }, [navigation, onNavigate, setModal]);
+
+  useEffect(() => {
+    return () => {
+      if (nextTimeoutRef.current) {
+        clearTimeout(nextTimeoutRef.current);
+      }
+      if (previousTimeoutRef.current) {
+        clearTimeout(previousTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
@@ -122,6 +197,10 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           onClick={navigateNext}
         >
           <LookerArrowRightIcon data-cy="nav-right-button" />
+          <div>oi</div>
+          {accumulatedNextOffsetRef.current > 0 && (
+            <div>{accumulatedNextOffsetRef.current}</div>
+          )}
         </Arrow>
       )}
     </>
