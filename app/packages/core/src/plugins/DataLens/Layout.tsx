@@ -4,7 +4,6 @@ export type TabConfig = {
   id: string;
   label: string;
   content: React.ReactNode;
-  footer?: React.ReactNode;
 };
 
 /**
@@ -16,8 +15,8 @@ export const Layout = ({
   onTabClick,
 }: {
   tabs: TabConfig[];
-  active: number;
-  onTabClick: (tabIdx: number) => void;
+  active: string;
+  onTabClick: (tabId: string) => void;
 }) => {
   return (
     <>
@@ -37,8 +36,8 @@ export const Layout = ({
               value={active}
               onChange={(_, newValue) => onTabClick(newValue)}
             >
-              {tabs.map((tab, idx) => (
-                <Tab key={tab.label} label={tab.label} value={idx} />
+              {tabs.map((tab) => (
+                <Tab key={tab.id} label={tab.label} value={tab.id} />
               ))}
             </Tabs>
 
@@ -49,7 +48,9 @@ export const Layout = ({
         </Box>
 
         {/*Tab content*/}
-        <Box sx={{ m: 2 }}>{tabs[active].content}</Box>
+        <Box sx={{ m: 2 }}>
+          {tabs.find((tab) => tab.id === active)?.content}
+        </Box>
       </Box>
     </>
   );

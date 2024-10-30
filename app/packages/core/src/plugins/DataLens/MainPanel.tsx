@@ -12,6 +12,12 @@ import {
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { Snackbar } from "@mui/material";
 
+type ExtendedTabConfig = TabConfig & {
+  isVisible: boolean;
+};
+
+type TabId = "empty-state" | "query-data" | "manage-datasources";
+
 /**
  * Entry point for Data Lens panel.
  *
@@ -21,17 +27,21 @@ import { Snackbar } from "@mui/material";
 export const MainPanel = () => {
   const [lensConfigs, setLensConfigs] = useState<LensConfig[]>([]);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabId>("empty-state");
 
   // Tabs declared here to allow programmatic navigation below.
-  const tabs: TabConfig[] = [];
+  const tabs: ExtendedTabConfig[] = [];
 
   // Handler for switching tabs.
   // tab.id is used as a canonical reference to a tab.
-  const switchToTab = (tabId: string) => {
-    const index = tabs.findIndex((tab) => tab.id === tabId);
-    if (index >= 0 && index < tabs.length) {
-      setActiveTab(index);
+  const switchToTab = (tabId: TabId) => {
+    const isValidTab =
+      tabs
+        .filter((tab) => tab.isVisible)
+        .findIndex((tab) => tab.id === tabId) >= 0;
+
+    if (isValidTab) {
+      setActiveTab(tabId);
     }
   };
 
@@ -71,17 +81,15 @@ export const MainPanel = () => {
             onManageConfigsClick={() => switchToTab("manage-datasources")}
           />
         ),
+        isVisible: true,
       },
       {
         id: "query-data",
         label: "Query data",
         content: (
-          <LensPanel
-            lensConfigs={lensConfigs}
-            onError={setErrorMessage}
-            switchToTab={switchToTab}
-          />
+          <LensPanel lensConfigs={lensConfigs} onError={setErrorMessage} />
         ),
+        isVisible: lensConfigs.length > 0,
       },
       {
         id: "manage-datasources",
@@ -92,6 +100,7 @@ export const MainPanel = () => {
             onConfigsChange={handleLensConfigsUpdate}
           />
         ),
+        isVisible: true,
       },
     ]
   );
@@ -109,7 +118,11 @@ export const MainPanel = () => {
 
   return (
     <>
-      <Layout tabs={tabs} active={activeTab} onTabClick={setActiveTab} />
+      <Layout
+        tabs={tabs.filter((tab) => tab.isVisible)}
+        active={activeTab}
+        onTabClick={(tabId) => setActiveTab(tabId as TabId)}
+      />
       {errorContent}
     </>
   );
