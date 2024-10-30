@@ -3,28 +3,13 @@ import { useTheme } from "@fiftyone/components";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ComputeVisualizationButton from "./ComputeVisualizationButton";
-import { useMemo } from "react";
-import { listLocalAndRemoteOperators } from "@fiftyone/operators/src/operators";
-
-const useFirstExistingUri = (uris: string[]) => {
-  const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
-  return useMemo(() => {
-    const existingUri = uris.find((uri) =>
-      availableOperators.allOperators.some((op) => op.uri === uri)
-    );
-    const exists = Boolean(existingUri);
-    return { firstExistingUri: existingUri, exists };
-  }, [availableOperators, uris]);
-};
+import useComputeVisualization from "./useComputeVisualization";
 
 export default function EmptyEmbeddings() {
   const theme = useTheme();
   const secondaryBodyColor = theme.text.secondary;
-  let { firstExistingUri: computeVisUri, exists: hasComputeVisualization } =
-    useFirstExistingUri([
-      "@voxel51/brain/compute_visualization",
-      "@voxel51/operators/compute_visualization",
-    ]);
+  const computeViz = useComputeVisualization();
+  const hasComputeVisualization = computeViz.isAvailable;
 
   return (
     <Box
@@ -68,7 +53,9 @@ export default function EmptyEmbeddings() {
           </Grid>
           <Grid item />
           {!hasComputeVisualization && <OSSContent />}
-          {hasComputeVisualization && <ComputeVisContent uri={computeVisUri} />}
+          {hasComputeVisualization && (
+            <ComputeVisContent computeViz={computeViz} />
+          )}
         </Grid>
       </Box>
       {hasComputeVisualization && (
@@ -120,13 +107,13 @@ function OSSContent() {
   );
 }
 
-function ComputeVisContent({ uri }) {
+function ComputeVisContent({ computeViz }) {
   const theme = useTheme();
   const secondaryBodyColor = theme.text.secondary;
   return (
     <>
       <Grid item>
-        <ComputeVisualizationButton uri={uri} />
+        <ComputeVisualizationButton onClick={() => computeViz.prompt()} />
       </Grid>
     </>
   );

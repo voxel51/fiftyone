@@ -1,13 +1,26 @@
 import { Button } from "@mui/material";
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@fiftyone/components";
 
-export default function ComputeVisualizationButton({ uri }) {
-  const triggerEvent = usePanelEvent();
+export default function ComputeVisualizationButton({ variant, onClick }) {
   const theme = useTheme();
-  const panelId = usePanelId();
+
+  if (variant === "box") {
+    return (
+      <Button
+        variant="outlined"
+        sx={{
+          borderColor: theme.primary.main,
+          color: theme.primary.main,
+        }}
+        startIcon={<AddIcon />}
+        onClick={onClick}
+      >
+        Compute Visualization
+      </Button>
+    );
+  }
+
   return (
     <Button
       variant="contained"
@@ -16,13 +29,7 @@ export default function ComputeVisualizationButton({ uri }) {
         color: theme.text.primary,
       }}
       startIcon={<AddIcon />}
-      onClick={() => {
-        triggerEvent(panelId, {
-          params: { delegate: true },
-          operator: uri,
-          prompt: true,
-        });
-      }}
+      onClick={onClick}
     >
       Compute Visualization
     </Button>
