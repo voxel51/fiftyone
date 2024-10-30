@@ -17,6 +17,7 @@ import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
   ExecutionContext,
@@ -302,6 +303,7 @@ const useOperatorPromptSubmitOptions = (
           setSelectedID(orc.id);
         },
         onClick() {
+          localStorage.setItem(LAST_USED_ORCHESTRATOR, orc.instanceID);
           execute({
             delegationTarget: orc.instanceID,
             requestDelegation: true,

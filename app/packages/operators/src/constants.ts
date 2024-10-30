@@ -16,3 +16,5 @@ export enum QueueItemStatus {
 }
 export const PANEL_STATE_CHANGE_DEBOUNCE = 500;
 export const PANEL_STATE_PATH_CHANGE_DEBOUNCE = 250;
+export const LAST_USED_ORCHESTRATOR = "last_used_orchestrator";
+export const BUILT_IN_ORCHESTATOR_ID = "builtin";

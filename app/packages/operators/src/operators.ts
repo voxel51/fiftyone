@@ -4,11 +4,16 @@ import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
-import { QueueItemStatus } from "./constants";
+import {
+  QueueItemStatus,
+  LAST_USED_ORCHESTRATOR,
+  BUILT_IN_ORCHESTATOR_ID,
+} from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
+import { av } from "vitest/dist/chunks/reporters.C_zwCd4j";
 
 type RawInvocationRequest = {
   operator_uri?: string;
@@ -925,14 +930,28 @@ export async function resolveExecutionOptions(
       dataset_head_name: currentContext.datasetHeadName,
     }
   );
-
+  const availableOrchestrators =
+    executionOptionsAsJSON?.available_orchestrators?.map(
+      Orchestrator.fromJSON
+    ) || [];
+  const lastUsed = localStorage.getItem(LAST_USED_ORCHESTRATOR);
+  const filteredOrchestrators = [
+    ...availableOrchestrators.filter(
+      (o) => o.instanceID === lastUsed && lastUsed !== BUILT_IN_ORCHESTATOR_ID
+    ),
+    ...availableOrchestrators.filter(
+      (o) => o.instanceID === BUILT_IN_ORCHESTATOR_ID
+    ),
+    ...availableOrchestrators.filter(
+      (o) =>
+        o.instanceID !== lastUsed && o.instanceID !== BUILT_IN_ORCHESTATOR_ID
+    ),
+  ];
   return new ExecutionOptions(
     executionOptionsAsJSON.orchestrator_registration_enabled,
     executionOptionsAsJSON.allow_immediate_execution,
     executionOptionsAsJSON.allow_delegated_execution,
-    executionOptionsAsJSON?.available_orchestrators?.map(
-      Orchestrator.fromJSON
-    ) || [],
+    filteredOrchestrators,
     executionOptionsAsJSON.default_choice_to_delegated
   );
 }
