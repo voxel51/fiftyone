@@ -60,11 +60,17 @@ const getLabelsWorker = (() => {
   let workers: Worker[];
 
   let next = -1;
-  return (dispatchEvent) => {
+  return (dispatchEvent, abortController) => {
     if (!workers) {
       workers = [];
       for (let i = 0; i < numWorkers; i++) {
-        workers.push(createWorker(LookerUtils.workerCallbacks, dispatchEvent));
+        workers.push(
+          createWorker(
+            LookerUtils.workerCallbacks,
+            dispatchEvent,
+            abortController
+          )
+        );
       }
     }
 
@@ -102,11 +108,14 @@ export abstract class AbstractLooker<
   private isBatching = false;
   private isCommittingBatchUpdates = false;
 
+  private readonly abortController: AbortController;
+
   constructor(
     sample: S,
     config: State["config"],
     options: Partial<State["options"]> = {}
   ) {
+    this.abortController = new AbortController();
     this.eventTarget = new EventTarget();
     this.subscriptions = {};
     this.updater = this.makeUpdate();
@@ -383,9 +392,19 @@ export abstract class AbstractLooker<
   addEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    ...args: any[]
+    optionsOrUseCapture?: boolean | AddEventListenerOptions
   ) {
-    this.eventTarget.addEventListener(eventType, handler, ...args);
+    const argsWithSignal: AddEventListenerOptions =
+      typeof optionsOrUseCapture === "boolean"
+        ? {
+            signal: this.abortController.signal,
+            capture: optionsOrUseCapture,
+          }
+        : {
+            ...(optionsOrUseCapture ?? {}),
+            signal: this.abortController.signal,
+          };
+    this.eventTarget.addEventListener(eventType, handler, argsWithSignal);
   }
 
   removeEventListener(
@@ -489,6 +508,7 @@ export abstract class AbstractLooker<
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
       );
+    this.abortController.abort();
   }
 
   abstract updateOptions(options: Partial<State["options"]>): void;
@@ -674,8 +694,9 @@ export abstract class AbstractLooker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const labelsWorker = getLabelsWorker((event, detail) =>
-      this.dispatchEvent(event, detail)
+    const labelsWorker = getLabelsWorker(
+      (event, detail) => this.dispatchEvent(event, detail),
+      this.abortController
     );
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
