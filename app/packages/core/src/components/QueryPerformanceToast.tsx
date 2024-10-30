@@ -44,7 +44,12 @@ const QueryPerformanceToast = () => {
   return createPortal(
     <Toast
       duration={SHOWN_FOR}
-      layout={{ bottom: '100px', vertical: "bottom", horizontal: "center", backgroundColor: theme.custom.toastBackgroundColor}}
+      layout={{
+        bottom: "100px",
+        vertical: "bottom",
+        horizontal: "center",
+        backgroundColor: theme.custom.toastBackgroundColor,
+      }}
       primary={(setOpen) => {
         return (
           <Button
@@ -54,7 +59,12 @@ const QueryPerformanceToast = () => {
               open(QP_MODE, "_blank")?.focus();
               setOpen(false);
             }}
-            sx={{ marginLeft: "auto", backgroundColor: theme.primary.main, color: "#FFFFFF", boxShadow: 0 }} // Right align the button
+            sx={{
+              marginLeft: "auto",
+              backgroundColor: theme.primary.main,
+              color: theme.text.primary,
+              boxShadow: 0,
+            }} // Right align the button
           >
             View Documentation
           </Button>
@@ -64,6 +74,7 @@ const QueryPerformanceToast = () => {
         return (
           <div>
             <Button
+              data-cy="btn-dismiss-query-performance-toast"
               variant="text"
               color="secondary"
               size="small"
@@ -84,7 +95,11 @@ const QueryPerformanceToast = () => {
             <Bolt sx={{ color: theme.custom.lightning, marginRight: "8px" }} />
             <Typography
               variant="subtitle1"
-              sx={{ fontWeight: 500, marginRight: "8px", color: theme.text.primary }}
+              sx={{
+                fontWeight: 500,
+                marginRight: "8px",
+                color: theme.text.primary,
+              }}
             >
               Query Performance is Available!
             </Typography>
