@@ -3,22 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.1.2
+FiftyOne Teams 2.1.3
 --------------------
-*Released October 25, 2024*
+*Released November XX, 2024*
 
-Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`, plus:
+Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`
 
-- Fixed an issue that prevented `delegation_target` from being properly set when
-  running delegated operations with orchestrator registration enabled
-- Resolved a `RuntimeError` that could occur due to concurrency issues when
-  applying operations that download data from cloud buckets
-
-.. _release-notes-v1.0.2:
+.. _release-notes-v1.0.3:
 
 FiftyOne 1.0.2
 --------------
-*Released October 25, 2024*
+*Released November XX, 2024*
 
 Zoo
 
@@ -41,6 +36,13 @@ App
   `#4956 <https://github.com/voxel51/fiftyone/pull/4956>`_
 - Fixed bug where timeline name wasn't being forwarded in seek utils
   `#4975 <https://github.com/voxel51/fiftyone/pull/4975>`_
+
+FiftyOne Teams 2.1.2
+--------------------
+*Released November XX, 2024*
+
+- Fixed an issue that prevented `delegation_target` from being properly set when
+  running delegated operations with orchestrator registration enabled
 
 FiftyOne Teams 2.1.1
 --------------------
