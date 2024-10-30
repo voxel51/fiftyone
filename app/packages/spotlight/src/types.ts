@@ -56,8 +56,9 @@ export type Request<K, V> = (key: K) => Promise<{
 }>;
 
 export interface SpotlightConfig<K, V> {
-  get: Get<K, V>;
   at?: At;
+  destroy?: (id: ID) => void;
+  get: Get<K, V>;
   key: K;
   offset?: number;
   onItemClick?: ItemClick<K, V>;
