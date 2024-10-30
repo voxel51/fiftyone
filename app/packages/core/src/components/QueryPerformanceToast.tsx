@@ -74,6 +74,7 @@ const QueryPerformanceToast = () => {
         return (
           <div>
             <Button
+              data-cy="btn-dismiss-query-performance-toast"
               variant="text"
               color="secondary"
               size="small"
