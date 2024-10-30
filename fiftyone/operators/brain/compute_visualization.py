@@ -20,16 +20,13 @@ class ComputeVisualization(foo.Operator):
         return foo.OperatorConfig(
             name="compute_visualization",
             label="Compute visualization",
-            light_icon="/assets/icon-light.svg",
-            dark_icon="/assets/icon-dark.svg",
             dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
         inputs = types.Object()
-        ready = compute_visualization(ctx, inputs)
-        if ready:
-            _execution_mode(ctx, inputs)
+        compute_visualization(ctx, inputs)
 
         view = types.View(label="Compute visualization")
         return types.Property(inputs, view=view)
@@ -116,8 +113,6 @@ def compute_visualization(ctx, inputs):
         label="Random seed",
         description="An optional random seed to use",
     )
-
-    return True
 
 
 def brain_init(ctx, inputs):
