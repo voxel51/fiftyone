@@ -1,4 +1,4 @@
-import { expect, Locator, Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
@@ -52,9 +52,7 @@ export class GridPom {
   }
 
   async openNthSample(n: number) {
-    await this.url.pageChange(() =>
-      this.getNthLooker(n).click({ position: { x: 10, y: 80 } })
-    );
+    await this.getNthLooker(n).click({ position: { x: 10, y: 80 } });
   }
 
   async openFirstSample() {
@@ -80,7 +78,7 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
-    await this.url.pageChange(() => this.sliceSelector.selectSlice(slice));
+    await this.sliceSelector.selectSlice(slice);
   }
 
   /**
