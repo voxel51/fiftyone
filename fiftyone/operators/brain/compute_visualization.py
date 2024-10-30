@@ -322,35 +322,6 @@ def _get_target_view(ctx, target):
     return ctx.view
 
 
-def _execution_mode(ctx, inputs):
-    delegate = ctx.params.get("delegate", False)
-
-    if delegate:
-        description = "Uncheck this box to execute the operation immediately"
-    else:
-        description = "Check this box to delegate execution of this task"
-
-    inputs.bool(
-        "delegate",
-        default=False,
-        label="Delegate execution?",
-        description=description,
-        view=types.CheckboxView(),
-    )
-
-    if delegate:
-        inputs.view(
-            "notice",
-            types.Notice(
-                label=(
-                    "You've chosen delegated execution. Note that you must "
-                    "have a delegated operation service running in order for "
-                    "this task to be processed."
-                )
-            ),
-        )
-
-
 def _get_zoo_models():
     if hasattr(fozm, "_list_zoo_models"):
         manifest = fozm._list_zoo_models()
