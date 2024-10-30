@@ -402,6 +402,15 @@ method:
     from transformers import GLPNForDepthEstimation
     model = GLPNForDepthEstimation.from_pretrained("vinvino02/glpn-kitti")
 
+    # Depth Anything
+    from transformers import AutoModelForDepthEstimation
+    model = AutoModelForDepthEstimation.from_pretrained("LiheYoung/depth-anything-small-hf")
+
+    # Depth Anything-V2
+    from transformers import AutoModelForDepthEstimation
+    model = AutoModelForDepthEstimation.from_pretrained("depth-anything/Depth-Anything-V2-Small-hf")
+
+
 
 .. code-block:: python
     :linenos:
@@ -1309,7 +1318,7 @@ If the repo was uploaded to the Hugging Face Hub via FiftyOne's
 :func:`push_to_hub() <fiftyone.utils.huggingface.push_to_hub>` function, then
 the `fiftyone.yml` config file will be generated and uploaded to the repo.
 However, some common datasets like
-`mnist <https://huggingface.co/datasets/mnist>`_ were uploaded to the Hub
+`mnist <https://huggingface.co/datasets/ylecun/mnist>`_ were uploaded to the Hub
 using the `datasets` library and do not contain a `fiftyone.yml` or
 `fiftyone.yaml` file. If you know how the dataset is structured, you can load
 the dataset by passing the path to a local yaml config file that describes the
@@ -1332,7 +1341,7 @@ the path to the local yaml config file:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "mnist",
+        "ylecun/mnist",
         config_file="/path/to/mnist.yml",
     )
 
@@ -1360,7 +1369,7 @@ and `classification_fields` arguments directly:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "mnist",
+        "ylecun/mnist",
         format="ParquetFilesDataset",
         classification_fields="label",
     )
@@ -1400,7 +1409,7 @@ Let's look at these categories in more detail:
   dataset that are *compatible* with this config, and are *available* to be
   loaded. In Hugging Face, the "dataset" in a repo can contain multiple
   "subsets", which may or may not have the same schema. Take the
-  `Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset for
+  `Street View House Numbers <https://huggingface.co/datasets/ufldl-stanford/svhn>`_ dataset for
   example. This dataset has two subsets: `"cropped_digits"` and `"full_numbers"`.
   The `cropped_digits` subset contains classification labels, while the
   `full_numbers` subset contains detection labels. A single config would not be
@@ -1419,7 +1428,7 @@ Let's look at these categories in more detail:
   identifies the names of all splits and by default, will assume that all of
   these splits are to be loaded. If you only want to load a specific split or
   splits, you can specify them with the `splits` field. For example, to load the
-  training split of the `CIFAR10 <https://huggingface.co/datasets/cifar10>`_
+  training split of the `CIFAR10 <https://huggingface.co/datasets//uoft-cs/cifar10>`_
   dataset, you can pass `splits="train"`. If you want to load multiple splits,
   you can pass them as a list, e.g., `splits=["train", "test"]`. Note that this
   is not a required field, and by default all splits are loaded.
@@ -1554,8 +1563,8 @@ easy it is in practice to load datasets from the Hugging Face Hub.
 **Classification Datasets**
 
 Let's start by loading the
-`MNIST <https://huggingface.co/datasets/mnist>`_ dataset into FiftyOne. All you
-need to do is pass the `repo_id` of the dataset — in this case `"mnist"` — to
+`MNIST <https://huggingface.co/datasets/ylecun/mnist>`_ dataset into FiftyOne. All you
+need to do is pass the `repo_id` of the dataset — in this case `"ylecun/mnist"` — to
 :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>`, specify the
 format as `"parquet"`, and specify the `classification_fields` as `"label"`:
 
@@ -1565,7 +1574,7 @@ format as `"parquet"`, and specify the `classification_fields` as `"label"`:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "mnist",
+        "ylecun/mnist",
         format="parquet",
         classification_fields="label",
         max_samples=1000,
@@ -1574,25 +1583,25 @@ format as `"parquet"`, and specify the `classification_fields` as `"label"`:
     session = fo.launch_app(dataset)
 
 The same exact syntax works for the `CIFAR-10 <https://huggingface.co/datasets/cifar10>`_
-and `FashionMNIST <https://huggingface.co/datasets/fashion_mnist>`_ datasets,
+and `FashionMNIST <https://huggingface.co/datasets/zalando-datasets/fashion_mnist>`_ datasets,
 which are also available on the Hub. In fact, you can load any of the following
 classification datasets from the Hub using the same syntax, just by changing the
 `repo_id`:
 
-- `CIFAR-10 <https://huggingface.co/datasets/cifar10>`_ (use `"cifar10"`)
-- `ImageNet <https://huggingface.co/datasets/imagenet-1k>`_ (use `"imagenet-1k"`)
-- `FashionMNIST <https://huggingface.co/datasets/fashion_mnist>`_ (use `"fashion_mnist"`)
+- `CIFAR-10 <https://huggingface.co/datasets/uoft-cs/cifar10>`_ (use `"uoft-cs/cifar10"`)
+- `ImageNet <https://huggingface.co/datasets/ILSVRC/imagenet-1k>`_ (use `"ILSVRC/imagenet-1k"`)
+- `FashionMNIST <https://huggingface.co/datasets/zalando-datasets/fashion_mnist>`_ (use `"zalando-datasets/fashion_mnist"`)
 - `Tiny ImageNet <https://huggingface.co/datasets/zh-plus/tiny-imagenet>`_ (use `"zh-plus/tiny-imagenet"`)
-- `Food-101 <https://huggingface.co/datasets/food101>`_ (use `"food101"`)
-- `Dog Food <https://huggingface.co/datasets/sasha/dogfood>`_ (use `"sasha/dog-food"`)
-- `ImageNet-Sketch <https://huggingface.co/datasets/imagenet_sketch>`_ (use `"imagenet_sketch"`)
+- `Food-101 <https://huggingface.co/datasets/ethz/food101>`_ (use `"ethz/food101"`)
+- `Dog Food <https://huggingface.co/datasets/sasha/dog-food>`_ (use `"sasha/dog-food"`)
+- `ImageNet-Sketch <https://huggingface.co/datasets/songweig/imagenet_sketch>`_ (use `"songweig/imagenet_sketch"`)
 - `Oxford Flowers <https://huggingface.co/datasets/nelorth/oxford-flowers>`_ (use `"nelorth/oxford-flowers"`)
-- `Cats vs. Dogs <https://huggingface.co/datasets/cats_vs_dogs>`_ (use `"cats_vs_dogs"`)
+- `Cats vs. Dogs <https://huggingface.co/datasets/microsoft/cats_vs_dogs>`_ (use `"microsoft/cats_vs_dogs"`)
 - `ObjectNet-1.0 <https://huggingface.co/datasets/timm/objectnet>`_ (use `"timm/objectnet"`)
 
 A very similar syntax can be used to load classification datasets that contain
 *multiple* classification fields, such as
-`CIFAR-100 <https://huggingface.co/datasets/cifar100>`_ and the
+`CIFAR-100 <https://huggingface.co/datasets/uoft-cs/cifar100>`_ and the
 `WikiArt <https://huggingface.co/datasets/huggan/wikiart>`_ dataset. For example,
 to load the CIFAR-100 dataset, you can specify the `classification_fields` as
 `["coarse_label", "fine_label"]`:
@@ -1603,7 +1612,7 @@ to load the CIFAR-100 dataset, you can specify the `classification_fields` as
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "cifar100",
+        "uoft-cs/cifar100",
         format="parquet",
         classification_fields=["coarse_label", "fine_label"],
         max_samples=1000,
@@ -1638,7 +1647,7 @@ dataset. For example, to load the `cropped_digits` subset of the
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "svhn",
+        "ufldl-stanford/svhn",
         format="parquet",
         classification_fields="label",
         subsets="cropped_digits",
@@ -1671,8 +1680,8 @@ standard column name for detection features in Hugging Face datasets:
 The same syntax works for many other popular detection datasets on the Hub,
 including:
 
-- `CPPE - 5 <https://huggingface.co/datasets/cppe-5>`_ (use `"cppe-5"`)
-- `WIDER FACE <https://huggingface.co/datasets/wider_face>`_ (use `"wider_face"`)
+- `CPPE - 5 <https://huggingface.co/datasets/rishitdagli/cppe-5>`_ (use `"rishitdagli/cppe-5"`)
+- `WIDER FACE <https://huggingface.co/datasets/CUHK-CSE/wider_face>`_ (use `"CUHK-CSE/wider_face"`)
 - `License Plate Object Detection <https://huggingface.co/datasets/keremberke/license-plate-object-detection>`_
   (use `"keremberke/license-plate-object-detection"`)
 - `Aerial Sheep Object Detection <https://huggingface.co/datasets/keremberke/aerial-sheep-object-detection>`_
@@ -1680,7 +1689,7 @@ including:
 
 Some detection datasets have their detections stored under a column with a
 different name. For example, the `full_numbers` subset of the
-`Street View House Numbers <https://huggingface.co/datasets/svhn>`_ dataset
+`Street View House Numbers <https://huggingface.co/datasets/ufldl-stanford/svhn>`_ dataset
 stores its detections under the column `digits`. To load this subset, you can
 specify the `detection_fields` as `"digits"`:
 
@@ -1690,7 +1699,7 @@ specify the `detection_fields` as `"digits"`:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "svhn",
+        "ufldl-stanford/svhn",
         format="parquet",
         detection_fields="digits",
         subsets="full_numbers",
@@ -1711,7 +1720,7 @@ specify the `detection_fields` as `"digits"`:
 
 Loading segmentation datasets from the Hub is also a breeze. For example, to
 load the "instance_segmentation" subset from
-`SceneParse150 <https://huggingface.co/datasets/scene_parse_150>`_, all you
+`SceneParse150 <https://huggingface.co/datasets/zhoubolei/scene_parse_150>`_, all you
 need to do is specify the `mask_fields` as `"annotation"`:
 
 .. code-block:: python
@@ -1720,7 +1729,7 @@ need to do is specify the `mask_fields` as `"annotation"`:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "scene_parse150",
+        "zhoubolei/scene_parse150",
         format="parquet",
         subsets="instance_segmentation",
         mask_fields="annotation",
@@ -1838,7 +1847,7 @@ need to specify the `filepath` as `"url"`:
 
     session = fo.launch_app(dataset)
 
-For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
+For `RedCaps <https://huggingface.co/datasets/kdexd/red_caps>`_, we instead use
 `"image_url"` as the `filepath`:
 
 .. code-block:: python
@@ -1847,7 +1856,7 @@ For `RedCaps <https://huggingface.co/datasets/red_caps>`_, we instead use
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "red_caps",
+        "kdexd/red_caps",
         format="parquet",
         filepath="image_url",
         max_samples=1000,
@@ -1944,7 +1953,7 @@ Now, you can load the dataset using the local yaml config file:
 When loading datasets from the Hub, you can customize the download process by
 specifying the `batch_size`, `num_workers`, and `overwrite` arguments. For
 example, to download the `full_numbers` subset of the `Street View House Numbers
-<https://huggingface.co/datasets/svhn>`_ dataset with a batch size of 50 and 4
+<https://huggingface.co/datasets/ufldl-stanford/svhn>`_ dataset with a batch size of 50 and 4
 workers, you can do the following:
 
 .. code-block:: python
@@ -1953,7 +1962,7 @@ workers, you can do the following:
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
-        "svhn",
+        "ufldl-stanford/svhn",
         format="parquet",
         detection_fields="digits",
         subsets="full_numbers",

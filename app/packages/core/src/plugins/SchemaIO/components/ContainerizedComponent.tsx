@@ -9,6 +9,7 @@ import {
 import { ViewPropsType } from "../utils/types";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
+import { has } from "lodash";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
   const { schema, children, path } = props;
@@ -28,7 +29,11 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
   }
 
   if (isCompositeView(schema)) {
+    const hasOverlay = !!schema?.view?.overlay;
     const sxForOverlay = overlayToSx[schema?.view?.overlay] || {};
+    if (hasOverlay) {
+      sxForOverlay.zIndex = 999;
+    }
     return (
       <Box sx={{ position: "relative", ...sxForOverlay }}>
         {containerizedChildren}

@@ -1,33 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import {
-  DEFAULT_FRAME_NUMBER,
-  GLOBAL_TIMELINE_ID,
-} from "@fiftyone/playback/src/lib/constants";
+import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
 import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
 import { useTimeline } from "@fiftyone/playback/src/lib/use-timeline";
 import _ from "lodash";
 
+const FRAME_LOADED_EVENT = "frames-loaded";
+
 export default function FrameLoaderView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { view = {} } = schema;
-  const { on_load_range, timeline_id, target } = view;
+  const { on_load_range, target, timeline_name } = view;
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
   const localIdRef = React.useRef<string>();
   const bufm = useRef(new BufferManager());
+  const frameDataRef = useRef<typeof data.frames>(null);
 
   useEffect(() => {
     localIdRef.current = Math.random().toString(36).substring(7);
-    if (data?.frames)
-      window.dispatchEvent(
-        new CustomEvent(`frames-loaded`, {
-          detail: { localId: localIdRef.current },
-        })
-      );
+    if (data?.frames) frameDataRef.current = data.frames;
+    window.dispatchEvent(
+      new CustomEvent(FRAME_LOADED_EVENT, {
+        detail: { localId: localIdRef.current },
+      })
+    );
   }, [data?.signature]);
 
   const loadRange = React.useCallback(
@@ -44,15 +44,22 @@ export default function FrameLoaderView(props: ViewPropsType) {
         }
 
         return new Promise<void>((resolve) => {
-          window.addEventListener(`frames-loaded`, (e) => {
-            if (
-              e instanceof CustomEvent &&
-              e.detail.localId === localIdRef.current
-            ) {
-              bufm.current.addNewRange(range);
-              resolve();
-            }
-          });
+          if (frameDataRef.current) {
+            bufm.current.addNewRange(range);
+            resolve();
+          } else {
+            const onFramesLoaded = (e) => {
+              if (
+                e instanceof CustomEvent &&
+                e.detail.localId === localIdRef.current
+              ) {
+                window.removeEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
+                bufm.current.addNewRange(range);
+                resolve();
+              }
+            };
+            window.addEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
+          }
         });
       }
     },
@@ -76,14 +83,14 @@ export default function FrameLoaderView(props: ViewPropsType) {
     [data, setPanelState, panelId, target]
   );
 
-  const { isTimelineInitialized, subscribe } = useTimeline();
+  const { isTimelineInitialized, subscribe } = useTimeline(timeline_name);
   const [subscribed, setSubscribed] = useState(false);
 
   React.useEffect(() => {
     if (subscribed) return;
     if (isTimelineInitialized) {
       subscribe({
-        id: timeline_id || GLOBAL_TIMELINE_ID,
+        id: panelId,
         loadRange,
         renderFrame: myRenderFrame,
       });

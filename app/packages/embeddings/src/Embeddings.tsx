@@ -22,9 +22,9 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import { Link } from "@mui/material";
-import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
+import ComputeVisualizationButton from "./ComputeVisualizationButton";
+import EmptyEmbeddings from "./EmptyEmbeddings";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -139,6 +139,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 </PlotOption>
               </Fragment>
             )}
+            <ComputeVisualizationButton />
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
         </Selectors>
@@ -156,24 +157,5 @@ export default function Embeddings({ containerHeight, dimensions }) {
       </EmbeddingsContainer>
     );
 
-  return (
-    <Loading style={{ background: theme.background.mediaSpace }}>
-      <NotFound style={{ textAlign: "center" }}>
-        <h3>No embeddings visualizations found.</h3>
-        <p>
-          <Link
-            style={{ color: theme.text.primary }}
-            href="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
-          >
-            Learn more
-          </Link>{" "}
-          about using this feature.
-        </p>
-      </NotFound>
-    </Loading>
-  );
+  return <EmptyEmbeddings />;
 }
-
-const NotFound = styled.div`
-  text-align: center;
-`;

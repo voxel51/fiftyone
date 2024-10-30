@@ -385,7 +385,7 @@ async def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
-async def resolve_type_with_context(request_params, target: str = None):
+async def resolve_type_with_context(request_params, target=None):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
@@ -482,11 +482,11 @@ class ExecutionContext(object):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self.user = None
 
         self._dataset = None
         self._view = None
         self._ops = Operations(self)
-        self.user = None
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -611,6 +611,19 @@ class ExecutionContext(object):
         return has_stages or has_filters or has_extended
 
     @property
+    def spaces(self):
+        """The current spaces layout in the FiftyOne App."""
+        workspace_name = self.request_params.get("workspace_name", None)
+        if workspace_name is not None:
+            return self.dataset.load_workspace(workspace_name)
+
+        spaces_dict = self.request_params.get("spaces", None)
+        if spaces_dict is not None:
+            return fo.Space.from_dict(spaces_dict)
+
+        return None
+
+    @property
     def selected(self):
         """The list of selected sample IDs (if any)."""
         return self.request_params.get("selected", [])
@@ -647,6 +660,13 @@ class ExecutionContext(object):
     def user_id(self):
         """The ID of the user executing the operation, if known."""
         return self.user.id if self.user else None
+
+    @property
+    def user_request_token(self):
+        """The request token authenticating the user executing the operation,
+        if known.
+        """
+        return self.user._request_token if self.user else None
 
     @property
     def panel_id(self):
@@ -724,6 +744,7 @@ class ExecutionContext(object):
         params=None,
         on_success=None,
         on_error=None,
+        skip_prompt=False,
     ):
         """Prompts the user to execute the operator with the given URI.
 
@@ -733,6 +754,7 @@ class ExecutionContext(object):
             on_success (None): a callback to invoke if the user successfully
                 executes the operator
             on_error (None): a callback to invoke if the execution fails
+            skip_prompt (False): whether to skip the prompt
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
@@ -747,6 +769,7 @@ class ExecutionContext(object):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "skip_prompt": skip_prompt,
                 }
             ),
         )
@@ -851,6 +874,20 @@ class ExecutionContext(object):
             )
         else:
             self.log(f"Progress: {progress} - {label}")
+
+    # TODO resolve circular import so this can have a type
+    def create_store(self, store_name):
+        """Creates a new store with the specified name.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            a :class:`fiftyone.operators.store.ExecutionStore`
+        """
+        from fiftyone.operators.store import ExecutionStore
+
+        return ExecutionStore.create(store_name)
 
     def serialize(self):
         """Serializes the execution context.

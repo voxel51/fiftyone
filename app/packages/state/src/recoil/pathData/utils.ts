@@ -1,4 +1,4 @@
-import { GetRecoilValue } from "recoil";
+import type { GetRecoilValue } from "recoil";
 import { field as fieldAtom, fieldPaths, meetsType } from "../schema";
 
 export const gatherPaths = (
@@ -15,9 +15,9 @@ export const gatherPaths = (
       paths.push(path);
     }
     if (field.fields) {
-      Object.keys(field.fields).forEach((name) =>
-        recurseFields(`${path}.${name}`)
-      );
+      for (const name in field.fields) {
+        recurseFields(`${path}.${name}`);
+      }
     }
   };
 

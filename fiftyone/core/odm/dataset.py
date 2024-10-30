@@ -538,8 +538,6 @@ class DatasetAppConfig(EmbeddedDocument):
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
-        sidebar_mode (None): an optional default mode for the App sidebar.
-            Supported values are ``("fast", "all", "best", "disabled")``
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -555,7 +553,6 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
-    sidebar_mode = StringField(default=None)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):

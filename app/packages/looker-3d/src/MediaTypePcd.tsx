@@ -177,8 +177,12 @@ export const MediaTypePcdComponent = () => {
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
 
-  useHotkey("KeyT", () => onChangeView("top"), [onChangeView], false);
-  useHotkey("KeyE", () => onChangeView("pov"), [onChangeView], false);
+  useHotkey("KeyT", () => onChangeView("top"), [onChangeView], {
+    useTransaction: false,
+  });
+  useHotkey("KeyE", () => onChangeView("pov"), [onChangeView], {
+    useTransaction: false,
+  });
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;

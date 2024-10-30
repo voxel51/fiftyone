@@ -77,11 +77,8 @@ const StringFilter = ({
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
   const theme = useTheme();
-  const lightningOn = useRecoilValue(fos.lightning);
-  const lightningPath = useRecoilValue(fos.isLightningPath(path));
-  const lightning = lightningOn && lightningPath && !modal;
-
-  if (named && !lightning && !results?.count) {
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  if (named && !queryPerformance && !results?.count) {
     return null;
   }
 
