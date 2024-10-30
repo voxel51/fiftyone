@@ -71,9 +71,9 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
-    if (!secondaryCallback) {
+    setTimeout(() => {
       setOpen(false);
-    }
+    }, 500); // 500 milliseconds = 0.5 second
   };
 
   if (typeof modal?.textAlign === "string") {
@@ -198,7 +198,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
       </Box>
       <Modal
         open={open}
-        onClose={handleClose}
+        onClose={() => setOpen(false)}
         aria-labelledby="modal-title"
         aria-describedby="modal-subtitle"
       >
