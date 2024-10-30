@@ -948,9 +948,11 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         callback?.(result);
         if (result.error) {
           notify({
-            msg: result.errorMessage || "Failed to execute an operation",
+            msg: result.errorMessage || `Operation failed: ${uri}`,
             variant: "error",
           });
+          console.error("Error executing operator", uri, result.errorMessage);
+          console.error(result.error);
         }
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
