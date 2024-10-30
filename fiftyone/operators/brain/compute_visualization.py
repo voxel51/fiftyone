@@ -22,6 +22,9 @@ class ComputeVisualization(foo.Operator):
             label="Compute visualization",
             dynamic=True,
             unlisted=True,
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
         )
 
     def resolve_input(self, ctx):
