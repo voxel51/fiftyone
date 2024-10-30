@@ -22,6 +22,7 @@ from fiftyone.operators.panels import (
 )
 from fiftyone.operators.utils import create_summary_field_inputs
 from .builtins.operators.evaluation import EvaluateModel
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -2231,7 +2232,10 @@ BUILTIN_OPERATORS = (
     + QUERY_PERFORMANCE_OPERATORS
 )
 
-BUILTIN_PANELS = [DataQualityPanel(_builtin=True)]
+BUILTIN_PANELS = [
+    DataQualityPanel(_builtin=True),
+    EvaluationPanel(_builtin=True),
+]
 
 if fo.app_config.enable_query_performance:
     BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))
