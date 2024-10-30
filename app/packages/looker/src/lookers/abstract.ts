@@ -60,17 +60,11 @@ const getLabelsWorker = (() => {
   let workers: Worker[];
 
   let next = -1;
-  return (dispatchEvent, abortController) => {
+  return () => {
     if (!workers) {
       workers = [];
       for (let i = 0; i < numWorkers; i++) {
-        workers.push(
-          createWorker(
-            LookerUtils.workerCallbacks,
-            dispatchEvent,
-            abortController
-          )
-        );
+        workers.push(createWorker(LookerUtils.workerCallbacks));
       }
     }
 
@@ -97,6 +91,7 @@ export abstract class AbstractLooker<
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
 
+  protected readonly abortController: AbortController;
   protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -108,8 +103,6 @@ export abstract class AbstractLooker<
   private isBatching = false;
   private isCommittingBatchUpdates = false;
 
-  private readonly abortController: AbortController;
-
   constructor(
     sample: S,
     config: State["config"],
@@ -120,6 +113,7 @@ export abstract class AbstractLooker<
     this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
     this.pluckedOverlays = [];
@@ -320,7 +314,7 @@ export abstract class AbstractLooker<
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
 
-        postUpdate && postUpdate(this.state, this.currentOverlays, this.sample);
+        postUpdate?.(this.state, this.currentOverlays, this.sample);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 
@@ -476,17 +470,13 @@ export abstract class AbstractLooker<
     }
 
     if (this.lookerElement.element.parentElement) {
-      const parent = this.lookerElement.element.parentElement;
-      this.resizeObserver.disconnect();
-      parent.removeChild(this.lookerElement.element);
-
-      for (const eventType in this.rootEvents) {
-        parent.removeEventListener(eventType, this.rootEvents[eventType]);
-      }
+      throw new Error("looker is attached");
     }
 
     for (const eventType in this.rootEvents) {
-      element.addEventListener(eventType, this.rootEvents[eventType]);
+      element.addEventListener(eventType, this.rootEvents[eventType], {
+        signal: this.abortController.signal,
+      });
     }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
@@ -504,10 +494,8 @@ export abstract class AbstractLooker<
 
   detach(): void {
     this.resizeObserver.disconnect();
-    this.lookerElement.element.parentNode &&
-      this.lookerElement.element.parentNode.removeChild(
-        this.lookerElement.element
-      );
+    const parent = this.lookerElement.element.parentNode;
+    parent.removeChild(this.lookerElement.element);
     this.abortController.abort();
   }
 
@@ -532,20 +520,20 @@ export abstract class AbstractLooker<
 
   getCurrentSampleLabels(): LabelData[] {
     const labels: LabelData[] = [];
-    this.currentOverlays.forEach((overlay) => {
+    for (const overlay of this.currentOverlays) {
       if (overlay instanceof ClassificationsOverlay) {
-        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+        for (const [field, label] of overlay.getFilteredAndFlat(this.state)) {
           labels.push({
             field: field,
             labelId: label.id,
             sampleId: this.sample.id,
           });
-        });
+        }
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
         labels.push({ labelId, field, sampleId: this.sample.id });
       }
-    });
+    }
 
     return labels;
   }
@@ -554,14 +542,6 @@ export abstract class AbstractLooker<
     return false;
   }
 
-  destroy() {
-    this.resizeObserver.disconnect();
-    this.lookerElement.element.parentElement &&
-      this.lookerElement.element.parentElement.removeChild(
-        this.lookerElement.element
-      );
-    this.updater({ destroyed: true });
-  }
   disable() {
     this.updater({ disabled: true });
   }
@@ -694,10 +674,9 @@ export abstract class AbstractLooker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const labelsWorker = getLabelsWorker(
-      (event, detail) => this.dispatchEvent(event, detail),
-      this.abortController
-    );
+
+    const labelsWorker = getLabelsWorker();
+
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
@@ -711,6 +690,7 @@ export abstract class AbstractLooker<
         labelsWorker.removeEventListener("message", listener);
       }
     };
+
     labelsWorker.addEventListener("message", listener);
 
     labelsWorker.postMessage({

@@ -1,16 +1,21 @@
+import { setFrameNumberAtom } from "@fiftyone/playback";
+import type { Schema } from "@fiftyone/utilities";
+import { getDefaultStore } from "jotai";
+import { LRUCache } from "lru-cache";
 import { v4 as uuid } from "uuid";
+import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
+import { getFrameNumber } from "../elements/util";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { Overlay } from "../overlays/base";
+import type { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
-import {
+import type {
   BaseConfig,
   BufferRange,
   Buffers,
   Coloring,
   CustomizeColor,
-  DEFAULT_VIDEO_OPTIONS,
   FrameChunkResponse,
   FrameSample,
   LabelData,
@@ -19,14 +24,8 @@ import {
   VideoSample,
   VideoState,
 } from "../state";
+import { DEFAULT_VIDEO_OPTIONS } from "../state";
 import { addToBuffers, createWorker, removeFromBuffers } from "../util";
-
-import { setFrameNumberAtom } from "@fiftyone/playback";
-import { Schema } from "@fiftyone/utilities";
-import { getDefaultStore } from "jotai";
-import { LRUCache } from "lru-cache";
-import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
-import { getFrameNumber } from "../elements/util";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
@@ -38,6 +37,7 @@ interface Frame {
 type RemoveFrame = (frameNumber: number) => void;
 
 interface AcquireReaderOptions {
+  abortController: AbortController;
   addFrame: (frameNumber: number, frame: Frame) => void;
   addFrameBuffers: (range: [number, number]) => void;
   removeFrame: RemoveFrame;
@@ -55,7 +55,7 @@ interface AcquireReaderOptions {
   schema: Schema;
 }
 
-const { acquireReader, addFrame } = (() => {
+const { acquireReader, addFrame, clear } = (() => {
   const createCache = () =>
     new LRUCache<WeakRef<RemoveFrame>, Frame>({
       maxSize: MAX_FRAME_CACHE_SIZE_BYTES,
@@ -68,11 +68,12 @@ const { acquireReader, addFrame } = (() => {
       },
       dispose: (frame, removeFrameRef) => {
         const removeFrame = removeFrameRef.deref();
-        removeFrame && removeFrame(frame.sample.frame_number);
+        removeFrame?.(frame.sample.frame_number);
       },
     });
 
   const frameCache = createCache();
+
   let frameReader: Worker;
 
   let streamSize = 0;
@@ -82,6 +83,7 @@ const { acquireReader, addFrame } = (() => {
   let currentOptions: AcquireReaderOptions = null;
 
   const setStream = ({
+    abortController,
     addFrame,
     addFrameBuffers,
     removeFrame,
@@ -100,61 +102,70 @@ const { acquireReader, addFrame } = (() => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
-    frameReader && frameReader.terminate();
-    frameReader = createWorker(LookerUtils.workerCallbacks, dispatchEvent);
-    frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
-      if (data.uuid !== subscription || data.method !== "frameChunk") {
-        return;
-      }
 
-      const {
-        frames,
-        range: [start, end],
-      } = data;
-      addFrameBuffers([start, end]);
-      for (let i = start; i <= end; i++) {
-        const frame = {
-          sample: {
-            frame_number: i,
-          },
-          overlays: [],
-        };
-        frameCache.set(new WeakRef(removeFrame), frame);
-        addFrame(i, frame);
-      }
+    frameReader?.terminate();
+    frameReader = createWorker(
+      LookerUtils.workerCallbacks,
+      dispatchEvent,
+      abortController
+    );
 
-      for (let i = 0; i < frames.length; i++) {
-        const frameSample = frames[i];
-        const prefixedFrameSample = withFrames(frameSample);
+    frameReader.addEventListener(
+      "message",
+      ({ data }: MessageEvent<FrameChunkResponse>) => {
+        if (data.uuid !== subscription || data.method !== "frameChunk") {
+          return;
+        }
 
-        const overlays = loadOverlays(prefixedFrameSample, schema);
-        overlays.forEach((overlay) => {
-          streamSize += overlay.getSizeBytes();
+        const {
+          frames,
+          range: [start, end],
+        } = data;
+        addFrameBuffers([start, end]);
+        for (let i = start; i <= end; i++) {
+          const frame = {
+            sample: {
+              frame_number: i,
+            },
+            overlays: [],
+          };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(i, frame);
+        }
+
+        for (let i = 0; i < frames.length; i++) {
+          const frameSample = frames[i];
+          const prefixedFrameSample = withFrames(frameSample);
+          const overlays = loadOverlays(prefixedFrameSample, schema);
+          for (const overlay of overlays) {
+            streamSize += overlay.getSizeBytes();
+          }
+          const frame = { sample: frameSample, overlays };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(frameSample.frame_number, frame);
+        }
+
+        const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
+
+        if (requestMore && end < frameCount) {
+          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
+          requestingFrames = true;
+          frameReader.postMessage({
+            method: "requestFrameChunk",
+            uuid: subscription,
+          });
+        } else {
+          requestingFrames = false;
+          nextRange = null;
+        }
+
+        update((state) => {
+          state.buffering && dispatchEvent("buffering", false);
+          return { buffering: false };
         });
-        const frame = { sample: frameSample, overlays };
-        frameCache.set(new WeakRef(removeFrame), frame);
-        addFrame(frameSample.frame_number, frame);
-      }
-
-      const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
-
-      if (requestMore && end < frameCount) {
-        nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
-        requestingFrames = true;
-        frameReader.postMessage({
-          method: "requestFrameChunk",
-          uuid: subscription,
-        });
-      } else {
-        requestingFrames = false;
-        nextRange = null;
-      }
-
-      update((state) => {
-        state.buffering && dispatchEvent("buffering", false);
-        return { buffering: false };
-      });
-    };
+      },
+      { signal: abortController.signal }
+    );
 
     requestingFrames = true;
     frameReader.postMessage({
@@ -190,7 +201,7 @@ const { acquireReader, addFrame } = (() => {
           nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
-          frameReader.postMessage({
+          frameReader?.postMessage({
             method: "requestFrameChunk",
             uuid: subscription,
           });
@@ -200,6 +211,13 @@ const { acquireReader, addFrame } = (() => {
     },
     addFrame: (removeFrame: RemoveFrame, frame: Frame): void => {
       frameCache.set(new WeakRef(removeFrame), frame);
+    },
+    clear: () => {
+      console.log("CLEAR");
+      lookerWithReader = null;
+      currentOptions = null;
+      frameReader?.terminate();
+      frameReader = undefined;
     },
   };
 })();
@@ -228,9 +246,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
-  destroy() {
+  detach() {
     this.pause();
-    super.destroy();
+    if (lookerWithReader === this) {
+      clear();
+    }
+    super.detach();
   }
 
   dispatchImpliedEvents(
@@ -249,55 +270,62 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   getCurrentSampleLabels(): LabelData[] {
     const labels: LabelData[] = [];
-    processOverlays(this.state, this.sampleOverlays)[0].forEach((overlay) => {
+    for (const overlay of processOverlays(this.state, this.sampleOverlays)[0]) {
       if (overlay instanceof ClassificationsOverlay) {
-        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+        for (const [field, label] of overlay.getFilteredAndFlat(this.state)) {
           labels.push({
             field: field,
             labelId: label.id,
             sampleId: this.sample.id,
           });
-        });
+        }
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
         labels.push({ labelId, field, sampleId: this.sample.id });
       }
-    });
+    }
 
     return labels;
   }
 
   getCurrentFrameLabels(): LabelData[] {
     const frame = this.frames.get(this.frameNumber).deref();
+    if (!frame) {
+      return [];
+    }
     const labels: LabelData[] = [];
-    if (frame) {
-      processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
-        if (overlay instanceof ClassificationsOverlay) {
-          overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
-            labels.push({
-              field: field,
-              labelId: label.id,
-              frameNumber: this.frameNumber,
-              sampleId: this.sample.id,
-            });
-          });
-        } else {
-          const { id: labelId, field } = overlay.getSelectData(this.state);
+
+    for (const overlay of processOverlays(this.state, frame.overlays)[0]) {
+      if (overlay instanceof ClassificationsOverlay) {
+        for (const [field, label] of overlay.getFilteredAndFlat(this.state)) {
           labels.push({
-            labelId,
-            field,
-            sampleId: this.sample.id,
+            field: field,
+            labelId: label.id,
             frameNumber: this.frameNumber,
+            sampleId: this.sample.id,
           });
         }
-      });
+      } else {
+        const { id: labelId, field } = overlay.getSelectData(this.state);
+        labels.push({
+          labelId,
+          field,
+          sampleId: this.sample.id,
+          frameNumber: this.frameNumber,
+        });
+      }
     }
 
     return labels;
   }
 
   getElements(config) {
-    return getVideoElements(config, this.updater, this.getDispatchEvent());
+    return getVideoElements({
+      abortController: this.abortController,
+      config,
+      dispatchEvent: this.getDispatchEvent(),
+      update: this.updater,
+    });
   }
 
   getInitialState(
@@ -360,7 +388,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       sample: frameSample as FrameSample,
       overlays: providedFrameOverlays[i],
     }));
-    frames.forEach((frame) => {
+    for (const frame of frames) {
       const frameNumber = frame.sample.frame_number;
       addFrame(
         (frameNumber) => removeFromBuffers(frameNumber, this.state.buffers),
@@ -368,7 +396,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       );
       this.frames.set(frame.sample.frame_number, new WeakRef(frame));
       addToBuffers([frameNumber, frameNumber], this.state.buffers);
-    });
+    }
   }
 
   pluckOverlays(state: VideoState) {
@@ -428,10 +456,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   private setReader() {
     this.requestFrames = acquireReader({
+      abortController: this.abortController,
       addFrame: (frameNumber, frame) =>
         this.frames.set(frameNumber, new WeakRef(frame)),
-      addFrameBuffers: (range) =>
-        (this.state.buffers = addToBuffers(range, this.state.buffers)),
+      addFrameBuffers: (range) => {
+        this.state.buffers = addToBuffers(range, this.state.buffers);
+      },
       removeFrame: (frameNumber) =>
         removeFromBuffers(frameNumber, this.state.buffers),
       getCurrentFrame: () => this.frameNumber,
