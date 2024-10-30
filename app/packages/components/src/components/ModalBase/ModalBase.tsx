@@ -192,8 +192,6 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     }));
   }, []);
 
-  console.log(primaryButtonView.disabled);
-
   return (
     <>
       <Box>
