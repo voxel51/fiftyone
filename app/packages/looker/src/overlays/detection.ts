@@ -58,12 +58,6 @@ export default class DetectionOverlay<
       );
       const maskCtx = this.canvas.getContext("2d");
       maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
-      );
       maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
