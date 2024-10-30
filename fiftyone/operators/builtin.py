@@ -15,6 +15,7 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -2328,3 +2329,5 @@ BUILTIN_OPERATORS = [
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
 ]
+
+BUILTIN_PANELS = [EvaluationPanel(_builtin=True)]

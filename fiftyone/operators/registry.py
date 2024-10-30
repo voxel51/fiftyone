@@ -9,7 +9,7 @@ FiftyOne operator registry.
 from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
 
-from .builtin import BUILTIN_OPERATORS
+from .builtin import BUILTIN_OPERATORS, BUILTIN_PANELS
 
 
 def get_operator(operator_uri, enabled=True):
@@ -92,6 +92,7 @@ class OperatorRegistry(object):
 
         if include_builtin:
             operators.extend(BUILTIN_OPERATORS)
+            operators.extend(BUILTIN_PANELS)
 
         if type == "panel":
             operators = [op for op in operators if isinstance(op, Panel)]
