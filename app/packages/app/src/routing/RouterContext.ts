@@ -183,7 +183,7 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "slice"]);
+const SKIP_EVENTS = new Set(["modal", "slice", "spaces"]);
 
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;

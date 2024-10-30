@@ -50,6 +50,7 @@ function Grid() {
   const getFontSize = useFontSize(id);
 
   const spotlight = useMemo(() => {
+    records;
     reset;
     if (resizing) {
       return undefined;
@@ -57,6 +58,9 @@ function Grid() {
 
     return new Spotlight<number, fos.Sample>({
       ...get(),
+      destroy: (id) => {
+        lookerStore.get(id)?.destroy();
+      },
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
@@ -74,24 +78,22 @@ function Grid() {
           throw new Error("bad data");
         }
 
-        const init = (l) => {
-          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current?.(detail);
-          });
-          lookerStore.set(id, l);
-          l.attach(element, dimensions);
-        };
-
-        if (!soft) {
-          init(
-            createLooker.current?.(
-              { ...result, symbol: id },
-              {
-                fontSize: getFontSize(),
-              }
-            )
-          );
+        if (soft) {
+          // we are scrolling fast, skip creation
+          return;
         }
+
+        const looker = createLooker.current?.(
+          { ...result, symbol: id },
+          {
+            fontSize: getFontSize(),
+          }
+        );
+        looker.addEventListener("selectthumbnail", ({ detail }) =>
+          selectSample.current?.(detail)
+        );
+        lookerStore.set(id, looker);
+        looker.attach(element, dimensions);
       },
       scrollbar: true,
       spacing,

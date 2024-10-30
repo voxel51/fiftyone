@@ -494,9 +494,9 @@ export abstract class AbstractLooker<
 
   detach(): void {
     this.resizeObserver.disconnect();
-    const parent = this.lookerElement.element.parentNode;
-    parent.removeChild(this.lookerElement.element);
-    this.abortController.abort();
+    this.lookerElement.element.parentNode?.removeChild(
+      this.lookerElement.element
+    );
   }
 
   abstract updateOptions(options: Partial<State["options"]>): void;
@@ -540,6 +540,12 @@ export abstract class AbstractLooker<
 
   protected get waiting() {
     return false;
+  }
+
+  destroy() {
+    this.detach();
+    this.abortController.abort();
+    this.updater({ destroyed: true });
   }
 
   disable() {
