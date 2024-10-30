@@ -81,7 +81,6 @@ export const MainPanel = () => {
             onError={setErrorMessage}
             switchToTab={switchToTab}
           />
-          // <Fragment />
         ),
       },
       {

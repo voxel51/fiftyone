@@ -317,10 +317,8 @@ export const Lens = ({
     // Container element
     <Box
       sx={{
-        border: "1px solid #777",
         width: "100%",
         height: "800px",
-        p: 2,
       }}
     >
       {/*// Spotlight*/}

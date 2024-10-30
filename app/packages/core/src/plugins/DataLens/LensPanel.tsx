@@ -1,21 +1,23 @@
-import React, { Fragment, useMemo, useRef, useState } from "react";
-import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
-import OpenInBrowserIcon from "@mui/icons-material/OpenInBrowser";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
+  CircularProgress,
   FormControl,
-  FormControlLabel,
-  Link,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { Dialog, Loading } from "@fiftyone/components";
+import { Dialog } from "@fiftyone/components";
 import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
@@ -27,8 +29,11 @@ import {
   PreviewResponse,
 } from "./models";
 import { Lens } from "./Lens";
+import { useRecoilValue } from "recoil";
+import { datasetName as fosDatasetName } from "@fiftyone/state";
 
 type ImportLimitType = "limit" | "all";
+type DestDatasetType = "new" | "existing";
 
 /**
  * Component responsible for handling query and preview functionality.
@@ -36,36 +41,41 @@ type ImportLimitType = "limit" | "all";
 export const LensPanel = ({
   lensConfigs,
   onError,
-  switchToTab,
 }: {
   lensConfigs: LensConfig[];
   onError: (message: string) => void;
-  switchToTab: (tabId: string) => void;
 }) => {
   // General state
   const [activeConfig, setActiveConfig] = useState<LensConfig>(lensConfigs[0]);
   const [formState, setFormState] = useState<FormState>({});
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isQueryExpanded, setIsQueryExpanded] = useState(true);
 
   // Preview state
   const [maxSamples, setMaxSamples] = useState(25);
   const [searchResponse, setSearchResponse] = useState<PreviewResponse>();
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
 
   // Import state
-  const [datasetName, setDatasetName] = useState("");
-  const [isImportOpen, setIsImportOpen] = useState(false);
+  const activeDataset = useRecoilValue(fosDatasetName);
+  const [datasetName, setDatasetName] = useState(activeDataset);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importTime, setImportTime] = useState(0);
+  const [isImportEnabled, setIsImportEnabled] = useState(false);
   const [isImportLoading, setIsImportLoading] = useState(false);
-  const [destDatasetName, setDestDatasetName] = useState("");
+  const [destDatasetName, setDestDatasetName] = useState(activeDataset);
+  const [destDatasetType, setDestDatasetType] = useState<DestDatasetType>(
+    "existing"
+  );
   const [importLimitType, setImportLimitType] = useState<ImportLimitType>(
     "limit"
   );
   const [maxImportSamples, setMaxImportSamples] = useState(500);
-  const isImportAllSelected = useMemo(() => importLimitType === "all", [
-    importLimitType,
-  ]);
+  const [isImportExpanded, setIsImportExpanded] = useState(true);
+  const [datasets, setDatasets] = useState<string[]>([]);
+  const [showImportContent, setShowImportContent] = useState(false);
 
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
@@ -82,9 +92,28 @@ export const LensPanel = ({
     "@voxel51/operators/lens_datasource_connector"
   );
 
+  const listDatasetsOperator = useOperatorExecutor(
+    "@voxel51/operators/list_datasets"
+  );
+
   const openDatasetOperator = useOperatorExecutor(
     "@voxel51/operators/open_dataset"
   );
+
+  // Load datasets on initial render.
+  useEffect(() => {
+    const callback = (response: OperatorResponse<{ datasets?: string[] }>) => {
+      if (response.result.datasets) {
+        setDatasets(
+          response.result.datasets.sort((a, b) => a.localeCompare(b))
+        );
+      }
+    };
+
+    const requestParams = {};
+
+    listDatasetsOperator.execute(requestParams, { callback });
+  }, []);
 
   // Keep track of the average sample size of our current preview.
   // This will allow us to calculate a reasonable batch size for imports.
@@ -101,6 +130,10 @@ export const LensPanel = ({
   const handleFormStateChange = (state: FormState, isValid: boolean) => {
     setFormState({ ...state });
     setIsFormValid(isValid);
+
+    // Any changes to the form invalidate the preview and thus disable import
+    setIsImportEnabled(false);
+    setShowImportContent(false);
   };
 
   // Callback which handles updates to the selected lens configuration.
@@ -110,13 +143,22 @@ export const LensPanel = ({
       setActiveConfig(config);
       handleFormStateChange({}, false);
       setSearchResponse(null);
+      setShowImportContent(false);
+    }
+  };
+
+  // Callback which handles updates to the import destination dataset type
+  const handleDestDatasetTypeChange = (value?: DestDatasetType) => {
+    if (value) {
+      setDestDatasetType(value);
+      // Default to active dataset for existing dataset, else empty string
+      const defaultDest = value === "existing" ? activeDataset : "";
+      setDatasetName(defaultDest);
     }
   };
 
   // Callback which handles executing a search and parsing the response.
   const doSearch = async () => {
-    setSearchResponse(null);
-
     // Operator request parameters.
     const request: PreviewRequest = {
       search_params: { ...formState },
@@ -131,10 +173,16 @@ export const LensPanel = ({
       setSearchResponse(response.result);
       setIsPreviewLoading(false);
 
+      // Enable import if any samples were returned
+      setIsImportEnabled(response.result?.result_count > 0);
+
       onError(response.error || response.result?.error);
     };
 
+    setShowImportContent(false);
+    setSearchResponse(null);
     setIsPreviewLoading(true);
+    setIsPreviewExpanded(true);
     previewStartTime.current = new Date().getTime();
 
     await searchOperator.execute(request, { callback });
@@ -157,7 +205,7 @@ export const LensPanel = ({
       batch_size: batchSize,
       request_type: "import",
       dataset_name: datasetName,
-      max_samples: isImportAllSelected ? 0 : maxImportSamples,
+      max_samples: importLimitType === "limit" ? maxImportSamples : 0,
     };
 
     // Callback which handles the response from the operator.
@@ -171,6 +219,7 @@ export const LensPanel = ({
     setImportTime(0);
     setIsImportLoading(true);
     setDestDatasetName(datasetName);
+    setShowImportContent(true);
 
     importStartTime.current = new Date().getTime();
 
@@ -184,64 +233,76 @@ export const LensPanel = ({
 
   // Callback which opens the import dialog.
   const openImportDialog = () => {
-    setIsImportOpen(true);
-    setDatasetName("");
+    setIsImportDialogOpen(true);
     setImportTime(0);
     setDestDatasetName("");
     setMaxImportSamples(500);
   };
 
+  // Callback which updates state and initiates an import job.
+  const handleImportClick = () => {
+    doImport();
+
+    setIsQueryExpanded(false);
+    setIsPreviewExpanded(false);
+    setIsImportDialogOpen(false);
+
+    setIsImportExpanded(true);
+  };
+
   // LensConfig selection.
   const lensConfigContent = (
-    <Box sx={{ m: 2 }}>
-      <Typography sx={{ mb: 2 }}>Select datasource configuration</Typography>
+    <Box>
+      <Typography sx={{ mb: 1 }}>Select a data source</Typography>
 
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
+      <Select
+        fullWidth
+        variant="outlined"
+        value={activeConfig?.name}
+        onChange={(e) => handleLensConfigChange(e.target.value)}
       >
-        <Select
-          variant="outlined"
-          value={activeConfig?.name}
-          onChange={(e) => handleLensConfigChange(e.target.value)}
-        >
-          {lensConfigs.map((cfg) => (
-            <MenuItem key={cfg.name} value={cfg.name}>
-              {cfg.name}
-            </MenuItem>
-          ))}
-        </Select>
-
-        <Button
-          variant="text"
-          onClick={() => switchToTab("manage-datasources")}
-        >
-          Manage datasources
-        </Button>
-      </Box>
+        {lensConfigs.map((cfg) => (
+          <MenuItem key={cfg.name} value={cfg.name}>
+            {cfg.name}
+          </MenuItem>
+        ))}
+      </Select>
     </Box>
   );
 
   // Operator (search) configuration.
   const queryOperatorContent = (
-    <Box sx={{ m: 2 }}>
-      <Typography sx={{ mb: 2 }}>Query parameters</Typography>
-      <Box sx={{ mb: 2, border: "1px solid #333", p: 2 }}>
-        <OperatorConfigurator
-          operator={activeConfig?.operator_uri}
-          formState={formState}
-          onStateChange={handleFormStateChange}
-        />
-      </Box>
+    <Box sx={{ mt: 4 }}>
+      <Accordion expanded={isQueryExpanded}>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          onClick={() => setIsQueryExpanded((prev) => !prev)}
+        >
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Typography variant="h6">Query parameters</Typography>
+            <Typography></Typography>
+            <Typography color="secondary">
+              {Object.keys(formState)
+                .map((k) => (formState[k] ? 1 : 0))
+                .reduce((l, r) => l + r, 0)}{" "}
+              filters applied
+            </Typography>
+          </Stack>
+        </AccordionSummary>
+        <AccordionDetails>
+          <OperatorConfigurator
+            operator={activeConfig?.operator_uri}
+            formState={formState}
+            onStateChange={handleFormStateChange}
+          />
+        </AccordionDetails>
+      </Accordion>
     </Box>
   );
 
   // Additional search controls.
   const searchControls = (
-    <Box sx={{ m: 2, mt: 3 }}>
+    <Box sx={{ m: 2 }}>
       <Box
         sx={{
           display: "flex",
@@ -249,214 +310,348 @@ export const LensPanel = ({
           alignItems: "center",
         }}
       >
-        <Button
-          variant="contained"
-          disabled={!isFormValid || isPreviewLoading}
-          onClick={doSearch}
-        >
-          Search
-        </Button>
-
         <FormControl>
           <TextField
-            variant="outlined"
-            label="Number of samples"
+            label="Number of preview samples"
             value={maxSamples}
             onChange={(e) =>
               setMaxSamples(
                 isNaN(Number.parseInt(e.target.value))
-                  ? 10
+                  ? 25
                   : Number.parseInt(e.target.value)
               )
             }
           />
         </FormControl>
+
+        <Stack direction="row" spacing={2}>
+          {isImportEnabled && (
+            <Button variant="contained" onClick={openImportDialog}>
+              Import data
+            </Button>
+          )}
+
+          <Button
+            variant="contained"
+            disabled={!isFormValid || isPreviewLoading}
+            onClick={doSearch}
+          >
+            Preview data
+          </Button>
+        </Stack>
       </Box>
     </Box>
   );
 
   // Dataset import.
-  const importContent = (
-    <>
-      <Button variant="contained" onClick={openImportDialog}>
-        Import to dataset
-      </Button>
+  const importDialog = (
+    <Dialog
+      open={isImportDialogOpen}
+      onClose={() => setIsImportDialogOpen(false)}
+    >
+      <Box sx={{ m: 2, maxWidth: "400px" }}>
+        <Typography variant="h5">Import data to a Dataset</Typography>
 
-      <Dialog open={isImportOpen} onClose={() => setIsImportOpen(false)}>
-        <Box sx={{ m: 2 }}>
-          <Typography variant="h5">Import data to a Dataset</Typography>
-
-          <Typography sx={{ mt: 4 }}>
-            Enter the name of a new or existing dataset
-          </Typography>
-
-          <Stack sx={{ mt: 1 }} direction="column" spacing={4}>
-            <TextField
-              type="text"
-              value={datasetName}
-              onChange={(e) => setDatasetName(e.target.value)}
-            />
-
-            <Box>
-              <Typography>Maximum number of samples</Typography>
-              <RadioGroup
-                value={importLimitType}
-                onChange={(e) =>
-                  setImportLimitType(e.target.value as ImportLimitType)
-                }
+        {/*Number of samples*/}
+        <Box sx={{ mt: 3 }}>
+          <Box>
+            <Typography sx={{ mb: 2 }}>Sample size</Typography>
+            <ToggleButtonGroup
+              color="primary"
+              sx={{ mt: 2, mb: 2 }}
+              exclusive
+              value={importLimitType}
+              onChange={(_, val) => val && setImportLimitType(val)}
+            >
+              <ToggleButton
+                value="limit"
+                sx={{
+                  border: "1px solid #666",
+                }}
               >
-                <FormControlLabel
-                  value="all"
-                  control={<Radio />}
-                  label="Import all matching samples"
-                />
-                <FormControlLabel
-                  value="limit"
-                  control={<Radio />}
-                  label={
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Typography>Up to</Typography>
-                      <TextField
-                        value={maxImportSamples}
-                        onChange={(e) =>
-                          setMaxImportSamples(
-                            isNaN(Number.parseInt(e.target.value))
-                              ? 500
-                              : Number.parseInt(e.target.value)
-                          )
-                        }
-                        disabled={isImportAllSelected}
-                      />
-                      <Typography>samples</Typography>
-                    </Stack>
-                  }
-                />
-              </RadioGroup>
-            </Box>
-          </Stack>
+                Custom
+              </ToggleButton>
+              <ToggleButton
+                value="all"
+                sx={{
+                  border: "1px solid #666",
+                }}
+              >
+                All samples matching the query parameters
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
 
-          <Stack sx={{ mt: 4 }} direction="row" spacing={2}>
-            {importTime > 0 ? (
-              <Button
-                variant="contained"
-                startIcon={<OpenInBrowserIcon />}
-                onClick={openDataset}
-              >
-                Open dataset
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                startIcon={<SystemUpdateAltIcon />}
-                disabled={!datasetName || isImportLoading}
-                onClick={doImport}
-              >
-                Import to dataset
-              </Button>
+          <Box sx={{ mt: 2, minHeight: "5rem" }}>
+            {importLimitType === "all" && (
+              <Typography color="secondary">
+                Depending on the number of samples, the import process may take
+                some time to complete. Once the import is in progress, you can
+                track its status in the Runs page.
+              </Typography>
             )}
 
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => setIsImportOpen(false)}
-            >
-              {importTime > 0 ? "Close" : "Cancel"}
-            </Button>
-          </Stack>
+            {importLimitType === "limit" && (
+              <TextField
+                fullWidth
+                label="Number of samples"
+                value={maxImportSamples}
+                onChange={(e) =>
+                  setMaxImportSamples(
+                    isNaN(Number.parseInt(e.target.value))
+                      ? 500
+                      : Number.parseInt(e.target.value)
+                  )
+                }
+              />
+            )}
+          </Box>
         </Box>
-      </Dialog>
-    </>
+
+        {/*Dataset selection*/}
+        <Box sx={{ mt: 4 }}>
+          <Box>
+            <Typography>Import to dataset</Typography>
+            <ToggleButtonGroup
+              color="primary"
+              sx={{ mt: 2, mb: 2 }}
+              exclusive
+              value={destDatasetType}
+              onChange={(_, val) => handleDestDatasetTypeChange(val)}
+            >
+              <ToggleButton
+                value="existing"
+                sx={{
+                  border: "1px solid #666",
+                }}
+              >
+                Existing
+              </ToggleButton>
+              <ToggleButton
+                value="new"
+                sx={{
+                  border: "1px solid #666",
+                }}
+              >
+                New dataset
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          <Box sx={{ mt: 2, mb: 2 }}>
+            {destDatasetType === "existing" && (
+              <Select
+                fullWidth
+                variant="outlined"
+                label="Select a dataset"
+                value={datasetName || activeDataset}
+                onChange={(e) => setDatasetName(e.target.value)}
+              >
+                {datasets.map((dataset) => (
+                  <MenuItem key={dataset} value={dataset}>
+                    {dataset}
+                    {activeDataset === dataset && (
+                      <Typography
+                        sx={{ ml: 2 }}
+                        variant="caption"
+                        color="secondary"
+                      >
+                        currently in view
+                      </Typography>
+                    )}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
+
+            {destDatasetType === "new" && (
+              <TextField
+                fullWidth
+                label="New dataset name"
+                value={datasetName}
+                onChange={(e) => setDatasetName(e.target.value)}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/*Dialog actions*/}
+        <Box sx={{ mt: 5, display: "flex", justifyContent: "space-between" }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => setIsImportDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            endIcon={<ExpandMoreIcon />}
+            disabled={!datasetName || isImportLoading}
+            onClick={handleImportClick}
+          >
+            Import data
+          </Button>
+        </Box>
+      </Box>
+    </Dialog>
   );
 
   // Sample preview.
   const previewContent = searchResponse ? (
-    <>
-      <Box sx={{ m: 2 }}>
-        <Box sx={{ mt: 1 }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography>
-              {(searchResponse.result_count ?? 0).toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{" "}
-              samples received in{" "}
+    <Box sx={{ mt: 4 }}>
+      <Accordion expanded={isPreviewExpanded}>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          onClick={() => setIsPreviewExpanded((prev) => !prev)}
+        >
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Typography variant="h6">Preview</Typography>
+            <Typography></Typography>
+            <Typography color="secondary">
               {(previewTime / 1000).toLocaleString(undefined, {
-                minimumFractionDigits: 3,
-                maximumFractionDigits: 3,
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
               })}{" "}
-              s
+              seconds
             </Typography>
-
-            {searchResponse.result_count > 0 && importContent}
-          </Box>
-        </Box>
-      </Box>
-
-      {searchResponse.result_count > 0 && (
-        <Box sx={{ m: 2 }}>
-          <Lens
-            samples={searchResponse.query_result}
-            sampleSchema={searchResponse.field_schema}
-          />
-        </Box>
-      )}
-    </>
+          </Stack>
+        </AccordionSummary>
+        <AccordionDetails>
+          {searchResponse.result_count > 0 ? (
+            <Box sx={{ m: 2 }}>
+              <Lens
+                samples={searchResponse.query_result}
+                sampleSchema={searchResponse.field_schema}
+              />
+            </Box>
+          ) : (
+            <Box>
+              <Typography textAlign="center" color="secondary">
+                No results found
+              </Typography>
+            </Box>
+          )}
+        </AccordionDetails>
+      </Accordion>
+    </Box>
   ) : isPreviewLoading ? (
-    <>
-      <Box sx={{ m: 2 }}>
-        <Box sx={{ mt: 1 }}>
-          <Typography> </Typography>
-        </Box>
-      </Box>
-
-      <Box
-        sx={{
-          m: 2,
-          border: "1px solid #777",
-          width: "100%",
-          height: "800px",
-        }}
-      >
-        <Loading>Fetching samples...</Loading>
-      </Box>
-    </>
+    <Box sx={{ mt: 4 }}>
+      <Accordion expanded={isPreviewExpanded}>
+        <AccordionSummary
+          expandIcon={<CircularProgress size="1.5rem" />}
+          onClick={() => setIsPreviewExpanded((prev) => !prev)}
+        >
+          <Typography variant="h6">Preview</Typography>
+        </AccordionSummary>
+        <AccordionDetails></AccordionDetails>
+      </Accordion>
+    </Box>
   ) : (
     <Fragment />
   );
 
+  // Import status
+  const importContent =
+    isImportLoading || importTime > 0 ? (
+      <Box sx={{ mt: 4 }}>
+        <Accordion expanded={isImportExpanded}>
+          <AccordionSummary
+            expandIcon={
+              isImportLoading ? (
+                <CircularProgress size="1.5rem" />
+              ) : (
+                <ExpandMoreIcon />
+              )
+            }
+            onClick={() => setIsImportExpanded((prev) => !prev)}
+          >
+            {isImportLoading ? (
+              <Typography>Data import in progress</Typography>
+            ) : (
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Typography variant="h6">Data import completed</Typography>
+                <Typography></Typography>
+                <Typography color="secondary">
+                  {(importTime / 1000).toLocaleString(undefined, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}{" "}
+                  seconds
+                </Typography>
+              </Stack>
+            )}
+          </AccordionSummary>
+          <AccordionDetails>
+            {importTime > 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Box
+                  sx={{
+                    borderLeft: "3px solid var(--fo-palette-success-main)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <CheckCircleOutlineIcon
+                    sx={{ ml: 1, mr: 1 }}
+                    color="success"
+                  />
+                  <Typography color="secondary">
+                    Samples were added to {destDatasetName}
+                  </Typography>
+                </Box>
+
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={openDataset}
+                >
+                  View samples
+                </Button>
+              </Box>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+    ) : (
+      <Fragment />
+    );
+
   // All content.
-  const content = (
+  return (
     <Box sx={{ m: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "end" }}>
-        <Typography variant="h6">
-          <Link href="https://docs.voxel51.com" target="_blank">
-            Need help with Lens?
-          </Link>
-        </Typography>
+      <Box sx={{ maxWidth: "750px", m: "auto", mb: 16 }}>
+        <Box sx={{ m: 2 }}>
+          {lensConfigContent}
+          {queryOperatorContent}
+          {previewContent}
+          {showImportContent && importContent}
+        </Box>
+
+        {/*Sticky footer*/}
+        <Box
+          sx={{
+            position: "fixed",
+            width: "750px",
+            bottom: 0,
+            padding: 1,
+            borderTop: "1px solid var(--fo-palette-divider)",
+            background: "var(--fo-palette-background-level2)",
+          }}
+        >
+          {searchControls}
+        </Box>
       </Box>
 
-      <Box sx={{ maxWidth: "750px", m: "auto", p: 2 }}>
-        <Typography sx={{ textAlign: "center", mb: 2 }} variant="h1">
-          Data Lens
-        </Typography>
-
-        <Typography sx={{ textAlign: "center", mb: 6 }} variant="h6">
-          Search your connected datasources directly from FiftyOne
-        </Typography>
-
-        {lensConfigContent}
-        {queryOperatorContent}
-        {searchControls}
-      </Box>
-
-      {previewContent}
+      {/*Placement of this dialog doesn't matter; just needs to be part of the DOM*/}
+      {importDialog}
     </Box>
   );
-
-  return content;
 };

@@ -1,4 +1,4 @@
-import { BottomNavigation, Box, Link, Tab, Tabs } from "@mui/material";
+import { Box, Link, Tab, Tabs } from "@mui/material";
 
 export type TabConfig = {
   id: string;
@@ -51,9 +51,6 @@ export const Layout = ({
         {/*Tab content*/}
         <Box sx={{ m: 2 }}>{tabs[active].content}</Box>
       </Box>
-
-      {/*Sticky footer*/}
-      <BottomNavigation>{tabs[active].footer}</BottomNavigation>
     </>
   );
 };
