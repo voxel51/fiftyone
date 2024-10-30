@@ -9,3 +9,4 @@ export * from "./Sidebar";
 export { default as Snackbar } from "./Snackbar";
 export { default as ViewBar, rollbackViewBar } from "./ViewBar/ViewBar";
 export * from "./Starter";
+export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
