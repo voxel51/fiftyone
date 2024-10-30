@@ -4,7 +4,7 @@
 numpy<2
 pydicom>=2.2.0
 shapely>=1.7.1
-tensorflow
+tensorflow==2.17.0
 tensorflow-datasets
 torch
 torchvision
