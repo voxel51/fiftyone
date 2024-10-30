@@ -73,7 +73,8 @@ export const useModalContext = () => {
   const ctx = useContext(modalContext);
 
   if (typeof ctx === "undefined") {
-    throw new Error("modal context is not defined");
+    console.error("modal context is not defined");
+    // throw new Error("modal context is not defined");
   }
 
   return ctx;

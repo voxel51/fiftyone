@@ -196,13 +196,13 @@ const Modal = () => {
   );
 
   return ReactDOM.createPortal(
-    <modalContext.Provider
-      value={{
-        activeLookerRef,
-        setActiveLookerRef,
-        onLookerSetSubscribers,
-      }}
-    >
+    // <modalContext.Provider
+    //   value={{
+    //     activeLookerRef,
+    //     setActiveLookerRef,
+    //     onLookerSetSubscribers,
+    //   }}
+    // >
       <ModalWrapper
         ref={wrapperRef}
         onClick={onClickModalWrapper}
@@ -239,8 +239,8 @@ const Modal = () => {
             />
           )}
         </ModalContainer>
-      </ModalWrapper>
-    </modalContext.Provider>,
+      </ModalWrapper>,
+    // </modalContext.Provider>,
     document.getElementById("modal") as HTMLDivElement
   );
 };

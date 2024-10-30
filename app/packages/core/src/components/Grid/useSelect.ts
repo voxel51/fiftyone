@@ -13,6 +13,18 @@ export default function useSelect(
   const { init, deferred } = fos.useDeferrer();
 
   const selected = useRecoilValue(fos.selectedSamples);
+  useEffect(() => {
+    deferred(() => {
+      const fontSize = getFontSize();
+      spotlight?.updateItems((id) => {
+        store.get(id)?.updateOptions({
+          ...options,
+          fontSize,
+          selected: selected.has(id.description),
+        });
+      });
+    });
+  }, [deferred, getFontSize, options, selected, spotlight, store]);
 
   useEffect(() => {
     return spotlight ? init() : undefined;

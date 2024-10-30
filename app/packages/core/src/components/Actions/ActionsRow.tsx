@@ -729,7 +729,7 @@ const DragActionsRow = () => {
 };
 
 export const ModalActionsRow = () => {
-  const { activeLookerRef } = useModalContext();
+  // const { activeLookerRef } = useModalContext();
 
   const isActualGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
@@ -757,10 +757,10 @@ export const ModalActionsRow = () => {
       <ModalActionsRowContainer>
         <DragActionsRow />
         <Hidden modal />
-        <Selected modal={true} lookerRef={activeLookerRef} />
+        <Selected modal={true} lookerRef={null} />
         <Colors modal />
         <Similarity modal={true} />
-        <Tag modal={true} lookerRef={activeLookerRef} />
+        <Tag modal={true} lookerRef={null} />
         <Options modal={true} />
         {isGroup && <GroupMediaVisibilityContainer modal={true} />}
         <BrowseOperations modal />

@@ -53,9 +53,9 @@ export const ImaVidLookerReact = React.memo(
       ...lookerOptions,
     });
 
-    const { activeLookerRef, setActiveLookerRef } = useModalContext();
-    const imaVidLookerRef =
-      activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
+    // const { activeLookerRef, setActiveLookerRef } = useModalContext();
+    // const imaVidLookerRef =
+    //   activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
@@ -71,7 +71,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       if (looker) {
-        setActiveLookerRef(looker as fos.Lookers);
+        // setActiveLookerRef(looker as fos.Lookers);
       }
     }, [looker]);
 

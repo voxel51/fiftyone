@@ -46,20 +46,20 @@ export const ModalSample = React.memo(() => {
     [tooltip]
   );
 
-  const { activeLookerRef, onLookerSetSubscribers } = useModalContext();
+  // const { activeLookerRef, onLookerSetSubscribers } = useModalContext();
 
-  useEffect(() => {
-    onLookerSetSubscribers.current.push((looker) => {
-      looker.addEventListener("tooltip", tooltipEventHandler);
-    });
+  // useEffect(() => {
+  //   // onLookerSetSubscribers.current.push((looker) => {
+  //     looker.addEventListener("tooltip", tooltipEventHandler);
+  //   });
 
-    return () => {
-      activeLookerRef?.current?.removeEventListener(
-        "tooltip",
-        tooltipEventHandler
-      );
-    };
-  }, [activeLookerRef, onLookerSetSubscribers, tooltipEventHandler]);
+  //   return () => {
+  //     activeLookerRef?.current?.removeEventListener(
+  //       "tooltip",
+  //       tooltipEventHandler
+  //     );
+  //   };
+  // }, [activeLookerRef, onLookerSetSubscribers, tooltipEventHandler]);
 
   useEffect(() => {
     // reset tooltip state when modal is closed
