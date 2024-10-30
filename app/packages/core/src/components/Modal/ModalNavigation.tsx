@@ -68,13 +68,15 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   modalRef.current = modal;
 
+  // important: make sure all dependencies of the navigators are referentially stable,
+  // or else the debouncing mechanism won't work
   const nextNavigator = useMemo(
     () =>
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasNext === false,
         navigateFn: (offset) => navigation?.next(offset).then(setModal),
         onNavigationStart: onNavigate,
-        debounceTime: 200,
+        debounceTime: 150,
       }),
     [navigation, onNavigate, setModal]
   );
@@ -85,7 +87,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         isNavigationIllegalWhen: () => modalRef.current?.hasPrevious === false,
         navigateFn: (offset) => navigation?.previous(offset).then(setModal),
         onNavigationStart: onNavigate,
-        debounceTime: 200,
+        debounceTime: 150,
       }),
     [navigation, onNavigate, setModal]
   );
