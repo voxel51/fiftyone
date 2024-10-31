@@ -4,7 +4,7 @@ import Spotlight from "@fiftyone/spotlight";
 import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { v4 as uuid } from "uuid";
-import { Box } from "@mui/material";
+import { Box, Slider, Typography } from "@mui/material";
 
 /**
  * Type definitions for convenience and consistency.
@@ -64,6 +64,16 @@ type SampleStoreEntry = {
   sample: Sample;
   urls: SampleUrls;
 };
+
+/**
+ * Minimum zoom level for rendered samples.
+ */
+const minZoomLevel = 1;
+
+/**
+ * Maximum zoom level for rendered samples.
+ */
+const maxZoomLevel = 11;
 
 /**
  * Component which handles rendering samples.
@@ -178,6 +188,9 @@ export const Lens = ({
     cleanedSchema
   );
   const [resizing, setResizing] = useState(false);
+  const [zoom, setZoom] = useState(
+    Math.floor((minZoomLevel + maxZoomLevel) / 2)
+  );
 
   const spotlight = useMemo(() => {
     if (resizing) {
@@ -197,7 +210,7 @@ export const Lens = ({
           min = -1;
         }
 
-        return 2 - min;
+        return Math.max(minZoomLevel, maxZoomLevel - Math.max(min, zoom));
       },
       get: (page: number): Promise<SamplePage> => {
         // In this implementation, we only support a single page, which
@@ -279,7 +292,7 @@ export const Lens = ({
       },
       spacing: 20,
     });
-  }, [lookerStore, sampleStore, createLooker, samples, resizing]);
+  }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
 
   // Attach spotlight to this component's root element
   useLayoutEffect(() => {
@@ -314,15 +327,34 @@ export const Lens = ({
   }, [elementId]);
 
   return (
-    // Container element
-    <Box
-      sx={{
-        width: "100%",
-        height: "800px",
-      }}
-    >
-      {/*// Spotlight*/}
-      <Box id={elementId} sx={{ width: "100%", height: "100%" }}></Box>
+    <Box>
+      {/*Controls*/}
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <Box sx={{ flex: "0 1 200px", mb: 2 }}>
+          <Typography color="secondary" gutterBottom>
+            Zoom level
+          </Typography>
+          <Slider
+            value={zoom}
+            onChange={(_, val) => setZoom(val instanceof Array ? val[0] : val)}
+            min={minZoomLevel}
+            max={maxZoomLevel}
+            step={1}
+            color="primary"
+          />
+        </Box>
+      </Box>
+
+      {/*Spotlight container*/}
+      <Box
+        sx={{
+          width: "100%",
+          height: "800px",
+        }}
+      >
+        {/*Spotlight*/}
+        <Box id={elementId} sx={{ width: "100%", height: "100%" }}></Box>
+      </Box>
     </Box>
   );
 };
