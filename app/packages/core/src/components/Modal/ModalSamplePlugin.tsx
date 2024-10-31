@@ -1,6 +1,6 @@
 import { ErrorBoundary } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Group from "./Group";
@@ -48,18 +48,30 @@ export const ModalSample = React.memo(() => {
 
   const { activeLookerRef, onLookerSetSubscribers } = useModalContext();
 
-  useEffect(() => {
-    onLookerSetSubscribers.current.push((looker) => {
+  const addTooltipEventListener = useMemo(() => {
+    return (looker: fos.Lookers) => {
       looker.addEventListener("tooltip", tooltipEventHandler);
-    });
+    };
+  }, []);
+
+  useEffect(() => {
+    onLookerSetSubscribers.current.push(addTooltipEventListener);
 
     return () => {
       activeLookerRef?.current?.removeEventListener(
         "tooltip",
         tooltipEventHandler
       );
+      onLookerSetSubscribers.current = onLookerSetSubscribers.current.filter(
+        (fn) => fn !== addTooltipEventListener
+      );
     };
-  }, [activeLookerRef, onLookerSetSubscribers, tooltipEventHandler]);
+  }, [
+    activeLookerRef,
+    addTooltipEventListener,
+    onLookerSetSubscribers,
+    tooltipEventHandler,
+  ]);
 
   useEffect(() => {
     // reset tooltip state when modal is closed
