@@ -88,7 +88,7 @@ export class ImaVidFrameSamples {
           sample.image = image;
           resolve(sampleId);
         },
-        { signal: this.abortController.signal }
+        { signal: this.abortController?.signal }
       );
 
       image.addEventListener(
@@ -105,7 +105,7 @@ export class ImaVidFrameSamples {
           // setting src should trigger the load event
           image.src = BASE64_BLACK_IMAGE;
         },
-        { signal: this.abortController.signal }
+        { signal: this.abortController?.signal }
       );
 
       image.src = source;
