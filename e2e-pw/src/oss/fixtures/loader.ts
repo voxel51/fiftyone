@@ -8,6 +8,7 @@ import {
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import kill from "tree-kill";
 import waitOn from "wait-on";
+import { POPUP_DISMISS_TIMEOUT } from "../constants";
 import { Duration } from "../utils";
 
 type WebServerProcessConfig = {
@@ -188,5 +189,22 @@ export class OssLoader extends AbstractFiftyoneLoader {
       {},
       { timeout: Duration.Seconds(10) }
     );
+
+    // close all pop-ups (cookies, new feature annoucement, etc.)
+    try {
+      await page
+        .getByTestId("btn-dismiss-query-performance-toast")
+        .click({ timeout: POPUP_DISMISS_TIMEOUT });
+    } catch {
+      console.log("No query performance toast to dismiss");
+    }
+
+    try {
+      await page
+        .getByTestId("btn-disable-cookies")
+        .click({ timeout: POPUP_DISMISS_TIMEOUT });
+    } catch {
+      console.log("No cookies button to disable");
+    }
   }
 }
