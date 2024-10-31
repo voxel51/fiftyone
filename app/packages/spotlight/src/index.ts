@@ -104,7 +104,8 @@ export default class Spotlight<K, V> extends EventTarget {
 
   destroy(): void {
     if (!this.attached) {
-      throw new Error("spotlight is not attached");
+      console.error("spotlight is not attached");
+      return;
     }
 
     this.#backward?.remove();
