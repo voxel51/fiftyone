@@ -55,28 +55,27 @@ interface AcquireReaderOptions {
   schema: Schema;
 }
 
-const { acquireReader, addFrame, clear } = (() => {
-  const createCache = () =>
-    new LRUCache<WeakRef<RemoveFrame>, Frame>({
+const { acquireReader, clear } = (() => {
+  const createCache = (removeFrame) =>
+    new LRUCache<number, Frame>({
       maxSize: MAX_FRAME_CACHE_SIZE_BYTES,
       sizeCalculation: (frame) => {
         let size = 1;
-        frame.overlays.forEach((overlay) => {
+        for (const overlay of frame.overlays) {
           size += overlay.getSizeBytes();
-        });
+        }
         return size;
       },
-      dispose: (frame, removeFrameRef) => {
-        const removeFrame = removeFrameRef.deref();
-        removeFrame?.(frame.sample.frame_number);
+
+      dispose: (frame) => {
+        removeFrame(frame);
       },
     });
 
-  const frameCache = createCache();
+  let frameCache: LRUCache<number, Frame> = null;
 
   let frameReader: Worker;
 
-  let streamSize = 0;
   let nextRange: BufferRange = null;
 
   let requestingFrames = false;
@@ -86,7 +85,6 @@ const { acquireReader, addFrame, clear } = (() => {
     abortController,
     addFrame,
     addFrameBuffers,
-    removeFrame,
     frameNumber,
     frameCount,
     sampleId,
@@ -99,7 +97,6 @@ const { acquireReader, addFrame, clear } = (() => {
     group,
     schema,
   }: AcquireReaderOptions): string => {
-    streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
 
@@ -122,32 +119,18 @@ const { acquireReader, addFrame, clear } = (() => {
           range: [start, end],
         } = data;
         addFrameBuffers([start, end]);
-        for (let i = start; i <= end; i++) {
-          const frame = {
-            sample: {
-              frame_number: i,
-            },
-            overlays: [],
-          };
-          frameCache.set(new WeakRef(removeFrame), frame);
-          addFrame(i, frame);
-        }
 
         for (let i = 0; i < frames.length; i++) {
           const frameSample = frames[i];
           const prefixedFrameSample = withFrames(frameSample);
+
           const overlays = loadOverlays(prefixedFrameSample, schema);
-          for (const overlay of overlays) {
-            streamSize += overlay.getSizeBytes();
-          }
-          const frame = { sample: frameSample, overlays };
-          frameCache.set(new WeakRef(removeFrame), frame);
+          const frame = { overlays };
+          frameCache.set(frameSample.frame_number, frame);
           addFrame(frameSample.frame_number, frame);
         }
 
-        const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
-
-        if (requestMore && end < frameCount) {
+        if (end < frameCount) {
           nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
           requestingFrames = true;
           frameReader.postMessage({
@@ -189,15 +172,12 @@ const { acquireReader, addFrame, clear } = (() => {
       options: AcquireReaderOptions
     ): ((frameNumber?: number) => void) => {
       currentOptions = options;
-      let subscription = setStream(currentOptions);
 
-      return (frameNumber: number, force?: boolean) => {
-        if (
-          force ||
-          !nextRange ||
-          (frameNumber < nextRange[0] && frameNumber > nextRange[1])
-        ) {
-          force && frameCache.clear();
+      let subscription = setStream(currentOptions);
+      frameCache = createCache(options.removeFrame);
+
+      return (frameNumber: number) => {
+        if (!nextRange) {
           nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
@@ -209,11 +189,9 @@ const { acquireReader, addFrame, clear } = (() => {
         requestingFrames = true;
       };
     },
-    addFrame: (removeFrame: RemoveFrame, frame: Frame): void => {
-      frameCache.set(new WeakRef(removeFrame), frame);
-    },
+
     clear: () => {
-      console.log("CLEAR");
+      frameCache = null;
       lookerWithReader = null;
       currentOptions = null;
       frameReader?.terminate();
@@ -375,28 +353,22 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.config.fieldSchema,
       true
     );
-
-    const providedFrames = sample.frames?.length
+    const [firstFrameData] = sample.frames?.length
       ? sample.frames
       : [{ frame_number: 1 }];
-
-    const providedFrameOverlays = providedFrames.map((frameSample) =>
-      loadOverlays(withFrames(frameSample), this.state.config.fieldSchema)
+    const firstFrameOverlays = loadOverlays(
+      withFrames(firstFrameData),
+      this.state.config.fieldSchema
     );
-
-    const frames = providedFrames.map((frameSample, i) => ({
-      sample: frameSample as FrameSample,
-      overlays: providedFrameOverlays[i],
-    }));
-    for (const frame of frames) {
-      const frameNumber = frame.sample.frame_number;
-      addFrame(
-        (frameNumber) => removeFromBuffers(frameNumber, this.state.buffers),
-        frame
-      );
-      this.frames.set(frame.sample.frame_number, new WeakRef(frame));
-      addToBuffers([frameNumber, frameNumber], this.state.buffers);
-    }
+    const firstFrame = {
+      sample: firstFrameData as FrameSample,
+      overlays: firstFrameOverlays,
+    };
+    this.firstFrame = firstFrame;
+    this.firstFrameNumber = firstFrameData.frame_number;
+    const frameNumber = firstFrame.sample.frame_number;
+    this.frames.set(firstFrame.sample.frame_number, new WeakRef(firstFrame));
+    addToBuffers([frameNumber, frameNumber], this.state.buffers);
   }
 
   pluckOverlays(state: VideoState) {
@@ -409,11 +381,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     }
 
     let pluckedOverlays = hideSampleOverlays ? [] : this.sampleOverlays;
-    if (this.hasFrame(state.frameNumber)) {
-      const frame = this.frames.get(state.frameNumber)?.deref();
-      if (frame !== undefined) {
-        pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
-      }
+    const frame = this.getFrame(state.frameNumber);
+    if (frame) {
+      pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
     }
 
     let frameCount = null;
@@ -431,7 +401,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      lookerWithReader?.pause();
       lookerWithReader = this;
       this.setReader();
     } else if (lookerWithReader !== this && frameCount) {
@@ -594,10 +563,21 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   private hasFrame(frameNumber: number) {
+    if (frameNumber === this.firstFrameNumber) {
+      return this.firstFrame;
+    }
     return (
       this.frames.has(frameNumber) &&
       this.frames.get(frameNumber)?.deref() !== undefined
     );
+  }
+
+  private getFrame(frameNumber: number) {
+    if (frameNumber === this.firstFrameNumber) {
+      return this.firstFrame;
+    }
+
+    return this.frames.get(frameNumber)?.deref();
   }
 
   private initialBuffers(config: VideoConfig) {
