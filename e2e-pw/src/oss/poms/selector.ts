@@ -60,7 +60,5 @@ class SelectorAsserter {
         )
       ).toBeVisible();
     }
-
-    await this.selectorPom.closeResults();
   }
 }

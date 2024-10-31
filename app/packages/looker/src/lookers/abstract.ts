@@ -397,12 +397,12 @@ export abstract class AbstractLooker<
     const argsWithSignal: AddEventListenerOptions =
       typeof optionsOrUseCapture === "boolean"
         ? {
-            signal: this.abortController.signal,
+            signal: this.abortController?.signal,
             capture: optionsOrUseCapture,
           }
         : {
             ...(optionsOrUseCapture ?? {}),
-            signal: this.abortController.signal,
+            signal: this.abortController?.signal,
           };
     this.eventTarget.addEventListener(eventType, handler, argsWithSignal);
   }
