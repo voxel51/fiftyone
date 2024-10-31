@@ -5,15 +5,14 @@ import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import {
-  QueueItemStatus,
-  LAST_USED_ORCHESTRATOR,
   BUILT_IN_ORCHESTATOR_ID,
+  LAST_USED_ORCHESTRATOR,
+  QueueItemStatus,
 } from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
-import { av } from "vitest/dist/chunks/reporters.C_zwCd4j";
 
 type RawInvocationRequest = {
   operator_uri?: string;
