@@ -21,7 +21,7 @@ const hideQueryPerformanceToast = atom({
 });
 
 const QueryPerformanceToast = () => {
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(true);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
