@@ -96,7 +96,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
             )
 
         if self._using_gpu:
-            model = model.cuda()
+            model = model.to(torch.device(self.device))
 
         return model
 
