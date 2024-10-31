@@ -46,7 +46,7 @@ private PyPI server as shown below:
 
 .. code-block:: shell
 
-    pip install --index-url https://{$TOKEN}@pypi.fiftyone.ai fiftyone
+    pip install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone
 
 .. note::
 
