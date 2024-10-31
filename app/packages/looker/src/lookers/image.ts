@@ -26,7 +26,7 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     config: ImageState["config"],
     options: ImageState["options"]
   ) {
-    options = {
+    const resolved = {
       ...this.getDefaultOptions(),
       ...options,
     };
@@ -44,7 +44,7 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     return {
       ...this.getInitialBaseState(),
       config: { ...config },
-      options,
+      options: resolved,
       SHORTCUTS: shortcuts,
     };
   }

@@ -21,8 +21,12 @@ import { get } from "lodash";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
-import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
+import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  config,
+  dynamicGroupsElementCount,
+  selectedMediaField,
+} from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
@@ -31,6 +35,16 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
+
+const videoLookerConfigSettings = selector({
+  key: "videoLookerConfigSettings",
+  get: ({ get }) => {
+    return {
+      maxFrameStreamSize: get(config).maxFrameStreamSize,
+      maxFrameStreamSizeBytes: get(config).maxFrameStreamSizeBytes,
+    };
+  },
+});
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -62,6 +76,7 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
+  const videoConfigSettings = useRecoilValue(videoLookerConfigSettings);
   const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
 
   // callback to get the latest promise inside another recoil callback
@@ -250,7 +265,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
         const looker = new create(
           sample,
-          { ...config, symbol },
+          { ...config, ...videoConfigSettings, symbol },
           {
             ...options,
             ...extra,
@@ -284,6 +299,7 @@ export default <T extends AbstractLooker<BaseState>>(
       options,
       selected,
       thumbnail,
+      videoConfigSettings,
       view,
     ]
   );

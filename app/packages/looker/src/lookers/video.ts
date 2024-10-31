@@ -1,9 +1,5 @@
 import { setFrameNumberAtom } from "@fiftyone/playback";
-import type { Schema } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
-import { LRUCache } from "lru-cache";
-import { v4 as uuid } from "uuid";
-import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
 import { getFrameNumber } from "../elements/util";
@@ -11,198 +7,24 @@ import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import type { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import type {
-  BaseConfig,
-  BufferRange,
   Buffers,
-  Coloring,
-  CustomizeColor,
-  FrameChunkResponse,
   FrameSample,
   LabelData,
-  StateUpdate,
   VideoConfig,
   VideoSample,
   VideoState,
 } from "../state";
 import { DEFAULT_VIDEO_OPTIONS } from "../state";
-import { addToBuffers, createWorker, removeFromBuffers } from "../util";
+import { addToBuffers, removeFromBuffers } from "../util";
 import { AbstractLooker } from "./abstract";
-import { LookerUtils } from "./shared";
+import { type Frame, acquireReader, clearReader } from "./frame-reader";
+import { LookerUtils, withFrames } from "./shared";
 
-interface Frame {
-  sample: FrameSample;
-  overlays: Overlay<VideoState>[];
-}
-
-type RemoveFrame = (frameNumber: number) => void;
-
-interface AcquireReaderOptions {
-  abortController: AbortController;
-  addFrame: (frameNumber: number, frame: Frame) => void;
-  addFrameBuffers: (range: [number, number]) => void;
-  removeFrame: RemoveFrame;
-  getCurrentFrame: () => number;
-  dataset: string;
-  group: BaseConfig["group"];
-  view: any[];
-  sampleId: string;
-  frameNumber: number;
-  frameCount: number;
-  update: StateUpdate<VideoState>;
-  dispatchEvent: (eventType: string, detail: any) => void;
-  coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
-  schema: Schema;
-}
-
-const { acquireReader, clear } = (() => {
-  const createCache = (removeFrame) =>
-    new LRUCache<number, Frame>({
-      maxSize: MAX_FRAME_CACHE_SIZE_BYTES,
-      sizeCalculation: (frame) => {
-        let size = 1;
-        for (const overlay of frame.overlays) {
-          size += overlay.getSizeBytes();
-        }
-        return size;
-      },
-
-      dispose: (frame) => {
-        removeFrame(frame);
-      },
-    });
-
-  let frameCache: LRUCache<number, Frame> = null;
-
-  let frameReader: Worker;
-
-  let nextRange: BufferRange = null;
-
-  let requestingFrames = false;
-  let currentOptions: AcquireReaderOptions = null;
-
-  const setStream = ({
-    abortController,
-    addFrame,
-    addFrameBuffers,
-    frameNumber,
-    frameCount,
-    sampleId,
-    update,
-    dispatchEvent,
-    coloring,
-    customizeColorSetting,
-    dataset,
-    view,
-    group,
-    schema,
-  }: AcquireReaderOptions): string => {
-    nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
-    const subscription = uuid();
-
-    frameReader?.terminate();
-    frameReader = createWorker(
-      LookerUtils.workerCallbacks,
-      dispatchEvent,
-      abortController
-    );
-
-    frameReader.addEventListener(
-      "message",
-      ({ data }: MessageEvent<FrameChunkResponse>) => {
-        if (data.uuid !== subscription || data.method !== "frameChunk") {
-          return;
-        }
-
-        const {
-          frames,
-          range: [start, end],
-        } = data;
-        addFrameBuffers([start, end]);
-
-        for (let i = 0; i < frames.length; i++) {
-          const frameSample = frames[i];
-          const prefixedFrameSample = withFrames(frameSample);
-
-          const overlays = loadOverlays(prefixedFrameSample, schema);
-          const frame = { overlays };
-          frameCache.set(frameSample.frame_number, frame);
-          addFrame(frameSample.frame_number, frame);
-        }
-
-        if (end < frameCount) {
-          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
-          requestingFrames = true;
-          frameReader.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
-          });
-        } else {
-          requestingFrames = false;
-          nextRange = null;
-        }
-
-        update((state) => {
-          state.buffering && dispatchEvent("buffering", false);
-          return { buffering: false };
-        });
-      },
-      { signal: abortController.signal }
-    );
-
-    requestingFrames = true;
-    frameReader.postMessage({
-      method: "setStream",
-      sampleId,
-      frameCount,
-      frameNumber,
-      uuid: subscription,
-      coloring,
-      customizeColorSetting,
-      dataset,
-      view,
-      group,
-      schema,
-    });
-    return subscription;
-  };
-
-  return {
-    acquireReader: (
-      options: AcquireReaderOptions
-    ): ((frameNumber?: number) => void) => {
-      currentOptions = options;
-
-      let subscription = setStream(currentOptions);
-      frameCache = createCache(options.removeFrame);
-
-      return (frameNumber: number) => {
-        if (!nextRange) {
-          nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
-          subscription = setStream({ ...currentOptions, frameNumber });
-        } else if (!requestingFrames) {
-          frameReader?.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
-          });
-        }
-        requestingFrames = true;
-      };
-    },
-
-    clear: () => {
-      frameCache = null;
-      lookerWithReader = null;
-      currentOptions = null;
-      frameReader?.terminate();
-      frameReader = undefined;
-    },
-  };
-})();
-
-let lookerWithReader: VideoLooker | null = null;
+let LOOKER_WITH_READER: VideoLooker | null = null;
 
 export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
+  private firstFrame: Frame;
+  private firstFrameNumber: number;
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
 
@@ -226,8 +48,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   detach() {
     this.pause();
-    if (lookerWithReader === this) {
-      clear();
+    if (LOOKER_WITH_READER === this) {
+      clearReader();
+      LOOKER_WITH_READER = null;
     }
     super.detach();
   }
@@ -398,18 +221,19 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
     if (
       (!state.config.thumbnail || state.playing) &&
-      lookerWithReader !== this &&
+      LOOKER_WITH_READER !== this &&
       frameCount !== null
     ) {
-      lookerWithReader = this;
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      LOOKER_WITH_READER = this;
       this.setReader();
-    } else if (lookerWithReader !== this && frameCount) {
+    } else if (LOOKER_WITH_READER !== this && frameCount) {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
       this.state.buffering = false;
     }
 
-    if (lookerWithReader === this) {
+    if (LOOKER_WITH_READER === this) {
       if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
         this.state.buffering && this.dispatchEvent("buffering", false);
         this.state.buffering = false;
@@ -431,24 +255,26 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       addFrameBuffers: (range) => {
         this.state.buffers = addToBuffers(range, this.state.buffers);
       },
-      removeFrame: (frameNumber) =>
-        removeFromBuffers(frameNumber, this.state.buffers),
-      getCurrentFrame: () => this.frameNumber,
-      sampleId: this.state.config.sampleId,
+      coloring: this.state.options.coloring,
+      customizeColorSetting: this.state.options.customizeColorSetting,
+      dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
+      dataset: this.state.config.dataset,
       frameCount: getFrameNumber(
         this.state.duration,
         this.state.duration,
         this.state.config.frameRate
       ),
       frameNumber: this.state.frameNumber,
-      update: this.updater,
-      dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
-      coloring: this.state.options.coloring,
-      customizeColorSetting: this.state.options.customizeColorSetting,
-      dataset: this.state.config.dataset,
+      getCurrentFrame: () => this.frameNumber,
       group: this.state.config.group,
-      view: this.state.config.view,
+      maxFrameStreamSize: this.state.config.maxFrameStreamSize,
+      maxFrameStreamSizeBytes: this.state.config.maxFrameStreamSizeBytes,
+      removeFrame: (frameNumber) =>
+        removeFromBuffers(frameNumber, this.state.buffers),
+      sampleId: this.state.config.sampleId,
       schema: this.state.config.fieldSchema,
+      update: this.updater,
+      view: this.state.config.view,
     });
   }
 
@@ -548,9 +374,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   updateSample(sample: VideoSample) {
-    if (lookerWithReader === this) {
-      lookerWithReader?.pause();
-      lookerWithReader = null;
+    if (LOOKER_WITH_READER === this) {
+      LOOKER_WITH_READER?.pause();
+      LOOKER_WITH_READER = null;
     }
 
     this.frames = new Map();
@@ -585,8 +411,3 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return [[firstFrame, firstFrame]] as Buffers;
   }
 }
-
-const withFrames = <T extends { [key: string]: unknown }>(obj: T): T =>
-  Object.fromEntries(
-    Object.entries(obj).map(([k, v]) => ["frames." + k, v])
-  ) as T;

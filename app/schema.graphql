@@ -4,13 +4,7 @@ input Aggregate {
   histogramValues: HistogramValues = null
 }
 
-union AggregateResult =
-    BooleanAggregation
-  | DataAggregation
-  | IntAggregation
-  | FloatAggregation
-  | RootAggregation
-  | StringAggregation
+union AggregateResult = BooleanAggregation | DataAggregation | IntAggregation | FloatAggregation | RootAggregation | StringAggregation
 
 interface Aggregation {
   path: String!
@@ -34,14 +28,7 @@ input AggregationForm {
   viewName: String = null
 }
 
-union AggregationResponses =
-    CountResponse
-  | BoolCountValuesResponse
-  | IntCountValuesResponse
-  | StrCountValuesResponse
-  | DatetimeHistogramValuesResponse
-  | FloatHistogramValuesResponse
-  | IntHistogramValuesResponse
+union AggregationResponses = CountResponse | BoolCountValuesResponse | IntCountValuesResponse | StrCountValuesResponse | DatetimeHistogramValuesResponse | FloatHistogramValuesResponse | IntHistogramValuesResponse
 
 type AppConfig {
   colorBy: ColorBy!
@@ -50,6 +37,8 @@ type AppConfig {
   gridZoom: Int!
   lightningThreshold: Int
   loopVideos: Boolean!
+  maxFrameStreamSize: Int
+  maxFrameStreamSizeBytes: Int
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
   plugins: JSON
@@ -445,9 +434,7 @@ input LightningInput {
 input LightningPathInput {
   path: String!
 
-  """
-  exclude these values from results
-  """
+  """exclude these values from results"""
   exclude: [String!] = null
   first: Int = 200
   search: String = null
@@ -457,13 +444,7 @@ interface LightningResult {
   path: String!
 }
 
-union LightningResults =
-    BooleanLightningResult
-  | DateLightningResult
-  | DateTimeLightningResult
-  | FloatLightningResult
-  | IntLightningResult
-  | StringLightningResult
+union LightningResults = BooleanLightningResult | DateLightningResult | DateTimeLightningResult | FloatLightningResult | IntLightningResult | StringLightningResult
 
 type MaskColor {
   color: String!
@@ -489,81 +470,19 @@ type MediaURL {
 }
 
 type Mutation {
-  setColorScheme(
-    subscription: String!
-    colorScheme: ColorSchemeInput!
-  ): ColorScheme!
-  setDatasetColorScheme(
-    subscription: String!
-    datasetName: String!
-    colorScheme: ColorSchemeInput = null
-  ): ColorScheme
-  setFieldVisibilityStage(
-    subscription: String!
-    session: String
-    stage: BSON
-  ): Boolean!
-  setDataset(
-    subscription: String!
-    session: String
-    name: String
-    viewName: String
-  ): Boolean!
+  setColorScheme(subscription: String!, colorScheme: ColorSchemeInput!): ColorScheme!
+  setDatasetColorScheme(subscription: String!, datasetName: String!, colorScheme: ColorSchemeInput = null): ColorScheme
+  setFieldVisibilityStage(subscription: String!, session: String, stage: BSON): Boolean!
+  setDataset(subscription: String!, session: String, name: String, viewName: String): Boolean!
   setGroupSlice(subscription: String!, session: String, slice: String): Boolean!
-  setSample(
-    subscription: String!
-    session: String
-    groupId: String
-    id: String
-  ): Boolean!
-  setSidebarGroups(
-    subscription: String!
-    session: String
-    dataset: String!
-    stages: BSONArray!
-    sidebarGroups: [SidebarGroupInput!]!
-  ): Boolean!
-  setSelected(
-    subscription: String!
-    session: String
-    selected: [String!]!
-  ): Boolean!
-  setSelectedLabels(
-    subscription: String!
-    session: String
-    selectedLabels: [SelectedLabel!]!
-  ): Boolean!
-  setView(
-    subscription: String!
-    session: String
-    datasetName: String!
-    view: BSONArray = null
-    savedViewSlug: String = null
-    form: StateForm = null
-  ): BSONArray
-  createSavedView(
-    subscription: String!
-    session: String
-    viewName: String!
-    viewStages: BSONArray = null
-    form: StateForm = null
-    datasetName: String = null
-    description: String = null
-    color: String = null
-  ): SavedView
-  deleteSavedView(
-    subscription: String!
-    session: String
-    viewName: String!
-    datasetName: String
-  ): String
-  updateSavedView(
-    viewName: String!
-    subscription: String
-    session: String
-    updatedInfo: SavedViewInfo!
-    datasetName: String = null
-  ): SavedView
+  setSample(subscription: String!, session: String, groupId: String, id: String): Boolean!
+  setSidebarGroups(subscription: String!, session: String, dataset: String!, stages: BSONArray!, sidebarGroups: [SidebarGroupInput!]!): Boolean!
+  setSelected(subscription: String!, session: String, selected: [String!]!): Boolean!
+  setSelectedLabels(subscription: String!, session: String, selectedLabels: [SelectedLabel!]!): Boolean!
+  setView(subscription: String!, session: String, datasetName: String!, view: BSONArray = null, savedViewSlug: String = null, form: StateForm = null): BSONArray
+  createSavedView(subscription: String!, session: String, viewName: String!, viewStages: BSONArray = null, form: StateForm = null, datasetName: String = null, description: String = null, color: String = null): SavedView
+  deleteSavedView(subscription: String!, session: String, viewName: String!, datasetName: String): String
+  updateSavedView(viewName: String!, subscription: String, session: String, updatedInfo: SavedViewInfo!, datasetName: String = null): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
   searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
@@ -587,19 +506,9 @@ type PointCloudSample implements Sample {
 }
 
 type Query {
-  aggregate(
-    datasetName: String!
-    view: BSONArray
-    aggregations: [Aggregate!]!
-    viewName: String = null
-    form: ExtendedViewForm = null
-  ): [AggregationResponses!]!
+  aggregate(datasetName: String!, view: BSONArray, aggregations: [Aggregate!]!, viewName: String = null, form: ExtendedViewForm = null): [AggregationResponses!]!
   dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
-  datasets(
-    search: String
-    first: Int = 200
-    after: String = null
-  ): DatasetStrConnection!
+  datasets(search: String, first: Int = 200, after: String = null): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
   lightning(input: LightningInput!): [LightningResults!]!
   colorscale: [[Int!]!]
@@ -608,30 +517,13 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
-  samples(
-    dataset: String!
-    view: BSONArray!
-    first: Int = 20
-    after: String = null
-    filter: SampleFilter = null
-    filters: BSON = null
-    extendedStages: BSON = null
-    paginationData: Boolean = true
-  ): SampleItemStrConnection!
-  sample(
-    dataset: String!
-    view: BSONArray!
-    filter: SampleFilter!
-    filters: JSON = null
-  ): SampleItem
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true): SampleItemStrConnection!
+  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!, filters: JSON = null): SampleItem
   stageDefinitions: [StageDefinition!]!
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]
-  schemaForViewStages(
-    datasetName: String!
-    viewStages: BSONArray!
-  ): SchemaResult!
+  schemaForViewStages(datasetName: String!, viewStages: BSONArray!): SchemaResult!
 }
 
 type RootAggregation implements Aggregation {

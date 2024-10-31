@@ -27,7 +27,6 @@ import useThreshold from "./useThreshold";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-
   const spacing = useRecoilValue(gridSpacing);
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
   const { pageReset, reset } = useRefreshers();

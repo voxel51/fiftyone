@@ -222,6 +222,8 @@ export type ImageConfig = BaseConfig;
 export interface VideoConfig extends BaseConfig {
   enableTimeline: boolean;
   frameRate: number;
+  maxFrameStreamSize?: number;
+  maxFrameStreamSizeBytes?: number;
   support?: [number, number];
 }
 

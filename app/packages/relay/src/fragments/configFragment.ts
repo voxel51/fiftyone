@@ -12,6 +12,8 @@ export default r(graphql`
       gridZoom
       lightningThreshold
       loopVideos
+      maxFrameStreamSize
+      maxFrameStreamSizeBytes
       mediaFallback
       multicolorKeypoints
       notebookHeight

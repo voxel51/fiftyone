@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<61ad55558415eef29ae83efe5d0200b8>>
+ * @generated SignedSource<<65717102b41ad8fc338f870d2fa4410d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -198,6 +198,20 @@ return {
             "args": null,
             "kind": "ScalarField",
             "name": "loopVideos",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "maxFrameStreamSize",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "maxFrameStreamSizeBytes",
             "storageKey": null
           },
           {
@@ -424,12 +438,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "05f56de90a0cbfbb66f3a07626559761",
+    "cacheID": "4893a08c321dfe22334086c0d2f21492",
     "id": null,
     "metadata": {},
     "name": "IndexPageQuery",
     "operationKind": "query",
-    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: estimatedDatasetCount\n  ...NavFragment\n  ...configFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    disableFrameFiltering\n    gridZoom\n    lightningThreshold\n    loopVideos\n    mediaFallback\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
+    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: estimatedDatasetCount\n  ...NavFragment\n  ...configFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    disableFrameFiltering\n    gridZoom\n    lightningThreshold\n    loopVideos\n    maxFrameStreamSize\n    maxFrameStreamSizeBytes\n    mediaFallback\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
   }
 };
 })();
