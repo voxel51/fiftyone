@@ -85,17 +85,23 @@ export default function AnalyticsConsent({
             Help us improve FiftyOne
           </Typography>
           <Typography marginBottom={1}>
-            We use cookies to understand how FiftyOne is used and improve the product.
-            You can help us by enabling anonymous analytics.
+            We use cookies to understand how FiftyOne is used and improve the
+            product. You can help us by enabling anonymous analytics.
           </Typography>
           <Grid container gap={2} justifyContent="end" direction="row">
             <Grid item alignContent="center">
-              <Link style={{ cursor: "pointer" }} onClick={handleDisable}>
+              <Link
+                style={{ cursor: "pointer" }}
+                onClick={handleDisable}
+                data-cy="btn-disable-cookies"
+              >
                 Disable
               </Link>
             </Grid>
             <Grid item>
-              <Button variant="contained" onClick={handleEnable}>Enable</Button>
+              <Button variant="contained" onClick={handleEnable}>
+                Enable
+              </Button>
             </Grid>
           </Grid>
         </Grid>
