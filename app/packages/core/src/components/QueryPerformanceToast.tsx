@@ -6,8 +6,9 @@ import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
+import { useTheme } from "@fiftyone/components";
 
-const SHOWN_FOR = 10000;
+const SHOWN_FOR = 5000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -23,7 +24,7 @@ const QueryPerformanceToast = () => {
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
-
+  const theme = useTheme();
   useEffect(() => {
     const listen = () => {
       setShown(true);
@@ -43,6 +44,12 @@ const QueryPerformanceToast = () => {
   return createPortal(
     <Toast
       duration={SHOWN_FOR}
+      layout={{
+        bottom: "100px",
+        vertical: "bottom",
+        horizontal: "center",
+        backgroundColor: theme.custom.toastBackgroundColor,
+      }}
       primary={(setOpen) => {
         return (
           <Button
@@ -52,7 +59,12 @@ const QueryPerformanceToast = () => {
               open(QP_MODE, "_blank")?.focus();
               setOpen(false);
             }}
-            style={{ marginLeft: "auto" }} // Right align the button
+            sx={{
+              marginLeft: "auto",
+              backgroundColor: theme.primary.main,
+              color: theme.text.primary,
+              boxShadow: 0,
+            }} // Right align the button
           >
             View Documentation
           </Button>
@@ -62,6 +74,7 @@ const QueryPerformanceToast = () => {
         return (
           <div>
             <Button
+              data-cy="btn-dismiss-query-performance-toast"
               variant="text"
               color="secondary"
               size="small"
@@ -69,9 +82,9 @@ const QueryPerformanceToast = () => {
                 setDisabled(true);
                 setOpen(false);
               }}
-              style={{ marginLeft: "auto" }} // Right align the button
+              style={{ marginLeft: "auto", color: theme.text.secondary }} // Right align the button
             >
-              Don&apos;t show me again
+              Dismiss
             </Button>
           </div>
         );
@@ -79,27 +92,30 @@ const QueryPerformanceToast = () => {
       message={
         <>
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Bolt sx={{ color: "#f5b700", marginRight: "8px" }} />
+            <Bolt sx={{ color: theme.custom.lightning, marginRight: "8px" }} />
             <Typography
               variant="subtitle1"
-              sx={{ fontWeight: 500, marginRight: "8px" }}
+              sx={{
+                fontWeight: 500,
+                marginRight: "8px",
+                color: theme.text.primary,
+              }}
             >
               Query Performance is Available!
             </Typography>
             <Typography
               variant="caption"
               sx={{
-                color: "#fff",
+                color: theme.custom.lightning,
                 borderRadius: "2px",
                 padding: "2px 4px",
-                fontWeight: 600,
+                fontSize: "1rem",
               }}
             >
               NEW
             </Typography>
           </Box>
-          <br />
-          <Typography variant="body2" sx={{ color: "#757575" }}>
+          <Typography variant="body2" sx={{ color: theme.text.secondary }}>
             Index the most critical fields for faster data loading and query
             performance.
           </Typography>

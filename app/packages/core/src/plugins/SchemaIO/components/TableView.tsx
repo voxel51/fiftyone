@@ -29,6 +29,7 @@ export default function TableView(props: ViewPropsType) {
     on_click_row,
     on_click_column,
     actions_label,
+    selected_color,
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -36,6 +37,8 @@ export default function TableView(props: ViewPropsType) {
   const hasRowActions = row_actions.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
+  const selectedCellColor =
+    selected_color || ((theme) => theme.palette.background.activeCell);
 
   const getRowActions = useCallback((row) => {
     const computedRowActions = [] as any;
@@ -123,38 +126,56 @@ export default function TableView(props: ViewPropsType) {
               </TableRow>
             </TableHead>
             <TableBody {...getComponentProps(props, "tableBody")}>
-              {rows.map((item, rowIndex) => (
-                <TableRow
-                  key={item.id}
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                  {...getComponentProps(props, "tableBodyRow")}
-                >
-                  {columns.map(({ key }, columnIndex) => {
-                    const coordinate = [rowIndex, columnIndex].join(",");
-                    const isSelected =
-                      selectedCells.has(coordinate) ||
-                      selectedRows.has(rowIndex) ||
-                      selectedColumns.has(columnIndex);
-                    return (
+              {rows.map((item, rowIndex) => {
+                const rowActions = getRowActions(rowIndex);
+                const currentRowHasActions = rowActions?.length > 0;
+                const isRowSelected = selectedRows.has(rowIndex);
+                return (
+                  <TableRow
+                    key={item.id}
+                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                    {...getComponentProps(props, "tableBodyRow")}
+                  >
+                    {columns.map(({ key }, columnIndex) => {
+                      const coordinate = [rowIndex, columnIndex].join(",");
+                      const isSelected =
+                        selectedCells.has(coordinate) ||
+                        isRowSelected ||
+                        selectedColumns.has(columnIndex);
+                      return (
+                        <TableCell
+                          key={key}
+                          sx={{
+                            background: isSelected
+                              ? selectedCellColor
+                              : "unset",
+                          }}
+                          onClick={() => {
+                            handleCellClick(rowIndex, columnIndex);
+                          }}
+                          {...getComponentProps(props, "tableBodyCell")}
+                        >
+                          {formatCellValue(item[key], props)}
+                        </TableCell>
+                      );
+                    })}
+                    {hasRowActions && (
                       <TableCell
-                        key={key}
-                        sx={{ background: isSelected ? "green" : "unset" }}
-                        onClick={() => {
-                          handleCellClick(rowIndex, columnIndex);
+                        align="right"
+                        sx={{
+                          background: isRowSelected
+                            ? selectedCellColor
+                            : "unset",
                         }}
-                        {...getComponentProps(props, "tableBodyCell")}
                       >
-                        {formatCellValue(item[key], props)}
+                        {currentRowHasActions && (
+                          <ActionsMenu actions={getRowActions(rowIndex)} />
+                        )}
                       </TableCell>
-                    );
-                  })}
-                  {hasRowActions && (
-                    <TableCell align="right">
-                      <ActionsMenu actions={getRowActions(rowIndex)} />
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>

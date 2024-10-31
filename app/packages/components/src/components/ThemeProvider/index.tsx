@@ -50,6 +50,7 @@ let theme = extendMuiTheme({
           inactiveTab: "hsl(200, 0%, 90%)",
           popup: "hsl(200, 0%, 95%)",
           field: "hsl(200, 0%, 95%)",
+          activeCell: "hsl(200, 0%, 95%)",
         },
         divider: "hsl(200, 0%, 80%)",
         dividerDisabled: "hsl(200, 0%, 85%)",
@@ -92,6 +93,8 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
+          lightning: "hsl(25, 100%, 51%)",
+          toastBackgroundColor: "#FFFFFF",
         },
         voxel: {
           500: "#FF6D04",
@@ -129,6 +132,7 @@ let theme = extendMuiTheme({
           paper: "hsl(200, 0%, 10%)",
           popup: "hsl(200, 0%, 20%)",
           field: "hsl(200, 0%, 20%, 0.3)",
+          activeCell: "hsl(200, 0%, 25%)",
         },
         divider: "hsl(200, 0%, 20%)",
         dividerDisabled: "hsl(200, 0%, 15%)",
@@ -171,6 +175,8 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 10%)",
           shadowDark: "hsl(200, 0%, 0%)",
+          lightning: "#f5b700",
+          toastBackgroundColor: "#333",
         },
         voxel: {
           500: "#FF6D04",
