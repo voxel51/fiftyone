@@ -18,7 +18,7 @@ import {
   isNullish,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -39,6 +39,7 @@ export default <T extends AbstractLooker<BaseState>>(
   highlight?: (sample: Sample) => boolean,
   enableTimeline?: boolean
 ) => {
+  const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -69,6 +70,13 @@ export default <T extends AbstractLooker<BaseState>>(
     ({ snapshot: { getPromise } }) => getPromise,
     []
   );
+
+  useEffect(() => {
+    return () => {
+      // sending abort signal to clean up all event handlers
+      return abortControllerRef.current.abort();
+    };
+  }, []);
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
@@ -251,9 +259,13 @@ export default <T extends AbstractLooker<BaseState>>(
           }
         );
 
-        looker.addEventListener("error", (event) => {
-          handleError(event.error);
-        });
+        looker.addEventListener(
+          "error",
+          (event) => {
+            handleError(event.error);
+          },
+          { signal: abortControllerRef.current.signal }
+        );
 
         return looker;
       },
