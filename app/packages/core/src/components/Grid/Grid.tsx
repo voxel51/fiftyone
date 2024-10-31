@@ -29,7 +29,6 @@ function Grid() {
   const id = useMemo(() => uuid(), []);
   const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
   const spacing = useRecoilValue(gridSpacing);
-
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
@@ -50,8 +49,10 @@ function Grid() {
   const getFontSize = useFontSize(id);
 
   const spotlight = useMemo(() => {
-    records;
+    /** SPOTLIGHT REFRESHER */
     reset;
+    /** SPOTLIGHT REFRESHER */
+
     if (resizing) {
       return undefined;
     }
@@ -104,7 +105,6 @@ function Grid() {
     getFontSize,
     lookerStore,
     page,
-    records,
     reset,
     resizing,
     setSample,

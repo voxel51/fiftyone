@@ -658,7 +658,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
     this.removeEvents();
     this.element = null;
-    this?.release();
+    this.release?.();
     this.release = null;
 
     this.update({
