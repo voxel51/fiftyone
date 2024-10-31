@@ -16,7 +16,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
 from fiftyone.core.odm.workspace import default_workspace_factory
-from fiftyone.operators.panels import QueryPerformancePanel
+from fiftyone.operators.panels import QueryPerformancePanel, DataQualityPanel
 from fiftyone.operators.utils import create_summary_field_inputs
 
 
@@ -2181,6 +2181,10 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
+
 BUILTIN_OPERATORS = [
     EditFieldInfo(_builtin=True),
     CloneSelectedSamples(_builtin=True),
@@ -2214,9 +2218,9 @@ BUILTIN_OPERATORS = [
     DeleteWorkspace(_builtin=True),
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
-]
+] + DATA_QUALITY_OPERATORS
 
-BUILTIN_PANELS = []
+BUILTIN_PANELS = [DataQualityPanel(_builtin=True)]
 
 if fo.app_config.enable_query_performance:
     BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))

@@ -7,6 +7,7 @@ FiftyOne panels.
 """
 
 from .query_performance import QueryPerformancePanel
+from .data_quality import DataQualityPanel
 
 
 # This enables Sphinx refs to directly use paths imported here
