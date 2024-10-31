@@ -71,7 +71,7 @@ test.describe("default video slice group", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("video as default slice renders", async ({ grid, modal }) => {
