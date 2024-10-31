@@ -39,7 +39,7 @@ App
 
 FiftyOne Teams 2.1.2
 --------------------
-*Released November XX, 2024*
+*Released October 31, 2024*
 
 - Fixed an issue that prevented `delegation_target` from being properly set when
   running delegated operations with orchestrator registration enabled

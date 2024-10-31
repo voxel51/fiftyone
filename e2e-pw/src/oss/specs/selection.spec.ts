@@ -95,7 +95,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
 
     await grid.openNthSample(1);
     await modal.assert.verifySelectionCount(1);
-    await grid.url.back();
+    await modal.close();
     await modal.assert.isClosed();
     await grid.assert.isSelectionCountEqualTo(1);
   });
