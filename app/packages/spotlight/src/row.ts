@@ -120,7 +120,7 @@ export default class Row<K, V> {
   }
 
   destroy() {
-    for (const item of this.#row) this.#config.destroy(item.item.id);
+    this.#destroyItems();
     this.#aborter.abort();
   }
 
@@ -139,9 +139,7 @@ export default class Row<K, V> {
     }
 
     this.#container.remove();
-    for (const { item } of this.#row) {
-      this.#config.destroy(item.id);
-    }
+    this.#destroyItems();
   }
 
   show(
@@ -228,5 +226,25 @@ export default class Row<K, V> {
   get #singleAspectRatio() {
     const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
+  }
+
+  #destroyItems() {
+    const destroy = this.#config.destroy;
+    if (!destroy) {
+      return;
+    }
+
+    const errors = [];
+    for (const item of this.#row) {
+      try {
+        destroy(item.item.id);
+      } catch (e) {
+        errors.push(e);
+      }
+    }
+
+    if (errors.length > 0) {
+      console.error("Errors occurred during row destruction:", errors);
+    }
   }
 }
