@@ -27,7 +27,7 @@ import useThreshold from "./useThreshold";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-  const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
+
   const spacing = useRecoilValue(gridSpacing);
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
   const { pageReset, reset } = useRefreshers();
@@ -48,6 +48,10 @@ function Grid() {
   const setSample = fos.useExpandSample(store);
   const getFontSize = useFontSize(id);
 
+  const lookerStore = useMemo(() => {
+    reset;
+    return new WeakMap<ID, Lookers>();
+  }, [reset]);
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
@@ -61,6 +65,7 @@ function Grid() {
       ...get(),
       destroy: (id) => {
         lookerStore.get(id)?.destroy();
+        lookerStore.delete(id);
       },
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
