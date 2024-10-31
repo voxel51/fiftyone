@@ -23,7 +23,6 @@ export default function registerPanel(ctx: ExecutionContext) {
     panelOptions: {
       allowDuplicates: ctx.params.allow_duplicates,
       helpMarkdown: ctx.params.help_markdown,
-      reloadOnNavigation: ctx.params.reload_on_navigation,
       surfaces: ctx.params.surfaces,
     },
   });
