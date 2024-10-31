@@ -1,16 +1,11 @@
 import { Layout, TabConfig } from "./Layout";
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useState } from "react";
 import { EmptyState } from "./EmptyState";
 import { LensConfigManager } from "./LensConfigManager";
 import { LensPanel } from "./LensPanel";
-import {
-  LensConfig,
-  ListLensConfigsRequest,
-  ListLensConfigsResponse,
-  OperatorResponse,
-} from "./models";
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { Snackbar } from "@mui/material";
+import { LensConfig } from "./models";
+import { Snackbar, Stack, Typography } from "@mui/material";
+import { useLensConfigs } from "./hooks";
 
 type ExtendedTabConfig = TabConfig & {
   isVisible: boolean;
@@ -25,9 +20,19 @@ type TabId = "empty-state" | "query-data" | "manage-datasources";
  *   management.
  */
 export const MainPanel = () => {
-  const [lensConfigs, setLensConfigs] = useState<LensConfig[]>([]);
   const [errorMessage, setErrorMessage] = useState(null);
   const [activeTab, setActiveTab] = useState<TabId>("empty-state");
+  const {
+    lensConfigs,
+    setLensConfigs,
+    error: lensConfigError,
+    clearError: clearLensConfigError,
+  } = useLensConfigs();
+
+  const clearErrors = () => {
+    clearLensConfigError();
+    setErrorMessage(null);
+  };
 
   // Tabs declared here to allow programmatic navigation below.
   const tabs: ExtendedTabConfig[] = [];
@@ -50,26 +55,6 @@ export const MainPanel = () => {
     configs.sort((a, b) => a.name.localeCompare(b.name));
     setLensConfigs(configs);
   };
-
-  const listConfigsOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_list_lens_configs"
-  );
-
-  // Load configs on initial render
-  useEffect(() => {
-    const request: ListLensConfigsRequest = {};
-
-    const callback = (response: OperatorResponse<ListLensConfigsResponse>) => {
-      if (!(response.error || response.result?.error)) {
-        const configs = response.result?.configs ?? [];
-        handleLensConfigsUpdate(configs);
-      } else {
-        setErrorMessage(response.error || response.result?.error);
-      }
-    };
-
-    listConfigsOperator.execute(request, { callback });
-  }, []);
 
   tabs.push(
     ...[
@@ -105,16 +90,27 @@ export const MainPanel = () => {
     ]
   );
 
-  const errorContent = errorMessage ? (
-    <Snackbar
-      open={!!errorMessage}
-      onClose={() => setErrorMessage(null)}
-      message={errorMessage}
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-    />
-  ) : (
-    <Fragment />
-  );
+  const errors = [lensConfigError, errorMessage].filter((s) => !!s);
+
+  const errorContent =
+    errors.length > 0 ? (
+      <Snackbar
+        open={errors.length > 0}
+        onClose={clearErrors}
+        message={
+          <Stack direction="column" spacing={2}>
+            {errors.map((err, idx) => (
+              <Typography key={idx} color="error">
+                {err}
+              </Typography>
+            ))}
+          </Stack>
+        }
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
+    ) : (
+      <Fragment />
+    );
 
   return (
     <>

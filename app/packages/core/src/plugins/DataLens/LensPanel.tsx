@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useMemo, useRef, useState } from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
@@ -27,6 +27,7 @@ import {
 } from "./models";
 import { Lens } from "./Lens";
 import { ImportDialog, ImportDialogData } from "./ImportDialog";
+import { useDatasets } from "./hooks";
 
 /**
  * Component responsible for handling query and preview functionality.
@@ -58,8 +59,8 @@ export const LensPanel = ({
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [destDatasetName, setDestDatasetName] = useState("");
   const [isImportExpanded, setIsImportExpanded] = useState(true);
-  const [datasets, setDatasets] = useState<string[]>([]);
   const [showImportContent, setShowImportContent] = useState(false);
+  const { datasets } = useDatasets();
 
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
@@ -76,28 +77,9 @@ export const LensPanel = ({
     "@voxel51/operators/lens_datasource_connector"
   );
 
-  const listDatasetsOperator = useOperatorExecutor(
-    "@voxel51/operators/list_datasets"
-  );
-
   const openDatasetOperator = useOperatorExecutor(
     "@voxel51/operators/open_dataset"
   );
-
-  // Load datasets on initial render.
-  useEffect(() => {
-    const callback = (response: OperatorResponse<{ datasets?: string[] }>) => {
-      if (response.result.datasets) {
-        setDatasets(
-          response.result.datasets.sort((a, b) => a.localeCompare(b))
-        );
-      }
-    };
-
-    const requestParams = {};
-
-    listDatasetsOperator.execute(requestParams, { callback });
-  }, []);
 
   // Keep track of the average sample size of our current preview.
   // This will allow us to calculate a reasonable batch size for imports.
@@ -386,7 +368,7 @@ export const LensPanel = ({
             onClick={() => setIsImportExpanded((prev) => !prev)}
           >
             {isImportLoading ? (
-              <Typography>Data import in progress</Typography>
+              <Typography>Importing data</Typography>
             ) : (
               <Stack direction="row" alignItems="center" spacing={2}>
                 <Typography variant="h6">Data import completed</Typography>
