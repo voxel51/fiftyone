@@ -459,6 +459,9 @@ export abstract class AbstractLooker<
     };
   }
 
+  /**
+   * Attaches the instance to the provided HTMLElement and adds event listeners
+   */
   attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
@@ -470,7 +473,7 @@ export abstract class AbstractLooker<
     }
 
     if (this.lookerElement.element.parentElement) {
-      throw new Error("looker is attached");
+      console.warn("instance is already attached");
     }
 
     for (const eventType in this.rootEvents) {
@@ -492,6 +495,9 @@ export abstract class AbstractLooker<
     });
   }
 
+  /**
+   * Detaches the instance from the DOM
+   */
   detach(): void {
     this.resizeObserver.disconnect();
     this.lookerElement.element.parentNode?.removeChild(
@@ -542,6 +548,13 @@ export abstract class AbstractLooker<
     return false;
   }
 
+  /**
+   * Detaches the instance from the DOM and aborts all associated event
+   * listeners
+   *
+   * This method must be called to avoid memory leaks associated with detached
+   * elements
+   */
   destroy() {
     this.detach();
     this.abortController.abort();
