@@ -103,6 +103,7 @@ const PillBadge = ({
               text.length > 0 &&
               Array.isArray(text[0]) ? (
                 <Select
+                  disabled={readOnly}
                   value={chipSelection}
                   variant={"standard"}
                   disableUnderline={true}
@@ -131,6 +132,7 @@ const PillBadge = ({
                 </Select>
               ) : (
                 <Select
+                  disabled={readOnly}
                   value={chipSelection}
                   variant={"standard"}
                   disableUnderline={true}
