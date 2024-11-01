@@ -44,6 +44,7 @@ interface ModalBaseProps {
 }
 
 interface ModalButtonView {
+  disabled?: boolean;
   variant: string;
   label: string;
   icon?: string;
@@ -102,6 +103,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   const modalButtonView: ModalButtonView = {
     variant: props?.variant || "outlined",
     label: props?.label || "",
+    disabled: props?.disabled,
     componentsProps: {
       button: {
         sx: {

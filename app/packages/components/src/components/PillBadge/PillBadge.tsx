@@ -10,12 +10,14 @@ const PillBadge = ({
   variant = "filled",
   showIcon = true,
   operator,
+  readOnly = false,
 }: {
   text: string | string[] | [string, string][];
   color?: string;
   variant?: "filled" | "outlined";
   showIcon?: boolean;
   operator?: () => void;
+  readOnly?: boolean;
 }) => {
   const getInitialChipSelection = (
     text: string | string[] | [string, string][]
@@ -90,6 +92,7 @@ const PillBadge = ({
       ) : (
         <FormControl fullWidth>
           <Chip
+            disabled={readOnly}
             icon={
               showIcon ? (
                 <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
