@@ -7,61 +7,10 @@ FiftyOne Data Lens configuration manager.
 """
 import uuid
 from dataclasses import asdict
-from typing import Optional, Any
 
 from fiftyone.operators.data_lens.models import LensConfig
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
-
-
-class MockExecutionStore:
-    """Placeholder implementation until ExecutionStore is available for use.
-
-    This implementation adheres to the current ExecutionStore interface and allows for ConfigManager
-    to function properly, but provides no actual persistence capabilities.
-    """
-    _configs = []
-
-    @staticmethod
-    def create(name: str):
-        return MockExecutionStore(name)
-
-    def __init__(self, name: str):
-        self.name = name
-
-    def list_all_stores(self):
-        pass
-
-    def get(self, key: str) -> Optional[Any]:
-        matching = [
-            cfg
-            for cfg in self._configs
-            if cfg.get("id", None) == key
-        ]
-        return matching[0] if len(matching) > 0 else None
-
-    def set(self, key: str, value: Any, ttl: Optional[int] = None):
-        pass
-
-    def delete(self, key: str) -> bool:
-        return True
-
-    def has(self, key: str) -> bool:
-        pass
-
-    def clear(self):
-        pass
-
-    def update_ttl(self, key: str, ttl: int):
-        pass
-
-    def get_ttl(self, key: str) -> Optional[int]:
-        pass
-
-    def list_keys(self) -> list[str]:
-        return [
-            cfg["id"]
-            for cfg in self._configs
-        ]
+from fiftyone.operators.store import ExecutionStore
 
 
 class ConfigManager:
@@ -69,7 +18,7 @@ class ConfigManager:
     _STORE_NAME = 'data_lens_config_store'
 
     def __init__(self):
-        self._store = MockExecutionStore.create(self._STORE_NAME)
+        self._store = ExecutionStore.create(self._STORE_NAME)
 
     def list_configs(self) -> list[LensConfig]:
         """List all available configs.
