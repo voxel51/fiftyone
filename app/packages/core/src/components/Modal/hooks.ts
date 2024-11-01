@@ -16,7 +16,7 @@ export const useLookerHelpers = () => {
   jsonPanelRef.current = jsonPanel;
   helpPanelRef.current = helpPanel;
 
-  const onNavigate = useCallback(() => {
+  const closePanels = useCallback(() => {
     jsonPanelRef.current?.close();
     helpPanelRef.current?.close();
   }, []);
@@ -24,7 +24,7 @@ export const useLookerHelpers = () => {
   return {
     jsonPanel,
     helpPanel,
-    onNavigate,
+    closePanels,
   };
 };
 
@@ -77,4 +77,39 @@ export const useModalContext = () => {
   }
 
   return ctx;
+};
+
+export const useTooltipEventHandler = () => {
+  const tooltip = fos.useTooltip();
+
+  const tooltipEventHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (e) => {
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .getValue();
+
+        if (e.detail) {
+          set(fos.tooltipDetail, e.detail);
+          if (!isTooltipLocked && e.detail?.coordinates) {
+            tooltip.setCoords(e.detail.coordinates);
+          }
+        } else if (!isTooltipLocked) {
+          set(fos.tooltipDetail, null);
+        }
+      },
+    [tooltip]
+  );
+
+  return useCallback(
+    (looker: fos.Lookers) => {
+      looker.removeEventListener("tooltip", tooltipEventHandler);
+      looker.addEventListener("tooltip", tooltipEventHandler);
+
+      return () => {
+        looker.removeEventListener("tooltip", tooltipEventHandler);
+      };
+    },
+    [tooltipEventHandler]
+  );
 };
