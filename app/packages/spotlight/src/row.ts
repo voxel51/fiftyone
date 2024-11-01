@@ -139,7 +139,6 @@ export default class Row<K, V> {
     }
 
     this.#container.remove();
-    this.#destroyItems();
   }
 
   show(

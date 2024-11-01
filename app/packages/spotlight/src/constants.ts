@@ -28,5 +28,5 @@ export const TOP = "top";
 export const TWO = 2;
 export const UNSET = "unset";
 export const ZERO = 0;
-export const ZOOMING_COEFFICIENT = 300;
-export const ZOOM_TIMEOUT = 500;
+export const ZOOMING_COEFFICIENT = 500;
+export const ZOOM_TIMEOUT = 300;
