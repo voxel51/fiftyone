@@ -1,9 +1,10 @@
 import React from "react";
+import dayjs from 'dayjs';
 import { atom, useRecoilState } from "recoil";
 import TextField from '@mui/material/TextField';
-import AdapterDateFns from '@mui/lab/AdapterDateFns';
-import LocalizationProvider from '@mui/lab/LocalizationProvider';
-import DatePicker from '@mui/lab/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 
 interface DatePickerProps {
@@ -12,7 +13,7 @@ interface DatePickerProps {
 
 const dateValue = atom({
   key: "dateValue",
-  default: null,
+  default: dayjs('2024-01-01'),
 });
 
 const BasicDatePicker: React.FC<DatePickerProps> = ({
@@ -21,7 +22,7 @@ const BasicDatePicker: React.FC<DatePickerProps> = ({
   const [value, setValue] = useRecoilState(dateValue);
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <DatePicker
         label={label}
         value={value}
