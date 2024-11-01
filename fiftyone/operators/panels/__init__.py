@@ -6,9 +6,17 @@ FiftyOne panels.
 |
 """
 
-from .query_performance import QueryPerformancePanel
+from .query_performance import (
+    QueryPerformancePanel,
+    IndexFieldCreationOperator,
+    IndexFieldRemovalConfirmationOperator,
+)
 from .data_quality import DataQualityPanel
 
+QUERY_PERFORMANCE_OPERATORS = [
+    IndexFieldCreationOperator(_builtin=True),
+    IndexFieldRemovalConfirmationOperator(_builtin=True),
+]
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]
