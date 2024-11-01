@@ -26,7 +26,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   private firstFrame: Frame;
   private firstFrameNumber: number;
   private frames: Map<number, WeakRef<Frame>> = new Map();
-  private requestFrames: (frameNumber: number, force?: boolean) => void;
+  private requestFrames: (frameNumber: number) => void;
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -357,6 +357,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
         name: `timeline-${this.state.config.sampleId}`,
         newFrameNumber: this.state.frameNumber,
       });
+    }
+
+    if (LOOKER_WITH_READER === this) {
+      if (this.state.config.thumbnail && !this.state.hovering) {
+        clearReader();
+      }
     }
 
     return super.postProcess();
