@@ -7,6 +7,7 @@ export { default as CodeBlock } from "./CodeBlock";
 export { default as CodeTabs } from "./CodeTabs";
 export { default as ColoredDot } from "./ColoredDot";
 export { default as CopyButton } from "./CopyButton";
+export { default as DatePicker } from "./DatePicker";
 export { default as Dialog } from "./Dialog";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as ExternalLink, useExternalLink } from "./ExternalLink";
