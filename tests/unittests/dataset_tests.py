@@ -5644,14 +5644,14 @@ class DatasetDeletionTests(unittest.TestCase):
         self.assertTrue(last_modified_at4b < last_modified_at5b)
         self.assertEqual(last_modified_at4c, last_modified_at5c)
 
-        last_modified_at6b = dataset._get_last_modified_at()
-        last_modified_at6c = dataset._get_last_modified_at(frames=True)
+        last_modified_at6b = dataset._max("last_modified_at")
+        last_modified_at6c = dataset._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at6b, last_modified_at5b)
         self.assertEqual(last_modified_at6c, last_modified_at5c)
 
-        last_modified_at7b = dataset.view()._get_last_modified_at()
-        last_modified_at7c = dataset.view()._get_last_modified_at(frames=True)
+        last_modified_at7b = dataset.view()._max("last_modified_at")
+        last_modified_at7c = dataset.view()._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at7b, last_modified_at5b)
         self.assertEqual(last_modified_at7c, last_modified_at5c)
