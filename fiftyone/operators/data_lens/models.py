@@ -6,20 +6,20 @@ FiftyOne Data Lens models.
 |
 """
 import enum
-from dataclasses import dataclass, KW_ONLY, field
+from dataclasses import dataclass, field
+
+from fiftyone.operators.data_lens.utils import filter_fields_for_type
 
 
 @dataclass
 class BaseResponse:
     """Base class for responses."""
-    _: KW_ONLY
     error: str = None
 
 
 @dataclass
 class DataLensSearchRequest:
     """Request model representing a Data Lens search."""
-    _: KW_ONLY
     search_params: dict
     max_results: int
     pagination_token: str = None
@@ -50,14 +50,27 @@ class RequestType(enum.Enum):
 @dataclass
 class DatasourceConnectorRequest:
     """Base request model for entry into the datasource connector operator."""
-    _: KW_ONLY
-    request_type: str
+    request_type: RequestType
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'DatasourceConnectorRequest':
+        request_type_str = data.get('request_type', '').upper()
+        try:
+            request_type = RequestType[request_type_str]
+        except KeyError:
+            raise ValueError(f'Unsupported request type {request_type_str}')
+
+        kwargs = data.copy()
+        kwargs['request_type'] = request_type
+
+        return cls(
+            **filter_fields_for_type(kwargs, cls)
+        )
 
 
 @dataclass
 class PreviewRequest:
     """Request model for fetching data to generate a sample preview."""
-    _: KW_ONLY
     search_params: dict
     operator_uri: str
     max_results: int
@@ -66,7 +79,6 @@ class PreviewRequest:
 @dataclass
 class ImportRequest:
     """Request model for importing samples into a dataset."""
-    _: KW_ONLY
     search_params: dict
     operator_uri: str
     batch_size: int
@@ -83,7 +95,6 @@ class ImportResponse(BaseResponse):
 @dataclass
 class LensConfig:
     """Data model representing a lens configuration."""
-    _: KW_ONLY
     id: str
     name: str
     operator_uri: str
@@ -92,8 +103,7 @@ class LensConfig:
 @dataclass
 class ListConfigsRequest:
     """Request model for listing lens configurations."""
-    _: KW_ONLY
-
+    pass
 
 @dataclass
 class ListConfigsResponse(BaseResponse):
@@ -104,7 +114,6 @@ class ListConfigsResponse(BaseResponse):
 @dataclass
 class UpsertConfigRequest:
     """Request model for upserting a lens configuration."""
-    _: KW_ONLY
     name: str
     operator_uri: str
     id: str = None
@@ -119,7 +128,6 @@ class UpsertConfigResponse(BaseResponse):
 @dataclass
 class DeleteConfigRequest:
     """Request model for deleting a lens configuration."""
-    _: KW_ONLY
     id: str
 
 

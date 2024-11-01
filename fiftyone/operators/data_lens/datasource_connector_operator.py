@@ -5,7 +5,6 @@ FiftyOne Data Lens datasource connector.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import re
 import uuid
 from dataclasses import asdict
 
@@ -34,13 +33,11 @@ class DatasourceConnectorOperator(foo.Operator):
 
     def execute(self, ctx: foo.ExecutionContext) -> dict:
         try:
-            request = DatasourceConnectorRequest(
-                **filter_fields_for_type(ctx.params, DatasourceConnectorRequest)
-            )
+            request = DatasourceConnectorRequest.from_dict(ctx.params)
 
-            if request.request_type == RequestType.PREVIEW.name.lower():
+            if request.request_type == RequestType.PREVIEW:
                 return asdict(self._handle_preview(ctx))
-            elif request.request_type == RequestType.IMPORT.name.lower():
+            elif request.request_type == RequestType.IMPORT:
                 return asdict(self._handle_import(ctx))
             else:
                 raise ValueError(f'unsupported query type "{request.request_type}"')
@@ -214,10 +211,7 @@ class DatasourceConnectorOperator(foo.Operator):
 
     @staticmethod
     def _resolve_url(url: str) -> str:
-        if re.match(r'^[a-z]+://', url, re.IGNORECASE) is not None:
-            return fos.get_url(url)
-
-        return url
+        return fos.to_readable(url)
 
     @staticmethod
     def _build_params(ctx: foo.ExecutionContext, overrides: dict = None) -> dict:

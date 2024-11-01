@@ -18,10 +18,10 @@ def filter_fields_for_type(data: dict, data_type) -> dict:
     Returns:
         dict: A dict containing only the keys defined in the provided data type.
     """
-    fields = dataclasses.fields(data_type)
+    fields = {field.name for field in dataclasses.fields(data_type)}
 
     return {
         key: data.get(key)
-        for key in (field.name for field in fields)
+        for key in fields
         if key in data
     }
