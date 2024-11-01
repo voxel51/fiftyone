@@ -234,7 +234,7 @@ class IndexFieldCreationOperator(Operator):
         return Property(outputs)
 
 
-class IndexFieldRemovalConfirmation(Operator):
+class IndexFieldRemovalConfirmationOperator(Operator):
     @property
     def config(self):
         return OperatorConfig(
@@ -392,7 +392,7 @@ class QueryPerformancePanel(Panel):
             params["field_type"] = "index_field"
 
         ctx.prompt(
-            "@voxel51/query-performance-panel/index_field_removal_confirmation",
+            "index_field_removal_confirmation",
             on_success=self.refresh,
             params=params,
         )
@@ -420,7 +420,7 @@ class QueryPerformancePanel(Panel):
             {"location": "query_performance_panel"},
         )
         ctx.prompt(
-            "@voxel51/query-performance-panel/index_field_creation_operator",
+            "index_field_creation_operator",
             on_success=self.refresh,
         )
 

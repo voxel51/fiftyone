@@ -16,7 +16,10 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
 from fiftyone.core.odm.workspace import default_workspace_factory
-from fiftyone.operators.panels import QueryPerformancePanel, DataQualityPanel
+from fiftyone.operators.panels import (
+    DataQualityPanel,
+    QueryPerformancePanel,
+)
 from fiftyone.operators.utils import create_summary_field_inputs
 
 
@@ -2185,40 +2188,46 @@ from fiftyone.operators.panels.data_quality import (
     OPERATORS as DATA_QUALITY_OPERATORS,
 )
 
-BUILTIN_OPERATORS = [
-    EditFieldInfo(_builtin=True),
-    CloneSelectedSamples(_builtin=True),
-    CloneSampleField(_builtin=True),
-    CloneFrameField(_builtin=True),
-    RenameSampleField(_builtin=True),
-    RenameFrameField(_builtin=True),
-    ClearSampleField(_builtin=True),
-    ClearFrameField(_builtin=True),
-    DeleteSelectedSamples(_builtin=True),
-    DeleteSelectedLabels(_builtin=True),
-    DeleteSampleField(_builtin=True),
-    DeleteFrameField(_builtin=True),
-    CreateIndex(_builtin=True),
-    DropIndex(_builtin=True),
-    CreateSummaryField(_builtin=True),
-    UpdateSummaryField(_builtin=True),
-    DeleteSummaryField(_builtin=True),
-    AddGroupSlice(_builtin=True),
-    RenameGroupSlice(_builtin=True),
-    DeleteGroupSlice(_builtin=True),
-    ListSavedViews(_builtin=True),
-    LoadSavedView(_builtin=True),
-    SaveView(_builtin=True),
-    EditSavedViewInfo(_builtin=True),
-    DeleteSavedView(_builtin=True),
-    ListWorkspaces(_builtin=True),
-    LoadWorkspace(_builtin=True),
-    SaveWorkspace(_builtin=True),
-    EditWorkspaceInfo(_builtin=True),
-    DeleteWorkspace(_builtin=True),
-    SyncLastModifiedAt(_builtin=True),
-    ListFiles(_builtin=True),
-] + DATA_QUALITY_OPERATORS
+from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
+
+BUILTIN_OPERATORS = (
+    [
+        EditFieldInfo(_builtin=True),
+        CloneSelectedSamples(_builtin=True),
+        CloneSampleField(_builtin=True),
+        CloneFrameField(_builtin=True),
+        RenameSampleField(_builtin=True),
+        RenameFrameField(_builtin=True),
+        ClearSampleField(_builtin=True),
+        ClearFrameField(_builtin=True),
+        DeleteSelectedSamples(_builtin=True),
+        DeleteSelectedLabels(_builtin=True),
+        DeleteSampleField(_builtin=True),
+        DeleteFrameField(_builtin=True),
+        CreateIndex(_builtin=True),
+        DropIndex(_builtin=True),
+        CreateSummaryField(_builtin=True),
+        UpdateSummaryField(_builtin=True),
+        DeleteSummaryField(_builtin=True),
+        AddGroupSlice(_builtin=True),
+        RenameGroupSlice(_builtin=True),
+        DeleteGroupSlice(_builtin=True),
+        ListSavedViews(_builtin=True),
+        LoadSavedView(_builtin=True),
+        SaveView(_builtin=True),
+        EditSavedViewInfo(_builtin=True),
+        DeleteSavedView(_builtin=True),
+        ListWorkspaces(_builtin=True),
+        LoadWorkspace(_builtin=True),
+        SaveWorkspace(_builtin=True),
+        EditWorkspaceInfo(_builtin=True),
+        DeleteWorkspace(_builtin=True),
+        SyncLastModifiedAt(_builtin=True),
+        ListFiles(_builtin=True),
+    ]
+    + DATA_QUALITY_OPERATORS
+    + QUERY_PERFORMANCE_OPERATORS
+)
 
 BUILTIN_PANELS = [DataQualityPanel(_builtin=True)]
 
