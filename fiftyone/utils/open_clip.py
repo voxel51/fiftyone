@@ -106,7 +106,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             # Tokenize text
             text = self._tokenizer(prompts)
             if self._using_gpu:
-                text = text.to(torch.device(self.device))
+                text = text.to(self.device)
             self._text_features = self._model.encode_text(text)
 
         return self._text_features
@@ -118,7 +118,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         # Tokenize text
         text = self._tokenizer(formatted_prompts)
         if self._using_gpu:
-            text = text.to(torch.device(self.device))
+            text = text.to(self.device)
         return self._model.encode_text(text)
 
     def _get_class_logits(self, text_features, image_features):
@@ -143,7 +143,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         frame_size = (width, height)
 
         if self._using_gpu:
-            imgs = imgs.to(torch.device(self.device))
+            imgs = imgs.to(self.device)
 
         with torch.no_grad(), torch.amp.autocast("cuda"):
             image_features = self._model.encode_image(imgs)

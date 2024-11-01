@@ -187,7 +187,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
         frame_size = (width, height)
 
         if self._using_gpu:
-            imgs = imgs.to(torch.device(self.device))
+            imgs = imgs.to(self.device)
 
         text_features = self._get_text_features()
         image_features = self._model.encode_image(imgs)
