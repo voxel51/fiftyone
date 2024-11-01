@@ -3,6 +3,8 @@ import { listLocalAndRemoteOperators } from "@fiftyone/operators/src/operators";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 
+const IS_OSS = true; // false in fiftyone-teams
+
 const useFirstExistingUri = (uris: string[]) => {
   const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
   return useMemo(() => {
@@ -33,7 +35,7 @@ export default function useComputeVisualization() {
   }, [panelId, triggerEvent, computeVisUri]);
 
   return {
-    isAvailable: hasComputeVisualization,
+    isAvailable: IS_OSS ? false : hasComputeVisualization,
     prompt,
   };
 }
