@@ -86,8 +86,17 @@ const Toast: React.FC<ToastProps> = ({
       sx={snackbarStyle}
     >
       <SnackbarContent
-        message={message}
-        action={action}
+        message={
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            gap={4}
+          >
+            <Box>{message}</Box>
+            {action}
+          </Box>
+        }
         sx={{
           backgroundColor: layout?.backgroundColor || "#333",
           color: layout?.color || "#fff",

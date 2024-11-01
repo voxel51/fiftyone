@@ -17,6 +17,7 @@ import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
   ExecutionContext,
@@ -302,6 +303,7 @@ const useOperatorPromptSubmitOptions = (
           setSelectedID(orc.id);
         },
         onClick() {
+          localStorage.setItem(LAST_USED_ORCHESTRATOR, orc.instanceID);
           execute({
             delegationTarget: orc.instanceID,
             requestDelegation: true,
@@ -970,6 +972,19 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
         callback?.(result);
+        if (result.error) {
+          const isAbortError =
+            result.error.name === "AbortError" ||
+            result.error instanceof DOMException;
+          if (!isAbortError) {
+            notify({
+              msg: result.errorMessage || `Operation failed: ${uri}`,
+              variant: "error",
+            });
+            console.error("Error executing operator", uri, result.errorMessage);
+            console.error(result.error);
+          }
+        }
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =

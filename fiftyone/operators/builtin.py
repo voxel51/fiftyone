@@ -14,7 +14,10 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+
 from fiftyone.core.odm.workspace import default_workspace_factory
+from fiftyone.operators.panels import QueryPerformancePanel, DataQualityPanel
+from fiftyone.operators.utils import create_summary_field_inputs
 
 from fiftyone.operators.brain.compute_visualization import ComputeVisualization
 
@@ -1118,7 +1121,7 @@ class CreateSummaryField(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        _create_summary_field_inputs(ctx, inputs)
+        create_summary_field_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Create summary field")
@@ -1147,149 +1150,6 @@ class CreateSummaryField(foo.Operator):
         )
 
         ctx.trigger("reload_dataset")
-
-
-def _create_summary_field_inputs(ctx, inputs):
-    schema = ctx.dataset.get_field_schema(flat=True)
-    if ctx.dataset._has_frame_fields():
-        frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
-        schema.update(
-            {
-                ctx.dataset._FRAMES_PREFIX + path: field
-                for path, field in frame_schema.items()
-            }
-        )
-
-    categorical_field_types = (fo.StringField, fo.BooleanField)
-    numeric_field_types = (
-        fo.FloatField,
-        fo.IntField,
-        fo.DateField,
-        fo.DateTimeField,
-    )
-
-    schema = {
-        p: f
-        for p, f in schema.items()
-        if (
-            isinstance(f, categorical_field_types)
-            or isinstance(f, numeric_field_types)
-        )
-    }
-
-    path_keys = list(schema.keys())
-    path_selector = types.AutocompleteView()
-    for key in path_keys:
-        path_selector.add_choice(key, label=key)
-
-    inputs.enum(
-        "path",
-        path_selector.values(),
-        label="Input field",
-        description="The input field to summarize",
-        view=path_selector,
-        required=True,
-    )
-
-    path = ctx.params.get("path", None)
-    if path is None or path not in path_keys:
-        return
-
-    field_name = ctx.params.get("field_name", None)
-    if field_name is None:
-        default_field_name = ctx.dataset._get_default_summary_field_name(path)
-    else:
-        default_field_name = field_name
-
-    field_name_prop = inputs.str(
-        "field_name",
-        required=False,
-        label="Summary field",
-        description="The sample field in which to store the summary data",
-        default=default_field_name,
-    )
-
-    if field_name and field_name in path_keys:
-        field_name_prop.invalid = True
-        field_name_prop.error_message = f"Field '{field_name}' already exists"
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{field_name}' already exists",
-            ),
-        )
-        return
-
-    if ctx.dataset.app_config.sidebar_groups is not None:
-        sidebar_group_selector = types.AutocompleteView()
-        for group in ctx.dataset.app_config.sidebar_groups:
-            sidebar_group_selector.add_choice(group.name, label=group.name)
-    else:
-        sidebar_group_selector = None
-
-    inputs.str(
-        "sidebar_group",
-        default="summaries",
-        required=False,
-        label="Sidebar group",
-        description=(
-            "The name of an "
-            "[App sidebar group](https://docs.voxel51.com/user_guide/app.html#sidebar-groups) "
-            "to which to add the summary field"
-        ),
-        view=sidebar_group_selector,
-    )
-
-    field = schema.get(path, None)
-    if isinstance(field, categorical_field_types):
-        inputs.bool(
-            "include_counts",
-            label="Include counts",
-            description=(
-                "Whether to include per-value counts when summarizing the "
-                "categorical field"
-            ),
-            default=False,
-        )
-    elif isinstance(field, numeric_field_types):
-        group_prefix = path.rsplit(".", 1)[0] + "."
-        group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
-        group_by_selector = types.AutocompleteView()
-        for group in group_by_keys:
-            group_by_selector.add_choice(group, label=group)
-
-        inputs.enum(
-            "group_by",
-            group_by_selector.values(),
-            default=None,
-            required=False,
-            label="Group by",
-            description=(
-                "An optional attribute to group by when to generate "
-                "per-attribute `[min, max]` ranges"
-            ),
-            view=group_by_selector,
-        )
-
-    inputs.bool(
-        "read_only",
-        default=True,
-        required=False,
-        label="Read-only",
-        description="Whether to mark the summary field as read-only",
-    )
-
-    inputs.bool(
-        "create_index",
-        default=True,
-        required=False,
-        label="Create index",
-        description=(
-            "Whether to create database index(es) for the summary field"
-        ),
-    )
 
 
 class UpdateSummaryField(foo.Operator):
@@ -2323,6 +2183,10 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
+
 BUILTIN_OPERATORS = [
     EditFieldInfo(_builtin=True),
     CloneSelectedSamples(_builtin=True),
@@ -2357,6 +2221,9 @@ BUILTIN_OPERATORS = [
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
     ComputeVisualization(_builtin=True),
-]
+] + DATA_QUALITY_OPERATORS
 
-BUILTIN_PANELS = []
+BUILTIN_PANELS = [DataQualityPanel(_builtin=True)]
+
+if fo.app_config.enable_query_performance:
+    BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))

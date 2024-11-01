@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<73c07374d046111ecc52b5639f6f6878>>
+ * @generated SignedSource<<949646dc00f1a3702b99527e16cb9aff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -89,7 +89,7 @@ export type datasetQuery$data = {
       readonly slug: string | null;
     } | null;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  };
+  } | null;
   readonly " $fragmentSpreads": FragmentRefs<"configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type datasetQuery = {
