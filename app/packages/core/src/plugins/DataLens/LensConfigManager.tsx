@@ -33,10 +33,10 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import ErrorIcon from "@mui/icons-material/Error";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AddIcon from "@mui/icons-material/Add";
 import HubIcon from "@mui/icons-material/HubOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 /**
  * Component responsible for handling LensConfig management.
@@ -197,11 +197,9 @@ export const LensConfigManager = ({
     if (!operatorURI) {
       return <Fragment />;
     } else if (isOperatorValid) {
-      return (
-        <CheckCircleIcon color="success" sx={{ width: "1em", height: "1em" }} />
-      );
+      return <CheckCircleOutlineIcon color="success" />;
     } else {
-      return <ErrorIcon color="error" sx={{ width: "1em", height: "1em" }} />;
+      return <ErrorIcon color="error" />;
     }
   };
 

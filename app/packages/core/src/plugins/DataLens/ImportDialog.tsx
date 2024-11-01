@@ -78,7 +78,7 @@ export const ImportDialog = ({
         {/*Number of samples*/}
         <Box sx={{ mt: 3 }}>
           <Box>
-            <Typography sx={{ mb: 2 }}>Sample size</Typography>
+            <Typography>Sample size</Typography>
             <ToggleButtonGroup
               color="primary"
               sx={{ mt: 2, mb: 2 }}

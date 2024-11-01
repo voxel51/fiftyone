@@ -60,10 +60,14 @@ export const LensPanel = ({
   const [destDatasetName, setDestDatasetName] = useState("");
   const [isImportExpanded, setIsImportExpanded] = useState(true);
   const [showImportContent, setShowImportContent] = useState(false);
-  const { datasets } = useDatasets();
+  const { datasets, activeDataset } = useDatasets();
 
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
+
+  // State to keep sticky footer sized appropriately
+  const mainContentRef = useRef(null);
+  const mainContentWidth = mainContentRef.current?.offsetWidth ?? 0;
 
   // Check to see if our active config still exists.
   // This handles the case where a user has deleted a config that was previously active.
@@ -79,6 +83,10 @@ export const LensPanel = ({
 
   const openDatasetOperator = useOperatorExecutor(
     "@voxel51/operators/open_dataset"
+  );
+
+  const reloadDatasetOperator = useOperatorExecutor(
+    "@voxel51/operators/reload_dataset"
   );
 
   // Keep track of the average sample size of our current preview.
@@ -184,7 +192,11 @@ export const LensPanel = ({
 
   // Callback which opens the target dataset.
   const openDataset = async () => {
-    await openDatasetOperator.execute({ dataset: destDatasetName });
+    if (destDatasetName === activeDataset) {
+      await reloadDatasetOperator.execute({});
+    } else {
+      await openDatasetOperator.execute({ dataset: destDatasetName });
+    }
   };
 
   // Callback which opens the import dialog.
@@ -427,27 +439,28 @@ export const LensPanel = ({
   // All content.
   return (
     <Box sx={{ m: 2 }}>
-      <Box sx={{ maxWidth: "750px", m: "auto", mb: 16 }}>
+      <Box ref={mainContentRef} sx={{ m: "auto", mb: 16 }}>
         <Box sx={{ m: 2 }}>
           {lensConfigContent}
           {queryOperatorContent}
           {previewContent}
           {showImportContent && importContent}
         </Box>
+      </Box>
 
-        {/*Sticky footer*/}
-        <Box
-          sx={{
-            position: "fixed",
-            width: "750px",
-            bottom: 0,
-            padding: 1,
-            borderTop: "1px solid var(--fo-palette-divider)",
-            background: "var(--fo-palette-background-level2)",
-          }}
-        >
-          {searchControls}
-        </Box>
+      {/*Sticky footer*/}
+      <Box
+        sx={{
+          position: "fixed",
+          width: `${mainContentWidth}px`,
+          bottom: 0,
+          p: 1,
+          m: "auto",
+          borderTop: "1px solid var(--fo-palette-divider)",
+          background: "var(--fo-palette-background-level2)",
+        }}
+      >
+        {searchControls}
       </Box>
 
       {/*Placement of this dialog doesn't matter; just needs to be part of the DOM*/}

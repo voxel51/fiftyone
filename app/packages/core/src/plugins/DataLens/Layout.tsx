@@ -22,8 +22,8 @@ export const Layout = ({
     <>
       {/*Main panel*/}
       <Box sx={{ m: 2 }}>
-        {/*Tabs header*/}
-        <Box sx={{ maxWidth: "750px", m: "auto" }}>
+        <Box sx={{ maxWidth: { lg: "80%" }, m: "auto" }}>
+          {/*Tabs header*/}
           <Box
             sx={{
               display: "flex",
@@ -45,11 +45,11 @@ export const Layout = ({
               View Docs
             </Link>
           </Box>
-        </Box>
 
-        {/*Tab content*/}
-        <Box sx={{ m: 2 }}>
-          {tabs.find((tab) => tab.id === active)?.content}
+          {/*Tab content*/}
+          <Box sx={{ m: 2 }}>
+            {tabs.find((tab) => tab.id === active)?.content}
+          </Box>
         </Box>
       </Box>
     </>

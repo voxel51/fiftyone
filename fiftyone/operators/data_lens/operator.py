@@ -8,8 +8,7 @@ FiftyOne Data Lens operator.
 from typing import Generator
 
 import fiftyone.operators as foo
-from fiftyone.operators.data_lens import DataLensSearchResponse
-from fiftyone.operators.data_lens.models import DataLensSearchRequest
+from fiftyone.operators.data_lens.models import DataLensSearchRequest, DataLensSearchResponse
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
 
 
